@@ -1848,7 +1848,6 @@
     outline: none;
     transition: border-color 0.15s, box-shadow 0.15s;
     height: 26px;
-    font-family: inherit;
     min-width: 110px;
     font-family: 'SF Mono', 'Menlo', 'Consolas', monospace;
 }

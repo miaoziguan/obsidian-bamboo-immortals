@@ -56,7 +56,7 @@ export class BridgeService {
     }
 
     this.messageHandler = (event: MessageEvent) => {
-      this.onMessage(event);
+      void this.onMessage(event);
     };
     window.addEventListener('message', this.messageHandler);
   }
@@ -211,7 +211,7 @@ export class BridgeService {
     if (msg.type === 'app:saveCustomNoises') {
       if (this.settings) {
         const noisesMsg = msg as AppSaveCustomNoisesMessage;
-        this.settings.noiseItems = (noisesMsg.payload as unknown[]) || [];
+        this.settings.noiseItems = noisesMsg.payload || [];
         if (this.saveSettings) await this.saveSettings();
       }
       this.respond(msg.id, { ok: true });

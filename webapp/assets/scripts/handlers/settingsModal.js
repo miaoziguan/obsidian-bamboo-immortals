@@ -171,6 +171,13 @@ export const SettingsModal = {
                         <span class="about-work-tag" style="cursor:default">竹林修仙传</span>
                     </div>
                 </div>
+                <div class="fab-panel-section">
+                    <div class="fab-panel-section-title">联系方式</div>
+                    <div class="about-contact">
+                        <div class="about-contact-item">邮箱：yanyulin2100@qq.com</div>
+                        <div class="about-contact-item">微信：yanhu94</div>
+                    </div>
+                </div>
             </div>
         `;
     },

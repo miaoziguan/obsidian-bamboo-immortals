@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { StorageBridge } from './StorageBridge';
 import { ThemeBridge } from './ThemeBridge';
-import type { AnyBridgeMessage, ThemeSyncPaletteMessage, AppToggleThemeMessage, AppSaveSectionConfigMessage, AppSaveCustomNoisesMessage } from '../types/messages';
+import type { AnyBridgeMessage } from '../types/messages';
 import { ALLOWED_AUDIO_EXTENSIONS, AUDIO_MIME_TYPES } from '../constants/audio';
 import type { BambooReviewSettings } from '../settings/PluginSettings';
 

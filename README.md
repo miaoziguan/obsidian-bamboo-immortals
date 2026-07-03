@@ -64,4 +64,4 @@
 
 ## License
 
-MIT © 羽鳞君
+Licensed under Apache 2.0 © 羽鳞君

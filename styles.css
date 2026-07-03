@@ -1,9 +1,9 @@
 /* Bamboo Immortals - iframe 容器样式 */
 
 /* 消除 Obsidian 默认内边距 — 让 webapp 铺满整个窗口 */
-.workspace-leaf-content[data-type="bamboo-immortals"] .view-content {
-  padding: 0 !important;
-  margin: 0 !important;
+html body .workspace-leaf-content[data-type="bamboo-immortals"] .view-content {
+  padding: 0;
+  margin: 0;
 }
 
 .bamboo-review-container {
@@ -23,8 +23,8 @@
 }
 
 /* 隐藏 view header 标题文字 — iframe 自带标题，顶部居中文字多余 */
-.workspace-leaf-content[data-type="bamboo-immortals"] .view-header-title-container {
-  display: none !important;
+html body .workspace-leaf-content[data-type="bamboo-immortals"] .view-header-title-container {
+  display: none;
 }
 
 /* 设置面板样式 */

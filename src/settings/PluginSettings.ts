@@ -1,4 +1,6 @@
 import { App, PluginSettingTab, Setting } from 'obsidian';
+import * as path from 'path';
+import * as fs from 'fs';
 import type BambooReviewPlugin from '../../main';
 import { ThemeBridge } from '../bridge/ThemeBridge';
 
@@ -151,9 +153,27 @@ export class PluginSettings extends PluginSettingTab {
     const authorBox = containerEl.createDiv({ cls: 'bamboo-about-card bamboo-about-author' });
     const authorRow = authorBox.createDiv({ cls: 'bamboo-about-author-row' });
     const avatar = authorRow.createDiv({ cls: 'bamboo-about-avatar' });
-    avatar.setCssStyles({
-      backgroundImage: 'url(data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAKAAoADASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD5UooooAKKKKACiiigAooo9KACiij0oAKKKPSgAooooAKKKKACiij0oAKKKXFACUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFLigUtADaKWkoAKUdKSlFACikNLSGgBKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAoopRQAlFLikoAKKKKACiiigAooooAKKKKACiiigAooooAKKKKAFFFLSGgBKKKKAClFJThQAlJTqbQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAopaQUtACUlLSUAFKKSlFAC0hoooASiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAWlpBS0AFNp1IaAEooooAKKKKACiiigAooooAKKKKACiiigApQKBThQACkNOxTWoAbRRRQAU4U2nCgApKdTTQAlFFFABRRRQAUUUUAFFFFABRRRQAUUUUAKKWkFLQAlJTqbQAUopKUUAFFFJQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFKKAFFLSCloAKQ0tIaAG0UUUAFFFFABRRRQAUUUUAFFFFABSikpRQA4UopKBQAtIaWkNADKKKKACnLTaUUAOooooASm0402gAooooAKKKKACiiigAooooAKKKKACl7UlKKACilpDQAlKKSnUAFJS0dqAG0UUUAFFFFABRRRQAUUUUAFFFFABSikpwoASkpxptABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABSik... [truncated]'
-    });
+    // 从插件目录读取头像文件（避免过长的 base64 被 Obsidian 截断导致空白）
+    // 优先读插件根目录（dev/BRAT），其次从 webapp 资源中读取（插件市场安装）
+    try {
+      const pluginDir = (this.plugin.manifest as any).dir;
+      const vaultBasePath = (this.app.vault.adapter as any).basePath || '';
+      const candidates = [
+        path.join(vaultBasePath, pluginDir, 'author-avatar.jpg'),               // dev / BRAT / release asset
+        path.join(vaultBasePath, pluginDir, 'webapp', 'assets', 'images', 'author-avatar.jpg'), // webapp 内置
+      ];
+      for (const avatarPath of candidates) {
+        if (fs.existsSync(avatarPath)) {
+          const avatarData = fs.readFileSync(avatarPath);
+          const b64 = avatarData.toString('base64');
+          avatar.setCssStyles({
+            backgroundImage: `url(data:image/jpeg;base64,${b64})`,
+          });
+          break;
+        }
+      }
+    } catch { /* silently skip — show default empty avatar */ }
+
 
     const authorInfo = authorRow.createDiv({ cls: 'bamboo-about-author-info' });
     authorInfo.createEl('p', { text: '羽鳞君', cls: 'bamboo-about-author-name' });

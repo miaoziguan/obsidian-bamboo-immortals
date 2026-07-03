@@ -217,7 +217,7 @@ export class VaultStorage {
     if (abstract instanceof TFile) {
       // vault.process 原子 read-modify-write，杜绝竞态丢数据
       await this.app.vault.process(abstract, (data) => {
-        const settings = JSON.parse(data);
+        const settings: Record<string, unknown> = JSON.parse(data) as Record<string, unknown>;
         settings[key] = value;
         return JSON.stringify(settings, null, 2);
       });

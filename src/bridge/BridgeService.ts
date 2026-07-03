@@ -6,8 +6,8 @@ import type { AnyBridgeMessage, ThemeSyncPaletteMessage, AppToggleThemeMessage, 
 import { ALLOWED_AUDIO_EXTENSIONS, AUDIO_MIME_TYPES } from '../constants/audio';
 import type { BambooReviewSettings } from '../settings/PluginSettings';
 
-/** 扫描音频文件时要跳过的目录名 */
-const SKIP_DIRS = new Set(['.obsidian', '.trash', '.git', 'node_modules']);
+/** 扫描音频文件时默认跳过的目录名（configDir 可通过 setConfigDir 自定义） */
+const DEFAULT_SKIP_DIRS = ['.trash', '.git', 'node_modules'];
 
 /**
  * BridgeService - postMessage 消息路由中心
@@ -25,6 +25,7 @@ export class BridgeService {
     private customThemes: Array<{ name: string; code: string }> = [];
     private vaultBasePath: string = '';
     private noisePath: string = '';
+    private configDir: string = '.obsidian';
     private expectedOrigin = '';
 
     constructor(
@@ -75,6 +76,11 @@ export class BridgeService {
     this.noisePath = noisePath;
   }
 
+  /** 设置 Obsidian 配置目录名（默认 .obsidian，用户可自定义） */
+  setConfigDir(dir: string): void {
+    this.configDir = dir;
+  }
+
   /** 扫描库内音频文件（支持指定文件夹或全库扫描） */
   private async _scanVaultAudioFiles(maxDepth = 5): Promise<Array<{ path: string; name: string; size: number; ext: string }>> {
     const results: Array<{ path: string; name: string; size: number; ext: string }> = [];
@@ -122,7 +128,8 @@ export class BridgeService {
         const relativePath = relativePrefix ? path.join(relativePrefix, entry.name) : entry.name;
 
         if (entry.isDirectory()) {
-          if (SKIP_DIRS.has(entry.name)) continue;
+          const skipDirs = new Set([...DEFAULT_SKIP_DIRS, this.configDir]);
+          if (skipDirs.has(entry.name)) continue;
           await scanDir(fullPath, relativePath, depth + 1);
         } else if (entry.isFile()) {
           const ext = path.extname(entry.name).toLowerCase();

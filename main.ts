@@ -1,6 +1,7 @@
 import { Plugin, WorkspaceLeaf } from 'obsidian';
 import * as path from 'path';
 import * as fs from 'fs';
+import * as zlib from 'zlib';
 import { DailyReviewView, VIEW_TYPE_DAILY_REVIEW } from './src/views/DailyReviewView';
 import { LocalServer } from './src/server/LocalServer';
 import {
@@ -18,6 +19,70 @@ import {
  * 3. 注册设置面板
  * 4. 管理插件生命周期
  */
+/** 纯 Node.js ZIP 解压，不依赖系统 unzip/PowerShell */
+function extractZip(zipPath: string, destDir: string): void {
+  const buf = fs.readFileSync(zipPath);
+  let pos = 0;
+
+  const read16 = () => { const v = buf.readUInt16LE(pos); pos += 2; return v; };
+  const read32 = () => { const v = buf.readUInt32LE(pos); pos += 4; return v; };
+  const skip = (n: number) => { pos += n; };
+
+  // 扫描所有 local file header（签名 0x04034b50）
+  while (pos < buf.length - 4) {
+    const sig = buf.readUInt32LE(pos);
+    if (sig !== 0x04034b50) break;
+
+    pos += 4;
+    read16(); // version
+    const flags = read16();
+    const method = read16();
+    skip(4); // mod time, mod date
+    const crc32 = read32();
+    const compressedSize = read32();
+    const uncompressedSize = read32();
+    const nameLen = read16();
+    const extraLen = read16();
+    const fileName = buf.toString('utf-8', pos, pos + nameLen);
+    pos += nameLen + extraLen;
+
+    // 跳过目录条目
+    if (fileName.endsWith('/') || fileName.endsWith('\\')) {
+      pos += compressedSize;
+      continue;
+    }
+
+    const outPath = path.join(destDir, fileName);
+    fs.mkdirSync(path.dirname(outPath), { recursive: true });
+
+    const data = buf.subarray(pos, pos + compressedSize);
+    pos += compressedSize;
+
+    if (method === 0) {
+      // 无压缩
+      fs.writeFileSync(outPath, data);
+      continue;
+    }
+
+    if (method === 8) {
+      // deflate
+      try {
+        const decompressed = zlib.inflateRawSync(data, { finishFlush: zlib.constants.Z_SYNC_FLUSH });
+        if (decompressed.length !== uncompressedSize) {
+          fs.writeFileSync(outPath, decompressed.subarray(0, uncompressedSize));
+        } else {
+          fs.writeFileSync(outPath, decompressed);
+        }
+      } catch {
+        fs.writeFileSync(outPath, zlib.inflateSync(data));
+      }
+      continue;
+    }
+
+    throw new Error(`Unsupported compression method: ` + method + ' (' + fileName + ')');
+  }
+}
+
 export default class BambooReviewPlugin extends Plugin {
   settings: BambooReviewSettings = DEFAULT_SETTINGS;
   private localServer: LocalServer | null = null;
@@ -35,22 +100,13 @@ export default class BambooReviewPlugin extends Plugin {
       const webappIndexPath = path.join(webappDir, 'index.html');
       this.localServer = new LocalServer(webappDir);
 
-      // 第一次运行时若 webapp 缺失（BRAT 升级后常见），自动从 plugin 目录的 webapp.zip 解包
+      // 第一次运行时若 webapp 缺失（BRAT 升级后常见），自动从 webapp.zip 解包
       if (!fs.existsSync(webappIndexPath)) {
         const webappZip = path.join(vaultBasePath, pluginDir, 'webapp.zip');
         if (fs.existsSync(webappZip)) {
           try {
             fs.mkdirSync(webappDir, { recursive: true });
-            // 用系统 unzip 解压（Electron 自带 Node.js 也可用 child_process，但这里用 shell 简单可靠）
-            // 跨平台：Windows 走 PowerShell Expand-Archive
-            if (process.platform === 'win32') {
-              require('child_process').execSync(
-                `powershell -NoProfile -Command "Expand-Archive -Path '${webappZip}' -DestinationPath '${webappDir}' -Force"`,
-                { stdio: 'pipe' }
-              );
-            } else {
-              require('child_process').execSync(`unzip -oq "${webappZip}" -d "${webappDir}"`, { stdio: 'pipe' });
-            }
+            extractZip(webappZip, webappDir);
             new Notice('竹林修仙传: 首次启动，已自动解压 webapp 资源', 4000);
           } catch (e) {
             console.error('[BambooReview] Failed to extract webapp.zip:', e);

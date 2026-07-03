@@ -36,9 +36,9 @@ export class LocalServer {
         this.handleRequest(req, res);
       });
 
-      this.server.on('error', (err) => {
+      this.server.on('error', (err: Error) => {
         console.error('[BambooReview] Server error:', err);
-        reject(err);
+        reject(new Error(`Server error: ${err.message}`));
       });
 
       this.server.listen(this.port, '127.0.0.1', () => {
@@ -84,7 +84,7 @@ export class LocalServer {
     if (urlPath.endsWith('/')) {
       urlPath += 'index.html';
     }
-    const safePath = path.normalize(urlPath).replace(/^(\.\.[\/\\])+/, '');
+    const safePath = path.normalize(urlPath).replace(/^(\.\.[/\\])+/, '');
     const filePath = path.join(this.webappDir, safePath);
 
     // 安全检查：确保路径在 webappDir 内
@@ -113,7 +113,7 @@ export class LocalServer {
       });
 
       // 流式传输文件
-      const stream = fs.createReadStream(filePath);
+      const stream: fs.ReadStream = fs.createReadStream(filePath);
       stream.pipe(res);
       stream.on('error', () => {
         if (!res.headersSent) {
@@ -134,7 +134,7 @@ export class LocalServer {
         return;
       }
       const queryStr = rawUrl.slice(queryIndex + 1);
-      const params = new URLSearchParams(queryStr);
+      const params: URLSearchParams = new URLSearchParams(queryStr);
       const relativePath = params.get('path');
       if (!relativePath) {
         res.writeHead(400); res.end('Missing path parameter');
@@ -148,7 +148,7 @@ export class LocalServer {
         return;
       }
       // 安全检查：禁止路径穿越
-      const normalized = path.normalize(relativePath).replace(/^(\.\.[\/\\])+/, '');
+      const normalized = path.normalize(relativePath).replace(/^(\.\.[/\\])+/, '');
       if (!normalized || normalized.startsWith('..') || normalized.startsWith('/')) {
         res.writeHead(403); res.end('Forbidden');
         return;
@@ -176,7 +176,7 @@ export class LocalServer {
           'Access-Control-Allow-Origin': '*',
           'Cache-Control': 'public, max-age=3600',
         });
-        const stream = fs.createReadStream(fullPath);
+        const stream: fs.ReadStream = fs.createReadStream(fullPath);
         stream.pipe(res);
         stream.on('error', () => {
           if (!res.headersSent) {

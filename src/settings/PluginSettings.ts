@@ -125,7 +125,7 @@ export class PluginSettings extends PluginSettingTab {
             if (!value) {
               ThemeBridge.restoreDefaults();
             }
-            const frame = activeDocument.querySelector('.bamboo-review-frame');
+            const frame = activeDocument.querySelector('.bamboo-review-frame') as HTMLIFrameElement | null;
             if (frame?.contentWindow) {
               frame.contentWindow.postMessage({
                 type: 'theme:syncPaletteEnabled',

@@ -71,7 +71,7 @@ export class VaultStorage {
     return normalizePath(`${this.basePath}/data/${dateKey}.json`);
   }
 
-  async getDay(dateKey: string): Promise<unknown | null> {
+  async getDay(dateKey: string): Promise<unknown> {
     const path = this.dayPath(dateKey);
     if (!(await this.app.vault.adapter.exists(path))) {
       return null;
@@ -205,7 +205,7 @@ export class VaultStorage {
     return normalizePath(`${this.basePath}/settings.json`);
   }
 
-  async getSetting(key: string): Promise<unknown | null> {
+  async getSetting(key: string): Promise<unknown> {
     const settings = await this.getAllSettings();
     return settings[key] ?? null;
   }
@@ -245,7 +245,7 @@ export class VaultStorage {
     return normalizePath(`${this.basePath}/purchase-history.json`);
   }
 
-  async getPurchaseHistory(): Promise<unknown | null> {
+  async getPurchaseHistory(): Promise<unknown> {
     const path = this.purchaseHistoryPath();
     if (!(await this.app.vault.adapter.exists(path))) {
       return null;
@@ -265,7 +265,7 @@ export class VaultStorage {
     return normalizePath(`${this.basePath}/income-history.json`);
   }
 
-  async getIncomeHistory(): Promise<unknown | null> {
+  async getIncomeHistory(): Promise<unknown> {
     const path = this.incomeHistoryPath();
     if (!(await this.app.vault.adapter.exists(path))) {
       return null;

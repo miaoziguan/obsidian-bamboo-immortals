@@ -222,14 +222,14 @@ export class BridgeService {
     if (msg.type === 'app:toggleTheme') {
       const themeMsg = msg as AppToggleThemeMessage;
       const targetIsDark = themeMsg.payload.isDark === true;
-      const currentIsDark = document.body.classList.contains('theme-dark');
+      const currentIsDark = activeDocument.body.classList.contains('theme-dark');
       if (targetIsDark !== currentIsDark) {
         if (targetIsDark) {
-          document.body.classList.remove('theme-light');
-          document.body.classList.add('theme-dark');
+          activeDocument.body.classList.remove('theme-light');
+          activeDocument.body.classList.add('theme-dark');
         } else {
-          document.body.classList.remove('theme-dark');
-          document.body.classList.add('theme-light');
+          activeDocument.body.classList.remove('theme-dark');
+          activeDocument.body.classList.add('theme-light');
         }
         // 通知 iframe 主题已切换
         this.themeBridge.pushTheme();

@@ -71,14 +71,14 @@ export class VaultStorage {
     return normalizePath(`${this.basePath}/data/${dateKey}.json`);
   }
 
-  async getDay(dateKey: string): Promise<any | null> {
+  async getDay(dateKey: string): Promise<unknown | null> {
     const path = this.dayPath(dateKey);
     if (!(await this.app.vault.adapter.exists(path))) {
       return null;
     }
     try {
       const content = await this.app.vault.adapter.read(path);
-      return JSON.parse(content);
+      return JSON.parse(content) as unknown;
     } catch (e) {
       console.warn(`[BambooReview] 日期数据文件损坏，将跳过: ${path}`, e);
       return null;
@@ -162,7 +162,7 @@ export class VaultStorage {
     };
   }
 
-  async putDay(dayData: any): Promise<void> {
+  async putDay(dayData: Record<string, unknown>): Promise<void> {
     await this.ensureDir('data');
     const dateKey = dayData.date;
     if (!dateKey) {
@@ -191,10 +191,10 @@ export class VaultStorage {
       return [];
     }
     const content = await this.app.vault.adapter.read(path);
-    return JSON.parse(content);
+    return JSON.parse(content) as unknown;
   }
 
-  async putGoals(goals: any[]): Promise<void> {
+  async putGoals(goals: unknown[]): Promise<void> {
     const path = this.goalsPath();
     await this.vaultWrite(path, JSON.stringify(goals, null, 2));
   }
@@ -205,12 +205,12 @@ export class VaultStorage {
     return normalizePath(`${this.basePath}/settings.json`);
   }
 
-  async getSetting(key: string): Promise<any | null> {
+  async getSetting(key: string): Promise<unknown | null> {
     const settings = await this.getAllSettings();
     return settings[key] ?? null;
   }
 
-  async putSetting(key: string, value: any): Promise<void> {
+  async putSetting(key: string, value: unknown): Promise<void> {
     const path = normalizePath(this.settingsPath());
     const abstract = this.app.vault.getAbstractFileByPath(path);
 
@@ -233,7 +233,7 @@ export class VaultStorage {
     }
     try {
       const content = await this.app.vault.adapter.read(path);
-      return JSON.parse(content);
+      return JSON.parse(content) as unknown;
     } catch {
       return {};
     }
@@ -245,16 +245,16 @@ export class VaultStorage {
     return normalizePath(`${this.basePath}/purchase-history.json`);
   }
 
-  async getPurchaseHistory(): Promise<any | null> {
+  async getPurchaseHistory(): Promise<unknown | null> {
     const path = this.purchaseHistoryPath();
     if (!(await this.app.vault.adapter.exists(path))) {
       return null;
     }
     const content = await this.app.vault.adapter.read(path);
-    return JSON.parse(content);
+    return JSON.parse(content) as unknown;
   }
 
-  async putPurchaseHistory(data: any): Promise<void> {
+  async putPurchaseHistory(data: unknown): Promise<void> {
     const path = this.purchaseHistoryPath();
     await this.vaultWrite(path, JSON.stringify(data, null, 2));
   }
@@ -265,16 +265,16 @@ export class VaultStorage {
     return normalizePath(`${this.basePath}/income-history.json`);
   }
 
-  async getIncomeHistory(): Promise<any | null> {
+  async getIncomeHistory(): Promise<unknown | null> {
     const path = this.incomeHistoryPath();
     if (!(await this.app.vault.adapter.exists(path))) {
       return null;
     }
     const content = await this.app.vault.adapter.read(path);
-    return JSON.parse(content);
+    return JSON.parse(content) as unknown;
   }
 
-  async putIncomeHistory(data: any): Promise<void> {
+  async putIncomeHistory(data: unknown): Promise<void> {
     const path = this.incomeHistoryPath();
     await this.vaultWrite(path, JSON.stringify(data, null, 2));
   }
@@ -304,7 +304,7 @@ export class VaultStorage {
     };
   }
 
-  async importData(data: any, options?: { strategy?: 'overwrite' | 'merge' }): Promise<void> {
+  async importData(data: Record<string, unknown>, options?: { strategy?: 'overwrite' | 'merge' }): Promise<void> {
     await this.ensureStructure();
 
     if (data.days) {

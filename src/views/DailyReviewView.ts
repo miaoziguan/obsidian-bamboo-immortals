@@ -51,13 +51,6 @@ export class DailyReviewView extends ItemView {
     container.empty();
     container.addClass('bamboo-review-container');
 
-    // 隐藏 view-header 标题文字（iframe 自带标题，居中文字多余）
-    const leafContent = container.parentElement;
-    if (leafContent) {
-      const titleEl = leafContent.querySelector('.view-header-title-container') as HTMLElement;
-      if (titleEl) titleEl.style.display = 'none';
-    }
-
     if (!this.webappPath) {
       container.createEl('div', {
         text: '竹林修仙传: 无法定位 webapp 资源，请检查插件安装目录',

@@ -28,6 +28,11 @@ jobs:
       - name: Build
         run: node esbuild.config.mjs production
 
+      - name: Package webapp
+        run: |
+          cd webapp
+          zip -r ../webapp.zip . -x "*.DS_Store"
+          cd ..
       - name: Generate artifact attestation
         uses: actions/attest-build-provenance@v2
         with:
@@ -35,6 +40,7 @@ jobs:
             main.js
             manifest.json
             styles.css
+            webapp.zip
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
@@ -43,4 +49,5 @@ jobs:
             main.js
             manifest.json
             styles.css
+            webapp.zip
           generate_release_notes: true

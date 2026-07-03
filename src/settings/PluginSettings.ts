@@ -193,5 +193,11 @@ export class PluginSettings extends PluginSettingTab {
         });
       }
     });
+
+    // 联系方式
+    const contactBox = containerEl.createDiv({ cls: 'bamboo-about-card' });
+    contactBox.createEl('p', { text: '联系方式', cls: 'bamboo-about-label' });
+    contactBox.createEl('p', { text: '邮箱：yanyulin2100@qq.com', cls: 'bamboo-about-desc' });
+    contactBox.createEl('p', { text: '微信：yanhu94', cls: 'bamboo-about-desc' });
   }
 }

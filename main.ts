@@ -2,6 +2,7 @@ import { Plugin, WorkspaceLeaf } from 'obsidian';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as zlib from 'zlib';
+import * as https from 'https';
 import { DailyReviewView, VIEW_TYPE_DAILY_REVIEW } from './src/views/DailyReviewView';
 import { LocalServer } from './src/server/LocalServer';
 import {
@@ -20,8 +21,8 @@ import {
  * 4. 管理插件生命周期
  */
 /** 纯 Node.js ZIP 解压，不依赖系统 unzip/PowerShell */
-function extractZip(zipPath: string, destDir: string): void {
-  const buf = fs.readFileSync(zipPath);
+function extractZip(source: string | Buffer, destDir: string): void {
+  const buf = typeof source === 'string' ? fs.readFileSync(source) : source;
   let pos = 0;
 
   const read16 = () => { const v = buf.readUInt16LE(pos); pos += 2; return v; };
@@ -83,6 +84,43 @@ function extractZip(zipPath: string, destDir: string): void {
   }
 }
 
+/** 从 GitHub Release 下载 webapp.zip 并解压 */
+function downloadAndExtractWebapp(pluginDir: string, destDir: string, version: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const url = `https://github.com/miaoziguan/obsidian-bamboo-immortals/releases/download/${version}/webapp.zip`;
+    https.get(url, { headers: { 'User-Agent': 'obsidian-bamboo-immortals' } }, (res) => {
+      if (res.statusCode === 302 || res.statusCode === 301) {
+        // Follow redirect
+        https.get(res.headers.location || '', { headers: { 'User-Agent': 'obsidian-bamboo-immortals' } }, (redir) => {
+          const chunks: Buffer[] = [];
+          redir.on('data', (c: Buffer) => chunks.push(c));
+          redir.on('end', () => {
+            try {
+              extractZip(Buffer.concat(chunks), destDir);
+              resolve();
+            } catch (e) { reject(e); }
+          });
+          redir.on('error', reject);
+        }).on('error', reject);
+        return;
+      }
+      if (res.statusCode !== 200) {
+        reject(new Error(`HTTP ${res.statusCode}: ${url}`));
+        return;
+      }
+      const chunks: Buffer[] = [];
+      res.on('data', (c: Buffer) => chunks.push(c));
+      res.on('end', () => {
+        try {
+          extractZip(Buffer.concat(chunks), destDir);
+          resolve();
+        } catch (e) { reject(e); }
+      });
+      res.on('error', reject);
+    }).on('error', reject);
+  });
+}
+
 export default class BambooReviewPlugin extends Plugin {
   settings: BambooReviewSettings = DEFAULT_SETTINGS;
   private localServer: LocalServer | null = null;
@@ -100,18 +138,28 @@ export default class BambooReviewPlugin extends Plugin {
       const webappIndexPath = path.join(webappDir, 'index.html');
       this.localServer = new LocalServer(webappDir);
 
-      // 第一次运行时若 webapp 缺失（BRAT 升级后常见），自动从 webapp.zip 解包
+      // 确保 webapp 资源就绪：本地 zip → GitHub 下载
       if (!fs.existsSync(webappIndexPath)) {
         const webappZip = path.join(vaultBasePath, pluginDir, 'webapp.zip');
-        if (fs.existsSync(webappZip)) {
-          try {
-            fs.mkdirSync(webappDir, { recursive: true });
+        try {
+          fs.mkdirSync(webappDir, { recursive: true });
+
+          if (fs.existsSync(webappZip)) {
+            // 本地有 zip（从 release 下载或升级残留），直接解压
             extractZip(webappZip, webappDir);
-            new Notice('竹林修仙传: 首次启动，已自动解压 webapp 资源', 4000);
-          } catch (e) {
-            console.error('[BambooReview] Failed to extract webapp.zip:', e);
-            new Notice('竹林修仙传: webapp 资源缺失且解压失败，请尝试重新安装插件', 0);
+            // 解压完成后删除 zip 释放空间
+            try { fs.unlinkSync(webappZip); } catch {}
+            new Notice('竹林修仙传: 已自动解压 webapp 资源', 4000);
+          } else {
+            // 插件市场安装没有 webapp，从 GitHub Release 下载
+            const version = this.manifest.version;
+            console.log('[BambooReview] Downloading webapp from release', version);
+            await downloadAndExtractWebapp(pluginDir, webappDir, version);
+            new Notice('竹林修仙传: 资源包安装完成，正在启动...', 4000);
           }
+        } catch (e) {
+          console.error('[BambooReview] Failed to setup webapp:', e);
+          new Notice('竹林修仙传: 资源包安装失败，请检查网络后重试', 0);
         }
       }
 

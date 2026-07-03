@@ -1,6 +1,5 @@
 import { Plugin, WorkspaceLeaf } from 'obsidian';
 import * as path from 'path';
-import * as fs from 'fs';
 import { DailyReviewView, VIEW_TYPE_DAILY_REVIEW } from './src/views/DailyReviewView';
 import { LocalServer } from './src/server/LocalServer';
 import {
@@ -96,7 +95,6 @@ export default class BambooReviewPlugin extends Plugin {
   }
 
   onunload(): void {
-    this.app.workspace.detachLeavesOfType(VIEW_TYPE_DAILY_REVIEW);
     this.localServer?.stop();
     this.localServer = null;
   }

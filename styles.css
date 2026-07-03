@@ -32,3 +32,87 @@
 .bamboo-review-settings .setting-item-description {
   color: var(--text-muted);
 }
+
+/* 关于卡片 */
+.bamboo-about-card {
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  margin-top: 8px;
+}
+.bamboo-about-card.bamboo-about-author {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.bamboo-about-label {
+  font-size: 11px;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+}
+.bamboo-about-desc {
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--text-muted);
+  margin: 0;
+}
+.bamboo-about-author-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.bamboo-about-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background-size: cover;
+  background-position: center;
+  background-color: var(--background-primary);
+  flex-shrink: 0;
+  border: 1px solid var(--background-modifier-border);
+}
+.bamboo-about-author-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.bamboo-about-author-name {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+  color: var(--text-normal);
+  line-height: 1.2;
+}
+.bamboo-about-author-role {
+  color: var(--text-muted);
+  font-size: 12.5px;
+  margin: 0;
+  line-height: 1.2;
+}
+.bamboo-about-works-label {
+  font-size: 11px;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin: 0;
+  font-weight: 600;
+}
+.bamboo-about-works-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.bamboo-about-tag {
+  padding: 5px 12px;
+  border-radius: 6px;
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  font-size: 13px;
+  color: var(--text-normal);
+  font-weight: 500;
+}

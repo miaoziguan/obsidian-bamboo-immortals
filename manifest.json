@@ -1,9 +1,9 @@
 {
   "id": "bamboo-immortals",
   "name": "Bamboo Immortals",
-  "version": "1.0.0",
-  "minAppVersion": "1.5.0",
-  "description": "Bamboo Immortals（竹林修仙传）— 基于OGAS理念的中国风目标自动化管理系统。A Chinese-style goal automation system based on OGAS concepts.",
+  "version": "1.0.1",
+  "minAppVersion": "1.6.0",
+  "description": "竹林修仙传 — 基于OGAS理念的中国风目标自动化管理系统。A Chinese-style goal automation system based on OGAS concepts.",
   "author": "羽鳞君",
   "isDesktopOnly": true
 }

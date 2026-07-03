@@ -40,7 +40,7 @@ export class ThemeBridge {
 
   /** 获取当前 Obsidian 明暗状态 */
   isDarkMode(): boolean {
-    return document.body.classList.contains('theme-dark');
+    return activeDocument.body.classList.contains('theme-dark');
   }
 
   /** 向 iframe 推送当前主题状态 */
@@ -106,13 +106,13 @@ export class ThemeBridge {
    * 50ms debounce，防止色相/明度滑块快速拖拽产生高频 DOM 写入
    */
   applyPalette(hue: number, lightnessOffset: number, isDark: boolean): void {
-    if (this._paletteSyncTimer) clearTimeout(this._paletteSyncTimer);
+    if (this._paletteSyncTimer) window.clearTimeout(this._paletteSyncTimer);
     ThemeBridge._suppressed = false; // 新调色请求到来 → 解除抑制
-    this._paletteSyncTimer = setTimeout(() => {
+    this._paletteSyncTimer = window.setTimeout(() => {
       if (ThemeBridge._suppressed) return; // restoreDefaults 在防抖窗口内被调用
       const vars = ThemeBridge.computeObsidianVars(hue, lightnessOffset, isDark);
       for (const [key, value] of Object.entries(vars)) {
-        document.body.style.setProperty(key, value);
+        activeDocument.body.style.setProperty(key, value);
       }
     }, 50);
   }
@@ -121,7 +121,7 @@ export class ThemeBridge {
   static restoreDefaults(): void {
     ThemeBridge._suppressed = true;
     for (const key of ThemeBridge.INJECTED_VARS) {
-      document.body.style.removeProperty(key);
+      activeDocument.body.style.removeProperty(key);
     }
   }
 }

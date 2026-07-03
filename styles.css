@@ -116,3 +116,13 @@ html body .workspace-leaf-content[data-type="bamboo-immortals"] .view-header-tit
   color: var(--text-normal);
   font-weight: 500;
 }
+
+/* 首屏加载占位 */
+.bamboo-review-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  font-size: 15px;
+  color: var(--text-muted);
+}

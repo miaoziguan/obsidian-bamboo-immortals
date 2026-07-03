@@ -1,5 +1,6 @@
 import { Plugin, WorkspaceLeaf } from 'obsidian';
 import * as path from 'path';
+import * as fs from 'fs';
 import { DailyReviewView, VIEW_TYPE_DAILY_REVIEW } from './src/views/DailyReviewView';
 import { LocalServer } from './src/server/LocalServer';
 import {
@@ -31,7 +32,33 @@ export default class BambooReviewPlugin extends Plugin {
     if (pluginDir) {
       const vaultBasePath = (this.app.vault.adapter as any).basePath || '';
       const webappDir = path.join(vaultBasePath, pluginDir, 'webapp');
+      const webappIndexPath = path.join(webappDir, 'index.html');
       this.localServer = new LocalServer(webappDir);
+
+      // 第一次运行时若 webapp 缺失（BRAT 升级后常见），自动从 plugin 目录的 webapp.zip 解包
+      if (!fs.existsSync(webappIndexPath)) {
+        const webappZip = path.join(vaultBasePath, pluginDir, 'webapp.zip');
+        if (fs.existsSync(webappZip)) {
+          try {
+            fs.mkdirSync(webappDir, { recursive: true });
+            // 用系统 unzip 解压（Electron 自带 Node.js 也可用 child_process，但这里用 shell 简单可靠）
+            // 跨平台：Windows 走 PowerShell Expand-Archive
+            if (process.platform === 'win32') {
+              require('child_process').execSync(
+                `powershell -NoProfile -Command "Expand-Archive -Path '${webappZip}' -DestinationPath '${webappDir}' -Force"`,
+                { stdio: 'pipe' }
+              );
+            } else {
+              require('child_process').execSync(`unzip -oq "${webappZip}" -d "${webappDir}"`, { stdio: 'pipe' });
+            }
+            new Notice('竹林修仙传: 首次启动，已自动解压 webapp 资源', 4000);
+          } catch (e) {
+            console.error('[BambooReview] Failed to extract webapp.zip:', e);
+            new Notice('竹林修仙传: webapp 资源缺失且解压失败，请尝试重新安装插件', 0);
+          }
+        }
+      }
+
       try {
         await this.localServer.start();
         this.serverUrl = this.localServer.getUrl();

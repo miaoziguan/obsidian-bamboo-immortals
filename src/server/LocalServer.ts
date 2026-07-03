@@ -98,7 +98,32 @@ export class LocalServer {
     fs.stat(filePath, (err, stats) => {
       if (err || !stats.isFile()) {
         res.writeHead(404);
-        res.end('Not Found');
+        res.end(`<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+  body { display:flex; align-items:center; justify-content:center; height:100vh; margin:0;
+         font-family: system-ui, sans-serif; background:#0a0a0a; color:#888; }
+  .box { text-align:center; }
+  h2 { color:#ccc; font-weight:400; }
+  p { font-size:14px; }
+  button { margin-top:16px; padding:8px 24px; border:1px solid #444; border-radius:6px;
+           background:#1a1a1a; color:#aaa; cursor:pointer; font-size:14px; }
+  button:hover { background:#2a2a2a; color:#fff; }
+</style></head><body>
+<div class="box">
+  <h2>竹林修仙传正在初始化……</h2>
+  <p>首次启动需要下载资源包，请稍候</p>
+  <button onclick="location.reload()">手动刷新</button>
+  <script>
+    var retries = 0;
+    function check() {
+      fetch(window.location.href, { method: 'HEAD' }).then(function(r) {
+        if (r.status === 200) location.reload();
+        else if (++retries < 30) setTimeout(check, 2000);
+      }).catch(function() { if (++retries < 30) setTimeout(check, 2000); });
+    }
+    setTimeout(check, 3000);
+  </script>
+</div></body></html>`);
         return;
       }
 

@@ -138,8 +138,17 @@ export default class BambooReviewPlugin extends Plugin {
       const webappIndexPath = path.join(webappDir, 'index.html');
       this.localServer = new LocalServer(webappDir);
 
-      // 确保 webapp 资源就绪：本地 zip → GitHub 下载
-      if (!fs.existsSync(webappIndexPath)) {
+      // 版本跟踪：webapp 版本与插件版本不一致时自动更新
+      const webappVersionFile = path.join(webappDir, '.version');
+      const currentVersion = this.manifest.version;
+      const needsUpdate = !fs.existsSync(webappVersionFile) ||
+        (() => { try { return fs.readFileSync(webappVersionFile, 'utf-8').trim() !== currentVersion; } catch { return true; } })();
+
+      if (needsUpdate) {
+        // 删除旧 webapp，避免残留文件
+        if (fs.existsSync(webappDir)) {
+          try { fs.rmSync(webappDir, { recursive: true, force: true }); } catch {}
+        }
         const webappZip = path.join(vaultBasePath, pluginDir, 'webapp.zip');
         try {
           fs.mkdirSync(webappDir, { recursive: true });
@@ -147,16 +156,17 @@ export default class BambooReviewPlugin extends Plugin {
           if (fs.existsSync(webappZip)) {
             // 本地有 zip（从 release 下载或升级残留），直接解压
             extractZip(webappZip, webappDir);
-            // 解压完成后删除 zip 释放空间
             try { fs.unlinkSync(webappZip); } catch {}
-            new Notice('竹林修仙传: 已自动解压 webapp 资源', 4000);
+            new Notice('竹林修仙传: 资源包已更新', 3000);
           } else {
             // 插件市场安装没有 webapp，从 GitHub Release 下载
-            const version = this.manifest.version;
-            console.log('[BambooReview] Downloading webapp from release', version);
-            await downloadAndExtractWebapp(pluginDir, webappDir, version);
+            console.log('[BambooReview] Downloading webapp from release', currentVersion);
+            await downloadAndExtractWebapp(pluginDir, webappDir, currentVersion);
             new Notice('竹林修仙传: 资源包安装完成，正在启动...', 4000);
           }
+
+          // 写入版本标记
+          fs.writeFileSync(webappVersionFile, currentVersion, 'utf-8');
         } catch (e) {
           console.error('[BambooReview] Failed to setup webapp:', e);
           new Notice('竹林修仙传: 资源包安装失败，请检查网络后重试', 0);

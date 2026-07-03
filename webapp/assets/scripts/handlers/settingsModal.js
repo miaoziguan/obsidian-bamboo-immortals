@@ -167,8 +167,8 @@ export const SettingsModal = {
                 <div class="fab-panel-section">
                     <div class="fab-panel-section-title">Obsidian 插件作品</div>
                     <div class="about-works">
-                        <span class="about-work-tag">竹叶飞刃</span>
-                        <span class="about-work-tag">竹林修仙传</span>
+                        <span class="about-work-tag" onclick="window.open('https://github.com/miaoziguan/obsidian-Bamboo-Darts', '_blank')" style="cursor:pointer">竹叶飞刃</span>
+                        <span class="about-work-tag" style="cursor:default">竹林修仙传</span>
                     </div>
                 </div>
             </div>

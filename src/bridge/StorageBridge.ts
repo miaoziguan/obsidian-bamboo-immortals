@@ -20,11 +20,11 @@ export class StorageBridge {
         return await this.storage.getDay(message.payload.dateKey);
 
       case 'storage:writeDay': {
-        const result = await this.storage.putDay(message.payload.data as any);
+        const result = await this.storage.putDay(message.payload.data as Record<string, unknown>);
         // 双写 Markdown 摘要
         if (this.enableMarkdownSync && message.payload.data) {
           try {
-            const md = MarkdownSync.generateMarkdown(message.payload.data as any);
+            const md = MarkdownSync.generateMarkdown(message.payload.data as Record<string, unknown>);
             await this.storage.writeMarkdownReview(message.payload.dateKey, md);
           } catch (e) {
             console.warn('Markdown sync failed:', e);
@@ -72,9 +72,10 @@ export class StorageBridge {
         return await this.storage.getDayKeys();
 
       case 'storage:getDaysPaginated':
+        const paginatedPayload = msg.payload as { page?: number; pageSize?: number };
         return await this.storage.getDaysPaginated(
-          (message as any).payload?.page ?? 0,
-          (message as any).payload?.pageSize ?? 30
+          paginatedPayload.page ?? 0,
+          paginatedPayload.pageSize ?? 30
         );
 
       case 'storage:exportAll':

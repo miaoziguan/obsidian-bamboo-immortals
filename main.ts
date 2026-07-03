@@ -90,12 +90,12 @@ export default class BambooReviewPlugin extends Plugin {
 
     // 添加左侧 Ribbon 图标
     this.addRibbonIcon('leaf', '竹林修仙传', () => {
-      this.activateView();
+      void this.activateView();
     });
   }
 
   onunload(): void {
-    this.localServer?.stop();
+    void this.localServer?.stop();
     this.localServer = null;
   }
 
@@ -119,7 +119,7 @@ export default class BambooReviewPlugin extends Plugin {
     }
 
     if (leaf) {
-      workspace.revealLeaf(leaf);
+      await workspace.revealLeaf(leaf);
     }
   }
 

@@ -12,9 +12,9 @@ export class Store {
                 isDarkMode: false,
                 currentTheme: 'bamboo',
                 autoSyncTheme: true,
-                weatherEnabled: false,
+                weatherEnabled: true,
                 weatherCity: null,
-                weatherExpanded: false,
+                weatherExpanded: true,
                 quoteSource: '',
                 quoteEnabled: true
             },

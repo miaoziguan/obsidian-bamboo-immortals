@@ -24,3 +24,4 @@ yarn-error.log*
 *.bak
 webapp/
 webapp.zip
+author-avatar-from-base64.jpg

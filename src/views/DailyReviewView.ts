@@ -22,6 +22,7 @@ export class DailyReviewView extends ItemView {
   private themeBridge: ThemeBridge | null = null;
   private iframe: HTMLIFrameElement | null = null;
   private iframeErrorHandler: ((e: Event) => void) | null = null;
+  private keydownForwarder: ((e: KeyboardEvent) => void) | null = null;
   private cssChangeRef: any = null;
   private webappPath: string;
   private settings: BambooReviewSettings;
@@ -73,6 +74,26 @@ export class DailyReviewView extends ItemView {
       console.error('[BambooReview] iframe failed to load:', this.webappPath);
     };
     this.iframe.addEventListener('error', this.iframeErrorHandler);
+
+    // 当 iframe 处于焦点时，将 Ctrl/Cmd 快捷键转发给 Obsidian，
+    // 确保命令面板（Ctrl/Cmd+P）、快速切换（Ctrl/Cmd+O）等全局快捷键仍然可用
+    const obsidianDoc = activeDocument;
+    this.keydownForwarder = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        const evt = new KeyboardEvent('keydown', {
+          key: e.key,
+          code: e.code,
+          ctrlKey: e.ctrlKey,
+          metaKey: e.metaKey,
+          shiftKey: e.shiftKey,
+          altKey: e.altKey,
+          bubbles: true,
+          cancelable: true,
+        });
+        obsidianDoc.body.dispatchEvent(evt);
+      }
+    };
+    document.addEventListener('keydown', this.keydownForwarder, true);
 
     // 初始化桥接服务
     const storage = new VaultStorage(this.app);
@@ -130,6 +151,12 @@ export class DailyReviewView extends ItemView {
     if (this.iframe && this.iframeErrorHandler) {
       this.iframe.removeEventListener('error', this.iframeErrorHandler);
       this.iframeErrorHandler = null;
+    }
+
+    // 清理键盘转发器
+    if (this.keydownForwarder) {
+      document.removeEventListener('keydown', this.keydownForwarder, true);
+      this.keydownForwarder = null;
     }
 
     // 清理 iframe

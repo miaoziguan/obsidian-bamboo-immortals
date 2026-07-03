@@ -1,6 +1,7 @@
 import { ItemView, WorkspaceLeaf } from 'obsidian';
 import * as path from 'path';
 import * as fs from 'fs';
+import type BambooReviewPlugin from '../../main';
 import { VaultStorage } from '../storage/VaultStorage';
 import { StorageBridge } from '../bridge/StorageBridge';
 import { ThemeBridge } from '../bridge/ThemeBridge';
@@ -28,9 +29,12 @@ export class DailyReviewView extends ItemView {
   private settings: BambooReviewSettings;
   private saveSettings: () => Promise<void>;
 
-  constructor(leaf: WorkspaceLeaf, webappPath: string, settings: BambooReviewSettings, saveSettings: () => Promise<void>) {
+  private plugin: BambooReviewPlugin;
+
+  constructor(leaf: WorkspaceLeaf, webappPath: string, plugin: BambooReviewPlugin, settings: BambooReviewSettings, saveSettings: () => Promise<void>) {
     super(leaf);
     this.webappPath = webappPath;
+    this.plugin = plugin;
     this.settings = settings;
     this.saveSettings = saveSettings;
   }
@@ -60,6 +64,27 @@ export class DailyReviewView extends ItemView {
       return;
     }
 
+    // webapp 尚未就绪时显示 loading 占位，后台异步拉包解包
+    if (!this.plugin.webappReady) {
+      container.createEl('div', {
+        text: '正在初始化竹林修仙传…',
+        cls: 'bamboo-review-loading',
+      });
+      // 轮询等待就绪后加载 iframe
+      const checkInterval = setInterval(() => {
+        if (this.plugin.webappReady) {
+          clearInterval(checkInterval);
+          container.empty();
+          void this.setupIframe(container);
+        }
+      }, 500);
+      return;
+    }
+
+    await this.setupIframe(container);
+  }
+
+  private async setupIframe(container: HTMLElement): Promise<void> {
     // 创建 iframe - 不使用 sandbox，避免阻止 app:// 协议下的子资源加载
     this.iframe = container.createEl('iframe', {
       cls: 'bamboo-review-frame',

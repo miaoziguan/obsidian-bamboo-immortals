@@ -151,14 +151,14 @@ export class DailyReviewView extends ItemView {
       const themesDir = path.join(vaultBasePath, themeDirName);
       if (!fs.existsSync(themesDir) || !fs.statSync(themesDir).isDirectory()) return themes;
 
-      const entries = fs.readdirSync(themesDir);
+      const entries: string[] = fs.readdirSync(themesDir);
       for (const entry of entries) {
         if (!entry.endsWith('.js')) continue;
         const filePath = path.join(themesDir, entry);
         if (!fs.statSync(filePath).isFile()) continue;
 
         try {
-          const code = fs.readFileSync(filePath, 'utf-8');
+          const code: string = fs.readFileSync(filePath, 'utf-8');
           // 快速检查是否包含必需的 __bamboo_theme_ 标识符
           if (!code.includes('__bamboo_theme_')) {
             console.warn(`[BambooReview] 自定义主题 ${entry} 缺少 __bamboo_theme_ 标识符，已跳过`);

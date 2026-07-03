@@ -47,7 +47,7 @@ export class DailyReviewView extends ItemView {
   }
 
   async onOpen(): Promise<void> {
-    const container = this.containerEl.children[1] as HTMLElement;
+    const container: HTMLElement = this.containerEl.children[1];
     container.empty();
     container.addClass('bamboo-review-container');
 
@@ -100,6 +100,8 @@ export class DailyReviewView extends ItemView {
     if (this.settings.noisePath) {
       this.bridgeService.setNoisePath(this.settings.noisePath);
     }
+    // 传递 Obsidian 配置目录名（支持用户自定义 .obsidian 名称）
+    this.bridgeService.setConfigDir(this.app.vault.configDir);
 
     this.bridgeService.attach(this.iframe);
     this.themeBridge.attachIframe(this.iframe);

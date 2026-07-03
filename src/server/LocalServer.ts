@@ -36,7 +36,7 @@ export class LocalServer {
         this.handleRequest(req, res);
       });
 
-      this.server.on('error', (err) => {
+      this.server.on('error', (err: Error) => {
         console.error('[BambooReview] Server error:', err);
         reject(err);
       });

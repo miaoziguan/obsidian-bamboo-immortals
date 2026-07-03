@@ -2,12 +2,12 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { StorageBridge } from './StorageBridge';
 import { ThemeBridge } from './ThemeBridge';
-import type { AnyBridgeMessage } from '../types/messages';
+import type { AnyBridgeMessage, ThemeSyncPaletteMessage, AppToggleThemeMessage, AppSaveSectionConfigMessage, AppSaveCustomNoisesMessage } from '../types/messages';
 import { ALLOWED_AUDIO_EXTENSIONS, AUDIO_MIME_TYPES } from '../constants/audio';
 import type { BambooReviewSettings } from '../settings/PluginSettings';
 
-/** 扫描音频文件时要跳过的目录名 */
-const SKIP_DIRS = new Set(['.obsidian', '.trash', '.git', 'node_modules']);
+/** 扫描音频文件时默认跳过的目录名（configDir 可通过 setConfigDir 自定义） */
+const DEFAULT_SKIP_DIRS = ['.trash', '.git', 'node_modules'];
 
 /**
  * BridgeService - postMessage 消息路由中心
@@ -25,6 +25,7 @@ export class BridgeService {
     private customThemes: Array<{ name: string; code: string }> = [];
     private vaultBasePath: string = '';
     private noisePath: string = '';
+    private configDir: string = '.obsidian';
     private expectedOrigin = '';
 
     constructor(
@@ -55,7 +56,7 @@ export class BridgeService {
     }
 
     this.messageHandler = (event: MessageEvent) => {
-      this.onMessage(event);
+      void this.onMessage(event);
     };
     window.addEventListener('message', this.messageHandler);
   }
@@ -73,6 +74,11 @@ export class BridgeService {
   /** 设置白噪音文件夹路径 */
   setNoisePath(noisePath: string): void {
     this.noisePath = noisePath;
+  }
+
+  /** 设置 Obsidian 配置目录名（默认 .obsidian，用户可自定义） */
+  setConfigDir(dir: string): void {
+    this.configDir = dir;
   }
 
   /** 扫描库内音频文件（支持指定文件夹或全库扫描） */
@@ -122,7 +128,8 @@ export class BridgeService {
         const relativePath = relativePrefix ? path.join(relativePrefix, entry.name) : entry.name;
 
         if (entry.isDirectory()) {
-          if (SKIP_DIRS.has(entry.name)) continue;
+          const skipDirs = new Set([...DEFAULT_SKIP_DIRS, this.configDir]);
+          if (skipDirs.has(entry.name)) continue;
           await scanDir(fullPath, relativePath, depth + 1);
         } else if (entry.isFile()) {
           const ext = path.extname(entry.name).toLowerCase();
@@ -192,7 +199,8 @@ export class BridgeService {
     // 板块配置持久化
     if (msg.type === 'app:saveSectionConfig') {
       if (this.settings) {
-        this.settings.sectionConfig = msg.payload as Record<string, unknown> | null;
+        const configMsg = msg as AppSaveSectionConfigMessage;
+        this.settings.sectionConfig = configMsg.payload as Record<string, unknown> | null;
         if (this.saveSettings) await this.saveSettings();
       }
       this.respond(msg.id, { ok: true });
@@ -202,7 +210,8 @@ export class BridgeService {
     // 自定义白噪音音源持久化
     if (msg.type === 'app:saveCustomNoises') {
       if (this.settings) {
-        this.settings.noiseItems = msg.payload as unknown[] || [];
+        const noisesMsg = msg as AppSaveCustomNoisesMessage;
+        this.settings.noiseItems = noisesMsg.payload || [];
         if (this.saveSettings) await this.saveSettings();
       }
       this.respond(msg.id, { ok: true });
@@ -211,7 +220,8 @@ export class BridgeService {
 
     // 主题切换请求（iframe → Obsidian）
     if (msg.type === 'app:toggleTheme') {
-      const targetIsDark = (msg.payload as { isDark: boolean }).isDark === true;
+      const themeMsg = msg as AppToggleThemeMessage;
+      const targetIsDark = themeMsg.payload.isDark === true;
       const currentIsDark = document.body.classList.contains('theme-dark');
       if (targetIsDark !== currentIsDark) {
         if (targetIsDark) {
@@ -231,7 +241,8 @@ export class BridgeService {
     // 调色同步请求（webapp → Obsidian 原生界面）
     if (msg.type === 'theme:syncPalette') {
       if (this.settings?.syncPaletteToObsidian) {
-        const { hue, lightnessOffset, isDark } = (msg as any).payload;
+        const paletteMsg = msg as ThemeSyncPaletteMessage;
+        const { hue, lightnessOffset, isDark } = paletteMsg.payload;
         this.themeBridge.applyPalette(hue, lightnessOffset, isDark);
       }
       this.respond(msg.id, { ok: true });

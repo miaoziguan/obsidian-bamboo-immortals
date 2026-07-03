@@ -78,7 +78,7 @@ export class VaultStorage {
     }
     try {
       const content = await this.app.vault.adapter.read(path);
-      return JSON.parse(content);
+      return JSON.parse(content) as unknown;
     } catch (e) {
       console.warn(`[BambooReview] 日期数据文件损坏，将跳过: ${path}`, e);
       return null;
@@ -191,7 +191,7 @@ export class VaultStorage {
       return [];
     }
     const content = await this.app.vault.adapter.read(path);
-    return JSON.parse(content);
+    return JSON.parse(content) as unknown;
   }
 
   async putGoals(goals: unknown[]): Promise<void> {
@@ -233,7 +233,7 @@ export class VaultStorage {
     }
     try {
       const content = await this.app.vault.adapter.read(path);
-      return JSON.parse(content);
+      return JSON.parse(content) as unknown;
     } catch {
       return {};
     }
@@ -251,7 +251,7 @@ export class VaultStorage {
       return null;
     }
     const content = await this.app.vault.adapter.read(path);
-    return JSON.parse(content);
+    return JSON.parse(content) as unknown;
   }
 
   async putPurchaseHistory(data: unknown): Promise<void> {
@@ -271,7 +271,7 @@ export class VaultStorage {
       return null;
     }
     const content = await this.app.vault.adapter.read(path);
-    return JSON.parse(content);
+    return JSON.parse(content) as unknown;
   }
 
   async putIncomeHistory(data: unknown): Promise<void> {

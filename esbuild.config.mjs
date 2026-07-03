@@ -1,8 +1,13 @@
 import esbuild from "esbuild";
 import process from "process";
-import builtins from "builtin-modules";
 
-const builtinList = builtins.default || builtins;
+const builtinModules = [
+  "fs", "path", "os", "http", "https", "net", "crypto", "stream",
+  "events", "url", "querystring", "buffer", "child_process", "zlib",
+  "util", "assert", "tls", "dns", "readline", "tty", "dgram", "cluster",
+  "v8", "vm", "worker_threads", "perf_hooks", "async_hooks", "module",
+  "string_decoder", "timers", "domain", "punycode", "process",
+];
 
 const prod = process.argv[2] === "production";
 
@@ -24,7 +29,7 @@ esbuild
       "@lezer/common",
       "@lezer/highlight",
       "@lezer/lr",
-      ...builtinList,
+      ...builtinModules,
     ],
     format: "cjs",
     target: "es2020",

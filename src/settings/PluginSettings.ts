@@ -183,8 +183,15 @@ export class PluginSettings extends PluginSettingTab {
     authorBox.createEl('p', { text: 'Obsidian 插件作品', cls: 'bamboo-about-works-label' });
     const worksRow = authorBox.createDiv({ cls: 'bamboo-about-works-row' });
 
-    ['竹叶飞刃', '竹林修仙传'].forEach(name => {
-      worksRow.createEl('span', { text: name, cls: 'bamboo-about-tag' });
+    [{ name: '竹叶飞刃', url: 'https://github.com/miaoziguan/obsidian-Bamboo-Darts' },
+     { name: '竹林修仙传', url: 'https://github.com/miaoziguan/obsidian-bamboo-immortals' }].forEach(work => {
+      const tag = worksRow.createEl('span', { text: work.name, cls: 'bamboo-about-tag' });
+      if (work.url) {
+        tag.style.cursor = 'pointer';
+        tag.addEventListener('click', () => {
+          window.open(work.url, '_blank');
+        });
+      }
     });
   }
 }

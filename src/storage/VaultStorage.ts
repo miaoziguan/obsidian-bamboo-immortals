@@ -162,7 +162,7 @@ export class VaultStorage {
     };
   }
 
-  async putDay(dayData: any): Promise<void> {
+  async putDay(dayData: Record<string, unknown>): Promise<void> {
     await this.ensureDir('data');
     const dateKey = dayData.date;
     if (!dateKey) {
@@ -194,7 +194,7 @@ export class VaultStorage {
     return JSON.parse(content);
   }
 
-  async putGoals(goals: any[]): Promise<void> {
+  async putGoals(goals: unknown[]): Promise<void> {
     const path = this.goalsPath();
     await this.vaultWrite(path, JSON.stringify(goals, null, 2));
   }
@@ -210,7 +210,7 @@ export class VaultStorage {
     return settings[key] ?? null;
   }
 
-  async putSetting(key: string, value: any): Promise<void> {
+  async putSetting(key: string, value: unknown): Promise<void> {
     const path = normalizePath(this.settingsPath());
     const abstract = this.app.vault.getAbstractFileByPath(path);
 
@@ -254,7 +254,7 @@ export class VaultStorage {
     return JSON.parse(content);
   }
 
-  async putPurchaseHistory(data: any): Promise<void> {
+  async putPurchaseHistory(data: unknown): Promise<void> {
     const path = this.purchaseHistoryPath();
     await this.vaultWrite(path, JSON.stringify(data, null, 2));
   }
@@ -274,7 +274,7 @@ export class VaultStorage {
     return JSON.parse(content);
   }
 
-  async putIncomeHistory(data: any): Promise<void> {
+  async putIncomeHistory(data: unknown): Promise<void> {
     const path = this.incomeHistoryPath();
     await this.vaultWrite(path, JSON.stringify(data, null, 2));
   }
@@ -304,7 +304,7 @@ export class VaultStorage {
     };
   }
 
-  async importData(data: any, options?: { strategy?: 'overwrite' | 'merge' }): Promise<void> {
+  async importData(data: Record<string, unknown>, options?: { strategy?: 'overwrite' | 'merge' }): Promise<void> {
     await this.ensureStructure();
 
     if (data.days) {

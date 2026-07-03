@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { StorageBridge } from './StorageBridge';
 import { ThemeBridge } from './ThemeBridge';
-import type { AnyBridgeMessage } from '../types/messages';
+import type { AnyBridgeMessage, ThemeSyncPaletteMessage, AppToggleThemeMessage, AppSaveSectionConfigMessage, AppSaveCustomNoisesMessage } from '../types/messages';
 import { ALLOWED_AUDIO_EXTENSIONS, AUDIO_MIME_TYPES } from '../constants/audio';
 import type { BambooReviewSettings } from '../settings/PluginSettings';
 
@@ -192,7 +192,8 @@ export class BridgeService {
     // 板块配置持久化
     if (msg.type === 'app:saveSectionConfig') {
       if (this.settings) {
-        this.settings.sectionConfig = msg.payload as Record<string, unknown> | null;
+        const configMsg = msg as AppSaveSectionConfigMessage;
+        this.settings.sectionConfig = configMsg.payload as Record<string, unknown> | null;
         if (this.saveSettings) await this.saveSettings();
       }
       this.respond(msg.id, { ok: true });
@@ -202,7 +203,8 @@ export class BridgeService {
     // 自定义白噪音音源持久化
     if (msg.type === 'app:saveCustomNoises') {
       if (this.settings) {
-        this.settings.noiseItems = msg.payload as unknown[] || [];
+        const noisesMsg = msg as AppSaveCustomNoisesMessage;
+        this.settings.noiseItems = (noisesMsg.payload as unknown[]) || [];
         if (this.saveSettings) await this.saveSettings();
       }
       this.respond(msg.id, { ok: true });
@@ -211,7 +213,8 @@ export class BridgeService {
 
     // 主题切换请求（iframe → Obsidian）
     if (msg.type === 'app:toggleTheme') {
-      const targetIsDark = (msg.payload as { isDark: boolean }).isDark === true;
+      const themeMsg = msg as AppToggleThemeMessage;
+      const targetIsDark = themeMsg.payload.isDark === true;
       const currentIsDark = document.body.classList.contains('theme-dark');
       if (targetIsDark !== currentIsDark) {
         if (targetIsDark) {
@@ -231,7 +234,8 @@ export class BridgeService {
     // 调色同步请求（webapp → Obsidian 原生界面）
     if (msg.type === 'theme:syncPalette') {
       if (this.settings?.syncPaletteToObsidian) {
-        const { hue, lightnessOffset, isDark } = (msg as any).payload;
+        const paletteMsg = msg as ThemeSyncPaletteMessage;
+        const { hue, lightnessOffset, isDark } = paletteMsg.payload;
         this.themeBridge.applyPalette(hue, lightnessOffset, isDark);
       }
       this.respond(msg.id, { ok: true });

@@ -40,7 +40,6 @@ jobs:
             main.js
             manifest.json
             styles.css
-            author-avatar.jpg
             webapp.zip
 
       - name: Create Release

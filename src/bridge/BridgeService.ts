@@ -100,7 +100,7 @@ export class BridgeService {
       const targetDir = path.join(basePath, this.noisePath);
       try {
         const entries: fs.Dirent[] = await fs.promises.readdir(targetDir, { withFileTypes: true });
-        for (const entry of entries) {
+        for (const entry of entries as fs.Dirent[]) {
           if (entry.name.startsWith('.')) continue;
           if (!entry.isFile()) continue;
           const ext = path.extname(entry.name).toLowerCase();
@@ -122,7 +122,7 @@ export class BridgeService {
         entries = await fs.promises.readdir(dirPath, { withFileTypes: true });
       } catch { return; /* skip unreadable dirs */ }
 
-      for (const entry of entries) {
+      for (const entry of entries as fs.Dirent[]) {
         if (entry.name.startsWith('.')) continue;
         const fullPath = path.join(dirPath, entry.name);
         const relativePath = relativePrefix ? path.join(relativePrefix, entry.name) : entry.name;

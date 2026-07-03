@@ -125,7 +125,7 @@ export class PluginSettings extends PluginSettingTab {
             if (!value) {
               ThemeBridge.restoreDefaults();
             }
-            const frame = activeDocument.querySelector('.bamboo-review-frame') as HTMLIFrameElement | null;
+            const frame = activeDocument.querySelector('.bamboo-review-frame');
             if (frame?.contentWindow) {
               frame.contentWindow.postMessage({
                 type: 'theme:syncPaletteEnabled',
@@ -141,8 +141,8 @@ export class PluginSettings extends PluginSettingTab {
 
     // ───── 卡片 1：插件简介 ─────
     const pluginBox = containerEl.createDiv({ cls: 'bamboo-about-card' });
-    const pluginTitle = pluginBox.createEl('p', { text: '插件简介', cls: 'bamboo-about-label' });
-    const descEl = pluginBox.createEl('p', {
+    pluginBox.createEl('p', { text: '插件简介', cls: 'bamboo-about-label' });
+    pluginBox.createEl('p', {
       text: 'Bamboo Immortals（竹林修仙传）是一款基于苏联控制论之父维克托·格卢什科夫提出的"OGAS"理念，专为个人打造的中国风目标自动化分配管理系统。',
       cls: 'bamboo-about-desc'
     });
@@ -156,15 +156,15 @@ export class PluginSettings extends PluginSettingTab {
     });
 
     const authorInfo = authorRow.createDiv({ cls: 'bamboo-about-author-info' });
-    const authorEl = authorInfo.createEl('p', { text: '羽鳞君', cls: 'bamboo-about-author-name' });
-    const roleEl = authorInfo.createEl('p', { text: '喵字馆创始人', cls: 'bamboo-about-author-role' });
+    authorInfo.createEl('p', { text: '羽鳞君', cls: 'bamboo-about-author-name' });
+    authorInfo.createEl('p', { text: '喵字馆创始人', cls: 'bamboo-about-author-role' });
 
     // 作品区
-    const worksTitle = authorBox.createEl('p', { text: 'Obsidian 插件作品', cls: 'bamboo-about-works-label' });
+    authorBox.createEl('p', { text: 'Obsidian 插件作品', cls: 'bamboo-about-works-label' });
     const worksRow = authorBox.createDiv({ cls: 'bamboo-about-works-row' });
 
     ['竹叶飞刃', '竹林修仙传'].forEach(name => {
-      const tag = worksRow.createEl('span', { text: name, cls: 'bamboo-about-tag' });
+      worksRow.createEl('span', { text: name, cls: 'bamboo-about-tag' });
     });
   }
 }

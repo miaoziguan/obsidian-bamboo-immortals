@@ -71,13 +71,13 @@ export class VaultStorage {
     return normalizePath(`${this.basePath}/data/${dateKey}.json`);
   }
 
-  async getDay(dateKey: string): Promise<unknown | null> {
+  async getDay(dateKey: string): Promise<unknown> {
     const path = this.dayPath(dateKey);
     if (!(await this.app.vault.adapter.exists(path))) {
       return null;
     }
     try {
-      const content = await this.app.vault.adapter.read(path);
+      const content: string = await this.app.vault.adapter.read(path);
       return JSON.parse(content) as unknown;
     } catch (e) {
       console.warn(`[BambooReview] 日期数据文件损坏，将跳过: ${path}`, e);
@@ -96,7 +96,7 @@ export class VaultStorage {
         const dateKey = file.split('/').pop()?.replace('.json', '');
         if (dateKey) {
           try {
-            const content = await this.app.vault.adapter.read(file);
+            const content: string = await this.app.vault.adapter.read(file);
             days[dateKey] = JSON.parse(content);
           } catch (e) {
             console.warn(`Failed to parse day file: ${file}`, e);
@@ -190,7 +190,7 @@ export class VaultStorage {
     if (!(await this.app.vault.adapter.exists(path))) {
       return [];
     }
-    const content = await this.app.vault.adapter.read(path);
+    const content: string = await this.app.vault.adapter.read(path);
     return JSON.parse(content) as unknown;
   }
 
@@ -205,7 +205,7 @@ export class VaultStorage {
     return normalizePath(`${this.basePath}/settings.json`);
   }
 
-  async getSetting(key: string): Promise<unknown | null> {
+  async getSetting(key: string): Promise<unknown> {
     const settings = await this.getAllSettings();
     return settings[key] ?? null;
   }
@@ -232,7 +232,7 @@ export class VaultStorage {
       return {};
     }
     try {
-      const content = await this.app.vault.adapter.read(path);
+      const content: string = await this.app.vault.adapter.read(path);
       return JSON.parse(content) as unknown;
     } catch {
       return {};
@@ -245,12 +245,12 @@ export class VaultStorage {
     return normalizePath(`${this.basePath}/purchase-history.json`);
   }
 
-  async getPurchaseHistory(): Promise<unknown | null> {
+  async getPurchaseHistory(): Promise<unknown> {
     const path = this.purchaseHistoryPath();
     if (!(await this.app.vault.adapter.exists(path))) {
       return null;
     }
-    const content = await this.app.vault.adapter.read(path);
+    const content: string = await this.app.vault.adapter.read(path);
     return JSON.parse(content) as unknown;
   }
 
@@ -265,12 +265,12 @@ export class VaultStorage {
     return normalizePath(`${this.basePath}/income-history.json`);
   }
 
-  async getIncomeHistory(): Promise<unknown | null> {
+  async getIncomeHistory(): Promise<unknown> {
     const path = this.incomeHistoryPath();
     if (!(await this.app.vault.adapter.exists(path))) {
       return null;
     }
-    const content = await this.app.vault.adapter.read(path);
+    const content: string = await this.app.vault.adapter.read(path);
     return JSON.parse(content) as unknown;
   }
 

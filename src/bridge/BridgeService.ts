@@ -99,13 +99,13 @@ export class BridgeService {
     if (this.noisePath) {
       const targetDir = path.join(basePath, this.noisePath);
       try {
-        const entries = await fs.promises.readdir(targetDir, { withFileTypes: true });
+        const entries: fs.Dirent[] = await fs.promises.readdir(targetDir, { withFileTypes: true });
         for (const entry of entries) {
           if (entry.name.startsWith('.')) continue;
           if (!entry.isFile()) continue;
           const ext = path.extname(entry.name).toLowerCase();
           if (allowedExts.includes(ext)) {
-            const stat = await fs.promises.stat(path.join(targetDir, entry.name));
+            const stat: fs.Stats = await fs.promises.stat(path.join(targetDir, entry.name));
             results.push({ path: path.join(this.noisePath, entry.name), name: entry.name, size: stat.size, ext });
           }
         }
@@ -135,7 +135,7 @@ export class BridgeService {
           const ext = path.extname(entry.name).toLowerCase();
           if (allowedExts.includes(ext)) {
             try {
-              const stat = await fs.promises.stat(fullPath);
+              const stat: fs.Stats = await fs.promises.stat(fullPath);
               results.push({ path: relativePath, name: entry.name, size: stat.size, ext });
             } catch { /* skip */ }
           }

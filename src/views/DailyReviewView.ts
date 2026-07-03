@@ -47,7 +47,7 @@ export class DailyReviewView extends ItemView {
   }
 
   async onOpen(): Promise<void> {
-    const container = this.containerEl.children[1] as HTMLElement;
+    const container: HTMLElement = this.containerEl.children[1];
     container.empty();
     container.addClass('bamboo-review-container');
 

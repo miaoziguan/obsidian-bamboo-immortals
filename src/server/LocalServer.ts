@@ -113,7 +113,7 @@ export class LocalServer {
       });
 
       // 流式传输文件
-      const stream = fs.createReadStream(filePath);
+      const stream: fs.ReadStream = fs.createReadStream(filePath);
       stream.pipe(res);
       stream.on('error', () => {
         if (!res.headersSent) {
@@ -134,7 +134,7 @@ export class LocalServer {
         return;
       }
       const queryStr = rawUrl.slice(queryIndex + 1);
-      const params = new URLSearchParams(queryStr);
+      const params: URLSearchParams = new URLSearchParams(queryStr);
       const relativePath = params.get('path');
       if (!relativePath) {
         res.writeHead(400); res.end('Missing path parameter');
@@ -176,7 +176,7 @@ export class LocalServer {
           'Access-Control-Allow-Origin': '*',
           'Cache-Control': 'public, max-age=3600',
         });
-        const stream = fs.createReadStream(fullPath);
+        const stream: fs.ReadStream = fs.createReadStream(fullPath);
         stream.pipe(res);
         stream.on('error', () => {
           if (!res.headersSent) {

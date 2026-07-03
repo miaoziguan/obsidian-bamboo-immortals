@@ -25,7 +25,7 @@
 
 ### 使用方法
 
-1. 点击左侧 Ribbon 栏的叶子图标，或命令面板中运行「打开今日复盘」
+1. 点击左侧 Ribbon 栏的叶子图标，或命令面板中运行「打开竹林修仙传」
 2. 设定目标 → 每日待办自动生成 → 勾选完成任务 → 赚竹币、修仙升级
 3. 通过右下角悬浮按钮（FAB）访问商店、白噪音、主题、设置等工具
 
@@ -57,7 +57,7 @@
 
 ### Usage
 
-1. Click the leaf icon in the left ribbon, or run "Open daily review" from the command palette
+1. Click the leaf icon in the left ribbon, or run "Open Bamboo Immortals" from the command palette
 2. Set goals → daily tasks auto-generate → check off to earn bamboo coins and level up
 3. Use the floating action button (FAB) to access the shop, ambient sounds, themes, and settings
 

@@ -121,10 +121,56 @@ function downloadAndExtractWebapp(pluginDir: string, destDir: string, version: s
   });
 }
 
+/** 后台异步初始化 webapp，不阻塞插件的 onload 返回 */
+function setupWebappInBackground(
+  this: BambooReviewPlugin,
+  webappDir: string,
+  pluginDir: string,
+  vaultBasePath: string,
+  currentVersion: string
+): void {
+  const webappVersionFile = path.join(webappDir, '.version');
+  const needsUpdate = !fs.existsSync(webappVersionFile) ||
+    (() => { try { return fs.readFileSync(webappVersionFile, 'utf-8').trim() !== currentVersion; } catch { return true; } })();
+
+  if (!needsUpdate) {
+    this.webappReady = true;
+    return;
+  }
+
+  // 用 setImmediate / setTimeout 推迟到下一个 tick，确保 onload 先返回
+  setImmediate(async () => {
+    try {
+      if (fs.existsSync(webappDir)) {
+        try { fs.rmSync(webappDir, { recursive: true, force: true }); } catch {}
+      }
+      const webappZip = path.join(vaultBasePath, pluginDir, 'webapp.zip');
+      fs.mkdirSync(webappDir, { recursive: true });
+
+      if (fs.existsSync(webappZip)) {
+        extractZip(webappZip, webappDir);
+        try { fs.unlinkSync(webappZip); } catch {}
+        new Notice('竹林修仙传: 资源包已更新', 3000);
+      } else {
+        console.log('[BambooReview] Downloading webapp from release', currentVersion);
+        await downloadAndExtractWebapp(pluginDir, webappDir, currentVersion);
+        new Notice('竹林修仙传: 资源包安装完成', 4000);
+      }
+
+      fs.writeFileSync(webappVersionFile, currentVersion, 'utf-8');
+      this.webappReady = true;
+    } catch (e) {
+      console.error('[BambooReview] Webapp setup failed:', e);
+    }
+  });
+}
+
 export default class BambooReviewPlugin extends Plugin {
   settings: BambooReviewSettings = DEFAULT_SETTINGS;
   private localServer: LocalServer | null = null;
   private serverUrl = '';
+  /** webapp 资源是否就绪（可用于首屏展示 loading 状态） */
+  webappReady = false;
 
   async onload(): Promise<void> {
     // 加载设置
@@ -138,55 +184,27 @@ export default class BambooReviewPlugin extends Plugin {
       const webappIndexPath = path.join(webappDir, 'index.html');
       this.localServer = new LocalServer(webappDir);
 
-      // 版本跟踪：webapp 版本与插件版本不一致时自动更新
-      const webappVersionFile = path.join(webappDir, '.version');
-      const currentVersion = this.manifest.version;
-      const needsUpdate = !fs.existsSync(webappVersionFile) ||
-        (() => { try { return fs.readFileSync(webappVersionFile, 'utf-8').trim() !== currentVersion; } catch { return true; } })();
-
-      if (needsUpdate) {
-        // 删除旧 webapp，避免残留文件
-        if (fs.existsSync(webappDir)) {
-          try { fs.rmSync(webappDir, { recursive: true, force: true }); } catch {}
-        }
-        const webappZip = path.join(vaultBasePath, pluginDir, 'webapp.zip');
-        try {
-          fs.mkdirSync(webappDir, { recursive: true });
-
-          if (fs.existsSync(webappZip)) {
-            // 本地有 zip（从 release 下载或升级残留），直接解压
-            extractZip(webappZip, webappDir);
-            try { fs.unlinkSync(webappZip); } catch {}
-            new Notice('竹林修仙传: 资源包已更新', 3000);
-          } else {
-            // 插件市场安装没有 webapp，从 GitHub Release 下载
-            console.log('[BambooReview] Downloading webapp from release', currentVersion);
-            await downloadAndExtractWebapp(pluginDir, webappDir, currentVersion);
-            new Notice('竹林修仙传: 资源包安装完成，正在启动...', 4000);
-          }
-
-          // 写入版本标记
-          fs.writeFileSync(webappVersionFile, currentVersion, 'utf-8');
-        } catch (e) {
-          console.error('[BambooReview] Failed to setup webapp:', e);
-          new Notice('竹林修仙传: 资源包安装失败，请检查网络后重试', 0);
-        }
-      }
-
+      // 立即启动服务器（即使 webapp 还没就绪），避免阻塞 onload
       try {
         await this.localServer.start();
         this.serverUrl = this.localServer.getUrl();
-        // 把库根目录传给 LocalServer，供 /bamboo-audio 音频代理使用
         this.localServer.setVaultBasePath(vaultBasePath);
+        // 如果 webapp 已就绪，直接标记
+        if (fs.existsSync(webappIndexPath)) {
+          this.webappReady = true;
+        }
       } catch (e) {
         console.error('[BambooReview] Failed to start local server:', e);
         new Notice('竹林修仙传: 本地服务启动失败，部分功能（白噪音、主题动效）可能不可用', 0);
       }
+
+      // 版本跟踪 & webapp 下载放到后台，不阻塞 onload 返回
+      setupWebappInBackground.call(this, webappDir, pluginDir, vaultBasePath, this.manifest.version);
     }
 
     // 注册 View
     this.registerView(VIEW_TYPE_DAILY_REVIEW, (leaf: WorkspaceLeaf) => {
-      return new DailyReviewView(leaf, this.serverUrl, this.settings, () => this.saveSettings());
+      return new DailyReviewView(leaf, this.serverUrl, this, this.settings, () => this.saveSettings());
     });
 
     // 注册命令

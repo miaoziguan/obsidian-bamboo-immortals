@@ -77,7 +77,7 @@ export class VaultStorage {
       return null;
     }
     try {
-      const content = await this.app.vault.adapter.read(path);
+      const content: string = await this.app.vault.adapter.read(path);
       return JSON.parse(content) as unknown;
     } catch (e) {
       console.warn(`[BambooReview] 日期数据文件损坏，将跳过: ${path}`, e);
@@ -96,7 +96,7 @@ export class VaultStorage {
         const dateKey = file.split('/').pop()?.replace('.json', '');
         if (dateKey) {
           try {
-            const content = await this.app.vault.adapter.read(file);
+            const content: string = await this.app.vault.adapter.read(file);
             days[dateKey] = JSON.parse(content);
           } catch (e) {
             console.warn(`Failed to parse day file: ${file}`, e);
@@ -190,7 +190,7 @@ export class VaultStorage {
     if (!(await this.app.vault.adapter.exists(path))) {
       return [];
     }
-    const content = await this.app.vault.adapter.read(path);
+    const content: string = await this.app.vault.adapter.read(path);
     return JSON.parse(content) as unknown;
   }
 
@@ -232,7 +232,7 @@ export class VaultStorage {
       return {};
     }
     try {
-      const content = await this.app.vault.adapter.read(path);
+      const content: string = await this.app.vault.adapter.read(path);
       return JSON.parse(content) as unknown;
     } catch {
       return {};
@@ -250,7 +250,7 @@ export class VaultStorage {
     if (!(await this.app.vault.adapter.exists(path))) {
       return null;
     }
-    const content = await this.app.vault.adapter.read(path);
+    const content: string = await this.app.vault.adapter.read(path);
     return JSON.parse(content) as unknown;
   }
 
@@ -270,7 +270,7 @@ export class VaultStorage {
     if (!(await this.app.vault.adapter.exists(path))) {
       return null;
     }
-    const content = await this.app.vault.adapter.read(path);
+    const content: string = await this.app.vault.adapter.read(path);
     return JSON.parse(content) as unknown;
   }
 

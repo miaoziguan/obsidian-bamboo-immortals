@@ -25,7 +25,7 @@ export class BridgeService {
     private customThemes: Array<{ name: string; code: string }> = [];
     private vaultBasePath: string = '';
     private noisePath: string = '';
-    private configDir: string = '.obsidian';
+    private configDir: string = '';
     private expectedOrigin = '';
 
     constructor(
@@ -128,7 +128,7 @@ export class BridgeService {
         const relativePath = relativePrefix ? path.join(relativePrefix, entry.name) : entry.name;
 
         if (entry.isDirectory()) {
-          const skipDirs = new Set([...DEFAULT_SKIP_DIRS, this.configDir]);
+          const skipDirs = new Set([...DEFAULT_SKIP_DIRS, ...(this.configDir ? [this.configDir] : [])]);
           if (skipDirs.has(entry.name)) continue;
           await scanDir(fullPath, relativePath, depth + 1);
         } else if (entry.isFile()) {

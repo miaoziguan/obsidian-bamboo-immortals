@@ -1,0 +1,57 @@
+   商店 · 响应式断点
+   ≤ 600px (--bp-md-narrow)：指标改为 2×2 网格
+            NOTE: 钱包模态框 max-width: 70vw，在 768px+ 视口下约为 600px；
+            此断点专用于模态框内部布局，非通用布局断点。
+   ≤ 480px (--bp-sm)：指标 1×4，金额独占整行，商品卡紧凑
+   ≤ 360px (--bp-xxs)：极度紧凑，字号缩小
+   ============================================================ */
+
+@media (max-width: 600px) {
+    .shop-balance-metrics--row {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .shop-balance-metric--card {
+        padding: clamp(8px, 2.5vw, 12px) clamp(4px, 1.2vw, 8px);
+    }
+}
+
+@media (max-width: 480px) {
+    .shop-balance-metric--card .shop-metric-value {
+        font-size: var(--type-base, clamp(12px, 3vw, 15px));
+    }
+    .shop-item-card {
+        padding: 10px 12px;
+    }
+    .shop-item-icon {
+        width: 28px;
+        height: 28px;
+        font-size: 16px;
+    }
+    .shop-history-row {
+        padding: 8px 10px;
+    }
+    .shop-principle-card {
+        padding: 10px;
+    }
+}
+
+@media (max-width: 360px) {
+    .shop-balance-amount-block--centered .shop-balance-value {
+        font-size: var(--type-hero, clamp(22px, 10vw, 32px));
+    }
+    .shop-balance-metric--card .shop-metric-value {
+        font-size: var(--type-sm, clamp(11px, 3vw, 13px));
+    }
+    .shop-breakdown-text {
+        max-width: 60%;
+    }
+    .shop-item-name {
+        font-size: var(--type-mini, 10px);
+    }
+}
+
+/* ============================================================
+   商店 · 暗色模式适配
+   ============================================================ */
+
+

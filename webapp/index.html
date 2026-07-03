@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="theme-bamboo">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
+<meta name="description" content="Bamboo Immortals - 每日复盘应用">
+<meta name="theme-color" content="#2D5A27">
+
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect fill='%232D5A27' width='32' height='32' rx='6'/><path d='M16 6v20M16 10l-4 2M16 10l4 2M16 16l-3 1.5M16 16l3 1.5' stroke='%23ffffff' stroke-width='2' stroke-linecap='round'/></svg>">
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect fill='%232D5A27' width='180' height='180' rx='40'/><path d='M90 40v100M90 60l-20 10M90 60l20 10M90 90l-15 7.5M90 90l15 7.5' stroke='%23ffffff' stroke-width='8' stroke-linecap='round'/></svg>">
+<title>Bamboo Immortals</title>
+<script defer src="assets/vendor/chart.umd.min.js"></script>
+<link rel="stylesheet" href="assets/styles/variables.css?__BUILD__">
+<link rel="stylesheet" href="assets/styles/base.css?__BUILD__">
+<link rel="stylesheet" href="assets/styles/components-interaction.css?__BUILD__">
+<link rel="stylesheet" href="assets/styles/date-nav.css?__BUILD__">
+<link rel="stylesheet" href="assets/styles/components-modals.css?__BUILD__">
+<link rel="stylesheet" href="assets/styles/achievements.css?__BUILD__">
+<link rel="stylesheet" href="assets/styles/components-kpi.css?__BUILD__">
+<link rel="stylesheet" href="assets/styles/cultivation.css?__BUILD__">
+<link rel="stylesheet" href="assets/styles/weather-quotes.css?__BUILD__">
+<link rel="stylesheet" href="assets/styles/timeline.css?__BUILD__">
+<link rel="stylesheet" href="assets/styles/todo.css?__BUILD__">
+<link rel="stylesheet" href="assets/styles/goals-map.css?__BUILD__">
+<link rel="stylesheet" href="assets/styles/goals-health.css?__BUILD__">
+<link rel="stylesheet" href="assets/styles/goals-stats.css?__BUILD__">
+<link rel="stylesheet" href="assets/styles/goals-editor.css?__BUILD__">
+<link rel="stylesheet" href="assets/styles/goals-widgets.css?__BUILD__">
+<link rel="stylesheet" href="assets/styles/goals-responsive.css?__BUILD__">
+<link rel="stylesheet" href="assets/styles/forms.css?__BUILD__">
+<link rel="stylesheet" href="assets/styles/modal-base.css?__BUILD__">
+<link rel="stylesheet" href="assets/styles/modal-panels.css?__BUILD__">
+<link rel="stylesheet" href="assets/styles/modal-settings.css?__BUILD__">
+<link rel="stylesheet" href="assets/styles/modal-features.css?__BUILD__">
+<link rel="stylesheet" href="assets/styles/wallet.css?__BUILD__">
+<link rel="stylesheet" href="assets/styles/modal-responsive.css?__BUILD__">
+<link rel="stylesheet" href="assets/styles/dark.css?__BUILD__">
+<link rel="stylesheet" href="assets/styles/fab.css?__BUILD__">
+<link rel="stylesheet" href="assets/styles/section-manager.css?__BUILD__">
+<link rel="stylesheet" href="assets/styles/bamboo-garden.css?__BUILD__">
+<link rel="stylesheet" href="assets/styles/toast.css?__BUILD__">
+<link rel="stylesheet" href="assets/styles/display.css?__BUILD__">
+
+</head>
+<body>
+<div id="modalContainer"></div>
+<a href="#main-content" class="skip-link">跳转到主要内容</a>
+<div id="sr-announcements" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+    <div id="main-container">
+        <div class="container" id="reviewContainer" role="main" aria-label="每日复盘内容">
+    <div class="header" role="banner">
+        <div class="header-left">
+            <div class="weather-widget" id="weatherWidget" hidden></div>
+        </div>
+        <div class="header-right">
+            <div class="quote-widget" id="quoteWidget" hidden></div>
+        </div>
+    </div>
+
+    <nav class="date-nav" role="navigation" aria-label="日期导航">
+        <div class="date-nav-center">
+            <button class="date-nav-btn" id="prevDay" title="前一天" aria-label="前一天">
+                <span aria-hidden="true">◀</span>
+            </button>
+            <div class="date-display clickable" id="dateDisplay" role="button" tabindex="0" aria-label="点击回到今天">
+                <div class="date-display-main" id="currentDate" aria-label="当前日期">2026年4月27日</div>
+                <div class="date-display-sub" id="currentWeekday">周一</div>
+            </div>
+            <button class="date-nav-btn" id="nextDay" title="后一天" aria-label="后一天">
+                <span aria-hidden="true">▶</span>
+            </button>
+        </div>
+        <div class="date-nav-right">
+            <button class="view-toggle-btn" id="gotoDateBtn" title="跳转到日期" aria-label="跳转到指定日期" data-action="open-date-picker">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
+            </button>
+        </div>
+    </nav>
+
+    <div id="sectionsContainer" class="sections-container" role="region" aria-label="内容板块"></div>
+        </div>
+</div>
+
+<button class="scroll-top-btn" id="scrollTopBtn" aria-label="返回顶部" title="返回顶部"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg></button>
+
+<nav class="fab-container" role="navigation" aria-label="快捷操作">
+            <div class="fab-actions" id="fabActions" role="menu">
+                <!-- 核心功能 -->
+                <div class="fab-action-group">
+                    <div class="fab-group-label">核心功能</div>
+                    <div class="fab-action-row">
+                        <button class="fab-action-btn fab-primary" data-action="fab-strategy" role="menuitem" aria-label="战略复盘">
+                            <span class="fab-btn-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" x2="18" y1="20" y2="10"/><line x1="12" x2="12" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="14"/></svg></span>
+                            <span class="fab-btn-text">战略复盘</span>
+                        </button>
+                        <button class="fab-action-btn fab-warning" data-action="fab-shop" role="menuitem" aria-label="竹林商店">
+                            <span class="fab-btn-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></span>
+                            <span class="fab-btn-text">竹林商店</span>
+                        </button>
+                        <button class="fab-action-btn fab-primary" data-action="fab-archive" role="menuitem" aria-label="目标归档">
+                            <span class="fab-btn-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.7 8.5-9-6a1 1 0 0 0-1.4 0l-9 6A1 1 0 0 0 2 9.3V19a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9.3a1 1 0 0 0-.3-.8Z"/><path d="M12 13v8"/><path d="m4.3 8.5 7.7 5 7.7-5"/></svg></span>
+                            <span class="fab-btn-text">目标归档</span>
+                        </button>
+                        <button class="fab-action-btn" data-action="fab-sections" role="menuitem" aria-label="管理板块">
+                            <span class="fab-btn-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span>
+                            <span class="fab-btn-text">管理板块</span>
+                        </button>
+                        <button class="fab-action-btn fab-primary" data-action="fab-achievements" role="menuitem" aria-label="竹林修仙">
+                            <span class="fab-btn-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg></span>
+                            <span class="fab-btn-text">竹林修仙</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 工具与设置 -->
+                <div class="fab-action-group">
+                    <div class="fab-group-label">工具与设置</div>
+                    <div class="fab-action-row">
+                        <button class="fab-action-btn fab-primary" data-action="fab-theme" role="menuitem" aria-label="主题动效">
+                            <span class="fab-btn-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></svg></span>
+                            <span class="fab-btn-text">主题动效</span>
+                        </button>
+                        <button class="fab-action-btn" data-action="fab-display" role="menuitem" aria-label="显示设置">
+                            <span class="fab-btn-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></span>
+                            <span class="fab-btn-text">显示</span>
+                        </button>
+                        <button class="fab-action-btn fab-primary" data-action="fab-dark-mode" role="menuitem" aria-label="明暗切换">
+                            <span class="fab-btn-icon" id="darkModeIcon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
+                            <span class="fab-btn-text" id="darkModeText">夜间模式</span>
+                        </button>
+                        <button class="fab-action-btn fab-primary" data-action="fab-white-noise" role="menuitem" aria-label="白噪音">
+                            <span class="fab-btn-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg></span>
+                            <span class="fab-btn-text">白噪音</span>
+                        </button>
+                        <button class="fab-action-btn" data-action="fab-settings" role="menuitem" aria-label="设置">
+                            <span class="fab-btn-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg></span>
+                            <span class="fab-btn-text">设置</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <button class="fab-main" id="fabMain" aria-label="展开快捷菜单" aria-expanded="false" aria-controls="fabActions">
+                <span class="fab-main-icon"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>
+            </button>
+        </nav>
+
+
+<script type="module" src="assets/scripts/utils/constants.js?__BUILD__"></script>
+<script type="module" src="assets/scripts/utils/storageAdapter.js?__BUILD__"></script>
+<script type="module" src="assets/scripts/utils/lucideUtils.js?__BUILD__"></script>
+<script type="module" src="assets/scripts/utils/helpers.js?__BUILD__"></script>
+<script type="module" src="assets/scripts/utils/goalCalculations.js?__BUILD__"></script>
+<script type="module" src="assets/scripts/utils/popupPositioner.js?__BUILD__"></script>
+<script type="module" src="assets/scripts/utils/eventBus.js?__BUILD__"></script>
+<script type="module" src="assets/scripts/utils/actionDispatcher.js?__BUILD__"></script>
+<script type="module" src="assets/scripts/utils/modalStack.js?__BUILD__"></script>
+<script type="module" src="assets/scripts/utils/panelManager.js?__BUILD__"></script>
+<script type="module" src="assets/scripts/handlers/shopManager.js?__BUILD__"></script>
+<script type="module" src="assets/scripts/utils/htmlUtils.js?__BUILD__"></script>
+<script type="module" src="assets/scripts/utils/toast.js?__BUILD__"></script>
+<script>
+// Obsidian iframe 检测：使用 document.write 保证同步加载顺序
+(function() {
+  var isIframe = false;
+  try { isIframe = window.self !== window.top; } catch(e) { isIframe = true; }
+  var src = isIframe
+    ? 'assets/scripts/storage/bridge.js?__BUILD__'
+    : 'assets/scripts/storage/storageManager.js?__BUILD__';
+  document.write('<script type="module" src="' + src + '"><\/script>');
+})();
+</script>
+<script type="module" src="assets/scripts/state/dataValidator.js?__BUILD__"></script>
+<script type="module" src="assets/scripts/state/defaultData.js?__BUILD__"></script>
+<script type="module" src="assets/scripts/services/searchService.js?__BUILD__"></script>
+<script type="module" src="assets/scripts/state/store.js?__BUILD__"></script>
+<script type="module" src="assets/scripts/services/TimelineService.js?__BUILD__"></script>
+<script type="module" src="assets/scripts/services/GoalService.js?__BUILD__"></script>
+<script type="module" src="assets/scripts/services/TodoService.js?__BUILD__"></script>
+<script type="module" src="assets/scripts/services/WalletService.js?__BUILD__"></script>
+<script type="module" src="assets/scripts/services/CustomTemplateManager.js?__BUILD__"></script>
+<script type="module" src="assets/scripts/modules/goals/healthScore.js?__BUILD__"></script>
+<script type="module" src="assets/scripts/utils/confirmDialog.js?__BUILD__"></script>
+<script type="module" src="assets/scripts/modules/sections/registry.js?__BUILD__"></script>
+<script type="module" src="assets/scripts/modules/sections/sectionSettings.js?__BUILD__"></script>
+<script type="module" src="assets/scripts/modules/sections/sectionDragDrop.js?__BUILD__"></script>
+<script type="module" src="assets/scripts/modules/timeline/renderer.js?__BUILD__"></script>
+<script type="module" src="assets/scripts/modules/timeline/editor.js?__BUILD__"></script>
+<script type="module" src="assets/scripts/modules/timeline/index.js?__BUILD__"></script>
+    <script type="module" src="assets/scripts/modules/goals/dateRangePicker.js?__BUILD__"></script>
+    <script type="module" src="assets/scripts/modules/goals/priorityPicker.js?__BUILD__"></script>
+    <script type="module" src="assets/scripts/modules/goals/categoryPicker.js?__BUILD__"></script>
+    <script type="module" src="assets/scripts/modules/goals/categoryManager.js?__BUILD__"></script>
+    <script type="module" src="assets/scripts/modules/goals/archiver.js?__BUILD__"></script>
+    <script type="module" src="assets/scripts/modules/goals/inlineEditService.js?__BUILD__"></script>
+    <script type="module" src="assets/scripts/modules/goals/renderer.js?__BUILD__"></script>
+    <script type="module" src="assets/scripts/modules/goals/editor.js?__BUILD__"></script>
+<script type="module" src="assets/scripts/modules/goals/index.js?__BUILD__"></script>
+<script type="module" src="assets/scripts/modules/todo/renderer.js?__BUILD__"></script>
+<script type="module" src="assets/scripts/modules/todo/index.js?__BUILD__"></script>
+<script type="module" src="assets/scripts/modules/other/editor.js?__BUILD__"></script>
+<script type="module" src="assets/scripts/modules/other/index.js?__BUILD__"></script>
+<script type="module" src="assets/scripts/modules/bamboo-garden.js?__BUILD__"></script>
+<script type="module" src="assets/scripts/modules/sections/manager.js?__BUILD__"></script>
+<script type="module" src="assets/scripts/modules/theme-effects.js?__BUILD__"></script>
+<script type="module" src="assets/scripts/modules/index.js?__BUILD__"></script>
+<script type="module" src="assets/scripts/utils/NoisePlayer.js?__BUILD__"></script>
+<script type="module" src="assets/scripts/utils/NoiseGenerator.js?__BUILD__"></script>
+<script type="module" src="assets/scripts/utils/NoisePanel.js?__BUILD__"></script>
+<script type="module" src="assets/scripts/utils/whiteNoiseManager.js?__BUILD__"></script>
+<script type="module" src="assets/scripts/renderers/renderers.js?__BUILD__"></script>
+<script type="module" src="assets/scripts/handlers/navigation.js?__BUILD__"></script>
+<script type="module" src="assets/scripts/handlers/keyboard.js?__BUILD__"></script>
+<script type="module" src="assets/scripts/handlers/gestures.js?__BUILD__"></script>
+<script type="module" src="assets/scripts/handlers/quickNav.js?__BUILD__"></script>
+<script type="module" src="assets/scripts/handlers/fabManager.js?__BUILD__"></script>
+<script>
+window.addEventListener('error', function(e) {
+    if (e.message && e.message.includes('getBoundingClientRect')) {
+        console.error('[GLOBAL ERROR] getBoundingClientRect error:', {
+            message: e.message,
+            filename: e.filename,
+            lineno: e.lineno,
+            colno: e.colno
+        });
+    }
+});
+</script>
+<script type="module" src="assets/scripts/utils/quickStartGuide.js?__BUILD__"></script>
+<script type="module" src="assets/scripts/handlers/handlers.js?__BUILD__"></script>
+<script type="module" src="assets/scripts/handlers/datePicker.js?__BUILD__"></script>
+<script type="module" src="assets/scripts/handlers/themeSelector.js?__BUILD__"></script>
+<script type="module" src="assets/scripts/handlers/dataIO.js?__BUILD__"></script>
+
+<script type="module" src="assets/scripts/utils/cultivationData.js?__BUILD__"></script>
+<script type="module" src="assets/scripts/services/goalStatsCalculator.js?__BUILD__"></script>
+<script type="module" src="assets/scripts/handlers/statsModal.js?__BUILD__"></script>
+<script type="module" src="assets/scripts/handlers/settingsModal.js?__BUILD__"></script>
+<script type="module" src="assets/scripts/handlers/displayManager.js?__BUILD__"></script>
+<script type="module" src="assets/scripts/utils/weatherService.js?__BUILD__"></script>
+<script type="module" src="assets/scripts/utils/quoteService.js?__BUILD__"></script>
+<script type="module" src="assets/scripts/handlers/weatherModal.js?__BUILD__"></script>
+
+<!-- ES 模块入口：在所有传统脚本之后加载，通过 window 桥接提供命名空间 -->
+<script type="module" src="main.mjs?__BUILD__"></script>
+
+<script type="module">
+// 模块入口：所有模块脚本按 DOM 顺序执行，此时 DOM 已就绪
+document.body.classList.add('loading');
+
+try {
+    renderSkeleton();
+} catch (e) {
+    console.error('renderSkeleton error:', e.message);
+}
+
+try {
+    await Promise.race([
+        store.initPromise,
+        new Promise((_, reject) => setTimeout(() => reject(new Error('store.initPromise timeout')), 10000))
+    ]);
+} catch (e) {
+    console.error('Store init failed:', e.message);
+}
+
+setTimeout(() => {
+    const inits = [
+        ['SectionManager', () => SectionManager.init()],
+        ['Todo',            () => Todo.init()],
+        ['Render',          () => renderAll()],
+        ['Handlers',        () => Handlers.init()],
+        ['SettingsModal',   () => SettingsModal.init()],
+        ['ActionDispatcher',() => ActionDispatcher.init()],
+        ['DisplayManager',  () => DisplayManager.init()],
+    ];
+    for (const [name, fn] of inits) {
+        try { fn(); } catch (e) {
+            console.error('[Bamboo] ' + name + ' init failed:', e);
+        }
+    }
+
+    document.body.classList.remove('loading');
+
+    const hasData = Object.keys(store.getState().data || {}).length > 0;
+    if (!hasData) {
+        setTimeout(() => {
+            try { Handlers.showQuickStartGuide(); } catch(e) {}
+        }, 500);
+    }
+}, 100);
+
+const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+if (motionQuery.matches) {
+    document.body.classList.add('motion-reduced');
+}
+motionQuery.addEventListener('change', (e) => {
+    document.body.classList.toggle('motion-reduced', e.matches);
+});
+</script>
+</body>
+</html>

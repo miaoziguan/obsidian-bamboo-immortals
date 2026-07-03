@@ -1,0 +1,583 @@
+/* ========== 返回顶部按钮 ========== */
+.scroll-top-btn {
+    position: fixed;
+    bottom: 80px;
+    right: 20px;
+    width: min(40px, 11vw);
+    height: 40px;
+    background: var(--card-glass);
+    backdrop-filter: blur(12px);
+    color: var(--bamboo-primary);
+    border: 1px solid var(--border-light);
+    border-radius: 50%;
+    font-size: var(--type-heading);
+    font-weight: 400;
+    cursor: pointer;
+    box-shadow: var(--shadow-surface);
+    z-index: 10000;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(12px) scale(0.8);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+.scroll-top-btn.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0) scale(1);
+}
+.scroll-top-btn:hover {
+    background: var(--bamboo-primary);
+    color: #fff;
+    border-color: var(--bamboo-primary);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-card);
+}
+.scroll-top-btn:active {
+    transform: translateY(0) scale(0.95);
+}
+
+
+/* ========== 副券内极简白噪音控制 ========== */
+.stub-noise-ctrl {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 2px 4px;
+    height: 20px;
+    pointer-events: auto;
+}
+
+.stub-nc-icon {
+    width: 12px;
+    height: 12px;
+    color: rgba(var(--deep-rgb), 0.6);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
+}
+
+.stub-nc-icon:hover {
+    color: var(--bamboo-primary);
+    transform: scale(1.15);
+}
+
+.stub-nc-icon:active {
+    transform: scale(0.85);
+}
+
+.stub-nc-name {
+    font-size: var(--type-mini);
+    font-weight: 600;
+    color: rgba(var(--deep-rgb), 0.7);
+    letter-spacing: 0.3px;
+    min-width: min(20px, 5vw);
+    text-align: center;
+    line-height: 1;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+.stub-nc-name:hover {
+    color: rgba(var(--deep-rgb), 1);
+}
+
+/* 暗色模式：白噪声切换器可见性修复 */
+html.dark .stub-nc-icon {
+    color: rgba(var(--primary-rgb), 0.7);
+}
+html.dark .stub-nc-icon:hover {
+    color: rgb(var(--primary-rgb));
+}
+html.dark .stub-nc-name {
+    color: rgba(var(--primary-rgb), 0.8);
+}
+html.dark .stub-nc-name:hover {
+    color: rgb(var(--primary-rgb));
+}
+
+.ticket-stub.playing .stub-nc-name {
+    animation: stub-name-pulse 2.5s ease-in-out infinite;
+}
+
+@keyframes stub-name-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
+/* ========== 绿色流光效果 - 夜间模式 ========== */
+
+/* 方案1：环绕流光 - 元素边缘循环流动 */
+.glow-orbital {
+    position: relative;
+    overflow: visible !important;
+}
+.glow-orbital::before {
+    content: '';
+    position: absolute;
+    top: calc(var(--glow-width) * -0.5);
+    left: calc(var(--glow-width) * -0.5);
+    right: calc(var(--glow-width) * -0.5);
+    bottom: calc(var(--glow-width) * -0.5);
+    background: conic-gradient(from 0deg, 
+        transparent 0deg, 
+        var(--glow-color-start) 90deg, 
+        var(--glow-color-end) 180deg, 
+        transparent 270deg);
+    border-radius: inherit;
+    opacity: var(--glow-opacity);
+    animation: glow-orbital-rotate var(--glow-duration) linear infinite;
+    pointer-events: none;
+    filter: blur(1px);
+}
+@keyframes glow-orbital-rotate {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* 方案2：扫描流光 - 横向/纵向扫描 */
+.glow-sweep {
+    position: relative;
+    overflow: hidden;
+}
+.glow-sweep::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 50%;
+    height: 100%;
+    background: linear-gradient(90deg, 
+        transparent 0%, 
+        var(--glow-color-start) 40%, 
+        var(--glow-color-end) 60%, 
+        transparent 100%);
+    opacity: var(--glow-opacity);
+    animation: glow-sweep-h var(--glow-duration) ease-in-out infinite;
+    pointer-events: none;
+    filter: blur(2px);
+}
+@keyframes glow-sweep-h {
+    0%, 100% { left: -100%; }
+    50% { left: 150%; }
+}
+.glow-sweep-vertical::before {
+    width: 100%;
+    height: 50%;
+    top: -100%;
+    left: 0;
+    background: linear-gradient(180deg, 
+        transparent 0%, 
+        var(--glow-color-start) 40%, 
+        var(--glow-color-end) 60%, 
+        transparent 100%);
+    animation: glow-sweep-v var(--glow-duration) ease-in-out infinite;
+}
+@keyframes glow-sweep-v {
+    0%, 100% { top: -100%; }
+    50% { top: 150%; }
+}
+
+/* 方案3：脉冲闪烁 - 边框脉冲 */
+.glow-pulse {
+    position: relative;
+}
+.glow-pulse::before {
+    content: '';
+    position: absolute;
+    top: calc(var(--glow-width) * -0.5);
+    left: calc(var(--glow-width) * -0.5);
+    right: calc(var(--glow-width) * -0.5);
+    bottom: calc(var(--glow-width) * -0.5);
+    border: var(--glow-width) solid var(--glow-color-start);
+    border-radius: inherit;
+    opacity: 0;
+    animation: glow-pulse-fade calc(var(--glow-duration) / 2) ease-in-out infinite;
+    pointer-events: none;
+}
+.glow-pulse::after {
+    content: '';
+    position: absolute;
+    top: calc(var(--glow-width) * -0.5);
+    left: calc(var(--glow-width) * -0.5);
+    right: calc(var(--glow-width) * -0.5);
+    bottom: calc(var(--glow-width) * -0.5);
+    border: var(--glow-width) solid var(--glow-color-end);
+    border-radius: inherit;
+    opacity: 0;
+    animation: glow-pulse-fade calc(var(--glow-duration) / 2) ease-in-out infinite;
+    animation-delay: calc(var(--glow-duration) / 4);
+    pointer-events: none;
+}
+@keyframes glow-pulse-fade {
+    0%, 100% { opacity: 0; transform: scale(1); }
+    50% { opacity: var(--glow-opacity); transform: scale(1.02); }
+}
+
+/* 控制开关：全局启用/禁用 */
+html.glows-disabled .glow-orbital::before,
+html.glows-disabled .glow-sweep::before,
+html.glows-disabled .glow-pulse::before,
+html.glows-disabled .glow-pulse::after {
+    display: none !important;
+    animation: none !important;
+}
+
+/* 响应式适配 — Canonical breakpoints: 480px (mobile), 768px (tablet), 1024px (desktop) */
+@media (max-width: 768px) {
+    :root {
+        --glow-width: 2px;
+        --glow-opacity: 0.25;
+        --glow-duration: 20s;
+    }
+}
+
+/* 性能优化：减少重绘 */
+.glow-orbital::before,
+.glow-sweep::before,
+.glow-pulse::before,
+.glow-pulse::after {
+    will-change: transform, opacity;
+    -webkit-will-change: transform, opacity;
+}
+
+/* 夜间模式下应用流光效果 */
+html.dark:not(.glows-disabled) .date-nav {
+    /* 方案1：环绕流光 - 日期导航 */
+    position: relative;
+    overflow: visible !important;
+}
+html.dark:not(.glows-disabled) .date-nav::before {
+    content: '';
+    position: absolute;
+    top: -1px;
+    left: -1px;
+    right: -1px;
+    bottom: -1px;
+    background: conic-gradient(from 0deg, 
+        transparent 0deg, 
+        var(--glow-color-start) 90deg, 
+        var(--glow-color-end) 180deg, 
+        transparent 270deg);
+    border-radius: inherit;
+    opacity: var(--glow-opacity);
+    animation: glow-orbital-rotate var(--glow-duration) linear infinite;
+    pointer-events: none;
+    filter: blur(1.5px);
+}
+
+html.dark:not(.glows-disabled) .designer-ticket {
+    /* 方案2：扫描流光 - 票根 */
+    position: relative;
+    overflow: hidden;
+}
+html.dark:not(.glows-disabled) .designer-ticket::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 40%;
+    height: 100%;
+    background: linear-gradient(90deg, 
+        transparent 0%, 
+        var(--glow-color-start) 40%, 
+        var(--glow-color-end) 60%, 
+        transparent 100%);
+    opacity: var(--glow-opacity);
+    animation: glow-sweep-h var(--glow-duration) ease-in-out infinite;
+    pointer-events: none;
+    filter: blur(2.5px);
+}
+
+html.dark:not(.glows-disabled) .goal-row,
+html.dark:not(.glows-disabled) .bamboo-card {
+    /* 方案3：脉冲闪烁 - 目标卡片和时光卡 */
+    position: relative;
+}
+html.dark:not(.glows-disabled) .goal-row::before,
+html.dark:not(.glows-disabled) .bamboo-card::before {
+    content: '';
+    position: absolute;
+    top: -1px;
+    left: -1px;
+    right: -1px;
+    bottom: -1px;
+    border: 2px solid var(--glow-color-start);
+    border-radius: inherit;
+    opacity: 0;
+    animation: glow-pulse-fade calc(var(--glow-duration) / 2) ease-in-out infinite;
+    pointer-events: none;
+}
+html.dark:not(.glows-disabled) .goal-row::after,
+html.dark:not(.glows-disabled) .bamboo-card::after {
+    content: '';
+    position: absolute;
+    top: -1px;
+    left: -1px;
+    right: -1px;
+    bottom: -1px;
+    border: 2px solid var(--glow-color-end);
+    border-radius: inherit;
+    opacity: 0;
+    animation: glow-pulse-fade calc(var(--glow-duration) / 2) ease-in-out infinite;
+    animation-delay: calc(var(--glow-duration) / 4);
+    pointer-events: none;
+}
+
+
+
+/* ========== FAB 浮动按钮（从 modal.css 移入）========== */
+
+.fab-container {
+    position: fixed;
+    bottom: 120px;
+    right: 16px;
+    z-index: 9999;
+    display: flex !important;
+    align-items: flex-end;
+    justify-content: flex-end;
+    transform: none !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+}
+.fab-main {
+    pointer-events: auto !important;
+    touch-action: manipulation;
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: var(--action-bg);
+    color: #fff;
+    border: none;
+    cursor: grab;
+    font-size: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 16px rgba(var(--deep-rgb), 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    outline: none;
+    position: relative;
+    line-height: 1;
+    user-select: none;
+    transform: none;
+}
+.fab-main:hover {
+    box-shadow: 0 6px 24px rgba(var(--deep-rgb), 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+    transform: scale(1.1);
+}
+.fab-main:active {
+    transform: scale(0.94);
+    box-shadow: 0 2px 12px rgba(var(--deep-rgb), 0.25);
+}
+.fab-main:focus-visible {
+    outline: 2px solid var(--bamboo-primary);
+    outline-offset: 3px;
+}
+.fab-main.open {
+    transform: rotate(45deg);
+    box-shadow: 0 6px 24px rgba(var(--deep-rgb), 0.4);
+}
+.fab-main-icon {
+    width: 22px;
+    height: 22px;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.fab-main-icon svg {
+    width: 22px;
+    height: 22px;
+}
+@media (prefers-reduced-motion: no-preference) {
+    .fab-main:not(.open) {
+        animation: fabPulse 3.8s ease-in-out infinite;
+    }
+}
+@keyframes fabPulse {
+    0%, 100% {
+        box-shadow: 0 4px 16px rgba(var(--deep-rgb), 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    }
+    50% {
+        box-shadow: 0 4px 16px rgba(var(--deep-rgb), 0.3), 0 0 0 4px rgba(var(--primary-rgb), 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    }
+}
+.fab-actions {
+    position: absolute;
+    bottom: calc(100% + 10px);
+    right: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    transform: translateY(8px);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    opacity: 0;
+    pointer-events: none;
+    padding: var(--space-3);
+    background: var(--card-glass);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border-radius: var(--radius-xl);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: var(--shadow-floating);
+    max-height: 80vh;
+    overflow-y: auto;
+    min-width: 240px;
+}
+.fab-actions.open {
+    transform: translateY(0);
+    opacity: 1;
+    pointer-events: auto;
+}
+.fab-action-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+}
+.fab-action-group + .fab-action-group {
+    padding-top: var(--space-2);
+    border-top: 1px solid var(--border-light);
+}
+.fab-group-label {
+    font-size: var(--type-mini);
+    font-weight: 600;
+    color: var(--text-secondary);
+    letter-spacing: 0.5px;
+    padding: 2px var(--space-2);
+    opacity: 0.8;
+}
+.fab-action-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.fab-action-btn {
+    flex: 1;
+    min-width: calc(33.33% - 4px);
+    padding: 8px 4px 6px;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-md);
+    font-size: var(--type-mini);
+    font-weight: 500;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+}
+.fab-action-btn:hover {
+    background: rgba(var(--primary-rgb), 0.1);
+}
+.fab-action-btn:active {
+    transform: scale(0.96);
+    background: rgba(var(--primary-rgb), 0.15);
+}
+.fab-action-btn.fab-primary {
+    color: var(--bamboo-primary);
+}
+.fab-action-btn.fab-primary:hover {
+    background: rgba(var(--primary-rgb), 0.1);
+}
+.fab-btn-icon {
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--bamboo-primary);
+    opacity: 0.85;
+}
+.fab-action-btn.fab-primary .fab-btn-icon {
+    opacity: 1;
+}
+.fab-btn-icon svg {
+    width: 18px;
+    height: 18px;
+}
+.fab-btn-text {
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: var(--type-mini);
+    font-weight: 500;
+    line-height: 1.2;
+    color: var(--bamboo-primary);
+}
+.fab-action-btn.fab-primary .fab-btn-text {
+    font-weight: 600;
+    color: var(--bamboo-primary);
+}
+.fab-action-btn .tooltip {
+    position: absolute;
+    right: calc(100% + 12px);
+    top: 50%;
+    transform: translateY(-50%);
+    padding: 6px 12px;
+    background: var(--text-primary);
+    color: #fff;
+    font-size: var(--type-sm);
+    border-radius: var(--radius-md);
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    transition: all var(--transition-fast);
+    z-index: 100;
+}
+.fab-action-btn:hover .tooltip {
+    opacity: 1;
+    visibility: visible;
+}
+.fab-action-btn .tooltip::after {
+    content: '';
+    position: absolute;
+    right: -4px;
+    top: 50%;
+    transform: translateY(-50%) rotate(45deg);
+    width: 8px;
+    height: 8px;
+    background: var(--text-primary);
+}
+.fab-container.fab-left .fab-actions {
+    right: auto;
+    left: 0;
+    flex-direction: column;
+    align-items: flex-start;
+}
+.fab-container.fab-top .fab-actions,
+.fab-container.fab-below .fab-actions {
+    bottom: auto;
+    top: calc(100% + 10px);
+}
+.fab-container.fab-align-left .fab-actions {
+    right: auto;
+    left: 0;
+}
+.fab-container.touch-active {
+    transform: scale(0.95);
+}
+.fab-container.fab-open {
+    z-index: 10001;
+}
+.fab-container.dragging {
+    transition: none !important;
+    pointer-events: auto !important;
+}
+.fab-container.dragging .fab-main {
+    cursor: grabbing !important;
+    transform: scale(1.08);
+    box-shadow: 0 12px 36px rgba(var(--deep-rgb), 0.45), 0 0 0 2px rgba(var(--primary-rgb), 0.35);
+}
+
+/* ========== 通用悬浮面板样式 (FAB Panel) ========== */

@@ -1,0 +1,208 @@
+import * as http from 'http';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as net from 'net';
+import { MIME_TYPES, ALLOWED_AUDIO_EXTENSIONS } from '../constants/audio';
+
+/**
+ * LocalServer - 本地 HTTP 静态文件服务器
+ *
+ * 在 Obsidian (Electron) 环境中启动一个本地 HTTP 服务器，
+ * 为 iframe 提供 webapp 静态资源服务，绕过 app:// 协议的限制。
+ */
+export class LocalServer {
+  private server: http.Server | null = null;
+  private port = 0;
+  private webappDir: string;
+  private vaultBasePath: string = '';
+
+  constructor(webappDir: string) {
+    this.webappDir = webappDir;
+  }
+
+  /** 设置库根目录（供 /bamboo-audio 音频代理使用） */
+  setVaultBasePath(basePath: string): void {
+    this.vaultBasePath = basePath;
+  }
+
+  /** 启动服务器，返回监听端口 */
+  async start(): Promise<number> {
+    if (this.server) return this.port;
+
+    this.port = await this.findFreePort();
+
+    return new Promise((resolve, reject) => {
+      this.server = http.createServer((req, res) => {
+        this.handleRequest(req, res);
+      });
+
+      this.server.on('error', (err) => {
+        console.error('[BambooReview] Server error:', err);
+        reject(err);
+      });
+
+      this.server.listen(this.port, '127.0.0.1', () => {
+        console.log(`[BambooReview] Local server started on port ${this.port}`);
+        resolve(this.port);
+      });
+    });
+  }
+
+  /** 停止服务器 */
+  async stop(): Promise<void> {
+    return new Promise((resolve) => {
+      if (this.server) {
+        this.server.close(() => {
+          console.log('[BambooReview] Local server stopped');
+          this.server = null;
+          this.port = 0;
+          resolve();
+        });
+      } else {
+        resolve();
+      }
+    });
+  }
+
+  /** 获取服务器 URL */
+  getUrl(): string {
+    return `http://127.0.0.1:${this.port}`;
+  }
+
+  /** 处理 HTTP 请求 */
+  private handleRequest(req: http.IncomingMessage, res: http.ServerResponse): void {
+    // /bamboo-audio?path=xxx — 音频文件代理，绕过 postMessage 大 payload 限制
+    const url = req.url || '/';
+    if (url.startsWith('/bamboo-audio')) {
+      this.handleAudioProxy(req, res);
+      return;
+    }
+
+    // 解析 URL，去除查询参数
+    let urlPath = url.split('?')[0];
+    // 目录默认文件
+    if (urlPath.endsWith('/')) {
+      urlPath += 'index.html';
+    }
+    const safePath = path.normalize(urlPath).replace(/^(\.\.[\/\\])+/, '');
+    const filePath = path.join(this.webappDir, safePath);
+
+    // 安全检查：确保路径在 webappDir 内
+    if (!filePath.startsWith(this.webappDir)) {
+      res.writeHead(403);
+      res.end('Forbidden');
+      return;
+    }
+
+    // 检查文件是否存在
+    fs.stat(filePath, (err, stats) => {
+      if (err || !stats.isFile()) {
+        res.writeHead(404);
+        res.end('Not Found');
+        return;
+      }
+
+      // 设置 MIME 类型
+      const ext = path.extname(filePath).toLowerCase();
+      const contentType = MIME_TYPES[ext] || 'application/octet-stream';
+
+      // 设置响应头（不需要 CORS，iframe 与服务器同源）
+      res.writeHead(200, {
+        'Content-Type': contentType,
+        'Cache-Control': 'no-cache',
+      });
+
+      // 流式传输文件
+      const stream = fs.createReadStream(filePath);
+      stream.pipe(res);
+      stream.on('error', () => {
+        if (!res.headersSent) {
+          res.writeHead(500);
+          res.end('Internal Server Error');
+        }
+      });
+    });
+  }
+
+  /** /bamboo-audio?path=xxx — 流式代理库内音频文件 */
+  private handleAudioProxy(req: http.IncomingMessage, res: http.ServerResponse): void {
+    try {
+      const rawUrl = req.url || '';
+      const queryIndex = rawUrl.indexOf('?');
+      if (queryIndex === -1) {
+        res.writeHead(400); res.end('Missing path parameter');
+        return;
+      }
+      const queryStr = rawUrl.slice(queryIndex + 1);
+      const params = new URLSearchParams(queryStr);
+      const relativePath = params.get('path');
+      if (!relativePath) {
+        res.writeHead(400); res.end('Missing path parameter');
+        return;
+      }
+
+      // 安全检查：只允许指定扩展名
+      const ext = path.extname(relativePath).toLowerCase();
+      if (!ALLOWED_AUDIO_EXTENSIONS.includes(ext)) {
+        res.writeHead(403); res.end('Forbidden: unsupported audio format');
+        return;
+      }
+      // 安全检查：禁止路径穿越
+      const normalized = path.normalize(relativePath).replace(/^(\.\.[\/\\])+/, '');
+      if (!normalized || normalized.startsWith('..') || normalized.startsWith('/')) {
+        res.writeHead(403); res.end('Forbidden');
+        return;
+      }
+      if (!this.vaultBasePath) {
+        res.writeHead(500); res.end('Vault base path not configured');
+        return;
+      }
+
+      const fullPath = path.join(this.vaultBasePath, normalized);
+      if (!fullPath.startsWith(this.vaultBasePath)) {
+        res.writeHead(403); res.end('Forbidden');
+        return;
+      }
+
+      fs.stat(fullPath, (err, stats) => {
+        if (err || !stats.isFile()) {
+          res.writeHead(404); res.end('File not found');
+          return;
+        }
+        const contentType = MIME_TYPES[ext] || 'application/octet-stream';
+        res.writeHead(200, {
+          'Content-Type': contentType,
+          'Content-Length': stats.size,
+          'Access-Control-Allow-Origin': '*',
+          'Cache-Control': 'public, max-age=3600',
+        });
+        const stream = fs.createReadStream(fullPath);
+        stream.pipe(res);
+        stream.on('error', () => {
+          if (!res.headersSent) {
+            res.writeHead(500);
+            res.end('Stream error');
+          }
+        });
+      });
+    } catch (e: any) {
+      if (!res.headersSent) {
+        res.writeHead(500);
+        console.error('[BambooReview] Audio proxy error:', e);
+        res.end('Internal Server Error');
+      }
+    }
+  }
+
+  /** 查找可用端口 */
+  private findFreePort(): Promise<number> {
+    return new Promise((resolve, reject) => {
+      const server = net.createServer();
+      server.listen(0, '127.0.0.1', () => {
+        const port = (server.address() as net.AddressInfo).port;
+        server.close(() => resolve(port));
+      });
+      server.on('error', reject);
+    });
+  }
+}

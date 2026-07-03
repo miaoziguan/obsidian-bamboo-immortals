@@ -1,0 +1,634 @@
+/* 统一主题动效容器（所有主题共享外壳） */
+#themeEffectSection {
+    position: relative;
+    padding: var(--space-3);
+    border-radius: 38px;
+    overflow: hidden;
+    border: 1px solid hsla(calc(var(--accent-hue) + 0), 30%, 88%, 0.5);
+    margin-bottom: calc(var(--space-6) * var(--section-gap-scale));
+    box-shadow:
+        0 2px 12px hsla(calc(var(--accent-hue) + 0), 25%, 40%, 0.06),
+        0 1px 3px hsla(calc(var(--accent-hue) + 0), 20%, 50%, 0.04);
+    contain: paint;
+    /* 平台级内框圆角：外层 38px − padding 12px = 26px。子元素通过 var() 引用，外框改大时只需改此值和 border-radius 两处 */
+    --theme-inner-radius: 26px;
+}
+
+/* 朦胧意境竹林动效（仅保留竹林专属样式，外壳由 #themeEffectSection 统一提供） */
+.bamboo-garden-section {
+    position: relative;
+    border-radius: 26px;
+    overflow: hidden;
+}
+
+
+
+.bamboo-garden-container {
+    position: relative;
+    width: 100%;
+    height: 300px;
+    border-radius: 26px;
+    overflow: hidden;
+    background: linear-gradient(180deg,
+        hsla(calc(var(--accent-hue) + 0), 32%, 97%, 0.95) 0%,
+        hsla(calc(var(--accent-hue) + 0), 28%, 94%, 0.92) 30%,
+        hsla(calc(var(--accent-hue) + 0), 24%, 90%, 0.9) 70%,
+        hsla(calc(var(--accent-hue) + 0), 20%, 85%, 0.88) 100%);
+    /* 深嵌体积：顶部强内高光 + 底部凹陷 + 竹绿调投影 */
+    box-shadow:
+        inset 0 1px 0 hsla(calc(var(--accent-hue) + 0), 40%, 98%, 0.8),
+        inset 0 10px 30px hsla(calc(var(--accent-hue) + 0), 20%, 30%, 0.08),
+        inset 0 -1px 0 hsla(calc(var(--accent-hue) + 0), 30%, 70%, 0.25),
+        0 2px 8px hsla(calc(var(--accent-hue) + 0), 25%, 35%, 0.07),
+        0 8px 32px hsla(calc(var(--accent-hue) + 0), 30%, 30%, 0.1),
+        0 16px 48px hsla(calc(var(--accent-hue) + 0), 25%, 20%, 0.08);
+    border: 1.5px solid hsla(calc(var(--accent-hue) + 0), 28%, 82%, 0.55);
+    contain: paint;
+}
+
+/* 强制所有主题顶层元素自适应宽度 + 平台级内框圆角兜底 */
+#themeEffectSection > * {
+    width: 100%;
+    max-width: 100%;
+    border-radius: var(--theme-inner-radius) !important;
+}
+
+html.dark #themeEffectSection {
+    border-color: hsla(calc(var(--accent-hue) + 0), 28%, 35%, 0.15);
+    box-shadow:
+        0 1px 4px hsla(calc(var(--accent-hue) + 0), 20%, 3%, 0.15),
+        0 4px 20px hsla(calc(var(--accent-hue) + 0), 15%, 2%, 0.2);
+}
+
+.bamboo-garden-container::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 26px;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    pointer-events: none;
+    z-index: -1;
+}
+
+/* 玻璃反射层 — 顶部斜射高光，模拟光线穿过玻璃的反射 */
+.bamboo-garden-container::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 26px;
+    background: linear-gradient(
+        180deg,
+        hsla(calc(var(--accent-hue) + 0), 50%, 100%, 0.15) 0%,
+        hsla(calc(var(--accent-hue) + 0), 40%, 98%, 0.06) 20%,
+        transparent 50%
+    );
+    pointer-events: none;
+    z-index: 999;
+}
+
+/* 月亮 - 仅在暗色模式显示 */
+.moon {
+    position: absolute;
+    top: 45px;
+    right: 70px;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, #fff9e6 0%, #ffeaa7 50%, #fdcb6e 100%);
+    box-shadow: 
+        0 0 20px rgba(255, 234, 167, 0.6),
+        0 0 40px rgba(255, 234, 167, 0.4),
+        0 0 60px rgba(255, 234, 167, 0.2);
+    opacity: 0;
+    display: none;
+    transition: opacity 0.5s ease;
+    animation: moonGlow 4s ease-in-out infinite;
+}
+
+@keyframes moonGlow {
+    0%, 100% {
+        box-shadow: 
+            0 0 20px rgba(255, 234, 167, 0.6),
+            0 0 40px rgba(255, 234, 167, 0.4),
+            0 0 60px rgba(255, 234, 167, 0.2);
+    }
+    50% {
+        box-shadow: 
+            0 0 30px rgba(255, 234, 167, 0.8),
+            0 0 50px rgba(255, 234, 167, 0.5),
+            0 0 80px rgba(255, 234, 167, 0.3);
+    }
+}
+
+/* 暗色模式显示月亮 */
+html.dark .moon {
+    display: block;
+    opacity: 1;
+}
+
+/* 迷雾层 - 多层营造深度 */
+.mist-layer-1 {
+    position: absolute;
+    inset: 0;
+    background: 
+        radial-gradient(ellipse at 10% 60%, rgba(255,255,255,0.65) 0%, transparent 45%),
+        radial-gradient(ellipse at 70% 50%, rgba(255,255,255,0.5) 0%, transparent 50%),
+        radial-gradient(ellipse at 50% 85%, rgba(255,255,255,0.55) 0%, transparent 55%);
+    mix-blend-mode: screen;
+    animation: mistDrift1 28s ease-in-out infinite;
+}
+
+.mist-layer-2 {
+    position: absolute;
+    inset: 0;
+    background: 
+        radial-gradient(ellipse at 85% 70%, rgba(255,255,255,0.45) 0%, transparent 40%),
+        radial-gradient(ellipse at 30% 45%, rgba(255,255,255,0.35) 0%, transparent 45%);
+    mix-blend-mode: screen;
+    animation: mistDrift2 35s ease-in-out infinite;
+}
+
+.mist-layer-3 {
+    position: absolute;
+    inset: 0;
+    background: 
+        radial-gradient(ellipse at 60% 85%, hsla(calc(var(--accent-hue) + 0), 36%, calc(96% + var(--accent-lightness-offset)), 0.6) 0%, transparent 55%),
+        radial-gradient(ellipse at 15% 75%, hsla(calc(var(--accent-hue) + 0), 36%, calc(96% + var(--accent-lightness-offset)), 0.5) 0%, transparent 45%);
+    mix-blend-mode: screen;
+    animation: mistDrift3 42s ease-in-out infinite;
+}
+
+@keyframes mistDrift1 {
+    0%, 100% { transform: translateX(0) translateY(0); opacity: 0.85; }
+    33% { transform: translateX(30px) translateY(-5px); opacity: 0.95; }
+    66% { transform: translateX(-20px) translateY(3px); opacity: 0.9; }
+}
+
+@keyframes mistDrift2 {
+    0%, 100% { transform: translateX(0); opacity: 0.7; }
+    50% { transform: translateX(-40px); opacity: 0.85; }
+}
+
+@keyframes mistDrift3 {
+    0%, 100% { transform: translateX(0); opacity: 0.6; }
+    50% { transform: translateX(35px); opacity: 0.75; }
+}
+
+/* 远山层 - 多层叠加 */
+.distant-mountains {
+    position: absolute;
+    bottom: 60px;
+    left: -15%;
+    right: -15%;
+    height: 160px;
+}
+
+.mountain-layer {
+    position: absolute;
+    bottom: 0;
+    width: 130%;
+    left: -15%;
+}
+
+.mountain-1 {
+    height: 95px;
+    opacity: 0.15;
+    background: linear-gradient(180deg, hsl(var(--accent-hue), 25%, calc(63% + var(--accent-lightness-offset))), hsl(var(--accent-hue), 19%, calc(51% + var(--accent-lightness-offset))));
+    filter: blur(3px);
+    clip-path: polygon(0 100%, 10% 50%, 18% 68%, 28% 35%, 40% 62%, 52% 30%, 65% 58%, 78% 28%, 88% 55%, 100% 100%);
+    animation: mountainFloat1 38s ease-in-out infinite;
+}
+
+.mountain-2 {
+    height: 125px;
+    opacity: 0.1;
+    background: linear-gradient(180deg, hsl(var(--accent-hue), 22%, calc(57% + var(--accent-lightness-offset))), hsl(var(--accent-hue), 21%, calc(45% + var(--accent-lightness-offset))));
+    filter: blur(5px);
+    clip-path: polygon(0 100%, 16% 42%, 28% 68%, 42% 32%, 55% 58%, 68% 26%, 82% 52%, 100% 100%);
+    animation: mountainFloat2 45s ease-in-out infinite;
+}
+
+.mountain-3 {
+    height: 145px;
+    opacity: 0.07;
+    background: linear-gradient(180deg, hsl(var(--accent-hue), 19%, calc(51% + var(--accent-lightness-offset))), hsl(var(--accent-hue), 24%, calc(38% + var(--accent-lightness-offset))));
+    filter: blur(7px);
+    clip-path: polygon(0 100%, 12% 55%, 25% 75%, 38% 40%, 50% 70%, 65% 35%, 78% 60%, 90% 40%, 100% 100%);
+    animation: mountainFloat3 52s ease-in-out infinite;
+}
+
+@keyframes mountainFloat1 {
+    0%, 100% { transform: translateX(0); }
+    50% { transform: translateX(20px); }
+}
+
+@keyframes mountainFloat2 {
+    0%, 100% { transform: translateX(0); }
+    50% { transform: translateX(-18px); }
+}
+
+@keyframes mountainFloat3 {
+    0%, 100% { transform: translateX(0); }
+    50% { transform: translateX(15px); }
+}
+
+/* 山间雾气 */
+.mountain-mist {
+    position: absolute;
+    bottom: 30px;
+    left: -10%;
+    right: -10%;
+    height: 80px;
+    background: 
+        radial-gradient(ellipse at 20% 60%, rgba(255,255,255,0.7) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 40%, rgba(255,255,255,0.6) 0%, transparent 55%);
+    mix-blend-mode: screen;
+    animation: mountainMistFloat 25s ease-in-out infinite;
+}
+
+@keyframes mountainMistFloat {
+    0%, 100% { transform: translateX(0) scale(1); opacity: 0.8; }
+    50% { transform: translateX(40px) scale(1.05); opacity: 0.95; }
+}
+
+/* 江面 */
+.river-surface {
+    position: absolute;
+    bottom: 25px;
+    left: 5%;
+    right: 40%;
+    height: 30px;
+    background: linear-gradient(180deg, 
+        rgba(60, 100, 120, 0.1) 0%, 
+        rgba(80, 120, 140, 0.15) 50%, 
+        rgba(60, 100, 120, 0.1) 100%);
+    border-radius: 50%;
+    filter: blur(3px);
+    animation: riverWave 8s ease-in-out infinite;
+}
+
+html.dark .river-surface {
+    background: linear-gradient(180deg,
+        hsla(calc(var(--accent-hue) + 15), 33%, calc(47% + var(--accent-lightness-offset)), 0.06) 0%,
+        hsla(calc(var(--accent-hue) + 15), 35%, calc(55% + var(--accent-lightness-offset)), 0.1) 50%,
+        hsla(calc(var(--accent-hue) + 15), 33%, calc(47% + var(--accent-lightness-offset)), 0.06) 100%);
+    filter: blur(3px) drop-shadow(0 0 4px hsla(calc(var(--accent-hue) + 0), 35%, calc(55% + var(--accent-lightness-offset)), 0.15));
+}
+
+@keyframes riverWave {
+    0%, 100% { transform: scaleX(1); }
+    50% { transform: scaleX(1.03); }
+}
+
+/* 舟 */
+.boat-container {
+    position: absolute;
+    bottom: 40px;
+    left: -10%;
+    animation: boatFloat 6s ease-in-out infinite, boatDrift 45s linear infinite;
+}
+
+/* 暗色模式下原地浮动 + 发光 */
+html.dark .boat-container {
+    left: 12% !important;
+    animation: boatFloat 6s ease-in-out infinite !important;
+}
+
+html.dark .boat {
+    filter: drop-shadow(0 0 6px hsla(calc(var(--accent-hue) + -8), 53%, 71%, 0.4)) drop-shadow(0 0 12px hsla(calc(var(--accent-hue) + -7), 45%, 61%, 0.2));
+    opacity: 0.6;
+}
+
+html.dark .boat::before {
+    background: linear-gradient(90deg,
+        transparent 0%,
+        hsla(calc(var(--accent-hue) + -7), 38%, 53%, 0.5) 20%,
+        hsla(calc(var(--accent-hue) + -7), 50%, 65%, 0.7) 50%,
+        hsla(calc(var(--accent-hue) + -7), 38%, 53%, 0.5) 80%,
+        transparent 100%);
+}
+
+.boat {
+    position: relative;
+    width: 50px;
+    height: 15px;
+    filter: blur(0.5px);
+    opacity: 0.45;
+}
+
+.boat::before {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 8px;
+    background: linear-gradient(90deg, 
+        transparent 0%, 
+        hsla(calc(var(--accent-hue) + 0), 27%, calc(22% + var(--accent-lightness-offset)), 0.4) 20%, 
+        hsla(calc(var(--accent-hue) + 0), 29%, calc(27% + var(--accent-lightness-offset)), 0.55) 50%, 
+        hsla(calc(var(--accent-hue) + 0), 27%, calc(22% + var(--accent-lightness-offset)), 0.4) 80%, 
+        transparent 100%);
+    border-radius: 0 0 40% 40% / 0 0 100% 100%;
+}
+
+@keyframes boatFloat {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    25% { transform: translateY(-2px) rotate(0.5deg); }
+    50% { transform: translateY(0) rotate(0deg); }
+    75% { transform: translateY(-1px) rotate(-0.3deg); }
+}
+
+@keyframes boatDrift {
+    0% { left: -15%; }
+    100% { left: 115%; }
+}
+
+/* 竹林层 */
+.bamboo-forest {
+    position: absolute;
+    bottom: 0;
+    left: -10%;
+    right: -10%;
+    height: 300px;
+    overflow: hidden;
+}
+
+.bamboo-layer {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 100%;
+}
+
+/* 竹子造型 - 简化、朦胧 */
+.bamboo-stalk {
+    position: absolute;
+    bottom: 0;
+    background: linear-gradient(90deg, 
+        hsla(calc(var(--accent-hue) + 0), 57%, calc(27% + var(--accent-lightness-offset)), 0.55), 
+        hsla(calc(var(--accent-hue) + 0), 50%, calc(39% + var(--accent-lightness-offset)), 0.8), 
+        hsla(calc(var(--accent-hue) + 0), 57%, calc(27% + var(--accent-lightness-offset)), 0.55));
+    border-radius: 2px 2px 1px 1px;
+    transform-origin: bottom center;
+}
+
+/* 竹子内部内容 - 根部不动，上部摇曳 */
+.bamboo-inner {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    top: 0;
+    transform-origin: bottom center;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+}
+
+/* 远景竹 - 更多更密 */
+.bamboo-far .bamboo-stalk {
+    width: 2px;
+    opacity: 0.28;
+}
+
+/* 中景竹 */
+.bamboo-mid .bamboo-stalk {
+    width: 3.5px;
+    opacity: 0.5;
+}
+
+/* 近景竹 */
+.bamboo-near .bamboo-stalk {
+    width: 5px;
+    opacity: 0.72;
+}
+
+/* 竹叶 - 简化为笔触效果 */
+.bamboo-leaf-tip {
+    position: absolute;
+    width: 3px;
+    height: 14px;
+    background: linear-gradient(180deg, 
+        hsla(calc(var(--accent-hue) + 0), 52%, calc(41% + var(--accent-lightness-offset)), 0.7), 
+        hsla(calc(var(--accent-hue) + 0), 62%, calc(31% + var(--accent-lightness-offset)), 0.9));
+    border-radius: 50% 50% 80% 20% / 90% 90% 10% 10%;
+    transform-origin: bottom center;
+    opacity: 0.75;
+}
+
+/* 地面层 */
+.forest-floor {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 45px;
+    background: linear-gradient(180deg, 
+        hsla(calc(var(--accent-hue) + -9), 18%, 38%, 0.15) 0%, 
+        hsla(calc(var(--accent-hue) + -9), 23%, 30%, 0.3) 100%);
+    filter: blur(4px);
+}
+
+.forest-floor::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: 
+        radial-gradient(ellipse at 25% 15%, hsla(calc(var(--accent-hue) + -9), 24%, 28%, 0.18) 0%, transparent 45%),
+        radial-gradient(ellipse at 70% 10%, hsla(calc(var(--accent-hue) + -9), 24%, 28%, 0.14) 0%, transparent 40%),
+        radial-gradient(ellipse at 90% 20%, hsla(calc(var(--accent-hue) + -9), 24%, 28%, 0.1) 0%, transparent 35%);
+}
+
+/* 前景朦胧层 */
+.foreground-haze {
+    position: absolute;
+    inset: 0;
+    background: 
+        radial-gradient(ellipse at 0% 100%, hsla(calc(var(--accent-hue) + 0), 22%, calc(82% + var(--accent-lightness-offset)), 0.38) 0%, transparent 55%),
+        radial-gradient(ellipse at 100% 100%, hsla(calc(var(--accent-hue) + 0), 22%, calc(82% + var(--accent-lightness-offset)), 0.38) 0%, transparent 55%);
+    pointer-events: none;
+}
+
+/* 飘落竹叶 - 更淡，风吹效果 */
+.drifting-leaf {
+    position: absolute;
+    width: 5.5px;
+    height: 17px;
+    background: linear-gradient(180deg, 
+        hsla(calc(var(--accent-hue) + -7), 19%, 46%, 0.32), 
+        hsla(calc(var(--accent-hue) + -7), 24%, 36%, 0.52));
+    border-radius: 50% 50% 70% 30% / 70% 70% 30% 30%;
+    opacity: 0.42;
+    animation: leafDrift linear infinite;
+    pointer-events: none;
+}
+
+@keyframes leafDrift {
+    0% {
+        transform: translate(0, -70px) rotate(0deg);
+        opacity: 0;
+    }
+    15% {
+        opacity: 0.42;
+    }
+    35% {
+        transform: translate(25px, 40px) rotate(120deg);
+    }
+    60% {
+        transform: translate(75px, 150px) rotate(260deg);
+    }
+    85% {
+        opacity: 0.32;
+    }
+    100% {
+        transform: translate(120px, 360px) rotate(420deg);
+        opacity: 0;
+    }
+}
+
+/* 竹叶轻颤 */
+@keyframes leafTremble {
+    0%, 100% { transform: rotate(var(--r, 0deg) - 2.5deg); }
+    50% { transform: rotate(var(--r, 0deg) + 2.5deg); }
+}
+
+/* 主题按钮 */
+.bamboo-controls {
+    display: flex;
+    gap: 10px;
+    margin-top: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.bamboo-garden-btn {
+    padding: 6px 14px;
+    border: none;
+    background: transparent;
+    color: hsla(calc(var(--accent-hue) + 0), 23%, calc(30% + var(--accent-lightness-offset)), 0.6);
+    font-size: var(--type-sm);
+    cursor: pointer;
+    transition: all 0.25s ease;
+    font-weight: 400;
+    letter-spacing: 0.5px;
+}
+
+.bamboo-garden-btn:hover {
+    color: hsla(calc(var(--accent-hue) + 0), 26%, calc(26% + var(--accent-lightness-offset)), 0.9);
+}
+
+.bamboo-garden-btn.active {
+    color: hsla(calc(var(--accent-hue) + 0), 26%, calc(26% + var(--accent-lightness-offset)), 1);
+    font-weight: 500;
+}
+
+/* 暗色模式适配 */
+html.dark .bamboo-garden-container {
+    background: linear-gradient(180deg, 
+        hsl(var(--accent-hue), 47%, calc(7% + var(--accent-lightness-offset))) 0%, 
+        hsl(var(--accent-hue), 21%, calc(6% + var(--accent-lightness-offset))) 20%, 
+        hsl(var(--accent-hue), 38%, calc(7% + var(--accent-lightness-offset))) 50%, 
+        hsl(var(--accent-hue), 50%, calc(4% + var(--accent-lightness-offset))) 100%);
+    border-color: hsla(calc(var(--accent-hue) + 0), 30%, 28%, 0.25);
+    /* 暗色深渊凹陷：顶部微光 + 底部深陷 + 竹绿调投影 */
+    box-shadow:
+        inset 0 1px 0 hsla(calc(var(--accent-hue) + 0), 35%, 50%, 0.06),
+        inset 0 10px 36px hsla(calc(var(--accent-hue) + 0), 20%, 3%, 0.55),
+        inset 0 -1px 0 hsla(calc(var(--accent-hue) + 0), 25%, 15%, 0.3),
+        0 4px 16px hsla(calc(var(--accent-hue) + 0), 25%, 3%, 0.4),
+        0 12px 40px hsla(calc(var(--accent-hue) + 0), 20%, 2%, 0.45);
+}
+
+html.dark .bamboo-garden-container::after {
+    background: linear-gradient(
+        180deg,
+        hsla(calc(var(--accent-hue) + 0), 40%, 80%, 0.04) 0%,
+        transparent 30%
+    );
+}
+
+html.dark .bamboo-stalk {
+    background: linear-gradient(90deg,
+        rgba(var(--primary-rgb), 0.65),
+        rgba(var(--primary-rgb), 0.95),
+        rgba(var(--primary-rgb), 0.65));
+    box-shadow: 0 0 20px rgba(var(--primary-rgb), 0.3), 0 0 40px rgba(var(--primary-rgb), 0.18);
+    filter: drop-shadow(0 0 10px rgba(var(--primary-rgb), 0.35));
+}
+
+html.dark .bamboo-leaf-tip {
+    background: linear-gradient(180deg,
+        rgba(var(--primary-rgb), 0.8),
+        rgba(var(--primary-rgb), 1));
+    filter: drop-shadow(0 0 5px rgba(var(--primary-rgb), 0.45));
+}
+
+html.dark .mountain-1,
+html.dark .mountain-2,
+html.dark .mountain-3 {
+    display: none;
+}
+
+html.dark .forest-floor {
+    background: linear-gradient(180deg,
+        hsla(calc(var(--accent-hue) + -12), 38%, 13%, 0.4) 0%,
+        hsla(calc(var(--accent-hue) + -15), 50%, 8%, 0.65) 100%);
+}
+
+html.dark .mist-layer-1 {
+    background:
+        radial-gradient(ellipse at 10% 60%, hsla(calc(var(--accent-hue) + 0), 35%, calc(55% + var(--accent-lightness-offset)), 0.06) 0%, transparent 45%),
+        radial-gradient(ellipse at 70% 50%, hsla(calc(var(--accent-hue) + 30), 33%, calc(47% + var(--accent-lightness-offset)), 0.04) 0%, transparent 50%),
+        radial-gradient(ellipse at 50% 85%, hsla(calc(var(--accent-hue) + 0), 42%, calc(63% + var(--accent-lightness-offset)), 0.05) 0%, transparent 55%);
+    mix-blend-mode: screen;
+}
+
+html.dark .mist-layer-2 {
+    background:
+        radial-gradient(ellipse at 85% 70%, hsla(calc(var(--accent-hue) + 15), 33%, calc(47% + var(--accent-lightness-offset)), 0.04) 0%, transparent 40%),
+        radial-gradient(ellipse at 30% 45%, hsla(calc(var(--accent-hue) + 15), 35%, calc(55% + var(--accent-lightness-offset)), 0.03) 0%, transparent 45%);
+    mix-blend-mode: screen;
+}
+
+html.dark .mist-layer-3 {
+    background:
+        radial-gradient(ellipse at 60% 85%, hsla(calc(var(--accent-hue) + 0), 35%, calc(55% + var(--accent-lightness-offset)), 0.05) 0%, transparent 55%),
+        radial-gradient(ellipse at 15% 75%, hsla(calc(var(--accent-hue) + 15), 33%, calc(47% + var(--accent-lightness-offset)), 0.04) 0%, transparent 45%);
+    mix-blend-mode: screen;
+}
+
+html.dark .mountain-mist {
+    background:
+        radial-gradient(ellipse at 20% 60%, hsla(calc(var(--accent-hue) + 0), 35%, calc(55% + var(--accent-lightness-offset)), 0.05) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 40%, hsla(calc(var(--accent-hue) + 15), 33%, calc(47% + var(--accent-lightness-offset)), 0.04) 0%, transparent 55%);
+    mix-blend-mode: screen;
+}
+
+html.dark .foreground-haze {
+    background:
+        radial-gradient(ellipse at 0% 100%, hsla(calc(var(--accent-hue) + 20), 33%, calc(35% + var(--accent-lightness-offset)), 0.06) 0%, transparent 55%),
+        radial-gradient(ellipse at 100% 100%, hsla(calc(var(--accent-hue) + 20), 33%, calc(35% + var(--accent-lightness-offset)), 0.06) 0%, transparent 55%);
+}
+
+html.dark .drifting-leaf {
+    background: linear-gradient(180deg,
+        hsla(calc(var(--accent-hue) + -8), 32%, 51%, 0.65),
+        hsla(calc(var(--accent-hue) + -8), 36%, 43%, 0.8));
+    filter: drop-shadow(0 0 8px hsla(calc(var(--accent-hue) + 0), 48%, calc(59% + var(--accent-lightness-offset)), 0.4));
+}
+
+html.dark .bamboo-garden-btn {
+    color: hsla(calc(var(--accent-hue) + 0), 15%, calc(75% + var(--accent-lightness-offset)), 0.7);
+}
+
+html.dark .bamboo-garden-btn:hover {
+    color: hsla(calc(var(--accent-hue) + 0), 22%, calc(82% + var(--accent-lightness-offset)), 0.95);
+}
+
+html.dark .bamboo-garden-btn.active {
+    color: hsla(calc(var(--accent-hue) + 0), 40%, calc(90% + var(--accent-lightness-offset)), 1);
+}
+
+/* 商店样式（含响应式 + 暗色模式）已集中移至 modal.css "竹林商店" 区块 */

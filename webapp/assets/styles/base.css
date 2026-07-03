@@ -1,0 +1,516 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+/* === 统一可点击元素交互 === */
+button, 
+[role="button"],
+.clickable,
+a,
+select,
+label[for] {
+    cursor: pointer;
+    transition: all var(--transition-normal);
+}
+
+button:active,
+[role="button"]:active,
+.clickable:active,
+a:active {
+    transform: var(--scale-click);
+    opacity: 0.9;
+}
+
+.skip-link {
+    position: absolute;
+    top: -100px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--bamboo-deep);
+    color: #ffffff;
+    padding: 12px 24px;
+    border-radius: var(--radius-md);
+    z-index: 10000;
+    text-decoration: none;
+    font-weight: 700;
+    font-size: var(--type-md);
+    min-height: var(--touch-target);
+    display: inline-flex;
+    align-items: center;
+    transition: top 0.15s ease-out;
+}
+.skip-link:focus-visible {
+    top: 8px;
+    outline: 3px solid #ffffff;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 6px var(--bamboo-deep);
+}
+
+:focus-visible {
+    outline: 2px solid var(--bamboo-primary);
+    outline-offset: 3px;
+    box-shadow: var(--focus-ring-offset);
+}
+
+button:focus-visible, a:focus-visible {
+    outline: 2px solid var(--bamboo-primary);
+    outline-offset: 3px;
+    box-shadow: var(--focus-ring-offset);
+}
+
+:focus:not(:focus-visible) {
+    outline: none;
+}
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* === 滚动行为优化 === */
+html {
+    scroll-behavior: smooth;
+    /* 隐藏滚动条 — 保留滚动功能，仅视觉隐藏 */
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+html::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+}
+
+/* === 主题切换过渡 === */
+html, html * {
+    transition: 
+        background-color var(--transition-smooth),
+        color var(--transition-smooth),
+        border-color var(--transition-smooth),
+        box-shadow var(--transition-smooth);
+}
+
+/* 排除不需要过渡的元素 */
+.modal-overlay,
+.modal-content,
+.fab-container,
+.toast-container,
+.loading::after {
+    transition: none !important;
+}
+.fab-actions,
+.fab-action-btn,
+.fab-main,
+.fab-main-icon {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* === 性能优化：全局动画控制 === */
+body.animations-paused *,
+body.animations-paused *::before,
+body.animations-paused *::after {
+    animation-play-state: paused !important;
+}
+
+/* 离屏动效容器暂停 - 替代逐元素 style 设置 */
+.effect-offscreen,
+.effect-offscreen *,
+.effect-offscreen *::before,
+.effect-offscreen *::after {
+    animation-play-state: paused !important;
+}
+
+body {
+    font-family: var(--font-family);
+    font-size: var(--type-base);
+    line-height: var(--line-height-base);
+    color: var(--text-primary);
+    background: linear-gradient(165deg, var(--bg-gradient-start) 0%, var(--bg-gradient-mid1) 20%, var(--bg-gradient-mid2) 40%, var(--bg-gradient-mid1) 60%, var(--bg-gradient-end) 80%, var(--bg-gradient-start) 100%);
+    min-height: 100vh;
+    padding: 0;
+    margin: 0;
+    overflow-x: hidden;
+    background-attachment: fixed;
+    /* 隐藏滚动条 — 保留滚动功能，仅视觉隐藏 */
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+body::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+}
+
+#main-container {
+    width: 100%;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 40px var(--space-6);
+    box-sizing: border-box;
+}
+
+body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    /* 重新设计的光影：多层漫反射效果 */
+    background: 
+        radial-gradient(circle at 10% 10%, rgba(255, 255, 255, 0.8) 0%, transparent 50%),
+        radial-gradient(circle at 90% 20%, rgba(var(--primary-rgb), 0.05) 0%, transparent 40%),
+        radial-gradient(ellipse at 50% 100%, rgba(255, 255, 255, 0.5) 0%, transparent 60%),
+        radial-gradient(circle at 80% 80%, rgba(var(--pale-rgb), 0.1) 0%, transparent 40%);
+    opacity: 0.8;
+    pointer-events: none;
+    z-index: -1;
+}
+
+/* 黑暗模式下重新设计高级感光影 - 增加亮度与对比度 */
+html.dark body::before {
+    display: block;
+    background: 
+        radial-gradient(circle at 20% 25%, rgba(var(--primary-rgb), 0.15) 0%, transparent 60%),
+        radial-gradient(circle at 80% 15%, rgba(var(--primary-rgb), 0.05) 0%, transparent 40%),
+        radial-gradient(ellipse at 50% 85%, rgba(var(--deep-rgb), 0.2) 0%, transparent 70%);
+    opacity: 0.8;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    body::before {
+        animation: bgFloat 20s ease-in-out infinite;
+    }
+}
+
+@keyframes bgFloat {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 0.6; }
+}
+
+body.motion-reduced * { animation: none !important; transition: none !important; }
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+
+    .breathePink, .breatheSky, .heartbeat {
+        animation: none !important;
+    }
+
+    .empty-state::before {
+        animation: none !important;
+        opacity: 0 !important;
+    }
+
+    .onboarding-highlight {
+        animation: none !important;
+        box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.7) !important;
+    }
+
+    .fadeInUp, .slideUp, .fadeIn {
+        animation: none !important;
+        opacity: 1 !important;
+        transform: none !important;
+    }
+
+    .loading-spinner::before {
+        animation: none !important;
+        border-color: rgba(var(--primary-rgb), 0.3) !important;
+        border-top-color: var(--bamboo-primary) !important;
+    }
+
+    .chart-canvas {
+        transition: none !important;
+    }
+
+    .fab-main, .fab-action-btn {
+        transition: none !important;
+    }
+
+    .modal-overlay, .modal-content {
+        transition: none !important;
+    }
+}
+
+body.loading .container { opacity: 0; }
+.container { transition: opacity 0.3s ease; }
+
+@media print {
+    body { background: #FFFFFF !important; }
+    .fab-container { display: none !important; }
+    .period-content.collapsed { max-height: none !important; opacity: 1 !important; display: block !important; }
+    .font-row[style*="display: none"] { display: table-row !important; }
+}
+
+.container {
+    width: 95%;
+    max-width: var(--content-max-width);
+    margin: 0 auto;
+    background: var(--card-glass);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    will-change: transform; /* 开启显卡加速 */
+    border-radius: var(--radius-3xl);
+    padding: var(--space-7) var(--space-6);
+    box-shadow: var(--shadow);
+    position: relative;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-6);
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    min-height: 24px;
+}
+.header-left {
+    flex: 1 1 200px;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+}
+.header-right {
+    flex: 1 1 200px;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--space-3);
+}
+h1 {
+    font-size: var(--type-2xl);
+    color: var(--bamboo-light);
+    font-weight: 700;
+    letter-spacing: 0.05em;
+}
+.subtitle {
+    font-size: var(--type-xs);
+    color: var(--text-secondary);
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-top: var(--space-1);
+}
+
+/* ============================================================
+   RESPONSIVE — Canonical breakpoints
+   NOTE: @media conditions use literal pixel values (CSS does not
+   permit custom properties inside @media conditions).
+   Keep these in sync with variables.css:
+     ≤480px  → mobile
+     ≤768px  → tablet / narrow Obsidian sidebar
+     ≤1024px → small desktop
+     ≥1025px → wide desktop
+     ≤360px  → tiny phone (rare, emergency only)
+   ============================================================ */
+
+/* Touch targets — global minimum for ALL sizes (WCAG 2.5.8).
+   Mobile rule below bumps to comfortable 48px on small screens. */
+button,
+[role="button"],
+.fab-action-btn,
+.quick-nav-btn,
+.goal-row-main,
+.bamboo-card,
+.todo-item-action,
+.section-title,
+.date-nav-btn,
+.edit-btn,
+.undo-redo-btn,
+.view-toggle-btn,
+.history-close,
+.modal-close,
+.tooltip-close {
+    min-height: var(--touch-target);
+    min-width: var(--touch-target);
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* === MOBILE (≤480px): phone in portrait, tiny Obsidian sidebar === */
+@media (max-width: 480px) {
+    /* Larger comfortable touch targets on mobile */
+    button,
+    [role="button"],
+    .fab-action-btn {
+        min-height: var(--touch-comfortable);
+        min-width: var(--touch-comfortable);
+    }
+
+    /* Minimum card heights for reliable tap */
+    .bamboo-card {
+        min-height: 88px;
+    }
+
+    /* Body & container: tighter padding, smaller radii */
+    body {
+        padding: var(--space-4) var(--space-3);
+    }
+
+    .container {
+        padding: var(--fluid-gutter);
+        border-radius: var(--radius-2xl);
+        width: 100%;
+        max-width: 100%;
+    }
+
+    /* Header: stacked on mobile instead of inline */
+    .header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--fluid-stack);
+    }
+    .header-left {
+        justify-content: flex-start;
+        flex: 0 0 auto;
+    }
+    .header-right {
+        justify-content: flex-start;
+        flex: 0 0 auto;
+    }
+
+    /* Date nav: compact gap + sizing */
+    .date-nav-center {
+        gap: 6px;
+    }
+    .date-display-main {
+        font-size: var(--type-md);
+    }
+}
+
+/* === TABLET / NARROW SIDEBAR (≤768px)
+   Rules here ALSO apply to ≤480px due to cascade. */
+@media (max-width: 768px) {
+    .bamboo-card-header {
+        padding: var(--space-4) var(--space-5);
+    }
+
+    /* Ensure text doesn't overflow card edges */
+    .ticket-body,
+    .goal-row-main,
+    .timeline-entry {
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+}
+
+
+/* === WIDE DESKTOP (≥1025px): ensure comfortable reading width === */
+@media (min-width: 1025px) {
+    .container {
+        max-width: var(--content-max-width-wide);
+    }
+}
+
+/* === TINY VIEWPORT (≤360px): Obsidian 窄侧边栏 / 最小手机。
+   紧急压缩层。避免视觉破坏 — 它应该只是 ≤480px 设计的紧凑版本。
+   目标：ZERO 水平滚动。 */
+@media (max-width: 360px) {
+    body {
+        padding: var(--space-2) var(--space-1);
+    }
+
+    .container {
+        padding: var(--space-3) var(--space-2);
+        border-radius: var(--radius-xl);
+        max-width: 100%;
+        width: 100%;
+    }
+
+    /* 头部：紧凑堆叠 */
+    .header {
+        gap: var(--space-2);
+    }
+
+    /* 票根时间数值：再紧凑一点 */
+    .ticket-time-value {
+        font-size: var(--type-lg);
+    }
+
+    /* 日期导航：更小的间距 */
+    .date-nav {
+        gap: var(--space-1);
+    }
+    .date-nav-btn {
+        padding: 6px;
+        min-height: var(--touch-comfortable);
+    }
+    .date-display-main {
+        font-size: var(--type-sm);
+    }
+
+    /* 段标题：更紧凑 */
+    .section-title {
+        font-size: var(--type-sm);
+        padding: 6px 10px;
+        min-height: var(--touch-comfortable);
+    }
+}
+
+/* 防止iOS上的高亮 */
+* {
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* === 装饰性 Emoji 隐藏于屏幕阅读器 === */
+.emoji-decorative {
+    font-style: normal;
+}
+
+.emoji-decorative::before {
+    content: attr(data-emoji);
+}
+
+[aria-label*="查看成就"] .emoji-decorative::before { 
+    content: '';
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9H4.5a2.5 2.5 0 0 1 0-5H6'/%3E%3Cpath d='M18 9h1.5a2.5 2.5 0 0 0 0-5H18'/%3E%3Cpath d='M4 22h16'/%3E%3Cpath d='M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22'/%3E%3Cpath d='M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22'/%3E%3Cpath d='M8 2H16'/%3E%3Cpath d='M18 2H16'/%3E%3Cpath d='M6 2H8'/%3E%3C/svg%3E");
+    background-size: contain;
+    background-repeat: no-repeat;
+    vertical-align: middle;
+}
+
+/* ========== Focus 可见性系统 ========== */
+:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+    transition: var(--focus-transition);
+}
+
+button:focus-visible,
+[role="button"]:focus-visible,
+a:focus-visible,
+select:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+}
+
+/* ========== 触控区域保障 ========== */
+/* NOTE: Global touch target enforcement has moved up to the canonical
+   responsive section. This spot left empty intentionally — previously
+   there was a duplicate `prefers-reduced-motion` block here that we
+   removed because the first instance already covers the same rules. */
+
+/* ========== 全屏模式已移除，宽度由 --content-max-width 统一管理 ========== */
+
+/* 宽度调节过渡 — 仅在用户操作时添加，避免初始化闪烁 */
+.container.display-transition {
+    transition: max-width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}

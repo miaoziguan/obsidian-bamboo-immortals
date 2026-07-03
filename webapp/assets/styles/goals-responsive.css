@@ -1,0 +1,227 @@
+/* ================================================================
+   目标地图自适应匹配系统 (Goal Map Adaptive Layout)
+   基于 Obsidian iframe 容器宽度，覆盖以下场景：
+   - 窄侧边栏 / 移动端竖屏：≤ 480px
+   - 中等侧边栏 / 平板：481px ~ 700px
+   - 宽侧边栏 / 桌面端：701px ~ 960px
+   - 全宽视图：> 960px
+   ================================================================ */
+
+/* ===== 窄屏模式 (rw-460)：移动端 / 极窄侧边栏 ===== */
+.rw-460 .goal-map-container {
+    padding: var(--space-2) 0;
+}
+.rw-460 .goal-list {
+    gap: 12px;
+}
+.rw-460 .goal-row + .goal-row {
+    margin-top: 12px;
+}
+.rw-460 .goal-row {
+    border-radius: 12px;
+}
+.rw-460 .goal-row-main {
+    padding: var(--space-2) var(--space-3);
+}
+.rw-460 .goal-row-top-line {
+    gap: 6px;
+    margin-bottom: 6px;
+    flex-wrap: wrap;
+}
+.rw-460 .goal-row-header {
+    padding: 4px 8px;
+    border-radius: 8px;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+.rw-460 .goal-row-title {
+    font-size: var(--type-sm);
+    padding: 0 4px;
+    height: 24px;
+}
+.rw-460 .goal-row-category {
+    font-size: var(--type-mini);
+    padding: 0 2px;
+    height: 24px;
+}
+.rw-460 .goal-row-toggle {
+    padding: 0 4px;
+    height: 24px;
+    margin-left: 2px;
+}
+.rw-460 .goal-row-actions {
+    gap: 4px;
+    opacity: 1;
+    flex-shrink: 0;
+    margin-left: auto;
+}
+.rw-460 .goal-row-action-btn {
+    padding: 8px;
+    border-radius: 8px;
+    min-width: 36px;
+    min-height: 36px;
+}
+.rw-460 .goal-row-meta-row {
+    gap: 4px;
+    margin-bottom: 6px;
+}
+.rw-460 .goal-row-meta {
+    font-size: var(--type-mini);
+}
+.rw-460 .goal-date-range {
+    font-size: var(--type-mini);
+}
+.rw-460 .goal-row-percent {
+    font-size: var(--type-micro);
+}
+.rw-460 .goal-row-bar {
+    height: 4px;
+    border-radius: 3px;
+}
+.rw-460 .goal-row-bar-fill {
+    border-radius: 3px;
+}
+.rw-460 .goal-item-list {
+    padding: 0 var(--space-2) var(--space-2);
+}
+.rw-460 .goal-item-list:not(.collapsed) {
+    border-radius: 0 0 12px 12px;
+}
+.rw-460 .goal-item-entry {
+    padding: 4px 0;
+}
+.rw-460 .goal-item-row {
+    gap: 4px;
+}
+.rw-460 .goal-item-meta {
+    gap: 4px;
+}
+.rw-460 .goal-item-name {
+    font-size: var(--type-micro);
+    padding: 2px 4px;
+    min-width: 0;
+}
+.rw-460 .goal-item-status {
+    font-size: var(--type-mini);
+    flex-shrink: 0;
+}
+.rw-460 .goal-item-value {
+    font-size: var(--type-mini);
+    gap: 1px;
+    margin: 0 2px;
+}
+.rw-460 .goal-item-current-value,
+.rw-460 .goal-item-target-value {
+    font-size: var(--type-mini);
+}
+.rw-460 .goal-item-date {
+    display: none;
+}
+.rw-460 .goal-item-daily {
+    font-size: var(--type-mini);
+}
+.rw-460 .goal-item-progress {
+    gap: 3px;
+}
+.rw-460 .goal-item-bar {
+    height: 4px;
+}
+.rw-460 .goal-item-percent {
+    font-size: var(--type-mini);
+    min-width: 24px;
+}
+.rw-460 .goal-item-delete-btn {
+    position: absolute;
+    right: 0;
+    top: 4px;
+    padding: 4px;
+    min-width: 28px;
+    min-height: 28px;
+    opacity: 0.7;
+}
+.rw-460 .goal-list-footer {
+    gap: 8px;
+    margin-top: 8px;
+}
+.rw-460 .goal-inline-add-btn {
+    padding: 12px;
+    font-size: var(--type-xs);
+    border-radius: 12px;
+}
+.rw-460 .goal-view-archived-btn {
+    padding: 6px 12px;
+    font-size: var(--type-mini);
+}
+.rw-460 .completed-items-toggle {
+    font-size: var(--type-mini);
+    padding: 3px 6px;
+}
+.rw-460 .goal-inline-edit-input {
+    font-size: var(--type-xs) !important;
+    min-width: 60px !important;
+    max-width: 160px !important;
+}
+.rw-460 .empty-state-card {
+    padding: var(--space-5) var(--space-3);
+}
+.rw-460 .empty-state-title {
+    font-size: var(--type-base);
+}
+.rw-460 .empty-state-desc {
+    font-size: var(--type-xs);
+}
+
+
+/* ===== 触控设备优化 (hover: none) ===== */
+@media (hover: none) and (pointer: coarse) {
+    /* 操作按钮始终可见，不依赖 hover */
+    .goal-row-actions {
+        opacity: 1;
+    }
+    .goal-row-action-btn {
+        min-width: var(--touch-min);
+        min-height: var(--touch-min);
+    }
+    .goal-item-delete-btn {
+        opacity: 0.7;
+        min-width: 32px;
+        min-height: 32px;
+    }
+
+    /* 增大可点击区域 */
+    .goal-row-header {
+        min-height: var(--touch-min);
+    }
+    .goal-item-entry {
+        min-height: var(--touch-min);
+        padding: 8px 0;
+    }
+    [data-inline-edit] {
+        padding: 4px 6px;
+        min-height: 24px;
+    }
+    .goal-row-toggle {
+        min-width: var(--touch-min);
+        min-height: var(--touch-min);
+    }
+
+    /* 已完成切换按钮 */
+    .completed-items-toggle {
+        min-height: 36px;
+        padding: 6px 10px;
+    }
+}
+
+/* ===== 高对比度 / 减少动画偏好 ===== */
+@media (prefers-reduced-motion: reduce) {
+    .goal-row,
+    .goal-row-header,
+    .goal-item-list,
+    .goal-row-bar-fill,
+    .goal-item-bar-fill,
+    .goal-item-entry,
+    .goal-item-row {
+        transition: none !important;
+        animation: none !important;
+    }
+}

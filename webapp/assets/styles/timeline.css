@@ -1,0 +1,2246 @@
+/* ========== 今日活动时间线 ========== */
+.timeline-wrapper { position: relative; width: 100%; }
+.timeline-stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-3);
+    margin-bottom: calc(var(--space-6) * var(--section-gap-scale));
+}
+.timeline-stat {
+    background: var(--card-bg);
+    backdrop-filter: blur(10px);
+    border-radius: var(--radius-lg);
+    padding: var(--space-4) var(--space-3);
+    text-align: center;
+    border: 1px solid var(--border-light);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    box-shadow: var(--shadow-surface);
+}
+.timeline-stat::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--bamboo-primary), var(--bamboo-light));
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+.timeline-stat.heartbeat::before {
+    background: linear-gradient(90deg, var(--cinnabar), rgba(var(--danger-bright-rgb), 0.7));
+    opacity: 0;
+}
+.timeline-stat:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-card);
+}
+.timeline-stat-label {
+    font-size: var(--type-xs);
+    color: var(--text-secondary);
+    margin-bottom: var(--space-1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-1);
+}
+.timeline-stat-value {
+    font-size: var(--type-large);
+    font-weight: 700;
+    color: var(--bamboo-deep);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .timeline-stat.heartbeat {
+        animation: heartbeatPink 2.4s ease-in-out infinite;
+    }
+}
+
+@keyframes heartbeatPink {
+    0% { transform: scale(1); background: linear-gradient(180deg, var(--card-bg) 0%, rgba(var(--danger-rgb), 0.1) 100%); }
+    15% { transform: scale(1.04); background: linear-gradient(180deg, var(--card-bg) 0%, rgba(var(--danger-rgb), 0.25) 100%); }
+    30% { transform: scale(1); background: linear-gradient(180deg, var(--card-bg) 0%, rgba(var(--danger-rgb), 0.1) 100%); }
+    45% { transform: scale(1.02); background: linear-gradient(180deg, var(--card-bg) 0%, rgba(var(--danger-rgb), 0.2) 100%); }
+    60% { transform: scale(1); background: linear-gradient(180deg, var(--card-bg) 0%, rgba(var(--danger-rgb), 0.1) 100%); }
+    100% { transform: scale(1); background: linear-gradient(180deg, var(--card-bg) 0%, rgba(var(--danger-rgb), 0.1) 100%); }
+}
+
+/* ========== 设计师票根风格 ========== */
+.designer-ticket {
+    display: flex;
+    align-items: stretch;
+    position: relative;
+    margin-bottom: calc(var(--space-6) * var(--section-gap-scale));
+    background: rgba(var(--green-pale-rgb), 0.08);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-radius: 20px;
+    overflow: hidden;
+    max-width: 100%;
+    width: 100%;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 
+        0 8px 32px rgba(var(--primary-rgb),0.18),
+        0 2px 6px rgba(var(--primary-rgb),0.08),
+        inset 0 1px 0 rgba(255, 255, 255, 0.35),
+        inset 0 -1px 0 rgba(var(--bamboo-deep-rgb),0.06);
+    /* 暗黑模式由高级克制光效覆盖 */
+    -webkit-mask-image: 
+        radial-gradient(circle 12px at 68% 0, transparent 100%, black 100%),
+        radial-gradient(circle 12px at 68% 100%, transparent 100%, black 100%);
+    -webkit-mask-composite: source-in;
+    mask-image: 
+        radial-gradient(circle 12px at 68% 0, transparent 100%, black 100%),
+        radial-gradient(circle 12px at 68% 100%, transparent 100%, black 100%);
+    mask-composite: intersect;
+}
+
+.designer-ticket::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+        radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.12), transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(var(--green-pale-rgb), 0.15), transparent 50%),
+        repeating-linear-gradient(
+            45deg,
+            transparent,
+            transparent 30px,
+            rgba(255, 255, 255, 0.02) 30px,
+            rgba(255, 255, 255, 0.02) 60px
+        );
+    pointer-events: none;
+    z-index: 1;
+}
+
+.designer-ticket::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    pointer-events: none;
+    z-index: 2;
+}
+
+.ticket-main {
+    flex: 0 0 68%;
+    padding: 24px 16px 12px;
+    position: relative;
+    z-index: 3;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 8px;
+    min-width: min(90px, 25vw);
+}
+
+.ticket-main::before {
+    content: '';
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    right: 12px;
+    bottom: 8px;
+    border-radius: 14px;
+    background: 
+        linear-gradient(135deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.06) 50%, rgba(255, 255, 255, 0.12) 100%),
+        linear-gradient(45deg, rgba(var(--bamboo-deep-rgb),0.08) 0%, transparent 60%);
+    box-shadow: 
+        0 4px 20px rgba(var(--bamboo-deep-rgb),0.16),
+        inset 0 2px 0 rgba(255, 255, 255, 0.35),
+        inset 0 -2px 0 rgba(var(--bamboo-deep-rgb),0.1),
+        inset 2px 0 0 rgba(255, 255, 255, 0.15),
+        inset -2px 0 0 rgba(255, 255, 255, 0.15);
+    pointer-events: none;
+    z-index: 1;
+}
+
+.ticket-main::after {
+    content: '';
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    right: 12px;
+    bottom: 8px;
+    border-radius: 14px;
+    background: 
+        repeating-linear-gradient(
+            90deg,
+            transparent,
+            transparent 3px,
+            rgba(255, 255, 255, 0.03) 3px,
+            rgba(255, 255, 255, 0.03) 6px
+        );
+    pointer-events: none;
+    z-index: 1;
+}
+
+.ticket-stub {
+    flex: 0 0 32%;
+    background: rgba(var(--ticket-stub-bg-rgb),0.18);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-left: 2px dashed rgba(var(--bamboo-deep-rgb), 0.25);
+    position: relative;
+    z-index: 10;
+    overflow: hidden;
+    perspective: 800px;
+    box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.2);
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+}
+
+/* 悬停高亮仅加在真正可点击的区域 */
+.ticket-stub-title-box:hover {
+    background:
+        linear-gradient(135deg, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0.12) 50%, rgba(255, 255, 255, 0.18) 100%),
+        linear-gradient(45deg, rgba(var(--bamboo-deep-rgb),0.16) 0%, transparent 60%);
+    box-shadow:
+        0 6px 22px rgba(var(--bamboo-deep-rgb),0.22),
+        inset 0 2px 0 rgba(255, 255, 255, 0.55),
+        inset 0 -2px 0 rgba(var(--bamboo-deep-rgb),0.15),
+        inset 2px 0 0 rgba(255, 255, 255, 0.25),
+        inset -2px 0 0 rgba(255, 255, 255, 0.25);
+}
+
+.ticket-stub.playing {
+    background: rgba(var(--ticket-stub-bg-rgb),0.35);
+    box-shadow: 
+        inset 1px 0 0 rgba(255, 255, 255, 0.2),
+        0 0 0 2px rgba(var(--primary-rgb), 0.5),
+        0 4px 25px rgba(var(--primary-rgb), 0.35);
+}
+
+/* ========== 票根 3D 翻转 ========== */
+.ticket-flip-container {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    transform-style: preserve-3d;
+    transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ticket-flip-container.flipped {
+    transform: rotateY(180deg);
+}
+
+.ticket-flip-front,
+.ticket-flip-back {
+    position: absolute;
+    inset: 0;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+}
+
+.ticket-flip-back {
+    transform: rotateY(180deg);
+}
+
+/* ========== 翻转按钮（ticket-stub 右上角） ========== */
+.flip-stub-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    color: rgba(var(--bamboo-deep-rgb), 0.25);
+    opacity: 0;
+    transition: opacity 0.2s ease, color 0.15s ease, background 0.15s ease;
+    cursor: pointer;
+    z-index: 20;
+}
+
+.ticket-stub:hover .flip-stub-btn,
+.ticket-flip-container.flipped ~ .flip-stub-btn {
+    opacity: 0.55;
+}
+
+.flip-stub-btn:hover {
+    opacity: 1;
+    color: var(--bamboo-primary);
+    background: rgba(var(--bamboo-deep-rgb), 0.08);
+}
+
+/* 移动端始终可见 */
+@media (hover: none) and (pointer: coarse) {
+    .flip-stub-btn {
+        opacity: 0.6;
+    }
+}
+
+/* ========== 背面数据面板 ========== */
+.stub-back-content {
+    pointer-events: auto;
+    justify-content: center;
+    gap: 10px;
+    padding: 14px 8px 6px;
+}
+
+.stub-back-content > * {
+    pointer-events: auto;
+}
+
+.stub-back-title-box {
+    pointer-events: auto;
+    background: 
+        linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.08) 50%, rgba(255, 255, 255, 0.15) 100%),
+        linear-gradient(45deg, rgba(var(--bamboo-deep-rgb),0.12) 0%, transparent 60%);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-radius: 12px;
+    padding: 8px 8px;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    width: min(140px, 40vw);
+    box-shadow: 
+        0 4px 16px rgba(var(--bamboo-deep-rgb),0.15),
+        inset 0 2px 0 rgba(255, 255, 255, 0.5),
+        inset 0 -2px 0 rgba(var(--bamboo-deep-rgb),0.12),
+        inset 2px 0 0 rgba(255, 255, 255, 0.2),
+        inset -2px 0 0 rgba(255, 255, 255, 0.2);
+}
+
+.stub-back-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.stub-back-left {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    flex-shrink: 0;
+}
+
+.stub-back-ring {
+    --ring-pct: 0;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: conic-gradient(
+        var(--bamboo-primary) 0deg,
+        var(--bamboo-primary) calc(var(--ring-pct) * 3.6deg),
+        rgba(var(--bamboo-deep-rgb), 0.08) calc(var(--ring-pct) * 3.6deg)
+    );
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    mask-image: radial-gradient(circle, transparent 58%, black 60%);
+    -webkit-mask-image: radial-gradient(circle, transparent 58%, black 60%);
+}
+
+.stub-back-ring::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.08);
+}
+
+.stub-back-ring-text {
+    font-size: var(--type-mini);
+    font-weight: 700;
+    color: var(--bamboo-primary);
+    line-height: 1;
+    z-index: 1;
+}
+
+.stub-back-caption {
+    font-size: var(--type-mini);
+    color: rgba(var(--bamboo-deep-rgb), 0.55);
+    font-weight: 500;
+    letter-spacing: 1px;
+}
+
+.stub-back-divider {
+    width: 1px;
+    height: 42px;
+    background: rgba(var(--bamboo-deep-rgb), 0.08);
+    flex-shrink: 0;
+}
+
+.stub-back-right {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    flex: 1;
+    min-width: 0;
+}
+
+.stub-back-stat {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.stub-back-stat svg {
+    flex-shrink: 0;
+    color: rgba(var(--bamboo-deep-rgb), 0.45);
+}
+
+.stub-back-stat-value {
+    font-size: var(--type-mini);
+    font-weight: 500;
+    color: rgba(var(--bamboo-deep-rgb), 0.7);
+    line-height: 1.3;
+    letter-spacing: 0.2px;
+}
+
+.ticket-stub::before,
+.ticket-stub::after {
+    display: none;
+}
+
+.ticket-notch {
+    display: none;
+}
+
+.ticket-body {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+}
+
+.ticket-time-block {
+    text-align: center;
+    flex: 1;
+}
+
+.ticket-time-name {
+    font-size: var(--type-mini);
+    color: rgba(var(--bamboo-deep-rgb), 0.6);
+    font-weight: 500;
+    margin-bottom: 5px;
+    letter-spacing: 1px;
+}
+
+.ticket-time-value {
+    font-size: var(--type-display);
+    font-weight: 800;
+    color: var(--bamboo-deep);
+    line-height: 1;
+}
+
+/* ========== 时段活跃度点阵 ========== */
+.ticket-period-dots {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0 8px;
+}
+.ticket-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: rgba(var(--bamboo-deep-rgb), 0.08);
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.12);
+    transition: background 0.35s ease, box-shadow 0.35s ease, transform 0.25s ease;
+    position: relative;
+}
+.ticket-dot::after {
+    content: attr(data-tip);
+    position: absolute;
+    left: 50%;
+    bottom: calc(100% + 6px);
+    transform: translateX(-50%) translateY(2px);
+    white-space: nowrap;
+    font-size: var(--type-mini);
+    font-weight: 500;
+    color: rgba(var(--bamboo-deep-rgb), 0.85);
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    padding: 3px 8px;
+    border-radius: 6px;
+    border: 1px solid rgba(var(--bamboo-deep-rgb), 0.1);
+    box-shadow: 0 2px 8px rgba(var(--bamboo-deep-rgb), 0.1);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    z-index: 20;
+}
+.ticket-dot:hover::after {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+.ticket-dot.has-data {
+    background: var(--bamboo-primary);
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.08), 0 0 3px rgba(var(--primary-rgb), 0.25);
+}
+.ticket-dot.current {
+    background: var(--bamboo-light);
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.08), 0 0 4px rgba(var(--primary-rgb), 0.3);
+}
+@media (prefers-reduced-motion: no-preference) {
+    .ticket-dot.current {
+        animation: dotBreath 3s ease-in-out infinite;
+    }
+}
+@keyframes dotBreath {
+    0%, 100% { transform: scale(1); box-shadow: inset 0 1px 2px rgba(0,0,0,0.08), 0 0 3px rgba(var(--primary-rgb), 0.25); }
+    50%      { transform: scale(1.4); box-shadow: inset 0 1px 2px rgba(0,0,0,0.08), 0 0 6px rgba(var(--primary-rgb), 0.4), 0 0 8px rgba(var(--primary-rgb), 0.15); }
+}
+
+.ticket-highlight {
+    text-align: center;
+    flex: 0 0 auto;
+    background: 
+        linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.05) 100%),
+        linear-gradient(45deg, rgba(var(--bamboo-deep-rgb),0.06) 0%, transparent 60%);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-radius: 14px;
+    padding: 10px 20px 10px;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    height: 56px;
+    width: min(110px, 30vw);
+    box-shadow: 
+        0 4px 16px rgba(var(--bamboo-deep-rgb),0.15),
+        inset 0 2px 0 rgba(255, 255, 255, 0.3),
+        inset 0 -2px 0 rgba(var(--bamboo-deep-rgb),0.08);
+    animation: heartbeat 2s ease-in-out infinite;
+    position: relative;
+    overflow: hidden;
+}
+
+.ticket-highlight::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 50%;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.15) 0%, transparent 100%);
+    border-radius: 14px 14px 0 0;
+    pointer-events: none;
+}
+
+@keyframes heartbeat {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 
+            0 4px 16px rgba(var(--bamboo-deep-rgb),0.15),
+            inset 0 2px 0 rgba(255, 255, 255, 0.3),
+            inset 0 -2px 0 rgba(var(--bamboo-deep-rgb),0.08);
+    }
+    15% {
+        transform: scale(1.05);
+        box-shadow: 
+            0 8px 24px rgba(var(--bamboo-deep-rgb),0.25),
+            inset 0 2px 0 rgba(255, 255, 255, 0.4),
+            inset 0 -2px 0 rgba(var(--bamboo-deep-rgb),0.1);
+    }
+    30% {
+        transform: scale(1);
+        box-shadow: 
+            0 4px 16px rgba(var(--bamboo-deep-rgb),0.15),
+            inset 0 2px 0 rgba(255, 255, 255, 0.3),
+            inset 0 -2px 0 rgba(var(--bamboo-deep-rgb),0.08);
+    }
+    45% {
+        transform: scale(1.03);
+        box-shadow: 
+            0 6px 20px rgba(var(--bamboo-deep-rgb),0.2),
+            inset 0 2px 0 rgba(255, 255, 255, 0.35),
+            inset 0 -2px 0 rgba(var(--bamboo-deep-rgb),0.09);
+    }
+    60% {
+        transform: scale(1);
+        box-shadow: 
+            0 4px 16px rgba(var(--bamboo-deep-rgb),0.15),
+            inset 0 2px 0 rgba(255, 255, 255, 0.3),
+            inset 0 -2px 0 rgba(var(--bamboo-deep-rgb),0.08);
+    }
+}
+
+.ticket-highlight-value {
+    font-size: var(--type-heading);
+    font-weight: 900;
+    color: var(--bamboo-primary);
+    line-height: 1;
+    margin-bottom: 3px;
+}
+
+.ticket-highlight-label {
+    font-size: var(--type-mini);
+    color: rgba(var(--bamboo-deep-rgb), 0.8);
+    letter-spacing: 2px;
+}
+
+.ticket-pattern {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: min(80px, 22vw);
+    height: 100%;
+    background: repeating-linear-gradient(
+        45deg,
+        transparent,
+        transparent 10px,
+        rgba(255, 255, 255, 0.02) 10px,
+        rgba(255, 255, 255, 0.02) 20px
+    );
+    pointer-events: none;
+}
+
+.ticket-stub-content {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 8px;
+    padding: 20px 8px 8px;
+    position: relative;
+    z-index: 2;
+    pointer-events: none;
+}
+
+.ticket-stub-content > * {
+    pointer-events: none;
+}
+
+.ticket-stub-title-box {
+    pointer-events: auto;
+    cursor: pointer;
+    background: 
+        linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.08) 50%, rgba(255, 255, 255, 0.15) 100%),
+        linear-gradient(45deg, rgba(var(--bamboo-deep-rgb),0.12) 0%, transparent 60%);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-radius: 12px;
+    padding: 14px 12px;
+    text-align: center;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    width: min(120px, 33vw);
+    min-height: 70px;
+    height: auto;
+    box-shadow: 
+        0 4px 16px rgba(var(--bamboo-deep-rgb),0.15),
+        inset 0 2px 0 rgba(255, 255, 255, 0.5),
+        inset 0 -2px 0 rgba(var(--bamboo-deep-rgb),0.12),
+        inset 2px 0 0 rgba(255, 255, 255, 0.2),
+        inset -2px 0 0 rgba(255, 255, 255, 0.2);
+    position: relative;
+    z-index: 100;
+    overflow: hidden;
+}
+
+.ticket-stub-title-box::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 60%;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.2) 0%, transparent 100%);
+    border-radius: 14px 14px 0 0;
+    pointer-events: none;
+}
+
+.ticket-stub-title-box::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+        repeating-linear-gradient(
+            90deg,
+            transparent,
+            transparent 2px,
+            rgba(255, 255, 255, 0.04) 2px,
+            rgba(255, 255, 255, 0.04) 4px
+        );
+    border-radius: 14px;
+    pointer-events: none;
+}
+
+.stub-title-cn {
+    font-size: var(--type-md);
+    font-weight: 800;
+    color: var(--bamboo-deep);
+    letter-spacing: 3px;
+    line-height: 1.3;
+}
+
+.stub-title-en {
+    font-size: var(--type-mini);
+    color: rgba(var(--bamboo-deep-rgb), 0.55);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-top: 4px;
+}
+
+.ticket-stub-date {
+    font-size: var(--type-mini);
+    color: rgba(var(--bamboo-deep-rgb), 0.55);
+    letter-spacing: 1px;
+    text-align: center;
+}
+
+.ticket-slogan {
+    font-size: var(--type-mini);
+    color: rgba(var(--bamboo-deep-rgb), 0.4);
+    letter-spacing: 4px;
+    text-align: center;
+    font-weight: 400;
+    flex-shrink: 0;
+}
+
+.ticket-decorations {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.ticket-decoration {
+    flex: 1;
+    height: 40px;
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.ticket-decoration.left {
+    justify-content: flex-start;
+    height: auto;
+    flex: 0 0 auto;
+    width: auto;
+}
+
+.ticket-decoration.right {
+    justify-content: flex-end;
+    height: auto;
+    flex: 0 0 auto;
+    width: auto;
+}
+
+.ticket-decoration::before,
+.ticket-decoration::after {
+    display: none;
+}
+
+.ticket-decoration.left::before,
+.ticket-decoration.right::before {
+    content: '';
+    display: block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgba(var(--bamboo-deep-rgb), 0.25);
+    position: relative;
+}
+
+.ticket-decoration.left::before {
+    margin-left: 20px;
+    box-shadow: 
+        16px 0 0 rgba(var(--bamboo-deep-rgb), 0.15),
+        32px 0 0 rgba(var(--bamboo-deep-rgb), 0.1);
+}
+
+.ticket-decoration.right::before {
+    margin-right: 20px;
+    box-shadow: 
+        -16px 0 0 rgba(var(--bamboo-deep-rgb), 0.15),
+        -32px 0 0 rgba(var(--bamboo-deep-rgb), 0.1);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .ticket-highlight-value {
+        animation: glowPulse 2s ease-in-out infinite;
+    }
+}
+
+@keyframes glowPulse {
+    0%, 100% {
+        text-shadow: 0 0 20px rgba(var(--primary-rgb), 0.4);
+    }
+    50% {
+        text-shadow: 0 0 30px rgba(var(--primary-rgb), 0.7), 0 0 50px rgba(var(--primary-rgb), 0.3);
+    }
+}
+
+
+/* ========== 星光竹林暗色模式 ========== */
+
+/* --- 文字色彩 --- */
+html.dark .ticket-time-name              { color: var(--ink-light); }
+html.dark .ticket-time-value             { color: var(--bamboo-pale-hover); }
+html.dark .ticket-highlight-label        { color: var(--ink-medium); }
+html.dark .ticket-highlight-value        { color: var(--bamboo-light); text-shadow: 0 0 12px rgba(var(--primary-rgb), 0.3); }
+html.dark .stub-title-cn                 { color: var(--bamboo-pale-hover); }
+html.dark .stub-title-en                 { color: var(--ink-light); }
+html.dark .ticket-slogan                 { color: var(--ink-light); }
+html.dark .ticket-stub-date              { color: var(--ink-light); }
+
+/* --- 票体背景与边框 --- */
+html.dark .ticket-highlight {
+    background: linear-gradient(135deg, rgba(var(--primary-rgb),0.1) 0%, rgba(var(--primary-rgb),0.04) 100%),
+                linear-gradient(45deg, rgba(var(--deep-rgb), ) 0%, transparent 60%);
+    border: 1px solid rgba(var(--primary-rgb), 0.2);
+    box-shadow: 0 0 20px rgba(var(--primary-rgb), 0.1);
+}
+html.dark .designer-ticket {
+    background: rgba(var(--primary-rgb), 0.06);
+    border-color: rgba(var(--primary-rgb), 0.12);
+}
+html.dark .ticket-main::before {
+    background: linear-gradient(135deg, rgba(var(--primary-rgb),0.12) 0%, rgba(var(--primary-rgb),0.04) 50%, rgba(var(--primary-rgb),0.08) 100%),
+                linear-gradient(45deg, rgba(var(--deep-rgb), ) 0%, transparent 60%);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3),
+                inset 0 2px 0 rgba(var(--primary-rgb),0.2),
+                inset 0 -2px 0 rgba(var(--primary-rgb), 0.2),
+                inset 2px 0 0 rgba(var(--primary-rgb),0.12),
+                inset -2px 0 0 rgba(var(--primary-rgb),0.12);
+}
+html.dark .ticket-stub {
+    background: rgba(var(--primary-rgb), 0.15);
+    border-left-color: rgba(var(--primary-rgb), 0.25);
+    box-shadow: inset 1px 0 0 rgba(var(--primary-rgb),0.15);
+}
+html.dark .ticket-stub-title-box {
+    background: linear-gradient(135deg, rgba(var(--primary-rgb),0.15) 0%, rgba(var(--primary-rgb),0.06) 50%, rgba(var(--primary-rgb),0.1) 100%),
+                linear-gradient(45deg, rgba(var(--deep-rgb), ) 0%, transparent 60%);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.2),
+                inset 0 2px 0 rgba(var(--primary-rgb),0.2),
+                inset 0 -2px 0 rgba(var(--primary-rgb), 0.15),
+                inset 2px 0 0 rgba(var(--primary-rgb),0.12),
+                inset -2px 0 0 rgba(var(--primary-rgb),0.12);
+}
+html.dark .ticket-stub-title-box:hover {
+    background: linear-gradient(135deg, rgba(var(--primary-rgb),0.22) 0%, rgba(var(--primary-rgb),0.1) 50%, rgba(var(--primary-rgb),0.16) 100%),
+                linear-gradient(45deg, rgba(var(--deep-rgb), ) 0%, transparent 60%);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.3),
+                inset 0 2px 0 rgba(var(--primary-rgb),0.3),
+                inset 0 -2px 0 rgba(var(--primary-rgb), 0.2),
+                inset 2px 0 0 rgba(var(--primary-rgb),0.2),
+                inset -2px 0 0 rgba(var(--primary-rgb),0.2);
+}
+
+/* --- 装饰 --- */
+html.dark .ticket-decoration.left::before {
+    background: rgba(var(--primary-rgb), 0.5);
+    box-shadow: 16px 0 0 rgba(var(--primary-rgb), 0.35), 32px 0 0 rgba(var(--primary-rgb), 0.2);
+}
+html.dark .ticket-decoration.right::before {
+    background: rgba(var(--primary-rgb), 0.5);
+    box-shadow: -16px 0 0 rgba(var(--primary-rgb), 0.35), -32px 0 0 rgba(var(--primary-rgb), 0.2);
+}
+
+/* --- 高级克制光效 --- */
+html.dark .designer-ticket {
+    -webkit-mask-image: radial-gradient(circle 12px at 68% 0, transparent 100%, black 100%),
+                        radial-gradient(circle 12px at 68% 100%, transparent 100%, black 100%);
+    -webkit-mask-composite: source-in;
+    mask-image: radial-gradient(circle 12px at 68% 0, transparent 100%, black 100%),
+                radial-gradient(circle 12px at 68% 100%, transparent 100%, black 100%);
+    mask-composite: intersect;
+    box-shadow: 0 0 50px rgba(var(--primary-rgb), 0.1),
+                0 0 100px rgba(var(--primary-rgb), 0.05),
+                0 8px 32px rgba(0, 0, 0, 0.4),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+}
+html.dark .ticket-main { min-height: 120px; }
+html.dark .designer-ticket::after {
+    background: linear-gradient(90deg, transparent 0%, rgba(var(--primary-rgb),0.05) 30%, rgba(var(--primary-rgb),0.1) 50%, rgba(var(--primary-rgb),0.05) 70%, transparent 100%);
+}
+html.dark .ticket-main::before {
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3),
+                inset 0 2px 0 rgba(var(--primary-rgb),0.2),
+                inset 0 -2px 0 rgba(var(--primary-rgb), 0.2),
+                inset 2px 0 0 rgba(var(--primary-rgb),0.12),
+                inset -2px 0 0 rgba(var(--primary-rgb),0.12),
+                0 0 40px rgba(var(--primary-rgb), 0.08) !important;
+}
+html.dark .ticket-stub {
+    box-shadow: inset 1px 0 0 rgba(var(--primary-rgb),0.15),
+                inset 0 0 25px rgba(var(--primary-rgb), 0.06) !important;
+}
+html.dark .ticket-stub-title-box {
+    box-shadow: 0 4px 16px rgba(0,0,0,0.2),
+                inset 0 2px 0 rgba(var(--primary-rgb),0.2),
+                inset 0 -2px 0 rgba(var(--primary-rgb), 0.15),
+                inset 2px 0 0 rgba(var(--primary-rgb),0.12),
+                inset -2px 0 0 rgba(var(--primary-rgb),0.12),
+                0 0 25px rgba(var(--primary-rgb), 0.08) !important;
+}
+html.dark .ticket-highlight {
+    box-shadow: 0 0 25px rgba(var(--primary-rgb), 0.15),
+                0 0 50px rgba(var(--primary-rgb), 0.08),
+                0 4px 16px rgba(0,0,0,0.2),
+                inset 0 2px 0 rgba(var(--primary-rgb),0.25),
+                inset 0 -2px 0 rgba(var(--primary-rgb), 0.15) !important;
+}
+
+/* --- 活跃度点阵 --- */
+html.dark .ticket-dot { background: rgba(var(--primary-rgb), 0.1); box-shadow: inset 0 1px 2px rgba(0,0,0,0.15); }
+html.dark .ticket-dot.has-data { background: rgb(var(--primary-rgb)); box-shadow: inset 0 1px 2px rgba(0,0,0,0.1), 0 0 4px rgba(var(--primary-rgb), 0.35); }
+html.dark .ticket-dot.current { background: var(--bamboo-light); box-shadow: inset 0 1px 2px rgba(0,0,0,0.1), 0 0 6px rgba(var(--primary-rgb), 0.45); }
+html.dark .ticket-dot::after {
+    color: var(--bamboo-pale-hover);
+    background: rgba(var(--surface-deep-rgb), 0.92);
+    border-color: rgba(var(--primary-rgb), 0.12);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+/* --- 翻转按钮 --- */
+html.dark .flip-stub-btn { color: rgba(var(--primary-rgb), 0.35); }
+html.dark .flip-stub-btn:hover { color: var(--bamboo-pale-highlight); background: rgba(var(--primary-rgb), 0.12); }
+
+/* --- 背面面板 --- */
+html.dark .stub-back-title-box {
+    background: linear-gradient(135deg, rgba(var(--primary-rgb),0.15) 0%, rgba(var(--primary-rgb),0.06) 50%, rgba(var(--primary-rgb),0.1) 100%),
+                linear-gradient(45deg, rgba(var(--deep-rgb), ) 0%, transparent 60%);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.2),
+                inset 0 2px 0 rgba(var(--primary-rgb),0.2),
+                inset 0 -2px 0 rgba(var(--primary-rgb), 0.15),
+                inset 2px 0 0 rgba(var(--primary-rgb),0.12),
+                inset -2px 0 0 rgba(var(--primary-rgb),0.12);
+}
+html.dark .stub-back-divider { background: rgba(var(--primary-rgb), 0.1); }
+html.dark .stub-back-stat svg { color: rgba(var(--primary-rgb), 0.4); }
+html.dark .stub-back-ring { background: conic-gradient(rgb(var(--primary-rgb)) 0deg, rgb(var(--primary-rgb)) calc(var(--ring-pct) * 3.6deg), rgba(var(--primary-rgb),0.08) calc(var(--ring-pct) * 3.6deg)); }
+html.dark .stub-back-ring-text { color: var(--bamboo-pale-highlight); }
+html.dark .stub-back-caption { color: rgba(var(--bamboo-pale-highlight-rgb), 0.5); }
+html.dark .stub-back-stat-value { color: rgba(var(--bamboo-pale-hover-rgb), 0.65); }
+
+
+/* ========== 暗色模式 — 动画 ========== */
+@keyframes glowSweep {
+    0%   { opacity: 0; transform: translateX(-100%); }
+    20%  { opacity: 1; }
+    80%  { opacity: 1; }
+    100% { opacity: 0; transform: translateX(100%); }
+}
+@keyframes subtleGlowPulse {
+    0%, 100% {
+        box-shadow: 0 0 15px rgba(var(--primary-rgb),0.08), 0 0 30px rgba(var(--primary-rgb),0.04),
+                    0 4px 16px rgba(0,0,0,0.2),
+                    inset 0 2px 0 rgba(255, 255, 255, 0.18),
+                    inset 0 -2px 0 rgba(var(--primary-rgb),0.1);
+    }
+    50% {
+        box-shadow: 0 0 25px rgba(var(--primary-rgb),0.15), 0 0 50px rgba(var(--primary-rgb),0.07),
+                    0 4px 16px rgba(0,0,0,0.2),
+                    inset 0 2px 0 rgba(255, 255, 255, 0.25),
+                    inset 0 -2px 0 rgba(var(--primary-rgb),0.15);
+    }
+}
+
+/* 减少动画偏好适配 */
+@media (prefers-reduced-motion: reduce) {
+    html.dark .designer-ticket::after,
+    html.dark .ticket-highlight {
+        animation: none;
+    }
+}
+
+.timeline-bamboo-path { position: relative; padding-left: 40px; }
+.timeline-bamboo-path::before {
+    content: '';
+    position: absolute;
+    left: 19px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: repeating-linear-gradient(to bottom, var(--bamboo-primary) 0px, var(--bamboo-primary) 8px, transparent 8px, transparent 16px);
+    opacity: 0.4;
+    border-radius: 2px;
+}
+
+.bamboo-node {
+    position: relative;
+    margin-bottom: var(--space-4);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .bamboo-node {
+        animation: fadeInUp 0.5s ease forwards;
+        opacity: 0;
+    }
+}
+
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.bamboo-node:nth-child(1) { animation-delay: 0.1s; }
+.bamboo-node:nth-child(2) { animation-delay: 0.2s; }
+.bamboo-node:nth-child(3) { animation-delay: 0.3s; }
+.bamboo-node:nth-child(4) { animation-delay: 0.4s; }
+.bamboo-node:nth-child(5) { animation-delay: 0.5s; }
+.bamboo-node::before {
+    content: '';
+    position: absolute;
+    left: -40px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 12px;
+    height: 12px;
+    background: linear-gradient(135deg, var(--bamboo-light), var(--bamboo-primary));
+    border-radius: 50%;
+    border: 2px solid var(--card-bg);
+    box-shadow: 0 0 0 2px var(--bamboo-pale), 0 2px 6px rgba(var(--primary-rgb), 0.3);
+    z-index: 2;
+    margin-left: 13px;
+}
+.bamboo-node.focus-now::before {
+    box-shadow: 0 0 0 2px var(--bamboo-primary), 0 0 16px rgba(var(--primary-rgb), 0.5);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .bamboo-node.focus-now::before {
+        animation: nodeGlow 2s ease-in-out infinite;
+    }
+}
+
+@keyframes nodeGlow {
+    0%, 100% { transform: translateY(-50%) scale(1); }
+    50% { transform: translateY(-50%) scale(1.1); }
+}
+
+.bamboo-card {
+    background: var(--card-bg);
+    backdrop-filter: blur(10px);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    transition: all 0.3s ease;
+    box-shadow: var(--shadow-surface);
+}
+.bamboo-card:hover { transform: translateX(8px); box-shadow: var(--shadow-card); }
+.bamboo-card-header {
+    padding: var(--space-3) var(--space-4);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    position: relative;
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border-bottom: 1px solid rgba(255, 255, 255, 0.28);
+    overflow: hidden;
+}
+
+.bamboo-card-header::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.18) 0%, transparent 55%);
+    pointer-events: none;
+}
+
+.bamboo-left {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.bamboo-info {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-height: 36px;
+}
+
+.bamboo-right {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    flex-shrink: 0;
+}
+
+.bamboo-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    filter: drop-shadow(0 1px 2px rgba(0,0,0,0.08));
+    flex-shrink: 0;
+    color: var(--bamboo-deep);
+}
+
+.bamboo-title {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.bamboo-name {
+    font-size: var(--type-base);
+    font-weight: 700;
+    color: var(--bamboo-deep);
+}
+
+.bamboo-time {
+    font-size: var(--type-xs);
+    color: var(--bamboo-dark);
+    opacity: 0.75;
+}
+
+.bamboo-count {
+    font-size: var(--type-xs);
+    font-weight: 600;
+    color: var(--bamboo-primary);
+    background: rgba(var(--primary-rgb), 0.06);
+    padding: 2px 8px;
+    border-radius: 10px;
+    border: 1px solid rgba(var(--primary-rgb), 0.15);
+    min-width: min(22px, 6vw);
+    text-align: center;
+    line-height: 1.2;
+    opacity: 0.7;
+    cursor: help;
+}
+
+.bamboo-count:hover {
+    opacity: 0.9;
+}
+
+.bamboo-count:empty,
+.bamboo-count[data-count="0"] {
+    opacity: 0.3;
+}
+
+.bamboo-chevron {
+    font-size: var(--type-micro);
+    color: var(--bamboo-primary);
+    transition: transform 0.3s ease;
+    opacity: 0.6;
+}
+
+.bamboo-chevron.collapsed {
+    transform: rotate(-90deg);
+}
+
+/* === 竹林色阶 — 九段时段系统渐变 === */
+/* 深夜（中绿）→ 黎明 → 正午（白绿）→ 傍晚 → 深夜（中绿）*/
+/* 每段纯色底色 + ::after 玻璃高光叠加，九段合为 V 形色阶 */
+
+/* 深夜 0-4h — 中绿，色阶最深 */
+.bamboo-card.lateNight .bamboo-card-header {
+  background: rgba(var(--primary-rgb), 0.24);
+  transition: background 0.4s ease-out;
+}
+/* 黎明 4-5.5h — 向白绿过渡 */
+.bamboo-card.dawn .bamboo-card-header {
+  background: rgba(var(--primary-rgb), 0.16);
+  transition: background 0.4s ease-out;
+}
+/* 清晨 5.5-7h — 轻绿 */
+.bamboo-card.earlyMorning .bamboo-card-header {
+  background: rgba(var(--primary-rgb), 0.10);
+  transition: background 0.4s ease-out;
+}
+/* 上午 7-12h — 微绿 */
+.bamboo-card.morning .bamboo-card-header {
+  background: rgba(var(--primary-rgb), 0.06);
+  transition: background 0.4s ease-out;
+}
+/* 中午 12-13h — 白绿，色阶最淡 */
+.bamboo-card.midday .bamboo-card-header {
+  background: rgba(var(--primary-rgb), 0.03);
+  transition: background 0.4s ease-out;
+}
+/* 下午 13-17h — 微绿回升 */
+.bamboo-card.afternoon .bamboo-card-header {
+  background: rgba(var(--primary-rgb), 0.06);
+  transition: background 0.4s ease-out;
+}
+/* 傍晚 17-18.5h — 向中绿过渡 */
+.bamboo-card.dusk .bamboo-card-header {
+  background: rgba(var(--primary-rgb), 0.13);
+  transition: background 0.4s ease-out;
+}
+/* 晚上 18.5-22h — 渐深 */
+.bamboo-card.evening .bamboo-card-header {
+  background: rgba(var(--primary-rgb), 0.18);
+  transition: background 0.4s ease-out;
+}
+/* 深夜 22-24h — 中绿，回归最深 */
+.bamboo-card.night .bamboo-card-header {
+  background: rgba(var(--primary-rgb), 0.24);
+  transition: background 0.4s ease-out;
+}
+
+/* === 悬停光晕（亮色模式）=== */
+.bamboo-card.lateNight .bamboo-card-header:hover {
+  background:
+    radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(var(--primary-rgb), 0.32) 0%, transparent 60%),
+    rgba(var(--primary-rgb), 0.24);
+}
+.bamboo-card.dawn .bamboo-card-header:hover {
+  background:
+    radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(var(--primary-rgb), 0.24) 0%, transparent 60%),
+    rgba(var(--primary-rgb), 0.16);
+}
+.bamboo-card.earlyMorning .bamboo-card-header:hover {
+  background:
+    radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(var(--primary-rgb), 0.18) 0%, transparent 60%),
+    rgba(var(--primary-rgb), 0.10);
+}
+.bamboo-card.morning .bamboo-card-header:hover {
+  background:
+    radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(var(--primary-rgb), 0.12) 0%, transparent 60%),
+    rgba(var(--primary-rgb), 0.06);
+}
+.bamboo-card.midday .bamboo-card-header:hover {
+  background:
+    radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(var(--primary-rgb), 0.08) 0%, transparent 60%),
+    rgba(var(--primary-rgb), 0.03);
+}
+.bamboo-card.afternoon .bamboo-card-header:hover {
+  background:
+    radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(var(--primary-rgb), 0.12) 0%, transparent 60%),
+    rgba(var(--primary-rgb), 0.06);
+}
+.bamboo-card.dusk .bamboo-card-header:hover {
+  background:
+    radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(var(--primary-rgb), 0.20) 0%, transparent 60%),
+    rgba(var(--primary-rgb), 0.13);
+}
+.bamboo-card.evening .bamboo-card-header:hover {
+  background:
+    radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(var(--primary-rgb), 0.26) 0%, transparent 60%),
+    rgba(var(--primary-rgb), 0.18);
+}
+.bamboo-card.night .bamboo-card-header:hover {
+  background:
+    radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(var(--primary-rgb), 0.32) 0%, transparent 60%),
+    rgba(var(--primary-rgb), 0.24);
+}
+
+/* === 暗色模式 — 竹林色阶 === */
+html.dark .bamboo-card.lateNight .bamboo-card-header {
+  background: rgba(var(--primary-rgb), 0.22);
+  color: rgba(255, 255, 255, 0.88);
+  transition: background 0.4s ease-out;
+}
+html.dark .bamboo-card.dawn .bamboo-card-header {
+  background: rgba(var(--primary-rgb), 0.14);
+  color: rgba(255, 255, 255, 0.88);
+  transition: background 0.4s ease-out;
+}
+html.dark .bamboo-card.earlyMorning .bamboo-card-header {
+  background: rgba(var(--primary-rgb), 0.08);
+  color: rgba(255, 255, 255, 0.90);
+  transition: background 0.4s ease-out;
+}
+html.dark .bamboo-card.morning .bamboo-card-header {
+  background: rgba(var(--primary-rgb), 0.04);
+  color: rgba(255, 255, 255, 0.90);
+  transition: background 0.4s ease-out;
+}
+html.dark .bamboo-card.midday .bamboo-card-header {
+  background: rgba(var(--primary-rgb), 0.02);
+  color: rgba(255, 255, 255, 0.92);
+  transition: background 0.4s ease-out;
+}
+html.dark .bamboo-card.afternoon .bamboo-card-header {
+  background: rgba(var(--primary-rgb), 0.04);
+  color: rgba(255, 255, 255, 0.88);
+  transition: background 0.4s ease-out;
+}
+html.dark .bamboo-card.dusk .bamboo-card-header {
+  background: rgba(var(--primary-rgb), 0.11);
+  color: rgba(255, 255, 255, 0.88);
+  transition: background 0.4s ease-out;
+}
+html.dark .bamboo-card.evening .bamboo-card-header {
+  background: rgba(var(--primary-rgb), 0.16);
+  color: rgba(255, 255, 255, 0.88);
+  transition: background 0.4s ease-out;
+}
+html.dark .bamboo-card.night .bamboo-card-header {
+  background: rgba(var(--primary-rgb), 0.22);
+  color: rgba(255, 255, 255, 0.88);
+  transition: background 0.4s ease-out;
+}
+
+/* === 悬停光晕（暗色模式）=== */
+html.dark .bamboo-card.lateNight .bamboo-card-header:hover {
+  background:
+    radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(var(--primary-rgb), 0.30) 0%, transparent 60%),
+    rgba(var(--primary-rgb), 0.22);
+}
+html.dark .bamboo-card.dawn .bamboo-card-header:hover {
+  background:
+    radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(var(--primary-rgb), 0.22) 0%, transparent 60%),
+    rgba(var(--primary-rgb), 0.14);
+}
+html.dark .bamboo-card.earlyMorning .bamboo-card-header:hover {
+  background:
+    radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(var(--primary-rgb), 0.16) 0%, transparent 60%),
+    rgba(var(--primary-rgb), 0.08);
+}
+html.dark .bamboo-card.morning .bamboo-card-header:hover {
+  background:
+    radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(var(--primary-rgb), 0.10) 0%, transparent 60%),
+    rgba(var(--primary-rgb), 0.04);
+}
+html.dark .bamboo-card.midday .bamboo-card-header:hover {
+  background:
+    radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(var(--primary-rgb), 0.06) 0%, transparent 60%),
+    rgba(var(--primary-rgb), 0.02);
+}
+html.dark .bamboo-card.afternoon .bamboo-card-header:hover {
+  background:
+    radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(var(--primary-rgb), 0.10) 0%, transparent 60%),
+    rgba(var(--primary-rgb), 0.04);
+}
+html.dark .bamboo-card.dusk .bamboo-card-header:hover {
+  background:
+    radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(var(--primary-rgb), 0.18) 0%, transparent 60%),
+    rgba(var(--primary-rgb), 0.11);
+}
+html.dark .bamboo-card.evening .bamboo-card-header:hover {
+  background:
+    radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(var(--primary-rgb), 0.24) 0%, transparent 60%),
+    rgba(var(--primary-rgb), 0.16);
+}
+html.dark .bamboo-card.night .bamboo-card-header:hover {
+  background:
+    radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(var(--primary-rgb), 0.30) 0%, transparent 60%),
+    rgba(var(--primary-rgb), 0.22);
+}
+
+
+
+.bamboo-eval {
+    font-size: var(--type-xs);
+    font-weight: 600;
+    padding: var(--space-1) var(--space-3);
+    border-radius: 20px;
+    white-space: nowrap;
+}
+
+.bamboo-eval.good {
+    background: rgba(var(--primary-rgb), 0.15);
+    color: var(--bamboo-primary);
+    border: 1px solid rgba(var(--primary-rgb), 0.3);
+}
+
+.bamboo-eval.warn {
+    background: rgba(var(--warning-orange-rgb), 0.12);
+    color: var(--bamboo-warning);
+    border: 1px solid rgba(var(--warning-orange-rgb), 0.3);
+}
+
+.bamboo-eval.bad {
+    background: rgba(var(--danger-rgb), 0.12);
+    color: var(--cinnabar);
+    border: 1px solid rgba(var(--danger-rgb), 0.3);
+}
+
+html.dark .bamboo-eval.good {
+    color: var(--bamboo-light);
+    background: rgba(var(--primary-rgb), 0.2);
+    border-color: rgba(var(--primary-rgb), 0.4);
+}
+
+html.dark .bamboo-eval.warn {
+    color: rgba(var(--amber-rgb), 0.9);
+    background: rgba(var(--warning-orange-rgb), 0.2);
+    border-color: rgba(var(--warning-orange-rgb), 0.4);
+}
+
+html.dark .bamboo-eval.bad {
+    color: rgba(var(--danger-bright-rgb), 0.85);
+    background: rgba(var(--danger-rgb), 0.2);
+    border-color: rgba(var(--danger-rgb), 0.4);
+}
+
+/* 暗色模式：抬头元素用亮绿，与深色玻璃底色区分 */
+html.dark .bamboo-icon {
+    color: var(--bamboo-light);
+    filter: drop-shadow(0 1px 2px rgba(0,0,0,0.2));
+}
+
+html.dark .bamboo-name {
+    color: var(--bamboo-light);
+}
+
+html.dark .bamboo-time {
+    color: var(--bamboo-pale);
+    opacity: 0.75;
+}
+
+html.dark .bamboo-count {
+    color: rgba(var(--green-bright-rgb), 0.8);
+    background: rgba(var(--primary-rgb), 0.12);
+    border-color: rgba(var(--primary-rgb), 0.25);
+    opacity: 0.6;
+}
+
+html.dark .bamboo-count:empty,
+html.dark .bamboo-count[data-count="0"] {
+    opacity: 0.25;
+}
+
+html.dark .bamboo-count::after {
+    background: rgba(255, 255, 255, 0.95);
+    color: rgba(0, 0, 0, 0.9);
+}
+
+html.dark .bamboo-count::before {
+    border-top-color: rgba(255, 255, 255, 0.95);
+}
+
+html.dark .bamboo-chevron {
+    color: var(--bamboo-pale);
+}
+
+/* Custom Tooltip */
+.bamboo-tooltip {
+    position: fixed;
+    background: rgba(0, 0, 0, 0.85);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: var(--type-base);
+    font-weight: 400;
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 9999;
+    line-height: 1.4;
+    opacity: 0;
+    transition: opacity 0.1s ease;
+}
+
+.bamboo-tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: rgba(0, 0, 0, 0.85);
+}
+
+html.dark .bamboo-tooltip {
+    background: rgba(255, 255, 255, 0.95);
+    color: rgba(0, 0, 0, 0.9);
+}
+
+html.dark .bamboo-tooltip::after {
+    border-top-color: rgba(255, 255, 255, 0.95);
+}
+
+.bamboo-card-content {
+    max-height: 500px;
+    overflow: hidden;
+    transition: max-height 0.4s ease, opacity 0.3s ease;
+}
+
+.bamboo-card-content.collapsed {
+    max-height: 0;
+    opacity: 0;
+}
+
+.bamboo-items {
+    padding: var(--space-3) var(--space-4);
+    border-top: 1px dashed var(--border-light);
+}
+
+.bamboo-item {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+    padding: var(--space-2) 0;
+    border-bottom: 1px solid rgba(var(--primary-rgb), 0.08);
+}
+
+.bamboo-item:last-child {
+    border-bottom: none;
+}
+
+.bamboo-item-time {
+    font-size: var(--type-sm);
+    font-weight: 600;
+    color: var(--text-secondary);
+    min-width: min(50px, 14vw);
+    flex-shrink: 0;
+}
+
+.bamboo-item-content {
+    flex: 1;
+}
+
+.bamboo-item-task {
+    font-size: var(--type-base);
+    color: var(--text-primary);
+    line-height: 1.5;
+}
+
+.bamboo-item-eval {
+    font-size: var(--type-xs);
+    color: var(--bamboo-primary);
+    margin-top: 3px;
+    font-style: italic;
+}
+
+.bamboo-item-eval.warn {
+    color: var(--bamboo-primary);
+}
+
+.bamboo-leaf {
+    position: absolute;
+    right: 60px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: var(--type-md);
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.bamboo-card:hover .bamboo-leaf {
+    opacity: 0.6;
+}
+
+/* =============================================
+   响应式 — 票根布局
+   Canonical breakpoints: 480px (mobile), 768px (tablet), 1024px (desktop)
+   ============================================= */
+
+/* ≤768px: 票体+票根上下堆叠，票根内容横向排列 */
+@media (max-width: 768px) {
+    .designer-ticket,
+    html.dark .designer-ticket,
+    html.dark .designer-ticket {
+        flex-direction: column;
+        -webkit-mask-image: none;
+        -webkit-mask-composite: initial;
+        mask-image: none;
+        mask-composite: initial;
+        border-radius: 16px;
+    }
+
+    .ticket-main {
+        flex: auto;
+        width: 100%;
+        padding: 20px 14px 10px;
+    }
+
+    .ticket-main::before {
+        top: 10px;
+        left: 10px;
+        right: 10px;
+        bottom: 6px;
+        border-radius: 12px;
+    }
+
+    .ticket-main::after {
+        top: 10px;
+        left: 10px;
+        right: 10px;
+    }
+
+    .ticket-body {
+        gap: 10px;
+    }
+
+    .ticket-time-value { font-size: var(--type-xl); }
+
+    .ticket-highlight {
+        width: 110px;
+        height: auto;
+        padding: 8px 10px;
+        border-radius: 12px;
+    }
+
+    .ticket-highlight-value { font-size: var(--type-lg); }
+
+    .ticket-highlight-label { font-size: var(--type-mini); letter-spacing: 1.5px; }
+
+    .ticket-stub {
+        flex: auto;
+        width: 100%;
+        border-left: none;
+        border-top: none;
+        box-shadow: none;
+        height: auto;
+        min-height: 84px;
+        perspective: 1000px;
+    }
+
+    .ticket-stub.playing {
+        box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.45),
+                    0 4px 20px rgba(var(--primary-rgb), 0.3);
+    }
+
+    .ticket-stub-content {
+        flex-direction: row;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        padding: 10px 12px;
+    }
+
+    .ticket-stub-content > * { pointer-events: auto; }
+
+    .ticket-stub-title-box {
+        width: min(110px, 30vw);
+        min-height: auto;
+        height: auto;
+        padding: 12px 8px;
+        font-size: 0;
+        text-align: center;
+        display: block;
+    }
+
+    .stub-title-cn { display: inline; font-size: var(--type-sm); letter-spacing: 2px; line-height: 1.4; }
+
+    .ticket-stub-date { display: block; font-size: var(--type-mini); line-height: 1.4; }
+
+    .stub-noise-ctrl { height: auto; }
+
+    .flip-stub-btn { top: 6px; right: 10px; }
+
+    .ticket-flip-container {
+        width: 100%;
+        min-height: 84px;
+    }
+
+    .ticket-flip-container.flipped {
+        transform: none;
+    }
+
+    .ticket-flip-front {
+        position: relative;
+        inset: auto;
+        min-height: 84px;
+        backface-visibility: visible;
+    }
+
+    .ticket-flip-back {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        min-height: 84px;
+        backface-visibility: visible;
+        transform: none;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
+    }
+
+    .ticket-flip-container.flipped .ticket-flip-front {
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    .ticket-flip-container.flipped .ticket-flip-back {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    .stub-back-content {
+        flex-direction: row;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        padding: 10px 12px;
+    }
+
+    .stub-back-title-box { width: 200px; }
+
+    .stub-back-row { gap: 12px; }
+
+    .ticket-decorations { gap: 8px; }
+
+    .ticket-slogan { letter-spacing: 3px; }
+}
+
+/* ≤480px: 三块一行横排，紧凑字号 */
+@media (max-width: 480px) {
+    .ticket-main {
+        padding: 14px 8px 6px;
+    }
+
+    .ticket-main::before {
+        top: 6px;
+        left: 6px;
+        right: 6px;
+        bottom: 3px;
+        border-radius: 10px;
+    }
+
+    .ticket-main::after {
+        top: 6px;
+        left: 6px;
+        right: 6px;
+    }
+
+    .ticket-body {
+        gap: 3px;
+    }
+
+    .ticket-time-block { flex: 1; }
+
+    .ticket-start-block,
+    .ticket-end-block {
+        flex-direction: row;
+        justify-content: center;
+        align-items: baseline;
+        gap: 3px;
+    }
+
+    .ticket-time-name {
+        font-size: var(--type-mini);
+        margin-bottom: 0;
+        letter-spacing: 0.5px;
+    }
+
+    .ticket-time-value { font-size: var(--type-lg); }
+
+    .ticket-highlight {
+        width: auto;
+        height: auto;
+        padding: 6px 10px;
+        border-radius: 10px;
+        flex: 0 0 auto;
+        animation: none;
+    }
+
+    .ticket-highlight-value { font-size: var(--type-md); }
+
+    .ticket-highlight-label {
+        font-size: var(--type-mini);
+        letter-spacing: 1.5px;
+    }
+
+    .ticket-stub { min-height: 68px; }
+
+    .ticket-flip-container { min-height: 68px; }
+
+    .ticket-flip-front { min-height: 68px; }
+
+    .ticket-flip-back { min-height: 68px; }
+
+    .ticket-stub-content {
+        gap: 8px;
+        padding: 6px 8px;
+    }
+
+    .ticket-stub-title-box {
+        width: min(96px, 28vw);
+        min-height: auto;
+        height: auto;
+        padding: 10px 4px;
+        font-size: 0;
+        text-align: center;
+        display: block;
+    }
+
+    .stub-title-cn { display: inline; font-size: var(--type-sm); letter-spacing: 1px; line-height: 1.4; }
+
+    .ticket-stub-date { display: block; font-size: var(--type-mini); line-height: 1.4; }
+
+    .stub-nc-icon {
+        width: 10px;
+        height: 10px;
+    }
+
+    .stub-nc-name { font-size: var(--type-mini); }
+
+    .stub-back-content {
+        gap: 8px;
+        padding: 6px 8px;
+    }
+
+    .stub-back-title-box {
+        width: min(170px, 50vw);
+        padding: 5px 6px;
+    }
+
+    .stub-back-row { gap: 8px; }
+
+    .stub-back-ring {
+        width: 28px;
+        height: 28px;
+    }
+
+    .stub-back-ring-text { font-size: var(--type-mini); }
+
+    .stub-back-caption { font-size: var(--type-mini); }
+
+    .stub-back-divider { height: 36px; }
+
+    .stub-back-stat-value { font-size: var(--type-mini); }
+
+    .ticket-period-dots {
+        gap: 6px;
+        padding: 4px 0 6px;
+    }
+
+    .ticket-decorations { gap: 6px; }
+
+    .ticket-slogan {
+        font-size: var(--type-mini);
+        letter-spacing: 2px;
+    }
+
+    .ticket-decoration.left::before,
+    .ticket-decoration.right::before {
+        width: 6px;
+        height: 6px;
+    }
+
+    .ticket-decoration.left::before {
+        margin-left: 14px;
+        box-shadow: 12px 0 0 rgba(var(--bamboo-deep-rgb),0.15), 24px 0 0 rgba(var(--bamboo-deep-rgb),0.1);
+    }
+
+    .ticket-decoration.right::before {
+        margin-right: 14px;
+        box-shadow: -12px 0 0 rgba(var(--bamboo-deep-rgb),0.15), -24px 0 0 rgba(var(--bamboo-deep-rgb),0.1);
+    }
+
+    .flip-stub-btn {
+        top: 4px;
+        right: 6px;
+        width: 18px;
+        height: 18px;
+    }
+}
+
+/* =============================================
+   响应式 — 暗色模式覆盖
+   ============================================= */
+
+@media (max-width: 768px) {
+    html.dark .ticket-stub {
+        border-left: none;
+        border-top: none;
+        box-shadow: none !important;
+    }
+
+    html.dark .ticket-stub.playing {
+        box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.5),
+                    0 4px 25px rgba(var(--primary-rgb), 0.3) !important;
+    }
+}
+
+/* =============================================
+   容器紧凑模式 — 票根布局
+   当 .container 被用户手动缩窄（display-compact ≤600px）时触发，
+   等效于 @media (max-width: 768px) 的票/票根规则。
+   解决：视口宽但容器窄时，媒体查询不触发导致的布局挤压。
+   ============================================= */
+
+.display-compact .designer-ticket,
+html.dark .display-compact .designer-ticket,
+html.dark .display-compact .designer-ticket {
+    flex-direction: column;
+    -webkit-mask-image: none;
+    -webkit-mask-composite: initial;
+    mask-image: none;
+    mask-composite: initial;
+    border-radius: 16px;
+}
+
+.display-compact .ticket-main {
+    flex: auto;
+    width: 100%;
+    padding: 20px 14px 10px;
+}
+
+.display-compact .ticket-main::before {
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    bottom: 6px;
+    border-radius: 12px;
+}
+
+.display-compact .ticket-main::after {
+    top: 10px;
+    left: 10px;
+    right: 10px;
+}
+
+.display-compact .ticket-body {
+    gap: 10px;
+}
+
+.display-compact .ticket-time-value {
+    font-size: var(--type-xl);
+}
+
+.display-compact .ticket-highlight {
+    width: 110px;
+    height: auto;
+    padding: 8px 10px;
+    border-radius: 12px;
+}
+
+.display-compact .ticket-highlight-value {
+    font-size: var(--type-lg);
+}
+
+.display-compact .ticket-highlight-label {
+    font-size: var(--type-mini);
+    letter-spacing: 1.5px;
+}
+
+.display-compact .ticket-stub {
+    flex: auto;
+    width: 100%;
+    border-left: none;
+    border-top: none;
+    box-shadow: none;
+    height: auto;
+    min-height: 84px;
+    perspective: 1000px;
+}
+
+.display-compact .ticket-stub.playing {
+    box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.45),
+                0 4px 20px rgba(var(--primary-rgb), 0.3);
+}
+
+.display-compact .ticket-stub-content {
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 10px 12px;
+}
+
+.display-compact .ticket-stub-content > * {
+    pointer-events: auto;
+}
+
+.display-compact .ticket-stub-title-box {
+    width: min(110px, 30vw);
+    min-height: auto;
+    height: auto;
+    padding: 12px 8px;
+    font-size: 0;
+    text-align: center;
+    display: block;
+}
+
+.display-compact .stub-title-cn {
+    display: inline;
+    font-size: var(--type-sm);
+    letter-spacing: 2px;
+    line-height: 1.4;
+}
+
+.display-compact .ticket-stub-date {
+    display: block;
+    font-size: var(--type-mini);
+    line-height: 1.4;
+}
+
+.display-compact .stub-noise-ctrl {
+    height: auto;
+}
+
+.display-compact .flip-stub-btn {
+    top: 6px;
+    right: 10px;
+}
+
+.display-compact .ticket-flip-container {
+    width: 100%;
+    min-height: 84px;
+}
+
+.display-compact .ticket-flip-container.flipped {
+    transform: none;
+}
+
+.display-compact .ticket-flip-front {
+    position: relative;
+    inset: auto;
+    min-height: 84px;
+    backface-visibility: visible;
+}
+
+.display-compact .ticket-flip-back {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    min-height: 84px;
+    backface-visibility: visible;
+    transform: none;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+.display-compact .ticket-flip-container.flipped .ticket-flip-front {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.display-compact .ticket-flip-container.flipped .ticket-flip-back {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.display-compact .stub-back-content {
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 10px 12px;
+}
+
+.display-compact .stub-back-title-box {
+    width: 200px;
+}
+
+.display-compact .stub-back-row {
+    gap: 12px;
+}
+
+.display-compact .ticket-decorations {
+    gap: 8px;
+}
+
+.display-compact .ticket-slogan {
+    letter-spacing: 3px;
+}
+
+/* 容器紧凑模式 — 暗色模式覆盖 */
+html.dark .display-compact .ticket-stub {
+    border-left: none;
+    border-top: none;
+    box-shadow: none !important;
+}
+
+html.dark .display-compact .ticket-stub.playing {
+    box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.5),
+                0 4px 25px rgba(var(--primary-rgb), 0.35) !important;
+}
+
+html.dark .display-compact .ticket-stub {
+    border-left: none;
+    border-top: none;
+    box-shadow: none !important;
+}
+
+html.dark .display-compact .ticket-stub.playing {
+    box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.5),
+                0 4px 25px rgba(var(--primary-rgb), 0.3) !important;
+}
+
+/* =============================================
+   容器超紧凑模式 — 票根布局
+   当 .container ≤480px 时触发，
+   等效于 @media (max-width: 480px) 的票/票根规则。
+   ============================================= */
+
+.display-ultra-compact .ticket-main {
+    padding: 14px 8px 6px;
+}
+
+.display-ultra-compact .ticket-main::before {
+    top: 6px;
+    left: 6px;
+    right: 6px;
+    bottom: 3px;
+    border-radius: 10px;
+}
+
+.display-ultra-compact .ticket-main::after {
+    top: 6px;
+    left: 6px;
+    right: 6px;
+}
+
+.display-ultra-compact .ticket-body {
+    gap: 3px;
+}
+
+.display-ultra-compact .ticket-time-block {
+    flex: 1;
+}
+
+.display-ultra-compact .ticket-start-block,
+.display-ultra-compact .ticket-end-block {
+    flex-direction: row;
+    justify-content: center;
+    align-items: baseline;
+    gap: 3px;
+}
+
+.display-ultra-compact .ticket-time-name {
+    font-size: var(--type-mini);
+    margin-bottom: 0;
+    letter-spacing: 0.5px;
+}
+
+.display-ultra-compact .ticket-time-value {
+    font-size: var(--type-lg);
+}
+
+.display-ultra-compact .ticket-highlight {
+    width: auto;
+    height: auto;
+    padding: 6px 10px;
+    border-radius: 10px;
+    flex: 0 0 auto;
+    animation: none;
+}
+
+.display-ultra-compact .ticket-highlight-value {
+    font-size: var(--type-md);
+}
+
+.display-ultra-compact .ticket-highlight-label {
+    font-size: var(--type-mini);
+    letter-spacing: 1.5px;
+}
+
+.display-ultra-compact .ticket-stub {
+    min-height: 68px;
+}
+
+.display-ultra-compact .ticket-flip-container {
+    min-height: 68px;
+}
+
+.display-ultra-compact .ticket-flip-front {
+    min-height: 68px;
+}
+
+.display-ultra-compact .ticket-flip-back {
+    min-height: 68px;
+}
+
+.display-ultra-compact .ticket-stub-content {
+    gap: 8px;
+    padding: 6px 8px;
+}
+
+.display-ultra-compact .ticket-stub-title-box {
+    width: min(96px, 28vw);
+    min-height: auto;
+    height: auto;
+    padding: 10px 4px;
+    font-size: 0;
+    text-align: center;
+    display: block;
+}
+
+.display-ultra-compact .stub-title-cn {
+    display: inline;
+    font-size: var(--type-sm);
+    letter-spacing: 1px;
+    line-height: 1.4;
+}
+
+.display-ultra-compact .ticket-stub-date {
+    display: block;
+    font-size: var(--type-mini);
+    line-height: 1.4;
+}
+
+.display-ultra-compact .stub-nc-icon {
+    width: 10px;
+    height: 10px;
+}
+
+.display-ultra-compact .stub-nc-name {
+    font-size: var(--type-mini);
+}
+
+.display-ultra-compact .stub-back-content {
+    gap: 8px;
+    padding: 6px 8px;
+}
+
+.display-ultra-compact .stub-back-title-box {
+    width: min(170px, 50vw);
+    padding: 5px 6px;
+}
+
+.display-ultra-compact .stub-back-row {
+    gap: 8px;
+}
+
+.display-ultra-compact .stub-back-ring {
+    width: 28px;
+    height: 28px;
+}
+
+.display-ultra-compact .stub-back-ring-text {
+    font-size: var(--type-mini);
+}
+
+.display-ultra-compact .stub-back-caption {
+    font-size: var(--type-mini);
+}
+
+.display-ultra-compact .stub-back-divider {
+    height: 36px;
+}
+
+.display-ultra-compact .stub-back-stat-value {
+    font-size: var(--type-mini);
+}
+
+.display-ultra-compact .ticket-period-dots {
+    gap: 6px;
+    padding: 4px 0 6px;
+}
+
+.display-ultra-compact .ticket-decorations {
+    gap: 6px;
+}
+
+.display-ultra-compact .ticket-slogan {
+    font-size: var(--type-mini);
+    letter-spacing: 2px;
+}
+
+.display-ultra-compact .ticket-decoration.left::before,
+.display-ultra-compact .ticket-decoration.right::before {
+    width: 6px;
+    height: 6px;
+}
+
+.display-ultra-compact .ticket-decoration.left::before {
+    margin-left: 14px;
+    box-shadow: 12px 0 0 rgba(var(--bamboo-deep-rgb),0.15), 24px 0 0 rgba(var(--bamboo-deep-rgb),0.1);
+}
+
+.display-ultra-compact .ticket-decoration.right::before {
+    margin-right: 14px;
+    box-shadow: -12px 0 0 rgba(var(--bamboo-deep-rgb),0.15), -24px 0 0 rgba(var(--bamboo-deep-rgb),0.1);
+}
+
+.display-ultra-compact .flip-stub-btn {
+    top: 4px;
+    right: 6px;
+    width: 18px;
+    height: 18px;
+}
+

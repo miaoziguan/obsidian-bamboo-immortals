@@ -1,0 +1,81 @@
+/* ========== 空状态样式 ========== */
+.empty-state {
+    text-align: center;
+    padding: var(--space-12) var(--space-6);
+    color: var(--text-secondary);
+    background: linear-gradient(145deg, rgba(var(--primary-rgb), 0.06), rgba(var(--sky-azure-rgb), 0.03));
+    border: 2px dashed rgba(var(--primary-rgb), 0.25);
+    border-radius: var(--radius-xl);
+    margin: var(--space-4) 0;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+.empty-state::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(var(--primary-rgb), 0.08) 0%, transparent 70%);
+    opacity: 0;
+    pointer-events: none;
+}
+.empty-state:hover::before { opacity: 1; }
+.empty-state:hover {
+    border-color: var(--bamboo-primary);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(var(--primary-rgb), 0.15);
+}
+.empty-state-icon {
+    font-size: var(--type-display-big);
+    margin-bottom: var(--space-4);
+    filter: drop-shadow(0 4px 12px rgba(var(--primary-rgb), 0.2));
+    position: relative;
+    z-index: 1;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .empty-state-icon {
+        animation: emptyStateFloat 3s ease-in-out infinite;
+    }
+}
+
+@keyframes emptyStateFloat {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+}
+.empty-state-text {
+    font-size: var(--type-base);
+    line-height: 1.6;
+    color: var(--text-secondary);
+    margin-bottom: var(--space-4);
+    position: relative;
+    z-index: 1;
+}
+.empty-state-btn {
+    margin-top: var(--space-2);
+    padding: var(--space-3) var(--space-6);
+    background: linear-gradient(135deg, var(--bamboo-primary), var(--bamboo-deep));
+    color: white;
+    border: none;
+    border-radius: 24px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: var(--type-base);
+    transition: all var(--transition-normal);
+    min-height: 44px;
+    box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.3);
+    position: relative;
+    z-index: 1;
+}
+.empty-state-btn:hover {
+    background: var(--bamboo-dark);
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 6px 16px rgba(var(--primary-rgb), 0.4);
+}
+.empty-state-btn:active {
+    transform: var(--scale-click);
+}
+

@@ -1,0 +1,301 @@
+/* ========== 天气模块（Weather Widget + Tooltip） ========== */
+/* =========================================================
+   天气：图标 + 横排展开（内联胶囊风格）
+   - 默认（收起）：☀️ 28°
+   - 展开后：☀️ 28° 多云 · 18°~29° · 湿度 52% · 北京 ✏︎ ↻
+   ========================================================= */
+.weather-widget {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: transparent;
+    cursor: pointer;
+    font-size: 12px;
+    color: var(--bamboo-primary);
+    border: 0;
+    transition: background-color 0.2s ease, opacity 0.2s ease;
+    user-select: none;
+    margin-right: 8px;
+    overflow: hidden;
+    max-width: 100%;
+    line-height: 1;
+    height: 24px;
+    box-sizing: border-box;
+    flex-shrink: 1;
+    min-width: 0;
+}
+.weather-widget:hover {
+}
+.weather-widget[hidden] { display: none !important; }
+
+.weather-core {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    flex-shrink: 0;
+}
+
+.weather-expand {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    max-width: 0;
+    opacity: 0;
+    transition:
+        max-width 0.3s ease,
+        opacity 0.25s ease;
+    flex-shrink: 1;
+    min-width: 0;
+    pointer-events: none;
+}
+.weather-widget.weather-open .weather-expand {
+    max-width: 520px;
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.weather-icon {
+    font-size: 14px;
+    line-height: 1;
+}
+.weather-temp {
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+.weather-label {
+    color: var(--bamboo-primary);
+    font-size: 11px;
+    opacity: 0.85;
+}
+.weather-range,
+.weather-meta,
+.weather-city {
+    font-size: 11px;
+    color: var(--bamboo-primary);
+    font-variant-numeric: tabular-nums;
+    opacity: 0.9;
+}
+.weather-city {
+    color: var(--bamboo-primary);
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0 2px;
+    border-radius: 3px;
+    transition: background-color 0.15s ease, text-decoration-color 0.15s ease;
+    text-decoration: underline dotted;
+    text-decoration-color: transparent;
+    text-underline-offset: 2px;
+    opacity: 1;
+}
+.weather-city:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+    text-decoration-color: currentColor;
+}
+.weather-sep {
+    color: var(--bamboo-primary);
+    font-size: 10px;
+    margin: 0 2px;
+    opacity: 0.55;
+}
+
+.weather-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 1px;
+    margin-left: 2px;
+    padding-left: 4px;
+    border-left: 1px solid rgba(var(--primary-rgb), 0.35);
+}
+
+.weather-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--bamboo-primary);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease;
+    opacity: 0.85;
+}
+.weather-btn svg {
+    display: block;
+    width: 12px;
+    height: 12px;
+}
+.weather-btn:hover {
+    background: var(--hover-bg, rgba(0,0,0,0.05));
+    color: var(--bamboo-primary);
+}
+.weather-btn-active:hover {
+    color: var(--bamboo-primary);
+}
+
+.weather-city-inline {
+    width: 100px;
+    padding: 1px 6px;
+    border: 1px solid rgba(var(--primary-rgb), 0.4);
+    border-radius: 4px;
+    font-size: 11px;
+    color: var(--bamboo-primary);
+    background: transparent;
+    outline: none;
+    transition: border-color 0.15s ease;
+    font-family: inherit;
+    height: 20px;
+    box-sizing: border-box;
+}
+.weather-city-inline:focus {
+    border-color: var(--bamboo-primary);
+}
+
+/* 加载/失败状态 */
+.weather-core .weather-loading {
+    font-size: 12px;
+    opacity: 0.55;
+    animation: weather-pulse 1.2s ease-in-out infinite;
+}
+.weather-failed {
+    gap: 3px;
+}
+@keyframes weather-pulse {
+    0%, 100% { opacity: 0.35; }
+    50% { opacity: 0.75; }
+}
+.weather-widget-error {
+    border-color: rgba(var(--danger-rgb), 0.35) !important;
+    color: var(--danger-color, #d9534f) !important;
+}
+.weather-widget-error:hover {
+    border-color: rgba(var(--danger-rgb), 0.6) !important;
+}
+
+
+/* ============================================================
+   语录 — 右侧短文字（竹林七贤 / Obsidian 笔记）
+   · 收起态：「目送归鸿，手挥五弦。 — 嵇康」
+   · 点击 → 换一条
+   ============================================================ */
+.quote-widget {
+    display: inline-block;
+    vertical-align: middle;
+    max-width: 100%;
+    height: 24px;
+    line-height: 24px;
+    cursor: pointer;
+    font-size: 12px;
+    color: var(--bamboo-primary);
+    user-select: none;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    transition: opacity 0.2s ease;
+}
+.quote-widget:hover {
+    opacity: 0.75;
+}
+.quote-text {
+    margin-right: 4px;
+}
+.quote-mark {
+    opacity: 0.7;
+    font-size: 11px;
+    margin: 0 1px;
+}
+.quote-content {
+    font-weight: 500;
+}
+.quote-author {
+    font-size: 11px;
+    opacity: 0.75;
+    white-space: nowrap;
+}
+
+
+/* === 天气 + 语录 — 响应式（与项目既有断点对齐） === */
+
+/* TABLET / NARROW OBSIDIAN SIDEBAR (≤768px) */
+@media (max-width: 768px) {
+    .weather-widget {
+        font-size: 11px;
+        padding: 3px 6px;
+        margin-right: 4px;
+    }
+    .weather-widget.weather-open .weather-expand {
+        max-width: 280px;
+    }
+    .weather-label,
+    .weather-range,
+    .weather-meta,
+    .weather-city,
+    .weather-sep {
+        font-size: 10px;
+    }
+    .quote-widget {
+        font-size: 11px;
+        line-height: 24px;
+        height: 24px;
+        max-width: 280px;
+    }
+    .quote-author {
+        font-size: 10px;
+    }
+}
+
+/* MOBILE (≤480px) — 头部已在 base.css 堆叠，这里做内容压缩 */
+@media (max-width: 480px) {
+    .weather-widget {
+        font-size: 11px;
+        padding: 3px 6px;
+        margin-right: 0;
+    }
+    .weather-widget.weather-open .weather-expand {
+        max-width: 180px;
+    }
+    .weather-label,
+    .weather-range,
+    .weather-meta,
+    .weather-city,
+    .weather-sep {
+        font-size: 10px;
+    }
+    .quote-widget {
+        font-size: 11px;
+        line-height: 24px;
+        height: 24px;
+        max-width: 100%;
+    }
+    .quote-author {
+        font-size: 10px;
+    }
+}
+
+/* TINY (≤360px) — 极限压缩 */
+@media (max-width: 360px) {
+    .weather-widget.weather-open .weather-expand {
+        max-width: 120px;
+    }
+    .weather-label,
+    .weather-range,
+    .weather-meta,
+    .weather-city,
+    .weather-sep {
+        font-size: 10px;
+    }
+    .quote-widget {
+        font-size: 11px;
+        line-height: 24px;
+        height: 24px;
+        max-width: 100%;
+    }
+}
+

@@ -1,0 +1,175 @@
+/* ========== 目标优先级样式 ========== */
+.goal-priority-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: var(--type-xs);
+    font-weight: 600;
+    padding: 0 8px;
+    border-radius: 8px;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    height: 28px;
+    line-height: 1;
+}
+
+.goal-priority-tag:hover {
+    transform: scale(1.05);
+}
+
+.goal-priority-tag.high {
+    background: rgba(var(--danger-rgb), 0.1);
+    color: var(--cinnabar);
+}
+
+.goal-priority-tag.medium {
+    background: rgba(var(--gold-rgb), 0.1);
+    color: var(--gold);
+}
+
+.goal-priority-tag.low {
+    background: rgba(var(--primary-rgb), 0.1);
+    color: var(--bamboo-primary);
+}
+
+.goal-priority-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+.goal-priority-dot.high {
+    background: var(--cinnabar);
+}
+
+.goal-priority-dot.medium {
+    background: var(--gold);
+}
+
+.goal-priority-dot.low {
+    background: var(--bamboo-primary);
+}
+
+/* ========== 优先级选择器 ========== */
+.priority-picker {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 9999;
+}
+
+.prio-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(2px);
+}
+
+.prio-container {
+    position: absolute;
+    background: var(--card-bg);
+    border: 1px solid var(--border-light);
+    border-radius: 12px;
+    box-shadow: var(--shadow-floating);
+    min-width: 220px;
+    overflow: hidden;
+}
+
+.prio-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-light);
+    background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.05), transparent);
+}
+
+.prio-title {
+    font-size: var(--type-md);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.prio-close-btn {
+    width: 24px;
+    height: 24px;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    border-radius: 6px;
+    font-size: var(--type-lg);
+    line-height: 1;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.prio-close-btn:hover {
+    background: rgba(var(--primary-rgb), 0.1);
+    color: var(--text-primary);
+}
+
+.prio-body {
+    padding: 8px;
+}
+
+.prio-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.prio-item:hover {
+    background: rgba(var(--primary-rgb), 0.08);
+}
+
+.prio-item.prio-item-selected {
+    background: rgba(var(--primary-rgb), 0.12);
+    border: 1px solid rgba(var(--primary-rgb), 0.25);
+}
+
+.prio-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.prio-dot.high {
+    background: var(--cinnabar);
+    box-shadow: 0 0 8px rgba(var(--danger-rgb), 0.4);
+}
+
+.prio-dot.medium {
+    background: var(--gold);
+    box-shadow: 0 0 8px rgba(var(--gold-rgb), 0.4);
+}
+
+.prio-dot.low {
+    background: var(--bamboo-primary);
+    box-shadow: 0 0 8px rgba(var(--primary-rgb), 0.4);
+}
+
+.prio-name {
+    flex: 1;
+    font-size: var(--type-md);
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+
+

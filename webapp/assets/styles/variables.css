@@ -1,0 +1,580 @@
+/* ========== 全局变量（竹林中国风 - 亮色模式） ========== */
+:root {
+    /* === 主题色相（可变）=== */
+    --accent-hue: 120;  /* 默认竹青绿，可通过 DisplayManager 色相滑块调整 */
+
+    /* === 明度偏移（可变）=== */
+    --accent-lightness-offset: 0%;  /* 默认 0%，可通过 DisplayManager 明度滑块调整（范围 ~-15% ~ +15%）*/
+
+    /* === 基础色彩系统（HSL 动态生成）=== */
+    --bamboo-deep: hsl(calc(var(--accent-hue) - 7), 40%, calc(25% + var(--accent-lightness-offset)));
+    --bamboo-deep-rgb: 45, 90, 39;
+    --bamboo-dark: hsl(calc(var(--accent-hue) - 8), 39%, calc(34% + var(--accent-lightness-offset)));
+    --bamboo-primary: hsl(var(--accent-hue), 27%, calc(48% + var(--accent-lightness-offset)));
+    --bamboo-light: hsl(var(--accent-hue), 33%, calc(61% + var(--accent-lightness-offset)));
+    --bamboo-pale: hsl(var(--accent-hue), 35%, calc(75% + var(--accent-lightness-offset)));
+    --bamboo-primary-light: hsl(var(--accent-hue), 39%, calc(80% + var(--accent-lightness-offset)));
+    --primary-rgb: 90, 154, 90;
+    --deep-rgb: 45, 90, 39;
+    --danger-rgb: 201, 72, 59;
+    --gold-rgb: 212, 175, 55;
+    --pale-rgb: 168, 213, 168;
+    --sky-azure-rgb: 135, 206, 235;
+    --health-success-rgb: 126, 211, 33;
+    --ticket-stub-bg-rgb: 148, 198, 148;
+    --dark-surface-mid-rgb: 30, 50, 32;
+    --dark-surface-rgb: 20, 38, 22;
+    --gray-rgb: 149, 165, 166;
+    --danger-alt-rgb: 231, 76, 60;
+    --warning-yellow-rgb: 251, 191, 36;
+    --warning-orange-rgb: 245, 166, 35;
+    --info-blue-rgb: 66, 133, 244;
+    --teal-rgb: 26, 167, 106;
+    --danger-bright-rgb: 239, 68, 68;
+    --amber-rgb: 230, 162, 60;
+    --purple-rgb: 154, 90, 154;
+    --purple-pale-rgb: 196, 138, 196;
+    --mint-rgb: 168, 230, 207;
+    --gold-bright-rgb: 255, 215, 0;
+    --pale-green-rgb: 245, 250, 245;
+    --pale-green-alt-rgb: 248, 252, 248;
+    --surface-deep-rgb: 20, 35, 20;
+    --surface-deep-alt-rgb: 25, 40, 25;
+    --primary-alt-rgb: 107, 174, 107;
+    --danger-soft-rgb: 220, 100, 100;
+    --red-pale-rgb: 255, 240, 240;
+    --amber-brown-rgb: 180, 140, 100;
+    --gray-mid-rgb: 90, 90, 90;
+    --green-pale-rgb: 200, 224, 200;
+    --green-bright-rgb: 143, 216, 143;
+    --amber-deep-rgb: 245, 158, 11;
+    --orange-pale-rgb: 252, 191, 73;
+    --blue-alt-rgb: 74, 144, 217;
+    --danger-deep-rgb: 220, 38, 38;
+    --gray-alt-rgb: 107, 114, 128;
+    --red-bright-rgb: 200, 80, 80;
+    --green-alt-rgb: 180, 220, 165;
+    --green-very-bright-rgb: 200, 255, 150;
+    --overdue-bg-rgb: 255, 240, 240;
+    --overdue-bg-mid-rgb: 255, 235, 235;
+    --overdue-bg-light-rgb: 255, 230, 230;
+    --ticket-gold: #B8860B;
+    --bamboo-text-muted: var(--ink-pale);
+    --bamboo-text-secondary: var(--ink-light);
+    --bamboo-border: rgba(var(--primary-rgb), 0.25);
+    --bamboo-background: rgba(var(--primary-rgb), 0.06);
+    --bamboo-primary-dark: var(--bamboo-dark);
+    --bamboo-success: var(--bamboo-primary);
+    --bamboo-warning: #c9a227;
+    --bamboo-warning-pale: #fff59d;
+    --bamboo-error: #dc3545;
+    --bamboo-card: var(--card-bg);
+    --sky-azure: #87CEEB;
+    --sky-pale: #B8E2F8;
+    --sky-mist: #E8F6FC;
+    --leaf-green: #6B8E23;
+    --leaf-light: #8FBC3A;
+    --rice-paper: #FAF8F0;
+    --ivory: #FFFFF0;
+    --cinnabar: #C9483B;
+    --gold: #D4AF37;
+
+    /* === 健康评分色彩系统 === */
+    --health-danger: #EF4444;
+    --health-warning: #F59E23;
+    --health-success-clr: #7ED321;
+    --health-info: #4A90D9;
+    --health-neutral: #95A5A6;
+    --health-pink: #E91E63;
+    --health-purple: #9C27B0;
+    --health-orange: #FF9800;
+    --health-gold-clr: #D97706;
+
+    /* === 文字色彩系统 === */
+    --ink-dark: #1A1A1A;
+    --ink-medium: #404040;
+    --ink-light: #555555;
+    --ink-pale: #707070;
+
+    /* === 背景色彩系统 - 重新设计：淡雅意境 === */
+    --bg-gradient-start: hsl(var(--accent-hue), 18%, calc(96% + var(--accent-lightness-offset)));
+    --bg-gradient-mid1: hsl(var(--accent-hue), 21%, calc(94% + var(--accent-lightness-offset)));
+    --bg-gradient-mid2: hsl(var(--accent-hue), 17%, calc(90% + var(--accent-lightness-offset)));
+    --bg-gradient-end: hsl(var(--accent-hue), 20%, calc(95% + var(--accent-lightness-offset)));
+    --card-bg: rgba(255, 255, 255, 0.60);
+    --card-glass: rgba(255, 255, 255, 0.55);
+
+    /* === 文字语义变量 === */
+    --text-primary: var(--ink-dark);
+    --text-secondary: var(--ink-light);
+    --text-tertiary: var(--ink-pale);
+
+    /* === 边框与阴影 === */
+    --border-light: rgba(var(--primary-rgb), 0.25);
+    --shadow: 0 20px 40px rgba(var(--deep-rgb), 0.12);
+    
+    /* === 统一过渡动画曲线 === */
+    --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-normal: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-smooth: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-bounce: 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    
+    /* === 点击反馈缩放比例 === */
+    --scale-click: scale(0.96);
+    --scale-tiny: scale(0.98);
+    --scale-small: scale(0.95);
+    
+    /* === 动画性能优化 === */
+    --will-change-transform: transform;
+    --will-change-opacity: opacity;
+    
+    /* === 阴影深度系统 === */
+    --shadow-surface: 0 2px 8px rgba(var(--deep-rgb), 0.06), 0 1px 2px rgba(var(--deep-rgb), 0.04);    /* 表层 - 卡片内元素 */
+    --shadow-card: 0 4px 16px rgba(var(--deep-rgb), 0.08), 0 2px 4px rgba(var(--deep-rgb), 0.04);      /* 中层 - 基础卡片 */
+    --shadow-elevated: 0 8px 28px rgba(var(--deep-rgb), 0.12), 0 4px 8px rgba(var(--deep-rgb), 0.06);  /* 高层 - 悬停/弹窗 */
+    --shadow-floating: 0 16px 48px rgba(var(--deep-rgb), 0.16), 0 8px 16px rgba(var(--deep-rgb), 0.08); /* 浮层 - FAB/模态框 */
+    
+    /* === 按钮样式系统 === */
+    --btn-primary-bg: linear-gradient(135deg, var(--bamboo-dark) 0%, var(--bamboo-primary) 100%);
+    --btn-primary-hover: linear-gradient(135deg, var(--bamboo-primary) 0%, var(--bamboo-light) 100%);
+    --btn-secondary-bg: rgba(var(--primary-rgb), 0.1);
+    --btn-secondary-hover: rgba(var(--primary-rgb), 0.2);
+    --btn-outline-border: 2px solid var(--bamboo-primary);
+    --btn-outline-hover: rgba(var(--primary-rgb), 0.1);
+
+    /* === 渐变变量 === */
+    --section-title-gradient: linear-gradient(135deg, rgba(var(--deep-rgb), 0.45) 0%, rgba(var(--primary-rgb), 0.4) 50%, rgba(var(--primary-rgb), 0.35) 100%);
+    --action-bg: linear-gradient(135deg, rgba(var(--primary-rgb), 0.55) 0%, rgba(var(--primary-rgb), 0.5) 100%);
+
+    /* === 表格样式 === */
+    --table-header-bg: rgba(var(--primary-rgb), 0.1);
+    --table-border: rgba(var(--primary-rgb), 0.1);
+
+    /* === 诊断卡片样式 === */
+    --diagnosis-bg: rgba(250, 248, 240, 0.8);
+    --diagnosis-border: rgba(var(--primary-rgb), 0.1);
+    --diagnosis-text: var(--ink-dark);
+    --diagnosis-card-good-bg: rgba(var(--primary-rgb), 0.08);
+    --diagnosis-card-warn-bg: rgba(var(--gold-rgb), 0.08);
+
+    /* === 时间线样式 === */
+    --timeline-stat-bg: rgba(var(--primary-rgb), 0.1);
+    --progress-bg: rgba(var(--primary-rgb), 0.1);
+
+    /* === KPI 卡片样式 === */
+    --kpi-up-bg: linear-gradient(180deg, var(--card-bg) 0%, rgba(var(--danger-rgb), 0.1) 100%);
+    --kpi-down-bg: linear-gradient(180deg, var(--card-bg) 0%, rgba(var(--primary-rgb), 0.1) 100%);
+    --kpi-neutral-bg: linear-gradient(180deg, var(--card-bg) 0%, rgba(var(--gold-rgb), 0.1) 100%);
+    --kpi-break-bg: linear-gradient(180deg, var(--card-bg) 0%, rgba(var(--sky-azure-rgb), 0.1) 100%);
+    --kpi-up-border: rgba(var(--danger-rgb), 0.3);
+    --kpi-up-delta-color: var(--cinnabar);
+
+    /* === 呼吸动画 === */
+    --breath-color: rgba(var(--primary-rgb), 0.4);
+
+    /* === 标签样式 === */
+    --tag-execute-bg: var(--bamboo-primary);
+    --tag-miss-bg: var(--ink-pale);
+    --tag-text-light: white;
+
+    /* === 波浪与毛玻璃 === */
+    --wave-color: rgba(var(--primary-rgb), 0.5);
+    --glass-blur: 20px;
+    --glass-highlight-strong: rgba(255, 255, 255, 0.6);
+    --glass-highlight-medium: rgba(255, 255, 255, 0.4);
+    --glass-highlight-soft: rgba(255, 255, 255, 0.2);
+    --glass-highlight-subtle: rgba(255, 255, 255, 0.1);
+    --glass-highlight-faint: rgba(255, 255, 255, 0.04);
+    --glass-highlight-wash: rgba(255, 255, 255, 0.08);
+
+    /* === 圆角系统（统一为 4px 倍数） === */
+    --radius-xs: 4px;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 20px;
+    --radius-2xl: 24px;
+    --radius-3xl: 28px;
+
+    /* === 间距系统（统一为 8px 网格） === */
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 20px;
+    --space-6: 24px;
+    --space-7: 28px;
+    --space-8: 32px;
+
+    /* === 字体系统 === */
+    --font-family: 'PingFang SC', 'Noto Sans SC', 'Microsoft YaHei', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-size-scale: 1;
+    --section-gap-scale: 0.8;
+    --font-size-xs: 11px;
+    --font-size-sm: 12px;
+    --font-size-base: 14px;
+    --font-size-md: 16px;
+    --font-size-lg: 17px;
+    --font-size-xl: 22px;
+    --font-size-2xl: 26px;
+    --line-height-tight: 1.3;
+    --line-height-base: 1.5;
+    --line-height-relaxed: 1.75;
+
+    /* === 触控尺寸系统 === */
+    --touch-min: 44px;
+    --touch-comfortable: 48px;
+    --touch-target: 44px;
+
+    /* === Focus 样式系统（统一使用 box-shadow 格式） === */
+    --focus-ring: 0 0 0 2px var(--bamboo-primary);
+    --focus-ring-offset: 0 0 0 4px rgba(var(--primary-rgb), 0.25);
+    --focus-ring-danger: 0 0 0 2px var(--cinnabar);
+    --focus-transition: box-shadow 0.15s ease;
+
+    /* === 状态色系统 === */
+    --status-success: var(--bamboo-primary);
+    --status-warning: var(--gold);
+    --status-danger: var(--cinnabar);
+    --status-info: #4FC3F7;
+    --status-success-bg: rgba(var(--primary-rgb), 0.1);
+    --status-warning-bg: rgba(var(--gold-rgb), 0.1);
+    --status-danger-bg: rgba(var(--danger-rgb), 0.1);
+    --status-info-bg: rgba(var(--info-rgb), 0.1);
+    --info-rgb: 79, 195, 247;
+    /* === 竹林绿辉光阴影（自适应暗色模式） === */
+    --bamboo-glow-sm: 0 2px 8px rgba(var(--primary-rgb), 0.4);
+    --bamboo-glow-xs: 0 1px 4px rgba(var(--primary-rgb), 0.3);
+
+    /* === 内容宽度系统（用户可调） === */
+    --content-max-width: 800px;
+    --content-max-width-wide: 880px;  /* 宽屏默认，用户设置后此值同步更新 */
+
+    /* === 动效时长系统 === */
+    --duration-instant: 100ms;
+    --duration-fast: 200ms;
+    --duration-normal: 300ms;
+    --duration-slow: 500ms;
+    --duration-slower: 800ms;
+}
+
+/* ========== 暗色模式（竹林星光暗色，完整覆盖所有变量） ========== */
+html.dark {
+    /* 竹林星光 — 深邃、高级、有层次感的暗色背景 */
+    --primary-rgb: 130, 195, 130;
+    --deep-rgb: 45, 90, 53;
+    --danger-rgb: 255, 107, 107;
+    --danger-alt-rgb: 255, 107, 107;
+    --gold-rgb: 255, 217, 61;
+    --pale-rgb: 184, 216, 184;
+    --sky-azure-rgb: 116, 192, 252;
+    --health-success-rgb: 126, 211, 33;
+    --danger-bright-rgb: 255, 107, 107;
+    --amber-rgb: 245, 166, 35;
+    --purple-rgb: 154, 90, 154;
+    --purple-pale-rgb: 196, 138, 196;
+    --mint-rgb: 168, 230, 207;
+    --gold-bright-rgb: 255, 215, 0;
+    --pale-green-rgb: var(--pale-green-rgb-dark, 30, 50, 32);
+    --pale-green-alt-rgb: var(--pale-green-alt-rgb-dark, 25, 45, 27);
+    --surface-deep-rgb: 15, 25, 15;
+    --overdue-bg-rgb: 75, 50, 50;
+    --overdue-bg-mid-rgb: 65, 45, 45;
+    --overdue-bg-light-rgb: 55, 35, 35;
+    --surface-dark-rgb: 20, 38, 22;
+    --surface-dark-rgb-mid: 25, 48, 28;
+    --surface-dark-rgb-end: 30, 55, 32;
+    --primary-alt-rgb: 130, 195, 130;
+    --danger-soft-rgb: 255, 120, 120;
+    --red-pale-rgb: 40, 20, 20;
+    --gray-mid-rgb: 120, 120, 120;
+    --green-pale-rgb: 25, 45, 27;
+    --amber-deep-rgb: 245, 158, 11;
+    --orange-pale-rgb: 180, 120, 50;
+    --blue-alt-rgb: 74, 144, 217;
+    --danger-deep-rgb: 255, 107, 107;
+    --gray-alt-rgb: 149, 165, 166;
+    --red-bright-rgb: 255, 120, 120;
+    --green-alt-rgb: 130, 195, 130;
+    --green-very-bright-rgb: 150, 230, 100;
+    --jade-cream-rgb: 255, 250, 240;
+    --jade-cream-mid-rgb: 255, 245, 230;
+    --jade-cream-deep-rgb: 255, 240, 220;
+    --jade-warm-rgb: 255, 235, 210;
+    --jade-dark-rgb: 65, 55, 45;
+    --jade-dark-mid-rgb: 55, 45, 35;
+    --jade-dark-deep-rgb: 45, 35, 25;
+    --jade-dark-warm-rgb: 75, 60, 45;
+    --jade-dark-warm-mid-rgb: 65, 50, 35;
+    --jade-dark-warm-light-rgb: 55, 42, 28;
+    
+    /* 文字：柔和但清晰 */
+    --ink-dark: hsl(var(--accent-hue), 18%, calc(91% + var(--accent-lightness-offset)));
+    --ink-medium: hsl(var(--accent-hue), 20%, calc(77% + var(--accent-lightness-offset)));
+    --ink-light: hsl(var(--accent-hue), 17%, calc(63% + var(--accent-lightness-offset)));
+    --ink-pale: hsl(var(--accent-hue), 6%, calc(50% + var(--accent-lightness-offset)));
+    --bamboo-text-muted: hsl(var(--accent-hue), 6%, calc(50% + var(--accent-lightness-offset)));
+    --bamboo-text-secondary: hsl(var(--accent-hue), 20%, calc(77% + var(--accent-lightness-offset)));
+    
+    /* 竹林色调：降低饱和度，增添银灰质感（跟随 --accent-hue） */
+    --bamboo-deep: hsl(calc(var(--accent-hue) + 5), 34%, calc(26% + var(--accent-lightness-offset)));
+    --bamboo-dark: hsl(calc(var(--accent-hue) + 6), 35%, calc(25% + var(--accent-lightness-offset)));
+    --bamboo-primary: hsl(calc(var(--accent-hue) + 2), 25%, calc(47% + var(--accent-lightness-offset)));
+    --bamboo-light: hsl(var(--accent-hue), 39%, calc(65% + var(--accent-lightness-offset)));
+    --bamboo-pale: hsl(var(--accent-hue), 30%, calc(78% + var(--accent-lightness-offset)));
+    --bamboo-primary-light: rgba(var(--primary-rgb), 0.6);
+    --bamboo-warning: #ffe082;
+    --bamboo-warning-pale: #fffde7;
+    --bamboo-error: #ef5350;
+    --bamboo-success: var(--bamboo-primary);
+    --bamboo-background: rgba(var(--primary-rgb), 0.1);
+    --bamboo-primary-dark: var(--bamboo-dark);
+    --bamboo-card: var(--card-bg);
+    
+    /* 背景层次：深邃午夜绿渐变 */
+    --bg-gradient-start: hsl(calc(var(--accent-hue) + 15), 21%, calc(11% + var(--accent-lightness-offset)));
+    --bg-gradient-mid1: hsl(calc(var(--accent-hue) + 10), 16%, calc(8% + var(--accent-lightness-offset)));
+    --bg-gradient-mid2: hsl(calc(var(--accent-hue) + 20), 24%, calc(12% + var(--accent-lightness-offset)));
+    --bg-gradient-end: hsl(calc(var(--accent-hue) + 5), 22%, calc(9% + var(--accent-lightness-offset)));
+    
+    /* 卡片：深邃中透出微光，跟随色相和明度 */
+    --card-bg: hsla(var(--accent-hue), 18%, calc(10% + var(--accent-lightness-offset)), 0.60);
+    --card-glass: hsla(var(--accent-hue), 18%, calc(10% + var(--accent-lightness-offset)), 0.85);
+    
+    /* 文字语义 */
+    --text-primary: hsl(var(--accent-hue), 18%, calc(91% + var(--accent-lightness-offset)));
+    --text-secondary: hsl(var(--accent-hue), 15%, calc(70% + var(--accent-lightness-offset)));
+    --text-tertiary: hsl(var(--accent-hue), 11%, calc(58% + var(--accent-lightness-offset)));
+    
+    /* 边框：微妙的星光边框 */
+    --border-light: rgba(var(--primary-rgb), 0.2);
+    --bamboo-border: rgba(var(--primary-rgb), 0.25);
+    
+    /* 阴影：深邃但不失层次 */
+    --shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+    --shadow-surface: 0 2px 8px rgba(0, 0, 0, 0.25), 0 1px 2px rgba(0, 0, 0, 0.15);
+    --shadow-card: 0 4px 16px rgba(0, 0, 0, 0.3), 0 2px 4px rgba(0, 0, 0, 0.2);
+    --shadow-elevated: 0 8px 28px rgba(0, 0, 0, 0.35), 0 4px 8px rgba(0, 0, 0, 0.25);
+    --shadow-floating: 0 16px 48px rgba(0, 0, 0, 0.45), 0 8px 16px rgba(0, 0, 0, 0.3);
+    
+    /* 渐变：星空微光 */
+    --section-title-gradient: linear-gradient(135deg, hsla(calc(var(--accent-hue) + 11), 33%, calc(26% + var(--accent-lightness-offset)), 0.7) 0%, rgba(var(--primary-rgb), 0.6) 50%, rgba(var(--primary-rgb), 0.5) 100%);
+    --action-bg: linear-gradient(135deg, hsla(calc(var(--accent-hue) + 11), 33%, calc(26% + var(--accent-lightness-offset)), 0.7) 0%, rgba(var(--primary-rgb), 0.6) 100%);
+    
+    /* 按钮 */
+    --btn-primary-bg: linear-gradient(135deg, var(--bamboo-dark) 0%, var(--bamboo-primary) 100%);
+    --btn-primary-hover: linear-gradient(135deg, var(--bamboo-primary) 0%, var(--bamboo-light) 100%);
+    --btn-secondary-bg: rgba(var(--primary-rgb), 0.12);
+    --btn-secondary-hover: rgba(var(--primary-rgb), 0.22);
+    --btn-outline-border: 2px solid var(--bamboo-primary);
+    --btn-outline-hover: rgba(var(--primary-rgb), 0.18);
+    
+    /* 表格 */
+    --table-header-bg: rgba(var(--primary-rgb), 0.12);
+    --table-border: rgba(var(--primary-rgb), 0.18);
+    
+    /* 诊断卡片 */
+    --diagnosis-bg: hsla(calc(var(--accent-hue) + 5), 30%, calc(8% + var(--accent-lightness-offset)), 0.92);
+    --diagnosis-border: rgba(var(--primary-rgb), 0.2);
+    --diagnosis-text: hsl(var(--accent-hue), 22%, calc(87% + var(--accent-lightness-offset)));
+    --diagnosis-card-good-bg: rgba(var(--primary-rgb), 0.12);
+    --diagnosis-card-warn-bg: rgba(180, 140, 60, 0.12);
+    
+    /* 时间线与进度 */
+    --timeline-stat-bg: rgba(var(--primary-rgb), 0.1);
+    --progress-bg: rgba(var(--primary-rgb), 0.15);
+    --breath-color: hsla(calc(var(--accent-hue) + 0), 35%, calc(64% + var(--accent-lightness-offset)), 0.4);
+    
+    /* KPI 卡片 */
+    --kpi-up-bg: linear-gradient(180deg, var(--card-bg) 0%, rgba(180, 60, 50, 0.18) 100%);
+    --kpi-down-bg: linear-gradient(180deg, var(--card-bg) 0%, rgba(var(--primary-rgb), 0.18) 100%);
+    --kpi-neutral-bg: linear-gradient(180deg, var(--card-bg) 0%, rgba(180, 150, 60, 0.18) 100%);
+    --kpi-break-bg: linear-gradient(180deg, var(--card-bg) 0%, rgba(100, 180, 200, 0.18) 100%);
+    --kpi-up-border: rgba(180, 60, 50, 0.35);
+    --kpi-down-border: rgba(var(--primary-rgb), 0.35);
+    --kpi-neutral-border: rgba(180, 150, 60, 0.35);
+    --kpi-break-border: rgba(100, 180, 200, 0.35);
+    --kpi-up-delta-color: #E87070;
+    
+    /* 标签 */
+    --tag-execute-bg: var(--bamboo-light);
+    --tag-miss-bg: hsl(var(--accent-hue), 12%, calc(26% + var(--accent-lightness-offset)));
+    --tag-text-light: hsl(var(--accent-hue), 15%, calc(89% + var(--accent-lightness-offset)));
+    
+    /* 波浪与毛玻璃 */
+    --wave-color: rgba(var(--primary-rgb), 0.5);
+    --glass-blur: 20px;
+    
+    /* 星空点缀色 */
+    --star-glow: hsla(calc(var(--accent-hue) + 0), 36%, calc(78% + var(--accent-lightness-offset)), 0.6);
+    --star-accent: hsl(var(--accent-hue), 38%, calc(75% + var(--accent-lightness-offset)));
+
+    /* 暗色模式：竹林浅色交互态 */
+    --bamboo-pale-hover: hsl(var(--accent-hue), 28%, calc(88% + var(--accent-lightness-offset)));
+    --bamboo-pale-hover-rgb: 208, 232, 208;
+    --bamboo-pale-active: hsl(var(--accent-hue), 25%, calc(82% + var(--accent-lightness-offset)));
+    --bamboo-pale-highlight: hsl(calc(var(--accent-hue) - 33), 78%, calc(68% + var(--accent-lightness-offset)));
+    --bamboo-pale-highlight-rgb: 160, 216, 120;
+    
+    /* Focus */
+    --focus-ring: 0 0 0 2px var(--bamboo-primary);
+    --focus-ring-offset: 0 0 0 4px rgba(var(--primary-rgb), 0.25);
+    --focus-ring-danger: 0 0 0 2px var(--cinnabar);
+    --focus-transition: box-shadow 0.15s ease;
+    
+    /* 状态色 */
+    --status-success: var(--bamboo-primary);
+    --status-warning: #ffe082;
+    --status-danger: #ef5350;
+    --status-info: #4FC3F7;
+    --status-success-bg: rgba(var(--primary-rgb), 0.15);
+    --status-warning-bg: rgba(var(--gold-rgb), 0.12);
+    --status-danger-bg: rgba(var(--danger-rgb), 0.15);
+    --status-info-bg: rgba(var(--info-rgb, 79, 195, 247), 0.12);
+    
+    /* 其他 */
+    --cinnabar: #FF6B6B;
+    --gold: #FFD93D;
+    --sky-azure: #74C0FC;
+    --sky-azure-rgb: 116, 192, 252;
+    --leaf-green: hsl(var(--accent-hue), 23%, calc(65% + var(--accent-lightness-offset)));
+
+    /* === 健康评分色彩系统（暗色同值） === */
+    --health-danger: #EF4444;
+    --health-warning: #F59E23;
+    --health-success-clr: #7ED321;
+    --health-info: #4A90D9;
+    --health-neutral: #95A5A6;
+    --health-pink: #E91E63;
+    --health-purple: #9C27B0;
+    --health-orange: #FF9800;
+    --health-gold-clr: #D97706;
+
+    /* 玉石纹理 — 暗色模式 */
+    --jade-cream-rgb: 40, 55, 40;
+    --jade-cream-mid-rgb: 35, 50, 35;
+    --jade-cream-deep-rgb: 30, 45, 30;
+    --jade-warm-rgb: 35, 48, 32;
+    --jade-dark-rgb: 20, 15, 10;
+    --jade-dark-mid-rgb: 18, 13, 8;
+    --jade-dark-deep-rgb: 15, 10, 5;
+    --jade-dark-warm-rgb: 25, 18, 10;
+    --jade-dark-warm-mid-rgb: 22, 15, 8;
+    --jade-dark-warm-light-rgb: 20, 12, 5;
+
+    /* 竹林装饰效果 — 暗色模式 */
+}
+
+
+/* ========== 触控区域最小尺寸（WCAG 2.5.8） ========== */
+:root {
+    --min-touch-target: 48px;
+}
+
+/* ============================================================
+   RESPONSIVE DESIGN TOKENS — Canonical Breakpoint System
+   ============================================================
+   Usage convention across ALL CSS files:
+     @media (max-width: 360px)    → tiny phone  (--bp-xxs, rare)
+     @media (max-width: 480px)    → mobile       (--bp-sm, PRIMARY)
+     @media (max-width: 600px)    → large phone / narrow modal (--bp-md-narrow)
+                                    NOTE: intentionally kept for wallet/shop modal
+                                    where the modal can be ~600px wide at 768px+ viewports.
+                                    Do NOT use for general layout — use 480px instead.
+     @media (max-width: 768px)    → tablet / narrow Obsidian sidebar (--bp-md, PRIMARY)
+     @media (min-width: 1025px)   → wide desktop (--bp-xl-min)
+
+   Mapping of OLD breakpoints found in codebase → NEW canonical values:
+     360  → 360  (kept as --bp-xxs, rare)
+     400  → 480  (merged into mobile)
+     420  → 360  (tiny-phone fallback)
+     480  → 480  (PRIMARY mobile breakpoint)
+     500  → 480  (merged into mobile)
+     560  → 480  (merged into mobile)
+     600  → 600  (kept as --bp-md-narrow, wallet/shop modal only)
+     700  → 768  (merged into tablet)
+     768  → 768  (PRIMARY tablet breakpoint)
+     960  → 768  (merged into tablet)
+     961+ → 1025+ (wide desktop)
+   ============================================================ */
+
+:root {
+    /* Breakpoint reference values (for documentation only — CSS @media
+       cannot use custom properties, so use the literal pixel values above
+       in @media conditions consistently across all files). */
+    --bp-xxs: 360px;       /* tiny phone: < iPhone SE 1st gen */
+    --bp-sm: 480px;        /* PRIMARY mobile breakpoint */
+    --bp-md-narrow: 600px; /* wallet/shop modal only — do NOT use for general layout */
+    --bp-md: 768px;        /* PRIMARY tablet breakpoint */
+    --bp-xl-min: 1025px;   /* min for wide desktop */
+
+    /* Fluid font scale — computed as clamp(min_px, fluid_vw, max_px)
+       where min applies at 320px and max at 1200px viewport width.
+       Use these instead of fixed --font-size-* for body-level text. */
+    --type-xs: calc(clamp(10px, 2.2vw, 12px) * var(--font-size-scale));        /* labels, meta, captions */
+    --type-sm: calc(clamp(12px, 2.6vw, 13px) * var(--font-size-scale));        /* secondary body text */
+    --type-base: calc(clamp(13px, 2.8vw, 15px) * var(--font-size-scale));      /* primary body text */
+    --type-md: calc(clamp(14px, 3.2vw, 17px) * var(--font-size-scale));        /* interactive, buttons, section titles */
+    --type-lg: calc(clamp(15px, 3.8vw, 20px) * var(--font-size-scale));        /* subtitles */
+    --type-xl: calc(clamp(18px, 4.8vw, 24px) * var(--font-size-scale));        /* smaller headings */
+    --type-2xl: calc(clamp(20px, 5.5vw, 28px) * var(--font-size-scale));       /* main h1 / hero title */
+    --type-display: calc(clamp(24px, 7vw, 36px) * var(--font-size-scale));     /* hero numbers, display */
+
+    /* ---- Supplementary fluid sizes ----
+       Values clamp(min_px, proportional_vw, max_px).
+       Use these instead of `font-size: XXpx` anywhere a fixed pixel size is used
+       for text that is not an icon/mark/border. */
+    --type-mini:    calc(clamp(8px, 1.8vw, 10px) * var(--font-size-scale));
+    --type-micro:   calc(clamp(9px, 2.0vw, 11px) * var(--font-size-scale));
+    --type-caption: calc(clamp(11px, 2.4vw, 13px) * var(--font-size-scale));
+    --type-body:    calc(clamp(13px, 2.8vw, 15px) * var(--font-size-scale));
+    --type-lead:    calc(clamp(14px, 3.2vw, 17px) * var(--font-size-scale));
+    --type-heading: calc(clamp(16px, 3.8vw, 20px) * var(--font-size-scale));
+    --type-large:   calc(clamp(18px, 4.5vw, 24px) * var(--font-size-scale));
+    --type-hero:    calc(clamp(20px, 5.5vw, 28px) * var(--font-size-scale));
+    --type-mega:    calc(clamp(24px, 7vw, 36px) * var(--font-size-scale));
+    --type-display-big: calc(clamp(32px, 9vw, 48px) * var(--font-size-scale));
+
+    /* Fluid spacing additions (used inside padding/gap declarations) */
+    --fluid-card-padding: clamp(10px, 2.5vw, 16px);
+    --fluid-gap-small: clamp(6px, 1.5vw, 10px);
+    --fluid-gap-med: clamp(8px, 2vw, 14px);
+
+    /* Fluid spacing — for layout-level padding and gaps.
+       Keep component-level small spacing fixed (e.g., 4px inside a button). */
+    --fluid-gutter: clamp(12px, 3vw, 24px);
+    --fluid-stack: clamp(8px, 2vw, 16px);
+    --fluid-section-gap: clamp(16px, 4vw, 32px);
+
+    /* Touch target — minimum interactive area (WCAG 2.5.8).
+       Enforced globally in base.css on button, [role=button], etc. */
+    --touch-target: 44px;
+    --touch-comfortable: 48px;
+}
+
+/* Dynamic viewport height — progressive enhancement.
+   100dvh is supported in all modern browsers; we fall back to 100vh for older ones. */
+:root {
+    --viewport-height: 100vh;
+}
+@supports (height: 100dvh) {
+    :root {
+        --viewport-height: 100dvh;
+    }
+}
+
+/* ============================================================
+   A11Y PREFERENCE TOKENS
+   ============================================================ */
+
+/* prefers-contrast: high-contrast mode — ensure text stays readable */
+@media (prefers-contrast: more) {
+    :root {
+        --text-primary: #000000;
+        --text-secondary: #222222;
+    }
+    html.dark {
+        --text-primary: #ffffff;
+        --text-secondary: #e0e0e0;
+    }
+}

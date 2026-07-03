@@ -1,0 +1,465 @@
+/* ========== KPI目标绑定样式 ========== */
+
+/* KPI卡片过渡动画 */
+#kpiGrid.kpi-transitioning .kpi-card {
+    opacity: 0.7;
+    transform: scale(0.98);
+}
+
+/* 目标KPI卡片样式 */
+.kpi-card.goal-kpi {
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.kpi-card.goal-kpi::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.05) 0%, transparent 100%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.kpi-card.goal-kpi:hover::before {
+    opacity: 1;
+}
+
+.kpi-card.goal-kpi:hover {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: var(--shadow-elevated);
+}
+
+/* KPI进度条 */
+.kpi-progress-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--bamboo-border);
+    overflow: hidden;
+}
+
+.kpi-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--bamboo-primary), var(--bamboo-primary-light));
+    transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 0 2px 2px 0;
+}
+
+/* KPI数值变化动画 */
+.kpi-value {
+    transition: all 0.3s ease;
+}
+
+.kpi-value.updating {
+    animation: kpiValuePulse 0.5s ease;
+}
+
+@keyframes kpiValuePulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); color: var(--bamboo-primary); }
+}
+
+/* KPI增量显示 */
+.kpi-delta {
+    font-size: var(--type-xs);
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+    margin-top: var(--space-1);
+}
+
+.kpi-delta.positive {
+    color: var(--bamboo-success);
+    background: rgba(var(--primary-rgb), 0.1);
+}
+
+.kpi-delta.negative {
+    color: var(--bamboo-error);
+    background: rgba(var(--danger-rgb), 0.1);
+}
+
+/* KPI成功状态 */
+.kpi-card.success {
+    background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.08) 0%, rgba(var(--primary-rgb), 0.03) 100%);
+}
+
+.kpi-card.success .kpi-value {
+    color: var(--bamboo-success);
+}
+
+/* KPI警告状态 */
+.kpi-card.warning {
+    background: linear-gradient(135deg, rgba(var(--warning-orange-rgb), 0.08) 0%, rgba(var(--warning-orange-rgb), 0.03) 100%);
+}
+
+.kpi-card.warning .kpi-value {
+    color: var(--health-orange);
+}
+
+/* KPI静音状态 */
+.kpi-card.muted {
+    opacity: 0.7;
+}
+
+.kpi-card.muted .kpi-value {
+    color: var(--text-secondary);
+}
+
+/* KPI进度状态 */
+.kpi-card.progress {
+    background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.1) 0%, rgba(var(--primary-rgb), 0.03) 100%);
+}
+
+.kpi-card.progress .kpi-value {
+    color: var(--bamboo-primary);
+    font-weight: 700;
+}
+
+/* KPI分类状态 */
+.kpi-card[data-category="work"] {
+    border-left: 3px solid var(--health-info);
+}
+
+.kpi-card[data-category="health"] {
+    border-left: 3px solid var(--health-pink);
+}
+
+.kpi-card[data-category="study"] {
+    border-left: 3px solid var(--health-purple);
+}
+
+.kpi-card[data-category="finance"] {
+    border-left: 3px solid var(--bamboo-primary);
+}
+
+.kpi-card[data-category="social"] {
+    border-left: 3px solid var(--health-orange);
+}
+
+/* KPI加载骨架屏 */
+.kpi-card.skeleton {
+    background: linear-gradient(90deg, var(--bamboo-background) 25%, var(--bamboo-card) 50%, var(--bamboo-background) 75%);
+    background-size: 200% 100%;
+    animation: kpiSkeletonShimmer 1.5s infinite;
+}
+
+@keyframes kpiSkeletonShimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+.kpi-card.skeleton .kpi-icon,
+.kpi-card.skeleton .kpi-label,
+.kpi-card.skeleton .kpi-value {
+    background: var(--bamboo-border);
+    border-radius: var(--radius-sm);
+    color: transparent;
+}
+
+/* KPI数据更新闪烁 */
+.kpi-card.data-updated {
+    animation: kpiDataUpdate 0.6s ease;
+}
+
+@keyframes kpiDataUpdate {
+    0%, 100% { background-color: transparent; }
+    50% { background-color: rgba(var(--primary-rgb), 0.15); }
+}
+
+/* KPI卡片入场动画 */
+.kpi-card.goal-kpi {
+    animation: kpiCardEnter 0.4s cubic-bezier(0.4, 0, 0.2, 1) backwards;
+}
+
+@keyframes kpiCardEnter {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* KPI统计信息 */
+.kpi-stats-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    background: var(--bamboo-background);
+    border-radius: var(--radius-md);
+    font-size: var(--type-sm);
+    color: var(--text-secondary);
+}
+
+.kpi-stats-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+}
+
+.kpi-stats-value {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+/* KPI空状态 */
+.kpi-empty-state {
+    grid-column: span 3;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-6);
+    background: var(--bamboo-background);
+    border-radius: var(--radius-lg);
+    border: 2px dashed var(--bamboo-border);
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.kpi-empty-state:hover {
+    border-color: var(--bamboo-primary);
+    background: rgba(var(--primary-rgb), 0.05);
+}
+
+.kpi-empty-icon {
+    font-size: var(--type-display-big);
+    margin-bottom: var(--space-2);
+    opacity: 0.6;
+}
+
+.kpi-empty-title {
+    font-size: var(--type-lg);
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: var(--space-1);
+}
+
+.kpi-empty-desc {
+    font-size: var(--type-sm);
+    color: var(--text-secondary);
+    margin-bottom: var(--space-2);
+}
+
+.kpi-empty-hint {
+    font-size: var(--type-xs);
+    color: var(--bamboo-primary);
+    padding: var(--space-1) var(--space-2);
+    background: rgba(var(--primary-rgb), 0.1);
+    border-radius: var(--radius-sm);
+}
+
+/* KPI工具提示 */
+.kpi-tooltip {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    padding: var(--space-2) var(--space-3);
+    background: var(--text-primary);
+    color: var(--bamboo-card);
+    font-size: var(--type-xs);
+    border-radius: var(--radius-md);
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.2s ease;
+    z-index: 100;
+    box-shadow: var(--shadow-elevated);
+}
+
+.kpi-tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: var(--text-primary);
+}
+
+.kpi-card.goal-kpi:hover .kpi-tooltip {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* 响应式调整 - rw-460 */
+.rw-460 .kpi-card.goal-kpi {
+    padding: var(--space-3);
+}
+
+.rw-460 .kpi-progress-bar {
+    height: 2px;
+}
+
+.rw-460 .kpi-empty-state {
+    padding: var(--space-4);
+}
+
+.rw-460 .kpi-empty-icon {
+    font-size: var(--type-mega);
+}
+
+/* ========== 目标依赖选择 ========== */
+.goal-item-deps {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px dashed var(--border-light);
+}
+
+.goal-dep-btn {
+    padding: 4px 10px;
+    border: 1px solid var(--border-light);
+    border-radius: 6px;
+    background: transparent;
+    cursor: pointer;
+    font-size: var(--type-sm);
+    color: var(--text-secondary);
+    transition: all 0.2s ease;
+}
+
+.goal-dep-btn:hover {
+    border-color: var(--bamboo-primary);
+    color: var(--bamboo-primary);
+}
+
+.goal-dep-btn.selected {
+    background: rgba(var(--primary-rgb), 0.12);
+    border-color: var(--bamboo-primary);
+    color: var(--bamboo-primary);
+    font-weight: 600;
+}
+
+/* ========== 模板选择器 ==========*/
+.template-picker {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+}
+.tmpl-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(3px);
+}
+.tmpl-container {
+    background: var(--card-bg);
+    border-radius: 16px;
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.25), 0 0 0 1px var(--border-light);
+    overflow: hidden;
+    width: 480px;
+    max-width: 90vw;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    font-size: var(--type-md);
+}
+.tmpl-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border-light);
+    background: var(--bamboo-background);
+}
+.tmpl-title {
+    font-weight: 600;
+    font-size: var(--type-md);
+    color: var(--text-primary);
+}
+.tmpl-close-btn {
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: var(--type-large);
+    cursor: pointer;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    line-height: 1;
+}
+.tmpl-close-btn:hover {
+    background: var(--border-light);
+    color: var(--text-primary);
+}
+.tmpl-body {
+    padding: 16px 20px;
+    overflow-y: auto;
+    flex: 1;
+}
+.tmpl-list {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+.tmpl-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 20px 16px;
+    border: 1.5px solid var(--border-light);
+    border-radius: 14px;
+    background: var(--bamboo-background);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+}
+.tmpl-card:hover {
+    border-color: var(--bamboo-primary);
+    background: rgba(var(--teal-rgb), 0.06);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(var(--teal-rgb), 0.1);
+}
+.tmpl-card-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    background: rgba(var(--teal-rgb), 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--bamboo-primary);
+}
+.tmpl-card-icon svg {
+    width: 24px;
+    height: 24px;
+}
+.tmpl-card-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.tmpl-card-name {
+    font-size: var(--type-md);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+.tmpl-card-desc {
+    font-size: var(--type-sm);
+    color: var(--text-secondary);
+}
+
+/* 模板选择 - 标签页 */
+.tmpl-tabs {
+    display: flex;
+    gap: 4px;
+    padding: 0 var(--space-4, 16px);
+    border-bottom: 1px solid var(--bamboo-border, #ecedea);
+}

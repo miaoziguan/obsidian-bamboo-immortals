@@ -187,7 +187,7 @@ export class PluginSettings extends PluginSettingTab {
      { name: '竹林修仙传', url: 'https://github.com/miaoziguan/obsidian-bamboo-immortals' }].forEach(work => {
       const tag = worksRow.createEl('span', { text: work.name, cls: 'bamboo-about-tag' });
       if (work.url) {
-        tag.style.cursor = 'pointer';
+        tag.setCssStyles({ cursor: 'pointer' });
         tag.addEventListener('click', () => {
           window.open(work.url, '_blank');
         });

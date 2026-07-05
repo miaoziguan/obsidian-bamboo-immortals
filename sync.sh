@@ -46,7 +46,8 @@ echo "🌐 同步 webapp 目录..."
 if [ -d "$SRC_DIR/webapp" ]; then
     mkdir -p "$DEST_DIR/webapp"
     # macOS openrsync 不支持 -a，拆成显式选项
-    rsync -rlptgoDv --delete "$SRC_DIR/webapp/" "$DEST_DIR/webapp/"
+    # 关键：不传 -t/-p/-o/-g，否则 mtime/owner 变化会触发 Obsidian 重解压
+    rsync -rlDv --no-times --no-perms --no-owner --no-group --delete "$SRC_DIR/webapp/" "$DEST_DIR/webapp/"
 
     # 清理 .DS_Store（macOS 系统文件）
     find "$DEST_DIR/webapp" -name ".DS_Store" -delete 2>/dev/null

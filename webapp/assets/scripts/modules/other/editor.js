@@ -29,12 +29,6 @@ export const OtherModule = {
                         ${ActionsEditor.renderFocusEditor(data)}
                     </div>
                 </div>
-                <div>
-                    <h4 style="margin-bottom: 12px; color: var(--text-primary);">感恩时刻</h4>
-                    <div id="gratitudeEditor">
-                        ${GratitudeEditor.renderEditor(data)}
-                    </div>
-                </div>
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" data-action="close-modal">取消</button>
@@ -107,15 +101,6 @@ export const OtherModule = {
             }
         });
         data.actions.focus = focusItems;
-
-        const gratitudeItems = [];
-        document.querySelectorAll('[data-gratitude-]')?.forEach((el) => {
-            const match = el.getAttribute('data-gratitude-')?.match(/^(\d+)$/);
-            if (match && el?.value.trim()) {
-                gratitudeItems[parseInt(match[1])] = el.value;
-            }
-        });
-        data.gratitude = gratitudeItems.filter(Boolean);
 
         store.updateDayData(data).then(() => {
             renderAll();

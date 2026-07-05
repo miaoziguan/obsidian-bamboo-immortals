@@ -263,7 +263,6 @@ export class ConfirmDialog {
 }
 
 export const Confirm = new ConfirmDialog();
-window.Confirm = Confirm;
 window.ConfirmDialog = ConfirmDialog;
 
 ConfirmDialog.confirmDelete = (message) => Confirm.confirmDelete(message);

@@ -21,7 +21,7 @@ export interface StorageWriteRequest {
 }
 
 export interface StorageListRequest {
-  type: 'storage:listDays' | 'storage:listGoals';
+  type: 'storage:listDays';
   id: string;
   payload?: never;
 }

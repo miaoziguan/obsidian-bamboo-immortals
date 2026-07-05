@@ -49,6 +49,10 @@ if [ -d "$SRC_DIR/webapp" ]; then
     # 关键：不传 -t/-p/-o/-g，否则 mtime/owner 变化会触发 Obsidian 重解压
     rsync -rlDv --no-times --no-perms --no-owner --no-group --delete "$SRC_DIR/webapp/" "$DEST_DIR/webapp/"
 
+    # 写入 .version，防止插件误判 webapp 未安装从 GitHub 下载覆盖
+    VERSION=$(grep '"version"' "$SRC_DIR/manifest.json" | sed 's/.*"\([0-9.]*\)".*/\1/')
+    echo "$VERSION" > "$DEST_DIR/webapp/.version"
+
     # 清理 .DS_Store（macOS 系统文件）
     find "$DEST_DIR/webapp" -name ".DS_Store" -delete 2>/dev/null
 

@@ -404,4 +404,3 @@ window.addEventListener('message', (event) => {
 export const storageManager = new BridgeStorage();
 window.storageManager = storageManager;
 
-window.BridgeStorage = BridgeStorage;

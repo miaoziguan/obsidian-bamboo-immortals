@@ -299,21 +299,22 @@ html.dark .sm-item-hidden {
 /* ========== 操作栏 & 应用更改按钮 ========== */
 .sm-actions-bar {
     display: flex;
-    flex-direction: column;
-    align-items: stretch;
+    align-items: center;
+    justify-content: space-between;
     gap: 10px;
-    padding: 12px 14px;
+    padding: 8px 12px;
     margin: 0 -4px 14px -4px;
     border-radius: 10px;
     background: rgba(var(--primary-rgb), 0.06);
-    border: 1px solid rgba(var(--primary-rgb), 0.12);
+    border: 1px solid rgba(var(--primary-rgb), 0.10);
 }
 
 .sm-actions-bar-tip {
+    flex: 1;
     font-size: var(--type-micro);
     color: var(--text-tertiary);
     line-height: 1.5;
-    text-align: left;
+    text-align: right;
 }
 
 .sm-apply-btn {
@@ -331,7 +332,7 @@ html.dark .sm-item-hidden {
     cursor: pointer;
     transition: all 0.2s;
     white-space: nowrap;
-    align-self: flex-end;
+    flex-shrink: 0;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
 }
 

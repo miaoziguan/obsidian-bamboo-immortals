@@ -626,7 +626,8 @@ export const StatsModal = {
 };
 
 ActionDispatcher.registerMany({
-    'stats-export-report-md': () => StatsModal.exportReportMD()
+    'stats-export-report-md': () => StatsModal.exportReportMD(),
+    'stats-modal-open-achievements': () => StatsModal.openAchievements()
 });
 
 window.StatsModal = StatsModal;

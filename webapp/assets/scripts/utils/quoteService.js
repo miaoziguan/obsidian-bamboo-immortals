@@ -7,7 +7,7 @@ export const QuoteService = {
         { text: '目送归鸿，手挥五弦。', author: '嵇康' },
         { text: '俯仰自得，游心太玄。', author: '嵇康' },
         { text: '越名教而任自然。', author: '嵇康' },
-        { text: '贵得肆志，纵心无讳。', author: '嵇康' },
+        { text: '贵得肆志，纵心无悔。', author: '嵇康' },
         { text: '嘉彼钓叟，得鱼忘筌。', author: '嵇康' },
         { text: '郢人逝矣，谁与尽言？', author: '嵇康' },
         { text: '凌厉中原，顾盼生姿。', author: '嵇康' },

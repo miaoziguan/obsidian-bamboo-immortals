@@ -27,7 +27,7 @@ export const QuickNav = {
         nav.className = 'quick-nav';
         nav.setAttribute('aria-label', '快速导航');
 
-        let buttonsHtml = `<button class="quick-nav-toggle" data-action="quick-nav-toggle" title="展开/收起导航">${typeof LucideUtils !== 'undefined' ? LucideUtils.createIcon('book-open', { size: 18 }) : ''}</button>`;
+        let buttonsHtml = `<button class="quick-nav-toggle" data-action="quick-nav-toggle" title="展开/收起导航">${typeof LucideUtils !== 'undefined' ? LucideUtils.createIcon('bookOpen', { size: 18 }) : ''}</button>`;
 
         this.sections.forEach(section => {
             buttonsHtml += `
@@ -60,7 +60,7 @@ export const QuickNav = {
         const nav = document.querySelector('.quick-nav');
         nav.classList.toggle('expanded');
         const btn = nav.querySelector('.quick-nav-toggle');
-        btn.innerHTML = typeof LucideUtils !== 'undefined' ? LucideUtils.createIcon(nav.classList.contains('expanded') ? 'book-closed' : 'book-open', { size: 18 }) : '';
+        btn.innerHTML = typeof LucideUtils !== 'undefined' ? LucideUtils.createIcon(nav.classList.contains('expanded') ? 'bookClosed' : 'bookOpen', { size: 18 }) : '';
     },
 
     scrollToSection(id) {

@@ -73,22 +73,9 @@ export const SectionManager = {
             ? `<button class="sm-batch-show-btn" data-action="section-manager-show-all">${LucideUtils.createIcon('eye', { size: 13 })} 全部显示</button>`
             : '';
 
-        const applyBtn = `
-            <button class="sm-apply-btn" data-action="section-manager-apply-changes" title="将当前的顺序和显示设置应用到主页面">
-                <span class="sm-apply-dot" style="display:none"></span>
-                ${LucideUtils.createIcon('check', { size: 13 })}
-                <span>应用更改</span>
-            </button>
-        `;
-
         const content = `
             <div class="sm-actions-bar">
-                <div class="sm-actions-bar-tip">调整顺序或显示后，点击右侧按钮使其在主页面生效</div>
-                <button class="sm-apply-btn" data-action="section-manager-apply-changes" title="将当前的顺序和显示设置应用到主页面">
-                    <span class="sm-apply-dot" style="display:none"></span>
-                    ${LucideUtils.createIcon('check', { size: 12 })}
-                    <span>应用更改</span>
-                </button>
+                <div class="sm-actions-bar-tip">调整顺序或显示后，点击<span class="sm-apply-link" data-action="section-manager-apply-changes" title="将当前的顺序和显示设置应用到主页面">应用更改</span></div>
             </div>
             <div class="fab-panel-section">
                 <div class="fab-panel-section-title">显示的板块 (${visible.length})</div>
@@ -242,24 +229,8 @@ export const SectionManager = {
         this._updateApplyBtnState();
     },
 
-    /**
-     * 更新「应用更改」按钮的小圆点状态
-     */
     _updateApplyBtnState() {
-        if (!PanelManager.activePanel || PanelManager.activeId !== 'sections') {
-            return;
-        }
-        const btn = PanelManager.activePanel.querySelector('.sm-apply-btn');
-        if (!btn) return;
-        const dot = btn.querySelector('.sm-apply-dot');
-        if (!dot) return;
-        if (this.hasPendingChanges) {
-            dot.style.display = 'inline-block';
-            btn.classList.add('has-pending');
-        } else {
-            dot.style.display = 'none';
-            btn.classList.remove('has-pending');
-        }
+        // 文本链接模式，无需更新按钮状态
     },
 
 

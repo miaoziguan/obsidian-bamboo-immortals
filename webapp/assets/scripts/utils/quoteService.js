@@ -30,10 +30,9 @@ export const QuoteService = {
         { text: '幕天席地，纵意所如。', author: '刘伶' },
         { text: '兀然而醉，豁尔而醒。', author: '刘伶' },
         { text: '无思无虑，其乐陶陶。', author: '刘伶' },
-        { text: '太上忘情，最下不及情。', author: '王戎' },
+        { text: '圣人忘情，最下不及情。', author: '王戎' },
         { text: '情之所钟，正在我辈。', author: '王戎' },
         { text: '视之虽近，邈若山河。', author: '王戎' },
-        { text: '山公启事，海内翕然。', author: '山涛' },
         { text: '未能免俗，聊复尔耳。', author: '阮咸' }
     ],
 

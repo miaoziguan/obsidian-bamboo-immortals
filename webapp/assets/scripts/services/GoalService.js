@@ -576,4 +576,3 @@ export const GoalService = {
 
 window.GoalService = GoalService;
 
-window.DEFAULT_CATEGORIES = DEFAULT_CATEGORIES;

@@ -21,33 +21,3 @@ export {
 export {
     Store, DataValidator, DATA_VERSION, DEFAULT_DATA, createEmptyDayData,
 } from './assets/scripts/state/index.mjs';
-
-// 统一命名空间（H14 解决方案）
-window.BambooUtils = {
-    CONSTANTS: window.CONSTANTS,
-    LucideUtils: window.LucideUtils,
-    EventBus: window.EventBus,
-    formatDate: window.formatDate,
-    getChineseDateDisplay: window.getChineseDateDisplay,
-    getChineseWeekday: window.getChineseWeekday,
-    debounce: window.debounce,
-    throttle: window.throttle,
-    createElement: window.createElement,
-    $: window.$,
-    $$: window.$$,
-    parseTime: window.parseTime,
-    calculateCheckInTimes: window.calculateCheckInTimes,
-    HTML: window.HTML,
-    Toast: window.Toast,
-    ModalStack: window.ModalStack,
-    PanelManager: window.PanelManager,
-    ActionDispatcher: window.ActionDispatcher,
-    ConfirmDialog: window.ConfirmDialog,
-    PopupPositioner: window.PopupPositioner,
-    CULTIVATION_DATA: window.CULTIVATION_DATA,
-    Store: window.Store,
-    DataValidator: window.DataValidator,
-    DATA_VERSION: window.DATA_VERSION,
-    DEFAULT_DATA: window.DEFAULT_DATA,
-    createEmptyDayData: window.createEmptyDayData,
-};

@@ -22,9 +22,6 @@ export class ThemeBridge {
     /** 防抖竞态标记：restoreDefaults 被调用后设为 true，阻止延迟回调覆写 */
     private static _suppressed = false;
 
-    constructor() {
-    }
-
   attachIframe(iframe: HTMLIFrameElement): void {
     this.iframe = iframe;
     try {

@@ -107,7 +107,7 @@ export interface StorageExportRequest {
 export interface StorageImportRequest {
   type: 'storage:importAll';
   id: string;
-  payload: { data: unknown; options?: { strategy?: 'overwrite' | 'merge' } };
+  payload: { data: unknown };
 }
 
 export interface StorageClearRequest {
@@ -165,12 +165,6 @@ export interface AppReadLocalFileMessage {
 }
 
 // ---- 主题类消息 ----
-
-export interface ThemeChangedMessage {
-  type: 'theme:changed';
-  payload: { isDark: boolean };
-}
-
 /** webapp 调色 → Obsidian 原生界面同步 */
 export interface ThemeSyncPaletteMessage {
   type: 'theme:syncPalette';

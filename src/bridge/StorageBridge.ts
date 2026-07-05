@@ -82,7 +82,7 @@ export class StorageBridge {
         return await this.storage.exportAllData();
 
       case 'storage:importAll':
-        return await this.storage.importData(message.payload.data, message.payload.options);
+        return await this.storage.importData(message.payload.data);
 
       case 'storage:clearAll':
         return await this.storage.clearAll();

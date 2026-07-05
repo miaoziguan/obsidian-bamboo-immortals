@@ -304,7 +304,7 @@ export class VaultStorage {
     };
   }
 
-  async importData(data: Record<string, unknown>, options?: { strategy?: 'overwrite' | 'merge' }): Promise<void> {
+  async importData(data: Record<string, unknown>): Promise<void> {
     await this.ensureStructure();
 
     if (data.days) {

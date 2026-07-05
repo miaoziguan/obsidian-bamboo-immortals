@@ -4,7 +4,7 @@ export const ALLOWED_AUDIO_EXTENSIONS = [
 ];
 
 /** 音频文件扩展名 → MIME 类型 */
-export const AUDIO_MIME_TYPES: Record<string, string> = {
+const AUDIO_MIME_TYPES: Record<string, string> = {
   '.mp3':  'audio/mpeg',
   '.wav':  'audio/wav',
   '.ogg':  'audio/ogg',

@@ -19,7 +19,7 @@ export const QuoteService = {
         { text: '人生若尘露，天道邈悠悠。', author: '阮籍' },
         { text: '孤鸿号外野，翔鸟鸣北林。', author: '阮籍' },
         { text: '夜中不能寐，起坐弹鸣琴。', author: '阮籍' },
-        { text: '薄帷鉴明月，清风吹我衿。', author: '阮籍' },
+        { text: '薄帷鉴明月，清风吹我襟。', author: '阮籍' },
         { text: '徘徊将何见？忧思独伤心。', author: '阮籍' },
         { text: '朝阳不再盛，白日忽西幽。', author: '阮籍' },
         { text: '繁华有憔悴，堂上生荆杞。', author: '阮籍' },

@@ -320,13 +320,13 @@ html.dark .sm-item-hidden {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 5px;
-    padding: 4px 12px;
-    border-radius: 6px;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: 5px;
     border: 1px solid var(--bamboo-primary);
     background: var(--bamboo-primary);
     color: #fff;
-    font-size: var(--type-micro);
+    font-size: 11px;
     font-weight: 500;
     cursor: pointer;
     transition: all 0.2s;

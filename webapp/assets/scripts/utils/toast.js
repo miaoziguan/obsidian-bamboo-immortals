@@ -244,4 +244,3 @@ ActionDispatcher.registerMany({
 });
 
 window.Toast = Toast;
-window.ToastManager = ToastManager;

@@ -15,7 +15,7 @@ export const QuoteService = {
         { text: '夫人之相知，贵识其天性，因而济之。', author: '嵇康' },
         { text: '目送鸿鹄高飞，一举千里。', author: '阮籍' },
         { text: '时命若一以生，亦已焉哉。', author: '阮籍' },
-        { text: '谁言万事艰，散怀在一朝。', author: '阮籍' },
+        { text: '谁言万事艰，逍遥可终生。', author: '阮籍' },
         { text: '时无英雄，使竖子成名。', author: '阮籍' },
         { text: '人生若尘露，天道邈悠悠。', author: '阮籍' },
         { text: '孤鸿号外野，翔鸟鸣北林。', author: '阮籍' },

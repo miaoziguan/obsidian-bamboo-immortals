@@ -72,7 +72,7 @@ export const StatsModal = {
                         <div class="alert-card overdue-card">
                             <div class="alert-card-top">
                                 <div class="alert-card-icon overdue-icon">
-                                    ${LucideUtils.createIcon('alert-triangle', { size: 24, strokeWidth: 1.8 })}
+                                    ${LucideUtils.createIcon('alertTriangle', { size: 24, strokeWidth: 1.8 })}
                                 </div>
                                 <div class="alert-card-count">${stats.overdueGoals.length}</div>
                             </div>

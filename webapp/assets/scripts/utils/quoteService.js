@@ -35,8 +35,6 @@ export const QuoteService = {
         { text: '视之虽近，邈若山河。', author: '王戎' },
         { text: '山公启事，海内翕然。', author: '山涛' },
         { text: '清真寡欲，万物不能移。', author: '山涛' },
-        { text: '抱琴行吟，弋钓山水。', author: '阮咸' },
-        { text: '手执素琴以卒岁，亦已焉哉。', author: '阮咸' },
         { text: '未能免俗，聊复尔耳。', author: '阮咸' }
     ],
 

@@ -83,8 +83,12 @@ export const SectionManager = {
 
         const content = `
             <div class="sm-actions-bar">
-                <div class="sm-actions-bar-tip">调整顺序或显示后，点击右侧按钮使其在主页面生效</div>
-                ${applyBtn}
+                <div class="sm-actions-bar-tip">调整顺序或显示后，点击下方按钮使其在主页面生效</div>
+                <button class="sm-apply-btn" data-action="section-manager-apply-changes" title="将当前的顺序和显示设置应用到主页面">
+                    <span class="sm-apply-dot" style="display:none"></span>
+                    ${LucideUtils.createIcon('check', { size: 14 })}
+                    <span>应用更改</span>
+                </button>
             </div>
             <div class="fab-panel-section">
                 <div class="fab-panel-section-title">显示的板块 (${visible.length})</div>

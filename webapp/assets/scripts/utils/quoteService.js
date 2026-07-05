@@ -8,7 +8,6 @@ export const QuoteService = {
         { text: '俯仰自得，游心太玄。', author: '嵇康' },
         { text: '越名教而任自然。', author: '嵇康' },
         { text: '贵得肆志，纵心无讳。', author: '嵇康' },
-        { text: '齐万物而不夭，泽万世而不折。', author: '嵇康' },
         { text: '情必极貌以写物，辞必穷力而追新。', author: '嵇康' },
         { text: '嘉彼钓叟，得鱼忘筌。', author: '嵇康' },
         { text: '郢人逝矣，谁与尽言？', author: '嵇康' },

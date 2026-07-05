@@ -13,7 +13,7 @@ export const QuoteService = {
         { text: '凌厉中原，顾盼生姿。', author: '嵇康' },
         { text: '循性而动，各附所安。', author: '嵇康' },
         { text: '夫人之相知，贵识其天性，因而济之。', author: '嵇康' },
-        { text: '目送鸿鹄高飞，一举千里。', author: '阮籍' },
+        { text: '鸿鹄相随飞，飞飞适荒裔。', author: '阮籍' },
         { text: '谁言万事艰，逍遥可终生。', author: '阮籍' },
         { text: '时无英雄，使竖子成名。', author: '阮籍' },
         { text: '人生若尘露，天道邈悠悠。', author: '阮籍' },

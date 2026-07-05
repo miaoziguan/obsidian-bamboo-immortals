@@ -208,13 +208,3 @@ export type AnyBridgeMessage =
   | AppReadLocalFileMessage
   | ThemeSyncPaletteMessage;
 
-/**
- * 运行时消息透传接口（序列化用，payload 为 unknown）
- * 实际处理时优先用 AnyBridgeMessage 做类型收窄。
- */
-export interface BridgeMessage {
-  type: string;
-  id: string;
-  payload?: unknown;
-  error?: string;
-}

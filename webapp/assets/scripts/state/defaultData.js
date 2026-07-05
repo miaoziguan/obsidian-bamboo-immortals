@@ -90,7 +90,7 @@
                 ],
             },
             {
-                id: 'goal_default_2', icon: 'book-open', title: '技能提升', meta: '持续学习',
+                id: 'goal_default_2', icon: 'bookOpen', title: '技能提升', meta: '持续学习',
                 category: 'study', startDate: _startDateStr, endDate: _endDateStr,
                 items: [
                     { name: '阅读', detail: '进行中', percent: 80, startDate: _startDateStr, endDate: _endDateStr, startValue: '0', targetValue: '100', currentValue: '80', dailyMin: '1', taskDayType: 'daily' },

@@ -17,7 +17,6 @@ export const StorageKeys = {
     AUTO_SAVE_INTERVAL: 'autoSaveInterval',
     WEATHER_CITY:       'weather-city',
     AUTO_BACKUPS:       'autoBackups',
-    COLOR_THEME:        'colorTheme',
     WEATHER_ENABLED:    'weatherEnabled',
     WEATHER_EXPANDED:   'weatherExpanded',
     QUOTE_SOURCE:       'quoteSource',

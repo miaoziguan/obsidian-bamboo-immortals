@@ -1,4 +1,4 @@
-export const CUSTOM_TEMPLATES_KEY = 'bamboo_goal_custom_templates_v1';
+const CUSTOM_TEMPLATES_KEY = 'bamboo_goal_custom_templates_v1';
 export const MAX_CUSTOM_TEMPLATES = 20;
 
 export const CustomTemplateManager = {

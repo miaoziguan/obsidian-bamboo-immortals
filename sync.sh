@@ -45,7 +45,8 @@ echo ""
 echo "🌐 同步 webapp 目录..."
 if [ -d "$SRC_DIR/webapp" ]; then
     mkdir -p "$DEST_DIR/webapp"
-    rsync -a --delete "$SRC_DIR/webapp/" "$DEST_DIR/webapp/"
+    # macOS openrsync 不支持 -a，拆成显式选项
+    rsync -rlptgoDv --delete "$SRC_DIR/webapp/" "$DEST_DIR/webapp/"
 
     # 清理 .DS_Store（macOS 系统文件）
     find "$DEST_DIR/webapp" -name ".DS_Store" -delete 2>/dev/null

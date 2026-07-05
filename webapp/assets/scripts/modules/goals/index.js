@@ -1,5 +1,4 @@
 export const GOAL_STATUSES = ['已搁置', '进行中', '已完成'];
-window.GOAL_STATUSES = GOAL_STATUSES;
 
 Object.defineProperty(window, 'GOAL_CATEGORIES', {
     get() { return GoalsRenderer.getCategories(); },

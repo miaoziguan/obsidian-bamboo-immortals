@@ -719,8 +719,4 @@ export class LocalStorageAdapter {
 
 export const storageManager = new StorageManager();
 window.storageManager = storageManager;
-window.StorageManager = StorageManager;
 
-window.IndexedDBAdapter = IndexedDBAdapter;
-
-window.LocalStorageAdapter = LocalStorageAdapter;

@@ -253,11 +253,3 @@ export const WeatherService = {
 };
 
 window.WeatherService = WeatherService;
-
-window.WEATHER_ICONS = WEATHER_ICONS;
-
-window.WEATHER_LABELS = WEATHER_LABELS;
-
-window.getManualCity = getManualCity;
-
-window.setManualCity = setManualCity;

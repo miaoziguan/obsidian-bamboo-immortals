@@ -924,4 +924,3 @@ export const GoalHealthScore = {
 
 window.GoalHealthScore = GoalHealthScore;
 
-window.TUNING = TUNING;

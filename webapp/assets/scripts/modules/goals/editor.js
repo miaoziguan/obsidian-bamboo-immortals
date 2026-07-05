@@ -522,4 +522,3 @@ ActionDispatcher.registerMany({
 
 window.GoalsEditor = GoalsEditor;
 
-window.GOAL_TEMPLATES = GOAL_TEMPLATES;

@@ -3,7 +3,7 @@ import * as path from 'path';
 import { StorageBridge } from './StorageBridge';
 import { ThemeBridge } from './ThemeBridge';
 import type { AnyBridgeMessage } from '../types/messages';
-import { ALLOWED_AUDIO_EXTENSIONS, AUDIO_MIME_TYPES } from '../constants/audio';
+import { ALLOWED_AUDIO_EXTENSIONS } from '../constants/audio';
 import type { BambooReviewSettings } from '../settings/PluginSettings';
 
 /** 扫描音频文件时默认跳过的目录名（configDir 可通过 setConfigDir 自定义） */
@@ -318,10 +318,6 @@ export class BridgeService {
     }
   }
 
-  /** 根据文件扩展名获取 MIME 类型 */
-  private _getAudioMimeType(ext: string): string {
-    return AUDIO_MIME_TYPES[ext] || 'application/octet-stream';
-  }
 
   /** 向 iframe 发送成功响应 */
   private respond(id: string, payload: any): void {

@@ -34,7 +34,6 @@ export const QuoteService = {
         { text: '情之所钟，正在我辈。', author: '王戎' },
         { text: '视之虽近，邈若山河。', author: '王戎' },
         { text: '山公启事，海内翕然。', author: '山涛' },
-        { text: '举尔所知，尔所不知，人其舍诸。', author: '山涛' },
         { text: '璞玉浑金，人皆钦其宝，莫知其所以贵。', author: '山涛' },
         { text: '清真寡欲，万物不能移。', author: '山涛' },
         { text: '抱琴行吟，弋钓山水。', author: '阮咸' },

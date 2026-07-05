@@ -41,14 +41,12 @@ cp -f "$SRC_DIR/manifest.json" "$DEST_DIR/" 2>/dev/null && echo "   ✓ manifest
 cp -f "$SRC_DIR/author-avatar.jpg" "$DEST_DIR/" 2>/dev/null && echo "   ✓ author-avatar.jpg"
 echo ""
 
-# 3. 同步 webapp 目录（整个目录同步）
+# 3. 同步 webapp 目录（rsync 避免 rm -rf 造成空目录窗口）
 echo "🌐 同步 webapp 目录..."
 if [ -d "$SRC_DIR/webapp" ]; then
-    # 删除目标目录中的旧 webapp
-    rm -rf "$DEST_DIR/webapp"
-    # 复制新的 webapp 目录
-    cp -R "$SRC_DIR/webapp" "$DEST_DIR/"
-    
+    mkdir -p "$DEST_DIR/webapp"
+    rsync -a --delete "$SRC_DIR/webapp/" "$DEST_DIR/webapp/"
+
     # 清理 .DS_Store（macOS 系统文件）
     find "$DEST_DIR/webapp" -name ".DS_Store" -delete 2>/dev/null
 

@@ -292,15 +292,6 @@
     font-size: var(--type-sm);
     font-weight: 500;
 }
-.about-contact {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-}
-.about-contact-item {
-    font-size: var(--type-sm);
-    color: var(--text-secondary);
-}
 .settings-stats-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);

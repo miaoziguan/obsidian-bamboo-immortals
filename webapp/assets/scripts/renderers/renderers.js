@@ -73,8 +73,16 @@ export const renderAll = () => {
             });
 
             // 收集所有需要渲染的 section 元素，按正确顺序排列
+            // 性能优化：themeEffect section 仅首次创建，后续渲染复用已存在的 DOM
+            const savedThemeWrapper = document.getElementById('themeEffectSection');
             const sectionElements = [];
             sections.forEach((section, index) => {
+                if (section.id === 'themeEffect' && savedThemeWrapper) {
+                    savedThemeWrapper.setAttribute('data-section-id', 'themeEffect');
+                    savedThemeWrapper.style.animationDelay = `${index * 0.05}s`;
+                    sectionElements.push(savedThemeWrapper);
+                    return;
+                }
                 const existingEl = sectionsContainer.querySelector(`[data-section-id="${section.id}"]`);
                 const sectionElement = createDefaultSection(section, data, index);
                 if (sectionElement) {
@@ -182,8 +190,6 @@ export const computeActiveDuration = (timeline) => {
 export const stubIconClock = '<svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>';
 export const stubIconList = '<svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>';
 export const stubIconFlip = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>';
-export const stubIconFlipBack = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 1L3 5l4 4"/><path d="M21 11V9a4 4 0 0 0-4-4H3"/><path d="M17 23l4-4-4-4"/><path d="M3 13v2a4 4 0 0 0 4 4h14"/></svg>';
-
 export const buildStubBackHTML = (data) => {
     const { activeCount, totalPeriods, totalEvents, activeDuration } = data;
     const pct = totalPeriods > 0 ? Math.round((activeCount / totalPeriods) * 100) : 0;
@@ -689,7 +695,10 @@ export const setupTimelineHoverEffects = () => {
 };
 window.setupTimelineHoverEffects = setupTimelineHoverEffects;
 
-export const setupBambooTooltips = () => {
+export const setupBambooTooltips = (container = document) => {
+    if (container._tooltipBound) return;
+    container._tooltipBound = true;
+
     let tooltip = document.querySelector('.bamboo-tooltip');
     if (!tooltip) {
         tooltip = document.createElement('div');

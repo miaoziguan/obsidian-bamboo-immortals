@@ -94,10 +94,8 @@ export class Store {
     }
 
     setState(updates) {
-        const prevState = structuredClone(this.state);
         Object.assign(this.state, updates);
         this.notify();
-        return prevState;
     }
 
     async loadFromStorage() {
@@ -227,24 +225,22 @@ export class Store {
                 }).catch(function() {});
             }
 
-            const theme = await storageManager.getSetting('theme');
-            const autoSyncThemeRaw = await storageManager.getSetting('autoSyncTheme');
-            this.state.ui.autoSyncTheme = autoSyncThemeRaw !== 'false'; // 默认 true
+            const [theme, autoSyncThemeRaw, weatherEnabledRaw, weatherCityRaw, weatherExpandedRaw, quoteSourceRaw, quoteEnabledRaw] = await Promise.all([
+                storageManager.getSetting('theme'),
+                storageManager.getSetting('autoSyncTheme'),
+                storageManager.getSetting('weatherEnabled'),
+                storageManager.getSetting('weatherCity'),
+                storageManager.getSetting('weatherExpanded'),
+                storageManager.getSetting('quoteSource'),
+                storageManager.getSetting('quoteEnabled'),
+            ]);
 
-            const weatherEnabledRaw = await storageManager.getSetting('weatherEnabled');
-            this.state.ui.weatherEnabled = weatherEnabledRaw === 'true'; // 默认 false
-
-            const weatherCityRaw = await storageManager.getSetting('weatherCity');
+            this.state.ui.autoSyncTheme = autoSyncThemeRaw !== 'false';
+            this.state.ui.weatherEnabled = weatherEnabledRaw === 'true';
             this.state.ui.weatherCity = (weatherCityRaw && weatherCityRaw.length > 0) ? weatherCityRaw : null;
-
-            const weatherExpandedRaw = await storageManager.getSetting('weatherExpanded');
-            this.state.ui.weatherExpanded = weatherExpandedRaw === 'true'; // 默认 false
-
-            const quoteSourceRaw = await storageManager.getSetting('quoteSource');
+            this.state.ui.weatherExpanded = weatherExpandedRaw === 'true';
             this.state.ui.quoteSource = (quoteSourceRaw && quoteSourceRaw.length > 0) ? quoteSourceRaw : '';
-
-            const quoteEnabledRaw = await storageManager.getSetting('quoteEnabled');
-            this.state.ui.quoteEnabled = quoteEnabledRaw === 'false' ? false : true; // 默认开启
+            this.state.ui.quoteEnabled = quoteEnabledRaw === 'false' ? false : true;
 
             if (theme === 'dark') {
                 this.state.ui.isDarkMode = true;

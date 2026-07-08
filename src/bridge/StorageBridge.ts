@@ -71,12 +71,13 @@ export class StorageBridge {
       case 'storage:getDayKeys':
         return await this.storage.getDayKeys();
 
-      case 'storage:getDaysPaginated':
+      case 'storage:getDaysPaginated': {
         const paginatedPayload = message.payload as { page?: number; pageSize?: number };
         return await this.storage.getDaysPaginated(
           paginatedPayload.page ?? 0,
           paginatedPayload.pageSize ?? 30
         );
+      }
 
       case 'storage:exportAll':
         return await this.storage.exportAllData();

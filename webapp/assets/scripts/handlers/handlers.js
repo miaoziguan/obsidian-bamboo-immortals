@@ -54,11 +54,6 @@ export const Handlers = {
         FABManager.init();
     },
 
-    showQuickStartGuide() {
-        const content = QuickStartGuide.render();
-        this.openModal(content, LucideUtils.createIcon('shield', { size: 18 }) + '开始使用');
-    },
-
     openModal(content, title = '编辑') {
         this.lastFocusedElement = document.activeElement;
         const container = document.getElementById('modalContainer');

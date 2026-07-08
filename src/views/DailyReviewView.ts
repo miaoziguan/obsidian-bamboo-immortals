@@ -24,6 +24,7 @@ export class DailyReviewView extends ItemView {
   private iframe: HTMLIFrameElement | null = null;
   private iframeErrorHandler: ((e: Event) => void) | null = null;
   private keydownForwarder: ((e: KeyboardEvent) => void) | null = null;
+  private _checkInterval: number | null = null;
   private cssChangeRef: any = null;
   private webappPath: string;
   private settings: BambooReviewSettings;
@@ -66,16 +67,28 @@ export class DailyReviewView extends ItemView {
 
     // webapp 尚未就绪时显示 loading 占位，后台异步拉包解包
     if (!this.plugin.webappReady) {
-      container.createEl('div', {
+      const statusEl = container.createEl('div', {
         text: '正在初始化竹林修仙传…',
         cls: 'bamboo-review-loading',
       });
       // 轮询等待就绪后加载 iframe
-      const checkInterval = setInterval(() => {
+      let ticks = 0;
+      this._checkInterval = window.setInterval(() => {
+        ticks++;
         if (this.plugin.webappReady) {
-          clearInterval(checkInterval);
+          window.clearInterval(this._checkInterval!);
+          this._checkInterval = null;
           container.empty();
           void this.setupIframe(container);
+          return;
+        }
+        // 30 秒后提示网络较慢
+        if (ticks === 60) {
+          statusEl.setText('正在下载资源包，网络较慢请稍候…');
+        }
+        // 120 秒后提示可能失败
+        if (ticks === 240) {
+          statusEl.setText('资源包下载异常，请检查网络后重启 Obsidian');
         }
       }, 500);
       return;
@@ -103,8 +116,11 @@ export class DailyReviewView extends ItemView {
     // 当 iframe 处于焦点时，将 Ctrl/Cmd 快捷键转发给 Obsidian，
     // 确保命令面板（Ctrl/Cmd+P）、快速切换（Ctrl/Cmd+O）等全局快捷键仍然可用
     const obsidianDoc = activeDocument;
+    let forwarding = false;
     this.keydownForwarder = (e: KeyboardEvent) => {
+      if (forwarding) return;
       if (e.ctrlKey || e.metaKey) {
+        forwarding = true;
         const evt = new KeyboardEvent('keydown', {
           key: e.key,
           code: e.code,
@@ -116,9 +132,10 @@ export class DailyReviewView extends ItemView {
           cancelable: true,
         });
         obsidianDoc.body.dispatchEvent(evt);
+        forwarding = false;
       }
     };
-    document.addEventListener('keydown', this.keydownForwarder, true);
+    activeDocument.addEventListener('keydown', this.keydownForwarder, true);
 
     // 初始化桥接服务
     const storage = new VaultStorage(this.app);
@@ -134,7 +151,7 @@ export class DailyReviewView extends ItemView {
     );
 
     // 扫描 Vault 中的自定义主题
-    const customThemes = this._scanCustomThemes();
+    const customThemes = await this._scanCustomThemes();
     this.bridgeService.setCustomThemes(customThemes);
 
     // 传递库根目录路径（供白噪音库内音频扫描/读取使用）
@@ -159,6 +176,12 @@ export class DailyReviewView extends ItemView {
   }
 
   async onClose(): Promise<void> {
+    // 清理轮询 interval
+    if (this._checkInterval !== null) {
+      window.clearInterval(this._checkInterval);
+      this._checkInterval = null;
+    }
+
     // 清理桥接服务
     this.bridgeService?.detach();
     this.bridgeService = null;
@@ -180,7 +203,7 @@ export class DailyReviewView extends ItemView {
 
     // 清理键盘转发器
     if (this.keydownForwarder) {
-      document.removeEventListener('keydown', this.keydownForwarder, true);
+      activeDocument.removeEventListener('keydown', this.keydownForwarder, true);
       this.keydownForwarder = null;
     }
 
@@ -191,8 +214,7 @@ export class DailyReviewView extends ItemView {
     }
   }
 
-  /** 扫描 Vault 下的自定义主题文件夹（路径由用户设置指定） */
-  private _scanCustomThemes(): Array<{ name: string; code: string }> {
+  private async _scanCustomThemes(): Promise<Array<{ name: string; code: string }>> {
     const themes: Array<{ name: string; code: string }> = [];
 
     try {
@@ -201,16 +223,19 @@ export class DailyReviewView extends ItemView {
 
       const themeDirName = this.settings.themePath || '竹林复盘主题';
       const themesDir = path.join(vaultBasePath, themeDirName);
-      if (!fs.existsSync(themesDir) || !fs.statSync(themesDir).isDirectory()) return themes;
+      try {
+        const stat = await fs.promises.stat(themesDir);
+        if (!stat.isDirectory()) return themes;
+      } catch { return themes; }
 
-      const entries: string[] = fs.readdirSync(themesDir);
+      const entries: string[] = await fs.promises.readdir(themesDir);
       for (const entry of entries) {
         if (!entry.endsWith('.js')) continue;
         const filePath = path.join(themesDir, entry);
-        if (!fs.statSync(filePath).isFile()) continue;
-
         try {
-          const code: string = fs.readFileSync(filePath, 'utf-8');
+          const entryStat = await fs.promises.stat(filePath);
+          if (!entryStat.isFile()) continue;
+          const code: string = await fs.promises.readFile(filePath, 'utf-8');
           // 快速检查是否包含必需的 __bamboo_theme_ 标识符
           if (!code.includes('__bamboo_theme_')) {
             console.warn(`[BambooReview] 自定义主题 ${entry} 缺少 __bamboo_theme_ 标识符，已跳过`);

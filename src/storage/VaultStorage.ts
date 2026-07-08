@@ -91,19 +91,20 @@ export class VaultStorage {
     const files = await this.app.vault.adapter.list(dataDir);
     const days: Record<string, any> = {};
 
-    for (const file of files.files) {
-      if (file.endsWith('.json')) {
+    const reads = files.files
+      .filter(f => f.endsWith('.json'))
+      .map(async (file) => {
         const dateKey = file.split('/').pop()?.replace('.json', '');
-        if (dateKey) {
-          try {
-            const content: string = await this.app.vault.adapter.read(file);
-            days[dateKey] = JSON.parse(content);
-          } catch (e) {
-            console.warn(`Failed to parse day file: ${file}`, e);
-          }
+        if (!dateKey) return;
+        try {
+          const content: string = await this.app.vault.adapter.read(file);
+          days[dateKey] = JSON.parse(content);
+        } catch (e) {
+          console.warn(`Failed to parse day file: ${file}`, e);
         }
-      }
-    }
+      });
+
+    await Promise.all(reads);
     return days;
   }
 
@@ -143,14 +144,15 @@ export class VaultStorage {
     const pageKeys = allKeys.slice(start, start + pageSize);
     const days: Record<string, any> = {};
 
-    for (const dateKey of pageKeys) {
+    const reads = pageKeys.map(async (dateKey) => {
       try {
         const data = await this.getDay(dateKey);
         if (data) days[dateKey] = data;
       } catch (e) {
         console.warn(`Failed to load day: ${dateKey}`, e);
       }
-    }
+    });
+    await Promise.all(reads);
 
     return {
       days,

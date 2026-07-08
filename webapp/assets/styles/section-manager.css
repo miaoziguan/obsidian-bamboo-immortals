@@ -296,31 +296,62 @@ html.dark .sm-item-hidden {
     background: rgba(var(--primary-rgb), 0.08);
 }
 
-/* ========== 操作栏 & 应用更改链接 ========== */
+/* ========== 操作栏 & 应用更改按钮 ========== */
 .sm-actions-bar {
     display: flex;
     align-items: center;
-    padding: 2px 0;
-    margin: 0 -4px 14px -4px;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 12px;
+    margin: 0 -4px 12px -4px;
+    border-radius: 8px;
+    background: rgba(var(--primary-rgb), 0.06);
 }
 
 .sm-actions-bar-tip {
     font-size: var(--type-micro);
     color: var(--text-tertiary);
-    line-height: 1.5;
+    line-height: 1.4;
 }
 
-.sm-apply-link {
-    color: var(--bamboo-primary);
-    cursor: pointer;
+.sm-apply-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--bamboo-primary);
+    background: var(--bamboo-primary);
+    color: #fff;
+    font-size: var(--type-micro);
     font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
     white-space: nowrap;
-    transition: color 0.15s;
 }
 
-.sm-apply-link:hover {
-    color: var(--bamboo-dark);
-    text-decoration: underline;
+.sm-apply-btn:hover {
+    background: var(--bamboo-dark);
+    border-color: var(--bamboo-dark);
+}
+
+.sm-apply-btn.has-pending {
+    background: var(--bamboo-primary);
+    box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.18);
+}
+
+.sm-apply-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #fff;
+    margin-right: 2px;
+    animation: sm-pending-pulse 1.6s infinite;
+}
+
+@keyframes sm-pending-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.6; transform: scale(0.8); }
 }
 
 .icon-picker-sm {

@@ -85,8 +85,21 @@ html::-webkit-scrollbar {
     height: 0;
 }
 
-/* === 主题切换过渡 === */
-html, html * {
+/* === 主题切换过渡 — 限定在需要平滑过渡的组件级元素，避免 html * 全局性能开销 === */
+.container,
+.header,
+.date-nav,
+.bamboo-card,
+.goal-row,
+.kpi-card,
+.section-title,
+.bamboo-garden-section,
+.timeline-entry,
+.todo-item,
+.fab-action-btn,
+[class*="-card"],
+[class*="-section"],
+[class*="-panel"] {
     transition: 
         background-color var(--transition-smooth),
         color var(--transition-smooth),
@@ -257,7 +270,8 @@ body.loading .container { opacity: 0; }
     background: var(--card-glass);
     backdrop-filter: blur(var(--glass-blur));
     -webkit-backdrop-filter: blur(var(--glass-blur));
-    will-change: transform; /* 开启显卡加速 */
+    /* translateZ(0) 强制 GPU 合成层，避免 Chromium 暗色模式 backdrop-filter 伪影 */
+    transform: translateZ(0);
     border-radius: var(--radius-3xl);
     padding: var(--space-7) var(--space-6);
     box-shadow: var(--shadow);

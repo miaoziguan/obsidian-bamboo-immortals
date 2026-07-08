@@ -7,7 +7,3 @@ export const CONSTANTS = {
         UNDO_STACK_MAX: 50,
     }
 };
-
-if (typeof window !== 'undefined') {
-    window.CONSTANTS = CONSTANTS;
-}

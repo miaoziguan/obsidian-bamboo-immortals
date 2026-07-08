@@ -47,13 +47,46 @@ export const ThemeEffects = {
     switchTheme(themeName) {
         if (!this.themes[themeName]) return;
 
-        // 查找到主题动效 wrapper，替换其内部内容
         var section = document.getElementById('themeEffectSection');
-        if (section) {
-            var newEl = this.createElement(this.render(themeName));
+        if (!section) return;
+
+        // 淡出 → 替换内容 → 淡入，消除 innerHTML 瞬间白屏
+        var self = this;
+        var doSwap = function() {
+            var newEl = self.createElement(self.render(themeName));
             section.innerHTML = '';
             section.appendChild(newEl);
-        }
+            // 新内容就位后立即恢复不透明度
+            requestAnimationFrame(function() {
+                section.style.opacity = '1';
+            });
+        };
+
+        // 安装 transitionend 监听器，确保动画完成后才替换
+        var onTransitionEnd = function(e) {
+            if (e.target !== section) return;
+            if (e.propertyName !== 'opacity') return;
+            section.removeEventListener('transitionend', onTransitionEnd);
+            doSwap();
+        };
+        section.addEventListener('transitionend', onTransitionEnd);
+
+        // 降级保护：400ms 超时兜底，防止 transitionend 不触发（如 prefers-reduced-motion）
+        var fallbackTimer = setTimeout(function() {
+            section.removeEventListener('transitionend', onTransitionEnd);
+            if (section.style.opacity === '0') {
+                doSwap();
+            }
+        }, 400);
+
+        // 在 doSwap 中也清理 fallback
+        var originalDoSwap = doSwap;
+        doSwap = function() {
+            clearTimeout(fallbackTimer);
+            originalDoSwap();
+        };
+
+        section.style.opacity = '0';
 
         if (typeof SectionRegistry !== 'undefined') {
             SectionRegistry.update('themeEffect', { theme: themeName });
@@ -164,9 +197,8 @@ export const ThemeEffects = {
             }
         });
         observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+        this._modeObserver = observer;
     },
-
-    /** 获取当前明暗模式：'light' | 'dark' */
     _getCurrentMode() {
         return document.documentElement.classList.contains('dark') ? 'dark' : 'light';
     },
@@ -990,6 +1022,11 @@ export const ThemeEffects = {
     },
 
     destroy() {
+        if (this._modeObserver) {
+            this._modeObserver.disconnect();
+            this._modeObserver = null;
+            this._modeObserverActive = false;
+        }
         this._intervals.forEach(id => clearInterval(id));
         this._intervals = [];
     },

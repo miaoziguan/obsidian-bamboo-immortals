@@ -11,7 +11,7 @@ export const LucideUtils = {
 
     _svg(name, paths, size, strokeWidth) {
         const sw = strokeWidth || this.SPEC.STROKE_WIDTH;
-        return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="${this.SPEC.FILL}" stroke="${this.SPEC.COLOR}" stroke-width="${sw}" stroke-linecap="${this.SPEC.LINECAP}" stroke-linejoin="${this.SPEC.LINEJOIN}" class="icon icon-${name}">${paths}</svg>`;
+        return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="${this.SPEC.FILL}" stroke="${this.SPEC.COLOR}" stroke-width="${sw}" stroke-linecap="${this.SPEC.LINECAP}" stroke-linejoin="${this.SPEC.LINEJOIN}" class="icon icon-${name}" aria-hidden="true">${paths}</svg>`;
     },
 
     ICONS: {

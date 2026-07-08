@@ -75,10 +75,11 @@ export const WhiteNoiseManager = {
 
         // 根据音源类型加载音频
         if (noiseType.source === 'url') {
-            // 网络链接
+            // 外部链接 — 通过本地服务器代理，绕过浏览器 CORS 限制
             try {
                 Toast.showToast('正在加载外部音源...', 'info');
-                const response = await fetch(noiseType.data);
+                const proxyUrl = location.origin + '/bamboo-audio-proxy?url=' + encodeURIComponent(noiseType.data);
+                const response = await fetch(proxyUrl);
                 if (!response.ok) throw new Error('网络请求失败');
                 const arrayBuffer = await response.arrayBuffer();
                 buffer = await ctx.decodeAudioData(arrayBuffer);
@@ -482,8 +483,9 @@ export const WhiteNoiseManager = {
             let arrayBuffer;
 
             if (sourceType === 'url') {
-                // 网络音源：fetch 文件并尝试解码
-                const resp = await fetch(data, {
+                // 网络音源：通过代理 fetch，绕过 CORS
+                const proxyUrl = location.origin + '/bamboo-audio-proxy?url=' + encodeURIComponent(data);
+                const resp = await fetch(proxyUrl, {
                     signal: AbortSignal.timeout(20000)  // 20s 超时
                 });
                 if (!resp.ok) {

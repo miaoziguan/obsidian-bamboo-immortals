@@ -5,6 +5,7 @@ import * as zlib from 'zlib';
 import * as https from 'https';
 import { DailyReviewView, VIEW_TYPE_DAILY_REVIEW } from './src/views/DailyReviewView';
 import { LocalServer } from './src/server/LocalServer';
+import { ThemeBridge } from './src/bridge/ThemeBridge';
 import {
   PluginSettings,
   DEFAULT_SETTINGS,
@@ -20,14 +21,16 @@ import {
  * 3. 注册设置面板
  * 4. 管理插件生命周期
  */
-/** 纯 Node.js ZIP 解压，不依赖系统 unzip/PowerShell */
-function extractZip(source: string | Buffer, destDir: string): void {
-  const buf = typeof source === 'string' ? fs.readFileSync(source) : source;
+/** 纯 Node.js ZIP 解压，不依赖系统 unzip/PowerShell。异步读取+解压，仅字节解析保持同步。 */
+async function extractZip(source: string | Buffer, destDir: string): Promise<void> {
+  const buf = typeof source === 'string' ? await fs.promises.readFile(source) : source;
   let pos = 0;
 
   const read16 = () => { const v = buf.readUInt16LE(pos); pos += 2; return v; };
   const read32 = () => { const v = buf.readUInt32LE(pos); pos += 4; return v; };
   const skip = (n: number) => { pos += n; };
+
+  const writes: Promise<void>[] = [];
 
   // 扫描所有 local file header（签名 0x04034b50）
   while (pos < buf.length - 4) {
@@ -36,10 +39,10 @@ function extractZip(source: string | Buffer, destDir: string): void {
 
     pos += 4;
     read16(); // version
-    const flags = read16();
+    read16(); // flags
     const method = read16();
     skip(4); // mod time, mod date
-    const crc32 = read32();
+    read32(); // crc32
     const compressedSize = read32();
     const uncompressedSize = read32();
     const nameLen = read16();
@@ -54,29 +57,28 @@ function extractZip(source: string | Buffer, destDir: string): void {
     }
 
     const outPath = path.join(destDir, fileName);
-    fs.mkdirSync(path.dirname(outPath), { recursive: true });
+    const dir = path.dirname(outPath);
 
     const data = buf.subarray(pos, pos + compressedSize);
     pos += compressedSize;
 
     if (method === 0) {
-      // 无压缩
-      fs.writeFileSync(outPath, data);
+      writes.push(fs.promises.mkdir(dir, { recursive: true }).then(() => fs.promises.writeFile(outPath, data)));
       continue;
     }
 
     if (method === 8) {
-      // deflate
-      try {
-        const decompressed = zlib.inflateRawSync(data, { finishFlush: zlib.constants.Z_SYNC_FLUSH });
-        if (decompressed.length !== uncompressedSize) {
-          fs.writeFileSync(outPath, decompressed.subarray(0, uncompressedSize));
-        } else {
-          fs.writeFileSync(outPath, decompressed);
+      writes.push((async () => {
+        let bytes: Buffer;
+        try {
+          bytes = zlib.inflateRawSync(data, { finishFlush: zlib.constants.Z_SYNC_FLUSH });
+          if (bytes.length !== uncompressedSize) bytes = bytes.subarray(0, uncompressedSize);
+        } catch {
+          bytes = zlib.inflateSync(data);
         }
-      } catch {
-        fs.writeFileSync(outPath, zlib.inflateSync(data));
-      }
+        await fs.promises.mkdir(dir, { recursive: true });
+        await fs.promises.writeFile(outPath, bytes);
+      })());
       continue;
     }
 
@@ -96,8 +98,7 @@ function downloadAndExtractWebapp(pluginDir: string, destDir: string, version: s
           redir.on('data', (c: Buffer) => chunks.push(c));
           redir.on('end', () => {
             try {
-              extractZip(Buffer.concat(chunks), destDir);
-              resolve();
+              extractZip(Buffer.concat(chunks), destDir).then(resolve).catch(reject);
             } catch (e) { reject(e); }
           });
           redir.on('error', reject);
@@ -112,8 +113,7 @@ function downloadAndExtractWebapp(pluginDir: string, destDir: string, version: s
       res.on('data', (c: Buffer) => chunks.push(c));
       res.on('end', () => {
         try {
-          extractZip(Buffer.concat(chunks), destDir);
-          resolve();
+          extractZip(Buffer.concat(chunks), destDir).then(resolve).catch(reject);
         } catch (e) { reject(e); }
       });
       res.on('error', reject);
@@ -148,12 +148,15 @@ function setupWebappInBackground(
       fs.mkdirSync(webappDir, { recursive: true });
 
       if (fs.existsSync(webappZip)) {
-        extractZip(webappZip, webappDir);
+        new Notice('竹林修仙传: 正在解压资源包…', 0);
+        await extractZip(webappZip, webappDir);
         try { fs.unlinkSync(webappZip); } catch {}
         new Notice('竹林修仙传: 资源包已更新', 3000);
       } else {
+        const downloadNotice = new Notice('竹林修仙传: 正在下载资源包…', 0);
         console.log('[BambooReview] Downloading webapp from release', currentVersion);
         await downloadAndExtractWebapp(pluginDir, webappDir, currentVersion);
+        downloadNotice.hide();
         new Notice('竹林修仙传: 资源包安装完成', 4000);
       }
 
@@ -161,6 +164,7 @@ function setupWebappInBackground(
       this.webappReady = true;
     } catch (e) {
       console.error('[BambooReview] Webapp setup failed:', e);
+      new Notice('竹林修仙传: 资源包安装失败，请检查网络后重启 Obsidian', 0);
     }
   });
 }
@@ -254,6 +258,7 @@ export default class BambooReviewPlugin extends Plugin {
   }
 
   onunload(): void {
+    ThemeBridge.restoreDefaults();
     void this.localServer?.stop();
     this.localServer = null;
   }

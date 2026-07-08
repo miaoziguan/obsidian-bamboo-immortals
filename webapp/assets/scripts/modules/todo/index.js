@@ -3,6 +3,8 @@ export const Todo = {
     _completedCollapsed: true,
     _keydownBound: false,
 
+    init() {},
+
     render(data) {
         TodoRenderer.render(data);
         this._syncCollapsedState();

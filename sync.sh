@@ -41,13 +41,12 @@ cp -f "$SRC_DIR/manifest.json" "$DEST_DIR/" 2>/dev/null && echo "   ✓ manifest
 cp -f "$SRC_DIR/author-avatar.jpg" "$DEST_DIR/" 2>/dev/null && echo "   ✓ author-avatar.jpg"
 echo ""
 
-# 3. 同步 webapp 目录（rsync 避免 rm -rf 造成空目录窗口）
+# 3. 同步 webapp 目录（先删后建，与用户端「删目录→解压 zip」流程一致，避免浏览器缓存旧文件）
 echo "🌐 同步 webapp 目录..."
 if [ -d "$SRC_DIR/webapp" ]; then
+    rm -rf "$DEST_DIR/webapp"
     mkdir -p "$DEST_DIR/webapp"
-    # macOS openrsync 不支持 -a，拆成显式选项
-    # 关键：不传 -t/-p/-o/-g，否则 mtime/owner 变化会触发 Obsidian 重解压
-    rsync -rlDv --no-times --no-perms --no-owner --no-group --delete "$SRC_DIR/webapp/" "$DEST_DIR/webapp/"
+    rsync -rlDv --no-times --no-perms --no-owner --no-group "$SRC_DIR/webapp/" "$DEST_DIR/webapp/"
 
     # 写入 .version，防止插件误判 webapp 未安装从 GitHub 下载覆盖
     VERSION=$(grep '"version"' "$SRC_DIR/manifest.json" | sed 's/.*"\([0-9.]*\)".*/\1/')

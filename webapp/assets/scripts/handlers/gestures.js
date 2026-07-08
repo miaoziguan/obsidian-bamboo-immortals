@@ -43,11 +43,9 @@ export const Gestures = {
                 if (diffX > 0) {
                     store.navigateDate(-1);
                     renderAll();
-                    Toast.showToast('← 前一天', 'info');
                 } else {
                     store.navigateDate(1);
                     renderAll();
-                    Toast.showToast('→ 后一天', 'info');
                 }
             }
         }, { passive: false });

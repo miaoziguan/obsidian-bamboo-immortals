@@ -20,6 +20,16 @@ export var SearchService = (function () {
      * @param {string}                query       搜索关键词
      * @returns {Array<{date: string, weekday: string, matches: Array}>} 结果按日期降序
      */
+    var FALLBACK_FIELDS = ['note', 'overall', 'checklist', 'diagnosis', 'actionPlan', 'deepReview'];
+
+    function _dayContainsText(day, lowerQuery) {
+        for (var i = 0; i < FALLBACK_FIELDS.length; i++) {
+            var val = day[FALLBACK_FIELDS[i]];
+            if (val && String(val).toLowerCase().indexOf(lowerQuery) !== -1) return true;
+        }
+        return false;
+    }
+
     function search(data, globalGoals, query) {
         if (!data || !query) return [];
 
@@ -79,7 +89,7 @@ export var SearchService = (function () {
                 }
             }
 
-            if (matches.length > 0 || JSON.stringify(day).toLowerCase().indexOf(lowerQuery) !== -1) {
+            if (matches.length > 0 || _dayContainsText(day, lowerQuery)) {
                 results.push({
                     date: dateKey,
                     weekday: day.weekday,

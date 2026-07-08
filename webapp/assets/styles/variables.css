@@ -308,13 +308,13 @@ html.dark {
     --jade-dark-warm-mid-rgb: 65, 50, 35;
     --jade-dark-warm-light-rgb: 55, 42, 28;
     
-    /* 文字：柔和但清晰 */
+    /* 文字：柔和但清晰，亮度提升以通过 WCAG AA 4.5:1（暗色卡片背景 ~10% L） */
     --ink-dark: hsl(var(--accent-hue), 18%, calc(91% + var(--accent-lightness-offset)));
-    --ink-medium: hsl(var(--accent-hue), 20%, calc(77% + var(--accent-lightness-offset)));
-    --ink-light: hsl(var(--accent-hue), 17%, calc(63% + var(--accent-lightness-offset)));
-    --ink-pale: hsl(var(--accent-hue), 6%, calc(50% + var(--accent-lightness-offset)));
-    --bamboo-text-muted: hsl(var(--accent-hue), 6%, calc(50% + var(--accent-lightness-offset)));
-    --bamboo-text-secondary: hsl(var(--accent-hue), 20%, calc(77% + var(--accent-lightness-offset)));
+    --ink-medium: hsl(var(--accent-hue), 20%, calc(81% + var(--accent-lightness-offset)));
+    --ink-light: hsl(var(--accent-hue), 17%, calc(70% + var(--accent-lightness-offset)));
+    --ink-pale: hsl(var(--accent-hue), 6%, calc(60% + var(--accent-lightness-offset)));
+    --bamboo-text-muted: hsl(var(--accent-hue), 6%, calc(60% + var(--accent-lightness-offset)));
+    --bamboo-text-secondary: hsl(var(--accent-hue), 20%, calc(81% + var(--accent-lightness-offset)));
     
     /* 竹林色调：降低饱和度，增添银灰质感（跟随 --accent-hue） */
     --bamboo-deep: hsl(calc(var(--accent-hue) + 5), 34%, calc(26% + var(--accent-lightness-offset)));
@@ -338,13 +338,14 @@ html.dark {
     --bg-gradient-end: hsl(calc(var(--accent-hue) + 5), 22%, calc(9% + var(--accent-lightness-offset)));
     
     /* 卡片：深邃中透出微光，跟随色相和明度 */
-    --card-bg: hsla(var(--accent-hue), 18%, calc(10% + var(--accent-lightness-offset)), 0.60);
-    --card-glass: hsla(var(--accent-hue), 18%, calc(10% + var(--accent-lightness-offset)), 0.85);
+    /* 暗色模式提高卡片不透明度，降低 backdrop-filter blur 伪影 */
+    --card-bg: hsla(var(--accent-hue), 18%, calc(10% + var(--accent-lightness-offset)), 0.70);
+    --card-glass: hsla(var(--accent-hue), 18%, calc(10% + var(--accent-lightness-offset)), 0.92);
     
-    /* 文字语义 */
+    /* 文字语义 — 亮度提升至 WCAG AA 4.5:1+ */
     --text-primary: hsl(var(--accent-hue), 18%, calc(91% + var(--accent-lightness-offset)));
-    --text-secondary: hsl(var(--accent-hue), 15%, calc(70% + var(--accent-lightness-offset)));
-    --text-tertiary: hsl(var(--accent-hue), 11%, calc(58% + var(--accent-lightness-offset)));
+    --text-secondary: hsl(var(--accent-hue), 15%, calc(74% + var(--accent-lightness-offset)));
+    --text-tertiary: hsl(var(--accent-hue), 11%, calc(66% + var(--accent-lightness-offset)));
     
     /* 边框：微妙的星光边框 */
     --border-light: rgba(var(--primary-rgb), 0.2);
@@ -403,7 +404,8 @@ html.dark {
     
     /* 波浪与毛玻璃 */
     --wave-color: rgba(var(--primary-rgb), 0.5);
-    --glass-blur: 20px;
+    /* 暗色模式降低模糊半径，避免 Chromium backdrop-filter 渲染伪影 */
+    --glass-blur: 12px;
     
     /* 星空点缀色 */
     --star-glow: hsla(calc(var(--accent-hue) + 0), 36%, calc(78% + var(--accent-lightness-offset)), 0.6);
@@ -463,6 +465,12 @@ html.dark {
     --jade-dark-warm-light-rgb: 20, 12, 5;
 
     /* 竹林装饰效果 — 暗色模式 */
+    /* 暗色流光效果（fab.css glow 动画依赖，缺定义导致 GPU 空跑） */
+    --glow-color-start: hsla(calc(var(--accent-hue) + 0), 45%, calc(60% + var(--accent-lightness-offset)), 0.25);
+    --glow-color-end: hsla(calc(var(--accent-hue) + 0), 35%, calc(75% + var(--accent-lightness-offset)), 0.08);
+    --glow-width: 2px;
+    --glow-opacity: 0.2;
+    --glow-duration: 20s;
 }
 
 

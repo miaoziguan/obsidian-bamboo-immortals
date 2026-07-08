@@ -1,4 +1,5 @@
 import * as http from 'http';
+import * as https from 'https';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as net from 'net';
@@ -73,6 +74,10 @@ export class LocalServer {
   private handleRequest(req: http.IncomingMessage, res: http.ServerResponse): void {
     // /bamboo-audio?path=xxx — 音频文件代理，绕过 postMessage 大 payload 限制
     const url = req.url || '/';
+    if (url.startsWith('/bamboo-audio-proxy')) {
+      this.handleAudioUrlProxy(req, res);
+      return;
+    }
     if (url.startsWith('/bamboo-audio')) {
       this.handleAudioProxy(req, res);
       return;
@@ -131,10 +136,19 @@ export class LocalServer {
       const ext = path.extname(filePath).toLowerCase();
       const contentType = MIME_TYPES[ext] || 'application/octet-stream';
 
+      // 差异化缓存策略：静态资源带 __BUILD__ 版本号，可长期缓存
+      const isHTML = ext === '.html';
+      const isStatic = ['.css', '.js', '.woff', '.woff2', '.ttf', '.svg', '.png', '.ico', '.json'].includes(ext);
+      const cacheControl = isHTML
+        ? 'no-cache'
+        : isStatic
+          ? 'public, max-age=86400'
+          : 'public, max-age=3600';
+
       // 设置响应头（不需要 CORS，iframe 与服务器同源）
       res.writeHead(200, {
         'Content-Type': contentType,
-        'Cache-Control': 'no-cache',
+        'Cache-Control': cacheControl,
       });
 
       // 流式传输文件
@@ -147,6 +161,116 @@ export class LocalServer {
         }
       });
     });
+  }
+
+  /** /bamboo-audio-proxy?url=xxx — 代理外部音源 URL，绕过浏览器 CORS 限制 */
+  private handleAudioUrlProxy(req: http.IncomingMessage, res: http.ServerResponse): void {
+    try {
+      const rawUrl = req.url || '';
+      const queryIndex = rawUrl.indexOf('?');
+      if (queryIndex === -1) {
+        res.writeHead(400); res.end('Missing url parameter');
+        return;
+      }
+      const queryStr = rawUrl.slice(queryIndex + 1);
+      const params = new URLSearchParams(queryStr);
+      const targetUrl = params.get('url');
+      if (!targetUrl) {
+        res.writeHead(400); res.end('Missing url parameter');
+        return;
+      }
+
+      // 安全检查：仅允许 http/https
+      let parsed: URL;
+      try {
+        parsed = new URL(targetUrl);
+      } catch {
+        res.writeHead(400); res.end('Invalid URL');
+        return;
+      }
+      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+        res.writeHead(403); res.end('Forbidden: only http/https URLs allowed');
+        return;
+      }
+
+      // 安全检查：禁止访问本地地址
+      const hostname = parsed.hostname;
+      if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '0.0.0.0'
+        || hostname === '[::1]' || hostname.startsWith('192.168.') || hostname.startsWith('10.')
+        || hostname.startsWith('172.')) {
+        res.writeHead(403); res.end('Forbidden: local/private network URLs not allowed');
+        return;
+      }
+
+      // 检查扩展名（白名单）
+      const pathname = parsed.pathname.toLowerCase();
+      if (!ALLOWED_AUDIO_EXTENSIONS.some(ext => pathname.endsWith(ext))) {
+        res.writeHead(403); res.end('Forbidden: unsupported audio format');
+        return;
+      }
+
+      const transport = parsed.protocol === 'https:' ? https : http;
+      const proxyReq = transport.get(targetUrl, { timeout: 30000 }, (proxyRes) => {
+        const status = proxyRes.statusCode || 500;
+        const ct = proxyRes.headers['content-type'] || 'application/octet-stream';
+
+        // 限制响应大小（最大 50MB）
+        const maxSize = 50 * 1024 * 1024;
+        let totalSize = 0;
+        const chunks: Buffer[] = [];
+
+        proxyRes.on('data', (chunk: Buffer) => {
+          totalSize += chunk.length;
+          if (totalSize > maxSize) {
+            proxyReq.destroy();
+            if (!res.headersSent) {
+              res.writeHead(413); res.end('Audio file too large (max 50MB)');
+            }
+            return;
+          }
+          chunks.push(chunk);
+        });
+
+        proxyRes.on('end', () => {
+          if (res.headersSent) return;
+          res.writeHead(status, {
+            'Content-Type': ct,
+            'Content-Length': totalSize,
+            'Access-Control-Allow-Origin': '*',
+            'Cache-Control': 'public, max-age=3600',
+          });
+          const body = Buffer.concat(chunks);
+          res.end(body);
+        });
+
+        proxyRes.on('error', (err) => {
+          if (!res.headersSent) {
+            console.error('[BambooReview] Audio URL proxy upstream error:', err.message);
+            res.writeHead(502); res.end('Upstream error');
+          }
+        });
+      });
+
+      proxyReq.on('timeout', () => {
+        proxyReq.destroy();
+        if (!res.headersSent) {
+          res.writeHead(504); res.end('Upstream timeout');
+        }
+      });
+
+      proxyReq.on('error', (err: Error) => {
+        if (!res.headersSent) {
+          console.error('[BambooReview] Audio URL proxy error:', err.message);
+          res.writeHead(502); res.end('Upstream connection failed');
+        }
+      });
+    } catch (e: any) {
+      if (!res.headersSent) {
+        console.error('[BambooReview] Audio URL proxy error:', e);
+        res.writeHead(500);
+        res.end('Internal Server Error');
+      }
+    }
   }
 
   /** /bamboo-audio?path=xxx — 流式代理库内音频文件 */

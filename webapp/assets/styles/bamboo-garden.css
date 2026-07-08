@@ -10,6 +10,8 @@
         0 2px 12px hsla(calc(var(--accent-hue) + 0), 25%, 40%, 0.06),
         0 1px 3px hsla(calc(var(--accent-hue) + 0), 20%, 50%, 0.04);
     contain: paint;
+    /* 主题切换淡入淡出过渡 */
+    transition: opacity 0.15s ease;
     /* 平台级内框圆角：外层 38px − padding 12px = 26px。子元素通过 var() 引用，外框改大时只需改此值和 border-radius 两处 */
     --theme-inner-radius: 26px;
 }

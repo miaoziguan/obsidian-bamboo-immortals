@@ -1,5 +1,2 @@
-#!/usr/bin/env sh
-. "$(dirname -- "$0")/_/husky.sh"
-
-# 提交前对 staged 的改动文件做 lint 自动修复 + 类型检查
+# 提交前对 staged 的改动文件做 lint 自动修复 + 类型检查（husky v9 无需 shebang 两行）
 npx lint-staged

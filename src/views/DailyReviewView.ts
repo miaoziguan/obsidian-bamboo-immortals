@@ -1,6 +1,4 @@
 import { ItemView, WorkspaceLeaf, EventRef } from 'obsidian';
-import * as path from 'path';
-import * as fs from 'fs';
 import type BambooReviewPlugin from '../../main';
 import { VaultStorage } from '../storage/VaultStorage';
 import { StorageBridge } from '../bridge/StorageBridge';
@@ -159,6 +157,8 @@ export class DailyReviewView extends ItemView {
     if (vaultBasePath) {
       this.bridgeService.setVaultBasePath(vaultBasePath);
     }
+    // 注入 Vault Adapter，用于 Vault API 替代 fs 进行文件扫描/验证
+    this.bridgeService.setVaultAdapter(this.app.vault.adapter);
     // 传递白噪音文件夹路径
     if (this.settings.noisePath) {
       this.bridgeService.setNoisePath(this.settings.noisePath);
@@ -214,28 +214,26 @@ export class DailyReviewView extends ItemView {
     }
   }
 
+  /** 扫描 Vault 中的自定义主题 .js 文件（通过 Vault API，不经过 fs） */
   private async _scanCustomThemes(): Promise<Array<{ name: string; code: string }>> {
     const themes: Array<{ name: string; code: string }> = [];
+    const adapter = this.app.vault.adapter;
 
     try {
-      const vaultBasePath = (this.app.vault.adapter as unknown as { basePath: string }).basePath || '';
-      if (!vaultBasePath) return themes;
-
       const themeDirName = this.settings.themePath || '竹林复盘主题';
-      const themesDir = path.join(vaultBasePath, themeDirName);
-      try {
-        const stat = await fs.promises.stat(themesDir);
-        if (!stat.isDirectory()) return themes;
-      } catch { return themes; }
 
-      const entries: string[] = await fs.promises.readdir(themesDir);
-      for (const entry of entries) {
+      let themeDirFiles: string[];
+      try {
+        themeDirFiles = (await adapter.list(themeDirName)).files;
+      } catch {
+        return themes; // 目录不存在或不可读
+      }
+
+      for (const entry of themeDirFiles) {
         if (!entry.endsWith('.js')) continue;
-        const filePath = path.join(themesDir, entry);
+        const filePath = `${themeDirName}/${entry}`;
         try {
-          const entryStat = await fs.promises.stat(filePath);
-          if (!entryStat.isFile()) continue;
-          const code: string = await fs.promises.readFile(filePath, 'utf-8');
+          const code: string = await adapter.read(filePath);
           // 快速检查是否包含必需的 __bamboo_theme_ 标识符
           if (!code.includes('__bamboo_theme_')) {
             console.warn(`[BambooReview] 自定义主题 ${entry} 缺少 __bamboo_theme_ 标识符，已跳过`);

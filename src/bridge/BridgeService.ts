@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { DataAdapter } from 'obsidian';
 import { StorageBridge } from './StorageBridge';
 import { ThemeBridge } from './ThemeBridge';
 import type { AnyBridgeMessage } from '../types/messages';
@@ -24,6 +25,7 @@ export class BridgeService {
     private messageHandler: ((event: MessageEvent) => void) | null = null;
     private customThemes: Array<{ name: string; code: string }> = [];
     private vaultBasePath: string = '';
+    private vaultAdapter: DataAdapter | null = null;
     private noisePath: string = '';
     private configDir: string = '';
     private expectedOrigin = '';
@@ -71,6 +73,11 @@ export class BridgeService {
     this.vaultBasePath = basePath;
   }
 
+  /** 注入 Obsidian Vault 适配器，用于 Vault API 路径操作替代 fs */
+  setVaultAdapter(adapter: DataAdapter): void {
+    this.vaultAdapter = adapter;
+  }
+
   /** 设置白噪音文件夹路径 */
   setNoisePath(noisePath: string): void {
     this.noisePath = noisePath;
@@ -81,32 +88,25 @@ export class BridgeService {
     this.configDir = dir;
   }
 
-  /** 扫描库内音频文件（支持指定文件夹或全库扫描） */
+  /** 扫描库内音频文件（支持指定文件夹或全库扫描），通过 Vault API 替代 fs */
   private async _scanVaultAudioFiles(maxDepth = 5): Promise<Array<{ path: string; name: string; size: number; ext: string }>> {
     const results: Array<{ path: string; name: string; size: number; ext: string }> = [];
     const allowedExts = ALLOWED_AUDIO_EXTENSIONS;
-    const basePath = this.vaultBasePath;
-    if (!basePath) return results;
-
-    // 检查 basePath 是否存在（异步）
-    try {
-      await fs.promises.stat(basePath);
-    } catch {
-      return results;
-    }
+    const adapter = this.vaultAdapter;
+    if (!adapter) return results;
 
     // 指定了白噪音文件夹，只扫描该文件夹（不递归）
     if (this.noisePath) {
-      const targetDir = path.join(basePath, this.noisePath);
       try {
-        const entries: fs.Dirent[] = await fs.promises.readdir(targetDir, { withFileTypes: true });
-        for (const entry of entries) {
-          if (entry.name.startsWith('.')) continue;
-          if (!entry.isFile()) continue;
-          const ext = path.extname(entry.name).toLowerCase();
+        const list = await adapter.list(this.noisePath);
+        for (const file of list.files) {
+          if (file.startsWith('.')) continue;
+          const ext = path.extname(file).toLowerCase();
           if (allowedExts.includes(ext)) {
-            const stat: fs.Stats = await fs.promises.stat(path.join(targetDir, entry.name));
-            results.push({ path: path.join(this.noisePath, entry.name), name: entry.name, size: stat.size, ext });
+            try {
+              const fileStat = await adapter.stat(path.join(this.noisePath, file));
+              results.push({ path: path.join(this.noisePath, file), name: file, size: fileStat?.size ?? 0, ext });
+            } catch { /* skip */ }
           }
         }
       } catch { /* skip */ }
@@ -114,36 +114,36 @@ export class BridgeService {
       return results;
     }
 
-    // 未指定文件夹，全库递归扫描（异步 + 深度限制）
-    const scanDir = async (dirPath: string, relativePrefix: string, depth: number): Promise<void> => {
+    // 未指定文件夹，全库递归扫描（Vault API + 深度限制）
+    const scanDir = async (relativeDir: string, depth: number): Promise<void> => {
       if (depth > maxDepth) return;
-      let entries: fs.Dirent[];
+      let list;
       try {
-        entries = await fs.promises.readdir(dirPath, { withFileTypes: true });
+        list = await adapter.list(relativeDir);
       } catch { return; /* skip unreadable dirs */ }
 
-      for (const entry of entries) {
-        if (entry.name.startsWith('.')) continue;
-        const fullPath = path.join(dirPath, entry.name);
-        const relativePath = relativePrefix ? path.join(relativePrefix, entry.name) : entry.name;
+      for (const folder of list.folders) {
+        if (folder.startsWith('.')) continue;
+        const skipDirs = new Set([...DEFAULT_SKIP_DIRS, ...(this.configDir ? [this.configDir] : [])]);
+        if (skipDirs.has(folder)) continue;
+        const subPath = relativeDir ? path.join(relativeDir, folder) : folder;
+        await scanDir(subPath, depth + 1);
+      }
 
-        if (entry.isDirectory()) {
-          const skipDirs = new Set([...DEFAULT_SKIP_DIRS, ...(this.configDir ? [this.configDir] : [])]);
-          if (skipDirs.has(entry.name)) continue;
-          await scanDir(fullPath, relativePath, depth + 1);
-        } else if (entry.isFile()) {
-          const ext = path.extname(entry.name).toLowerCase();
-          if (allowedExts.includes(ext)) {
-            try {
-              const stat: fs.Stats = await fs.promises.stat(fullPath);
-              results.push({ path: relativePath, name: entry.name, size: stat.size, ext });
-            } catch { /* skip */ }
-          }
+      for (const file of list.files) {
+        if (file.startsWith('.')) continue;
+        const ext = path.extname(file).toLowerCase();
+        if (allowedExts.includes(ext)) {
+          try {
+            const relativePath = relativeDir ? path.join(relativeDir, file) : file;
+            const fileStat = await adapter.stat(relativePath);
+            results.push({ path: relativePath, name: file, size: fileStat?.size ?? 0, ext });
+          } catch { /* skip */ }
         }
       }
     };
 
-    await scanDir(basePath, '', 0);
+    await scanDir('', 0);
     results.sort((a, b) => a.path.localeCompare(b.path));
     return results;
   }
@@ -263,25 +263,23 @@ export class BridgeService {
       return;
     }
 
-    // 读取库内音频文件（通过库内相对路径）— 返回绝对路径，前端直接 fetch file://
+    // 读取库内音频文件（通过库内相对路径）— 使用 adapter 验证并通过 getFullPath 获取绝对路径
     if (msg.type === 'app:readVaultFile') {
       try {
         const relativePath = msg.payload?.path || '';
         if (!relativePath) throw new Error('未提供文件路径');
         const ext = path.extname(relativePath).toLowerCase();
         if (!ALLOWED_AUDIO_EXTENSIONS.includes(ext)) throw new Error('不支持的音频格式：' + ext);
+        if (!this.vaultAdapter) throw new Error('Vault 适配器未初始化');
+        // 路径遍历检查
+        if (relativePath.includes('..')) throw new Error('路径遍历禁止：' + relativePath);
+        // Vault API 验证文件存在
+        const fileStat = await this.vaultAdapter.stat(relativePath);
+        if (!fileStat || fileStat.type !== 'file') throw new Error('文件不存在：' + relativePath);
+        // adapter.stat 已验证存在，basePath 用于拼接绝对路径供 HTTP 服务器使用
         if (!this.vaultBasePath) throw new Error('无法获取库根目录路径');
-        const vaultBasePath = this.vaultBasePath;
-        const fullPath = path.join(vaultBasePath, relativePath);
-        // 路径遍历检查：确保解析后的路径未逃逸出 vault 根目录
-        if (!fullPath.startsWith(vaultBasePath)) {
-          throw new Error('路径遍历禁止：' + relativePath);
-        }
-        try {
-          await fs.promises.stat(fullPath);
-        } catch {
-          throw new Error('文件不存在：' + relativePath);
-        }
+        const fullPath = path.join(this.vaultBasePath, relativePath);
+        if (!fullPath.startsWith(this.vaultBasePath)) throw new Error('路径遍历禁止：' + relativePath);
         this.respond(msg.id, { filePath: fullPath, name: path.basename(relativePath, ext) });
       } catch (error: unknown) {
         this.respondError(msg.id, error instanceof Error ? error.message : '读取库文件失败');

@@ -1,6 +1,4 @@
 import { App, PluginSettingTab, Setting } from 'obsidian';
-import * as path from 'path';
-import * as fs from 'fs';
 import type BambooReviewPlugin from '../../main';
 import { ThemeBridge } from '../bridge/ThemeBridge';
 
@@ -43,7 +41,7 @@ export class PluginSettings extends PluginSettingTab {
     this.plugin = plugin;
   }
 
-  display(): void {
+  async display(): Promise<void> {
     const { containerEl } = this;
     containerEl.empty();
     containerEl.addClass('bamboo-review-settings');
@@ -153,24 +151,23 @@ export class PluginSettings extends PluginSettingTab {
     const authorBox = containerEl.createDiv({ cls: 'bamboo-about-card bamboo-about-author' });
     const authorRow = authorBox.createDiv({ cls: 'bamboo-about-author-row' });
     const avatar = authorRow.createDiv({ cls: 'bamboo-about-avatar' });
-    // 从插件目录读取头像文件（避免过长的 base64 被 Obsidian 截断导致空白）
-    // 优先读插件根目录（dev/BRAT），其次从 webapp 资源中读取（插件市场安装）
+    // 从插件目录读取头像（通过 Vault API 读取 .obsidian/plugins/ 下的自有资源）
     try {
       const pluginDir = this.plugin.manifest.dir ?? '';
-      const vaultBasePath = (this.app.vault.adapter as unknown as { basePath: string }).basePath || '';
+      const adapter = this.app.vault.adapter;
       const candidates = [
-        path.join(vaultBasePath, pluginDir, 'author-avatar.jpg'),               // dev / BRAT / release asset
-        path.join(vaultBasePath, pluginDir, 'webapp', 'assets', 'images', 'author-avatar.jpg'), // webapp 内置
+        `${pluginDir}/author-avatar.jpg`,
+        `${pluginDir}/webapp/assets/images/author-avatar.jpg`,
       ];
       for (const avatarPath of candidates) {
-        if (fs.existsSync(avatarPath)) {
-          const avatarData = fs.readFileSync(avatarPath);
-          const b64 = avatarData.toString('base64');
-          avatar.setCssStyles({
-            backgroundImage: `url(data:image/jpeg;base64,${b64})`,
-          });
-          break;
-        }
+        const exists = await adapter.exists(avatarPath);
+        if (!exists) continue;
+        const avatarData = await adapter.readBinary(avatarPath);
+        const b64 = Buffer.from(avatarData).toString('base64');
+        avatar.setCssStyles({
+          backgroundImage: `url(data:image/jpeg;base64,${b64})`,
+        });
+        break;
       }
     } catch { /* silently skip — show default empty avatar */ }
 

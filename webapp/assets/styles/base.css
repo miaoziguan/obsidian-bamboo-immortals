@@ -274,7 +274,7 @@ button:focus-visible, a:focus-visible {
     :host { background: var(--white); }
     .fab-container { display: none; }
     .period-content.collapsed { max-height: none; opacity: 1; display: block; }
-    .font-row[style*="display: none"] { display: table-row !important; }
+    /* 隐藏字体行的显示逻辑由非打印态控制，打印时直接跳过；移除 !important 对 inline style 的覆盖 */
 }
 
 .container {

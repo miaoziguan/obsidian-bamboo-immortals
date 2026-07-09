@@ -27,8 +27,8 @@
 
 | 文件 | 写死颜色 | 次数 | 现状 | 建议 |
 |------|----------|------|------|------|
-| bamboo-garden.css | `#6B8E23` 系竹绿 | 102 处（全局最多） | 已有 `--leaf-green:#6B8E23` ✅，但文件内是否引用需核对 | 优先把写死处改为 `var(--leaf-green)` |
-| bamboo-garden.css | `rgba(255,234,167,...)` 暖光 | 3 | variables 无 | ➕ 新增 `--bamboo-glow` |
+| bamboo-garden.css | `#6B8E23` 系竹绿 | 102 处（全局最多） | 已有 `--leaf-green:#6B8E23` ✅ | **刻意保留，不变量化**（部分装饰色为设计意图写死，勿改） |
+| bamboo-garden.css | `rgba(255,234,167,...)` 暖光 | 3 | variables 无 | **刻意保留，不变量化** |
 | timeline.css | 多类竹绿/金/红 | 83 | 部分有近似 `--bamboo-*` | 🔶 近似或按组件语义新增 |
 | dark.css | 暗色背景/边框 | 65 | `--surface-deep-rgb`(=#141f14) 近似 `#1e2e1e` | 🔶 用 `--surface-deep-rgb` 近似或 ➕ 新增 `--surface-deep-custom` |
 | goals-health.css | 成功/警告/危险 | 37 | `--health-success-rgb` 等部分有 | 🔶 核对 |
@@ -51,8 +51,10 @@
 ## 三、执行建议（供决策）
 
 1. **低风险的快速收益**：先替换"✅ 精确对应"的颜色（goals-map 的 #4285f4、goals-stats/editor 的 #E74C3C、section-manager 的 #B48C64、modal-settings 的 #1a1a1a、goals-stats 的 #9A5A9A）→ 这些零歧义，可直接批量替换。
-2. **中等收益**：把 `bamboo-garden.css`（102 处）里能对应 `--leaf-green` 的写死色替换掉，这是全局重复最严重的文件。
+2. ~~**中等收益**：把 `bamboo-garden.css`（102 处）里能对应 `--leaf-green` 的写死色替换掉~~ — **已决定：bamboo-garden 刻意保留，不变量化。**
 3. **需先扩变量池**：🔶/➕ 类先在 `variables.css` 补语义变量（如 `--pure-white`、`--border-medium`、`--success-bright`、`--gray-light`），再回头替换，避免散落硬编码。
 4. **验证**：webapp 改完需重新 `npm run build` 并打 webapp.zip 验证主题色相滑块 / 暗色模式覆盖正常。
 
 > 注：以上为静态分析推断，实际每行替换需打开文件逐处核对上下文（如 rgba 的透明度、渐变端点的语义），避免误替换。
+>
+> **执行状态（2026-07-09）**：✅ 精确对应部分已在 **2.0.4** 全部完成（goals-map / section-manager / modal-settings / goals-stats 共 8 处）。🔶/➕ 近似与需新增变量部分、以及 bamboo-garden.css 的批量写死色，**经评估决定保留（部分装饰色为设计意图写死）**，本清单不再作为待办。

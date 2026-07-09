@@ -3,6 +3,8 @@
 > 范围：`src/**/*.ts` + 入口 `main.ts`
 > 方法：静态分析（grep + 引用追踪），未修改任何文件。
 > 已排除误报：Obsidian 生命周期必需项（onload/onunload/display/getViewType）、对外公开给 webapp 的 postMessage 协议类型（messages.ts）、插件宿主直接调用的入口。
+>
+> **执行状态（2026-07-09）**：✅ 已完成的低风险投资——`ThemeBridge.isDarkMode()` 收敛为 `private`（2.0.4）；3 处 `console.log` 降级为 `console.debug`（2.0.4）。⏸ 重复代码抽取（路径防护/音频校验/MIME 列表等 6 处）经评估**暂不改**（需改动公开逻辑、收益待评估），本清单不再作为待办。
 
 ---
 

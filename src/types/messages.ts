@@ -107,7 +107,7 @@ export interface StorageExportRequest {
 export interface StorageImportRequest {
   type: 'storage:importAll';
   id: string;
-  payload: { data: unknown };
+  payload: { data: unknown; options?: { strategy?: 'overwrite' | 'merge' } };
 }
 
 export interface StorageClearRequest {

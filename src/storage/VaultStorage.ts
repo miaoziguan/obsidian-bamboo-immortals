@@ -306,27 +306,74 @@ export class VaultStorage {
     };
   }
 
-  async importData(data: Record<string, unknown>): Promise<void> {
+  async importData(data: unknown, options: { strategy?: 'overwrite' | 'merge' } = {}): Promise<void> {
     await this.ensureStructure();
+    const strategy = options.strategy ?? 'overwrite';
+    const record = (data && typeof data === 'object' && !Array.isArray(data))
+      ? (data as Record<string, unknown>)
+      : {};
 
-    if (data.days) {
-      for (const day of Object.values(data.days)) {
+    if (record.days !== undefined) {
+      // 防御：days 必须是对象；空对象表示清空全部日数据（仅 overwrite 语义下允许）
+      const days = (record.days && typeof record.days === 'object' && !Array.isArray(record.days))
+        ? record.days as Record<string, any>
+        : {};
+      if (strategy === 'overwrite') {
+        await this.clearAllDays();
+      }
+      for (const day of Object.values(days)) {
         await this.putDay(day);
       }
     }
-    if (data.goals) {
-      await this.putGoals(data.goals as any[]);
+
+    if (record.goals !== undefined) {
+      const incoming = Array.isArray(record.goals) ? record.goals : [];
+      if (strategy === 'merge') {
+        // 合并：保留现有目标，导入目标按 id 覆盖；空数组不触发清空
+        const existing = (await this.getGoals()) || [];
+        const merged = new Map(existing.map((g) => [g.id, g]));
+        for (const goal of incoming) {
+          if (goal && goal.id) merged.set(goal.id, goal);
+        }
+        await this.putGoals(Array.from(merged.values()));
+      } else {
+        // overwrite：整体替换（空数组 = 清空，符合预期语义）
+        await this.putGoals(incoming);
+      }
     }
-    if (data.settings) {
-      for (const [key, value] of Object.entries(data.settings)) {
+
+    if (record.settings !== undefined && record.settings && typeof record.settings === 'object') {
+      const settings = record.settings as Record<string, unknown>;
+      if (strategy === 'overwrite') {
+        await this.clearAllSettings();
+      }
+      for (const [key, value] of Object.entries(settings)) {
         await this.putSetting(key, value);
       }
     }
-    if (data.purchaseHistory) {
-      await this.putPurchaseHistory(data.purchaseHistory);
+
+    if (record.purchaseHistory !== undefined) {
+      await this.putPurchaseHistory(record.purchaseHistory);
     }
-    if (data.incomeHistory) {
-      await this.putIncomeHistory(data.incomeHistory);
+    if (record.incomeHistory !== undefined) {
+      await this.putIncomeHistory(record.incomeHistory);
+    }
+  }
+
+  /** 仅清空所有日数据（overwrite 导入 days 前调用，不影响 goals/settings） */
+  async clearAllDays(): Promise<void> {
+    const dataDir = normalizePath(`${this.basePath}/data`);
+    if (await this.app.vault.adapter.exists(dataDir)) {
+      await this.app.vault.adapter.rmdir(dataDir, true);
+    }
+    await this.ensureDir('data');
+  }
+
+  /** 仅清空设置文件（overwrite 导入 settings 前调用） */
+  async clearAllSettings(): Promise<void> {
+    const path = this.settingsPath();
+    if (await this.app.vault.adapter.exists(path)) {
+      await this.app.vault.adapter.remove(path);
     }
   }
 

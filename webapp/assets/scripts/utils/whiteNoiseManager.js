@@ -1,3 +1,4 @@
+import { byId, $, $$, modalMount } from './domRef.js';
 /**
  * WhiteNoiseManager - 白噪音管理器（门面模式）
  * 保持原有API不变，内部调用 NoisePlayer / NoiseGenerator / NoisePanel
@@ -41,7 +42,7 @@ export const WhiteNoiseManager = {
         }
 
         // 缓存 ticket-stub DOM 引用
-        this._ticketStubEl = document.querySelector('.ticket-stub');
+        this._ticketStubEl = $('.ticket-stub');
         setTimeout(() => { this.updateTicketControlDisplay(); }, 500);
 
         // 初始化播放器
@@ -195,7 +196,7 @@ export const WhiteNoiseManager = {
     // 更新悬浮菜单状态
     updateTicketStubState(isPlaying) {
         if (!this._ticketStubEl) {
-            this._ticketStubEl = document.querySelector('.ticket-stub');
+            this._ticketStubEl = $('.ticket-stub');
         }
         if (this._ticketStubEl) {
             if (isPlaying) {
@@ -209,7 +210,7 @@ export const WhiteNoiseManager = {
     // 更新悬浮菜单显示
     updateTicketControlDisplay() {
         const noiseType = [...this.NOISE_TYPES, ...this.customNoises].find(t => t.id === NoisePlayer.currentType);
-        const nameEls = document.querySelectorAll('.stub-nc-name');
+        const nameEls = $$('.stub-nc-name');
 
         if (noiseType) {
             nameEls.forEach(el => { el.textContent = noiseType.name; });
@@ -405,14 +406,14 @@ export const WhiteNoiseManager = {
                     </div>
                 </div>
             `;
-            document.body.appendChild(overlay);
+            modalMount().appendChild(overlay);
 
-            const input = document.getElementById('wnreName');
+            const input = byId('wnreName');
             input.focus();
             input.select();
 
             const close = (result) => {
-                document.body.removeChild(overlay);
+                overlay.remove();
                 resolve(result);
             };
 
@@ -568,14 +569,14 @@ export const WhiteNoiseManager = {
                     </div>
                 </div>
             `;
-            document.body.appendChild(overlay);
+            modalMount().appendChild(overlay);
 
             let activeSource = 'url';
             let pickedFile = '';
             let picking = false;
 
             const close = (result) => {
-                document.body.removeChild(overlay);
+                overlay.remove();
                 resolve(result);
             };
 
@@ -585,16 +586,16 @@ export const WhiteNoiseManager = {
                     activeSource = tab.dataset.source;
                     overlay.querySelectorAll('.wnfp-tab').forEach(t => t.classList.toggle('wnfp-tab-active', false));
                     tab.classList.add('wnfp-tab-active');
-                    document.getElementById('wnfpUrlSection').style.display = activeSource === 'url' ? 'block' : 'none';
-                    document.getElementById('wnfpFileSection').style.display = activeSource === 'file' ? 'block' : 'none';
+                    byId('wnfpUrlSection').style.display = activeSource === 'url' ? 'block' : 'none';
+                    byId('wnfpFileSection').style.display = activeSource === 'file' ? 'block' : 'none';
                 });
             });
 
             // URL 输入时自动填充名称
-            const urlInput = document.getElementById('wnfpUrl');
+            const urlInput = byId('wnfpUrl');
             urlInput.addEventListener('input', () => {
                 const val = urlInput.value.trim();
-                const nameInput = document.getElementById('wnfpName');
+                const nameInput = byId('wnfpName');
                 if (val && !nameInput.value) {
                     try {
                         const pathName = new URL(val).pathname;
@@ -605,19 +606,19 @@ export const WhiteNoiseManager = {
             });
 
             // 浏览文件
-            document.getElementById('wnfpBrowse').addEventListener('click', async () => {
+            byId('wnfpBrowse').addEventListener('click', async () => {
                 if (picking) return;
                 picking = true;
-                const btn = document.getElementById('wnfpBrowse');
+                const btn = byId('wnfpBrowse');
                 btn.textContent = '扫描中...';
                 btn.disabled = true;
                 try {
                     pickedFile = await this._pickVaultFile();
-                    document.getElementById('wnfpSelected').textContent = pickedFile || '未选择';
+                    byId('wnfpSelected').textContent = pickedFile || '未选择';
                     // 自动填充名称：取文件名（去扩展名）
                     if (pickedFile) {
                         const fileName = pickedFile.split('/').pop().replace(/\.[^.]+$/, '');
-                        document.getElementById('wnfpName').value = fileName || '';
+                        byId('wnfpName').value = fileName || '';
                     }
                 } catch (e) {
                     console.error('[Bamboo] 扫描库内音频文件失败:', e);
@@ -638,12 +639,12 @@ export const WhiteNoiseManager = {
 
             // 添加
             overlay.querySelector('#wnfpAdd').addEventListener('click', () => {
-                const name = document.getElementById('wnfpName').value.trim();
+                const name = byId('wnfpName').value.trim();
                 if (!name) { Toast.showToast('请输入音效名称', 'error'); return; }
                 let source, url, filepath;
                 if (activeSource === 'url') {
                     source = 'url';
-                    url = document.getElementById('wnfpUrl').value.trim();
+                    url = byId('wnfpUrl').value.trim();
                     if (!url) { Toast.showToast('请输入音频链接', 'error'); return; }
                     filepath = '';
                 } else {
@@ -694,10 +695,10 @@ export const WhiteNoiseManager = {
                     </div>
                 </div>
             `;
-            document.body.appendChild(overlay);
+            modalMount().appendChild(overlay);
 
             const close = (path) => {
-                document.body.removeChild(overlay);
+                overlay.remove();
                 resolve(path || '');
             };
 
@@ -815,7 +816,7 @@ export const WhiteNoiseManager = {
                 '</div>';
 
             overlay.appendChild(dialog);
-            document.body.appendChild(overlay);
+            modalMount().appendChild(overlay);
 
             requestAnimationFrame(() => overlay.classList.add('confirm-visible'));
 

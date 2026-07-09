@@ -1868,7 +1868,7 @@
 
 /* 格式错误 — 红框提示 */
 .arch-date-err {
-    border-color: var(--bamboo-error, #e74c3c) !important;
+    border-color: var(--bamboo-error, #e74c3c);
     box-shadow: 0 0 0 2px rgba(231, 76, 60, 0.1);
 }
 
@@ -1879,19 +1879,19 @@
 }
 
 /* ========== 暗色模式 ========== */
-html.dark .arch-date-input {
+:host(.dark) .arch-date-input {
     border-color: rgba(var(--border-dark-rgb, 60, 70, 60), 0.35);
 }
 
-html.dark .arch-date-input::placeholder {
+:host(.dark) .arch-date-input::placeholder {
     color: var(--text-tertiary);
 }
 
-html.dark .arch-date-input:hover,
-html.dark .arch-date-input:focus {
+:host(.dark) .arch-date-input:hover,
+:host(.dark) .arch-date-input:focus {
     border-color: rgba(var(--text-secondary-rgb, 140, 150, 140), 0.5);
 }
 
-html.dark .arch-date-err {
-    border-color: var(--bamboo-error, #e74c3c) !important;
+:host(.dark) .arch-date-err {
+    border-color: var(--bamboo-error, #e74c3c);
 }

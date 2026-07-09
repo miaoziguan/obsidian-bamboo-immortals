@@ -786,27 +786,27 @@
 /* ========== 星光竹林暗色模式 ========== */
 
 /* --- 文字色彩 --- */
-html.dark .ticket-time-name              { color: var(--ink-light); }
-html.dark .ticket-time-value             { color: var(--bamboo-pale-hover); }
-html.dark .ticket-highlight-label        { color: var(--ink-medium); }
-html.dark .ticket-highlight-value        { color: var(--bamboo-light); text-shadow: 0 0 12px rgba(var(--primary-rgb), 0.3); }
-html.dark .stub-title-cn                 { color: var(--bamboo-pale-hover); }
-html.dark .stub-title-en                 { color: var(--ink-light); }
-html.dark .ticket-slogan                 { color: var(--ink-light); }
-html.dark .ticket-stub-date              { color: var(--ink-light); }
+:host(.dark) .ticket-time-name              { color: var(--ink-light); }
+:host(.dark) .ticket-time-value             { color: var(--bamboo-pale-hover); }
+:host(.dark) .ticket-highlight-label        { color: var(--ink-medium); }
+:host(.dark) .ticket-highlight-value        { color: var(--bamboo-light); text-shadow: 0 0 12px rgba(var(--primary-rgb), 0.3); }
+:host(.dark) .stub-title-cn                 { color: var(--bamboo-pale-hover); }
+:host(.dark) .stub-title-en                 { color: var(--ink-light); }
+:host(.dark) .ticket-slogan                 { color: var(--ink-light); }
+:host(.dark) .ticket-stub-date              { color: var(--ink-light); }
 
 /* --- 票体背景与边框 --- */
-html.dark .ticket-highlight {
+:host(.dark) .ticket-highlight {
     background: linear-gradient(135deg, rgba(var(--primary-rgb),0.1) 0%, rgba(var(--primary-rgb),0.04) 100%),
                 linear-gradient(45deg, rgba(var(--deep-rgb), ) 0%, transparent 60%);
     border: 1px solid rgba(var(--primary-rgb), 0.2);
     box-shadow: 0 0 20px rgba(var(--primary-rgb), 0.1);
 }
-html.dark .designer-ticket {
+:host(.dark) .designer-ticket {
     background: rgba(var(--primary-rgb), 0.06);
     border-color: rgba(var(--primary-rgb), 0.12);
 }
-html.dark .ticket-main::before {
+:host(.dark) .ticket-main::before {
     background: linear-gradient(135deg, rgba(var(--primary-rgb),0.12) 0%, rgba(var(--primary-rgb),0.04) 50%, rgba(var(--primary-rgb),0.08) 100%),
                 linear-gradient(45deg, rgba(var(--deep-rgb), ) 0%, transparent 60%);
     box-shadow: 0 4px 20px rgba(var(--black-rgb), 0.3),
@@ -815,12 +815,12 @@ html.dark .ticket-main::before {
                 inset 2px 0 0 rgba(var(--primary-rgb),0.12),
                 inset -2px 0 0 rgba(var(--primary-rgb),0.12);
 }
-html.dark .ticket-stub {
+:host(.dark) .ticket-stub {
     background: rgba(var(--primary-rgb), 0.15);
     border-left-color: rgba(var(--primary-rgb), 0.25);
     box-shadow: inset 1px 0 0 rgba(var(--primary-rgb),0.15);
 }
-html.dark .ticket-stub-title-box {
+:host(.dark) .ticket-stub-title-box {
     background: linear-gradient(135deg, rgba(var(--primary-rgb),0.15) 0%, rgba(var(--primary-rgb),0.06) 50%, rgba(var(--primary-rgb),0.1) 100%),
                 linear-gradient(45deg, rgba(var(--deep-rgb), ) 0%, transparent 60%);
     box-shadow: 0 4px 16px rgba(var(--black-rgb), 0.2),
@@ -829,7 +829,7 @@ html.dark .ticket-stub-title-box {
                 inset 2px 0 0 rgba(var(--primary-rgb),0.12),
                 inset -2px 0 0 rgba(var(--primary-rgb),0.12);
 }
-html.dark .ticket-stub-title-box:hover {
+:host(.dark) .ticket-stub-title-box:hover {
     background: linear-gradient(135deg, rgba(var(--primary-rgb),0.22) 0%, rgba(var(--primary-rgb),0.1) 50%, rgba(var(--primary-rgb),0.16) 100%),
                 linear-gradient(45deg, rgba(var(--deep-rgb), ) 0%, transparent 60%);
     box-shadow: 0 4px 16px rgba(var(--black-rgb), 0.3),
@@ -840,17 +840,17 @@ html.dark .ticket-stub-title-box:hover {
 }
 
 /* --- 装饰 --- */
-html.dark .ticket-decoration.left::before {
+:host(.dark) .ticket-decoration.left::before {
     background: rgba(var(--primary-rgb), 0.5);
     box-shadow: 16px 0 0 rgba(var(--primary-rgb), 0.35), 32px 0 0 rgba(var(--primary-rgb), 0.2);
 }
-html.dark .ticket-decoration.right::before {
+:host(.dark) .ticket-decoration.right::before {
     background: rgba(var(--primary-rgb), 0.5);
     box-shadow: -16px 0 0 rgba(var(--primary-rgb), 0.35), -32px 0 0 rgba(var(--primary-rgb), 0.2);
 }
 
 /* --- 高级克制光效 --- */
-html.dark .designer-ticket {
+:host(.dark) .designer-ticket {
     -webkit-mask-image: radial-gradient(circle 12px at 68% 0, transparent 100%, black 100%),
                         radial-gradient(circle 12px at 68% 100%, transparent 100%, black 100%);
     -webkit-mask-composite: source-in;
@@ -860,45 +860,45 @@ html.dark .designer-ticket {
     box-shadow: 0 0 50px rgba(var(--primary-rgb), 0.1),
                 0 0 100px rgba(var(--primary-rgb), 0.05),
                 0 8px 32px rgba(var(--black-rgb), 0.4),
-                inset 0 1px 0 rgba(var(--white-rgb), 0.1) !important;
+                inset 0 1px 0 rgba(var(--white-rgb), 0.1);
 }
-html.dark .ticket-main { min-height: 120px; }
-html.dark .designer-ticket::after {
+:host(.dark) .ticket-main { min-height: 120px; }
+:host(.dark) .designer-ticket::after {
     background: linear-gradient(90deg, transparent 0%, rgba(var(--primary-rgb),0.05) 30%, rgba(var(--primary-rgb),0.1) 50%, rgba(var(--primary-rgb),0.05) 70%, transparent 100%);
 }
-html.dark .ticket-main::before {
+:host(.dark) .ticket-main::before {
     box-shadow: 0 4px 20px rgba(var(--black-rgb), 0.3),
                 inset 0 2px 0 rgba(var(--primary-rgb),0.2),
                 inset 0 -2px 0 rgba(var(--primary-rgb), 0.2),
                 inset 2px 0 0 rgba(var(--primary-rgb),0.12),
                 inset -2px 0 0 rgba(var(--primary-rgb),0.12),
-                0 0 40px rgba(var(--primary-rgb), 0.08) !important;
+                0 0 40px rgba(var(--primary-rgb), 0.08);
 }
-html.dark .ticket-stub {
+:host(.dark) .ticket-stub {
     box-shadow: inset 1px 0 0 rgba(var(--primary-rgb),0.15),
-                inset 0 0 25px rgba(var(--primary-rgb), 0.06) !important;
+                inset 0 0 25px rgba(var(--primary-rgb), 0.06);
 }
-html.dark .ticket-stub-title-box {
+:host(.dark) .ticket-stub-title-box {
     box-shadow: 0 4px 16px rgba(var(--black-rgb), 0.2),
                 inset 0 2px 0 rgba(var(--primary-rgb),0.2),
                 inset 0 -2px 0 rgba(var(--primary-rgb), 0.15),
                 inset 2px 0 0 rgba(var(--primary-rgb),0.12),
                 inset -2px 0 0 rgba(var(--primary-rgb),0.12),
-                0 0 25px rgba(var(--primary-rgb), 0.08) !important;
+                0 0 25px rgba(var(--primary-rgb), 0.08);
 }
-html.dark .ticket-highlight {
+:host(.dark) .ticket-highlight {
     box-shadow: 0 0 25px rgba(var(--primary-rgb), 0.15),
                 0 0 50px rgba(var(--primary-rgb), 0.08),
                 0 4px 16px rgba(var(--black-rgb), 0.2),
                 inset 0 2px 0 rgba(var(--primary-rgb),0.25),
-                inset 0 -2px 0 rgba(var(--primary-rgb), 0.15) !important;
+                inset 0 -2px 0 rgba(var(--primary-rgb), 0.15);
 }
 
 /* --- 活跃度点阵 --- */
-html.dark .ticket-dot { background: rgba(var(--primary-rgb), 0.1); box-shadow: inset 0 1px 2px rgba(var(--black-rgb), 0.15); }
-html.dark .ticket-dot.has-data { background: rgb(var(--primary-rgb)); box-shadow: inset 0 1px 2px rgba(var(--black-rgb), 0.1), 0 0 4px rgba(var(--primary-rgb), 0.35); }
-html.dark .ticket-dot.current { background: var(--bamboo-light); box-shadow: inset 0 1px 2px rgba(var(--black-rgb), 0.1), 0 0 6px rgba(var(--primary-rgb), 0.45); }
-html.dark .ticket-dot::after {
+:host(.dark) .ticket-dot { background: rgba(var(--primary-rgb), 0.1); box-shadow: inset 0 1px 2px rgba(var(--black-rgb), 0.15); }
+:host(.dark) .ticket-dot.has-data { background: rgb(var(--primary-rgb)); box-shadow: inset 0 1px 2px rgba(var(--black-rgb), 0.1), 0 0 4px rgba(var(--primary-rgb), 0.35); }
+:host(.dark) .ticket-dot.current { background: var(--bamboo-light); box-shadow: inset 0 1px 2px rgba(var(--black-rgb), 0.1), 0 0 6px rgba(var(--primary-rgb), 0.45); }
+:host(.dark) .ticket-dot::after {
     color: var(--bamboo-pale-hover);
     background: rgba(var(--surface-deep-rgb), 0.92);
     border-color: rgba(var(--primary-rgb), 0.12);
@@ -906,11 +906,11 @@ html.dark .ticket-dot::after {
 }
 
 /* --- 翻转按钮 --- */
-html.dark .flip-stub-btn { color: rgba(var(--primary-rgb), 0.35); }
-html.dark .flip-stub-btn:hover { color: var(--bamboo-pale-highlight); background: rgba(var(--primary-rgb), 0.12); }
+:host(.dark) .flip-stub-btn { color: rgba(var(--primary-rgb), 0.35); }
+:host(.dark) .flip-stub-btn:hover { color: var(--bamboo-pale-highlight); background: rgba(var(--primary-rgb), 0.12); }
 
 /* --- 背面面板 --- */
-html.dark .stub-back-title-box {
+:host(.dark) .stub-back-title-box {
     background: linear-gradient(135deg, rgba(var(--primary-rgb),0.15) 0%, rgba(var(--primary-rgb),0.06) 50%, rgba(var(--primary-rgb),0.1) 100%),
                 linear-gradient(45deg, rgba(var(--deep-rgb), ) 0%, transparent 60%);
     box-shadow: 0 4px 16px rgba(var(--black-rgb), 0.2),
@@ -919,20 +919,20 @@ html.dark .stub-back-title-box {
                 inset 2px 0 0 rgba(var(--primary-rgb),0.12),
                 inset -2px 0 0 rgba(var(--primary-rgb),0.12);
 }
-html.dark .stub-back-divider { background: rgba(var(--primary-rgb), 0.1); }
-html.dark .stub-back-stat svg { color: rgba(var(--primary-rgb), 0.4); }
-html.dark .stub-back-ring { background: conic-gradient(rgb(var(--primary-rgb)) 0deg, rgb(var(--primary-rgb)) calc(var(--ring-pct) * 3.6deg), rgba(var(--primary-rgb),0.08) calc(var(--ring-pct) * 3.6deg)); }
-html.dark .stub-back-ring-text { color: var(--bamboo-pale-highlight); }
-html.dark .stub-back-caption { color: rgba(var(--bamboo-pale-highlight-rgb), 0.5); }
-html.dark .stub-back-stat-value { color: rgba(var(--bamboo-pale-hover-rgb), 0.65); }
+:host(.dark) .stub-back-divider { background: rgba(var(--primary-rgb), 0.1); }
+:host(.dark) .stub-back-stat svg { color: rgba(var(--primary-rgb), 0.4); }
+:host(.dark) .stub-back-ring { background: conic-gradient(rgb(var(--primary-rgb)) 0deg, rgb(var(--primary-rgb)) calc(var(--ring-pct) * 3.6deg), rgba(var(--primary-rgb),0.08) calc(var(--ring-pct) * 3.6deg)); }
+:host(.dark) .stub-back-ring-text { color: var(--bamboo-pale-highlight); }
+:host(.dark) .stub-back-caption { color: rgba(var(--bamboo-pale-highlight-rgb), 0.5); }
+:host(.dark) .stub-back-stat-value { color: rgba(var(--bamboo-pale-hover-rgb), 0.65); }
 
 
 /* ========== 暗色模式 — 动画 ========== */
 
 /* 减少动画偏好适配 */
 @media (prefers-reduced-motion: reduce) {
-    html.dark .designer-ticket::after,
-    html.dark .ticket-highlight {
+    :host(.dark) .designer-ticket::after,
+    :host(.dark) .ticket-highlight {
         animation: none;
     }
 }
@@ -1212,94 +1212,94 @@ html.dark .stub-back-stat-value { color: rgba(var(--bamboo-pale-hover-rgb), 0.65
 }
 
 /* === 暗色模式 — 竹林色阶 === */
-html.dark .bamboo-card.lateNight .bamboo-card-header {
+:host(.dark) .bamboo-card.lateNight .bamboo-card-header {
   background: rgba(var(--primary-rgb), 0.22);
   color: rgba(var(--white-rgb), 0.88);
   transition: background 0.4s ease-out;
 }
-html.dark .bamboo-card.dawn .bamboo-card-header {
+:host(.dark) .bamboo-card.dawn .bamboo-card-header {
   background: rgba(var(--primary-rgb), 0.14);
   color: rgba(var(--white-rgb), 0.88);
   transition: background 0.4s ease-out;
 }
-html.dark .bamboo-card.earlyMorning .bamboo-card-header {
+:host(.dark) .bamboo-card.earlyMorning .bamboo-card-header {
   background: rgba(var(--primary-rgb), 0.08);
   color: rgba(var(--white-rgb), 0.90);
   transition: background 0.4s ease-out;
 }
-html.dark .bamboo-card.morning .bamboo-card-header {
+:host(.dark) .bamboo-card.morning .bamboo-card-header {
   background: rgba(var(--primary-rgb), 0.04);
   color: rgba(var(--white-rgb), 0.90);
   transition: background 0.4s ease-out;
 }
-html.dark .bamboo-card.midday .bamboo-card-header {
+:host(.dark) .bamboo-card.midday .bamboo-card-header {
   background: rgba(var(--primary-rgb), 0.02);
   color: rgba(var(--white-rgb), 0.92);
   transition: background 0.4s ease-out;
 }
-html.dark .bamboo-card.afternoon .bamboo-card-header {
+:host(.dark) .bamboo-card.afternoon .bamboo-card-header {
   background: rgba(var(--primary-rgb), 0.04);
   color: rgba(var(--white-rgb), 0.88);
   transition: background 0.4s ease-out;
 }
-html.dark .bamboo-card.dusk .bamboo-card-header {
+:host(.dark) .bamboo-card.dusk .bamboo-card-header {
   background: rgba(var(--primary-rgb), 0.11);
   color: rgba(var(--white-rgb), 0.88);
   transition: background 0.4s ease-out;
 }
-html.dark .bamboo-card.evening .bamboo-card-header {
+:host(.dark) .bamboo-card.evening .bamboo-card-header {
   background: rgba(var(--primary-rgb), 0.16);
   color: rgba(var(--white-rgb), 0.88);
   transition: background 0.4s ease-out;
 }
-html.dark .bamboo-card.night .bamboo-card-header {
+:host(.dark) .bamboo-card.night .bamboo-card-header {
   background: rgba(var(--primary-rgb), 0.22);
   color: rgba(var(--white-rgb), 0.88);
   transition: background 0.4s ease-out;
 }
 
 /* === 悬停光晕（暗色模式）=== */
-html.dark .bamboo-card.lateNight .bamboo-card-header:hover {
+:host(.dark) .bamboo-card.lateNight .bamboo-card-header:hover {
   background:
     radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(var(--primary-rgb), 0.30) 0%, transparent 60%),
     rgba(var(--primary-rgb), 0.22);
 }
-html.dark .bamboo-card.dawn .bamboo-card-header:hover {
+:host(.dark) .bamboo-card.dawn .bamboo-card-header:hover {
   background:
     radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(var(--primary-rgb), 0.22) 0%, transparent 60%),
     rgba(var(--primary-rgb), 0.14);
 }
-html.dark .bamboo-card.earlyMorning .bamboo-card-header:hover {
+:host(.dark) .bamboo-card.earlyMorning .bamboo-card-header:hover {
   background:
     radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(var(--primary-rgb), 0.16) 0%, transparent 60%),
     rgba(var(--primary-rgb), 0.08);
 }
-html.dark .bamboo-card.morning .bamboo-card-header:hover {
+:host(.dark) .bamboo-card.morning .bamboo-card-header:hover {
   background:
     radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(var(--primary-rgb), 0.10) 0%, transparent 60%),
     rgba(var(--primary-rgb), 0.04);
 }
-html.dark .bamboo-card.midday .bamboo-card-header:hover {
+:host(.dark) .bamboo-card.midday .bamboo-card-header:hover {
   background:
     radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(var(--primary-rgb), 0.06) 0%, transparent 60%),
     rgba(var(--primary-rgb), 0.02);
 }
-html.dark .bamboo-card.afternoon .bamboo-card-header:hover {
+:host(.dark) .bamboo-card.afternoon .bamboo-card-header:hover {
   background:
     radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(var(--primary-rgb), 0.10) 0%, transparent 60%),
     rgba(var(--primary-rgb), 0.04);
 }
-html.dark .bamboo-card.dusk .bamboo-card-header:hover {
+:host(.dark) .bamboo-card.dusk .bamboo-card-header:hover {
   background:
     radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(var(--primary-rgb), 0.18) 0%, transparent 60%),
     rgba(var(--primary-rgb), 0.11);
 }
-html.dark .bamboo-card.evening .bamboo-card-header:hover {
+:host(.dark) .bamboo-card.evening .bamboo-card-header:hover {
   background:
     radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(var(--primary-rgb), 0.24) 0%, transparent 60%),
     rgba(var(--primary-rgb), 0.16);
 }
-html.dark .bamboo-card.night .bamboo-card-header:hover {
+:host(.dark) .bamboo-card.night .bamboo-card-header:hover {
   background:
     radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(var(--primary-rgb), 0.30) 0%, transparent 60%),
     rgba(var(--primary-rgb), 0.22);
@@ -1333,52 +1333,52 @@ html.dark .bamboo-card.night .bamboo-card-header:hover {
     border: 1px solid rgba(var(--danger-rgb), 0.3);
 }
 
-html.dark .bamboo-eval.good {
+:host(.dark) .bamboo-eval.good {
     color: var(--bamboo-light);
     background: rgba(var(--primary-rgb), 0.2);
     border-color: rgba(var(--primary-rgb), 0.4);
 }
 
-html.dark .bamboo-eval.warn {
+:host(.dark) .bamboo-eval.warn {
     color: rgba(var(--amber-rgb), 0.9);
     background: rgba(var(--warning-orange-rgb), 0.2);
     border-color: rgba(var(--warning-orange-rgb), 0.4);
 }
 
-html.dark .bamboo-eval.bad {
+:host(.dark) .bamboo-eval.bad {
     color: rgba(var(--danger-bright-rgb), 0.85);
     background: rgba(var(--danger-rgb), 0.2);
     border-color: rgba(var(--danger-rgb), 0.4);
 }
 
 /* 暗色模式：抬头元素用亮绿，与深色玻璃底色区分 */
-html.dark .bamboo-icon {
+:host(.dark) .bamboo-icon {
     color: var(--bamboo-light);
     filter: drop-shadow(0 1px 2px rgba(var(--black-rgb), 0.2));
 }
 
-html.dark .bamboo-name {
+:host(.dark) .bamboo-name {
     color: var(--bamboo-light);
 }
 
-html.dark .bamboo-time {
+:host(.dark) .bamboo-time {
     color: var(--bamboo-pale);
     opacity: 0.75;
 }
 
-html.dark .bamboo-count {
+:host(.dark) .bamboo-count {
     color: rgba(var(--green-bright-rgb), 0.8);
     background: rgba(var(--primary-rgb), 0.12);
     border-color: rgba(var(--primary-rgb), 0.25);
     opacity: 0.6;
 }
 
-html.dark .bamboo-count:empty,
-html.dark .bamboo-count[data-count="0"] {
+:host(.dark) .bamboo-count:empty,
+:host(.dark) .bamboo-count[data-count="0"] {
     opacity: 0.25;
 }
 
-html.dark .bamboo-chevron {
+:host(.dark) .bamboo-chevron {
     color: var(--bamboo-pale);
 }
 
@@ -1410,12 +1410,12 @@ html.dark .bamboo-chevron {
     border-top-color: var(--bamboo-primary);
 }
 
-html.dark .bamboo-tooltip {
+:host(.dark) .bamboo-tooltip {
     background: var(--bamboo-primary);
     color: white;
 }
 
-html.dark .bamboo-tooltip::after {
+:host(.dark) .bamboo-tooltip::after {
     border-top-color: var(--bamboo-primary);
 }
 
@@ -1498,8 +1498,8 @@ html.dark .bamboo-tooltip::after {
 /* ≤768px: 票体+票根上下堆叠，票根内容横向排列 */
 @media (max-width: 768px) {
     .designer-ticket,
-    html.dark .designer-ticket,
-    html.dark .designer-ticket {
+    :host(.dark) .designer-ticket,
+    :host(.dark) .designer-ticket {
         flex-direction: column;
         -webkit-mask-image: none;
         -webkit-mask-composite: initial;
@@ -1803,15 +1803,15 @@ html.dark .bamboo-tooltip::after {
    ============================================= */
 
 @media (max-width: 768px) {
-    html.dark .ticket-stub {
+    :host(.dark) .ticket-stub {
         border-left: none;
         border-top: none;
-        box-shadow: none !important;
+        box-shadow: none;
     }
 
-    html.dark .ticket-stub.playing {
+    :host(.dark) .ticket-stub.playing {
         box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.5),
-                    0 4px 25px rgba(var(--primary-rgb), 0.3) !important;
+                    0 4px 25px rgba(var(--primary-rgb), 0.3);
     }
 }
 
@@ -1823,8 +1823,8 @@ html.dark .bamboo-tooltip::after {
    ============================================= */
 
 .display-compact .designer-ticket,
-html.dark .display-compact .designer-ticket,
-html.dark .display-compact .designer-ticket {
+:host(.dark) .display-compact .designer-ticket,
+:host(.dark) .display-compact .designer-ticket {
     flex-direction: column;
     -webkit-mask-image: none;
     -webkit-mask-composite: initial;
@@ -2001,26 +2001,26 @@ html.dark .display-compact .designer-ticket {
 }
 
 /* 容器紧凑模式 — 暗色模式覆盖 */
-html.dark .display-compact .ticket-stub {
+:host(.dark) .display-compact .ticket-stub {
     border-left: none;
     border-top: none;
-    box-shadow: none !important;
+    box-shadow: none;
 }
 
-html.dark .display-compact .ticket-stub.playing {
+:host(.dark) .display-compact .ticket-stub.playing {
     box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.5),
-                0 4px 25px rgba(var(--primary-rgb), 0.35) !important;
+                0 4px 25px rgba(var(--primary-rgb), 0.35);
 }
 
-html.dark .display-compact .ticket-stub {
+:host(.dark) .display-compact .ticket-stub {
     border-left: none;
     border-top: none;
-    box-shadow: none !important;
+    box-shadow: none;
 }
 
-html.dark .display-compact .ticket-stub.playing {
+:host(.dark) .display-compact .ticket-stub.playing {
     box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.5),
-                0 4px 25px rgba(var(--primary-rgb), 0.3) !important;
+                0 4px 25px rgba(var(--primary-rgb), 0.3);
 }
 
 /* =============================================

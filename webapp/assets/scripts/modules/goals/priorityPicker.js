@@ -1,10 +1,11 @@
+import { modalMount } from '../../utils/domRef.js';
 /**
  * 优先级选择器（popup）
  * 纯 DOM 弹层，从 GoalsRenderer._showPriorityPicker 提取。
  */
 export const PriorityPicker = {
     show({ el, currentPriority, onSelect, onCancel }) {
-        if (!el || !document.contains(el)) return;
+        if (!el || !el.isConnected) return;
         let rect;
         try {
             rect = el.getBoundingClientRect();
@@ -37,7 +38,7 @@ export const PriorityPicker = {
                 </div>
             </div>
         `;
-        document.body.appendChild(container);
+        modalMount().appendChild(container);
 
         PopupPositioner.positionOnNextFrame({
             popupElement: container.querySelector('.prio-container'),

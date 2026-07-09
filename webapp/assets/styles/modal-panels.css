@@ -517,15 +517,15 @@
 }
 
 /* 暗色模式 */
-html.dark .wn-timer-section {
+:host(.dark) .wn-timer-section {
     border-top-color: rgba(var(--border-dark-rgb, 60, 70, 60), 0.25);
 }
 
-html.dark .wn-timer-btn {
+:host(.dark) .wn-timer-btn {
     border-color: rgba(var(--border-dark-rgb, 60, 70, 60), 0.3);
 }
 
-html.dark .wn-timer-change-btn {
+:host(.dark) .wn-timer-change-btn {
     border-color: rgba(var(--border-dark-rgb, 60, 70, 60), 0.3);
 }
 
@@ -1762,18 +1762,18 @@ html.dark .wn-timer-change-btn {
 }
 
 /* ========== 暗色模式 ========== */
-html.dark .wn-file-picker {
+:host(.dark) .wn-file-picker {
     background: var(--card-bg-dark, #1e2e1e);
 }
 
-html.dark .wnfp-vf-panel {
+:host(.dark) .wnfp-vf-panel {
     background: var(--card-bg-dark, #1e2e1e);
 }
 
-html.dark .wnfp-tab {
+:host(.dark) .wnfp-tab {
     border-color: rgba(var(--border-dark-rgb, 60, 70, 60), 0.2);
 }
 
-html.dark .wnfp-tab:first-child {
+:host(.dark) .wnfp-tab:first-child {
     border-color: rgba(var(--border-dark-rgb, 60, 70, 60), 0.2);
 }

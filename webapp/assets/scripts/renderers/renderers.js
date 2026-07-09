@@ -1,7 +1,8 @@
+import { byId, $, $$, modalMount, getDomRoot } from '../utils/domRef.js';
 export const renderDate = () => {
     const { currentDate } = store.getState();
-    const dateDisplay = document.getElementById('currentDate');
-    const weekdayDisplay = document.getElementById('currentWeekday');
+    const dateDisplay = byId('currentDate');
+    const weekdayDisplay = byId('currentWeekday');
     if (dateDisplay) dateDisplay.textContent = getChineseDateDisplay(currentDate);
     if (weekdayDisplay) weekdayDisplay.textContent = getChineseWeekday(currentDate);
 };
@@ -12,7 +13,7 @@ let _pendingRender = false;
 let _renderedSectionIds = new Set();
 
 export const renderSkeleton = () => {
-    const sectionsContainer = document.getElementById('sectionsContainer');
+    const sectionsContainer = byId('sectionsContainer');
     if (!sectionsContainer) return;
 
     sectionsContainer.innerHTML = `
@@ -50,7 +51,7 @@ export const renderAll = () => {
             const data = store.getCurrentDayData();
             renderDate();
 
-            const sectionsContainer = document.getElementById('sectionsContainer');
+            const sectionsContainer = byId('sectionsContainer');
             if (!sectionsContainer) {
                 console.error('sectionsContainer 不存在!');
                 return;
@@ -74,7 +75,7 @@ export const renderAll = () => {
 
             // 收集所有需要渲染的 section 元素，按正确顺序排列
             // 性能优化：themeEffect section 仅首次创建，后续渲染复用已存在的 DOM
-            const savedThemeWrapper = document.getElementById('themeEffectSection');
+            const savedThemeWrapper = byId('themeEffectSection');
             const sectionElements = [];
             sections.forEach((section, index) => {
                 if (section.id === 'themeEffect' && savedThemeWrapper) {
@@ -545,7 +546,7 @@ export const renderTodoSection = () => {
 };
 
 export const renderUndoRedoBar = () => {
-    let bar = document.querySelector('.undo-redo-bar');
+    let bar = $('.undo-redo-bar');
     const canUndo = store.canUndo();
     const canRedo = store.canRedo();
     
@@ -563,7 +564,7 @@ export const renderUndoRedoBar = () => {
 };
 
 export const renderHistoryList = () => {
-    const container = document.getElementById('historyList');
+    const container = byId('historyList');
     if (!container) return;
     
     const { data, currentDate } = store.getState();
@@ -609,7 +610,7 @@ export const escapeRegex = (str) => {
 };
 
 export const renderSearchResults = (results, query) => {
-    const container = document.getElementById('searchResults');
+    const container = byId('searchResults');
     if (!container) return;
     
     if (results.length === 0) {
@@ -668,7 +669,7 @@ window.renderAll = renderAll;
 window.createDefaultSection = createDefaultSection;
 
 export const setupTimelineHoverEffects = () => {
-    const container = document.getElementById('sectionsContainer');
+    const container = byId('sectionsContainer');
     if (!container || container._hoverBound) return;
 
     // 使用事件委托，避免重复绑定监听器
@@ -695,18 +696,18 @@ export const setupTimelineHoverEffects = () => {
 };
 window.setupTimelineHoverEffects = setupTimelineHoverEffects;
 
-export const setupBambooTooltips = (container = document) => {
+export const setupBambooTooltips = (container = getDomRoot()) => {
     if (container._tooltipBound) return;
     container._tooltipBound = true;
 
-    let tooltip = document.querySelector('.bamboo-tooltip');
+    let tooltip = $('.bamboo-tooltip');
     if (!tooltip) {
         tooltip = document.createElement('div');
         tooltip.className = 'bamboo-tooltip';
-        document.body.appendChild(tooltip);
+        modalMount().appendChild(tooltip);
     }
 
-    const counts = document.querySelectorAll('.bamboo-count');
+    const counts = $$('.bamboo-count');
     counts.forEach(count => {
         count.addEventListener('mouseenter', () => {
             const hint = count.dataset.hint;

@@ -1,5 +1,5 @@
 /* 竹林动效专属变量（亮/暗双形态，避免暗色区逐条重写 background） */
-:root {
+:host {
     --mist-1: radial-gradient(ellipse at 10% 60%, rgba(var(--white-rgb), 0.65) 0%, transparent 45%),
               radial-gradient(ellipse at 70% 50%, rgba(var(--white-rgb), 0.5) 0%, transparent 50%),
               radial-gradient(ellipse at 50% 85%, rgba(var(--white-rgb), 0.55) 0%, transparent 55%);
@@ -13,7 +13,7 @@
                        radial-gradient(ellipse at 100% 100%, hsla(calc(var(--accent-hue) + 0), 22%, calc(82% + var(--accent-lightness-offset)), 0.38) 0%, transparent 55%);
 }
 
-html.dark {
+:host(.dark) {
     --mist-1: radial-gradient(ellipse at 10% 60%, hsla(calc(var(--accent-hue) + 0), 35%, calc(55% + var(--accent-lightness-offset)), 0.06) 0%, transparent 45%),
               radial-gradient(ellipse at 70% 50%, hsla(calc(var(--accent-hue) + 30), 33%, calc(47% + var(--accent-lightness-offset)), 0.04) 0%, transparent 50%),
               radial-gradient(ellipse at 50% 85%, hsla(calc(var(--accent-hue) + 0), 42%, calc(63% + var(--accent-lightness-offset)), 0.05) 0%, transparent 55%);
@@ -83,7 +83,7 @@ html.dark {
     border-radius: var(--theme-inner-radius);
 }
 
-html.dark #themeEffectSection {
+:host(.dark) #themeEffectSection {
     border-color: hsla(calc(var(--accent-hue) + 0), 28%, 35%, 0.15);
     box-shadow:
         0 1px 4px hsla(calc(var(--accent-hue) + 0), 20%, 3%, 0.15),
@@ -150,7 +150,7 @@ html.dark #themeEffectSection {
 }
 
 /* 暗色模式显示月亮 */
-html.dark .moon {
+:host(.dark) .moon {
     display: block;
     opacity: 1;
 }
@@ -303,7 +303,7 @@ html.dark .moon {
     animation: riverWave 8s ease-in-out infinite;
 }
 
-html.dark .river-surface {
+:host(.dark) .river-surface {
     background: linear-gradient(180deg,
         hsla(calc(var(--accent-hue) + 15), 33%, calc(47% + var(--accent-lightness-offset)), 0.06) 0%,
         hsla(calc(var(--accent-hue) + 15), 35%, calc(55% + var(--accent-lightness-offset)), 0.1) 50%,
@@ -325,17 +325,17 @@ html.dark .river-surface {
 }
 
 /* 暗色模式下原地浮动 + 发光 */
-html.dark .boat-container {
+:host(.dark) .boat-container {
     left: 12%;
     animation: boatFloat 6s ease-in-out infinite;
 }
 
-html.dark .boat {
+:host(.dark) .boat {
     filter: drop-shadow(0 0 6px hsla(calc(var(--accent-hue) + -8), 53%, 71%, 0.4)) drop-shadow(0 0 12px hsla(calc(var(--accent-hue) + -7), 45%, 61%, 0.2));
     opacity: 0.6;
 }
 
-html.dark .boat::before {
+:host(.dark) .boat::before {
     background: linear-gradient(90deg,
         transparent 0%,
         hsla(calc(var(--accent-hue) + -7), 38%, 53%, 0.5) 20%,
@@ -558,7 +558,7 @@ html.dark .boat::before {
 }
 
 /* 暗色模式适配 */
-html.dark .bamboo-garden-container {
+:host(.dark) .bamboo-garden-container {
     background: linear-gradient(180deg, 
         hsl(var(--accent-hue), 47%, calc(7% + var(--accent-lightness-offset))) 0%, 
         hsl(var(--accent-hue), 21%, calc(6% + var(--accent-lightness-offset))) 20%, 
@@ -574,7 +574,7 @@ html.dark .bamboo-garden-container {
         0 12px 40px hsla(calc(var(--accent-hue) + 0), 20%, 2%, 0.45);
 }
 
-html.dark .bamboo-garden-container::after {
+:host(.dark) .bamboo-garden-container::after {
     background: linear-gradient(
         180deg,
         hsla(calc(var(--accent-hue) + 0), 40%, 80%, 0.04) 0%,
@@ -582,7 +582,7 @@ html.dark .bamboo-garden-container::after {
     );
 }
 
-html.dark .bamboo-stalk {
+:host(.dark) .bamboo-stalk {
     background: linear-gradient(90deg,
         rgba(var(--primary-rgb), 0.65),
         rgba(var(--primary-rgb), 0.95),
@@ -591,41 +591,41 @@ html.dark .bamboo-stalk {
     filter: drop-shadow(0 0 10px rgba(var(--primary-rgb), 0.35));
 }
 
-html.dark .bamboo-leaf-tip {
+:host(.dark) .bamboo-leaf-tip {
     background: linear-gradient(180deg,
         rgba(var(--primary-rgb), 0.8),
         rgba(var(--primary-rgb), 1));
     filter: drop-shadow(0 0 5px rgba(var(--primary-rgb), 0.45));
 }
 
-html.dark .mountain-1,
-html.dark .mountain-2,
-html.dark .mountain-3 {
+:host(.dark) .mountain-1,
+:host(.dark) .mountain-2,
+:host(.dark) .mountain-3 {
     display: none;
 }
 
-html.dark .forest-floor {
+:host(.dark) .forest-floor {
     background: linear-gradient(180deg,
         hsla(calc(var(--accent-hue) + -12), 38%, 13%, 0.4) 0%,
         hsla(calc(var(--accent-hue) + -15), 50%, 8%, 0.65) 100%);
 }
 
-html.dark .drifting-leaf {
+:host(.dark) .drifting-leaf {
     background: linear-gradient(180deg,
         hsla(calc(var(--accent-hue) + -8), 32%, 51%, 0.65),
         hsla(calc(var(--accent-hue) + -8), 36%, 43%, 0.8));
     filter: drop-shadow(0 0 8px hsla(calc(var(--accent-hue) + 0), 48%, calc(59% + var(--accent-lightness-offset)), 0.4));
 }
 
-html.dark .bamboo-garden-btn {
+:host(.dark) .bamboo-garden-btn {
     color: hsla(calc(var(--accent-hue) + 0), 15%, calc(75% + var(--accent-lightness-offset)), 0.7);
 }
 
-html.dark .bamboo-garden-btn:hover {
+:host(.dark) .bamboo-garden-btn:hover {
     color: hsla(calc(var(--accent-hue) + 0), 22%, calc(82% + var(--accent-lightness-offset)), 0.95);
 }
 
-html.dark .bamboo-garden-btn.active {
+:host(.dark) .bamboo-garden-btn.active {
     color: hsla(calc(var(--accent-hue) + 0), 40%, calc(90% + var(--accent-lightness-offset)), 1);
 }
 

@@ -1,3 +1,4 @@
+import { modalMount } from './domRef.js';
 export class ConfirmDialog {
     constructor() {
         this.defaults = {
@@ -56,7 +57,7 @@ export class ConfirmDialog {
             `;
 
             overlay.appendChild(dialog);
-            document.body.appendChild(overlay);
+            modalMount().appendChild(overlay);
             this.currentDialog = { overlay, dialog, resolve, config };
 
             requestAnimationFrame(() => {

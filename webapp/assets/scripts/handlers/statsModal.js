@@ -1,3 +1,4 @@
+import { $, $$, modalMount } from '../utils/domRef.js';
 export const StatsModal = {
     open() {
         const content = this.renderStatsHTML();
@@ -324,13 +325,13 @@ export const StatsModal = {
     },
 
     _filterByTimeSpan(timeSpan) {
-        const cards = document.querySelectorAll('.time-span-card');
+        const cards = $$('.time-span-card');
         cards.forEach(card => card.classList.remove('active'));
         
-        const targetCard = document.querySelector(`.time-span-card[data-time-span="${timeSpan}"]`);
+        const targetCard = $(`.time-span-card[data-time-span="${timeSpan}"]`);
         if (targetCard) targetCard.classList.add('active');
         
-        const goalItems = document.querySelectorAll('.health-goal-item');
+        const goalItems = $$('.health-goal-item');
         goalItems.forEach(item => {
             const goalTitle = item.querySelector('.health-goal-title')?.textContent;
             const goals = store.getGlobalGoals();
@@ -352,7 +353,7 @@ export const StatsModal = {
             }
         });
         
-        const diagTab = document.querySelector('.fab-panel-tab[data-tab="diagnosis"]');
+        const diagTab = $('.fab-panel-tab[data-tab="diagnosis"]');
         if (diagTab) diagTab.click();
     },
 
@@ -618,9 +619,9 @@ export const StatsModal = {
         const a = document.createElement('a');
         a.href = url;
         a.download = `目标统计报告_${dateStr}.md`;
-        document.body.appendChild(a);
+        modalMount().appendChild(a);
         a.click();
-        document.body.removeChild(a);
+        a.remove();
         URL.revokeObjectURL(url);
     }
 };

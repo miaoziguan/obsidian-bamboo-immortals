@@ -1,3 +1,4 @@
+import { byId, eventInTargets } from '../utils/domRef.js';
 // WeatherRenderer — 头部天气：图标 + 向右横排展开详情
 //   - 收起：☀️ 28°
 //   - 展开：☀️ 28° 多云 · 18°~29° · 湿度 52% · 北京
@@ -17,7 +18,7 @@ export const WeatherRenderer = {
     },
 
     async refresh(forceRefresh) {
-        const widget = document.getElementById('weatherWidget');
+        const widget = byId('weatherWidget');
         if (!widget) return;
 
         if (typeof store !== 'undefined' && store.state && store.state.ui && !store.state.ui.weatherEnabled) {
@@ -160,8 +161,8 @@ export const WeatherRenderer = {
                         document.removeEventListener('click', outsideClose);
                         return;
                     }
-                    const w = document.getElementById('weatherWidget');
-                    if (!w || !w.contains(e.target)) {
+                    const w = byId('weatherWidget');
+                    if (!w || !eventInTargets(e, w)) {
                         self._expanded = false;
                         if (w) w.classList.remove('weather-open');
                         document.removeEventListener('click', outsideClose);
@@ -227,7 +228,7 @@ export const WeatherRenderer = {
     },
 
     closeDetail() {
-        const widget = document.getElementById('weatherWidget');
+        const widget = byId('weatherWidget');
         if (widget) widget.classList.remove('weather-open');
         this._expanded = false;
     }
@@ -264,7 +265,7 @@ export const QuoteRenderer = {
     },
 
     async refresh() {
-        const widget = document.getElementById('quoteWidget');
+        const widget = byId('quoteWidget');
         if (!widget) return;
 
         if (typeof store !== 'undefined' && store.state && store.state.ui && !store.state.ui.quoteEnabled) {

@@ -423,100 +423,100 @@
 }
 
 /* ========== 暗色模式适配 ========== */
-html.dark .todo-item-goal {
+:host(.dark) .todo-item-goal {
     background: rgba(var(--surface-dark-rgb), 0.9);
     border-color: rgba(var(--primary-rgb), 0.25);
 }
 
-html.dark .todo-item-goal .todo-title {
+:host(.dark) .todo-item-goal .todo-title {
     color: var(--bamboo-pale-hover);
 }
 
-html.dark .todo-item-goal .todo-desc {
+:host(.dark) .todo-item-goal .todo-desc {
     color: var(--ink-light);
 }
 
-html.dark .todo-goal-daily {
+:host(.dark) .todo-goal-daily {
     color: var(--gold);
 }
 
-html.dark .todo-goal-progress {
+:host(.dark) .todo-goal-progress {
     color: var(--bamboo-pale-highlight);
 }
 
-html.dark .todo-item-goal.todo-item-completed {
+:host(.dark) .todo-item-goal.todo-item-completed {
     background: rgba(var(--primary-rgb), 0.15);
     border-color: rgba(var(--primary-rgb), 0.4);
 }
 
-html.dark .todo-item-goal.todo-item-completed .todo-title {
+:host(.dark) .todo-item-goal.todo-item-completed .todo-title {
     color: var(--bamboo-light);
 }
 
-html.dark .todo-item-goal.todo-item-completed .todo-desc {
+:host(.dark) .todo-item-goal.todo-item-completed .todo-desc {
     color: var(--bamboo-light);
 }
 
-html.dark .todo-item-goal.todo-item-completed .todo-goal-daily {
+:host(.dark) .todo-item-goal.todo-item-completed .todo-goal-daily {
     color: var(--bamboo-light);
 }
 
-html.dark .todo-item-goal.todo-item-completed .todo-goal-progress {
+:host(.dark) .todo-item-goal.todo-item-completed .todo-goal-progress {
     color: var(--bamboo-light);
 }
 
-html.dark .todo-item-goal.todo-item-completed .todo-checkbox.checked {
+:host(.dark) .todo-item-goal.todo-item-completed .todo-checkbox.checked {
     background: var(--bamboo-primary);
     border-color: var(--bamboo-primary);
 }
 
-html.dark .todo-stat-item .todo-stat-num {
+:host(.dark) .todo-stat-item .todo-stat-num {
     color: var(--bamboo-pale-hover);
 }
 
-html.dark .todo-stat-item .todo-stat-label {
+:host(.dark) .todo-stat-item .todo-stat-label {
     color: var(--ink-light);
 }
 
-html.dark .todo-progress-bar {
+:host(.dark) .todo-progress-bar {
     background: rgba(var(--primary-rgb), 0.15);
 }
 
-html.dark .todo-progress-fill {
+:host(.dark) .todo-progress-fill {
     background: linear-gradient(90deg, var(--bamboo-primary), var(--bamboo-light));
 }
 
-html.dark .todo-group-header .todo-group-label {
+:host(.dark) .todo-group-header .todo-group-label {
     color: var(--bamboo-pale-hover);
 }
 
-html.dark .todo-group-badge {
+:host(.dark) .todo-group-badge {
     color: var(--bamboo-light);
     background: rgba(var(--primary-rgb), 0.15);
 }
 
-html.dark .empty-state-card {
+:host(.dark) .empty-state-card {
     background: rgba(var(--surface-dark-rgb), 0.8);
     border-color: rgba(var(--primary-rgb), 0.25);
 }
 
-html.dark .empty-state-title {
+:host(.dark) .empty-state-title {
     color: var(--bamboo-pale-hover);
 }
 
-html.dark .empty-state-desc {
+:host(.dark) .empty-state-desc {
     color: var(--ink-light);
 }
 
-html.dark .empty-state-hint {
+:host(.dark) .empty-state-hint {
     color: rgba(var(--green-bright-rgb), 0.6);
 }
 
-html.dark .empty-state-action {
+:host(.dark) .empty-state-action {
     color: var(--bamboo-pale-highlight);
 }
 
-html.dark .empty-state-action:hover {
+:host(.dark) .empty-state-action:hover {
     background: rgba(var(--primary-rgb), 0.15);
 }
 

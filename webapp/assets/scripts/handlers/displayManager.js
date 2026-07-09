@@ -1,3 +1,4 @@
+import { byId, $, modalMount, eventInTargets, getCssVarRoot, getGlobalComputedStyle } from '../utils/domRef.js';
 /**
  * DisplayManager — 显示设置管理器
  *
@@ -180,9 +181,9 @@ export const DisplayManager = {
 
     /* ===== 应用宽度到 CSS ===== */
     _applyWidth(value, animate) {
-        const root = document.documentElement;
-        const container = document.getElementById('reviewContainer');
-        const mainContainer = document.getElementById('main-container');
+        const root = getCssVarRoot();
+        const container = byId('reviewContainer');
+        const mainContainer = byId('main-container');
 
         if (!container) return;
 
@@ -247,8 +248,8 @@ export const DisplayManager = {
 
     /* ===== 应用字号缩放到 CSS ===== */
     _applyFontScale(scale, animate) {
-        const root = document.documentElement;
-        const container = document.getElementById('reviewContainer');
+        const root = getCssVarRoot();
+        const container = byId('reviewContainer');
         if (!root) return;
 
         if (animate && container) {
@@ -282,8 +283,8 @@ export const DisplayManager = {
 
     /* ===== 应用板块间距缩放到 CSS ===== */
     _applyGapScale(scale, animate) {
-        const root = document.documentElement;
-        const container = document.getElementById('reviewContainer');
+        const root = getCssVarRoot();
+        const container = byId('reviewContainer');
         if (!root) return;
 
         if (animate && container) {
@@ -373,7 +374,7 @@ export const DisplayManager = {
 
     /* ===== 应用明度 ===== */
     _applyLightness(val) {
-        const root = document.documentElement;
+        const root = getCssVarRoot();
         if (!root) return;
         root.style.setProperty('--accent-lightness-offset', val + '%');
         this._syncLightnessUI(val);
@@ -385,8 +386,8 @@ export const DisplayManager = {
      */
     _maybeSyncPalette() {
         if (typeof storageManager === 'undefined' || !storageManager.syncPaletteToObsidian) return;
-        // 读取当前调色值（从 DOM 计算样式，保证准确性）
-        const cs = getComputedStyle(document.documentElement);
+        // 读取当前调色值（从生效根的计算样式，保证准确性）
+        const cs = getGlobalComputedStyle();
         const hue = parseInt(cs.getPropertyValue('--accent-hue').trim()) || this.DEFAULT_HUE;
         const offsetStr = cs.getPropertyValue('--accent-lightness-offset').trim();
         const lightnessOffset = parseInt(offsetStr) || 0;
@@ -420,7 +421,7 @@ export const DisplayManager = {
 
     /* ===== 应用色相 ===== */
     _applyHue(hue) {
-        const root = document.documentElement;
+        const root = getCssVarRoot();
         if (!root) return;
 
         root.style.setProperty('--accent-hue', hue);
@@ -795,7 +796,7 @@ export const DisplayManager = {
         panel.appendChild(lightnessSection);
 
         // 挂载到 body
-        document.body.appendChild(panel);
+        modalMount().appendChild(panel);
         this._panelEl = panel;
     },
 
@@ -946,8 +947,8 @@ export const DisplayManager = {
         document.addEventListener('click', (e) => {
             if (!this.isOpen()) return;
             const panel = this._panelEl;
-            const fabContainer = document.querySelector('.fab-container');
-            if (!panel.contains(e.target) && !(fabContainer && fabContainer.contains(e.target))) {
+            const fabContainer = $('.fab-container');
+            if (!eventInTargets(e, panel) && !(fabContainer && eventInTargets(e, fabContainer))) {
                 this.close();
             }
         });
@@ -984,7 +985,7 @@ export const DisplayManager = {
 
     /* ===== 面板定位 ===== */
     _positionPanel() {
-        const fab = document.getElementById('fabMain');
+        const fab = byId('fabMain');
         if (!fab || !this._panelEl) return;
 
         const fabRect = fab.getBoundingClientRect();

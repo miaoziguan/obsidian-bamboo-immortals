@@ -330,23 +330,23 @@
 }
 
 /* ===== 暗色模式适配 ===== */
-html.dark .display-panel {
+:host(.dark) .display-panel {
     border-color: var(--bamboo-border);
 }
 
-html.dark .display-slider::-webkit-slider-thumb {
+:host(.dark) .display-slider::-webkit-slider-thumb {
     border-color: rgba(var(--primary-rgb), 0.3);
 }
 
-html.dark .display-slider::-moz-range-thumb {
+:host(.dark) .display-slider::-moz-range-thumb {
     border-color: rgba(var(--primary-rgb), 0.3);
 }
 
-html.dark .display-hue-slider::-webkit-slider-thumb {
+:host(.dark) .display-hue-slider::-webkit-slider-thumb {
     border-color: rgba(var(--primary-rgb), 0.35);
 }
 
-html.dark .display-hue-slider::-moz-range-thumb {
+:host(.dark) .display-hue-slider::-moz-range-thumb {
     border-color: rgba(var(--primary-rgb), 0.35);
 }
 

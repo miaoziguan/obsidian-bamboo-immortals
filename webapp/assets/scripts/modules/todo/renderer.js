@@ -1,3 +1,4 @@
+import { byId } from '../../utils/domRef.js';
 export const TodoRenderer = {
     _lastSnapshot: null,
 
@@ -23,7 +24,7 @@ export const TodoRenderer = {
     },
 
     render(data) {
-        const container = document.getElementById('todoContent');
+        const container = byId('todoContent');
         if (!container) return;
 
         if (this._shouldSkipRender(data)) return;
@@ -36,7 +37,7 @@ export const TodoRenderer = {
         const completedCount = goalTasks.filter(t => t.completed).length;
         const totalCount = goalTasks.length;
 
-        const countEl = document.getElementById('todoCount');
+        const countEl = byId('todoCount');
         if (countEl) countEl.textContent = `${completedCount}/${totalCount}`;
 
         if (goalTasks.length === 0) {

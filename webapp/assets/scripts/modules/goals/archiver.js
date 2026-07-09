@@ -1,3 +1,4 @@
+import { $, modalMount } from '../../utils/domRef.js';
 /**
  * GoalsArchiver — 目标归档管理面板
  *
@@ -500,11 +501,11 @@ export const GoalsArchiver = {
     // ========== 撤销 Toast ==========
 
     _showUndoToast(message, deletedGoals) {
-        let container = document.querySelector('.toast-container');
+        let container = $('.toast-container');
         if (!container) {
             container = document.createElement('div');
             container.className = 'toast-container';
-            document.body.appendChild(container);
+            modalMount().appendChild(container);
         }
 
         const toast = document.createElement('div');

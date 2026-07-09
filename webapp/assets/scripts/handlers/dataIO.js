@@ -1,3 +1,4 @@
+import { byId } from '../utils/domRef.js';
 window.DataIO = {
 
     /**
@@ -98,7 +99,7 @@ window.DataIO = {
             </div>
         `;
         Handlers.openModal(content, '导入数据');
-        const fileInput = document.getElementById('importFileInput');
+        const fileInput = byId('importFileInput');
         if (fileInput) {
             fileInput.addEventListener('change', (e) => this.handleImportFile(e));
         }
@@ -122,7 +123,7 @@ window.DataIO = {
     },
 
     async importFromTextarea() {
-        const textarea = document.getElementById('importTextarea');
+        const textarea = byId('importTextarea');
         if (!textarea?.value.trim()) {
             Toast.showToast('请输入要导入的JSON数据', 'warning');
             return;

@@ -1,10 +1,11 @@
+import { modalMount } from '../../utils/domRef.js';
 /**
  * 分类选择器（popup） + 优先级选择器
  * 纯 DOM 弹层，从 GoalsRenderer._showCategoryPicker 提取。
  */
 export const CategoryPicker = {
     show({ el, categories, currentCatId, onSelect, onCancel, onManageCategories }) {
-        if (!el || !document.contains(el)) return;
+        if (!el || !el.isConnected) return;
         let rect;
         try {
             rect = el.getBoundingClientRect();
@@ -33,7 +34,7 @@ export const CategoryPicker = {
                 </div>
             </div>
         `;
-        document.body.appendChild(container);
+        modalMount().appendChild(container);
 
         PopupPositioner.positionOnNextFrame({
             popupElement: container.querySelector('.catp-container'),

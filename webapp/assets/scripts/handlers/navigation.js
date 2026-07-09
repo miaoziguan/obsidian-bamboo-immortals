@@ -1,3 +1,4 @@
+import { byId } from '../utils/domRef.js';
 export const Navigation = {
     _initialized: false,
 
@@ -11,12 +12,12 @@ export const Navigation = {
     },
 
     setupDateNavigation() {
-        document.getElementById('prevDay')?.addEventListener('click', () => {
+        byId('prevDay')?.addEventListener('click', () => {
             store.navigateDate(-1);
             renderAll();
         });
 
-        document.getElementById('nextDay')?.addEventListener('click', () => {
+        byId('nextDay')?.addEventListener('click', () => {
             store.navigateDate(1);
             renderAll();
         });

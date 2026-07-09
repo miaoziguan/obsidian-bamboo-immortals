@@ -1,3 +1,4 @@
+import { byId, getStyleMount } from '../utils/domRef.js';
 export const BambooGarden = {
     container: null,
     _leafIntervalId: null,
@@ -45,6 +46,8 @@ export const BambooGarden = {
         this.createBambooForest();
         this.startLeafAnimation();
         this._setupVisibilityGuard();
+        // 初始即按当前明暗模式应用大背景（避免依赖 CSS :host(.dark) 在个别 webview 下未命中）
+        this.updateTheme();
 
         this._observer = new MutationObserver(() => {
             this.updateTheme();
@@ -77,7 +80,7 @@ export const BambooGarden = {
 
     destroy() {
         this.stopLeafAnimation();
-        const container = document.getElementById('leafContainer');
+        const container = byId('leafContainer');
         if (container) container.innerHTML = '';
         this._leafCount = 0;
 
@@ -95,15 +98,15 @@ export const BambooGarden = {
 
         // 清理动态创建的 style 元素
         ['bambooSwayStyles', 'windLeafStyles'].forEach(id => {
-            const el = document.getElementById(id);
+            const el = byId(id);
             if (el) el.remove();
         });
     },
     
     createBambooForest() {
-        const farLayer = document.getElementById('farBamboo');
-        const midLayer = document.getElementById('midBamboo');
-        const nearLayer = document.getElementById('nearBamboo');
+        const farLayer = byId('farBamboo');
+        const midLayer = byId('midBamboo');
+        const nearLayer = byId('nearBamboo');
         
         if (!farLayer || !midLayer || !nearLayer) return;
         
@@ -159,7 +162,7 @@ export const BambooGarden = {
             `;
         }
         
-        if (!document.getElementById('bambooSwayStyles')) {
+        if (!byId('bambooSwayStyles')) {
             const s = document.createElement('style');
             s.id = 'bambooSwayStyles';
             let swayStyles = '';
@@ -180,7 +183,7 @@ export const BambooGarden = {
                 `;
             }
             s.textContent = swayStyles;
-            document.head.appendChild(s);
+            getStyleMount().appendChild(s);
         }
         
         return html;
@@ -241,7 +244,7 @@ export const BambooGarden = {
     },
 
     createLeaf() {
-        const container = document.getElementById('leafContainer');
+        const container = byId('leafContainer');
         if (!container) return;
 
         // 限制最大同时存在的叶子数量
@@ -264,7 +267,7 @@ export const BambooGarden = {
         const animationIndex = Math.floor(Math.random() * 4);
         leaf.style.animationName = `leafDrift${animationIndex}`;
 
-        if (!document.getElementById('windLeafStyles')) {
+        if (!byId('windLeafStyles')) {
             const s = document.createElement('style');
             s.id = 'windLeafStyles';
             s.textContent = `
@@ -304,7 +307,7 @@ export const BambooGarden = {
                     100% { transform: translate(130px, 360px) rotate(400deg); opacity: 0; }
                 }
             `;
-            document.head.appendChild(s);
+            getStyleMount().appendChild(s);
         }
 
         this._leafCount++;
@@ -319,7 +322,7 @@ export const BambooGarden = {
     },
 
     updateTheme() {
-        const container = document.getElementById('bambooGardenContainer');
+        const container = byId('bambooGardenContainer');
         if (!container) return;
         
         const isDark = document.documentElement.classList.contains('dark');

@@ -1,3 +1,4 @@
+import { byId } from '../utils/domRef.js';
 export const Gestures = {
     minSwipeDistance: 50,
     swipeEnabled: true,
@@ -15,7 +16,7 @@ export const Gestures = {
     },
 
     setupSwipeGestures() {
-        const container = document.getElementById('reviewContainer') || document.getElementById('sectionsContainer');
+        const container = byId('reviewContainer') || byId('sectionsContainer');
         if (!container) return;
 
         let startX = 0;
@@ -52,8 +53,8 @@ export const Gestures = {
     },
 
     scrollToSection(id) {
-        const el = document.getElementById(id);
-        if (!el || !document.contains(el)) return;
+        const el = byId(id);
+        if (!el || !el.isConnected) return;
         let rect;
         try {
             rect = el.getBoundingClientRect();

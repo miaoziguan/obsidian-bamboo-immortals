@@ -1,6 +1,8 @@
+import { byId, $ as _q, $$ as _qa } from './domRef.js';
+
 export const scrollToSection = (id) => {
-    const el = document.getElementById(id);
-    if (!el || !document.contains(el)) return;
+    const el = byId(id);
+    if (!el || !el.isConnected) return;
     let rect;
     try {
         rect = el.getBoundingClientRect();
@@ -81,8 +83,8 @@ export const createElement = (tag, className, innerHTML) => {
     return el;
 };
 
-export const $ = (selector) => document.querySelector(selector);
-const $$ = (selector) => document.querySelectorAll(selector);
+export const $ = (selector) => _q(selector);
+const $$ = (selector) => _qa(selector);
 
 export const parseTime = (timeStr) => {
     if (!timeStr || typeof timeStr !== 'string') return null;

@@ -148,7 +148,7 @@
 .date-display .chevron,
 .date-display .bamboo-chevron,
 .date-display::after {
-    display: none !important;
+    display: none;
 }
 
 
@@ -165,12 +165,12 @@
 
 /* 导航栏内的跳转日期按钮 */
 .date-nav .view-toggle-btn {
-    width: auto !important;
-    height: auto !important;
-    min-width: auto !important;
-    min-height: auto !important;
-    border: none !important;
-    background: transparent !important;
+    width: auto;
+    height: auto;
+    min-width: auto;
+    min-height: auto;
+    border: none;
+    background: transparent;
     color: var(--bamboo-primary);
     cursor: pointer;
     transition: all var(--transition-smooth);
@@ -180,15 +180,15 @@
     padding: 8px 12px;
     position: relative;
     z-index: 1;
-    box-shadow: none !important;
-    outline: none !important;
+    box-shadow: none;
+    outline: none;
     -webkit-appearance: none;
     appearance: none;
 }
 
 .date-nav .view-toggle-btn:hover {
-    background: transparent !important;
-    box-shadow: none !important;
+    background: transparent;
+    box-shadow: none;
     transform: none;
 }
 
@@ -407,8 +407,8 @@
 }
 .drp-day-start,
 .drp-day-end {
-    background: var(--bamboo-primary) !important;
-    color: white !important;
+    background: var(--bamboo-primary);
+    color: white;
     font-weight: 600;
 }
 .drp-day-in-range {

@@ -1,3 +1,4 @@
+import { byId, $ } from '../utils/domRef.js';
 export const Keyboard = {
     _initialized: false,
     
@@ -14,7 +15,7 @@ export const Keyboard = {
         document.addEventListener('keydown', (e) => {
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
 
-            const modal = document.querySelector('.modal-content');
+            const modal = $('.modal-content');
             if (modal) {
                 if (e.key === 'Tab' || e.key === 'Escape') {
                     Handlers.setupModalFocusTrap(e);
@@ -64,7 +65,7 @@ export const Keyboard = {
                 case 'a':
                     if (!e.ctrlKey && !e.metaKey) {
                         // 如果目标地图板块存在，则添加新目标
-                        if (document.getElementById('goalList')) {
+                        if (byId('goalList')) {
                             e.preventDefault();
                             if (typeof GoalsEditor !== 'undefined' && GoalsEditor.startAddInline) {
                                 GoalsEditor.startAddInline();
@@ -74,7 +75,7 @@ export const Keyboard = {
                     break;
                 case 's':
                     if (!e.ctrlKey && !e.metaKey) {
-                        if (document.getElementById('goalList')) {
+                        if (byId('goalList')) {
                             e.preventDefault();
                             if (typeof StatsModal !== 'undefined' && StatsModal.open) {
                                 StatsModal.open();

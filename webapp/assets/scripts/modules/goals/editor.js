@@ -1,3 +1,4 @@
+import { $, modalMount } from '../../utils/domRef.js';
 export const GOAL_TEMPLATES = [
     {
         id: 'blank',
@@ -181,7 +182,7 @@ export const GoalsEditor = {
 
                 // 双帧等待确保 DOM 完全渲染
                 requestAnimationFrame(() => requestAnimationFrame(() => {
-                    const titleEl = document.querySelector(`[data-inline-edit="title"][data-goal-id="${CSS.escape(newGoal.id)}"]`);
+                    const titleEl = $(`[data-inline-edit="title"][data-goal-id="${CSS.escape(newGoal.id)}"]`);
                     if (titleEl) {
                         GoalsRenderer._startInlineEdit(titleEl);
                         titleEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -233,7 +234,7 @@ export const GoalsEditor = {
 
             // 双帧等待确保 DOM 完全渲染
             requestAnimationFrame(() => requestAnimationFrame(() => {
-                const nameEl = document.querySelector(`[data-inline-edit="name"][data-goal-id="${CSS.escape(goalId)}"][data-sub-idx="${newIdx}"]`);
+                const nameEl = $(`[data-inline-edit="name"][data-goal-id="${CSS.escape(goalId)}"][data-sub-idx="${newIdx}"]`);
                 if (nameEl) {
                     GoalsRenderer._startInlineEdit(nameEl);
                     nameEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -323,7 +324,7 @@ export const GoalsEditor = {
                 </div>
             </div>
         `;
-        document.body.appendChild(container);
+        modalMount().appendChild(container);
 
         requestAnimationFrame(() => {
             const modal = container.querySelector('.tmpl-container');
@@ -457,7 +458,7 @@ export const GoalsEditor = {
                     </div>
                 </div>
             `;
-            document.body.appendChild(container);
+            modalMount().appendChild(container);
 
             requestAnimationFrame(() => {
                 const modal = container.querySelector('.tstd-container');
@@ -493,7 +494,7 @@ export const GoalsEditor = {
             });
 
             const handler = (e) => {
-                if (e.key === 'Escape' && document.body.contains(container)) {
+                if (e.key === 'Escape' && container.isConnected) {
                     close(null);
                 }
             };

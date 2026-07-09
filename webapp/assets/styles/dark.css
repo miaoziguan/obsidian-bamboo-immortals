@@ -10,9 +10,9 @@
    从 20px 降到 12px，模糊仍全程运行。此处统一兜底关闭，不影响任何
    视觉结构（背景色/边框/阴影均保留）。
    =========================== */
-html.dark * {
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
+:host(.dark) * {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
 }
 
 /* ==========================================================================
@@ -23,28 +23,28 @@ html.dark * {
    drop-shadow、弱化 mix-blend-mode，保留静态外观（背景渐变/形状/透明度
    不变），滚动与渲染开销大幅下降。
    =========================== */
-html.dark .mist-layer-1,
-html.dark .mist-layer-2,
-html.dark .mist-layer-3,
-html.dark .mountain-mist,
-html.dark .foreground-haze,
-html.dark .mountain-1,
-html.dark .mountain-2,
-html.dark .mountain-3,
-html.dark .river-surface,
-html.dark .boat-container,
-html.dark .moon {
-    animation: none !important;
-    mix-blend-mode: normal !important;
+:host(.dark) .mist-layer-1,
+:host(.dark) .mist-layer-2,
+:host(.dark) .mist-layer-3,
+:host(.dark) .mountain-mist,
+:host(.dark) .foreground-haze,
+:host(.dark) .mountain-1,
+:host(.dark) .mountain-2,
+:host(.dark) .mountain-3,
+:host(.dark) .river-surface,
+:host(.dark) .boat-container,
+:host(.dark) .moon {
+    animation: none;
+    mix-blend-mode: normal;
 }
 
-html.dark .mountain-1,
-html.dark .mountain-2,
-html.dark .mountain-3,
-html.dark .river-surface,
-html.dark .boat {
-    filter: none !important;
-    box-shadow: none !important;
+:host(.dark) .mountain-1,
+:host(.dark) .mountain-2,
+:host(.dark) .mountain-3,
+:host(.dark) .river-surface,
+:host(.dark) .boat {
+    filter: none;
+    box-shadow: none;
 }
 
 /* ==========================================================================
@@ -52,13 +52,13 @@ html.dark .boat {
    下列发光/脉冲类受 prefers-reduced-motion 保护，用户未开系统降运动时
    会持续重绘 box-shadow。暗色下与 goal 行发光降级对齐，统一关闭。
    =========================== */
-html.dark .timeline-stat.heartbeat,
-html.dark .ticket-dot.current,
-html.dark .ticket-highlight-value,
-html.dark .bamboo-node.focus-now::before,
-html.dark .goal-row-bar-fill,
-html.dark .goal-row-header:hover {
-    animation: none !important;
+:host(.dark) .timeline-stat.heartbeat,
+:host(.dark) .ticket-dot.current,
+:host(.dark) .ticket-highlight-value,
+:host(.dark) .bamboo-node.focus-now::before,
+:host(.dark) .goal-row-bar-fill,
+:host(.dark) .goal-row-header:hover {
+    animation: none;
 }
 
 /* ===========================
@@ -635,47 +635,47 @@ html.dark .goal-row-header:hover {
 }
 
 /* 暗色模式成就页面适配 */
-html.dark .achievement-card-full {
+:host(.dark) .achievement-card-full {
     background: linear-gradient(135deg, rgba(var(--warning-orange-rgb), 0.12), rgba(var(--warning-orange-rgb), 0.06));
     border-color: rgba(var(--warning-orange-rgb), 0.3);
 }
 
-html.dark .achievement-card-full:hover {
+:host(.dark) .achievement-card-full:hover {
     background: linear-gradient(135deg, rgba(var(--warning-orange-rgb), 0.18), rgba(var(--warning-orange-rgb), 0.1));
 }
 
-html.dark .achievement-icon-wrapper-full {
+:host(.dark) .achievement-icon-wrapper-full {
     background: linear-gradient(145deg, rgba(var(--warning-orange-rgb), 0.25), rgba(var(--warning-orange-rgb), 0.15));
     border-color: rgba(var(--warning-orange-rgb), 0.35);
 }
 
-html.dark .achievement-title-full {
+:host(.dark) .achievement-title-full {
     color: var(--bamboo-pale);
 }
 
-html.dark .achievement-summary-card {
+:host(.dark) .achievement-summary-card {
     background: rgba(var(--surface-deep-rgb), 0.9);
     border-color: rgba(var(--primary-rgb), 0.15);
 }
 
-html.dark .achievement-summary-icon {
+:host(.dark) .achievement-summary-icon {
     background: linear-gradient(145deg, rgba(var(--warning-orange-rgb), 0.2), rgba(var(--warning-orange-rgb), 0.1));
 }
 
-html.dark .achievement-summary-value {
+:host(.dark) .achievement-summary-value {
     color: var(--bamboo-pale);
 }
 
-html.dark .achievements-empty-title {
+:host(.dark) .achievements-empty-title {
     color: var(--bamboo-pale);
 }
 
-html.dark .achievements-empty-icon {
+:host(.dark) .achievements-empty-icon {
     background: linear-gradient(145deg, rgba(var(--warning-orange-rgb), 0.12), rgba(var(--warning-orange-rgb), 0.06));
     border-color: rgba(var(--warning-orange-rgb), 0.25);
 }
 
-html.dark .achievements-empty-hint {
+:host(.dark) .achievements-empty-hint {
     background: rgba(var(--warning-orange-rgb), 0.1);
 }
 
@@ -734,16 +734,16 @@ html.dark .achievements-empty-hint {
 }
 
 /* 暗色模式成就规则适配 */
-html.dark .achievement-rule-card {
+:host(.dark) .achievement-rule-card {
     background: rgba(var(--surface-deep-rgb), 0.9);
     border-color: rgba(var(--primary-rgb), 0.15);
 }
 
-html.dark .achievement-rule-icon {
+:host(.dark) .achievement-rule-icon {
     background: linear-gradient(145deg, rgba(var(--warning-orange-rgb), 0.2), rgba(var(--warning-orange-rgb), 0.1));
 }
 
-html.dark .achievement-rule-title {
+:host(.dark) .achievement-rule-title {
     color: var(--bamboo-pale);
 }
 
@@ -1484,11 +1484,11 @@ html.dark .achievement-rule-title {
 }
 
 
-html.dark .goal-priority-dot.high { background: rgba(var(--danger-bright-rgb), 0.75); } /* 柔和红色 */
-html.dark .goal-priority-dot.medium { background: var(--gold); }
-html.dark .goal-priority-dot.low { background: var(--bamboo-light); }
+:host(.dark) .goal-priority-dot.high { background: rgba(var(--danger-bright-rgb), 0.75); } /* 柔和红色 */
+:host(.dark) .goal-priority-dot.medium { background: var(--gold); }
+:host(.dark) .goal-priority-dot.low { background: var(--bamboo-light); }
 
-html.dark .goal-row-bar {
+:host(.dark) .goal-row-bar {
     background: linear-gradient(
         180deg,
         rgba(var(--primary-rgb), 0.08) 0%,
@@ -1499,7 +1499,7 @@ html.dark .goal-row-bar {
         inset 0 2px 5px rgba(var(--black-rgb), 0.3);
 }
 
-html.dark .goal-row-bar-fill {
+:host(.dark) .goal-row-bar-fill {
     background: linear-gradient(
         90deg,
         var(--bamboo-primary),
@@ -1514,15 +1514,15 @@ html.dark .goal-row-bar-fill {
 }
 
 /* 性能降级：暗色下关闭持续背景重绘与 box-shadow 脉冲动画 */
-html.dark .goal-row-header:hover {
+:host(.dark) .goal-row-header:hover {
     animation: none;
 }
-html.dark .goal-row-bar-fill {
+:host(.dark) .goal-row-bar-fill {
     animation: none;
 }
 
 
-html.dark .goal-row-bar-fill::before {
+:host(.dark) .goal-row-bar-fill::before {
     background: linear-gradient(
         180deg,
         rgba(var(--white-rgb), 0.15) 0%,
@@ -1530,52 +1530,52 @@ html.dark .goal-row-bar-fill::before {
     );
 }
 
-html.dark .goal-row-bar-fill::after {
+:host(.dark) .goal-row-bar-fill::after {
     display: none;
 }
 
 /* 暗色模式：目标卡片文字颜色适配 */
 
 
-html.dark .goal-row-title { color: var(--bamboo-pale); }
-html.dark .goal-row-title:hover { background: rgba(var(--primary-rgb), 0.08); border-color: rgba(var(--primary-rgb), 0.12); }
-html.dark .goal-row-meta { color: var(--bamboo-light) }
-html.dark .goal-row-meta:hover { background: rgba(var(--primary-rgb), 0.06); border-color: rgba(var(--primary-rgb), 0.08); }
-html.dark .goal-row-category { color: var(--bamboo-pale); }
-html.dark .goal-row-percent { color: var(--bamboo-light); }
-html.dark .goal-row-toggle:hover { background: rgba(var(--primary-rgb), 0.08); color: var(--bamboo-pale); }
-html.dark .goal-date-range { color: var(--bamboo-light); }
-html.dark .goal-date-overdue { color: rgba(var(--danger-bright-rgb), 0.85); } /* 柔和红色 */
-html.dark .goal-date-soon { color: var(--bamboo-warning); }
-html.dark .goal-row-meta-empty { color: var(--bamboo-pale); }
-html.dark .goal-row-remaining { color: var(--bamboo-light); }
+:host(.dark) .goal-row-title { color: var(--bamboo-pale); }
+:host(.dark) .goal-row-title:hover { background: rgba(var(--primary-rgb), 0.08); border-color: rgba(var(--primary-rgb), 0.12); }
+:host(.dark) .goal-row-meta { color: var(--bamboo-light) }
+:host(.dark) .goal-row-meta:hover { background: rgba(var(--primary-rgb), 0.06); border-color: rgba(var(--primary-rgb), 0.08); }
+:host(.dark) .goal-row-category { color: var(--bamboo-pale); }
+:host(.dark) .goal-row-percent { color: var(--bamboo-light); }
+:host(.dark) .goal-row-toggle:hover { background: rgba(var(--primary-rgb), 0.08); color: var(--bamboo-pale); }
+:host(.dark) .goal-date-range { color: var(--bamboo-light); }
+:host(.dark) .goal-date-overdue { color: rgba(var(--danger-bright-rgb), 0.85); } /* 柔和红色 */
+:host(.dark) .goal-date-soon { color: var(--bamboo-warning); }
+:host(.dark) .goal-row-meta-empty { color: var(--bamboo-pale); }
+:host(.dark) .goal-row-remaining { color: var(--bamboo-light); }
 
-html.dark .goal-item-list:not(.collapsed) {
+:host(.dark) .goal-item-list:not(.collapsed) {
     background: hsla(var(--accent-hue), 18%, calc(15% + var(--accent-lightness-offset)), 0.4);
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
     border-radius: 0 0 var(--radius-xl) var(--radius-xl);
 }
-html.dark .goal-item-remaining { color: var(--ink-light); background: rgba(var(--primary-rgb), 0.2); }
-html.dark .goal-item-remaining-urgent { color: var(--gold); background: rgba(var(--amber-rgb), 0.2); }
-html.dark .goal-item-overdue { color: rgba(var(--danger-bright-rgb), 0.85); background: rgba(var(--danger-rgb), 0.2); }
+:host(.dark) .goal-item-remaining { color: var(--ink-light); background: rgba(var(--primary-rgb), 0.2); }
+:host(.dark) .goal-item-remaining-urgent { color: var(--gold); background: rgba(var(--amber-rgb), 0.2); }
+:host(.dark) .goal-item-overdue { color: rgba(var(--danger-bright-rgb), 0.85); background: rgba(var(--danger-rgb), 0.2); }
 
 /* 暗色模式：逾期目标的 header 淡粉红渐变 */
-html.dark .goal-overdue .goal-row-header {
+:host(.dark) .goal-overdue .goal-row-header {
     background: linear-gradient(135deg, rgba(var(--overdue-bg-light-rgb), 0.6) 0%, rgba(var(--overdue-bg-mid-rgb), 0.5) 50%, rgba(var(--overdue-bg-rgb), 0.4) 100%);
 }
 
-html.dark .goal-overdue:hover .goal-row-header {
+:host(.dark) .goal-overdue:hover .goal-row-header {
     background: linear-gradient(135deg, rgba(var(--overdue-bg-rgb), 0.7) 0%, rgba(var(--overdue-bg-light-rgb), 0.6) 50%, rgba(var(--overdue-bg-mid-rgb), 0.5) 100%);
 }
 
 
 /* 暗色模式：即将到期目标的 header 淡橙黄渐变 */
-html.dark .goal-soon .goal-row-header {
+:host(.dark) .goal-soon .goal-row-header {
     background: linear-gradient(135deg, rgba(var(--jade-dark-rgb), 0.6) 0%, rgba(var(--jade-dark-mid-rgb), 0.5) 50%, rgba(var(--jade-dark-deep-rgb), 0.4) 100%);
 }
 
-html.dark .goal-soon:hover .goal-row-header {
+:host(.dark) .goal-soon:hover .goal-row-header {
     background: linear-gradient(135deg, rgba(var(--jade-dark-warm-rgb), 0.7) 0%, rgba(var(--jade-dark-warm-mid-rgb), 0.6) 50%, rgba(var(--jade-dark-warm-light-rgb), 0.5) 100%);
 }
 
@@ -1583,107 +1583,107 @@ html.dark .goal-soon:hover .goal-row-header {
 /* ========== goals-health.css 暗色模式 ========== */
 
 /* 暗色模式 */
-html.dark .goal-health-overview {
+:host(.dark) .goal-health-overview {
     background: rgba(var(--surface-deep-rgb), 0.65);
     border-color: rgba(var(--primary-rgb), 0.15);
     box-shadow: 0 1px 3px rgba(var(--black-rgb), 0.15);
 }
 
-html.dark .goal-health-overview:hover {
+:host(.dark) .goal-health-overview:hover {
     background: rgba(var(--surface-deep-alt-rgb), 0.75);
 }
 
-html.dark .gho-bg {
+:host(.dark) .gho-bg {
     stroke: rgba(var(--primary-rgb), 0.15);
 }
 
-html.dark .gho-progress {
+:host(.dark) .gho-progress {
     filter: drop-shadow(0 0 2px rgba(var(--green-alt-rgb), 0.35));
 }
 
-html.dark .gho-svg {
+:host(.dark) .gho-svg {
     filter: drop-shadow(0 0 3px rgba(var(--green-alt-rgb), 0.15));
 }
 
-html.dark .gho-center {
+:host(.dark) .gho-center {
     background: radial-gradient(circle at 30% 30%, rgba(var(--surface-deep-rgb), 0.95) 0%, rgba(var(--surface-deep-alt-rgb), 0.85) 50%, rgba(var(--surface-deep-rgb), 0.9) 100%);
     box-shadow: inset 0 2px 4px rgba(var(--black-rgb), 0.25), inset 0 -1px 2px rgba(var(--green-alt-rgb), 0.1);
 }
 
-html.dark .gho-score {
+:host(.dark) .gho-score {
     color: var(--ink-light);
     text-shadow: 0 1px 2px rgba(var(--black-rgb), 0.3);
 }
 
-html.dark .gho-label {
+:host(.dark) .gho-label {
     color: var(--text-secondary);
 }
 
-html.dark .gho-divider {
+:host(.dark) .gho-divider {
     background: rgba(var(--primary-rgb), 0.1);
 }
 
-html.dark .gho-metric-name {
+:host(.dark) .gho-metric-name {
     color: var(--text-tertiary);
 }
 
-html.dark .gho-metric-val {
+:host(.dark) .gho-metric-val {
     color: var(--text-primary);
 }
 
-html.dark .gho-stat {
+:host(.dark) .gho-stat {
 }
 
-html.dark .gho-stat-icon {
+:host(.dark) .gho-stat-icon {
     color: var(--ink-light);
 }
 
-html.dark .gho-stat-val {
+:host(.dark) .gho-stat-val {
     color: var(--ink-light);
 }
 
-html.dark .gho-stat-label {
+:host(.dark) .gho-stat-label {
     color: var(--ink-light);
 }
 
-html.dark .gho-stat-today {
+:host(.dark) .gho-stat-today {
     background: rgba(var(--warning-yellow-rgb), 0.12);
 }
 
-html.dark .gho-stat-today .gho-stat-icon,
-html.dark .gho-stat-today .gho-stat-val,
-html.dark .gho-stat-today .gho-stat-label {
+:host(.dark) .gho-stat-today .gho-stat-icon,
+:host(.dark) .gho-stat-today .gho-stat-val,
+:host(.dark) .gho-stat-today .gho-stat-label {
     color: var(--gold);
 }
 
-html.dark .gho-review-btn {
+:host(.dark) .gho-review-btn {
     background: transparent;
     border-color: transparent;
     color: var(--ink-light);
 }
 
-html.dark .gho-review-btn:hover {
+:host(.dark) .gho-review-btn:hover {
     color: var(--bamboo-pale);
 }
 
-html.dark .goal-health-empty {
+:host(.dark) .goal-health-empty {
     background: rgba(var(--surface-deep-rgb), 0.4);
     border-color: rgba(var(--primary-rgb), 0.1);
 }
 
-html.dark .gho-empty-icon {
+:host(.dark) .gho-empty-icon {
     color: var(--text-primary);
 }
 
-html.dark .gho-empty-text {
+:host(.dark) .gho-empty-text {
     color: var(--text-secondary);
 }
 
-html.dark .gho-suggestion-icon,
-html.dark .gho-suggestion-text { color: var(--ink-light); }
+:host(.dark) .gho-suggestion-icon,
+:host(.dark) .gho-suggestion-text { color: var(--ink-light); }
 
 /* 暗色模式适配健康分详情面板 */
-html.dark .health-overview-large {
+:host(.dark) .health-overview-large {
     background: 
         linear-gradient(135deg, rgba(var(--surface-dark-rgb-mid), 0.95) 0%, rgba(var(--surface-deep-rgb), 0.9) 100%);
     border-color: rgba(var(--primary-rgb), 0.2);
@@ -1692,7 +1692,7 @@ html.dark .health-overview-large {
         0 8px 32px rgba(var(--black-rgb), 0.3);
 }
 
-html.dark .health-score-inner {
+:host(.dark) .health-score-inner {
     background: 
         radial-gradient(circle at 30% 30%, rgba(var(--primary-rgb), 0.12) 0%, rgba(var(--primary-rgb), 0.06) 50%, transparent 100%),
         linear-gradient(135deg, rgba(var(--surface-deep-rgb), 0.8) 0%, rgba(var(--surface-dark-rgb-mid), 0.6) 100%);
@@ -1702,12 +1702,12 @@ html.dark .health-score-inner {
 }
 
 /* 暗色模式适配 SVG 圆环 */
-html.dark .gho-svg-bg {
+:host(.dark) .gho-svg-bg {
     stroke: rgba(var(--primary-rgb), 0.15);
     filter: drop-shadow(0 1px 0 rgba(var(--primary-rgb), 0.1));
 }
 
-html.dark .gho-hero-inner {
+:host(.dark) .gho-hero-inner {
     background: 
         radial-gradient(circle at 30% 30%, rgba(var(--surface-dark-rgb-mid), 0.9), rgba(var(--surface-deep-rgb), 0.6)),
         linear-gradient(135deg, rgba(var(--primary-rgb), 0.06), rgba(var(--primary-rgb), 0.03));
@@ -1717,24 +1717,24 @@ html.dark .gho-hero-inner {
         0 2px 6px rgba(var(--black-rgb), 0.2);
 }
 
-html.dark .gho-hero-ring:hover .gho-hero-inner {
+:host(.dark) .gho-hero-ring:hover .gho-hero-inner {
     box-shadow: 
         0 5px 15px rgba(var(--black-rgb), 0.4) inset,
         0 -2px 0 rgba(var(--primary-rgb), 0.18) inset,
         0 3px 10px rgba(var(--black-rgb), 0.25);
 }
 
-html.dark .gho-hero-score {
+:host(.dark) .gho-hero-score {
     color: var(--bamboo-pale);
     text-shadow: 0 1px 0 rgba(var(--black-rgb), 0.3);
 }
 
-html.dark .health-score-number {
+:host(.dark) .health-score-number {
     color: var(--bamboo-pale);
 }
 
-html.dark .health-layer-item,
-html.dark .health-goal-item {
+:host(.dark) .health-layer-item,
+:host(.dark) .health-goal-item {
     background: rgba(var(--surface-dark-rgb-mid), 0.7);
     border-color: rgba(var(--primary-rgb), 0.15);
     box-shadow: 
@@ -1742,8 +1742,8 @@ html.dark .health-goal-item {
         0 2px 8px rgba(var(--black-rgb), 0.2);
 }
 
-html.dark .health-layer-item:hover,
-html.dark .health-goal-item:hover {
+:host(.dark) .health-layer-item:hover,
+:host(.dark) .health-goal-item:hover {
     background: rgba(var(--surface-deep-alt-rgb), 0.8);
     border-color: rgba(var(--primary-rgb), 0.25);
     box-shadow: 
@@ -1751,24 +1751,24 @@ html.dark .health-goal-item:hover {
         0 4px 16px rgba(var(--black-rgb), 0.3);
 }
 
-html.dark .health-layer-name,
-html.dark .health-goal-title {
+:host(.dark) .health-layer-name,
+:host(.dark) .health-goal-title {
     color: var(--bamboo-pale);
 }
 
-html.dark .health-goal-hint {
+:host(.dark) .health-goal-hint {
     background: rgba(var(--primary-rgb), 0.12);
     border-color: rgba(var(--primary-rgb), 0.18);
 }
 
 
-html.dark .health-tips {
+:host(.dark) .health-tips {
     background: rgba(var(--surface-dark-rgb-mid), 0.4);
     border-color: rgba(var(--primary-rgb), 0.15);
     box-shadow: inset 0 1px 0 rgba(var(--primary-rgb), 0.08);
 }
 
-html.dark .dynamic-hint-item {
+:host(.dark) .dynamic-hint-item {
     background: rgba(var(--surface-dark-rgb-mid), 0.6);
     border-color: rgba(var(--primary-rgb), 0.12);
     box-shadow: 0 2px 8px rgba(var(--black-rgb), 0.15);
@@ -1776,7 +1776,7 @@ html.dark .dynamic-hint-item {
 }
 
 
-html.dark .score-trend {
+:host(.dark) .score-trend {
     background: rgba(var(--surface-dark-rgb-mid), 0.8);
     box-shadow: 0 2px 4px rgba(var(--black-rgb), 0.3);
 }
@@ -1785,25 +1785,25 @@ html.dark .score-trend {
 /* ========== goals-stats.css 暗色模式 ========== */
 
 /* 暗色模式适配 */
-html.dark .stat-card {
+:host(.dark) .stat-card {
     background: linear-gradient(135deg, rgba(var(--surface-dark-rgb-mid), 0.95), rgba(var(--surface-deep-rgb), 0.9));
     border-color: rgba(var(--primary-rgb),0.2);
     box-shadow: 0 1px 0 rgba(var(--primary-rgb), 0.1) inset, 0 4px 16px rgba(var(--black-rgb), 0.3);
 }
 
-html.dark .stat-value {
+:host(.dark) .stat-value {
     color: var(--bamboo-pale);
 }
 
-html.dark .stat-label {
+:host(.dark) .stat-label {
     color: var(--text-secondary);
 }
 
-html.dark .stats-section-title {
+:host(.dark) .stats-section-title {
     color: var(--bamboo-pale);
 }
 
-html.dark .stats-section {
+:host(.dark) .stats-section {
     background: linear-gradient(145deg, rgba(var(--surface-dark-rgb-mid), 0.96), rgba(var(--surface-deep-alt-rgb), 0.92));
     border-color: rgba(var(--primary-rgb), 0.18);
     box-shadow: 
@@ -1812,237 +1812,237 @@ html.dark .stats-section {
         0 0 0 1px rgba(var(--primary-rgb), 0.1);
 }
 
-html.dark .core-metric-card,
-html.dark .tier-card,
-html.dark .priority-card,
-html.dark .alert-item {
+:host(.dark) .core-metric-card,
+:host(.dark) .tier-card,
+:host(.dark) .priority-card,
+:host(.dark) .alert-item {
     background: linear-gradient(145deg, rgba(var(--surface-deep-rgb), 0.95), rgba(var(--surface-deep-alt-rgb), 0.92));
     border-color: rgba(var(--primary-rgb), 0.15);
 }
 
-html.dark .time-alert,
-html.dark .progress-tier,
-html.dark .category-item,
-html.dark .priority-item,
-html.dark .heatmap-container {
+:host(.dark) .time-alert,
+:host(.dark) .progress-tier,
+:host(.dark) .category-item,
+:host(.dark) .priority-item,
+:host(.dark) .heatmap-container {
     background: rgba(var(--surface-dark-rgb-mid), 0.8);
     border-color: rgba(var(--primary-rgb),0.15);
 }
 
-html.dark .status-distribution {
+:host(.dark) .status-distribution {
     background: linear-gradient(135deg, rgba(var(--surface-dark-rgb-mid), 0.95), rgba(var(--surface-deep-rgb), 0.9));
     border-color: rgba(var(--primary-rgb),0.2);
 }
 
-html.dark .tier-label,
-html.dark .legend-label,
-html.dark .category-value,
-html.dark .priority-label {
+:host(.dark) .tier-label,
+:host(.dark) .legend-label,
+:host(.dark) .category-value,
+:host(.dark) .priority-label {
     color: var(--text-secondary);
 }
 
-html.dark .tier-count,
-html.dark .legend-value {
+:host(.dark) .tier-count,
+:host(.dark) .legend-value {
     color: var(--bamboo-pale);
 }
 
 /* 时间跨度分布暗色模式 */
-html.dark .time-span-card {
+:host(.dark) .time-span-card {
     background: linear-gradient(145deg, rgba(var(--surface-dark-rgb-mid), 0.95), rgba(var(--surface-deep-alt-rgb), 0.9));
     border-color: rgba(var(--primary-rgb), 0.2);
 }
 
-html.dark .time-span-card.short {
+:host(.dark) .time-span-card.short {
     border-color: rgba(var(--primary-rgb), 0.25);
     background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.12), rgba(var(--primary-rgb), 0.08));
 }
 
-html.dark .time-span-card.medium {
+:host(.dark) .time-span-card.medium {
     border-color: rgba(var(--warning-orange-rgb), 0.25);
     background: linear-gradient(135deg, rgba(var(--warning-orange-rgb), 0.12), rgba(var(--warning-orange-rgb), 0.08));
 }
 
-html.dark .time-span-card.long {
+:host(.dark) .time-span-card.long {
     border-color: rgba(var(--purple-rgb), 0.25);
     background: linear-gradient(135deg, rgba(var(--purple-rgb), 0.12), rgba(var(--purple-pale-rgb), 0.08));
 }
 
-html.dark .time-span-card .time-span-label {
+:host(.dark) .time-span-card .time-span-label {
     color: var(--bamboo-pale);
 }
 
-html.dark .time-span-card .time-span-desc {
+:host(.dark) .time-span-card .time-span-desc {
     color: var(--text-secondary);
 }
 
 /* 分类进度暗色模式 */
-html.dark .category-name {
+:host(.dark) .category-name {
     color: var(--text-primary);
 }
 
-html.dark .category-bar-wrapper {
+:host(.dark) .category-bar-wrapper {
     background: rgba(var(--primary-rgb), 0.06);
 }
 
-html.dark .category-value {
+:host(.dark) .category-value {
     color: var(--text-primary);
 }
 
 /* 已完成目标暗色模式 */
-html.dark .completed-item {
+:host(.dark) .completed-item {
     background: linear-gradient(135deg, rgba(var(--health-success-rgb), 0.1), rgba(var(--mint-rgb), 0.06));
     border-color: rgba(var(--health-success-rgb), 0.2);
 }
 
-html.dark .completed-icon {
+:host(.dark) .completed-icon {
     color: var(--bamboo-light);
 }
 
-html.dark .completed-title {
+:host(.dark) .completed-title {
     color: var(--text-primary);
 }
 
-html.dark .completed-more {
+:host(.dark) .completed-more {
     color: var(--text-secondary);
 }
 
 /* 活跃指标暗色模式 */
-html.dark .activity-item {
+:host(.dark) .activity-item {
     background: rgba(var(--surface-dark-rgb-mid), 0.8);
     border-color: rgba(var(--primary-rgb), 0.15);
 }
 
-html.dark .activity-label {
+:host(.dark) .activity-label {
     color: var(--text-secondary);
 }
 
-html.dark .activity-value {
+:host(.dark) .activity-value {
     color: var(--bamboo-pale);
 }
 
 /* 目标对比分析暗色模式 */
-html.dark .comparison-item {
+:host(.dark) .comparison-item {
     background: rgba(var(--surface-dark-rgb-mid), 0.8);
     border-color: rgba(var(--primary-rgb), 0.15);
 }
 
-html.dark .comparison-label {
+:host(.dark) .comparison-label {
     color: var(--text-secondary);
 }
 
-html.dark .comparison-value {
+:host(.dark) .comparison-value {
     color: var(--bamboo-pale);
 }
 
-html.dark .comparison-bar {
+:host(.dark) .comparison-bar {
     background: rgba(var(--primary-rgb), 0.08);
 }
 
 
 /* 暗色模式适配 */
-html.dark .completed-item {
+:host(.dark) .completed-item {
     background: linear-gradient(135deg, rgba(var(--health-success-rgb), 0.1), rgba(var(--primary-rgb), 0.06));
 }
 
-html.dark .completed-title {
+:host(.dark) .completed-title {
     color: var(--bamboo-pale);
 }
 
-html.dark .time-span-item {
+:host(.dark) .time-span-item {
     background: rgba(var(--surface-dark-rgb-mid), 0.8);
 }
 
-html.dark .time-span-label {
+:host(.dark) .time-span-label {
     color: var(--bamboo-pale);
 }
 
 
-html.dark .time-span-card {
+:host(.dark) .time-span-card {
     background: rgba(var(--surface-dark-rgb-mid), 0.8);
     border-color: rgba(var(--primary-rgb), 0.15);
 }
 
-html.dark .time-span-card .time-span-label {
+:host(.dark) .time-span-card .time-span-label {
     color: var(--bamboo-pale);
 }
 
-html.dark .time-span-card .time-span-desc {
+:host(.dark) .time-span-card .time-span-desc {
     color: var(--text-secondary);
 }
 
-html.dark .time-span-card .time-span-percent {
+:host(.dark) .time-span-card .time-span-percent {
     color: var(--text-secondary);
 }
 
 
 /* 暗色模式适配 */
-html.dark .achievement-card {
+:host(.dark) .achievement-card {
     background: linear-gradient(135deg, rgba(var(--gold-bright-rgb), 0.15), rgba(var(--gold-bright-rgb), 0.06));
 }
 
-html.dark .achievement-card-horizontal {
+:host(.dark) .achievement-card-horizontal {
     background: linear-gradient(135deg, rgba(var(--gold-bright-rgb), 0.15), rgba(var(--gold-bright-rgb), 0.06));
     border-color: rgba(var(--warning-orange-rgb), 0.3);
 }
 
-html.dark .achievement-card-horizontal:hover {
+:host(.dark) .achievement-card-horizontal:hover {
     background: linear-gradient(135deg, rgba(var(--gold-bright-rgb), 0.2), rgba(var(--gold-bright-rgb), 0.1));
 }
 
-html.dark .achievement-icon-wrapper-horizontal {
+:host(.dark) .achievement-icon-wrapper-horizontal {
     background: linear-gradient(145deg, rgba(var(--warning-orange-rgb), 0.2), rgba(var(--warning-orange-rgb), 0.15));
     border-color: rgba(var(--warning-orange-rgb), 0.3);
 }
 
-html.dark .achievement-title {
+:host(.dark) .achievement-title {
     color: var(--bamboo-pale);
 }
 
-html.dark .activity-item {
+:host(.dark) .activity-item {
     background: rgba(var(--surface-dark-rgb-mid), 0.8);
 }
 
-html.dark .activity-label {
+:host(.dark) .activity-label {
     color: var(--text-secondary);
 }
 
 
 /* 暗色模式适配 */
-html.dark .comparison-label {
+:host(.dark) .comparison-label {
     color: var(--text-secondary);
 }
 
 
-html.dark .philosophy-card,
-html.dark .rating-card,
-html.dark .layers-detail-card {
+:host(.dark) .philosophy-card,
+:host(.dark) .rating-card,
+:host(.dark) .layers-detail-card {
     background: linear-gradient(135deg, rgba(var(--surface-dark-rgb-mid), 0.95) 0%, rgba(var(--surface-deep-rgb), 0.9) 100%);
     border-color: rgba(var(--primary-rgb), 0.2);
     box-shadow: 0 1px 0 rgba(var(--primary-rgb), 0.1) inset, 0 4px 16px rgba(var(--black-rgb), 0.3);
 }
 
-html.dark .philosophy-item,
-html.dark .rating-tier,
-html.dark .layer-detail-item {
+:host(.dark) .philosophy-item,
+:host(.dark) .rating-tier,
+:host(.dark) .layer-detail-item {
     background: rgba(var(--surface-dark-rgb-mid), 0.7);
     border-color: rgba(var(--primary-rgb), 0.15);
     backdrop-filter: blur(var(--glass-blur));
 }
 
-html.dark .layer-detail-item.primary {
+:host(.dark) .layer-detail-item.primary {
     background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.08) 0%, rgba(var(--surface-dark-rgb-mid), 0.8) 100%);
 }
 
-html.dark .philosophy-title,
-html.dark .layer-detail-name {
+:host(.dark) .philosophy-title,
+:host(.dark) .layer-detail-name {
     color: var(--bamboo-pale);
 }
 
-html.dark .rating-range {
+:host(.dark) .rating-range {
     color: var(--bamboo-pale);
 }
 
-html.dark .metric-name {
+:host(.dark) .metric-name {
     color: var(--bamboo-pale);
 }
 
@@ -2050,48 +2050,48 @@ html.dark .metric-name {
 /* ========== goals-editor.css 暗色模式 ========== */
 
 /* 暗色模式下操作按钮可见性修复 */
-html.dark .goal-action-cancel {
+:host(.dark) .goal-action-cancel {
     background: rgba(var(--primary-rgb), 0.12);
     border-color: rgba(var(--primary-rgb), 0.3);
     color: var(--ink-medium);
 }
-html.dark .goal-action-cancel:hover {
+:host(.dark) .goal-action-cancel:hover {
     background: rgba(var(--primary-rgb), 0.2);
     border-color: var(--bamboo-pale-hover);
     color: var(--text-primary);
 }
 
 /* 暗色模式：所有操作按钮基础可见性 */
-html.dark .goal-action-btn {
+:host(.dark) .goal-action-btn {
     background: rgba(var(--primary-rgb), 0.08);
     border: 1px solid rgba(var(--primary-rgb), 0.2);
 }
-html.dark .goal-action-btn:hover {
+:host(.dark) .goal-action-btn:hover {
     background: rgba(var(--primary-rgb), 0.15);
     border-color: rgba(var(--primary-rgb), 0.35);
 }
 
 
-html.dark .cultivation-realm-row.is-current { box-shadow: 0 0 16px rgba(var(--primary-rgb), .08); }
-html.dark .cultivation-layer-tag { background: rgba(var(--primary-rgb), .1); color: var(--ink-pale); }
-html.dark .cultivation-summary-item { background: rgba(var(--primary-rgb), .06); border-color: rgba(var(--primary-rgb), .12); }
-html.dark .cultivation-realm-row { border-color: rgba(var(--primary-rgb), .1); }
-html.dark .cultivation-realm-row.is-past { background: rgba(var(--primary-rgb), .04); border-color: rgba(var(--primary-rgb), .12); }
-html.dark .cultivation-realm-row.is-current { background: rgba(var(--primary-rgb), .08); border-color: rgba(var(--primary-rgb), .2); }
-html.dark .cultivation-realm-table-row.is-past { background: rgba(var(--primary-rgb), .04); border-color: rgba(var(--primary-rgb), .08); }
-html.dark .cultivation-realm-table-row.is-current { background: rgba(var(--primary-rgb), .06); border-color: rgba(var(--primary-rgb), .15); }
-html.dark .cultivation-progress-bar-wrap { background: rgba(var(--primary-rgb), .08); }
-html.dark .cultivation-max-badge { background: rgba(var(--primary-rgb), .08); border-color: rgba(var(--primary-rgb), .15); }
+:host(.dark) .cultivation-realm-row.is-current { box-shadow: 0 0 16px rgba(var(--primary-rgb), .08); }
+:host(.dark) .cultivation-layer-tag { background: rgba(var(--primary-rgb), .1); color: var(--ink-pale); }
+:host(.dark) .cultivation-summary-item { background: rgba(var(--primary-rgb), .06); border-color: rgba(var(--primary-rgb), .12); }
+:host(.dark) .cultivation-realm-row { border-color: rgba(var(--primary-rgb), .1); }
+:host(.dark) .cultivation-realm-row.is-past { background: rgba(var(--primary-rgb), .04); border-color: rgba(var(--primary-rgb), .12); }
+:host(.dark) .cultivation-realm-row.is-current { background: rgba(var(--primary-rgb), .08); border-color: rgba(var(--primary-rgb), .2); }
+:host(.dark) .cultivation-realm-table-row.is-past { background: rgba(var(--primary-rgb), .04); border-color: rgba(var(--primary-rgb), .08); }
+:host(.dark) .cultivation-realm-table-row.is-current { background: rgba(var(--primary-rgb), .06); border-color: rgba(var(--primary-rgb), .15); }
+:host(.dark) .cultivation-progress-bar-wrap { background: rgba(var(--primary-rgb), .08); }
+:host(.dark) .cultivation-max-badge { background: rgba(var(--primary-rgb), .08); border-color: rgba(var(--primary-rgb), .15); }
 
-html.dark .weather-widget-error { border-color: rgba(var(--danger-rgb), 0.4) !important; color: rgba(var(--danger-bright-rgb), 0.85) !important; }
-html.dark .weather-btn:hover { background: rgba(var(--primary-rgb), 0.08); }
-html.dark .weather-city-inline { background: transparent; color: var(--bamboo-primary); border-color: rgba(var(--primary-rgb), 0.4); }
-html.dark .weather-sep { color: rgba(var(--white-rgb), 0.2); }
+:host(.dark) .weather-widget-error { border-color: rgba(var(--danger-rgb), 0.4); color: rgba(var(--danger-bright-rgb), 0.85); }
+:host(.dark) .weather-btn:hover { background: rgba(var(--primary-rgb), 0.08); }
+:host(.dark) .weather-city-inline { background: transparent; color: var(--bamboo-primary); border-color: rgba(var(--primary-rgb), 0.4); }
+:host(.dark) .weather-sep { color: rgba(var(--white-rgb), 0.2); }
 
-html.dark .quote-widget { color: var(--bamboo-primary); }
+:host(.dark) .quote-widget { color: var(--bamboo-primary); }
 
 /* ========== 目标卡片 — 暗色模式（动态跟随色相） ========== */
-html.dark .goal-row {
+:host(.dark) .goal-row {
     background:
         linear-gradient(135deg,
             rgba(var(--surface-dark-rgb), 0.65) 0%,
@@ -2104,7 +2104,7 @@ html.dark .goal-row {
         0 0 0 1px rgba(var(--primary-rgb), 0.12);
 }
 
-html.dark .goal-row:hover {
+:host(.dark) .goal-row:hover {
     background:
         radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(var(--surface-dark-rgb-mid), 0.75) 0%, rgba(var(--surface-dark-rgb-end), 0.45) 25%, transparent 50%),
         linear-gradient(135deg,
@@ -2115,7 +2115,7 @@ html.dark .goal-row:hover {
         radial-gradient(circle at 20% 30%, rgba(var(--primary-rgb), 0.18) 0%, transparent 45%);
 }
 
-html.dark .goal-row::after {
+:host(.dark) .goal-row::after {
     background: linear-gradient(90deg,
         transparent 0%,
         rgba(var(--primary-rgb), 0.35) 20%,
@@ -2125,7 +2125,7 @@ html.dark .goal-row::after {
     );
 }
 
-html.dark .goal-row::before {
+:host(.dark) .goal-row::before {
     background: linear-gradient(135deg,
         rgba(var(--primary-rgb), 0.10) 0%,
         rgba(var(--primary-rgb), 0.04) 25%,
@@ -2135,7 +2135,7 @@ html.dark .goal-row::before {
     );
 }
 
-html.dark .goal-row-header {
+:host(.dark) .goal-row-header {
     background: linear-gradient(145deg,
         rgba(var(--primary-rgb), 0.12) 0%,
         rgba(var(--primary-rgb), 0.08) 50%,
@@ -2147,7 +2147,7 @@ html.dark .goal-row-header {
         0 0 0 1px rgba(var(--primary-rgb), 0.08);
 }
 
-html.dark .goal-row-header:hover {
+:host(.dark) .goal-row-header:hover {
     background: linear-gradient(145deg,
         rgba(var(--primary-rgb), 0.18) 0%,
         rgba(var(--primary-rgb), 0.12) 50%,
@@ -2160,7 +2160,7 @@ html.dark .goal-row-header:hover {
         0 0 12px rgba(var(--primary-rgb), 0.20);
 }
 
-html.dark .goal-row-bar {
+:host(.dark) .goal-row-bar {
     background: linear-gradient(180deg,
         rgba(var(--primary-rgb), 0.12) 0%,
         rgba(var(--primary-rgb), 0.06) 45%,
@@ -2172,7 +2172,7 @@ html.dark .goal-row-bar {
         0 0 0 1px rgba(var(--primary-rgb), 0.06);
 }
 
-html.dark .goal-row-bar-fill {
+:host(.dark) .goal-row-bar-fill {
     box-shadow:
         0 1px 3px rgba(var(--black-rgb), 0.25),
         0 0 8px rgba(var(--primary-rgb), 0.20),
@@ -2180,11 +2180,11 @@ html.dark .goal-row-bar-fill {
         inset 0 -1px 0 rgba(var(--black-rgb), 0.15);
 }
 
-html.dark .goal-item-list:not(.collapsed) {
+:host(.dark) .goal-item-list:not(.collapsed) {
     background: rgba(var(--surface-deep-rgb), 0.85);
 }
 
-html.dark .goal-overdue .goal-row-header {
+:host(.dark) .goal-overdue .goal-row-header {
     background: linear-gradient(135deg,
         rgba(var(--danger-rgb), 0.18) 0%,
         rgba(var(--danger-rgb), 0.10) 50%,
@@ -2192,7 +2192,7 @@ html.dark .goal-overdue .goal-row-header {
     );
 }
 
-html.dark .goal-overdue:hover .goal-row-header {
+:host(.dark) .goal-overdue:hover .goal-row-header {
     background: linear-gradient(135deg,
         rgba(var(--danger-rgb), 0.25) 0%,
         rgba(var(--danger-rgb), 0.15) 50%,
@@ -2200,7 +2200,7 @@ html.dark .goal-overdue:hover .goal-row-header {
     );
 }
 
-html.dark .goal-soon .goal-row-header {
+:host(.dark) .goal-soon .goal-row-header {
     background: linear-gradient(135deg,
         rgba(var(--amber-rgb), 0.18) 0%,
         rgba(var(--amber-rgb), 0.10) 50%,
@@ -2208,7 +2208,7 @@ html.dark .goal-soon .goal-row-header {
     );
 }
 
-html.dark .goal-soon:hover .goal-row-header {
+:host(.dark) .goal-soon:hover .goal-row-header {
     background: linear-gradient(135deg,
         rgba(var(--amber-rgb), 0.25) 0%,
         rgba(var(--amber-rgb), 0.15) 50%,
@@ -2217,7 +2217,7 @@ html.dark .goal-soon:hover .goal-row-header {
 }
 
 /* ========== 设计师票根 — 暗色模式（消除亮色白色高光，使用动态色相辉光） ========== */
-html.dark .designer-ticket {
+:host(.dark) .designer-ticket {
     background: rgba(var(--surface-dark-rgb), 0.5);
     border-color: rgba(var(--primary-rgb), 0.12);
     box-shadow:
@@ -2227,7 +2227,7 @@ html.dark .designer-ticket {
         inset 0 -1px 0 rgba(var(--black-rgb), 0.15);
 }
 
-html.dark .designer-ticket::before {
+:host(.dark) .designer-ticket::before {
     background:
         radial-gradient(circle at 20% 20%, rgba(var(--primary-rgb), 0.08), transparent 50%),
         radial-gradient(circle at 80% 80%, rgba(var(--green-pale-rgb), 0.08), transparent 50%),
@@ -2238,11 +2238,11 @@ html.dark .designer-ticket::before {
             rgba(var(--primary-rgb), 0.015) 60px);
 }
 
-html.dark .designer-ticket::after {
+:host(.dark) .designer-ticket::after {
     background: linear-gradient(90deg, transparent, rgba(var(--primary-rgb), 0.15), transparent);
 }
 
-html.dark .ticket-main::before {
+:host(.dark) .ticket-main::before {
     background:
         linear-gradient(135deg, rgba(var(--primary-rgb), 0.10) 0%, rgba(var(--primary-rgb), 0.04) 50%, rgba(var(--primary-rgb), 0.08) 100%),
         linear-gradient(45deg, rgba(var(--bamboo-deep-rgb), 0.08) 0%, transparent 60%);
@@ -2254,7 +2254,7 @@ html.dark .ticket-main::before {
         inset -2px 0 0 rgba(var(--primary-rgb), 0.06);
 }
 
-html.dark .ticket-main::after {
+:host(.dark) .ticket-main::after {
     background: repeating-linear-gradient(90deg,
         transparent,
         transparent 3px,
@@ -2262,12 +2262,12 @@ html.dark .ticket-main::after {
         rgba(var(--primary-rgb), 0.015) 6px);
 }
 
-html.dark .ticket-stub {
+:host(.dark) .ticket-stub {
     border-left-color: rgba(var(--primary-rgb), 0.15);
     box-shadow: inset 1px 0 0 rgba(var(--primary-rgb), 0.08);
 }
 
-html.dark .ticket-stub-title-box:hover {
+:host(.dark) .ticket-stub-title-box:hover {
     background:
         linear-gradient(135deg, rgba(var(--primary-rgb), 0.18) 0%, rgba(var(--primary-rgb), 0.08) 50%, rgba(var(--primary-rgb), 0.12) 100%),
         linear-gradient(45deg, rgba(var(--bamboo-deep-rgb), 0.12) 0%, transparent 60%);
@@ -2279,18 +2279,18 @@ html.dark .ticket-stub-title-box:hover {
         inset -2px 0 0 rgba(var(--primary-rgb), 0.10);
 }
 
-html.dark .ticket-stub.playing {
+:host(.dark) .ticket-stub.playing {
     box-shadow:
         inset 1px 0 0 rgba(var(--primary-rgb), 0.08),
         0 0 0 2px rgba(var(--primary-rgb), 0.4),
         0 4px 25px rgba(var(--primary-rgb), 0.25);
 }
 
-html.dark .flip-stub-btn:hover {
+:host(.dark) .flip-stub-btn:hover {
     background: rgba(var(--primary-rgb), 0.12);
 }
 
-html.dark .stub-back-title-box {
+:host(.dark) .stub-back-title-box {
     background:
         linear-gradient(135deg, rgba(var(--primary-rgb), 0.15) 0%, rgba(var(--primary-rgb), 0.05) 50%, rgba(var(--primary-rgb), 0.10) 100%),
         linear-gradient(45deg, rgba(var(--bamboo-deep-rgb), 0.10) 0%, transparent 60%);
@@ -2308,138 +2308,138 @@ html.dark .stub-back-title-box {
    归档管理面板 — 暗色模式
    ========================================================================== */
 
-html.dark .arch-filter-bar {
+:host(.dark) .arch-filter-bar {
     background: rgba(var(--surface-dark-rgb, 20, 30, 24), 0.25);
     border-color: rgba(var(--border-dark-rgb, 60, 70, 60), 0.25);
 }
 
-html.dark .arch-filter-search {
+:host(.dark) .arch-filter-search {
     border-color: rgba(var(--border-dark-rgb, 60, 70, 60), 0.35);
     background: rgba(var(--surface-dark-rgb, 20, 30, 24), 0.3);
 }
-html.dark .arch-filter-search:focus-within {
+:host(.dark) .arch-filter-search:focus-within {
     border-color: rgba(var(--text-secondary-rgb, 140, 150, 140), 0.5);
     background: rgba(var(--surface-dark-rgb, 20, 30, 24), 0.5);
 }
 
-html.dark .arch-icon-btn:hover {
+:host(.dark) .arch-icon-btn:hover {
     background: rgba(var(--surface-dark-rgb, 20, 30, 24), 0.5);
 }
 
-html.dark .arch-reset-btn {
+:host(.dark) .arch-reset-btn {
     border-color: rgba(var(--border-dark-rgb, 60, 70, 60), 0.35);
 }
-html.dark .arch-reset-btn:hover {
+:host(.dark) .arch-reset-btn:hover {
     background: rgba(var(--danger-rgb, 220, 60, 60), 0.08);
 }
 
-html.dark .arch-select {
+:host(.dark) .arch-select {
     border-color: rgba(var(--border-dark-rgb, 60, 70, 60), 0.35);
     color: var(--text-secondary);
 }
-html.dark .arch-select:hover,
-html.dark .arch-select:focus {
+:host(.dark) .arch-select:hover,
+:host(.dark) .arch-select:focus {
     border-color: rgba(var(--text-secondary-rgb, 140, 150, 140), 0.5);
 }
 
 /* 日期输入暗色 */
-html.dark .arch-date-input {
+:host(.dark) .arch-date-input {
     border-color: rgba(var(--border-dark-rgb, 60, 70, 60), 0.35);
 }
-html.dark .arch-date-input:hover,
-html.dark .arch-date-input:focus {
+:host(.dark) .arch-date-input:hover,
+:host(.dark) .arch-date-input:focus {
     border-color: rgba(var(--text-secondary-rgb, 140, 150, 140), 0.5);
 }
-html.dark .arch-date-input:focus {
+:host(.dark) .arch-date-input:focus {
     box-shadow: 0 0 0 2px rgba(var(--bamboo-primary-rgb, 62, 179, 112), 0.12);
 }
 
-html.dark .arch-sep { color: var(--text-tertiary); }
+:host(.dark) .arch-sep { color: var(--text-tertiary); }
 
 /* 卡片暗色 */
-html.dark .arch-card {
+:host(.dark) .arch-card {
     border-bottom-color: rgba(var(--border-dark-rgb, 60, 70, 60), 0.15);
 }
-html.dark .arch-card:hover {
+:host(.dark) .arch-card:hover {
     background: rgba(var(--surface-dark-rgb, 20, 30, 24), 0.3);
 }
-html.dark .arch-card:active {
+:host(.dark) .arch-card:active {
     background: rgba(var(--surface-dark-rgb, 20, 30, 24), 0.5);
 }
-html.dark .arch-card.arch-card-expanded {
+:host(.dark) .arch-card.arch-card-expanded {
     background: rgba(var(--surface-dark-rgb, 20, 30, 24), 0.35);
 }
 
-html.dark .arch-title { color: var(--text-primary); }
-html.dark .arch-meta { opacity: 0.8; }
+:host(.dark) .arch-title { color: var(--text-primary); }
+:host(.dark) .arch-meta { opacity: 0.8; }
 
-html.dark .arch-tag {
+:host(.dark) .arch-tag {
     background: rgba(var(--surface-dark-rgb, 20, 30, 24), 0.5);
     color: var(--text-secondary);
 }
 
-html.dark .arch-item-name { color: var(--text-primary); opacity: 0.85; }
+:host(.dark) .arch-item-name { color: var(--text-primary); opacity: 0.85; }
 
 /* 展开区域暗色 */
-html.dark .arch-expand {
+:host(.dark) .arch-expand {
     border-top-color: rgba(var(--border-dark-rgb, 60, 70, 60), 0.2);
 }
-html.dark .arch-item:hover {
+:host(.dark) .arch-item:hover {
     background: rgba(var(--surface-dark-rgb, 20, 30, 24), 0.3);
 }
 
 /* 操作按钮暗色（常显，带边框）*/
-html.dark .arch-act-btn {
-    background: transparent !important;
-    color: var(--text-secondary) !important;
-    border-color: rgba(var(--border-dark-rgb, 60, 70, 60), 0.35) !important;
+:host(.dark) .arch-act-btn {
+    background: transparent;
+    color: var(--text-secondary);
+    border-color: rgba(var(--border-dark-rgb, 60, 70, 60), 0.35);
 }
-html.dark .arch-act-btn:hover {
-    background: rgba(var(--surface-dark-rgb, 20, 30, 24), 0.5) !important;
+:host(.dark) .arch-act-btn:hover {
+    background: rgba(var(--surface-dark-rgb, 20, 30, 24), 0.5);
 }
-html.dark .arch-act-btn[data-action="archive-restore"]:hover {
-    color: var(--bamboo-primary) !important;
-    border-color: var(--bamboo-primary) !important;
+:host(.dark) .arch-act-btn[data-action="archive-restore"]:hover {
+    color: var(--bamboo-primary);
+    border-color: var(--bamboo-primary);
 }
-html.dark .arch-act-btn.arch-act-del:hover {
-    color: var(--bamboo-error) !important;
-    border-color: var(--bamboo-error) !important;
+:host(.dark) .arch-act-btn.arch-act-del:hover {
+    color: var(--bamboo-error);
+    border-color: var(--bamboo-error);
 }
 
 /* 折叠指示器暗色 */
-html.dark .arch-toggle-icon { color: var(--text-tertiary); }
-html.dark .arch-toggle-icon:hover {
+:host(.dark) .arch-toggle-icon { color: var(--text-tertiary); }
+:host(.dark) .arch-toggle-icon:hover {
     background: rgba(var(--surface-dark-rgb, 20, 30, 24), 0.5);
     color: var(--text-secondary);
 }
 
 /* 复选框暗色 */
-html.dark .arch-cb-box {
+:host(.dark) .arch-cb-box {
     border-color: rgba(var(--border-dark-rgb, 60, 70, 60), 0.4);
 }
-html.dark .arch-check:hover .arch-cb-box,
-html.dark .arch-sel-all:hover .arch-cb-box {
+:host(.dark) .arch-check:hover .arch-cb-box,
+:host(.dark) .arch-sel-all:hover .arch-cb-box {
     border-color: rgba(var(--bamboo-primary-rgb, 62, 179, 112), 0.6);
     box-shadow: 0 0 0 2.5px rgba(var(--bamboo-primary-rgb, 62, 179, 112), 0.1);
 }
 
 /* 批量栏暗色 */
-html.dark .arch-bar {
+:host(.dark) .arch-bar {
     border-top-color: rgba(var(--border-dark-rgb, 60, 70, 60), 0.2);
     background: rgba(var(--surface-dark-rgb, 20, 30, 24), 0.9);
 }
-html.dark .arch-bar-btn {
-    background: transparent !important;
-    border-color: rgba(var(--border-dark-rgb, 60, 70, 60), 0.3) !important;
-    color: var(--text-secondary) !important;
+:host(.dark) .arch-bar-btn {
+    background: transparent;
+    border-color: rgba(var(--border-dark-rgb, 60, 70, 60), 0.3);
+    color: var(--text-secondary);
 }
-html.dark .arch-bar-btn[data-action="archive-batch-restore"]:not(:disabled):hover {
-    background: rgba(var(--primary-rgb), 0.1) !important;
-    color: var(--bamboo-primary) !important;
-    border-color: transparent !important;
+:host(.dark) .arch-bar-btn[data-action="archive-batch-restore"]:not(:disabled):hover {
+    background: rgba(var(--primary-rgb), 0.1);
+    color: var(--bamboo-primary);
+    border-color: transparent;
 }
-html.dark .arch-bar-btn[data-action="archive-batch-delete"]:not(:disabled):hover {
-    background: rgba(var(--danger-rgb), 0.1) !important;
-    color: var(--bamboo-error) !important;
-    border-color: transparent !important;
+:host(.dark) .arch-bar-btn[data-action="archive-batch-delete"]:not(:disabled):hover {
+    background: rgba(var(--danger-rgb), 0.1);
+    color: var(--bamboo-error);
+    border-color: transparent;
 }

@@ -1,3 +1,4 @@
+import { byId } from '../../utils/domRef.js';
 export const SectionManager = {
     draggedItem: null,
     draggedOverItem: null,
@@ -103,7 +104,7 @@ export const SectionManager = {
             onOpen: () => {
                 SectionManager.hasPendingChanges = false;
                 SectionManager._updateApplyBtnState();
-                const list = document.getElementById('smVisibleList');
+                const list = byId('smVisibleList');
                 if (list) SectionDragDrop.init(list, SectionManager._getDragDropConfig());
             }
         });

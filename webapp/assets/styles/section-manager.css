@@ -86,7 +86,7 @@
     border: 1px solid var(--border-light);
     transition: all var(--transition-fast);
 }
-html.dark .sm-section {
+:host(.dark) .sm-section {
     background: rgba(var(--primary-rgb), 0.12);
 }
 .sm-section:hover {
@@ -146,7 +146,7 @@ html.dark .sm-section {
     cursor: grab;
     transition: all 0.2s ease;
 }
-html.dark .sm-item {
+:host(.dark) .sm-item {
     background: rgba(var(--primary-rgb), 0.06);
 }
 
@@ -164,7 +164,7 @@ html.dark .sm-item {
     background: rgba(var(--gray-mid-rgb), 0.05);
     opacity: 0.65;
 }
-html.dark .sm-item-hidden {
+:host(.dark) .sm-item-hidden {
     background: rgba(var(--primary-rgb), 0.04);
 }
 .sm-item-hidden:hover {
@@ -523,7 +523,7 @@ nav .date-display-sub {
     margin-bottom: var(--space-4);
     border: 1px solid var(--border-light);
 }
-html.dark .section-settings-header {
+:host(.dark) .section-settings-header {
     background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.15), rgba(var(--primary-rgb), 0.05));
 }
 

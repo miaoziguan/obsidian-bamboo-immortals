@@ -1,3 +1,4 @@
+import { byId, $, $$ } from '../../utils/domRef.js';
 export const TimelineEditor = {
     editingIndex: -1,
 
@@ -109,8 +110,8 @@ export const TimelineEditor = {
                 <button class="btn btn-primary" data-action="timeline-editor-save">保存</button>
             </div>
         `;
-        document.getElementById('modalBody').innerHTML = content;
-        document.querySelector('.modal-title').textContent = this.editingIndex >= 0 ? '编辑时段' : '添加时段';
+        byId('modalBody').innerHTML = content;
+        $('.modal-title').textContent = this.editingIndex >= 0 ? '编辑时段' : '添加时段';
     },
 
     renderActivityEditor(items) {
@@ -135,7 +136,7 @@ export const TimelineEditor = {
         if (!item.items) item.items = [];
         item.items.push({ time: '', task: '', eval: '' });
         store.scheduleAutoSave();
-        const container = document.getElementById('activityListEditor');
+        const container = byId('activityListEditor');
         if (container) container.innerHTML = this.renderActivityEditor(item.items);
     },
 
@@ -145,7 +146,7 @@ export const TimelineEditor = {
         if (!item.items) return;
         item.items.splice(index, 1);
         store.scheduleAutoSave();
-        const container = document.getElementById('activityListEditor');
+        const container = byId('activityListEditor');
         if (container) container.innerHTML = this.renderActivityEditor(item.items);
     },
 
@@ -154,14 +155,14 @@ export const TimelineEditor = {
         const item = data.timeline[this.editingIndex];
         if (!item) return;
 
-        item.name = document.getElementById('tl-name').value;
-        item.period = document.getElementById('tl-period').value;
-        item.time = document.getElementById('tl-time').value;
-        item.icon = document.getElementById('tl-icon').value;
+        item.name = byId('tl-name').value;
+        item.period = byId('tl-period').value;
+        item.time = byId('tl-time').value;
+        item.icon = byId('tl-icon').value;
 
-        const timeInputs = document.querySelectorAll('[data-activity-time]');
-        const taskInputs = document.querySelectorAll('[data-activity-task]');
-        const evalInputs = document.querySelectorAll('[data-activity-eval]');
+        const timeInputs = $$('[data-activity-time]');
+        const taskInputs = $$('[data-activity-task]');
+        const evalInputs = $$('[data-activity-eval]');
 
         item.items = [];
         for (let i = 0; i < timeInputs.length; i++) {

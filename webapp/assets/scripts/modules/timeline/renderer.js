@@ -1,6 +1,7 @@
+import { byId, $, $$, modalMount } from '../../utils/domRef.js';
 export const TimelineRenderer = {
     render(data) {
-        const container = document.getElementById('timelinePath');
+        const container = byId('timelinePath');
         if (!container) return;
 
         if (!data.timeline || data.timeline.length === 0) {
@@ -110,8 +111,8 @@ export const TimelineRenderer = {
     },
 
     toggle(index) {
-        const content = document.getElementById(`timeline-content-${index}`);
-        const chevron = document.getElementById(`chevron-${index}`);
+        const content = byId(`timeline-content-${index}`);
+        const chevron = byId(`chevron-${index}`);
         if (!content || !chevron) return;
 
         if (content.classList.contains('collapsed')) {
@@ -128,7 +129,7 @@ export const TimelineRenderer = {
     setupHoverEffects() {
         if (this._hoverCleanup) this._hoverCleanup();
         const cleanups = [];
-        const headers = document.querySelectorAll('.bamboo-card-header');
+        const headers = $$('.bamboo-card-header');
         headers.forEach(header => {
             const onMouseMove = (e) => {
                 const rect = header.getBoundingClientRect();
@@ -152,14 +153,14 @@ export const TimelineRenderer = {
     },
 
     setupTooltips() {
-        let tooltip = document.querySelector('.bamboo-tooltip');
+        let tooltip = $('.bamboo-tooltip');
         if (!tooltip) {
             tooltip = document.createElement('div');
             tooltip.className = 'bamboo-tooltip';
-            document.body.appendChild(tooltip);
+            modalMount().appendChild(tooltip);
         }
 
-        const counts = document.querySelectorAll('.bamboo-count');
+        const counts = $$('.bamboo-count');
         counts.forEach(count => {
             count.addEventListener('mouseenter', () => {
                 const hint = count.dataset.hint;

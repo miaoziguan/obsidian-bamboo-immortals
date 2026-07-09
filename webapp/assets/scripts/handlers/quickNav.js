@@ -1,3 +1,4 @@
+import { byId, $, $$, modalMount } from '../utils/domRef.js';
 export const QuickNav = {
     sections: [
         { id: 'timelinePath', icon: 'clock', label: '活动时间线' },
@@ -15,10 +16,10 @@ export const QuickNav = {
     },
 
     setupQuickNavigation() {
-        const container = document.getElementById('reviewContainer');
+        const container = byId('reviewContainer');
         if (!container) return;
 
-        let nav = document.querySelector('.quick-nav');
+        let nav = $('.quick-nav');
         if (nav) {
             nav.remove();
         }
@@ -52,12 +53,12 @@ export const QuickNav = {
         }
 
         nav.innerHTML = buttonsHtml;
-        document.body.appendChild(nav);
+        modalMount().appendChild(nav);
     },
 
     toggle(e) {
         if (e) e.stopPropagation();
-        const nav = document.querySelector('.quick-nav');
+        const nav = $('.quick-nav');
         nav.classList.toggle('expanded');
         const btn = nav.querySelector('.quick-nav-toggle');
         btn.innerHTML = typeof LucideUtils !== 'undefined' ? LucideUtils.createIcon(nav.classList.contains('expanded') ? 'bookClosed' : 'bookOpen', { size: 18 }) : '';
@@ -72,11 +73,11 @@ export const QuickNav = {
 
         const updateActiveSection = () => {
             const scrollPos = window.scrollY + 300;
-            const buttons = document.querySelectorAll('.quick-nav-btn');
+            const buttons = $$('.quick-nav-btn');
             let currentSection = null;
 
             this.sections.forEach(section => {
-                const el = document.getElementById(section.id);
+                const el = byId(section.id);
                 if (el) {
                     const top = el.offsetTop;
                     const height = el.offsetHeight;
@@ -113,7 +114,7 @@ export const QuickNav = {
             }
 
             if (e.key === 'Escape') {
-                const nav = document.querySelector('.quick-nav');
+                const nav = $('.quick-nav');
                 if (nav.classList.contains('expanded')) {
                     this.toggle();
                 }

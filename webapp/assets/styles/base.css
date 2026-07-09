@@ -73,19 +73,19 @@ button:focus-visible, a:focus-visible {
 }
 
 /* === 滚动行为优化 === */
-html {
+:host {
     scroll-behavior: smooth;
     /* 隐藏滚动条 — 保留滚动功能，仅视觉隐藏 */
     -ms-overflow-style: none;
     scrollbar-width: none;
 }
-html::-webkit-scrollbar {
+:host::-webkit-scrollbar {
     display: none;
     width: 0;
     height: 0;
 }
 
-/* === 主题切换过渡 — 限定在需要平滑过渡的组件级元素，避免 html * 全局性能开销 === */
+/* === 主题切换过渡 — 限定在需要平滑过渡的组件级元素，避免 :host * 全局性能开销 === */
 .container,
 .header,
 .date-nav,
@@ -113,20 +113,20 @@ html::-webkit-scrollbar {
 .fab-container,
 .toast-container,
 .loading::after {
-    transition: none !important;
+    transition: none;
 }
 .fab-actions,
 .fab-action-btn,
 .fab-main,
 .fab-main-icon {
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* === 性能优化：全局动画控制 === */
-body.animations-paused *,
-body.animations-paused *::before,
-body.animations-paused *::after {
-    animation-play-state: paused !important;
+:host(.animations-paused) *,
+:host(.animations-paused) *::before,
+:host(.animations-paused) *::after {
+    animation-play-state: paused;
 }
 
 /* 离屏动效容器暂停 - 替代逐元素 style 设置 */
@@ -134,25 +134,36 @@ body.animations-paused *::after {
 .effect-offscreen *,
 .effect-offscreen *::before,
 .effect-offscreen *::after {
-    animation-play-state: paused !important;
+    animation-play-state: paused;
 }
 
-body {
+:host {
     font-family: var(--font-family);
     font-size: var(--type-base);
     line-height: var(--line-height-base);
     color: var(--text-primary);
-    background: linear-gradient(165deg, var(--bg-gradient-start) 0%, var(--bg-gradient-mid1) 20%, var(--bg-gradient-mid2) 40%, var(--bg-gradient-mid1) 60%, var(--bg-gradient-end) 80%, var(--bg-gradient-start) 100%);
     min-height: 100vh;
     padding: 0;
     margin: 0;
     overflow-x: hidden;
-    background-attachment: fixed;
     /* 隐藏滚动条 — 保留滚动功能，仅视觉隐藏 */
     -ms-overflow-style: none;
     scrollbar-width: none;
 }
-body::-webkit-scrollbar {
+
+/* 整页页面级渐变背景：用固定定位的 ::after 承载，而非 :host 的 background +
+   background-attachment: fixed。后者在 shadow 滚动容器（host 同时 position:fixed
+   且 overflow-y:auto）下于部分 webview 不绘制，导致暗色模式直接透出白底。
+   position:fixed 的伪元素背景可稳定绘制，且视觉上同样铺满视口、不随内容滚动。 */
+:host::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -2;
+    pointer-events: none;
+    background: linear-gradient(165deg, var(--bg-gradient-start) 0%, var(--bg-gradient-mid1) 20%, var(--bg-gradient-mid2) 40%, var(--bg-gradient-mid1) 60%, var(--bg-gradient-end) 80%, var(--bg-gradient-start) 100%);
+}
+:host::-webkit-scrollbar {
     display: none;
     width: 0;
     height: 0;
@@ -168,7 +179,7 @@ body::-webkit-scrollbar {
     box-sizing: border-box;
 }
 
-body::before {
+:host::before {
     content: '';
     position: fixed;
     inset: 0;
@@ -184,17 +195,18 @@ body::before {
 }
 
 /* 黑暗模式下重新设计高级感光影 - 增加亮度与对比度 */
-html.dark body.bamboo-immortals-root::before {
+:host(.dark.bamboo-immortals-root)::before {
     display: block;
     background: 
+        radial-gradient(circle at 50% 0%, rgba(var(--primary-rgb), 0.18) 0%, transparent 55%),
         radial-gradient(circle at 20% 25%, rgba(var(--primary-rgb), 0.15) 0%, transparent 60%),
-        radial-gradient(circle at 80% 15%, rgba(var(--primary-rgb), 0.05) 0%, transparent 40%),
-        radial-gradient(ellipse at 50% 85%, rgba(var(--deep-rgb), 0.2) 0%, transparent 70%);
-    opacity: 0.8;
+        radial-gradient(circle at 80% 15%, rgba(var(--primary-rgb), 0.06) 0%, transparent 40%),
+        radial-gradient(ellipse at 50% 85%, rgba(var(--deep-rgb), 0.22) 0%, transparent 70%);
+    opacity: 0.85;
 }
 
 @media (prefers-reduced-motion: no-preference) {
-    body::before {
+    :host::before {
         animation: bgFloat 20s ease-in-out infinite;
     }
 }
@@ -204,62 +216,64 @@ html.dark body.bamboo-immortals-root::before {
     50% { opacity: 0.6; }
 }
 
-body.motion-reduced * { animation: none !important; transition: none !important; }
+:host(.motion-reduced) * { animation: none; transition: none; }
 
 @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after {
-        animation-duration: 0.01ms !important;
-        animation-iteration-count: 1 !important;
-        transition-duration: 0.01ms !important;
-        scroll-behavior: auto !important;
+    :host(.motion-reduced) *,
+    :host(.motion-reduced) *::before,
+    :host(.motion-reduced) *::after {
+        animation-duration: 0.01ms;
+        animation-iteration-count: 1;
+        transition-duration: 0.01ms;
+        scroll-behavior: auto;
     }
 
     .breathePink, .breatheSky, .heartbeat {
-        animation: none !important;
+        animation: none;
     }
 
     .empty-state::before {
-        animation: none !important;
-        opacity: 0 !important;
+        animation: none;
+        opacity: 0;
     }
 
     .onboarding-highlight {
-        animation: none !important;
-        box-shadow: 0 0 0 9999px rgba(var(--black-rgb), 0.7) !important;
+        animation: none;
+        box-shadow: 0 0 0 9999px rgba(var(--black-rgb), 0.7);
     }
 
     .fadeInUp, .slideUp, .fadeIn {
-        animation: none !important;
-        opacity: 1 !important;
-        transform: none !important;
+        animation: none;
+        opacity: 1;
+        transform: none;
     }
 
     .loading-spinner::before {
-        animation: none !important;
-        border-color: rgba(var(--primary-rgb), 0.3) !important;
-        border-top-color: var(--bamboo-primary) !important;
+        animation: none;
+        border-color: rgba(var(--primary-rgb), 0.3);
+        border-top-color: var(--bamboo-primary);
     }
 
     .chart-canvas {
-        transition: none !important;
+        transition: none;
     }
 
     .fab-main, .fab-action-btn {
-        transition: none !important;
+        transition: none;
     }
 
     .modal-overlay, .modal-content {
-        transition: none !important;
+        transition: none;
     }
 }
 
-body.loading .container { opacity: 0; }
+:host(.loading) .container { opacity: 0; }
 .container { transition: opacity 0.3s ease; }
 
 @media print {
-    body { background: var(--white) !important; }
-    .fab-container { display: none !important; }
-    .period-content.collapsed { max-height: none !important; opacity: 1 !important; display: block !important; }
+    :host { background: var(--white); }
+    .fab-container { display: none; }
+    .period-content.collapsed { max-height: none; opacity: 1; display: block; }
     .font-row[style*="display: none"] { display: table-row !important; }
 }
 
@@ -370,7 +384,7 @@ button,
     }
 
     /* Body & container: tighter padding, smaller radii */
-    body {
+    :host {
         padding: var(--space-4) var(--space-3);
     }
 
@@ -433,7 +447,7 @@ button,
    紧急压缩层。避免视觉破坏 — 它应该只是 ≤480px 设计的紧凑版本。
    目标：ZERO 水平滚动。 */
 @media (max-width: 360px) {
-    body {
+    :host {
         padding: var(--space-2) var(--space-1);
     }
 

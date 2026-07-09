@@ -1,3 +1,4 @@
+import { byId } from '../../utils/domRef.js';
 export const Todo = {
     Renderer: TodoRenderer,
     _completedCollapsed: true,
@@ -11,7 +12,7 @@ export const Todo = {
     },
 
     _syncCollapsedState() {
-        const group = document.getElementById('todoCompletedGroup');
+        const group = byId('todoCompletedGroup');
         if (group) {
             group.classList.toggle('collapsed', this._completedCollapsed);
         }
@@ -23,7 +24,7 @@ export const Todo = {
 
     toggleCompletedGroup() {
         this._completedCollapsed = !this._completedCollapsed;
-        const group = document.getElementById('todoCompletedGroup');
+        const group = byId('todoCompletedGroup');
         if (group) {
             group.classList.toggle('collapsed', this._completedCollapsed);
         }

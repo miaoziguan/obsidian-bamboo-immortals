@@ -1,3 +1,4 @@
+import { byId, modalMount } from '../../utils/domRef.js';
 export const SectionDragDrop = {
     draggedItem: null,
     draggedOverItem: null,
@@ -115,7 +116,7 @@ export const SectionDragDrop = {
             ghost.style.opacity = '0.5';
             ghost.style.position = 'absolute';
             ghost.style.top = '-9999px';
-            document.body.appendChild(ghost);
+            modalMount().appendChild(ghost);
             e.dataTransfer.setDragImage(ghost, 0, 0);
             setTimeout(() => ghost.remove(), 0);
         }
@@ -149,7 +150,7 @@ export const SectionDragDrop = {
     handleDragOver(e, item, listElement, config) {
         if (!this.draggedItem || this.draggedItem === item) return;
 
-        if (config.constrainToContainer && listElement && document.contains(listElement)) {
+        if (config.constrainToContainer && listElement && listElement.isConnected) {
             let rect;
             try {
                 rect = listElement.getBoundingClientRect();
@@ -298,7 +299,7 @@ export const SectionDragDrop = {
             }
         });
 
-        const newListElement = document.getElementById(oldListElement.id);
+        const newListElement = byId(oldListElement.id);
         if (newListElement) {
             const newItems = this.getDraggableItems(newListElement, config);
             newItems.forEach(item => {

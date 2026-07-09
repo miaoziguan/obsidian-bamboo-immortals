@@ -1,3 +1,4 @@
+import { byId, $ } from '../utils/domRef.js';
 export const SettingsModal = {
     enableSwipe: true,
     autoSaveInterval: 2000,
@@ -198,13 +199,13 @@ export const SettingsModal = {
                 { id: 'about', label: '关于' }
             ],
             onOpen: () => {
-                const intervalSelect = document.getElementById('autoSaveInterval');
+                const intervalSelect = byId('autoSaveInterval');
                 if (intervalSelect) {
                     intervalSelect.addEventListener('change', (e) => {
                         this.setAutoSaveInterval(e.target.value);
                     });
                 }
-                const cityInput = document.getElementById('defaultCityInput');
+                const cityInput = byId('defaultCityInput');
                 if (cityInput) {
                     const saveCity = () => {
                         const val = (cityInput.value || '').trim();
@@ -219,7 +220,7 @@ export const SettingsModal = {
                         }
                     });
                 }
-                const quoteInput = document.getElementById('quoteSourceInput');
+                const quoteInput = byId('quoteSourceInput');
                 if (quoteInput) {
                     const saveQuote = () => {
                         const val = (quoteInput.value || '').trim();
@@ -436,7 +437,7 @@ export const SettingsModal = {
         const backup = this._pendingImportData;
         if (!backup) return;
 
-        const strategyRadio = document.querySelector('input[name="importStrategy"]:checked');
+        const strategyRadio = $('input[name="importStrategy"]:checked');
         const strategy = strategyRadio ? strategyRadio.value : 'overwrite';
 
         try {
@@ -456,7 +457,7 @@ export const SettingsModal = {
     },
 
     confirmClearData() {
-        const input = document.getElementById('clearBeforeDate');
+        const input = byId('clearBeforeDate');
         if (!input || !input.value) {
             Toast.showToast('请选择日期', 'error');
             return;
@@ -505,7 +506,7 @@ export const SettingsModal = {
     },
 
     async confirmReset() {
-        const input = document.getElementById('resetConfirmInput');
+        const input = byId('resetConfirmInput');
         if (!input || input.value !== '确认重置') {
             Toast.showToast('输入不正确', 'error');
             return;

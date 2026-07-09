@@ -1,3 +1,4 @@
+import { byId, $ } from '../utils/domRef.js';
 export const FABManager = {
     container: null,
     mainBtn: null,
@@ -9,9 +10,9 @@ export const FABManager = {
         if (this._initialized) return;
         this._initialized = true;
 
-        this.container = document.querySelector('.fab-container');
-        this.mainBtn = document.getElementById('fabMain');
-        this.actions = document.getElementById('fabActions');
+        this.container = $('.fab-container');
+        this.mainBtn = byId('fabMain');
+        this.actions = byId('fabActions');
         if (!this.container || !this.mainBtn || !this.actions) return;
 
         this.container.style.display = 'flex';
@@ -191,16 +192,24 @@ export const FABManager = {
         return Array.from(this.actions.querySelectorAll('.fab-action-btn'));
     },
 
+    // Shadow DOM 下事件 e.target 会被 retarget 成 host，故用 composedPath()
+    // 取真实路径（含 shadow 内节点）判断点击是否落在容器内，兼容 kill-switch 回退。
+    _eventInside(e, node) {
+        if (!node) return false;
+        const path = (typeof e.composedPath === 'function') ? e.composedPath() : [];
+        return path.length ? path.includes(node) : node.contains(e.target);
+    },
+
     setupOutsideClick() {
         document.addEventListener('click', (e) => {
-            if (this.isOpen && !this.container.contains(e.target)) this.close();
+            if (this.isOpen && !this._eventInside(e, this.container)) this.close();
         });
     },
 
     toggle() { this.isOpen ? this.close() : this.open(); },
 
     positionPanel() {
-        if (!this.mainBtn || !document.contains(this.mainBtn)) return;
+        if (!this.mainBtn || !this.mainBtn.isConnected) return;
         let btnRect;
         try {
             btnRect = this.mainBtn.getBoundingClientRect();

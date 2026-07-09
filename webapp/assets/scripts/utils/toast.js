@@ -1,3 +1,4 @@
+import { byId, modalMount } from './domRef.js';
 export class ToastManager {
     constructor() {
         this.container = null;
@@ -14,7 +15,7 @@ export class ToastManager {
         this.container.className = 'toast-container';
         this.container.setAttribute('aria-live', 'polite');
         this.container.setAttribute('aria-label', '通知');
-        document.body.appendChild(this.container);
+        modalMount().appendChild(this.container);
     }
 
     show(options = {}) {
@@ -50,7 +51,7 @@ export class ToastManager {
         this.cleanup();
 
         this.queue.forEach((toast, index) => {
-            if (!document.getElementById(toast.id)) {
+            if (!byId(toast.id)) {
                 const element = this.createToastElement(toast);
                 this.container.appendChild(element);
 
@@ -149,7 +150,7 @@ export class ToastManager {
             clearTimeout(toast.timeoutId);
         }
 
-        const element = document.getElementById(id);
+        const element = byId(id);
         if (element) {
             element.classList.remove('toast-visible');
             element.classList.add('toast-hiding');
@@ -167,7 +168,7 @@ export class ToastManager {
     }
 
     removeToastElement(id) {
-        const element = document.getElementById(id);
+        const element = byId(id);
         if (element) {
             element.remove();
         }
@@ -216,7 +217,7 @@ export class ToastManager {
      * 无障碍播报：向 sr-announcements 区域写入消息
      */
     announce(message, priority = 'polite') {
-        const announcer = document.getElementById('sr-announcements');
+        const announcer = byId('sr-announcements');
         if (announcer) {
             announcer.setAttribute('aria-live', priority);
             announcer.textContent = message;

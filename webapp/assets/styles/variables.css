@@ -1,5 +1,5 @@
 /* ========== 全局变量（竹林中国风 - 亮色模式） ========== */
-:root {
+:host {
     /* === 主题色相（可变）=== */
     --accent-hue: 120;  /* 默认竹青绿，可通过 DisplayManager 色相滑块调整 */
 
@@ -299,7 +299,7 @@
 }
 
 /* ========== 暗色模式（竹林星光暗色，完整覆盖所有变量） ========== */
-html.dark {
+:host(.dark) {
     /* 竹林星光 — 深邃、高级、有层次感的暗色背景 */
     --primary-rgb: 130, 195, 130;
     --deep-rgb: 45, 90, 53;
@@ -377,16 +377,18 @@ html.dark {
     --bamboo-primary-dark: var(--bamboo-dark);
     --bamboo-card: var(--card-bg);
     
-    /* 背景层次：深邃午夜绿渐变 */
-    --bg-gradient-start: hsl(calc(var(--accent-hue) + 15), 21%, calc(11% + var(--accent-lightness-offset)));
-    --bg-gradient-mid1: hsl(calc(var(--accent-hue) + 10), 16%, calc(8% + var(--accent-lightness-offset)));
-    --bg-gradient-mid2: hsl(calc(var(--accent-hue) + 20), 24%, calc(12% + var(--accent-lightness-offset)));
-    --bg-gradient-end: hsl(calc(var(--accent-hue) + 5), 22%, calc(9% + var(--accent-lightness-offset)));
+    /* 背景层次：深邃午夜绿渐变 —— 明度跨度拉大（7%→16%），中段加一道柔光带，
+       让暗色下的整页页面级渐变清晰可辨，而非近乎平涂的深色 */
+    --bg-gradient-start: hsl(calc(var(--accent-hue) + 16), 30%, calc(13% + var(--accent-lightness-offset)));
+    --bg-gradient-mid1: hsl(calc(var(--accent-hue) + 6), 34%, calc(7% + var(--accent-lightness-offset)));
+    --bg-gradient-mid2: hsl(calc(var(--accent-hue) + 28), 38%, calc(16% + var(--accent-lightness-offset)));
+    --bg-gradient-end: hsl(calc(var(--accent-hue) + 2), 30%, calc(9% + var(--accent-lightness-offset)));
     
     /* 卡片：深邃中透出微光，跟随色相和明度 */
-    /* 暗色模式提高卡片不透明度，降低 backdrop-filter blur 伪影 */
-    --card-bg: hsla(var(--accent-hue), 18%, calc(10% + var(--accent-lightness-offset)), 0.70);
-    --card-glass: hsla(var(--accent-hue), 18%, calc(10% + var(--accent-lightness-offset)), 0.92);
+    /* 暗色已全局关闭 backdrop-filter（dark.css :host(.dark) *），原"提高不透明度防模糊伪影"
+       的理由已不存在；此处保留一定透明度，让整页页面级渐变能透过卡片显现 */
+    --card-bg: hsla(var(--accent-hue), 18%, calc(10% + var(--accent-lightness-offset)), 0.60);
+    --card-glass: hsla(var(--accent-hue), 18%, calc(10% + var(--accent-lightness-offset)), 0.84);
     
     /* 文字语义 — 亮度提升至 WCAG AA 4.5:1+ */
     --text-primary: hsl(var(--accent-hue), 18%, calc(91% + var(--accent-lightness-offset)));
@@ -531,7 +533,7 @@ html.dark {
 
 
 /* ========== 触控区域最小尺寸（WCAG 2.5.8） ========== */
-:root {
+:host {
     --min-touch-target: 48px;
 }
 
@@ -562,7 +564,7 @@ html.dark {
      961+ → 1025+ (wide desktop)
    ============================================================ */
 
-:root {
+:host {
     /* Breakpoint reference values (for documentation only — CSS @media
        cannot use custom properties, so use the literal pixel values above
        in @media conditions consistently across all files). */
@@ -576,8 +578,8 @@ html.dark {
        where min applies at 320px and max at 1200px viewport width.
        Use these instead of fixed --font-size-* for body-level text. */
     --type-xs: calc(clamp(10px, 2.2vw, 12px) * var(--font-size-scale));        /* labels, meta, captions */
-    --type-sm: calc(clamp(12px, 2.6vw, 13px) * var(--font-size-scale));        /* secondary body text */
-    --type-base: calc(clamp(13px, 2.8vw, 15px) * var(--font-size-scale));      /* primary body text */
+    --type-sm: calc(clamp(12px, 2.6vw, 13px) * var(--font-size-scale));        /* secondary :host text */
+    --type-base: calc(clamp(13px, 2.8vw, 15px) * var(--font-size-scale));      /* primary :host text */
     --type-md: calc(clamp(14px, 3.2vw, 17px) * var(--font-size-scale));        /* interactive, buttons, section titles */
     --type-lg: calc(clamp(15px, 3.8vw, 20px) * var(--font-size-scale));        /* subtitles */
     --type-xl: calc(clamp(18px, 4.8vw, 24px) * var(--font-size-scale));        /* smaller headings */
@@ -618,11 +620,11 @@ html.dark {
 
 /* Dynamic viewport height — progressive enhancement.
    100dvh is supported in all modern browsers; we fall back to 100vh for older ones. */
-:root {
+:host {
     --viewport-height: 100vh;
 }
 @supports (height: 100dvh) {
-    :root {
+    :host {
         --viewport-height: 100dvh;
     }
 }
@@ -633,11 +635,11 @@ html.dark {
 
 /* prefers-contrast: high-contrast mode — ensure text stays readable */
 @media (prefers-contrast: more) {
-    :root {
+    :host {
         --text-primary: #000000;
         --text-secondary: #222222;
     }
-    html.dark {
+    :host(.dark) {
         --text-primary: #ffffff;
         --text-secondary: #e0e0e0;
     }

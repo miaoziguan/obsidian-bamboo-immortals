@@ -1,10 +1,11 @@
+import { modalMount } from '../../utils/domRef.js';
 /**
  * 日期范围选择器
  * 纯 DOM 弹层，不含 this. 引用，从 GoalsRenderer._showDateRangePicker 提取。
  */
 export const DateRangePicker = {
     show({ el, goal, subIdx, currentStart, currentEnd, onSelect, onCancel }) {
-        if (!el || !document.contains(el)) return;
+        if (!el || !el.isConnected) return;
         let rect;
         try {
             rect = el.getBoundingClientRect();
@@ -121,7 +122,7 @@ export const DateRangePicker = {
         const container = document.createElement('div');
         container.className = 'date-range-picker';
         container.innerHTML = pickerHtml;
-        document.body.appendChild(container);
+        modalMount().appendChild(container);
 
         PopupPositioner.positionOnNextFrame({
             popupElement: container.querySelector('.drp-container'),
@@ -498,7 +499,7 @@ export const DateRangePicker = {
                 updateSelectedDisplay();
                 if (startDate && endDate) {
                     setTimeout(() => {
-                        if (startDate && endDate && document.body.contains(container)) {
+                        if (startDate && endDate && container.isConnected) {
                             container.remove();
                             onSelect(formatDate(startDate), formatDate(endDate));
                         }

@@ -1,3 +1,4 @@
+import { byId, modalMount, eventInTargets } from '../../utils/domRef.js';
 export const GoalsRenderer = {
     _expandedGoals: new Set(),
     _collapsedCompleted: new Set(),
@@ -71,7 +72,7 @@ export const GoalsRenderer = {
     },
 
     async render(data, container) {
-        container = container || document.getElementById('goalList');
+        container = container || byId('goalList');
         if (!container) return;
 
         await this.loadCategories();
@@ -130,7 +131,7 @@ export const GoalsRenderer = {
     },
 
     renderSingleGoal(goalId) {
-        const container = document.getElementById('goalList');
+        const container = byId('goalList');
         if (!container) return;
 
         const goals = store.getGlobalGoals().filter(g => !g.archived);
@@ -1081,7 +1082,7 @@ export const GoalsRenderer = {
 
                     // 点击页面其他区域关闭（提前定义以便各回调引用）
                     const closeHint = (e) => {
-                        if (!hint.contains(e.target) && e.target !== input) {
+                        if (!eventInTargets(e, hint) && !eventInTargets(e, input)) {
                             hint.style.opacity = '0';
                             setTimeout(() => hint.remove(), 200);
                             document.removeEventListener('click', closeHint);
@@ -1229,7 +1230,7 @@ export const GoalsRenderer = {
                     </div>
                 </div>
             `;
-            document.body.appendChild(container);
+            modalMount().appendChild(container);
 
             requestAnimationFrame(() => {
                 const modal = container.querySelector('.cmp-container');
@@ -1254,7 +1255,7 @@ export const GoalsRenderer = {
 
             setTimeout(() => {
                 escHandler = (e) => {
-                    if (e.key === 'Escape' && document.body.contains(container)) {
+                    if (e.key === 'Escape' && container.isConnected) {
                         close(null);
                     }
                 };

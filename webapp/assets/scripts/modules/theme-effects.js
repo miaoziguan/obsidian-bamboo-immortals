@@ -1,3 +1,4 @@
+import { byId, $, modalMount } from '../utils/domRef.js';
 export const ThemeEffects = {
     currentTheme: 'bamboo',
     _intervals: [],
@@ -32,7 +33,7 @@ export const ThemeEffects = {
     },
 
     init(themeName = 'bamboo') {
-        var section = document.getElementById('themeEffectSection');
+        var section = byId('themeEffectSection');
         if (!section) return;
         var container = section.firstElementChild;
         const theme = this.themes[themeName];
@@ -47,7 +48,7 @@ export const ThemeEffects = {
     switchTheme(themeName) {
         if (!this.themes[themeName]) return;
 
-        var section = document.getElementById('themeEffectSection');
+        var section = byId('themeEffectSection');
         if (!section) return;
 
         // 淡出 → 替换内容 → 淡入，消除 innerHTML 瞬间白屏
@@ -122,7 +123,7 @@ export const ThemeEffects = {
 
     /** 在 #themeEffectSection 上覆盖 --accent-hue / --accent-lightness-offset（仅当前模式） */
     _applyThemeVars(themeName) {
-        var section = document.getElementById('themeEffectSection');
+        var section = byId('themeEffectSection');
         if (!section) return;
         // 懒加载
         if (!this._settingsLoaded) {
@@ -146,7 +147,7 @@ export const ThemeEffects = {
 
     /** 同步明暗模式到 #themeEffectSection 的 CSS 变量和 data 属性 */
     _syncThemeMode() {
-        var section = document.getElementById('themeEffectSection');
+        var section = byId('themeEffectSection');
         if (!section) return;
         var isDark = document.documentElement.classList.contains('dark');
         section.setAttribute('data-theme-mode', isDark ? 'dark' : 'light');
@@ -160,7 +161,7 @@ export const ThemeEffects = {
         this._applyThemeVars(this.currentTheme);
 
         // 如果主题面板正打开，刷新滑块值和模式标签
-        var panel = document.querySelector('.panel[active-panel="theme"]');
+        var panel = $('.panel[active-panel="theme"]');
         if (panel) {
             var mode = this._getCurrentMode();
             var modeLabel = mode === 'dark' ? '暗色' : '亮色';
@@ -487,7 +488,7 @@ export const ThemeEffects = {
 
         // 绑定 AI 辅助创建按钮
         var el = this;
-        var panel = document.getElementById('panel-theme-guide');
+        var panel = byId('panel-theme-guide');
         if (panel) {
             var aiBtn = panel.querySelector('#aiWizardBtn');
             if (aiBtn) {
@@ -693,7 +694,7 @@ export const ThemeEffects = {
             onClose: function() {}
         });
 
-        var panel = document.getElementById('panel-ai-wizard');
+        var panel = byId('panel-ai-wizard');
         if (!panel) return;
 
         // 生成提示词模板
@@ -926,10 +927,10 @@ export const ThemeEffects = {
             ta.value = text;
             ta.style.position = 'fixed';
             ta.style.opacity = '0';
-            document.body.appendChild(ta);
+            modalMount().appendChild(ta);
             ta.select();
             document.execCommand('copy');
-            document.body.removeChild(ta);
+            ta.remove();
             cb();
         }
 
@@ -1086,7 +1087,7 @@ export const ThemeEffects = {
             onClose: () => {}
         });
 
-        var panel = document.getElementById('panel-theme');
+        var panel = byId('panel-theme');
         if (!panel) return;
 
         var el = this;

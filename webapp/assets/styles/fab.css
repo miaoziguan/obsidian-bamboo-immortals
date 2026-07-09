@@ -86,16 +86,16 @@
 }
 
 /* 暗色模式：白噪声切换器可见性修复 */
-html.dark .stub-nc-icon {
+:host(.dark) .stub-nc-icon {
     color: rgba(var(--primary-rgb), 0.7);
 }
-html.dark .stub-nc-icon:hover {
+:host(.dark) .stub-nc-icon:hover {
     color: rgb(var(--primary-rgb));
 }
-html.dark .stub-nc-name {
+:host(.dark) .stub-nc-name {
     color: rgba(var(--primary-rgb), 0.8);
 }
-html.dark .stub-nc-name:hover {
+:host(.dark) .stub-nc-name:hover {
     color: rgb(var(--primary-rgb));
 }
 
@@ -118,7 +118,7 @@ html.dark .stub-nc-name:hover {
 
 /* 响应式适配 — Canonical breakpoints: 480px (mobile), 768px (tablet), 1024px (desktop) */
 @media (max-width: 768px) {
-    :root {
+    :host {
         --glow-width: 2px;
         --glow-opacity: 0.25;
         --glow-duration: 20s;
@@ -127,13 +127,13 @@ html.dark .stub-nc-name:hover {
 
 /* 夜间模式下应用流光效果（已移除票根扫描光效） */
 
-html.dark:not(.glows-disabled) .goal-row,
-html.dark:not(.glows-disabled) .bamboo-card {
+:host(.dark):not(.glows-disabled) .goal-row,
+:host(.dark):not(.glows-disabled) .bamboo-card {
     /* 方案3：脉冲闪烁 - 目标卡片和时光卡（改为 hover 触发，避免常驻重绘） */
     position: relative;
 }
-html.dark:not(.glows-disabled) .goal-row::before,
-html.dark:not(.glows-disabled) .bamboo-card::before {
+:host(.dark):not(.glows-disabled) .goal-row::before,
+:host(.dark):not(.glows-disabled) .bamboo-card::before {
     content: '';
     position: absolute;
     top: -1px;
@@ -145,8 +145,8 @@ html.dark:not(.glows-disabled) .bamboo-card::before {
     opacity: 0;
     pointer-events: none;
 }
-html.dark:not(.glows-disabled) .goal-row::after,
-html.dark:not(.glows-disabled) .bamboo-card::after {
+:host(.dark):not(.glows-disabled) .goal-row::after,
+:host(.dark):not(.glows-disabled) .bamboo-card::after {
     content: '';
     position: absolute;
     top: -1px;
@@ -159,12 +159,12 @@ html.dark:not(.glows-disabled) .bamboo-card::after {
     pointer-events: none;
 }
 /* 仅在悬停时启流光脉冲，纯 opacity 过渡（GPU 合成，无重排） */
-html.dark:not(.glows-disabled) .goal-row:hover::before,
-html.dark:not(.glows-disabled) .bamboo-card:hover::before {
+:host(.dark):not(.glows-disabled) .goal-row:hover::before,
+:host(.dark):not(.glows-disabled) .bamboo-card:hover::before {
     animation: glow-pulse-fade calc(var(--glow-duration) / 2) ease-in-out infinite;
 }
-html.dark:not(.glows-disabled) .goal-row:hover::after,
-html.dark:not(.glows-disabled) .bamboo-card:hover::after {
+:host(.dark):not(.glows-disabled) .goal-row:hover::after,
+:host(.dark):not(.glows-disabled) .bamboo-card:hover::after {
     animation: glow-pulse-fade calc(var(--glow-duration) / 2) ease-in-out infinite;
     animation-delay: calc(var(--glow-duration) / 4);
 }

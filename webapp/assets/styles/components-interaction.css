@@ -1,6 +1,6 @@
 /* ========== Edit Mode Bar ========== */
 .edit-mode-bar[hidden] {
-    display: none !important;
+    display: none;
 }
 
 .edit-mode-bar {

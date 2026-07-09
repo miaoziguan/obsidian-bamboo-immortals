@@ -1,3 +1,4 @@
+import { byId } from '../utils/domRef.js';
 /**
  * DatePicker - 日期选择器面板
  * 使用 PanelManager 实现与竹林商店一致的 fab-panel 风格
@@ -174,8 +175,8 @@ window.DatePicker = {
             }
         }
         
-        const calendarDays = document.getElementById('calendarDays');
-        const calendarMonth = document.getElementById('calendarMonth');
+        const calendarDays = byId('calendarDays');
+        const calendarMonth = byId('calendarMonth');
         
         if (calendarDays) {
             calendarDays.innerHTML = this._generateCalendarDays();
@@ -187,7 +188,7 @@ window.DatePicker = {
     },
 
     quickSelect(dateStr, label) {
-        const input = document.getElementById('date-picker-input');
+        const input = byId('date-picker-input');
         if (input) {
             input.value = dateStr;
         }
@@ -206,7 +207,7 @@ window.DatePicker = {
     },
 
     goToSelectedDate() {
-        const input = document.getElementById('date-picker-input');
+        const input = byId('date-picker-input');
         if (!input || !input.value) {
             Toast.showToast('请选择日期', 'warning');
             return;

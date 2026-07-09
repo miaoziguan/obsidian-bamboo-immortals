@@ -1,3 +1,4 @@
+import { byId } from '../utils/domRef.js';
 /**
  * ThemeSelector - 明暗模式切换
  *
@@ -11,8 +12,8 @@ window.ThemeSelector = {
     },
 
     updateDarkModeButton() {
-        const icon = document.getElementById('darkModeIcon');
-        const text = document.getElementById('darkModeText');
+        const icon = byId('darkModeIcon');
+        const text = byId('darkModeText');
         if (icon && text) {
             const { ui } = store.getState();
             if (ui.isDarkMode) {

@@ -1,3 +1,4 @@
+import { byId, $, getHost } from '../utils/domRef.js';
 export const Handlers = {
     modalFocusStack: [],
     lastFocusedElement: null,
@@ -56,7 +57,7 @@ export const Handlers = {
 
     openModal(content, title = '编辑') {
         this.lastFocusedElement = document.activeElement;
-        const container = document.getElementById('modalContainer');
+        const container = byId('modalContainer');
         if (!container) return;
         const titleId = 'modal-title-' + Date.now();
 
@@ -89,7 +90,8 @@ export const Handlers = {
         }
 
         this.modalFocusStack = [closeBtn];
-        document.body.style.overflow = 'hidden';
+        const _scrollHost = getHost() || document.body;
+        _scrollHost.style.overflow = 'hidden';
     },
 
     closeModal(event) {
@@ -103,12 +105,13 @@ export const Handlers = {
             this._modalObserver = null;
         }
 
-        const container = document.getElementById('modalContainer');
+        const container = byId('modalContainer');
         if (container) container.innerHTML = '';
 
         this._modalFocusCache = null;
 
-        document.body.style.overflow = '';
+        const _scrollHost = getHost() || document.body;
+        _scrollHost.style.overflow = '';
         if (this.lastFocusedElement) {
             this.lastFocusedElement.focus();
         }
@@ -136,7 +139,7 @@ export const Handlers = {
     },
 
     updateModalFocusCache() {
-        const modal = document.querySelector('.modal-content');
+        const modal = $('.modal-content');
         if (!modal) {
             this._modalFocusCache = null;
             return;

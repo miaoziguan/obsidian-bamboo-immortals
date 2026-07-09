@@ -28,7 +28,7 @@
 }
 .weather-widget:hover {
 }
-.weather-widget[hidden] { display: none !important; }
+.weather-widget[hidden] { display: none; }
 
 .weather-core {
     display: inline-flex;

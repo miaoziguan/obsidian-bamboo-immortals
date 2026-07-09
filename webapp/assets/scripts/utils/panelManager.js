@@ -1,3 +1,4 @@
+import { modalMount } from './domRef.js';
 /**
  * PanelManager - 统一管理悬浮菜单触发的面板
  */
@@ -52,7 +53,7 @@ export const PanelManager = {
             </div>
         `;
 
-        document.body.appendChild(panel);
+        modalMount().appendChild(panel);
         this.activePanel = panel;
         this.activeId = id;
         this._activeOptions = options;
@@ -85,7 +86,7 @@ export const PanelManager = {
 
         // 外部点击关闭
         this._outsideClickHandler = (e) => {
-            if (this.activePanel && !this.activePanel.contains(e.target)) {
+            if (this.activePanel && !eventInTargets(e, this.activePanel)) {
                 this.close();
             }
         };

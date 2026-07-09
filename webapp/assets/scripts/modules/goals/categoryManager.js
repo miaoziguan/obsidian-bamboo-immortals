@@ -1,3 +1,4 @@
+import { modalMount } from '../../utils/domRef.js';
 /**
  * 分类管理器（modal）
  * 纯 DOM 弹层，从 GoalsRenderer._showCategoryManager 提取。
@@ -30,7 +31,7 @@ export const CategoryManager = {
                 </div>
             </div>
         `;
-        document.body.appendChild(container);
+        modalMount().appendChild(container);
 
         requestAnimationFrame(() => {
             const modal = container.querySelector('.catm-container');

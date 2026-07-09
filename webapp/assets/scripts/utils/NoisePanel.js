@@ -1,3 +1,4 @@
+import { byId, modalMount, eventInTargets } from './domRef.js';
 /**
  * NoisePanel - 白噪音面板UI管理
  * 负责面板DOM操作、事件绑定、状态更新
@@ -62,12 +63,12 @@ export const NoisePanel = {
         // 挂载到专用浮层容器，避免受父级 overflow/transform 影响
         // position: fixed 在 iframe 或 transform 祖先下可能定位异常
         // 改为：浮层(position:fixed) + 面板(position:absolute) 的双层结构
-        let overlay = document.getElementById('bamboo-floating-overlay');
+        let overlay = byId('bamboo-floating-overlay');
         if (!overlay) {
             overlay = document.createElement('div');
             overlay.id = 'bamboo-floating-overlay';
             overlay.className = 'bamboo-floating-overlay';
-            document.body.appendChild(overlay);
+            modalMount().appendChild(overlay);
         }
         overlay.appendChild(this.panelEl);
 
@@ -78,7 +79,7 @@ export const NoisePanel = {
 
         // 点击面板外部关闭
         this._outsideClickHandler = (e) => {
-            if (this.panelVisible && this.panelEl && !this.panelEl.contains(e.target)) {
+            if (this.panelVisible && this.panelEl && !eventInTargets(e, this.panelEl)) {
                 this.hide();
             }
         };

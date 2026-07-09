@@ -418,7 +418,7 @@
 .goal-item-meta .goal-item-value,
 .goal-item-meta .goal-item-date,
 .goal-item-meta .goal-item-daily {
-    width: auto !important;
+    width: auto;
 }
 
 /* 就地编辑 */
@@ -509,7 +509,7 @@ input[type="number"].goal-inline-edit-input {
 }
 .highlight-subitem {
     animation: highlightPulse 1s ease-in-out 3;
-    background: rgba(var(--primary-rgb), 0.1) !important;
+    background: rgba(var(--primary-rgb), 0.1);
     border-radius: var(--radius-xs);
 }
 @keyframes highlightPulse {
@@ -608,8 +608,8 @@ input[type="number"].goal-inline-edit-input {
     color: var(--bamboo-primary);
 }
 .goal-bar-complete {
-    background: linear-gradient(90deg, var(--bamboo-success), var(--bamboo-light)) !important;
-    box-shadow: 0 0 12px rgba(var(--primary-rgb), 0.35) !important;
+    background: linear-gradient(90deg, var(--bamboo-success), var(--bamboo-light));
+    box-shadow: 0 0 12px rgba(var(--primary-rgb), 0.35);
 }
 .goal-item-complete {
     opacity: 0.5;
@@ -656,17 +656,17 @@ input[type="number"].goal-inline-edit-input {
     transition: max-height 0.3s ease, opacity 0.3s ease;
 }
 .completed-items-container.collapsed .completed-items-list {
-    max-height: 0 !important;
+    max-height: 0;
     opacity: 0;
 }
 .goal-item-bar-complete {
-    background: linear-gradient(90deg, var(--bamboo-light), var(--bamboo-success)) !important;
+    background: linear-gradient(90deg, var(--bamboo-light), var(--bamboo-success));
 }
 .goal-item-percent-complete {
     color: var(--bamboo-primary);
 }
 .detail-complete {
-    color: var(--bamboo-primary) !important;
+    color: var(--bamboo-primary);
     font-weight: 600;
 }
 .goal-row-edit-btn {
@@ -684,7 +684,7 @@ input[type="number"].goal-inline-edit-input {
     opacity: 0.6;
 }
 .goal-row-edit-btn:hover {
-    opacity: 1 !important;
+    opacity: 1;
     background: rgba(var(--primary-rgb), 0.1);
 }
 .goal-row-actions {
@@ -782,7 +782,7 @@ input[type="number"].goal-inline-edit-input {
     transform: translateX(-50%) translateY(0);
     margin-bottom: 4px;
     padding: 5px 10px;
-    background-color: var(--bamboo-primary) !important;
+    background-color: var(--bamboo-primary);
     color: white; /* tooltip 白色文字，设计意图 */
     border-radius: var(--radius-2xs);
     font-size: var(--type-mini);

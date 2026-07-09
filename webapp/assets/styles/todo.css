@@ -178,15 +178,12 @@
 }
 
 .todo-item-completed .todo-title {
-    text-decoration: line-through;
-    text-decoration-color: rgba(var(--primary-rgb), 0.35);
-    text-decoration-thickness: 1px;
+    text-decoration: line-through rgba(var(--primary-rgb), 0.35) 1px;
     color: var(--text-secondary);
 }
 
 .todo-item-completed .todo-desc {
-    text-decoration: line-through;
-    text-decoration-color: rgba(var(--primary-rgb), 0.25);
+    text-decoration: line-through rgba(var(--primary-rgb), 0.25);
 }
 
 /* 目标任务完成态样式 */

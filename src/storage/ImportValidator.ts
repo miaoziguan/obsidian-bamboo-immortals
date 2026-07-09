@@ -116,7 +116,7 @@ export const ImportValidator = {
     }
     let counter = 0;
     return goals.map((raw): GoalItem => {
-      if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return raw as unknown as GoalItem;
+      if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return raw as GoalItem;
       const obj = raw as Record<string, unknown>;
       const clean = { ...obj } as unknown as GoalItem;
       if (!clean.id) {

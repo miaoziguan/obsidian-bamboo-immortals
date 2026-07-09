@@ -87,14 +87,13 @@
     padding: 0 2px;
     border-radius: var(--radius-3);
     transition: background-color 0.15s ease, text-decoration-color 0.15s ease;
-    text-decoration: underline dotted;
-    text-decoration-color: transparent;
+    text-decoration: underline dotted transparent;
     text-underline-offset: 2px;
     opacity: 1;
 }
 .weather-city:hover {
     background-color: rgba(var(--black-rgb), 0.05);
-    text-decoration-color: currentColor;
+    text-decoration: underline dotted currentColor;
 }
 .weather-sep {
     color: var(--bamboo-primary);

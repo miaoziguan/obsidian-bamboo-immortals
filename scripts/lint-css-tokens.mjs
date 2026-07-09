@@ -8,6 +8,8 @@
  *   R3  no-hardcoded-white     #fff / #ffffff 等纯白十六进制（必须用 var(--white)）
  *   R4  no-hardcoded-black     #000 / #000000 等纯黑十六进制（必须用 var(--black)）
  *   R5  no-hardcoded-rgb       裸 rgba(255,255,255,...) / rgb(0,0,0,...) 通道（必须用 --white-rgb/--black-rgb）
+ *   R6  no-hardcoded-shadow      box-shadow / drop-shadow() 里的裸白/黑/通道色（必须用 --white/--black/--white-rgb 等）
+ *                              —— 注意：box-shadow 的裸 px 偏移/模糊不拦截（阴影无对应 --radius-* 令牌，强拦 ROI 低）
  *
  * 设计：只校验「使用处」，令牌的「定义处」(variables.css) 整体豁免；
  *       装饰渐变色（如 #fff9e6）因含非 f/F 字符不会被误伤；
@@ -101,21 +103,31 @@ for (const file of files) {
     if (WHITE_RGB.test(stripped) || BLACK_RGB.test(stripped)) {
       violations.push({ file, lineNo, rule: 'R5 no-hardcoded-rgb', text: line });
     }
+
+    // R6 box-shadow / drop-shadow() 里的裸白/黑/通道色
+    // 仅当本行含阴影声明时才检查裸色，避免无关节点的色值被误伤；
+    // 阴影的裸 px（偏移/模糊）不拦截——无对应令牌，强拦 ROI 低。
+    if (/box-shadow|drop-shadow\(/.test(stripped)) {
+      if (WHITE_HEX.test(stripped) || BLACK_HEX.test(stripped) ||
+          WHITE_RGB.test(stripped) || BLACK_RGB.test(stripped)) {
+        violations.push({ file, lineNo, rule: 'R6 no-hardcoded-shadow', text: line });
+      }
+    }
   });
 }
 
 if (violations.length === 0) {
-  console.log('✅ CSS 令牌守门员：未发现裸写硬编码（圆角/字号/白黑）。规范保持统一。');
+  console.log('✅ CSS 令牌守门员：未发现裸写硬编码（圆角/字号/白黑/阴影色）。规范保持统一。');
   process.exit(0);
 }
 
 console.error('❌ CSS 令牌守门员：发现以下裸写硬编码，请改用对应设计令牌：\n');
-const order = { R1: 1, R2: 2, R3: 3, R4: 4, R5: 5 };
+const order = { R1: 1, R2: 2, R3: 3, R4: 4, R5: 5, R6: 6 };
 violations
   .sort((a, b) => order[a.rule[0]] - order[b.rule[0]] || a.file.localeCompare(b.file) || a.lineNo - b.lineNo)
   .forEach((v) => {
     console.error(`  [${v.rule}] ${v.file}:${v.lineNo}`);
     console.error(`      ${v.text}`);
   });
-console.error(`\n共 ${violations.length} 处违规。令牌映射见 variables.css（圆角 --radius-* / 字号 --type-* / 纯色 --white --black / 通道 --white-rgb --black-rgb）。`);
+console.error(`\n共 ${violations.length} 处违规。令牌映射见 variables.css（圆角 --radius-* / 字号 --type-* / 纯色 --white --black / 通道 --white-rgb --black-rgb）。阴影的裸 px 偏移/模糊不在拦截范围。`);
 process.exit(1);

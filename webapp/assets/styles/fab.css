@@ -181,13 +181,13 @@ html.dark:not(.glows-disabled) .bamboo-card:hover::after {
     display: flex;
     align-items: flex-end;
     justify-content: flex-end;
-    transform: none !important;
-    opacity: 1 !important;
-    visibility: visible !important;
-    pointer-events: auto !important;
+    transform: none;
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
 }
 .fab-main {
-    pointer-events: auto !important;
+    pointer-events: auto;
     touch-action: manipulation;
     width: 52px;
     height: 52px;
@@ -410,8 +410,8 @@ html.dark:not(.glows-disabled) .bamboo-card:hover::after {
     z-index: 10001;
 }
 .fab-container.dragging {
-    transition: none !important;
-    pointer-events: auto !important;
+    transition: none;
+    pointer-events: auto;
 }
 .fab-container.dragging .fab-main {
     cursor: grabbing;

@@ -398,33 +398,33 @@ html.dark .sm-item-hidden {
 
 /* 强制调整导航栏按钮 */
 nav .date-nav-btn {
-    width: min(36px, 10vw) !important;
-    height: 36px !important;
-    font-size: var(--type-sm) !important;
+    width: min(36px, 10vw);
+    height: 36px;
+    font-size: var(--type-sm);
 }
 
 nav .view-toggle-btn {
-    width: min(36px, 10vw) !important;
-    height: 36px !important;
-    font-size: var(--type-md) !important;
+    width: min(36px, 10vw);
+    height: 36px;
+    font-size: var(--type-md);
 }
 
 nav .view-toggle-btn-sm {
-    width: min(36px, 10vw) !important;
-    height: 36px !important;
-    font-size: var(--type-md) !important;
+    width: min(36px, 10vw);
+    height: 36px;
+    font-size: var(--type-md);
 }
 
 nav .date-display {
-    min-width: min(80px, 25vw) !important;
+    min-width: min(80px, 25vw);
 }
 
 nav .date-display-main {
-    font-size: var(--type-sm) !important;
+    font-size: var(--type-sm);
 }
 
 nav .date-display-sub {
-    font-size: var(--type-mini) !important;
+    font-size: var(--type-mini);
 }
 
 /* ========== 板块设置样式 ========== */

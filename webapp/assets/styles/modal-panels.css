@@ -28,7 +28,7 @@
 
 /* 日期选择器面板宽度调整 */
 #panel-date-picker {
-    width: min(320px, 92vw) !important;
+    width: min(320px, 92vw);
 }
 
 /* 优秀状态：绿色呼吸光晕 */
@@ -738,7 +738,7 @@ html.dark .wn-timer-change-btn {
 /* 小屏幕适配 */
 @media (max-width: 360px) {
     #panel-date-picker {
-        width: 280px !important;
+        width: 280px;
     }
     
     .wn-date-day {

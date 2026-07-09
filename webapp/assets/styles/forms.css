@@ -117,10 +117,10 @@
 
 /* ========== Header Quick Buttons ========== */
 .header-right .header-quick-btn {
-    width: 44px !important;
-    height: 44px !important;
-    min-width: 44px !important;
-    min-height: 44px !important;
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
     border-radius: var(--radius-xl);
     border: 1px solid var(--border-light);
     background: var(--card-bg);
@@ -263,10 +263,10 @@ html.dark .goal-item-row:hover {
 
 @media (max-width: 480px) {
     .header-right .header-quick-btn {
-        width: 40px !important;
-        height: 40px !important;
-        min-width: 40px !important;
-        min-height: 40px !important;
+        width: 40px;
+        height: 40px;
+        min-width: 40px;
+        min-height: 40px;
     }
 }
 

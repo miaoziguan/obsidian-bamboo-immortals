@@ -245,7 +245,7 @@
     background: rgba(var(--primary-rgb), 0.08);
 }
 .quick-nav-action-btn:hover {
-    background: rgba(var(--primary-rgb), 0.18) !important;
+    background: rgba(var(--primary-rgb), 0.18);
 }
 @media (max-width: 768px) {
     .quick-nav {

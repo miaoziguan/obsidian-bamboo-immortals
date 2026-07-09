@@ -171,11 +171,11 @@
     50% { opacity: 0.75; }
 }
 .weather-widget-error {
-    border-color: rgba(var(--danger-rgb), 0.35) !important;
-    color: var(--danger-color, #d9534f) !important;
+    border-color: rgba(var(--danger-rgb), 0.35);
+    color: var(--danger-color, #d9534f);
 }
 .weather-widget-error:hover {
-    border-color: rgba(var(--danger-rgb), 0.6) !important;
+    border-color: rgba(var(--danger-rgb), 0.6);
 }
 
 

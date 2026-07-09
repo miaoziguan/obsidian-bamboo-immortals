@@ -1,7 +1,7 @@
 .view-toggle-btn-sm {
-    width: 24px !important;
-    height: 24px !important;
-    font-size: var(--type-mini) !important;
+    width: 24px;
+    height: 24px;
+    font-size: var(--type-mini);
 }
 
 .habit-actions {

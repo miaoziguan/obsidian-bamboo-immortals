@@ -157,9 +157,9 @@
     padding: 3px 6px;
 }
 .rw-460 .goal-inline-edit-input {
-    font-size: var(--type-xs) !important;
-    min-width: 60px !important;
-    max-width: 160px !important;
+    font-size: var(--type-xs);
+    min-width: 60px;
+    max-width: 160px;
 }
 .rw-460 .empty-state-card {
     padding: var(--space-5) var(--space-3);

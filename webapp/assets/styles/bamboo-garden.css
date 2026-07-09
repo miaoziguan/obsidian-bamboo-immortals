@@ -80,7 +80,7 @@ html.dark {
 #themeEffectSection > * {
     width: 100%;
     max-width: 100%;
-    border-radius: var(--theme-inner-radius) !important;
+    border-radius: var(--theme-inner-radius);
 }
 
 html.dark #themeEffectSection {
@@ -326,8 +326,8 @@ html.dark .river-surface {
 
 /* 暗色模式下原地浮动 + 发光 */
 html.dark .boat-container {
-    left: 12% !important;
-    animation: boatFloat 6s ease-in-out infinite !important;
+    left: 12%;
+    animation: boatFloat 6s ease-in-out infinite;
 }
 
 html.dark .boat {

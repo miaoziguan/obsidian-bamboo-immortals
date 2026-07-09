@@ -63,13 +63,13 @@
 }
 
 .date-nav-btn {
-    width: auto !important;
-    height: auto !important;
+    width: auto;
+    height: auto;
     border-radius: var(--radius-md);
     border: none;
     background: transparent;
     color: var(--bamboo-primary);
-    font-size: var(--type-md) !important;
+    font-size: var(--type-md);
     cursor: pointer;
     transition: all var(--transition-smooth);
     display: flex;
@@ -707,13 +707,13 @@
    the ≤768px block above (same rules, same selectors, smaller viewport). */
 
 .undo-redo-btn, .view-toggle-btn {
-    width: auto !important;
-    height: auto !important;
+    width: auto;
+    height: auto;
     border-radius: 0;
-    border: none !important;
-    background: transparent !important;
+    border: none;
+    background: transparent;
     color: var(--bamboo-primary);
-    font-size: var(--type-md) !important;
+    font-size: var(--type-md);
     cursor: pointer;
     transition: all var(--transition-normal);
     display: flex;
@@ -725,7 +725,7 @@
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
     padding: var(--space-2) var(--space-3);
-    box-shadow: none !important;
+    box-shadow: none;
     -webkit-appearance: none;
     appearance: none;
 }

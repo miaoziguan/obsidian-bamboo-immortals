@@ -809,8 +809,8 @@
 }
 
 #goalProgressChart {
-    width: 100px !important;
-    height: 100px !important;
+    width: 100px;
+    height: 100px;
 }
 
 .goal-progress-chart-value {
@@ -928,8 +928,8 @@
 }
 
 .rw-460 #goalProgressChart {
-    width: 80px !important;
-    height: 80px !important;
+    width: 80px;
+    height: 80px;
 }
 
 .rw-460 .goal-progress-chart-value {
@@ -1702,26 +1702,26 @@
     padding: 3px 8px;
     font-size: var(--type-micro);
     font-weight: 500;
-    border: 1px solid var(--border-light) !important;
-    border-radius: var(--radius-4) !important;
-    box-shadow: none !important;
-    outline: none !important;
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-4);
+    box-shadow: none;
+    outline: none;
     cursor: pointer;
-    background: transparent !important;
-    color: var(--text-secondary) !important;
+    background: transparent;
+    color: var(--text-secondary);
     transition: all 0.12s;
 }
 .arch-act-btn:hover {
-    background: rgba(var(--pale-green-rgb, 245, 250, 245), 0.55) !important;
-    border-color: var(--text-secondary) !important;
+    background: rgba(var(--pale-green-rgb, 245, 250, 245), 0.55);
+    border-color: var(--text-secondary);
 }
 .arch-act-btn[data-action="archive-restore"]:hover {
-    color: var(--bamboo-primary) !important;
-    border-color: var(--bamboo-primary) !important;
+    color: var(--bamboo-primary);
+    border-color: var(--bamboo-primary);
 }
 .arch-act-btn.arch-act-del:hover {
-    color: var(--bamboo-error) !important;
-    border-color: var(--bamboo-error) !important;
+    color: var(--bamboo-error);
+    border-color: var(--bamboo-error);
 }
 
 /* 展开/折叠指示器 */
@@ -1790,25 +1790,25 @@
     padding: 5px 10px;
     font-size: var(--type-micro);
     font-weight: 500;
-    border: 1px solid var(--border-light) !important;
-    border-radius: var(--radius-2xs) !important;
-    box-shadow: none !important;
-    outline: none !important;
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-2xs);
+    box-shadow: none;
+    outline: none;
     cursor: pointer;
     transition: all 0.12s;
-    background: transparent !important;
-    color: var(--text-secondary) !important;
+    background: transparent;
+    color: var(--text-secondary);
 }
 .arch-bar-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 .arch-bar-btn[data-action="archive-batch-restore"]:not(:disabled):hover {
-    background: rgba(var(--pale-green-rgb, 245, 250, 245), 0.5) !important;
-    color: var(--bamboo-primary) !important;
-    border-color: transparent !important;
+    background: rgba(var(--pale-green-rgb, 245, 250, 245), 0.5);
+    color: var(--bamboo-primary);
+    border-color: transparent;
 }
 .arch-bar-btn[data-action="archive-batch-delete"]:not(:disabled):hover {
-    background: rgba(var(--danger-rgb, 220, 60, 60), 0.06) !important;
-    color: var(--bamboo-error) !important;
-    border-color: transparent !important;
+    background: rgba(var(--danger-rgb, 220, 60, 60), 0.06);
+    color: var(--bamboo-error);
+    border-color: transparent;
 }
 
 

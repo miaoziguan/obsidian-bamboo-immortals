@@ -178,7 +178,7 @@ html.dark:not(.glows-disabled) .bamboo-card:hover::after {
     bottom: 120px;
     right: 16px;
     z-index: 9999;
-    display: flex !important;
+    display: flex;
     align-items: flex-end;
     justify-content: flex-end;
     transform: none !important;
@@ -414,7 +414,7 @@ html.dark:not(.glows-disabled) .bamboo-card:hover::after {
     pointer-events: auto !important;
 }
 .fab-container.dragging .fab-main {
-    cursor: grabbing !important;
+    cursor: grabbing;
     transform: scale(1.08);
     box-shadow: 0 12px 36px rgba(var(--deep-rgb), 0.45), 0 0 0 2px rgba(var(--primary-rgb), 0.35);
 }

@@ -29,6 +29,7 @@ module.exports = {
     'webapp/',        // 预编译前端，独立工具链
     'coverage/',
     'test/',          // 测试 mock 与基础设施，不约束 any/console
+    'scripts/',       // 构建工具链（CSS 作用域化等），不参与应用 lint
     '*.config.js',
     '*.config.mjs',
   ],

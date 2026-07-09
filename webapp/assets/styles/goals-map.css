@@ -903,10 +903,10 @@ input[type="number"].goal-inline-edit-input {
     flex-shrink: 0;
 }
 .goal-inline-sub-date {
-    width: 110px !important;
-    flex: 0 0 110px !important;
-    font-size: var(--type-micro) !important;
-    padding: 6px 8px !important;
+    width: 110px;
+    flex: 0 0 110px;
+    font-size: var(--type-micro);
+    padding: 6px 8px;
 }
 .goal-editor-v2 .goal-item-value {
     font-size: var(--type-micro);
@@ -957,26 +957,26 @@ input[type="number"].goal-inline-edit-input {
 .goal-inline-sub-start-value,
 .goal-inline-sub-target-value,
 .goal-inline-sub-current-value {
-    width: 75px !important;
-    flex: 0 0 75px !important;
+    width: 75px;
+    flex: 0 0 75px;
     text-align: center;
     font-size: var(--type-micro);
 }
 .goal-inline-sub-target-value {
-    width: 80px !important;
-    flex: 0 0 80px !important;
+    width: 80px;
+    flex: 0 0 80px;
 }
 .goal-inline-sub-current-value {
-    width: 70px !important;
-    flex: 0 0 70px !important;
+    width: 70px;
+    flex: 0 0 70px;
 }
 .goal-inline-sub-value-sep {
     color: var(--text-secondary);
     font-size: var(--type-micro);
 }
 .goal-inline-sub-daily-min {
-    width: 90px !important;
-    flex: 0 0 90px !important;
+    width: 90px;
+    flex: 0 0 90px;
     text-align: center;
     font-size: var(--type-micro);
 }

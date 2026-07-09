@@ -40,7 +40,6 @@ jobs:
             main.js
             manifest.json
             styles.css
-            webapp.zip
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
@@ -50,5 +49,4 @@ jobs:
             manifest.json
             styles.css
             author-avatar.jpg
-            webapp.zip
           generate_release_notes: true

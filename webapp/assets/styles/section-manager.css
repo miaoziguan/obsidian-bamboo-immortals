@@ -58,7 +58,7 @@
 
 .habit-actions .habit-btn-reset:hover {
     background: rgba(var(--amber-brown-rgb), 0.15);
-    border-color: #B48C64;
+    border-color: rgb(var(--amber-brown-rgb));
 }
 
 .habit-actions .habit-btn-manage {

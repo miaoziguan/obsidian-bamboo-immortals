@@ -251,10 +251,10 @@ export class DailyReviewView extends ItemView {
       }
 
       if (themes.length > 0) {
-        console.log(`[BambooReview] 发现 ${themes.length} 个自定义主题:`, themes.map(t => t.name));
+        console.debug(`[BambooReview] 发现 ${themes.length} 个自定义主题:`, themes.map(t => t.name));
       }
     } catch (err: any) {
-      console.log('[BambooReview] 扫描自定义主题时出错:', err.message);
+      console.debug('[BambooReview] 扫描自定义主题时出错:', err.message);
     }
 
     return themes;

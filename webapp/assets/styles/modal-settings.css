@@ -263,7 +263,7 @@
     background-image: url('../images/author-avatar.jpg');
     background-size: cover;
     background-position: center;
-    background-color: #1a1a1a;
+    background-color: var(--ink-dark);
     flex-shrink: 0;
     border: 1px solid var(--border-light);
 }

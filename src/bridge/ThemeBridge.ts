@@ -35,8 +35,8 @@ export class ThemeBridge {
     this.iframe = null;
   }
 
-  /** 获取当前 Obsidian 明暗状态 */
-  isDarkMode(): boolean {
+  /** 获取当前 Obsidian 明暗状态（仅内部使用） */
+  private isDarkMode(): boolean {
     return activeDocument.body.classList.contains('theme-dark');
   }
 

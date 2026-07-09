@@ -154,7 +154,7 @@ function setupWebappInBackground(
         new Notice('竹林修仙传: 资源包已更新', 3000);
       } else {
         const downloadNotice = new Notice('竹林修仙传: 正在下载资源包…', 0);
-        console.log('[BambooReview] Downloading webapp from release', currentVersion);
+        console.debug('[BambooReview] Downloading webapp from release', currentVersion);
         await downloadAndExtractWebapp(pluginDir, webappDir, currentVersion);
         downloadNotice.hide();
         new Notice('竹林修仙传: 资源包安装完成', 4000);

@@ -128,7 +128,7 @@
 
 .time-alert.error .alert-badge {
     background: rgba(var(--danger-alt-rgb), 0.15);
-    color: #E74C3C;
+    color: rgb(var(--danger-alt-rgb));
 }
 
 /* 状态分布 */
@@ -356,7 +356,7 @@
 }
 
 .priority-item.high .priority-value {
-    color: #E74C3C;
+    color: rgb(var(--danger-alt-rgb));
 }
 
 .priority-item.medium .priority-value {
@@ -521,7 +521,7 @@
 }
 
 .time-span-item.long .time-span-value {
-    color: #9A5A9A;
+    color: rgb(var(--purple-rgb));
 }
 
 /* 时间跨度分布 - 横版布局 */
@@ -571,7 +571,7 @@
 .time-span-card.long {
     border-color: rgba(var(--purple-rgb), 0.35);
     background: linear-gradient(135deg, rgba(var(--purple-rgb), 0.14), rgba(var(--purple-pale-rgb), 0.085));
-    color: #9A5A9A;
+    color: rgb(var(--purple-rgb));
 }
 
 .time-span-info {
@@ -611,7 +611,7 @@
 }
 
 .time-span-card.long .time-span-value {
-    color: #9A5A9A;
+    color: rgb(var(--purple-rgb));
 }
 
 .time-span-percent {

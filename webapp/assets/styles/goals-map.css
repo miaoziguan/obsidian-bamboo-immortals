@@ -985,7 +985,7 @@ input[type="number"].goal-inline-edit-input {
     padding: 3px 8px;
     border-radius: 8px;
     background: rgba(var(--info-blue-rgb), 0.1);
-    color: #4285f4;
+    color: rgb(var(--info-blue-rgb));
     white-space: nowrap;
     cursor: pointer;
     transition: all 0.2s;

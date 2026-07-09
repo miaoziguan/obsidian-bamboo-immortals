@@ -6,7 +6,7 @@
     width: min(40px, 11vw);
     height: 40px;
     background: var(--card-glass);
-    backdrop-filter: blur(12px);
+    backdrop-filter: blur(var(--glass-blur));
     color: var(--bamboo-primary);
     border: 1px solid var(--border-light);
     border-radius: 50%;
@@ -110,120 +110,10 @@ html.dark .stub-nc-name:hover {
 
 /* ========== 绿色流光效果 - 夜间模式 ========== */
 
-/* 方案1：环绕流光 - 元素边缘循环流动 */
-.glow-orbital {
-    position: relative;
-    overflow: visible !important;
-}
-.glow-orbital::before {
-    content: '';
-    position: absolute;
-    top: calc(var(--glow-width) * -0.5);
-    left: calc(var(--glow-width) * -0.5);
-    right: calc(var(--glow-width) * -0.5);
-    bottom: calc(var(--glow-width) * -0.5);
-    background: conic-gradient(from 0deg, 
-        transparent 0deg, 
-        var(--glow-color-start) 90deg, 
-        var(--glow-color-end) 180deg, 
-        transparent 270deg);
-    border-radius: inherit;
-    opacity: var(--glow-opacity);
-    animation: glow-orbital-rotate var(--glow-duration) linear infinite;
-    pointer-events: none;
-    filter: blur(1px);
-}
-@keyframes glow-orbital-rotate {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-/* 方案2：扫描流光 - 横向/纵向扫描 */
-.glow-sweep {
-    position: relative;
-    overflow: hidden;
-}
-.glow-sweep::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 50%;
-    height: 100%;
-    background: linear-gradient(90deg, 
-        transparent 0%, 
-        var(--glow-color-start) 40%, 
-        var(--glow-color-end) 60%, 
-        transparent 100%);
-    opacity: var(--glow-opacity);
-    animation: glow-sweep-h var(--glow-duration) ease-in-out infinite;
-    pointer-events: none;
-    filter: blur(2px);
-}
-@keyframes glow-sweep-h {
-    0%, 100% { left: -100%; }
-    50% { left: 150%; }
-}
-.glow-sweep-vertical::before {
-    width: 100%;
-    height: 50%;
-    top: -100%;
-    left: 0;
-    background: linear-gradient(180deg, 
-        transparent 0%, 
-        var(--glow-color-start) 40%, 
-        var(--glow-color-end) 60%, 
-        transparent 100%);
-    animation: glow-sweep-v var(--glow-duration) ease-in-out infinite;
-}
-@keyframes glow-sweep-v {
-    0%, 100% { top: -100%; }
-    50% { top: 150%; }
-}
-
-/* 方案3：脉冲闪烁 - 边框脉冲 */
-.glow-pulse {
-    position: relative;
-}
-.glow-pulse::before {
-    content: '';
-    position: absolute;
-    top: calc(var(--glow-width) * -0.5);
-    left: calc(var(--glow-width) * -0.5);
-    right: calc(var(--glow-width) * -0.5);
-    bottom: calc(var(--glow-width) * -0.5);
-    border: var(--glow-width) solid var(--glow-color-start);
-    border-radius: inherit;
-    opacity: 0;
-    animation: glow-pulse-fade calc(var(--glow-duration) / 2) ease-in-out infinite;
-    pointer-events: none;
-}
-.glow-pulse::after {
-    content: '';
-    position: absolute;
-    top: calc(var(--glow-width) * -0.5);
-    left: calc(var(--glow-width) * -0.5);
-    right: calc(var(--glow-width) * -0.5);
-    bottom: calc(var(--glow-width) * -0.5);
-    border: var(--glow-width) solid var(--glow-color-end);
-    border-radius: inherit;
-    opacity: 0;
-    animation: glow-pulse-fade calc(var(--glow-duration) / 2) ease-in-out infinite;
-    animation-delay: calc(var(--glow-duration) / 4);
-    pointer-events: none;
-}
+/* 方案3：脉冲闪烁 - 边框脉冲（仅 .goal-row / .bamboo-card 暗色 hover 复用） */
 @keyframes glow-pulse-fade {
     0%, 100% { opacity: 0; transform: scale(1); }
     50% { opacity: var(--glow-opacity); transform: scale(1.02); }
-}
-
-/* 控制开关：全局启用/禁用 */
-html.glows-disabled .glow-orbital::before,
-html.glows-disabled .glow-sweep::before,
-html.glows-disabled .glow-pulse::before,
-html.glows-disabled .glow-pulse::after {
-    display: none !important;
-    animation: none !important;
 }
 
 /* 响应式适配 — Canonical breakpoints: 480px (mobile), 768px (tablet), 1024px (desktop) */
@@ -235,66 +125,11 @@ html.glows-disabled .glow-pulse::after {
     }
 }
 
-/* 性能优化：减少重绘 */
-.glow-orbital::before,
-.glow-sweep::before,
-.glow-pulse::before,
-.glow-pulse::after {
-    will-change: transform, opacity;
-    -webkit-will-change: transform, opacity;
-}
-
-/* 夜间模式下应用流光效果 */
-html.dark:not(.glows-disabled) .date-nav {
-    /* 方案1：环绕流光 - 日期导航 */
-    position: relative;
-    overflow: visible !important;
-}
-html.dark:not(.glows-disabled) .date-nav::before {
-    content: '';
-    position: absolute;
-    top: -1px;
-    left: -1px;
-    right: -1px;
-    bottom: -1px;
-    background: conic-gradient(from 0deg, 
-        transparent 0deg, 
-        var(--glow-color-start) 90deg, 
-        var(--glow-color-end) 180deg, 
-        transparent 270deg);
-    border-radius: inherit;
-    opacity: var(--glow-opacity);
-    animation: glow-orbital-rotate var(--glow-duration) linear infinite;
-    pointer-events: none;
-    filter: blur(1.5px);
-}
-
-html.dark:not(.glows-disabled) .designer-ticket {
-    /* 方案2：扫描流光 - 票根 */
-    position: relative;
-    overflow: hidden;
-}
-html.dark:not(.glows-disabled) .designer-ticket::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 40%;
-    height: 100%;
-    background: linear-gradient(90deg, 
-        transparent 0%, 
-        var(--glow-color-start) 40%, 
-        var(--glow-color-end) 60%, 
-        transparent 100%);
-    opacity: var(--glow-opacity);
-    animation: glow-sweep-h var(--glow-duration) ease-in-out infinite;
-    pointer-events: none;
-    filter: blur(2.5px);
-}
+/* 夜间模式下应用流光效果（已移除票根扫描光效） */
 
 html.dark:not(.glows-disabled) .goal-row,
 html.dark:not(.glows-disabled) .bamboo-card {
-    /* 方案3：脉冲闪烁 - 目标卡片和时光卡 */
+    /* 方案3：脉冲闪烁 - 目标卡片和时光卡（改为 hover 触发，避免常驻重绘） */
     position: relative;
 }
 html.dark:not(.glows-disabled) .goal-row::before,
@@ -308,7 +143,6 @@ html.dark:not(.glows-disabled) .bamboo-card::before {
     border: 2px solid var(--glow-color-start);
     border-radius: inherit;
     opacity: 0;
-    animation: glow-pulse-fade calc(var(--glow-duration) / 2) ease-in-out infinite;
     pointer-events: none;
 }
 html.dark:not(.glows-disabled) .goal-row::after,
@@ -322,9 +156,17 @@ html.dark:not(.glows-disabled) .bamboo-card::after {
     border: 2px solid var(--glow-color-end);
     border-radius: inherit;
     opacity: 0;
+    pointer-events: none;
+}
+/* 仅在悬停时启流光脉冲，纯 opacity 过渡（GPU 合成，无重排） */
+html.dark:not(.glows-disabled) .goal-row:hover::before,
+html.dark:not(.glows-disabled) .bamboo-card:hover::before {
+    animation: glow-pulse-fade calc(var(--glow-duration) / 2) ease-in-out infinite;
+}
+html.dark:not(.glows-disabled) .goal-row:hover::after,
+html.dark:not(.glows-disabled) .bamboo-card:hover::after {
     animation: glow-pulse-fade calc(var(--glow-duration) / 2) ease-in-out infinite;
     animation-delay: calc(var(--glow-duration) / 4);
-    pointer-events: none;
 }
 
 
@@ -399,13 +241,10 @@ html.dark:not(.glows-disabled) .bamboo-card::after {
         animation: fabPulse 3.8s ease-in-out infinite;
     }
 }
+/* 性能优化：改用 opacity 呼吸，避免 box-shadow 主线程重绘 */
 @keyframes fabPulse {
-    0%, 100% {
-        box-shadow: 0 4px 16px rgba(var(--deep-rgb), 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
-    }
-    50% {
-        box-shadow: 0 4px 16px rgba(var(--deep-rgb), 0.3), 0 0 0 4px rgba(var(--primary-rgb), 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2);
-    }
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.85; }
 }
 .fab-actions {
     position: absolute;

@@ -11,8 +11,8 @@
             rgba(var(--pale-green-alt-rgb), 0.5) 100%
         ),
         radial-gradient(circle at 20% 30%, rgba(255,255,255,0.25) 0%, transparent 40%);
-    backdrop-filter: blur(16px) saturate(170%);
-    -webkit-backdrop-filter: blur(16px) saturate(170%);
+    backdrop-filter: blur(var(--glass-blur)) saturate(170%);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(170%);
     will-change: transform;
     border-radius: 16px;
     box-shadow: 0 2px 8px rgba(var(--primary-rgb), 0.15); /* 简化阴影 */
@@ -112,7 +112,8 @@
         inset 0 1px 3px rgba(var(--deep-rgb), 0.08),
         inset 0 -1px 0 rgba(255, 255, 255, 0.15),
         0 0 0 1px rgba(var(--primary-rgb), 0.08);
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: background 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+                box-shadow 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     z-index: 11;
     overflow: hidden;
 }
@@ -1109,7 +1110,7 @@ input[type="number"].goal-inline-edit-input {
     position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, 0.3);
-    backdrop-filter: blur(2px);
+    backdrop-filter: blur(var(--glass-blur));
 }
 .catm-container {
     background: var(--card-bg);

@@ -87,7 +87,7 @@
     bottom: var(--space-5);
     right: var(--space-5);
     background: var(--card-bg);
-    backdrop-filter: blur(20px);
+    backdrop-filter: blur(var(--glass-blur));
     will-change: transform;
     border-radius: var(--radius-xl);
     padding: var(--space-3) var(--space-4);
@@ -265,7 +265,7 @@
 }
 .kpi-card {
     background: var(--card-bg);
-    backdrop-filter: blur(10px);
+    backdrop-filter: blur(var(--glass-blur));
     border-radius: var(--radius-xl);
     padding: var(--space-4) var(--space-2);
     text-align: center;
@@ -707,7 +707,7 @@ button, .btn, .date-nav-btn, .edit-btn, .undo-redo-btn, .view-toggle-btn, .histo
     max-width: 400px;
     max-height: 80vh;
     overflow: auto;
-    backdrop-filter: blur(20px);
+    backdrop-filter: blur(var(--glass-blur));
     border: 1px solid var(--border-light);
 }
 .history-header {

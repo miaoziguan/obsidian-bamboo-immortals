@@ -5,8 +5,8 @@
     background: rgba(0, 0, 0, 0.5);
     z-index: 10000;
     padding: var(--space-5);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
     display: flex;
     align-items: center;
     justify-content: center;
@@ -154,8 +154,8 @@
     border: 1px solid var(--border-light);
     border-radius: var(--radius-md);
     background: var(--card-bg);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
     font-size: var(--type-base);
     color: var(--text-primary);
     transition: all var(--transition-normal);
@@ -252,8 +252,8 @@
     border: 2px dashed rgba(var(--primary-rgb), 0.2);
     border-radius: var(--radius-xl);
     background: var(--card-bg);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
     cursor: pointer;
     transition: all var(--transition-normal);
     box-shadow: var(--shadow-surface);
@@ -297,8 +297,8 @@
 .item-card {
     padding: var(--space-4);
     background: var(--card-bg);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
     border-radius: var(--radius-lg);
     border: 1px solid var(--border-light);
     box-shadow: var(--shadow-surface);

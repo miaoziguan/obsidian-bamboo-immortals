@@ -61,8 +61,8 @@
     align-items: center;
     padding: var(--space-4);
     background: var(--card-bg);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
     border-radius: var(--radius-lg);
     margin-bottom: var(--space-2);
     border: 1px solid var(--border-light);
@@ -204,8 +204,8 @@
     align-items: center;
     gap: 4px;
     background: var(--card-bg);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
 }
 .settings-action-grid {
     display: grid;
@@ -218,8 +218,8 @@
     align-items: center;
     padding: var(--space-3) var(--space-4);
     background: var(--card-bg);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
     border-radius: var(--radius-lg);
     border: 1px solid var(--border-light);
     font-size: var(--type-base);
@@ -235,8 +235,8 @@
 .about-description {
     padding: var(--space-4) var(--space-5);
     background: var(--card-bg);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
     border-radius: var(--radius-lg);
     border: 1px solid var(--border-light);
     font-size: var(--type-sm);
@@ -248,8 +248,8 @@
 .about-author {
     padding: var(--space-4) var(--space-5);
     background: var(--card-bg);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
     border-radius: var(--radius-lg);
     border: 1px solid var(--border-light);
     display: flex;
@@ -285,8 +285,8 @@
 .about-work-tag {
     padding: 6px 12px;
     background: var(--card-bg);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
     border: 1px solid var(--border-light);
     border-radius: var(--radius-md);
     font-size: var(--type-sm);
@@ -303,8 +303,8 @@
     align-items: center;
     padding: var(--space-3);
     background: var(--card-bg);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
     border-radius: var(--radius-lg);
     border: 1px solid var(--border-light);
 }
@@ -332,8 +332,8 @@
     gap: var(--space-2);
     padding: var(--space-3) var(--space-4);
     background: var(--card-bg);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
     border-radius: var(--radius-md);
     border: 1px solid var(--border-light);
     font-size: var(--type-sm);
@@ -367,8 +367,8 @@
     border: 1px solid var(--border-light);
     border-radius: var(--radius-sm);
     background: var(--card-bg);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
     font-size: var(--type-sm);
     color: var(--text-primary);
     font-family: inherit;

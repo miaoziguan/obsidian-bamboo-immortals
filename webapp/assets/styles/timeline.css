@@ -8,7 +8,7 @@
 }
 .timeline-stat {
     background: var(--card-bg);
-    backdrop-filter: blur(10px);
+    backdrop-filter: blur(var(--glass-blur));
     border-radius: var(--radius-lg);
     padding: var(--space-4) var(--space-3);
     text-align: center;
@@ -74,8 +74,8 @@
     position: relative;
     margin-bottom: calc(var(--space-6) * var(--section-gap-scale));
     background: rgba(var(--green-pale-rgb), 0.08);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
     border-radius: 20px;
     overflow: hidden;
     max-width: 100%;
@@ -186,8 +186,8 @@
 .ticket-stub {
     flex: 0 0 32%;
     background: rgba(var(--ticket-stub-bg-rgb),0.18);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
     border-left: 2px dashed rgba(var(--bamboo-deep-rgb), 0.25);
     position: relative;
     z-index: 10;
@@ -299,8 +299,8 @@
     background: 
         linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.08) 50%, rgba(255, 255, 255, 0.15) 100%),
         linear-gradient(45deg, rgba(var(--bamboo-deep-rgb),0.12) 0%, transparent 60%);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
     border-radius: 12px;
     padding: 8px 8px;
     border: 1px solid rgba(255, 255, 255, 0.35);
@@ -467,8 +467,8 @@
     font-weight: 500;
     color: rgba(var(--bamboo-deep-rgb), 0.85);
     background: rgba(255, 255, 255, 0.92);
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
     padding: 3px 8px;
     border-radius: 6px;
     border: 1px solid rgba(var(--bamboo-deep-rgb), 0.1);
@@ -506,8 +506,8 @@
     background: 
         linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.05) 100%),
         linear-gradient(45deg, rgba(var(--bamboo-deep-rgb),0.06) 0%, transparent 60%);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
     border-radius: 14px;
     padding: 10px 20px 10px;
     border: 1px solid rgba(255, 255, 255, 0.25);
@@ -625,8 +625,8 @@
     background: 
         linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.08) 50%, rgba(255, 255, 255, 0.15) 100%),
         linear-gradient(45deg, rgba(var(--bamboo-deep-rgb),0.12) 0%, transparent 60%);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
     border-radius: 12px;
     padding: 14px 12px;
     text-align: center;
@@ -928,26 +928,6 @@ html.dark .stub-back-stat-value { color: rgba(var(--bamboo-pale-hover-rgb), 0.65
 
 
 /* ========== 暗色模式 — 动画 ========== */
-@keyframes glowSweep {
-    0%   { opacity: 0; transform: translateX(-100%); }
-    20%  { opacity: 1; }
-    80%  { opacity: 1; }
-    100% { opacity: 0; transform: translateX(100%); }
-}
-@keyframes subtleGlowPulse {
-    0%, 100% {
-        box-shadow: 0 0 15px rgba(var(--primary-rgb),0.08), 0 0 30px rgba(var(--primary-rgb),0.04),
-                    0 4px 16px rgba(0,0,0,0.2),
-                    inset 0 2px 0 rgba(255, 255, 255, 0.18),
-                    inset 0 -2px 0 rgba(var(--primary-rgb),0.1);
-    }
-    50% {
-        box-shadow: 0 0 25px rgba(var(--primary-rgb),0.15), 0 0 50px rgba(var(--primary-rgb),0.07),
-                    0 4px 16px rgba(0,0,0,0.2),
-                    inset 0 2px 0 rgba(255, 255, 255, 0.25),
-                    inset 0 -2px 0 rgba(var(--primary-rgb),0.15);
-    }
-}
 
 /* 减少动画偏好适配 */
 @media (prefers-reduced-motion: reduce) {
@@ -1023,7 +1003,7 @@ html.dark .stub-back-stat-value { color: rgba(var(--bamboo-pale-hover-rgb), 0.65
 
 .bamboo-card {
     background: var(--card-bg);
-    backdrop-filter: blur(10px);
+    backdrop-filter: blur(var(--glass-blur));
     border-radius: var(--radius-lg);
     overflow: hidden;
     transition: all 0.3s ease;

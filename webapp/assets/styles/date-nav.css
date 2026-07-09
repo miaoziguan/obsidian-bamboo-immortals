@@ -8,8 +8,8 @@
     background: 
         linear-gradient(135deg, var(--glass-highlight-subtle) 0%, var(--glass-highlight-faint) 50%, var(--glass-highlight-wash) 100%),
         linear-gradient(45deg, rgba(var(--primary-rgb), 0.05) 0%, transparent 60%);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
     border-radius: var(--radius-xl);
     border: 1px solid rgba(var(--primary-rgb), 0.08);
     box-shadow: 
@@ -521,8 +521,8 @@
     background: var(--card-bg);
     border-radius: var(--radius-lg);
     border: 1px solid var(--border-light);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
 }
 .week-nav {
     display: flex;
@@ -614,8 +614,8 @@
     transition: all 0.2s ease;
     display: flex;
     flex-direction: column;
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
     position: relative;
 }
 .week-day:hover {

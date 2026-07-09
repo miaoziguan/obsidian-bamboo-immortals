@@ -1,3 +1,32 @@
+/* 竹林动效专属变量（亮/暗双形态，避免暗色区逐条重写 background） */
+:root {
+    --mist-1: radial-gradient(ellipse at 10% 60%, rgba(255,255,255,0.65) 0%, transparent 45%),
+              radial-gradient(ellipse at 70% 50%, rgba(255,255,255,0.5) 0%, transparent 50%),
+              radial-gradient(ellipse at 50% 85%, rgba(255,255,255,0.55) 0%, transparent 55%);
+    --mist-2: radial-gradient(ellipse at 85% 70%, rgba(255,255,255,0.45) 0%, transparent 40%),
+              radial-gradient(ellipse at 30% 45%, rgba(255,255,255,0.35) 0%, transparent 45%);
+    --mist-3: radial-gradient(ellipse at 60% 85%, hsla(calc(var(--accent-hue) + 0), 36%, calc(96% + var(--accent-lightness-offset)), 0.6) 0%, transparent 55%),
+              radial-gradient(ellipse at 15% 75%, hsla(calc(var(--accent-hue) + 0), 36%, calc(96% + var(--accent-lightness-offset)), 0.5) 0%, transparent 45%);
+    --mountain-mist: radial-gradient(ellipse at 20% 60%, rgba(255,255,255,0.7) 0%, transparent 50%),
+                     radial-gradient(ellipse at 80% 40%, rgba(255,255,255,0.6) 0%, transparent 55%);
+    --foreground-haze: radial-gradient(ellipse at 0% 100%, hsla(calc(var(--accent-hue) + 0), 22%, calc(82% + var(--accent-lightness-offset)), 0.38) 0%, transparent 55%),
+                       radial-gradient(ellipse at 100% 100%, hsla(calc(var(--accent-hue) + 0), 22%, calc(82% + var(--accent-lightness-offset)), 0.38) 0%, transparent 55%);
+}
+
+html.dark {
+    --mist-1: radial-gradient(ellipse at 10% 60%, hsla(calc(var(--accent-hue) + 0), 35%, calc(55% + var(--accent-lightness-offset)), 0.06) 0%, transparent 45%),
+              radial-gradient(ellipse at 70% 50%, hsla(calc(var(--accent-hue) + 30), 33%, calc(47% + var(--accent-lightness-offset)), 0.04) 0%, transparent 50%),
+              radial-gradient(ellipse at 50% 85%, hsla(calc(var(--accent-hue) + 0), 42%, calc(63% + var(--accent-lightness-offset)), 0.05) 0%, transparent 55%);
+    --mist-2: radial-gradient(ellipse at 85% 70%, hsla(calc(var(--accent-hue) + 15), 33%, calc(47% + var(--accent-lightness-offset)), 0.04) 0%, transparent 40%),
+              radial-gradient(ellipse at 30% 45%, hsla(calc(var(--accent-hue) + 15), 35%, calc(55% + var(--accent-lightness-offset)), 0.03) 0%, transparent 45%);
+    --mist-3: radial-gradient(ellipse at 60% 85%, hsla(calc(var(--accent-hue) + 0), 35%, calc(55% + var(--accent-lightness-offset)), 0.05) 0%, transparent 55%),
+              radial-gradient(ellipse at 15% 75%, hsla(calc(var(--accent-hue) + 15), 33%, calc(47% + var(--accent-lightness-offset)), 0.04) 0%, transparent 45%);
+    --mountain-mist: radial-gradient(ellipse at 20% 60%, hsla(calc(var(--accent-hue) + 0), 35%, calc(55% + var(--accent-lightness-offset)), 0.05) 0%, transparent 50%),
+                     radial-gradient(ellipse at 80% 40%, hsla(calc(var(--accent-hue) + 15), 33%, calc(47% + var(--accent-lightness-offset)), 0.04) 0%, transparent 55%);
+    --foreground-haze: radial-gradient(ellipse at 0% 100%, hsla(calc(var(--accent-hue) + 20), 33%, calc(35% + var(--accent-lightness-offset)), 0.06) 0%, transparent 55%),
+                       radial-gradient(ellipse at 100% 100%, hsla(calc(var(--accent-hue) + 20), 33%, calc(35% + var(--accent-lightness-offset)), 0.06) 0%, transparent 55%);
+}
+
 /* 统一主题动效容器（所有主题共享外壳） */
 #themeEffectSection {
     position: relative;
@@ -29,7 +58,6 @@
     position: relative;
     width: 100%;
     height: 300px;
-    border-radius: 26px;
     overflow: hidden;
     background: linear-gradient(180deg,
         hsla(calc(var(--accent-hue) + 0), 32%, 97%, 0.95) 0%,
@@ -66,9 +94,8 @@ html.dark #themeEffectSection {
     content: '';
     position: absolute;
     inset: 0;
-    border-radius: 26px;
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
     pointer-events: none;
     z-index: -1;
 }
@@ -78,7 +105,6 @@ html.dark #themeEffectSection {
     content: '';
     position: absolute;
     inset: 0;
-    border-radius: 26px;
     background: linear-gradient(
         180deg,
         hsla(calc(var(--accent-hue) + 0), 50%, 100%, 0.15) 0%,
@@ -130,34 +156,32 @@ html.dark .moon {
 }
 
 /* 迷雾层 - 多层营造深度 */
+.mist-layer-1,
+.mist-layer-2,
+.mist-layer-3,
+.mountain-mist,
+.foreground-haze {
+    mix-blend-mode: screen;
+}
+
 .mist-layer-1 {
     position: absolute;
     inset: 0;
-    background: 
-        radial-gradient(ellipse at 10% 60%, rgba(255,255,255,0.65) 0%, transparent 45%),
-        radial-gradient(ellipse at 70% 50%, rgba(255,255,255,0.5) 0%, transparent 50%),
-        radial-gradient(ellipse at 50% 85%, rgba(255,255,255,0.55) 0%, transparent 55%);
-    mix-blend-mode: screen;
+    background: var(--mist-1);
     animation: mistDrift1 28s ease-in-out infinite;
 }
 
 .mist-layer-2 {
     position: absolute;
     inset: 0;
-    background: 
-        radial-gradient(ellipse at 85% 70%, rgba(255,255,255,0.45) 0%, transparent 40%),
-        radial-gradient(ellipse at 30% 45%, rgba(255,255,255,0.35) 0%, transparent 45%);
-    mix-blend-mode: screen;
+    background: var(--mist-2);
     animation: mistDrift2 35s ease-in-out infinite;
 }
 
 .mist-layer-3 {
     position: absolute;
     inset: 0;
-    background: 
-        radial-gradient(ellipse at 60% 85%, hsla(calc(var(--accent-hue) + 0), 36%, calc(96% + var(--accent-lightness-offset)), 0.6) 0%, transparent 55%),
-        radial-gradient(ellipse at 15% 75%, hsla(calc(var(--accent-hue) + 0), 36%, calc(96% + var(--accent-lightness-offset)), 0.5) 0%, transparent 45%);
-    mix-blend-mode: screen;
+    background: var(--mist-3);
     animation: mistDrift3 42s ease-in-out infinite;
 }
 
@@ -242,10 +266,7 @@ html.dark .moon {
     left: -10%;
     right: -10%;
     height: 80px;
-    background: 
-        radial-gradient(ellipse at 20% 60%, rgba(255,255,255,0.7) 0%, transparent 50%),
-        radial-gradient(ellipse at 80% 40%, rgba(255,255,255,0.6) 0%, transparent 55%);
-    mix-blend-mode: screen;
+    background: var(--mountain-mist);
     animation: mountainMistFloat 25s ease-in-out infinite;
 }
 
@@ -447,9 +468,7 @@ html.dark .boat::before {
 .foreground-haze {
     position: absolute;
     inset: 0;
-    background: 
-        radial-gradient(ellipse at 0% 100%, hsla(calc(var(--accent-hue) + 0), 22%, calc(82% + var(--accent-lightness-offset)), 0.38) 0%, transparent 55%),
-        radial-gradient(ellipse at 100% 100%, hsla(calc(var(--accent-hue) + 0), 22%, calc(82% + var(--accent-lightness-offset)), 0.38) 0%, transparent 55%);
+    background: var(--foreground-haze);
     pointer-events: none;
 }
 
@@ -577,41 +596,6 @@ html.dark .forest-floor {
     background: linear-gradient(180deg,
         hsla(calc(var(--accent-hue) + -12), 38%, 13%, 0.4) 0%,
         hsla(calc(var(--accent-hue) + -15), 50%, 8%, 0.65) 100%);
-}
-
-html.dark .mist-layer-1 {
-    background:
-        radial-gradient(ellipse at 10% 60%, hsla(calc(var(--accent-hue) + 0), 35%, calc(55% + var(--accent-lightness-offset)), 0.06) 0%, transparent 45%),
-        radial-gradient(ellipse at 70% 50%, hsla(calc(var(--accent-hue) + 30), 33%, calc(47% + var(--accent-lightness-offset)), 0.04) 0%, transparent 50%),
-        radial-gradient(ellipse at 50% 85%, hsla(calc(var(--accent-hue) + 0), 42%, calc(63% + var(--accent-lightness-offset)), 0.05) 0%, transparent 55%);
-    mix-blend-mode: screen;
-}
-
-html.dark .mist-layer-2 {
-    background:
-        radial-gradient(ellipse at 85% 70%, hsla(calc(var(--accent-hue) + 15), 33%, calc(47% + var(--accent-lightness-offset)), 0.04) 0%, transparent 40%),
-        radial-gradient(ellipse at 30% 45%, hsla(calc(var(--accent-hue) + 15), 35%, calc(55% + var(--accent-lightness-offset)), 0.03) 0%, transparent 45%);
-    mix-blend-mode: screen;
-}
-
-html.dark .mist-layer-3 {
-    background:
-        radial-gradient(ellipse at 60% 85%, hsla(calc(var(--accent-hue) + 0), 35%, calc(55% + var(--accent-lightness-offset)), 0.05) 0%, transparent 55%),
-        radial-gradient(ellipse at 15% 75%, hsla(calc(var(--accent-hue) + 15), 33%, calc(47% + var(--accent-lightness-offset)), 0.04) 0%, transparent 45%);
-    mix-blend-mode: screen;
-}
-
-html.dark .mountain-mist {
-    background:
-        radial-gradient(ellipse at 20% 60%, hsla(calc(var(--accent-hue) + 0), 35%, calc(55% + var(--accent-lightness-offset)), 0.05) 0%, transparent 50%),
-        radial-gradient(ellipse at 80% 40%, hsla(calc(var(--accent-hue) + 15), 33%, calc(47% + var(--accent-lightness-offset)), 0.04) 0%, transparent 55%);
-    mix-blend-mode: screen;
-}
-
-html.dark .foreground-haze {
-    background:
-        radial-gradient(ellipse at 0% 100%, hsla(calc(var(--accent-hue) + 20), 33%, calc(35% + var(--accent-lightness-offset)), 0.06) 0%, transparent 55%),
-        radial-gradient(ellipse at 100% 100%, hsla(calc(var(--accent-hue) + 20), 33%, calc(35% + var(--accent-lightness-offset)), 0.06) 0%, transparent 55%);
 }
 
 html.dark .drifting-leaf {

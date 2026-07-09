@@ -6,6 +6,11 @@ html body .workspace-leaf-content[data-type="bamboo-immortals"] .view-content {
   margin: 0;
 }
 
+/* 隐藏整个视图导航栏（前进/后退/更多按钮区） */
+html body .workspace-leaf-content[data-type="bamboo-immortals"] .view-header {
+  display: none;
+}
+
 .bamboo-review-container {
   width: 100%;
   height: 100%;

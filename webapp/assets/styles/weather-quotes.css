@@ -86,18 +86,13 @@
     cursor: pointer;
     padding: 0 2px;
     border-radius: var(--radius-3);
-    transition: background-color 0.15s ease, text-decoration-color 0.15s ease;
-    text-decoration-line: underline;
-    text-decoration-style: dotted;
-    text-decoration-color: transparent;
-    text-underline-offset: 2px;
+    transition: background-color 0.15s ease, border-bottom-color 0.15s ease;
+    border-bottom: 1px dotted transparent;
     opacity: 1;
 }
 .weather-city:hover {
     background-color: rgba(var(--black-rgb), 0.05);
-    text-decoration-line: underline;
-    text-decoration-style: dotted;
-    text-decoration-color: currentColor;
+    border-bottom-color: currentColor;
 }
 .weather-sep {
     color: var(--bamboo-primary);

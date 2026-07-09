@@ -12,13 +12,13 @@
     padding: var(--space-2) 0;
 }
 .rw-460 .goal-list {
-    gap: 12px;
+    gap: var(--space-3);
 }
 .rw-460 .goal-row + .goal-row {
     margin-top: 12px;
 }
 .rw-460 .goal-row {
-    border-radius: 12px;
+    border-radius: var(--radius-md);
 }
 .rw-460 .goal-row-main {
     padding: var(--space-2) var(--space-3);
@@ -30,7 +30,7 @@
 }
 .rw-460 .goal-row-header {
     padding: 4px 8px;
-    border-radius: 8px;
+    border-radius: var(--radius-xs);
     flex: 1 1 auto;
     min-width: 0;
 }
@@ -50,19 +50,19 @@
     margin-left: 2px;
 }
 .rw-460 .goal-row-actions {
-    gap: 4px;
+    gap: var(--space-1);
     opacity: 1;
     flex-shrink: 0;
     margin-left: auto;
 }
 .rw-460 .goal-row-action-btn {
-    padding: 8px;
-    border-radius: 8px;
+    padding: var(--space-2);
+    border-radius: var(--radius-xs);
     min-width: 36px;
     min-height: 36px;
 }
 .rw-460 .goal-row-meta-row {
-    gap: 4px;
+    gap: var(--space-1);
     margin-bottom: 6px;
 }
 .rw-460 .goal-row-meta {
@@ -76,25 +76,25 @@
 }
 .rw-460 .goal-row-bar {
     height: 4px;
-    border-radius: 3px;
+    border-radius: var(--radius-3);
 }
 .rw-460 .goal-row-bar-fill {
-    border-radius: 3px;
+    border-radius: var(--radius-3);
 }
 .rw-460 .goal-item-list {
     padding: 0 var(--space-2) var(--space-2);
 }
 .rw-460 .goal-item-list:not(.collapsed) {
-    border-radius: 0 0 12px 12px;
+    border-radius: 0 0 var(--radius-md) var(--radius-md);
 }
 .rw-460 .goal-item-entry {
     padding: 4px 0;
 }
 .rw-460 .goal-item-row {
-    gap: 4px;
+    gap: var(--space-1);
 }
 .rw-460 .goal-item-meta {
-    gap: 4px;
+    gap: var(--space-1);
 }
 .rw-460 .goal-item-name {
     font-size: var(--type-micro);
@@ -134,19 +134,19 @@
     position: absolute;
     right: 0;
     top: 4px;
-    padding: 4px;
+    padding: var(--space-1);
     min-width: 28px;
     min-height: 28px;
     opacity: 0.7;
 }
 .rw-460 .goal-list-footer {
-    gap: 8px;
+    gap: var(--space-2);
     margin-top: 8px;
 }
 .rw-460 .goal-inline-add-btn {
-    padding: 12px;
+    padding: var(--space-3);
     font-size: var(--type-xs);
-    border-radius: 12px;
+    border-radius: var(--radius-md);
 }
 .rw-460 .goal-view-archived-btn {
     padding: 6px 12px;

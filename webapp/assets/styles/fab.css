@@ -31,7 +31,7 @@
 }
 .scroll-top-btn:hover {
     background: var(--bamboo-primary);
-    color: #fff;
+    color: var(--white);
     border-color: var(--bamboo-primary);
     transform: translateY(-2px);
     box-shadow: var(--shadow-card);
@@ -46,7 +46,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 4px;
+    gap: var(--space-1);
     padding: 2px 4px;
     height: 20px;
     pointer-events: auto;
@@ -193,14 +193,14 @@ html.dark:not(.glows-disabled) .bamboo-card:hover::after {
     height: 52px;
     border-radius: 50%;
     background: var(--action-bg);
-    color: #fff;
+    color: var(--white);
     border: none;
     cursor: grab;
     font-size: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 4px 16px rgba(var(--deep-rgb), 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    box-shadow: 0 4px 16px rgba(var(--deep-rgb), 0.3), inset 0 1px 0 rgba(var(--white-rgb), 0.2);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     outline: none;
     position: relative;
@@ -209,7 +209,7 @@ html.dark:not(.glows-disabled) .bamboo-card:hover::after {
     transform: none;
 }
 .fab-main:hover {
-    box-shadow: 0 6px 24px rgba(var(--deep-rgb), 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+    box-shadow: 0 6px 24px rgba(var(--deep-rgb), 0.4), inset 0 1px 0 rgba(var(--white-rgb), 0.25);
     transform: scale(1.1);
 }
 .fab-main:active {
@@ -262,7 +262,7 @@ html.dark:not(.glows-disabled) .bamboo-card:hover::after {
     backdrop-filter: blur(var(--glass-blur));
     -webkit-backdrop-filter: blur(var(--glass-blur));
     border-radius: var(--radius-xl);
-    border: 1px solid rgba(255, 255, 255, 0.3);
+    border: 1px solid rgba(var(--white-rgb), 0.3);
     box-shadow: var(--shadow-floating);
     max-height: 80vh;
     overflow-y: auto;
@@ -365,7 +365,7 @@ html.dark:not(.glows-disabled) .bamboo-card:hover::after {
     transform: translateY(-50%);
     padding: 6px 12px;
     background: var(--text-primary);
-    color: #fff;
+    color: var(--white);
     font-size: var(--type-sm);
     border-radius: var(--radius-md);
     white-space: nowrap;

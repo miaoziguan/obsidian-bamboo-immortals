@@ -104,13 +104,11 @@ export class ToastManager {
             : '';
 
         element.innerHTML = `
-            <div class="toast-content">
-                <span class="toast-icon">${icon}</span>
-                <div class="toast-body">
-                    ${titleHtml}
-                    ${messageHtml}
-                    ${actionsHtml}
-                </div>
+            <span class="toast-icon">${icon}</span>
+            <div class="toast-body">
+                ${titleHtml}
+                ${messageHtml}
+                ${actionsHtml}
             </div>
             ${closeBtn}
         `;

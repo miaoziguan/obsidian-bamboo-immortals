@@ -18,6 +18,15 @@
     --deep-rgb: 45, 90, 39;
     --danger-rgb: 201, 72, 59;
     --gold-rgb: 212, 175, 55;
+    /* 中性通道（禁止再写裸 255,255,255 / 0,0,0，统一走令牌） */
+    --white-rgb: 255, 255, 255;
+    --black-rgb: 0, 0, 0;
+    --rice-paper-rgb: 250, 248, 240;
+    /* 纯色实色通道（禁止再写裸 #fff / #000，统一走令牌；暗色下白仍是白，无需重定义） */
+    --white: #ffffff;
+    --black: #000000;
+    /* 纯色不透明表面（亮色纯白 / 暗色深表面，随主题自适应） */
+    --surface-solid: #ffffff;
     --pale-rgb: 168, 213, 168;
     --sky-azure-rgb: 135, 206, 235;
     --health-success-rgb: 126, 211, 33;
@@ -101,8 +110,8 @@
     --bg-gradient-mid1: hsl(var(--accent-hue), 21%, calc(94% + var(--accent-lightness-offset)));
     --bg-gradient-mid2: hsl(var(--accent-hue), 17%, calc(90% + var(--accent-lightness-offset)));
     --bg-gradient-end: hsl(var(--accent-hue), 20%, calc(95% + var(--accent-lightness-offset)));
-    --card-bg: rgba(255, 255, 255, 0.60);
-    --card-glass: rgba(255, 255, 255, 0.55);
+    --card-bg: rgba(var(--white-rgb), 0.60);
+    --card-glass: rgba(var(--white-rgb), 0.55);
 
     /* === 文字语义变量 === */
     --text-primary: var(--ink-dark);
@@ -151,7 +160,7 @@
     --table-border: rgba(var(--primary-rgb), 0.1);
 
     /* === 诊断卡片样式 === */
-    --diagnosis-bg: rgba(250, 248, 240, 0.8);
+    --diagnosis-bg: rgba(var(--rice-paper-rgb), 0.8);
     --diagnosis-border: rgba(var(--primary-rgb), 0.1);
     --diagnosis-text: var(--ink-dark);
     --diagnosis-card-good-bg: rgba(var(--primary-rgb), 0.08);
@@ -180,21 +189,39 @@
     /* === 波浪与毛玻璃 === */
     --wave-color: rgba(var(--primary-rgb), 0.5);
     --glass-blur: 20px;
-    --glass-highlight-strong: rgba(255, 255, 255, 0.6);
-    --glass-highlight-medium: rgba(255, 255, 255, 0.4);
-    --glass-highlight-soft: rgba(255, 255, 255, 0.2);
-    --glass-highlight-subtle: rgba(255, 255, 255, 0.1);
-    --glass-highlight-faint: rgba(255, 255, 255, 0.04);
-    --glass-highlight-wash: rgba(255, 255, 255, 0.08);
+    --glass-highlight-strong: rgba(var(--white-rgb), 0.6);
+    --glass-highlight-medium: rgba(var(--white-rgb), 0.4);
+    --glass-highlight-soft: rgba(var(--white-rgb), 0.2);
+    --glass-highlight-subtle: rgba(var(--white-rgb), 0.1);
+    --glass-highlight-faint: rgba(var(--white-rgb), 0.04);
+    --glass-highlight-wash: rgba(var(--white-rgb), 0.08);
 
-    /* === 圆角系统（统一为 4px 倍数） === */
-    --radius-xs: 4px;
-    --radius-sm: 8px;
+    /* === 圆角系统（统一为 2px 倍数，覆盖现网所有取值） ===
+       映射约定（代码禁止再写裸 px 圆角）：
+         2px→--radius-3xs   6px→--radius-2xs   8px→--radius-xs   10px→--radius-sm
+         12px→--radius-md   14px→--radius-lg   16px→--radius-xl   18px→--radius-2xl
+         20px→--radius-3xl  24px→--radius-4xl  28px→--radius-5xl
+    */
+    --radius-3xs: 2px;
+    --radius-2xs: 6px;
+    --radius-xs: 8px;
+    --radius-sm: 10px;
     --radius-md: 12px;
-    --radius-lg: 16px;
-    --radius-xl: 20px;
-    --radius-2xl: 24px;
-    --radius-3xl: 28px;
+    --radius-lg: 14px;
+    --radius-xl: 16px;
+    --radius-2xl: 18px;
+    --radius-3xl: 20px;
+    --radius-4xl: 24px;
+    --radius-5xl: 28px;
+    /* 补充散落档位（代码禁止再用裸 px 圆角） */
+    --radius-1: 1px;
+    --radius-2-5: 2.5px;
+    --radius-3: 3px;
+    --radius-4: 4px;
+    --radius-5: 5px;
+    --radius-26: 26px;
+    --radius-38: 38px;
+    --radius-pill: 9999px;
 
     /* === 间距系统（统一为 8px 网格） === */
     --space-1: 4px;
@@ -206,17 +233,20 @@
     --space-7: 28px;
     --space-8: 32px;
 
-    /* === 字体系统 === */
+    /* === 字体系统 ===
+       唯一标准：流体 --type-*（带 clamp，自适应视口）。
+       下方 --font-size-* 仅为兼容别名，已映射到 --type-*，新代码禁止直接使用。
+    */
     --font-family: 'PingFang SC', 'Noto Sans SC', 'Microsoft YaHei', -apple-system, BlinkMacSystemFont, sans-serif;
     --font-size-scale: 1;
     --section-gap-scale: 0.8;
-    --font-size-xs: 11px;
-    --font-size-sm: 12px;
-    --font-size-base: 14px;
-    --font-size-md: 16px;
-    --font-size-lg: 17px;
-    --font-size-xl: 22px;
-    --font-size-2xl: 26px;
+    --font-size-xs: var(--type-xs);
+    --font-size-sm: var(--type-sm);
+    --font-size-base: var(--type-base);
+    --font-size-md: var(--type-md);
+    --font-size-lg: var(--type-lg);
+    --font-size-xl: var(--type-xl);
+    --font-size-2xl: var(--type-2xl);
     --line-height-tight: 1.3;
     --line-height-base: 1.5;
     --line-height-relaxed: 1.75;
@@ -246,6 +276,16 @@
     --bamboo-glow-sm: 0 2px 8px rgba(var(--primary-rgb), 0.4);
     --bamboo-glow-xs: 0 1px 4px rgba(var(--primary-rgb), 0.3);
 
+    /* === 浮层设计令牌（Toast / Confirm / 选择器统一语言：留白素笺） === */
+    --overlay-surface: var(--card-bg);
+    --overlay-border-width: 1px;
+    --overlay-border-style: solid;
+    --overlay-border-color: var(--bamboo-border);
+    --overlay-border: var(--overlay-border-width) var(--overlay-border-style) var(--overlay-border-color);
+    --overlay-shadow: 0 6px 28px rgba(26, 40, 24, 0.12);
+    --overlay-shadow-soft: 0 2px 12px rgba(26, 40, 24, 0.08);
+    --ease-cn: cubic-bezier(0.22, 0.61, 0.36, 1);
+
     /* === 内容宽度系统（用户可调） === */
     --content-max-width: 800px;
     --content-max-width-wide: 880px;  /* 宽屏默认，用户设置后此值同步更新 */
@@ -266,6 +306,12 @@ html.dark {
     --danger-rgb: 255, 107, 107;
     --danger-alt-rgb: 255, 107, 107;
     --gold-rgb: 255, 217, 61;
+    /* 中性通道（暗色同样禁止裸白/黑字面量） */
+    --white-rgb: 255, 255, 255;
+    --black-rgb: 0, 0, 0;
+    --rice-paper-rgb: 250, 248, 240;
+    /* 纯色不透明表面（暗色深表面，随主题自适应） */
+    --surface-solid: #1c2a1e;
     --pale-rgb: 184, 216, 184;
     --sky-azure-rgb: 116, 192, 252;
     --health-success-rgb: 126, 211, 33;
@@ -352,11 +398,11 @@ html.dark {
     --bamboo-border: rgba(var(--primary-rgb), 0.25);
     
     /* 阴影：深邃但不失层次 */
-    --shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
-    --shadow-surface: 0 2px 8px rgba(0, 0, 0, 0.25), 0 1px 2px rgba(0, 0, 0, 0.15);
-    --shadow-card: 0 4px 16px rgba(0, 0, 0, 0.3), 0 2px 4px rgba(0, 0, 0, 0.2);
-    --shadow-elevated: 0 8px 28px rgba(0, 0, 0, 0.35), 0 4px 8px rgba(0, 0, 0, 0.25);
-    --shadow-floating: 0 16px 48px rgba(0, 0, 0, 0.45), 0 8px 16px rgba(0, 0, 0, 0.3);
+    --shadow: 0 20px 40px rgba(var(--black-rgb), 0.4);
+    --shadow-surface: 0 2px 8px rgba(var(--black-rgb), 0.25), 0 1px 2px rgba(var(--black-rgb), 0.15);
+    --shadow-card: 0 4px 16px rgba(var(--black-rgb), 0.3), 0 2px 4px rgba(var(--black-rgb), 0.2);
+    --shadow-elevated: 0 8px 28px rgba(var(--black-rgb), 0.35), 0 4px 8px rgba(var(--black-rgb), 0.25);
+    --shadow-floating: 0 16px 48px rgba(var(--black-rgb), 0.45), 0 8px 16px rgba(var(--black-rgb), 0.3);
     
     /* 渐变：星空微光 */
     --section-title-gradient: linear-gradient(135deg, hsla(calc(var(--accent-hue) + 11), 33%, calc(26% + var(--accent-lightness-offset)), 0.7) 0%, rgba(var(--primary-rgb), 0.6) 50%, rgba(var(--primary-rgb), 0.5) 100%);
@@ -433,7 +479,17 @@ html.dark {
     --status-warning-bg: rgba(var(--gold-rgb), 0.12);
     --status-danger-bg: rgba(var(--danger-rgb), 0.15);
     --status-info-bg: rgba(var(--info-rgb, 79, 195, 247), 0.12);
-    
+
+    /* === 浮层设计令牌（Toast / Confirm / 选择器统一语言：留白素笺） === */
+    --overlay-surface: var(--card-bg);
+    --overlay-border-width: 1px;
+    --overlay-border-style: solid;
+    --overlay-border-color: var(--bamboo-border);
+    --overlay-border: var(--overlay-border-width) var(--overlay-border-style) var(--overlay-border-color);
+    --overlay-shadow: 0 8px 32px rgba(20, 32, 18, 0.5);
+    --overlay-shadow-soft: 0 2px 12px rgba(20, 32, 18, 0.38);
+    --ease-cn: cubic-bezier(0.22, 0.61, 0.36, 1);
+
     /* 其他 */
     --cinnabar: #FF6B6B;
     --gold: #FFD93D;

@@ -2,11 +2,11 @@
 .goal-priority-tag {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
+    gap: var(--space-1);
     font-size: var(--type-xs);
     font-weight: 600;
     padding: 0 8px;
-    border-radius: 8px;
+    border-radius: var(--radius-xs);
     white-space: nowrap;
     cursor: pointer;
     transition: all 0.2s ease;
@@ -68,7 +68,7 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.3);
+    background: rgba(var(--black-rgb), 0.3);
     backdrop-filter: blur(var(--glass-blur));
 }
 
@@ -76,7 +76,7 @@
     position: absolute;
     background: var(--card-bg);
     border: 1px solid var(--border-light);
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     box-shadow: var(--shadow-floating);
     min-width: 220px;
     overflow: hidden;
@@ -104,7 +104,7 @@
     background: transparent;
     color: var(--text-secondary);
     cursor: pointer;
-    border-radius: 6px;
+    border-radius: var(--radius-2xs);
     font-size: var(--type-lg);
     line-height: 1;
     padding: 0;
@@ -120,7 +120,7 @@
 }
 
 .prio-body {
-    padding: 8px;
+    padding: var(--space-2);
 }
 
 .prio-item {
@@ -128,7 +128,7 @@
     align-items: center;
     gap: 10px;
     padding: 10px 12px;
-    border-radius: 8px;
+    border-radius: var(--radius-xs);
     cursor: pointer;
     transition: all 0.2s ease;
 }

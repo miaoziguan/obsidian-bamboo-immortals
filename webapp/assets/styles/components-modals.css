@@ -60,7 +60,7 @@
     background: linear-gradient(135deg, var(--bamboo-primary), var(--bamboo-deep));
     color: white;
     border: none;
-    border-radius: 24px;
+    border-radius: var(--radius-4xl);
     cursor: pointer;
     font-weight: 600;
     font-size: var(--type-base);

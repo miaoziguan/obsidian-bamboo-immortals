@@ -28,7 +28,7 @@
 }
 .stats-period-btn.active {
     background: var(--btn-primary-bg);
-    color: #fff;
+    color: var(--white);
     border-color: transparent;
     box-shadow: var(--shadow-surface);
 }
@@ -87,7 +87,7 @@
     backdrop-filter: blur(var(--glass-blur)) !important;
     -webkit-backdrop-filter: blur(var(--glass-blur)) !important;
     border-radius: var(--radius-xl) !important;
-    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+    border: 1px solid rgba(var(--white-rgb), 0.3) !important;
     box-shadow: var(--shadow-floating) !important;
     animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
@@ -172,7 +172,7 @@
 }
 .template-tab.active {
     background: var(--btn-primary-bg);
-    color: #fff;
+    color: var(--white);
     box-shadow: var(--shadow-surface);
 }
 
@@ -440,7 +440,7 @@
     .modal-actions,
     .form-actions {
         flex-direction: column;
-        gap: 8px;
+        gap: var(--space-2);
     }
     .modal-actions .btn,
     .form-actions .btn {

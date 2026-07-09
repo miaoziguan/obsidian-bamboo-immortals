@@ -19,6 +19,19 @@ if [ ! -d "$DEST_DIR" ]; then
     exit 1
 fi
 
+# 0. CSS 设计令牌门禁（拦截裸写硬编码，未通过则中断同步，避免脏样式进入插件目录）
+echo "🛡️  校验 CSS 设计令牌规范..."
+if [ -f "$SRC_DIR/scripts/lint-css-tokens.mjs" ]; then
+    if ! node "$SRC_DIR/scripts/lint-css-tokens.mjs"; then
+        echo "❌ CSS 令牌校验未通过，同步已中断。请修复上述裸写硬编码后重试（或运行 npm run lint:css 查看详情）。"
+        exit 1
+    fi
+    echo "   ✓ CSS 令牌规范通过"
+else
+    echo "   ⚠️  未找到 scripts/lint-css-tokens.mjs，跳过 CSS 令牌校验"
+fi
+echo ""
+
 # 1. 编译 TypeScript
 if [ -f "$SRC_DIR/package.json" ]; then
     echo "📦 编译 TypeScript..."

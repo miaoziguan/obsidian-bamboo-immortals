@@ -1,14 +1,14 @@
 /* 竹林动效专属变量（亮/暗双形态，避免暗色区逐条重写 background） */
 :root {
-    --mist-1: radial-gradient(ellipse at 10% 60%, rgba(255,255,255,0.65) 0%, transparent 45%),
-              radial-gradient(ellipse at 70% 50%, rgba(255,255,255,0.5) 0%, transparent 50%),
-              radial-gradient(ellipse at 50% 85%, rgba(255,255,255,0.55) 0%, transparent 55%);
-    --mist-2: radial-gradient(ellipse at 85% 70%, rgba(255,255,255,0.45) 0%, transparent 40%),
-              radial-gradient(ellipse at 30% 45%, rgba(255,255,255,0.35) 0%, transparent 45%);
+    --mist-1: radial-gradient(ellipse at 10% 60%, rgba(var(--white-rgb), 0.65) 0%, transparent 45%),
+              radial-gradient(ellipse at 70% 50%, rgba(var(--white-rgb), 0.5) 0%, transparent 50%),
+              radial-gradient(ellipse at 50% 85%, rgba(var(--white-rgb), 0.55) 0%, transparent 55%);
+    --mist-2: radial-gradient(ellipse at 85% 70%, rgba(var(--white-rgb), 0.45) 0%, transparent 40%),
+              radial-gradient(ellipse at 30% 45%, rgba(var(--white-rgb), 0.35) 0%, transparent 45%);
     --mist-3: radial-gradient(ellipse at 60% 85%, hsla(calc(var(--accent-hue) + 0), 36%, calc(96% + var(--accent-lightness-offset)), 0.6) 0%, transparent 55%),
               radial-gradient(ellipse at 15% 75%, hsla(calc(var(--accent-hue) + 0), 36%, calc(96% + var(--accent-lightness-offset)), 0.5) 0%, transparent 45%);
-    --mountain-mist: radial-gradient(ellipse at 20% 60%, rgba(255,255,255,0.7) 0%, transparent 50%),
-                     radial-gradient(ellipse at 80% 40%, rgba(255,255,255,0.6) 0%, transparent 55%);
+    --mountain-mist: radial-gradient(ellipse at 20% 60%, rgba(var(--white-rgb), 0.7) 0%, transparent 50%),
+                     radial-gradient(ellipse at 80% 40%, rgba(var(--white-rgb), 0.6) 0%, transparent 55%);
     --foreground-haze: radial-gradient(ellipse at 0% 100%, hsla(calc(var(--accent-hue) + 0), 22%, calc(82% + var(--accent-lightness-offset)), 0.38) 0%, transparent 55%),
                        radial-gradient(ellipse at 100% 100%, hsla(calc(var(--accent-hue) + 0), 22%, calc(82% + var(--accent-lightness-offset)), 0.38) 0%, transparent 55%);
 }
@@ -31,7 +31,7 @@ html.dark {
 #themeEffectSection {
     position: relative;
     padding: var(--space-3);
-    border-radius: 38px;
+    border-radius: var(--radius-38);
     overflow: hidden;
     border: 1px solid hsla(calc(var(--accent-hue) + 0), 30%, 88%, 0.5);
     margin-bottom: calc(var(--space-6) * var(--section-gap-scale));
@@ -48,7 +48,7 @@ html.dark {
 /* 朦胧意境竹林动效（仅保留竹林专属样式，外壳由 #themeEffectSection 统一提供） */
 .bamboo-garden-section {
     position: relative;
-    border-radius: 26px;
+    border-radius: var(--radius-26);
     overflow: hidden;
 }
 
@@ -394,7 +394,7 @@ html.dark .boat::before {
         hsla(calc(var(--accent-hue) + 0), 57%, calc(27% + var(--accent-lightness-offset)), 0.55), 
         hsla(calc(var(--accent-hue) + 0), 50%, calc(39% + var(--accent-lightness-offset)), 0.8), 
         hsla(calc(var(--accent-hue) + 0), 57%, calc(27% + var(--accent-lightness-offset)), 0.55));
-    border-radius: 2px 2px 1px 1px;
+    border-radius: var(--radius-3xs) var(--radius-3xs) var(--radius-1) var(--radius-1);
     transform-origin: bottom center;
 }
 

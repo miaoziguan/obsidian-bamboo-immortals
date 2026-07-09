@@ -224,12 +224,12 @@
 .drp-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.2);
+    background: rgba(var(--black-rgb), 0.2);
 }
 .drp-container {
     background: var(--card-bg);
-    border-radius: 12px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2), 0 0 0 1px var(--border-light);
+    border-radius: var(--radius-md);
+    box-shadow: 0 8px 32px rgba(var(--black-rgb), 0.2), 0 0 0 1px var(--border-light);
     overflow: hidden;
     width: min(360px, 92vw);
     max-width: 360px;
@@ -258,7 +258,7 @@
     color: var(--text-secondary);
     font-size: var(--type-heading);
     cursor: pointer;
-    border-radius: 5px;
+    border-radius: var(--radius-5);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -315,7 +315,7 @@
     background: var(--bamboo-background);
     color: var(--text-secondary);
     font-size: var(--type-xs);
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     cursor: pointer;
     transition: all 0.15s;
     white-space: nowrap;
@@ -348,7 +348,7 @@
     border: none;
     background: var(--bamboo-background);
     color: var(--text-secondary);
-    border-radius: 5px;
+    border-radius: var(--radius-5);
     cursor: pointer;
     font-size: var(--type-sm);
     transition: all 0.2s;
@@ -388,7 +388,7 @@
     justify-content: center;
     font-size: var(--type-xs);
     color: var(--text-primary);
-    border-radius: 5px;
+    border-radius: var(--radius-5);
     cursor: pointer;
     transition: all 0.15s;
 }
@@ -416,18 +416,18 @@
     border-radius: 0;
 }
 .drp-day-start {
-    border-radius: 5px 0 0 5px;
+    border-radius: var(--radius-5) 0 0 var(--radius-5);
 }
 .drp-day-end {
-    border-radius: 0 5px 5px 0;
+    border-radius: 0 var(--radius-5) var(--radius-5) 0;
 }
 .drp-day-start.drp-day-end {
-    border-radius: 5px;
+    border-radius: var(--radius-5);
 }
 .drp-footer {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: var(--space-2);
     padding: 10px 14px;
     border-top: 1px solid var(--border-light);
     background: var(--bamboo-background);
@@ -436,7 +436,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    gap: var(--space-2);
     font-size: var(--type-xs);
 }
 .drp-selected-label {
@@ -448,7 +448,7 @@
     font-weight: 600;
     background: rgba(var(--teal-rgb), 0.1);
     padding: 4px 8px;
-    border-radius: 6px;
+    border-radius: var(--radius-2xs);
     border: 1px solid transparent;
     font-size: var(--type-xs);
     width: 90px;
@@ -473,13 +473,13 @@
 }
 .drp-actions {
     display: flex;
-    gap: 8px;
+    gap: var(--space-2);
     justify-content: flex-end;
 }
 .drp-cancel-btn,
 .drp-confirm-btn {
     padding: 6px 14px;
-    border-radius: 6px;
+    border-radius: var(--radius-2xs);
     font-size: var(--type-sm);
     font-weight: 500;
     cursor: pointer;
@@ -532,7 +532,7 @@
 .week-nav-btn {
     width: 36px;
     height: 36px;
-    border-radius: 10px;
+    border-radius: var(--radius-sm);
     border: 1px solid var(--border-light);
     background: rgba(var(--primary-rgb), 0.12);
     color: var(--bamboo-primary);

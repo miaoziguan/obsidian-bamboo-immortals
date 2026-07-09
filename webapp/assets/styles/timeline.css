@@ -76,15 +76,15 @@
     background: rgba(var(--green-pale-rgb), 0.08);
     backdrop-filter: blur(var(--glass-blur));
     -webkit-backdrop-filter: blur(var(--glass-blur));
-    border-radius: 20px;
+    border-radius: var(--radius-3xl);
     overflow: hidden;
     max-width: 100%;
     width: 100%;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(var(--white-rgb), 0.2);
     box-shadow: 
         0 8px 32px rgba(var(--primary-rgb),0.18),
         0 2px 6px rgba(var(--primary-rgb),0.08),
-        inset 0 1px 0 rgba(255, 255, 255, 0.35),
+        inset 0 1px 0 rgba(var(--white-rgb), 0.35),
         inset 0 -1px 0 rgba(var(--bamboo-deep-rgb),0.06);
     /* 暗黑模式由高级克制光效覆盖 */
     -webkit-mask-image: 
@@ -105,14 +105,14 @@
     right: 0;
     bottom: 0;
     background: 
-        radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.12), transparent 50%),
+        radial-gradient(circle at 20% 20%, rgba(var(--white-rgb), 0.12), transparent 50%),
         radial-gradient(circle at 80% 80%, rgba(var(--green-pale-rgb), 0.15), transparent 50%),
         repeating-linear-gradient(
             45deg,
             transparent,
             transparent 30px,
-            rgba(255, 255, 255, 0.02) 30px,
-            rgba(255, 255, 255, 0.02) 60px
+            rgba(var(--white-rgb), 0.02) 30px,
+            rgba(var(--white-rgb), 0.02) 60px
         );
     pointer-events: none;
     z-index: 1;
@@ -125,7 +125,7 @@
     left: 0;
     right: 0;
     height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    background: linear-gradient(90deg, transparent, rgba(var(--white-rgb), 0.3), transparent);
     pointer-events: none;
     z-index: 2;
 }
@@ -138,7 +138,7 @@
     display: flex;
     flex-direction: column;
     justify-content: center;
-    gap: 8px;
+    gap: var(--space-2);
     min-width: min(90px, 25vw);
 }
 
@@ -149,16 +149,16 @@
     left: 12px;
     right: 12px;
     bottom: 8px;
-    border-radius: 14px;
+    border-radius: var(--radius-lg);
     background: 
-        linear-gradient(135deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.06) 50%, rgba(255, 255, 255, 0.12) 100%),
+        linear-gradient(135deg, rgba(var(--white-rgb), 0.18) 0%, rgba(var(--white-rgb), 0.06) 50%, rgba(var(--white-rgb), 0.12) 100%),
         linear-gradient(45deg, rgba(var(--bamboo-deep-rgb),0.08) 0%, transparent 60%);
     box-shadow: 
         0 4px 20px rgba(var(--bamboo-deep-rgb),0.16),
-        inset 0 2px 0 rgba(255, 255, 255, 0.35),
+        inset 0 2px 0 rgba(var(--white-rgb), 0.35),
         inset 0 -2px 0 rgba(var(--bamboo-deep-rgb),0.1),
-        inset 2px 0 0 rgba(255, 255, 255, 0.15),
-        inset -2px 0 0 rgba(255, 255, 255, 0.15);
+        inset 2px 0 0 rgba(var(--white-rgb), 0.15),
+        inset -2px 0 0 rgba(var(--white-rgb), 0.15);
     pointer-events: none;
     z-index: 1;
 }
@@ -170,14 +170,14 @@
     left: 12px;
     right: 12px;
     bottom: 8px;
-    border-radius: 14px;
+    border-radius: var(--radius-lg);
     background: 
         repeating-linear-gradient(
             90deg,
             transparent,
             transparent 3px,
-            rgba(255, 255, 255, 0.03) 3px,
-            rgba(255, 255, 255, 0.03) 6px
+            rgba(var(--white-rgb), 0.03) 3px,
+            rgba(var(--white-rgb), 0.03) 6px
         );
     pointer-events: none;
     z-index: 1;
@@ -193,7 +193,7 @@
     z-index: 10;
     overflow: hidden;
     perspective: 800px;
-    box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.2);
+    box-shadow: inset 1px 0 0 rgba(var(--white-rgb), 0.2);
     user-select: none;
     -webkit-user-select: none;
     -moz-user-select: none;
@@ -203,20 +203,20 @@
 /* 悬停高亮仅加在真正可点击的区域 */
 .ticket-stub-title-box:hover {
     background:
-        linear-gradient(135deg, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0.12) 50%, rgba(255, 255, 255, 0.18) 100%),
+        linear-gradient(135deg, rgba(var(--white-rgb), 0.3) 0%, rgba(var(--white-rgb), 0.12) 50%, rgba(var(--white-rgb), 0.18) 100%),
         linear-gradient(45deg, rgba(var(--bamboo-deep-rgb),0.16) 0%, transparent 60%);
     box-shadow:
         0 6px 22px rgba(var(--bamboo-deep-rgb),0.22),
-        inset 0 2px 0 rgba(255, 255, 255, 0.55),
+        inset 0 2px 0 rgba(var(--white-rgb), 0.55),
         inset 0 -2px 0 rgba(var(--bamboo-deep-rgb),0.15),
-        inset 2px 0 0 rgba(255, 255, 255, 0.25),
-        inset -2px 0 0 rgba(255, 255, 255, 0.25);
+        inset 2px 0 0 rgba(var(--white-rgb), 0.25),
+        inset -2px 0 0 rgba(var(--white-rgb), 0.25);
 }
 
 .ticket-stub.playing {
     background: rgba(var(--ticket-stub-bg-rgb),0.35);
     box-shadow: 
-        inset 1px 0 0 rgba(255, 255, 255, 0.2),
+        inset 1px 0 0 rgba(var(--white-rgb), 0.2),
         0 0 0 2px rgba(var(--primary-rgb), 0.5),
         0 4px 25px rgba(var(--primary-rgb), 0.35);
 }
@@ -256,7 +256,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 6px;
+    border-radius: var(--radius-2xs);
     color: rgba(var(--bamboo-deep-rgb), 0.25);
     opacity: 0;
     transition: opacity 0.2s ease, color 0.15s ease, background 0.15s ease;
@@ -297,26 +297,26 @@
 .stub-back-title-box {
     pointer-events: auto;
     background: 
-        linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.08) 50%, rgba(255, 255, 255, 0.15) 100%),
+        linear-gradient(135deg, rgba(var(--white-rgb), 0.25) 0%, rgba(var(--white-rgb), 0.08) 50%, rgba(var(--white-rgb), 0.15) 100%),
         linear-gradient(45deg, rgba(var(--bamboo-deep-rgb),0.12) 0%, transparent 60%);
     backdrop-filter: blur(var(--glass-blur));
     -webkit-backdrop-filter: blur(var(--glass-blur));
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     padding: 8px 8px;
-    border: 1px solid rgba(255, 255, 255, 0.35);
+    border: 1px solid rgba(var(--white-rgb), 0.35);
     width: min(140px, 40vw);
     box-shadow: 
         0 4px 16px rgba(var(--bamboo-deep-rgb),0.15),
-        inset 0 2px 0 rgba(255, 255, 255, 0.5),
+        inset 0 2px 0 rgba(var(--white-rgb), 0.5),
         inset 0 -2px 0 rgba(var(--bamboo-deep-rgb),0.12),
-        inset 2px 0 0 rgba(255, 255, 255, 0.2),
-        inset -2px 0 0 rgba(255, 255, 255, 0.2);
+        inset 2px 0 0 rgba(var(--white-rgb), 0.2),
+        inset -2px 0 0 rgba(var(--white-rgb), 0.2);
 }
 
 .stub-back-row {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--space-2);
 }
 
 .stub-back-left {
@@ -350,7 +350,7 @@
     position: absolute;
     inset: 0;
     border-radius: 50%;
-    box-shadow: inset 0 1px 2px rgba(0,0,0,0.08);
+    box-shadow: inset 0 1px 2px rgba(var(--black-rgb), 0.08);
 }
 
 .stub-back-ring-text {
@@ -386,7 +386,7 @@
 .stub-back-stat {
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: var(--space-1);
 }
 
 .stub-back-stat svg {
@@ -415,7 +415,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 12px;
+    gap: var(--space-3);
     width: 100%;
 }
 
@@ -444,7 +444,7 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 8px;
+    gap: var(--space-2);
     padding: 6px 0 8px;
 }
 .ticket-dot {
@@ -452,7 +452,7 @@
     height: 5px;
     border-radius: 50%;
     background: rgba(var(--bamboo-deep-rgb), 0.08);
-    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.12);
+    box-shadow: inset 0 1px 2px rgba(var(--black-rgb), 0.12);
     transition: background 0.35s ease, box-shadow 0.35s ease, transform 0.25s ease;
     position: relative;
 }
@@ -466,11 +466,11 @@
     font-size: var(--type-mini);
     font-weight: 500;
     color: rgba(var(--bamboo-deep-rgb), 0.85);
-    background: rgba(255, 255, 255, 0.92);
+    background: rgba(var(--white-rgb), 0.92);
     backdrop-filter: blur(var(--glass-blur));
     -webkit-backdrop-filter: blur(var(--glass-blur));
     padding: 3px 8px;
-    border-radius: 6px;
+    border-radius: var(--radius-2xs);
     border: 1px solid rgba(var(--bamboo-deep-rgb), 0.1);
     box-shadow: 0 2px 8px rgba(var(--bamboo-deep-rgb), 0.1);
     pointer-events: none;
@@ -484,11 +484,11 @@
 }
 .ticket-dot.has-data {
     background: var(--bamboo-primary);
-    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.08), 0 0 3px rgba(var(--primary-rgb), 0.25);
+    box-shadow: inset 0 1px 2px rgba(var(--black-rgb), 0.08), 0 0 3px rgba(var(--primary-rgb), 0.25);
 }
 .ticket-dot.current {
     background: var(--bamboo-light);
-    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.08), 0 0 4px rgba(var(--primary-rgb), 0.3);
+    box-shadow: inset 0 1px 2px rgba(var(--black-rgb), 0.08), 0 0 4px rgba(var(--primary-rgb), 0.3);
 }
 @media (prefers-reduced-motion: no-preference) {
     .ticket-dot.current {
@@ -496,26 +496,26 @@
     }
 }
 @keyframes dotBreath {
-    0%, 100% { transform: scale(1); box-shadow: inset 0 1px 2px rgba(0,0,0,0.08), 0 0 3px rgba(var(--primary-rgb), 0.25); }
-    50%      { transform: scale(1.4); box-shadow: inset 0 1px 2px rgba(0,0,0,0.08), 0 0 6px rgba(var(--primary-rgb), 0.4), 0 0 8px rgba(var(--primary-rgb), 0.15); }
+    0%, 100% { transform: scale(1); box-shadow: inset 0 1px 2px rgba(var(--black-rgb), 0.08), 0 0 3px rgba(var(--primary-rgb), 0.25); }
+    50%      { transform: scale(1.4); box-shadow: inset 0 1px 2px rgba(var(--black-rgb), 0.08), 0 0 6px rgba(var(--primary-rgb), 0.4), 0 0 8px rgba(var(--primary-rgb), 0.15); }
 }
 
 .ticket-highlight {
     text-align: center;
     flex: 0 0 auto;
     background: 
-        linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.05) 100%),
+        linear-gradient(135deg, rgba(var(--white-rgb), 0.12) 0%, rgba(var(--white-rgb), 0.05) 100%),
         linear-gradient(45deg, rgba(var(--bamboo-deep-rgb),0.06) 0%, transparent 60%);
     backdrop-filter: blur(var(--glass-blur));
     -webkit-backdrop-filter: blur(var(--glass-blur));
-    border-radius: 14px;
+    border-radius: var(--radius-lg);
     padding: 10px 20px 10px;
-    border: 1px solid rgba(255, 255, 255, 0.25);
+    border: 1px solid rgba(var(--white-rgb), 0.25);
     height: 56px;
     width: min(110px, 30vw);
     box-shadow: 
         0 4px 16px rgba(var(--bamboo-deep-rgb),0.15),
-        inset 0 2px 0 rgba(255, 255, 255, 0.3),
+        inset 0 2px 0 rgba(var(--white-rgb), 0.3),
         inset 0 -2px 0 rgba(var(--bamboo-deep-rgb),0.08);
     animation: heartbeat 2s ease-in-out infinite;
     position: relative;
@@ -529,8 +529,8 @@
     left: 0;
     right: 0;
     height: 50%;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.15) 0%, transparent 100%);
-    border-radius: 14px 14px 0 0;
+    background: linear-gradient(180deg, rgba(var(--white-rgb), 0.15) 0%, transparent 100%);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
     pointer-events: none;
 }
 
@@ -539,35 +539,35 @@
         transform: scale(1);
         box-shadow: 
             0 4px 16px rgba(var(--bamboo-deep-rgb),0.15),
-            inset 0 2px 0 rgba(255, 255, 255, 0.3),
+            inset 0 2px 0 rgba(var(--white-rgb), 0.3),
             inset 0 -2px 0 rgba(var(--bamboo-deep-rgb),0.08);
     }
     15% {
         transform: scale(1.05);
         box-shadow: 
             0 8px 24px rgba(var(--bamboo-deep-rgb),0.25),
-            inset 0 2px 0 rgba(255, 255, 255, 0.4),
+            inset 0 2px 0 rgba(var(--white-rgb), 0.4),
             inset 0 -2px 0 rgba(var(--bamboo-deep-rgb),0.1);
     }
     30% {
         transform: scale(1);
         box-shadow: 
             0 4px 16px rgba(var(--bamboo-deep-rgb),0.15),
-            inset 0 2px 0 rgba(255, 255, 255, 0.3),
+            inset 0 2px 0 rgba(var(--white-rgb), 0.3),
             inset 0 -2px 0 rgba(var(--bamboo-deep-rgb),0.08);
     }
     45% {
         transform: scale(1.03);
         box-shadow: 
             0 6px 20px rgba(var(--bamboo-deep-rgb),0.2),
-            inset 0 2px 0 rgba(255, 255, 255, 0.35),
+            inset 0 2px 0 rgba(var(--white-rgb), 0.35),
             inset 0 -2px 0 rgba(var(--bamboo-deep-rgb),0.09);
     }
     60% {
         transform: scale(1);
         box-shadow: 
             0 4px 16px rgba(var(--bamboo-deep-rgb),0.15),
-            inset 0 2px 0 rgba(255, 255, 255, 0.3),
+            inset 0 2px 0 rgba(var(--white-rgb), 0.3),
             inset 0 -2px 0 rgba(var(--bamboo-deep-rgb),0.08);
     }
 }
@@ -596,8 +596,8 @@
         45deg,
         transparent,
         transparent 10px,
-        rgba(255, 255, 255, 0.02) 10px,
-        rgba(255, 255, 255, 0.02) 20px
+        rgba(var(--white-rgb), 0.02) 10px,
+        rgba(var(--white-rgb), 0.02) 20px
     );
     pointer-events: none;
 }
@@ -608,7 +608,7 @@
     flex-direction: column;
     align-items: center;
     justify-content: flex-start;
-    gap: 8px;
+    gap: var(--space-2);
     padding: 20px 8px 8px;
     position: relative;
     z-index: 2;
@@ -623,23 +623,23 @@
     pointer-events: auto;
     cursor: pointer;
     background: 
-        linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.08) 50%, rgba(255, 255, 255, 0.15) 100%),
+        linear-gradient(135deg, rgba(var(--white-rgb), 0.25) 0%, rgba(var(--white-rgb), 0.08) 50%, rgba(var(--white-rgb), 0.15) 100%),
         linear-gradient(45deg, rgba(var(--bamboo-deep-rgb),0.12) 0%, transparent 60%);
     backdrop-filter: blur(var(--glass-blur));
     -webkit-backdrop-filter: blur(var(--glass-blur));
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     padding: 14px 12px;
     text-align: center;
-    border: 1px solid rgba(255, 255, 255, 0.35);
+    border: 1px solid rgba(var(--white-rgb), 0.35);
     width: min(120px, 33vw);
     min-height: 70px;
     height: auto;
     box-shadow: 
         0 4px 16px rgba(var(--bamboo-deep-rgb),0.15),
-        inset 0 2px 0 rgba(255, 255, 255, 0.5),
+        inset 0 2px 0 rgba(var(--white-rgb), 0.5),
         inset 0 -2px 0 rgba(var(--bamboo-deep-rgb),0.12),
-        inset 2px 0 0 rgba(255, 255, 255, 0.2),
-        inset -2px 0 0 rgba(255, 255, 255, 0.2);
+        inset 2px 0 0 rgba(var(--white-rgb), 0.2),
+        inset -2px 0 0 rgba(var(--white-rgb), 0.2);
     position: relative;
     z-index: 100;
     overflow: hidden;
@@ -652,8 +652,8 @@
     left: 0;
     right: 0;
     height: 60%;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.2) 0%, transparent 100%);
-    border-radius: 14px 14px 0 0;
+    background: linear-gradient(180deg, rgba(var(--white-rgb), 0.2) 0%, transparent 100%);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
     pointer-events: none;
 }
 
@@ -669,10 +669,10 @@
             90deg,
             transparent,
             transparent 2px,
-            rgba(255, 255, 255, 0.04) 2px,
-            rgba(255, 255, 255, 0.04) 4px
+            rgba(var(--white-rgb), 0.04) 2px,
+            rgba(var(--white-rgb), 0.04) 4px
         );
-    border-radius: 14px;
+    border-radius: var(--radius-lg);
     pointer-events: none;
 }
 
@@ -712,7 +712,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
+    gap: var(--space-3);
 }
 
 .ticket-decoration {
@@ -809,7 +809,7 @@ html.dark .designer-ticket {
 html.dark .ticket-main::before {
     background: linear-gradient(135deg, rgba(var(--primary-rgb),0.12) 0%, rgba(var(--primary-rgb),0.04) 50%, rgba(var(--primary-rgb),0.08) 100%),
                 linear-gradient(45deg, rgba(var(--deep-rgb), ) 0%, transparent 60%);
-    box-shadow: 0 4px 20px rgba(0,0,0,0.3),
+    box-shadow: 0 4px 20px rgba(var(--black-rgb), 0.3),
                 inset 0 2px 0 rgba(var(--primary-rgb),0.2),
                 inset 0 -2px 0 rgba(var(--primary-rgb), 0.2),
                 inset 2px 0 0 rgba(var(--primary-rgb),0.12),
@@ -823,7 +823,7 @@ html.dark .ticket-stub {
 html.dark .ticket-stub-title-box {
     background: linear-gradient(135deg, rgba(var(--primary-rgb),0.15) 0%, rgba(var(--primary-rgb),0.06) 50%, rgba(var(--primary-rgb),0.1) 100%),
                 linear-gradient(45deg, rgba(var(--deep-rgb), ) 0%, transparent 60%);
-    box-shadow: 0 4px 16px rgba(0,0,0,0.2),
+    box-shadow: 0 4px 16px rgba(var(--black-rgb), 0.2),
                 inset 0 2px 0 rgba(var(--primary-rgb),0.2),
                 inset 0 -2px 0 rgba(var(--primary-rgb), 0.15),
                 inset 2px 0 0 rgba(var(--primary-rgb),0.12),
@@ -832,7 +832,7 @@ html.dark .ticket-stub-title-box {
 html.dark .ticket-stub-title-box:hover {
     background: linear-gradient(135deg, rgba(var(--primary-rgb),0.22) 0%, rgba(var(--primary-rgb),0.1) 50%, rgba(var(--primary-rgb),0.16) 100%),
                 linear-gradient(45deg, rgba(var(--deep-rgb), ) 0%, transparent 60%);
-    box-shadow: 0 4px 16px rgba(0,0,0,0.3),
+    box-shadow: 0 4px 16px rgba(var(--black-rgb), 0.3),
                 inset 0 2px 0 rgba(var(--primary-rgb),0.3),
                 inset 0 -2px 0 rgba(var(--primary-rgb), 0.2),
                 inset 2px 0 0 rgba(var(--primary-rgb),0.2),
@@ -859,15 +859,15 @@ html.dark .designer-ticket {
     mask-composite: intersect;
     box-shadow: 0 0 50px rgba(var(--primary-rgb), 0.1),
                 0 0 100px rgba(var(--primary-rgb), 0.05),
-                0 8px 32px rgba(0, 0, 0, 0.4),
-                inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+                0 8px 32px rgba(var(--black-rgb), 0.4),
+                inset 0 1px 0 rgba(var(--white-rgb), 0.1) !important;
 }
 html.dark .ticket-main { min-height: 120px; }
 html.dark .designer-ticket::after {
     background: linear-gradient(90deg, transparent 0%, rgba(var(--primary-rgb),0.05) 30%, rgba(var(--primary-rgb),0.1) 50%, rgba(var(--primary-rgb),0.05) 70%, transparent 100%);
 }
 html.dark .ticket-main::before {
-    box-shadow: 0 4px 20px rgba(0,0,0,0.3),
+    box-shadow: 0 4px 20px rgba(var(--black-rgb), 0.3),
                 inset 0 2px 0 rgba(var(--primary-rgb),0.2),
                 inset 0 -2px 0 rgba(var(--primary-rgb), 0.2),
                 inset 2px 0 0 rgba(var(--primary-rgb),0.12),
@@ -879,7 +879,7 @@ html.dark .ticket-stub {
                 inset 0 0 25px rgba(var(--primary-rgb), 0.06) !important;
 }
 html.dark .ticket-stub-title-box {
-    box-shadow: 0 4px 16px rgba(0,0,0,0.2),
+    box-shadow: 0 4px 16px rgba(var(--black-rgb), 0.2),
                 inset 0 2px 0 rgba(var(--primary-rgb),0.2),
                 inset 0 -2px 0 rgba(var(--primary-rgb), 0.15),
                 inset 2px 0 0 rgba(var(--primary-rgb),0.12),
@@ -889,20 +889,20 @@ html.dark .ticket-stub-title-box {
 html.dark .ticket-highlight {
     box-shadow: 0 0 25px rgba(var(--primary-rgb), 0.15),
                 0 0 50px rgba(var(--primary-rgb), 0.08),
-                0 4px 16px rgba(0,0,0,0.2),
+                0 4px 16px rgba(var(--black-rgb), 0.2),
                 inset 0 2px 0 rgba(var(--primary-rgb),0.25),
                 inset 0 -2px 0 rgba(var(--primary-rgb), 0.15) !important;
 }
 
 /* --- 活跃度点阵 --- */
-html.dark .ticket-dot { background: rgba(var(--primary-rgb), 0.1); box-shadow: inset 0 1px 2px rgba(0,0,0,0.15); }
-html.dark .ticket-dot.has-data { background: rgb(var(--primary-rgb)); box-shadow: inset 0 1px 2px rgba(0,0,0,0.1), 0 0 4px rgba(var(--primary-rgb), 0.35); }
-html.dark .ticket-dot.current { background: var(--bamboo-light); box-shadow: inset 0 1px 2px rgba(0,0,0,0.1), 0 0 6px rgba(var(--primary-rgb), 0.45); }
+html.dark .ticket-dot { background: rgba(var(--primary-rgb), 0.1); box-shadow: inset 0 1px 2px rgba(var(--black-rgb), 0.15); }
+html.dark .ticket-dot.has-data { background: rgb(var(--primary-rgb)); box-shadow: inset 0 1px 2px rgba(var(--black-rgb), 0.1), 0 0 4px rgba(var(--primary-rgb), 0.35); }
+html.dark .ticket-dot.current { background: var(--bamboo-light); box-shadow: inset 0 1px 2px rgba(var(--black-rgb), 0.1), 0 0 6px rgba(var(--primary-rgb), 0.45); }
 html.dark .ticket-dot::after {
     color: var(--bamboo-pale-hover);
     background: rgba(var(--surface-deep-rgb), 0.92);
     border-color: rgba(var(--primary-rgb), 0.12);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 2px 8px rgba(var(--black-rgb), 0.4);
 }
 
 /* --- 翻转按钮 --- */
@@ -913,7 +913,7 @@ html.dark .flip-stub-btn:hover { color: var(--bamboo-pale-highlight); background
 html.dark .stub-back-title-box {
     background: linear-gradient(135deg, rgba(var(--primary-rgb),0.15) 0%, rgba(var(--primary-rgb),0.06) 50%, rgba(var(--primary-rgb),0.1) 100%),
                 linear-gradient(45deg, rgba(var(--deep-rgb), ) 0%, transparent 60%);
-    box-shadow: 0 4px 16px rgba(0,0,0,0.2),
+    box-shadow: 0 4px 16px rgba(var(--black-rgb), 0.2),
                 inset 0 2px 0 rgba(var(--primary-rgb),0.2),
                 inset 0 -2px 0 rgba(var(--primary-rgb), 0.15),
                 inset 2px 0 0 rgba(var(--primary-rgb),0.12),
@@ -947,7 +947,7 @@ html.dark .stub-back-stat-value { color: rgba(var(--bamboo-pale-hover-rgb), 0.65
     width: 2px;
     background: repeating-linear-gradient(to bottom, var(--bamboo-primary) 0px, var(--bamboo-primary) 8px, transparent 8px, transparent 16px);
     opacity: 0.4;
-    border-radius: 2px;
+    border-radius: var(--radius-3xs);
 }
 
 .bamboo-node {
@@ -1019,7 +1019,7 @@ html.dark .stub-back-stat-value { color: rgba(var(--bamboo-pale-hover-rgb), 0.65
     position: relative;
     backdrop-filter: blur(var(--glass-blur));
     -webkit-backdrop-filter: blur(var(--glass-blur));
-    border-bottom: 1px solid rgba(255, 255, 255, 0.28);
+    border-bottom: 1px solid rgba(var(--white-rgb), 0.28);
     overflow: hidden;
 }
 
@@ -1028,7 +1028,7 @@ html.dark .stub-back-stat-value { color: rgba(var(--bamboo-pale-hover-rgb), 0.65
     position: absolute;
     inset: 0;
     border-radius: inherit;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.18) 0%, transparent 55%);
+    background: linear-gradient(180deg, rgba(var(--white-rgb), 0.18) 0%, transparent 55%);
     pointer-events: none;
 }
 
@@ -1056,7 +1056,7 @@ html.dark .stub-back-stat-value { color: rgba(var(--bamboo-pale-hover-rgb), 0.65
     display: flex;
     align-items: center;
     justify-content: center;
-    filter: drop-shadow(0 1px 2px rgba(0,0,0,0.08));
+    filter: drop-shadow(0 1px 2px rgba(var(--black-rgb), 0.08));
     flex-shrink: 0;
     color: var(--bamboo-deep);
 }
@@ -1085,13 +1085,13 @@ html.dark .stub-back-stat-value { color: rgba(var(--bamboo-pale-hover-rgb), 0.65
     color: var(--bamboo-primary);
     background: rgba(var(--primary-rgb), 0.06);
     padding: 2px 8px;
-    border-radius: 10px;
+    border-radius: var(--radius-sm);
     border: 1px solid rgba(var(--primary-rgb), 0.15);
     min-width: min(22px, 6vw);
     text-align: center;
     line-height: 1.2;
     opacity: 0.7;
-    cursor: help;
+    cursor: default;
 }
 
 .bamboo-count:hover {
@@ -1214,47 +1214,47 @@ html.dark .stub-back-stat-value { color: rgba(var(--bamboo-pale-hover-rgb), 0.65
 /* === 暗色模式 — 竹林色阶 === */
 html.dark .bamboo-card.lateNight .bamboo-card-header {
   background: rgba(var(--primary-rgb), 0.22);
-  color: rgba(255, 255, 255, 0.88);
+  color: rgba(var(--white-rgb), 0.88);
   transition: background 0.4s ease-out;
 }
 html.dark .bamboo-card.dawn .bamboo-card-header {
   background: rgba(var(--primary-rgb), 0.14);
-  color: rgba(255, 255, 255, 0.88);
+  color: rgba(var(--white-rgb), 0.88);
   transition: background 0.4s ease-out;
 }
 html.dark .bamboo-card.earlyMorning .bamboo-card-header {
   background: rgba(var(--primary-rgb), 0.08);
-  color: rgba(255, 255, 255, 0.90);
+  color: rgba(var(--white-rgb), 0.90);
   transition: background 0.4s ease-out;
 }
 html.dark .bamboo-card.morning .bamboo-card-header {
   background: rgba(var(--primary-rgb), 0.04);
-  color: rgba(255, 255, 255, 0.90);
+  color: rgba(var(--white-rgb), 0.90);
   transition: background 0.4s ease-out;
 }
 html.dark .bamboo-card.midday .bamboo-card-header {
   background: rgba(var(--primary-rgb), 0.02);
-  color: rgba(255, 255, 255, 0.92);
+  color: rgba(var(--white-rgb), 0.92);
   transition: background 0.4s ease-out;
 }
 html.dark .bamboo-card.afternoon .bamboo-card-header {
   background: rgba(var(--primary-rgb), 0.04);
-  color: rgba(255, 255, 255, 0.88);
+  color: rgba(var(--white-rgb), 0.88);
   transition: background 0.4s ease-out;
 }
 html.dark .bamboo-card.dusk .bamboo-card-header {
   background: rgba(var(--primary-rgb), 0.11);
-  color: rgba(255, 255, 255, 0.88);
+  color: rgba(var(--white-rgb), 0.88);
   transition: background 0.4s ease-out;
 }
 html.dark .bamboo-card.evening .bamboo-card-header {
   background: rgba(var(--primary-rgb), 0.16);
-  color: rgba(255, 255, 255, 0.88);
+  color: rgba(var(--white-rgb), 0.88);
   transition: background 0.4s ease-out;
 }
 html.dark .bamboo-card.night .bamboo-card-header {
   background: rgba(var(--primary-rgb), 0.22);
-  color: rgba(255, 255, 255, 0.88);
+  color: rgba(var(--white-rgb), 0.88);
   transition: background 0.4s ease-out;
 }
 
@@ -1311,7 +1311,7 @@ html.dark .bamboo-card.night .bamboo-card-header:hover {
     font-size: var(--type-xs);
     font-weight: 600;
     padding: var(--space-1) var(--space-3);
-    border-radius: 20px;
+    border-radius: var(--radius-3xl);
     white-space: nowrap;
 }
 
@@ -1354,7 +1354,7 @@ html.dark .bamboo-eval.bad {
 /* 暗色模式：抬头元素用亮绿，与深色玻璃底色区分 */
 html.dark .bamboo-icon {
     color: var(--bamboo-light);
-    filter: drop-shadow(0 1px 2px rgba(0,0,0,0.2));
+    filter: drop-shadow(0 1px 2px rgba(var(--black-rgb), 0.2));
 }
 
 html.dark .bamboo-name {
@@ -1378,15 +1378,6 @@ html.dark .bamboo-count[data-count="0"] {
     opacity: 0.25;
 }
 
-html.dark .bamboo-count::after {
-    background: rgba(255, 255, 255, 0.95);
-    color: rgba(0, 0, 0, 0.9);
-}
-
-html.dark .bamboo-count::before {
-    border-top-color: rgba(255, 255, 255, 0.95);
-}
-
 html.dark .bamboo-chevron {
     color: var(--bamboo-pale);
 }
@@ -1394,16 +1385,17 @@ html.dark .bamboo-chevron {
 /* Custom Tooltip */
 .bamboo-tooltip {
     position: fixed;
-    background: rgba(0, 0, 0, 0.85);
+    background: var(--bamboo-primary);
     color: white;
-    padding: 6px 12px;
-    border-radius: 6px;
-    font-size: var(--type-base);
+    padding: 5px 10px;
+    border-radius: var(--radius-2xs);
+    font-size: var(--type-mini);
     font-weight: 400;
     white-space: nowrap;
     pointer-events: none;
     z-index: 9999;
-    line-height: 1.4;
+    line-height: 1.3;
+    box-shadow: 0 3px 8px rgba(var(--black-rgb), 0.12), 0 1px 4px rgba(var(--black-rgb), 0.06);
     opacity: 0;
     transition: opacity 0.1s ease;
 }
@@ -1415,16 +1407,16 @@ html.dark .bamboo-chevron {
     left: 50%;
     transform: translateX(-50%);
     border: 6px solid transparent;
-    border-top-color: rgba(0, 0, 0, 0.85);
+    border-top-color: var(--bamboo-primary);
 }
 
 html.dark .bamboo-tooltip {
-    background: rgba(255, 255, 255, 0.95);
-    color: rgba(0, 0, 0, 0.9);
+    background: var(--bamboo-primary);
+    color: white;
 }
 
 html.dark .bamboo-tooltip::after {
-    border-top-color: rgba(255, 255, 255, 0.95);
+    border-top-color: var(--bamboo-primary);
 }
 
 .bamboo-card-content {
@@ -1513,7 +1505,7 @@ html.dark .bamboo-tooltip::after {
         -webkit-mask-composite: initial;
         mask-image: none;
         mask-composite: initial;
-        border-radius: 16px;
+        border-radius: var(--radius-xl);
     }
 
     .ticket-main {
@@ -1527,7 +1519,7 @@ html.dark .bamboo-tooltip::after {
         left: 10px;
         right: 10px;
         bottom: 6px;
-        border-radius: 12px;
+        border-radius: var(--radius-md);
     }
 
     .ticket-main::after {
@@ -1546,7 +1538,7 @@ html.dark .bamboo-tooltip::after {
         width: 110px;
         height: auto;
         padding: 8px 10px;
-        border-radius: 12px;
+        border-radius: var(--radius-md);
     }
 
     .ticket-highlight-value { font-size: var(--type-lg); }
@@ -1573,7 +1565,7 @@ html.dark .bamboo-tooltip::after {
         flex-direction: row;
         align-items: center;
         justify-content: center;
-        gap: 12px;
+        gap: var(--space-3);
         padding: 10px 12px;
     }
 
@@ -1640,15 +1632,15 @@ html.dark .bamboo-tooltip::after {
         flex-direction: row;
         align-items: center;
         justify-content: center;
-        gap: 12px;
+        gap: var(--space-3);
         padding: 10px 12px;
     }
 
     .stub-back-title-box { width: 200px; }
 
-    .stub-back-row { gap: 12px; }
+    .stub-back-row { gap: var(--space-3); }
 
-    .ticket-decorations { gap: 8px; }
+    .ticket-decorations { gap: var(--space-2); }
 
     .ticket-slogan { letter-spacing: 3px; }
 }
@@ -1664,7 +1656,7 @@ html.dark .bamboo-tooltip::after {
         left: 6px;
         right: 6px;
         bottom: 3px;
-        border-radius: 10px;
+        border-radius: var(--radius-sm);
     }
 
     .ticket-main::after {
@@ -1699,7 +1691,7 @@ html.dark .bamboo-tooltip::after {
         width: auto;
         height: auto;
         padding: 6px 10px;
-        border-radius: 10px;
+        border-radius: var(--radius-sm);
         flex: 0 0 auto;
         animation: none;
     }
@@ -1720,7 +1712,7 @@ html.dark .bamboo-tooltip::after {
     .ticket-flip-back { min-height: 68px; }
 
     .ticket-stub-content {
-        gap: 8px;
+        gap: var(--space-2);
         padding: 6px 8px;
     }
 
@@ -1746,7 +1738,7 @@ html.dark .bamboo-tooltip::after {
     .stub-nc-name { font-size: var(--type-mini); }
 
     .stub-back-content {
-        gap: 8px;
+        gap: var(--space-2);
         padding: 6px 8px;
     }
 
@@ -1755,7 +1747,7 @@ html.dark .bamboo-tooltip::after {
         padding: 5px 6px;
     }
 
-    .stub-back-row { gap: 8px; }
+    .stub-back-row { gap: var(--space-2); }
 
     .stub-back-ring {
         width: 28px;
@@ -1838,7 +1830,7 @@ html.dark .display-compact .designer-ticket {
     -webkit-mask-composite: initial;
     mask-image: none;
     mask-composite: initial;
-    border-radius: 16px;
+    border-radius: var(--radius-xl);
 }
 
 .display-compact .ticket-main {
@@ -1852,7 +1844,7 @@ html.dark .display-compact .designer-ticket {
     left: 10px;
     right: 10px;
     bottom: 6px;
-    border-radius: 12px;
+    border-radius: var(--radius-md);
 }
 
 .display-compact .ticket-main::after {
@@ -1873,7 +1865,7 @@ html.dark .display-compact .designer-ticket {
     width: 110px;
     height: auto;
     padding: 8px 10px;
-    border-radius: 12px;
+    border-radius: var(--radius-md);
 }
 
 .display-compact .ticket-highlight-value {
@@ -1905,7 +1897,7 @@ html.dark .display-compact .designer-ticket {
     flex-direction: row;
     align-items: center;
     justify-content: center;
-    gap: 12px;
+    gap: var(--space-3);
     padding: 10px 12px;
 }
 
@@ -1988,7 +1980,7 @@ html.dark .display-compact .designer-ticket {
     flex-direction: row;
     align-items: center;
     justify-content: center;
-    gap: 12px;
+    gap: var(--space-3);
     padding: 10px 12px;
 }
 
@@ -1997,11 +1989,11 @@ html.dark .display-compact .designer-ticket {
 }
 
 .display-compact .stub-back-row {
-    gap: 12px;
+    gap: var(--space-3);
 }
 
 .display-compact .ticket-decorations {
-    gap: 8px;
+    gap: var(--space-2);
 }
 
 .display-compact .ticket-slogan {
@@ -2046,7 +2038,7 @@ html.dark .display-compact .ticket-stub.playing {
     left: 6px;
     right: 6px;
     bottom: 3px;
-    border-radius: 10px;
+    border-radius: var(--radius-sm);
 }
 
 .display-ultra-compact .ticket-main::after {
@@ -2085,7 +2077,7 @@ html.dark .display-compact .ticket-stub.playing {
     width: auto;
     height: auto;
     padding: 6px 10px;
-    border-radius: 10px;
+    border-radius: var(--radius-sm);
     flex: 0 0 auto;
     animation: none;
 }
@@ -2116,7 +2108,7 @@ html.dark .display-compact .ticket-stub.playing {
 }
 
 .display-ultra-compact .ticket-stub-content {
-    gap: 8px;
+    gap: var(--space-2);
     padding: 6px 8px;
 }
 
@@ -2153,7 +2145,7 @@ html.dark .display-compact .ticket-stub.playing {
 }
 
 .display-ultra-compact .stub-back-content {
-    gap: 8px;
+    gap: var(--space-2);
     padding: 6px 8px;
 }
 
@@ -2163,7 +2155,7 @@ html.dark .display-compact .ticket-stub.playing {
 }
 
 .display-ultra-compact .stub-back-row {
-    gap: 8px;
+    gap: var(--space-2);
 }
 
 .display-ultra-compact .stub-back-ring {

@@ -7,12 +7,12 @@
 .weather-widget {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
+    gap: var(--space-1);
     padding: 3px 8px;
-    border-radius: 999px;
+    border-radius: var(--radius-pill);
     background: transparent;
     cursor: pointer;
-    font-size: 12px;
+    font-size: var(--type-sm);
     color: var(--bamboo-primary);
     border: 0;
     transition: background-color 0.2s ease, opacity 0.2s ease;
@@ -40,7 +40,7 @@
 .weather-expand {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
+    gap: var(--space-1);
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
@@ -60,7 +60,7 @@
 }
 
 .weather-icon {
-    font-size: 14px;
+    font-size: var(--type-base);
     line-height: 1;
 }
 .weather-temp {
@@ -69,13 +69,13 @@
 }
 .weather-label {
     color: var(--bamboo-primary);
-    font-size: 11px;
+    font-size: var(--type-xs);
     opacity: 0.85;
 }
 .weather-range,
 .weather-meta,
 .weather-city {
-    font-size: 11px;
+    font-size: var(--type-xs);
     color: var(--bamboo-primary);
     font-variant-numeric: tabular-nums;
     opacity: 0.9;
@@ -85,7 +85,7 @@
     font-weight: 600;
     cursor: pointer;
     padding: 0 2px;
-    border-radius: 3px;
+    border-radius: var(--radius-3);
     transition: background-color 0.15s ease, text-decoration-color 0.15s ease;
     text-decoration: underline dotted;
     text-decoration-color: transparent;
@@ -93,12 +93,12 @@
     opacity: 1;
 }
 .weather-city:hover {
-    background-color: rgba(0, 0, 0, 0.05);
+    background-color: rgba(var(--black-rgb), 0.05);
     text-decoration-color: currentColor;
 }
 .weather-sep {
     color: var(--bamboo-primary);
-    font-size: 10px;
+    font-size: var(--type-mini);
     margin: 0 2px;
     opacity: 0.55;
 }
@@ -122,7 +122,7 @@
     border: 0;
     background: transparent;
     color: var(--bamboo-primary);
-    border-radius: 4px;
+    border-radius: var(--radius-4);
     cursor: pointer;
     transition: background-color 0.15s ease, color 0.15s ease;
     opacity: 0.85;
@@ -133,7 +133,7 @@
     height: 12px;
 }
 .weather-btn:hover {
-    background: var(--hover-bg, rgba(0,0,0,0.05));
+    background: var(--hover-bg, rgba(var(--black-rgb), 0.05));
     color: var(--bamboo-primary);
 }
 .weather-btn-active:hover {
@@ -144,8 +144,8 @@
     width: 100px;
     padding: 1px 6px;
     border: 1px solid rgba(var(--primary-rgb), 0.4);
-    border-radius: 4px;
-    font-size: 11px;
+    border-radius: var(--radius-4);
+    font-size: var(--type-xs);
     color: var(--bamboo-primary);
     background: transparent;
     outline: none;
@@ -160,7 +160,7 @@
 
 /* 加载/失败状态 */
 .weather-core .weather-loading {
-    font-size: 12px;
+    font-size: var(--type-sm);
     opacity: 0.55;
     animation: weather-pulse 1.2s ease-in-out infinite;
 }
@@ -192,7 +192,7 @@
     height: 24px;
     line-height: 24px;
     cursor: pointer;
-    font-size: 12px;
+    font-size: var(--type-sm);
     color: var(--bamboo-primary);
     user-select: none;
     overflow: hidden;
@@ -208,14 +208,14 @@
 }
 .quote-mark {
     opacity: 0.7;
-    font-size: 11px;
+    font-size: var(--type-xs);
     margin: 0 1px;
 }
 .quote-content {
     font-weight: 500;
 }
 .quote-author {
-    font-size: 11px;
+    font-size: var(--type-xs);
     opacity: 0.75;
     white-space: nowrap;
 }
@@ -226,7 +226,7 @@
 /* TABLET / NARROW OBSIDIAN SIDEBAR (≤768px) */
 @media (max-width: 768px) {
     .weather-widget {
-        font-size: 11px;
+        font-size: var(--type-xs);
         padding: 3px 6px;
         margin-right: 4px;
     }
@@ -238,23 +238,23 @@
     .weather-meta,
     .weather-city,
     .weather-sep {
-        font-size: 10px;
+        font-size: var(--type-mini);
     }
     .quote-widget {
-        font-size: 11px;
+        font-size: var(--type-xs);
         line-height: 24px;
         height: 24px;
         max-width: 280px;
     }
     .quote-author {
-        font-size: 10px;
+        font-size: var(--type-mini);
     }
 }
 
 /* MOBILE (≤480px) — 头部已在 base.css 堆叠，这里做内容压缩 */
 @media (max-width: 480px) {
     .weather-widget {
-        font-size: 11px;
+        font-size: var(--type-xs);
         padding: 3px 6px;
         margin-right: 0;
     }
@@ -266,16 +266,16 @@
     .weather-meta,
     .weather-city,
     .weather-sep {
-        font-size: 10px;
+        font-size: var(--type-mini);
     }
     .quote-widget {
-        font-size: 11px;
+        font-size: var(--type-xs);
         line-height: 24px;
         height: 24px;
         max-width: 100%;
     }
     .quote-author {
-        font-size: 10px;
+        font-size: var(--type-mini);
     }
 }
 
@@ -289,10 +289,10 @@
     .weather-meta,
     .weather-city,
     .weather-sep {
-        font-size: 10px;
+        font-size: var(--type-mini);
     }
     .quote-widget {
-        font-size: 11px;
+        font-size: var(--type-xs);
         line-height: 24px;
         height: 24px;
         max-width: 100%;

@@ -10,11 +10,11 @@
             rgba(var(--pale-green-alt-rgb), 0.55) 50%,
             rgba(var(--pale-green-alt-rgb), 0.5) 100%
         ),
-        radial-gradient(circle at 20% 30%, rgba(255,255,255,0.25) 0%, transparent 40%);
+        radial-gradient(circle at 20% 30%, rgba(var(--white-rgb), 0.25) 0%, transparent 40%);
     backdrop-filter: blur(var(--glass-blur)) saturate(170%);
     -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(170%);
     will-change: transform;
-    border-radius: 16px;
+    border-radius: var(--radius-xl);
     box-shadow: 0 2px 8px rgba(var(--primary-rgb), 0.15); /* 简化阴影 */
     cursor: pointer;
     position: relative;
@@ -30,7 +30,7 @@
             rgba(var(--pale-green-alt-rgb), 0.55) 50%,
             rgba(var(--pale-green-alt-rgb), 0.5) 100%
         ),
-        radial-gradient(circle at 20% 30%, rgba(255,255,255,0.25) 0%, transparent 40%);
+        radial-gradient(circle at 20% 30%, rgba(var(--white-rgb), 0.25) 0%, transparent 40%);
 }
 
 .goal-row::before {
@@ -61,12 +61,12 @@
     background: linear-gradient(
         90deg,
         transparent 0%,
-        rgba(255, 255, 255, 0.78) 20%,
-        rgba(255, 255, 255, 0.35) 50%,
-        rgba(255, 255, 255, 0.78) 80%,
+        rgba(var(--white-rgb), 0.78) 20%,
+        rgba(var(--white-rgb), 0.35) 50%,
+        rgba(var(--white-rgb), 0.78) 80%,
         transparent 100%
     );
-    border-radius: 1px;
+    border-radius: var(--radius-1);
     pointer-events: none;
 }
 
@@ -93,10 +93,10 @@
     display: flex;
     align-items: center;
     justify-content: flex-start;
-    gap: 8px;
+    gap: var(--space-2);
     padding: 0 10px;
     height: 36px;
-    border-radius: 10px;
+    border-radius: var(--radius-sm);
     cursor: pointer;
     position: relative;
     flex: 1;
@@ -110,7 +110,7 @@
     background-size: 200% 200%;
     box-shadow:
         inset 0 1px 3px rgba(var(--deep-rgb), 0.08),
-        inset 0 -1px 0 rgba(255, 255, 255, 0.15),
+        inset 0 -1px 0 rgba(var(--white-rgb), 0.15),
         0 0 0 1px rgba(var(--primary-rgb), 0.08);
     transition: background 0.4s cubic-bezier(0.4, 0, 0.2, 1),
                 box-shadow 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -128,7 +128,7 @@
     background: linear-gradient(
         90deg,
         transparent 0%,
-        rgba(255, 255, 255, 0.25) 50%,
+        rgba(var(--white-rgb), 0.25) 50%,
         transparent 100%
     );
     opacity: 0;
@@ -147,7 +147,7 @@
     background-size: 200% 200%;
     box-shadow:
         inset 0 1px 3px rgba(var(--deep-rgb), 0.08),
-        inset 0 -1px 0 rgba(255, 255, 255, 0.15),
+        inset 0 -1px 0 rgba(var(--white-rgb), 0.15),
         0 0 0 1px rgba(var(--primary-rgb), 0.14),
         0 0 12px rgba(var(--primary-rgb), 0.25);
     animation: gradient-flow 4s ease infinite;
@@ -196,7 +196,7 @@
     cursor: pointer;
     padding: 0 6px;
     height: 28px;
-    border-radius: 8px;
+    border-radius: var(--radius-xs);
     border: 1px solid transparent;
     display: inline-flex;
     align-items: center;
@@ -231,7 +231,7 @@
     color: var(--bamboo-deep);
     cursor: pointer;
     padding: 0 8px;
-    border-radius: 6px;
+    border-radius: var(--radius-2xs);
     border: 1px solid transparent;
     flex-shrink: 1;
     min-width: 0;
@@ -263,18 +263,18 @@
         180deg,
         rgba(var(--deep-rgb), 0.1) 0%,
         rgba(var(--deep-rgb), 0.05) 45%,
-        rgba(255, 255, 255, 0.03) 100%
+        rgba(var(--white-rgb), 0.03) 100%
     );
-    border-radius: 4px;
+    border-radius: var(--radius-4);
     overflow: hidden;
     box-shadow:
         inset 0 2px 4px rgba(var(--deep-rgb), 0.15),
-        inset 0 -1.5px 0 rgba(255, 255, 255, 0.18),
+        inset 0 -1.5px 0 rgba(var(--white-rgb), 0.18),
         0 0 0 1px rgba(var(--primary-rgb), 0.08);
 }
 .goal-row-bar-fill {
     height: 100%;
-    border-radius: 4px;
+    border-radius: var(--radius-4);
     transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
     background: linear-gradient(
         90deg,
@@ -286,7 +286,7 @@
     box-shadow:
         0 1px 3px rgba(var(--deep-rgb), 0.15),
         0 0 10px rgba(var(--primary-rgb), 0.25),
-        inset 0 1px 0 rgba(255, 255, 255, 0.3),
+        inset 0 1px 0 rgba(var(--white-rgb), 0.3),
         inset 0 -1px 0 rgba(var(--deep-rgb), 0.15);
     position: relative;
 }
@@ -300,10 +300,10 @@
     height: 45%;
     background: linear-gradient(
         180deg,
-        rgba(255, 255, 255, 0.2) 0%,
-        rgba(255, 255, 255, 0) 100%
+        rgba(var(--white-rgb), 0.2) 0%,
+        rgba(var(--white-rgb), 0) 100%
     );
-    border-radius: 4px 4px 0 0;
+    border-radius: var(--radius-4) var(--radius-4) 0 0;
     pointer-events: none;
 }
 
@@ -312,9 +312,9 @@
 }
 
 @keyframes bamboo-glow-subtle {
-    0% { box-shadow: 0 0 6px rgba(var(--primary-rgb), 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.15); }
-    50% { box-shadow: 0 0 12px rgba(var(--primary-rgb), 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.2); }
-    100% { box-shadow: 0 0 6px rgba(var(--primary-rgb), 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.15); }
+    0% { box-shadow: 0 0 6px rgba(var(--primary-rgb), 0.15), inset 0 1px 0 rgba(var(--white-rgb), 0.15); }
+    50% { box-shadow: 0 0 12px rgba(var(--primary-rgb), 0.25), inset 0 1px 0 rgba(var(--white-rgb), 0.2); }
+    100% { box-shadow: 0 0 6px rgba(var(--primary-rgb), 0.15), inset 0 1px 0 rgba(var(--white-rgb), 0.15); }
 }
 
 /* At wide widths (≥769px), compact .goal-row-title back to single-line */
@@ -347,10 +347,10 @@
 
 /* 展开状态下的子项目区域 - 纯白色不透明背景 */
 .goal-item-list:not(.collapsed) {
-    background: rgb(255, 255, 255);
+    background: var(--surface-solid);
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
-    border-radius: 0 0 16px 16px;
+    border-radius: 0 0 var(--radius-xl) var(--radius-xl);
 }
 
 /* 深色模式下展开状态的子项目区域 - 纯深色不透明背景 */
@@ -387,7 +387,7 @@
 .goal-item-entry {
     padding: 6px 0;
     transition: all 0.2s ease;
-    border-radius: 8px;
+    border-radius: var(--radius-xs);
 }
 .goal-item-entry:hover {
     background: rgba(var(--primary-rgb), 0.04);
@@ -428,7 +428,7 @@
     border-bottom: 1px dashed transparent;
     transition: border-color 0.2s, background 0.2s, color 0.2s;
     padding: 1px 4px;
-    border-radius: 3px;
+    border-radius: var(--radius-3);
 }
 [data-inline-edit]:hover {
     border-bottom-color: var(--bamboo-primary);
@@ -500,7 +500,7 @@ input[type="number"].goal-inline-edit-input {
     cursor: pointer;
     font-size: var(--type-sm);
     padding: 2px 6px;
-    border-radius: 4px;
+    border-radius: var(--radius-4);
     transition: all 0.2s;
     flex-shrink: 0;
 }
@@ -510,7 +510,7 @@ input[type="number"].goal-inline-edit-input {
 .highlight-subitem {
     animation: highlightPulse 1s ease-in-out 3;
     background: rgba(var(--primary-rgb), 0.1) !important;
-    border-radius: 8px;
+    border-radius: var(--radius-xs);
 }
 @keyframes highlightPulse {
     0%, 100% { background: rgba(var(--primary-rgb), 0.1); }
@@ -528,7 +528,7 @@ input[type="number"].goal-inline-edit-input {
     cursor: pointer;
     transition: all 0.2s ease;
     padding: 2px 6px;
-    border-radius: 6px;
+    border-radius: var(--radius-2xs);
     border: 1px solid transparent;
 }
 .goal-item-detail {
@@ -574,12 +574,12 @@ input[type="number"].goal-inline-edit-input {
     min-width: 40px;
     height: 6px;
     background: rgba(var(--primary-rgb), 0.18);
-    border-radius: 3px;
+    border-radius: var(--radius-3);
     overflow: hidden;
 }
 .goal-item-bar-fill {
     height: 100%;
-    border-radius: 3px;
+    border-radius: var(--radius-3);
     transition: width 0.5s ease;
     background: linear-gradient(90deg, var(--bamboo-light), var(--bamboo-primary));
 }
@@ -635,7 +635,7 @@ input[type="number"].goal-inline-edit-input {
     color: var(--text-secondary);
     cursor: pointer;
     padding: 4px 8px;
-    border-radius: 6px;
+    border-radius: var(--radius-2xs);
     transition: background 0.2s;
     user-select: none;
 }
@@ -675,7 +675,7 @@ input[type="number"].goal-inline-edit-input {
     cursor: pointer;
     font-size: var(--type-md);
     padding: 4px 6px;
-    border-radius: 6px;
+    border-radius: var(--radius-2xs);
     opacity: 0;
     transition: opacity 0.2s, background 0.2s;
     flex-shrink: 0;
@@ -707,7 +707,7 @@ input[type="number"].goal-inline-edit-input {
     height: 28px;
     width: 28px;
     padding: 0;
-    border-radius: 8px;
+    border-radius: var(--radius-xs);
     transition: all 0.2s ease;
     color: var(--bamboo-primary);
     display: inline-flex;
@@ -736,9 +736,9 @@ input[type="number"].goal-inline-edit-input {
 }
 .goal-inline-add-btn {
     width: 100%;
-    padding: 16px;
+    padding: var(--space-4);
     border: 2px dashed rgba(var(--primary-rgb), 0.25);
-    border-radius: 16px;
+    border-radius: var(--radius-xl);
     background: rgba(var(--primary-rgb), 0.03);
     color: var(--bamboo-primary);
     font-size: var(--type-sm);
@@ -748,7 +748,7 @@ input[type="number"].goal-inline-edit-input {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    gap: var(--space-2);
     margin-top: 8px;
 }
 .goal-inline-add-btn:hover {
@@ -759,7 +759,7 @@ input[type="number"].goal-inline-edit-input {
 .goal-list-footer {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: var(--space-3);
     margin-top: 12px;
 }
 .goal-date-range {
@@ -784,11 +784,11 @@ input[type="number"].goal-inline-edit-input {
     padding: 5px 10px;
     background-color: var(--bamboo-primary) !important;
     color: white; /* tooltip 白色文字，设计意图 */
-    border-radius: 6px;
+    border-radius: var(--radius-2xs);
     font-size: var(--type-mini);
     white-space: nowrap;
     z-index: 999999;
-    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.12), 0 1px 4px rgba(0, 0, 0, 0.06);
+    box-shadow: 0 3px 8px rgba(var(--black-rgb), 0.12), 0 1px 4px rgba(var(--black-rgb), 0.06);
     line-height: 1.3;
     opacity: 0;
     visibility: hidden;
@@ -829,7 +829,7 @@ input[type="number"].goal-inline-edit-input {
 /* 逾期目标的 header 淡粉红渐变 */
 .goal-overdue .goal-row-header {
     background: linear-gradient(135deg, rgba(var(--red-pale-rgb), 0.85) 0%, rgba(var(--red-pale-rgb), 0.6) 50%, rgba(var(--red-pale-rgb), 0.45) 100%);
-    border-radius: 10px;
+    border-radius: var(--radius-sm);
     margin: -4px -4px 0 -4px;
     padding: 4px 8px;
     transition: background 0.3s ease;
@@ -842,7 +842,7 @@ input[type="number"].goal-inline-edit-input {
 /* 即将到期目标的 header 淡橙黄渐变 */
 .goal-soon .goal-row-header {
     background: linear-gradient(135deg, rgba(var(--jade-cream-rgb), 0.85) 0%, rgba(var(--jade-cream-mid-rgb), 0.6) 50%, rgba(var(--jade-cream-deep-rgb), 0.45) 100%);
-    border-radius: 10px;
+    border-radius: var(--radius-sm);
     margin: -4px -4px 0 -4px;
     padding: 4px 8px;
     transition: background 0.3s ease;
@@ -886,7 +886,7 @@ input[type="number"].goal-inline-edit-input {
     cursor: pointer;
     transition: all 0.2s;
     min-height: 28px;
-    gap: 4px;
+    gap: var(--space-1);
 }
 .goal-inline-date-display:hover {
     border-color: var(--bamboo-primary);
@@ -942,7 +942,7 @@ input[type="number"].goal-inline-edit-input {
     color: var(--bamboo-primary);
     background: rgba(var(--primary-rgb), 0.1);
     padding: 1px 6px;
-    border-radius: 4px;
+    border-radius: var(--radius-4);
     white-space: nowrap;
     flex-shrink: 0;
 }
@@ -983,7 +983,7 @@ input[type="number"].goal-inline-edit-input {
 .goal-inline-suggested {
     font-size: var(--type-micro);
     padding: 3px 8px;
-    border-radius: 8px;
+    border-radius: var(--radius-xs);
     background: rgba(var(--info-blue-rgb), 0.1);
     color: rgb(var(--info-blue-rgb));
     white-space: nowrap;
@@ -1005,12 +1005,12 @@ input[type="number"].goal-inline-edit-input {
 .catp-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.2);
+    background: rgba(var(--black-rgb), 0.2);
 }
 .catp-container {
     background: var(--card-bg);
-    border-radius: 12px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2), 0 0 0 1px var(--border-light);
+    border-radius: var(--radius-md);
+    box-shadow: 0 8px 32px rgba(var(--black-rgb), 0.2), 0 0 0 1px var(--border-light);
     overflow: hidden;
     width: 220px;
     font-size: var(--type-base);
@@ -1038,7 +1038,7 @@ input[type="number"].goal-inline-edit-input {
     color: var(--text-secondary);
     font-size: var(--type-heading);
     cursor: pointer;
-    border-radius: 5px;
+    border-radius: var(--radius-5);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1060,7 +1060,7 @@ input[type="number"].goal-inline-edit-input {
     align-items: center;
     gap: 10px;
     padding: 8px 10px;
-    border-radius: 8px;
+    border-radius: var(--radius-xs);
     cursor: pointer;
     transition: all 0.15s;
 }
@@ -1085,12 +1085,12 @@ input[type="number"].goal-inline-edit-input {
 }
 .catp-manage-btn {
     width: 100%;
-    padding: 8px;
+    padding: var(--space-2);
     border: 1px dashed var(--border-light);
     background: transparent;
     color: var(--text-secondary);
     font-size: var(--type-sm);
-    border-radius: 8px;
+    border-radius: var(--radius-xs);
     cursor: pointer;
     transition: all 0.2s;
 }
@@ -1109,13 +1109,13 @@ input[type="number"].goal-inline-edit-input {
 .catm-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.3);
+    background: rgba(var(--black-rgb), 0.3);
     backdrop-filter: blur(var(--glass-blur));
 }
 .catm-container {
     background: var(--card-bg);
-    border-radius: 16px;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3), 0 0 0 1px var(--border-light);
+    border-radius: var(--radius-xl);
+    box-shadow: 0 20px 60px rgba(var(--black-rgb), 0.3), 0 0 0 1px var(--border-light);
     overflow: hidden;
     width: 360px;
     max-height: 80vh;
@@ -1144,7 +1144,7 @@ input[type="number"].goal-inline-edit-input {
     color: var(--text-secondary);
     font-size: var(--type-large);
     cursor: pointer;
-    border-radius: 6px;
+    border-radius: var(--radius-2xs);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1171,7 +1171,7 @@ input[type="number"].goal-inline-edit-input {
     align-items: center;
     gap: 10px;
     padding: 10px 12px;
-    border-radius: 10px;
+    border-radius: var(--radius-sm);
     background: var(--bamboo-background);
     transition: all 0.15s;
 }
@@ -1190,14 +1190,14 @@ input[type="number"].goal-inline-edit-input {
 }
 .catm-item-actions {
     display: flex;
-    gap: 4px;
+    gap: var(--space-1);
 }
 .catm-item-actions button {
     width: 28px;
     height: 28px;
     border: none;
     background: transparent;
-    border-radius: 6px;
+    border-radius: var(--radius-2xs);
     cursor: pointer;
     font-size: var(--type-base);
     display: flex;
@@ -1211,7 +1211,7 @@ input[type="number"].goal-inline-edit-input {
 .catm-inline-input {
     padding: 4px 8px;
     border: 1px solid var(--bamboo-primary);
-    border-radius: 6px;
+    border-radius: var(--radius-2xs);
     font-size: var(--type-base);
     outline: none;
     background: var(--bamboo-background);
@@ -1222,13 +1222,13 @@ input[type="number"].goal-inline-edit-input {
 }
 .catm-form-row {
     display: flex;
-    gap: 8px;
+    gap: var(--space-2);
     align-items: center;
 }
 .catm-input {
     padding: 8px 10px;
     border: 1px solid var(--border-light);
-    border-radius: 8px;
+    border-radius: var(--radius-xs);
     font-size: var(--type-base);
     outline: none;
     background: var(--bamboo-background);
@@ -1252,7 +1252,7 @@ input[type="number"].goal-inline-edit-input {
     color: white; /* tooltip 白色文字，设计意图 */
     font-size: var(--type-sm);
     font-weight: 500;
-    border-radius: 8px;
+    border-radius: var(--radius-xs);
     cursor: pointer;
     transition: all 0.2s;
     white-space: nowrap;
@@ -1274,7 +1274,7 @@ input[type="number"].goal-inline-edit-input {
     color: white; /* tooltip 白色文字，设计意图 */
     font-size: var(--type-base);
     font-weight: 500;
-    border-radius: 8px;
+    border-radius: var(--radius-xs);
     cursor: pointer;
     transition: all 0.2s;
 }
@@ -1284,7 +1284,7 @@ input[type="number"].goal-inline-edit-input {
 .goal-deadline {
     font-size: var(--type-micro);
     padding: 1px 6px;
-    border-radius: 8px;
+    border-radius: var(--radius-xs);
     background: rgba(var(--primary-rgb), 0.08);
     color: var(--text-secondary);
     white-space: nowrap;
@@ -1365,14 +1365,14 @@ input[type="number"].goal-inline-edit-input {
     flex: 1;
     height: 4px;
     background: var(--bamboo-border);
-    border-radius: 2px;
+    border-radius: var(--radius-3xs);
     overflow: hidden;
 }
 
 .goal-item-bar-fill-mini {
     height: 100%;
     background: var(--bamboo-primary);
-    border-radius: 2px;
+    border-radius: var(--radius-3xs);
     transition: width 0.3s ease;
 }
 

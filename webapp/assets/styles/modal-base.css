@@ -2,7 +2,7 @@
 .modal-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.5);
+    background: rgba(var(--black-rgb), 0.5);
     z-index: 10000;
     padding: var(--space-5);
     backdrop-filter: blur(var(--glass-blur));
@@ -26,7 +26,7 @@
     -webkit-backdrop-filter: blur(var(--glass-blur));
     will-change: transform;
     border-radius: var(--radius-3xl);
-    border: 1px solid rgba(255, 255, 255, 0.3);
+    border: 1px solid rgba(var(--white-rgb), 0.3);
     box-shadow: var(--shadow-floating);
     max-width: 90vw;
     max-height: 85vh;
@@ -63,13 +63,13 @@
     content: '';
     position: absolute;
     inset: 0;
-    background: rgba(255, 255, 255, 0.12);
+    background: rgba(var(--white-rgb), 0.12);
     pointer-events: none;
 }
 .modal-title {
     font-size: var(--type-lg);
     font-weight: 700;
-    color: #fff;
+    color: var(--white);
     letter-spacing: 0.5px;
     position: relative;
     z-index: 1;
@@ -87,18 +87,18 @@
     height: 36px;
     border-radius: 50%;
     border: none;
-    background: rgba(255, 255, 255, 0.2);
+    background: rgba(var(--white-rgb), 0.2);
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: all var(--transition-normal);
-    color: #fff;
+    color: var(--white);
     position: relative;
     z-index: 1;
 }
 .modal-close:hover {
-    background: rgba(255, 255, 255, 0.35);
+    background: rgba(var(--white-rgb), 0.35);
     transform: rotate(90deg);
 }
 .modal-close svg {
@@ -122,7 +122,7 @@
 }
 .modal-body::-webkit-scrollbar-thumb {
     background: rgba(var(--primary-rgb), 0.3);
-    border-radius: 3px;
+    border-radius: var(--radius-3);
 }
 .modal-body::-webkit-scrollbar-thumb:hover {
     background: rgba(var(--primary-rgb), 0.45);
@@ -196,7 +196,7 @@
 }
 .btn-primary {
     background: var(--btn-primary-bg);
-    color: #fff;
+    color: var(--white);
     box-shadow: var(--shadow-surface);
 }
 .btn-primary:hover {
@@ -347,14 +347,14 @@
 .progress-bar {
     height: 8px;
     background: rgba(var(--primary-rgb), 0.1);
-    border-radius: 4px;
+    border-radius: var(--radius-4);
     overflow: hidden;
     position: relative;
 }
 .progress-fill {
     height: 100%;
     background: var(--btn-primary-bg);
-    border-radius: 4px;
+    border-radius: var(--radius-4);
     transition: width var(--transition-smooth);
 }
 
@@ -365,7 +365,7 @@
     left: 50%;
     transform: translateX(-50%);
     background: var(--text-primary);
-    color: #fff;
+    color: var(--white);
     padding: var(--space-2) var(--space-4);
     border-radius: var(--radius-lg);
     font-size: var(--type-sm);

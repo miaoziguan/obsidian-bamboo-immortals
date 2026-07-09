@@ -15,7 +15,7 @@
     flex: 1;
     min-width: 0;
     padding: var(--space-2) var(--space-3);
-    border-radius: 20px;
+    border-radius: var(--radius-3xl);
     border: 1px solid var(--border-light);
     background: rgba(var(--primary-rgb), 0.1);
     color: var(--text-primary);
@@ -74,7 +74,7 @@
 .sm-container {
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: var(--space-5);
     max-height: 60vh;
     overflow-y: auto;
 }
@@ -114,7 +114,7 @@ html.dark .sm-section {
     color: var(--text-secondary);
     background: rgba(var(--primary-rgb), 0.1);
     padding: var(--space-1) var(--space-2);
-    border-radius: 10px;
+    border-radius: var(--radius-sm);
 }
 
 .sm-list {
@@ -129,7 +129,7 @@ html.dark .sm-section {
 
 .sm-empty {
     text-align: center;
-    padding: 20px;
+    padding: var(--space-5);
     font-size: var(--type-sm);
     color: var(--text-muted);
 }
@@ -177,7 +177,7 @@ html.dark .sm-item-hidden {
     background: rgba(var(--primary-rgb), 0.2);
     border-color: var(--bamboo-primary);
     transform: scale(1.03) translateY(-4px);
-    box-shadow: 0 12px 40px rgba(var(--deep-rgb), 0.25), 0 4px 12px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 12px 40px rgba(var(--deep-rgb), 0.25), 0 4px 12px rgba(var(--black-rgb), 0.15);
     z-index: 1000;
     position: relative;
 }
@@ -225,13 +225,13 @@ html.dark .sm-item-hidden {
 
 .sm-actions {
     display: flex;
-    gap: 4px;
+    gap: var(--space-1);
 }
 
 .sm-btn {
     width: min(28px, 7vw);
     height: 28px;
-    border-radius: 6px;
+    border-radius: var(--radius-2xs);
     border: none;
     background: transparent;
     cursor: pointer;
@@ -277,7 +277,7 @@ html.dark .sm-item-hidden {
 .sm-batch-show-btn {
     margin-left: auto;
     padding: 3px 10px;
-    border-radius: 6px;
+    border-radius: var(--radius-2xs);
     border: 1px solid var(--border-light);
     background: transparent;
     color: var(--text-secondary);
@@ -286,7 +286,7 @@ html.dark .sm-item-hidden {
     cursor: pointer;
     display: inline-flex;
     align-items: center;
-    gap: 4px;
+    gap: var(--space-1);
     transition: all 0.2s;
 }
 
@@ -301,10 +301,10 @@ html.dark .sm-item-hidden {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
+    gap: var(--space-3);
     padding: 8px 12px;
     margin: 0 -4px 12px -4px;
-    border-radius: 8px;
+    border-radius: var(--radius-xs);
     background: rgba(var(--primary-rgb), 0.06);
 }
 
@@ -319,10 +319,10 @@ html.dark .sm-item-hidden {
     align-items: center;
     gap: 6px;
     padding: 5px 12px;
-    border-radius: 6px;
+    border-radius: var(--radius-2xs);
     border: 1px solid var(--bamboo-primary);
     background: var(--bamboo-primary);
-    color: #fff;
+    color: var(--white);
     font-size: var(--type-micro);
     font-weight: 500;
     cursor: pointer;
@@ -344,7 +344,7 @@ html.dark .sm-item-hidden {
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background: #fff;
+    background: var(--white);
     margin-right: 2px;
     animation: sm-pending-pulse 1.6s infinite;
 }
@@ -356,14 +356,14 @@ html.dark .sm-item-hidden {
 
 .icon-picker-sm {
     display: flex;
-    gap: 8px;
+    gap: var(--space-2);
     flex-wrap: wrap;
 }
 
 .icon-option-sm {
     width: min(36px, 10vw);
     height: 36px;
-    border-radius: 8px;
+    border-radius: var(--radius-xs);
     border: 1px solid var(--border-light);
     background: rgba(var(--primary-rgb), 0.1);
     cursor: pointer;
@@ -388,7 +388,7 @@ html.dark .sm-item-hidden {
 
 .list-item-row {
     display: flex;
-    gap: 8px;
+    gap: var(--space-2);
     margin-bottom: 8px;
 }
 
@@ -463,7 +463,7 @@ nav .date-display-sub {
     margin-left: auto;
     position: relative;
     z-index: 1;
-    padding: 4px;
+    padding: var(--space-1);
     transition: opacity 0.2s, transform 0.15s;
 }
 
@@ -481,7 +481,7 @@ nav .date-display-sub {
 .section-action-trigger {
     width: auto;
     height: auto;
-    border-radius: 6px;
+    border-radius: var(--radius-2xs);
     border: 1px solid rgba(var(--primary-rgb), 0.3);
     background: rgba(var(--primary-rgb), 0.08);
     color: var(--bamboo-primary);
@@ -491,7 +491,7 @@ nav .date-display-sub {
     cursor: pointer;
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: var(--space-1);
     flex-shrink: 0;
     margin-left: 8px;
     padding: 4px 8px;
@@ -641,10 +641,10 @@ html.dark .section-settings-header {
         gap: 6px;
     }
     .section-manager-actions {
-        gap: 4px;
+        gap: var(--space-1);
     }
     .sm-modal-header {
-        gap: 8px;
+        gap: var(--space-2);
     }
     .sm-modal-title {
         font-size: var(--type-base);

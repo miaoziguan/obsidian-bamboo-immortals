@@ -59,7 +59,7 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    background: rgba(255, 255, 255, 0.45);
+    background: rgba(var(--white-rgb), 0.45);
     border-radius: var(--radius-md, 10px);
     padding: clamp(8px, 2vw, 12px) clamp(4px, 1vw, 8px);
     border: 1px solid rgba(var(--primary-rgb), 0.15);
@@ -188,8 +188,8 @@
     align-items: center;
     justify-content: center;
     background: rgba(var(--primary-rgb), 0.06);
-    border-radius: 8px;
-    font-size: 18px;
+    border-radius: var(--radius-xs);
+    font-size: var(--type-lg);
     flex-shrink: 0;
 }
 .shop-item-info {
@@ -250,14 +250,14 @@
     padding: 4px 8px;
     font-size: var(--type-mini, 10px);
     border: 1px solid transparent;
-    border-radius: 8px;
+    border-radius: var(--radius-xs);
     background: transparent;
     color: var(--ink-light);
     cursor: pointer;
     transition: all 0.2s;
     display: inline-flex;
     align-items: center;
-    gap: 4px;
+    gap: var(--space-1);
     min-height: 28px;
     min-width: 44px;
     justify-content: center;
@@ -272,7 +272,7 @@
     font-size: var(--type-micro, 11px);
 }
 .shop-sort-caret {
-    font-size: 8px;
+    font-size: var(--type-mini);
     opacity: 0.7;
 }
 .shop-sort-menu {
@@ -281,8 +281,8 @@
     right: 0;
     background: var(--card-bg);
     border: 1px solid var(--border-light);
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border-radius: var(--radius-xs);
+    box-shadow: 0 4px 12px rgba(var(--black-rgb), 0.1);
     z-index: 100;
     display: none;
     min-width: 100px;
@@ -318,7 +318,7 @@
     display: flex;
     align-items: center;
     margin-bottom: 14px;
-    gap: 4px;
+    gap: var(--space-1);
 }
 .shop-history-arrow {
     width: 28px;
@@ -357,7 +357,7 @@
     padding: 3px 10px;
     font-size: var(--type-mini, 10px);
     border: 1px solid var(--border-light, rgba(var(--primary-rgb), 0.2));
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     background: transparent;
     color: var(--ink-light);
     cursor: pointer;
@@ -384,7 +384,7 @@
     padding: 8px 14px;
     margin-bottom: 4px;
     background: rgba(var(--primary-rgb), 0.05);
-    border-radius: 8px;
+    border-radius: var(--radius-xs);
 }
 .shop-history-summary-text {
     font-size: var(--type-mini, 11px);
@@ -419,8 +419,8 @@
     align-items: center;
     justify-content: center;
     background: rgba(var(--primary-rgb), 0.08);
-    border-radius: 8px;
-    font-size: 16px;
+    border-radius: var(--radius-xs);
+    font-size: var(--type-md);
     flex-shrink: 0;
 }
 .shop-history-info {
@@ -451,7 +451,7 @@
     padding: clamp(24px, 6vw, 36px) 20px;
 }
 .shop-history-empty-icon {
-    font-size: 36px;
+    font-size: var(--type-mega);
     margin-bottom: 10px;
     opacity: 0.4;
 }
@@ -486,7 +486,7 @@
 .shop-archive-month-btn {
     padding: 4px 10px;
     font-size: var(--type-mini, 10px);
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     cursor: pointer;
     border: 1px solid rgba(var(--primary-rgb), 0.15);
     background: transparent;
@@ -514,7 +514,7 @@
     border: 1px solid rgba(var(--primary-rgb), 0.15);
 }
 .shop-philosophy-icon {
-    font-size: 28px;
+    font-size: var(--type-hero);
     margin-bottom: 8px;
 }
 .shop-philosophy-title {
@@ -540,15 +540,15 @@
     display: flex;
     align-items: flex-start;
     gap: 10px;
-    padding: 12px;
-    border-radius: 10px;
+    padding: var(--space-3);
+    border-radius: var(--radius-sm);
     background: rgba(var(--primary-rgb), 0.04);
 }
 .shop-principle-card.is-warn {
     background: rgba(var(--danger-rgb), 0.06);
 }
 .shop-principle-icon {
-    font-size: 20px;
+    font-size: var(--type-xl);
     flex-shrink: 0;
     line-height: 1;
 }
@@ -581,7 +581,7 @@
     align-items: center;
     padding: clamp(6px, 1.5vw, 8px) 12px;
     background: rgba(var(--primary-rgb), 0.03);
-    border-radius: 8px;
+    border-radius: var(--radius-xs);
     font-size: var(--type-mini, 10px);
     gap: 10px;
 }
@@ -681,7 +681,7 @@ html.dark .shop-price-row.is-warn {
 html.dark .shop-sort-menu {
     background: rgba(var(--primary-rgb), 0.12) !important;
     border-color: rgba(var(--primary-rgb), 0.18) !important;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3) !important;
+    box-shadow: 0 4px 16px rgba(var(--black-rgb), 0.3) !important;
 }
 
 html.dark .shop-sort-option:hover {

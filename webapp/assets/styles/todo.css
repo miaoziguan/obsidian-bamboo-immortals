@@ -38,7 +38,7 @@
 .todo-progress-bar {
     height: 4px;
     background: rgba(var(--primary-rgb), 0.1);
-    border-radius: 2px;
+    border-radius: var(--radius-3xs);
     overflow: hidden;
     margin-bottom: var(--space-3);
 }
@@ -46,7 +46,7 @@
 .todo-progress-fill {
     height: 100%;
     background: linear-gradient(90deg, var(--bamboo-light), var(--bamboo-primary));
-    border-radius: 2px;
+    border-radius: var(--radius-3xs);
     transition: width 0.5s ease;
     box-shadow: 0 0 8px rgba(var(--primary-rgb), 0.25);
 }
@@ -140,7 +140,7 @@
     left: 0;
     right: 0;
     height: 50%;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.06) 0%, transparent 100%);
+    background: linear-gradient(180deg, rgba(var(--white-rgb), 0.06) 0%, transparent 100%);
     pointer-events: none;
     opacity: 0;
     transition: opacity 0.3s ease;
@@ -266,7 +266,7 @@
     color: var(--bamboo-text-muted);
     background: rgba(var(--primary-rgb), 0.07);
     padding: 1px 6px;
-    border-radius: 8px;
+    border-radius: var(--radius-xs);
     white-space: nowrap;
     max-width: 100px;
     overflow: hidden;
@@ -278,7 +278,7 @@
     color: var(--text-secondary);
     background: rgba(var(--gray-rgb), 0.1);
     padding: 1px 6px;
-    border-radius: 8px;
+    border-radius: var(--radius-xs);
     white-space: nowrap;
     flex-shrink: 0;
 }
@@ -309,7 +309,7 @@
     color: var(--bamboo-primary);
     background: rgba(var(--primary-rgb), 0.12);
     padding: 1px 6px;
-    border-radius: 10px;
+    border-radius: var(--radius-sm);
     min-width: min(18px, 5vw);
 }
 
@@ -327,7 +327,7 @@
 .todo-goal-progress {
     font-size: var(--type-xs);
     padding: var(--space-1) var(--space-2);
-    border-radius: 10px;
+    border-radius: var(--radius-sm);
     background: rgba(var(--primary-rgb), 0.06);
     color: var(--bamboo-text-secondary);
     font-weight: 500;

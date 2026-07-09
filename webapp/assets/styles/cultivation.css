@@ -1,25 +1,25 @@
 /* ========== 百层修仙体系 ========== */
 .cultivation-container { width: 100%; padding: 8px 0; }
-.cultivation-header { text-align: center; padding: 28px 20px 20px; background: linear-gradient(180deg, rgba(var(--primary-rgb), .12) 0%, rgba(var(--primary-rgb), .04) 100%); border-radius: 16px; border: 1px solid rgba(var(--primary-rgb), .15); margin-bottom: 20px; }
-.cultivation-realm-badge { display: inline-flex; align-items: center; gap: 8px; background: rgba(var(--primary-rgb), .15); border: 1px solid rgba(var(--primary-rgb), .25); border-radius: 999px; padding: 6px 16px; margin-bottom: 12px; }
+.cultivation-header { text-align: center; padding: 28px 20px 20px; background: linear-gradient(180deg, rgba(var(--primary-rgb), .12) 0%, rgba(var(--primary-rgb), .04) 100%); border-radius: var(--radius-xl); border: 1px solid rgba(var(--primary-rgb), .15); margin-bottom: 20px; }
+.cultivation-realm-badge { display: inline-flex; align-items: center; gap: var(--space-2); background: rgba(var(--primary-rgb), .15); border: 1px solid rgba(var(--primary-rgb), .25); border-radius: var(--radius-pill); padding: 6px 16px; margin-bottom: 12px; }
 .cultivation-realm-name { font-size: var(--type-base); font-weight: 600; color: var(--bamboo-primary); }
 .cultivation-title { font-size: var(--type-2xl); font-weight: 800; margin: 0 0 6px; background: linear-gradient(135deg, var(--bamboo-deep), var(--bamboo-primary), var(--bamboo-light)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-.cultivation-layer-tag { display: inline-block; font-size: var(--type-sm); color: var(--text-tertiary); background: rgba(255,255,255,.08); padding: 2px 10px; border-radius: 999px; margin-bottom: 16px; }
+.cultivation-layer-tag { display: inline-block; font-size: var(--type-sm); color: var(--text-tertiary); background: rgba(var(--white-rgb), .08); padding: 2px 10px; border-radius: var(--radius-pill); margin-bottom: 16px; }
 .cultivation-progress-section { margin-top: 12px; }
 .cultivation-progress-info { display: flex; justify-content: space-between; font-size: var(--type-xs); margin-bottom: 6px; }
 .cultivation-progress-label { color: var(--text-secondary); }
 .cultivation-progress-next { color: var(--text-tertiary); }
-.cultivation-progress-bar-wrap { height: 8px; background: rgba(var(--primary-rgb), .12); border-radius: 4px; overflow: hidden; }
-.cultivation-progress-bar { height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--bamboo-deep), var(--bamboo-primary), var(--bamboo-light)); transition: width .6s ease; position: relative; }
-.cultivation-progress-bar::after { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 50%; background: rgba(255,255,255,.2); border-radius: 4px 4px 0 0; }
+.cultivation-progress-bar-wrap { height: 8px; background: rgba(var(--primary-rgb), .12); border-radius: var(--radius-4); overflow: hidden; }
+.cultivation-progress-bar { height: 100%; border-radius: var(--radius-4); background: linear-gradient(90deg, var(--bamboo-deep), var(--bamboo-primary), var(--bamboo-light)); transition: width .6s ease; position: relative; }
+.cultivation-progress-bar::after { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 50%; background: rgba(var(--white-rgb), .2); border-radius: var(--radius-4) var(--radius-4) 0 0; }
 .cultivation-progress-range { display: flex; justify-content: space-between; font-size: var(--type-mini); color: var(--text-tertiary); margin-top: 4px; }
-.cultivation-max-badge { margin-top: 12px; padding: 12px 16px; background: rgba(var(--primary-rgb), .12); border: 1px solid rgba(var(--primary-rgb), .25); border-radius: 12px; font-size: var(--type-md); font-weight: 700; color: var(--bamboo-primary); }
-.cultivation-summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; }
-.cultivation-summary-item { text-align: center; padding: 14px 10px; background: rgba(255,255,255,.04); border: 1px solid var(--border-light); border-radius: 12px; }
+.cultivation-max-badge { margin-top: 12px; padding: 12px 16px; background: rgba(var(--primary-rgb), .12); border: 1px solid rgba(var(--primary-rgb), .25); border-radius: var(--radius-md); font-size: var(--type-md); font-weight: 700; color: var(--bamboo-primary); }
+.cultivation-summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: var(--space-3); }
+.cultivation-summary-item { text-align: center; padding: 14px 10px; background: rgba(var(--white-rgb), .04); border: 1px solid var(--border-light); border-radius: var(--radius-md); }
 .cultivation-summary-value { display: block; font-size: var(--type-large); font-weight: 800; color: var(--bamboo-primary); margin-bottom: 4px; }
 .cultivation-summary-label { font-size: var(--type-xs); color: var(--text-tertiary); }
 .cultivation-roadmap { display: flex; flex-direction: column; gap: 10px; }
-.cultivation-realm-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border-light); transition: all .2s; }
+.cultivation-realm-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-light); transition: all .2s; }
 .cultivation-realm-row.is-past { background: rgba(var(--primary-rgb), .06); border-color: rgba(var(--primary-rgb), .2); }
 .cultivation-realm-row.is-current { background: rgba(var(--primary-rgb), .1); border-color: rgba(var(--primary-rgb), .3); box-shadow: 0 0 12px rgba(var(--primary-rgb), .1); }
 .cultivation-realm-label { display: flex; align-items: center; gap: 6px; min-width: 50px; font-size: var(--type-sm); font-weight: 700; color: var(--text-primary); }
@@ -28,14 +28,14 @@
 .cultivation-layer-dot.unlocked { background: var(--bamboo-primary); opacity: 1; }
 .cultivation-layer-dot.active { background: var(--bamboo-light); opacity: 1; box-shadow: 0 0 8px rgba(var(--primary-rgb), .5); }
 .cultivation-realm-goal { font-size: var(--type-mini); color: var(--text-tertiary); white-space: nowrap; min-width: 30px; text-align: right; }
-.cultivation-legend { display: flex; gap: 16px; margin-top: 12px; font-size: var(--type-xs); color: var(--text-tertiary); }
-.cultivation-legend span { display: flex; align-items: center; gap: 4px; }
+.cultivation-legend { display: flex; gap: var(--space-4); margin-top: 12px; font-size: var(--type-xs); color: var(--text-tertiary); }
+.cultivation-legend span { display: flex; align-items: center; gap: var(--space-1); }
 .legend-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
 .legend-dot.unlocked { background: var(--bamboo-primary); }
 .legend-dot.active { background: var(--bamboo-deep); box-shadow: 0 0 6px rgba(var(--primary-rgb), .3); }
 .legend-dot.locked { background: var(--text-tertiary); opacity: .35; }
 .cultivation-realm-table { display: flex; flex-direction: column; gap: 6px; }
-.cultivation-realm-table-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; border: 1px solid transparent; font-size: var(--type-base); }
+.cultivation-realm-table-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--radius-xs); border: 1px solid transparent; font-size: var(--type-base); }
 .cultivation-realm-table-row.is-past { background: rgba(var(--primary-rgb), .05); border-color: rgba(var(--primary-rgb), .1); }
 .cultivation-realm-table-row.is-current { background: rgba(var(--primary-rgb), .08); border-color: rgba(var(--primary-rgb), .2); font-weight: 600; }
 .cultivation-realm-table-row > span:nth-child(1) { flex: 1; font-weight: 600; }

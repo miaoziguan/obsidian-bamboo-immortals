@@ -111,7 +111,7 @@
     -webkit-appearance: none;
     appearance: none;
     height: 4px;
-    border-radius: 2px;
+    border-radius: var(--radius-3xs);
     background: var(--border-light);
     outline: none;
     cursor: pointer;
@@ -125,8 +125,8 @@
     height: 18px;
     border-radius: 50%;
     background: var(--bamboo-primary);
-    border: 2px solid #fff;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+    border: 2px solid var(--white);
+    box-shadow: 0 1px 4px rgba(var(--black-rgb), 0.2);
     cursor: pointer;
     transition: transform var(--transition-fast), box-shadow var(--transition-fast);
 }
@@ -146,14 +146,14 @@
     height: 18px;
     border-radius: 50%;
     background: var(--bamboo-primary);
-    border: 2px solid #fff;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+    border: 2px solid var(--white);
+    box-shadow: 0 1px 4px rgba(var(--black-rgb), 0.2);
     cursor: pointer;
 }
 
 .display-slider::-moz-range-track {
     height: 4px;
-    border-radius: 2px;
+    border-radius: var(--radius-3xs);
     background: var(--border-light);
 }
 
@@ -196,7 +196,7 @@
 .display-font-preset-btn.active,
 .display-gap-preset-btn.active {
     background: var(--bamboo-primary);
-    color: #fff;
+    color: var(--white);
     border-color: var(--bamboo-primary);
     box-shadow: var(--bamboo-glow-xs);
 }
@@ -207,7 +207,7 @@
     -webkit-appearance: none;
     appearance: none;
     height: 6px;
-    border-radius: 3px;
+    border-radius: var(--radius-3);
     background: linear-gradient(to right,
         hsl(0, 70%, 50%),
         hsl(60, 70%, 50%),
@@ -229,8 +229,8 @@
     height: 22px;
     border-radius: 50%;
     background: var(--bamboo-primary);
-    border: 3px solid #fff;
-    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.3);
+    border: 3px solid var(--white);
+    box-shadow: 0 1px 6px rgba(var(--black-rgb), 0.3);
     cursor: pointer;
     transition: transform var(--transition-fast), box-shadow var(--transition-fast);
 }
@@ -248,14 +248,14 @@
     height: 22px;
     border-radius: 50%;
     background: var(--bamboo-primary);
-    border: 3px solid #fff;
-    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.3);
+    border: 3px solid var(--white);
+    box-shadow: 0 1px 6px rgba(var(--black-rgb), 0.3);
     cursor: pointer;
 }
 
 .display-hue-slider::-moz-range-track {
     height: 6px;
-    border-radius: 3px;
+    border-radius: var(--radius-3);
     background: linear-gradient(to right,
         hsl(0, 70%, 50%),
         hsl(60, 70%, 50%),
@@ -298,7 +298,7 @@
 .display-hue-preset-btn.active,
 .display-lightness-preset-btn.active {
     background: var(--bamboo-primary);
-    color: #fff;
+    color: var(--white);
     border-color: var(--bamboo-primary);
     box-shadow: var(--bamboo-glow-xs);
 }

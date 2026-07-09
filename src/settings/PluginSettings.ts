@@ -41,7 +41,7 @@ export class PluginSettings extends PluginSettingTab {
     this.plugin = plugin;
   }
 
-  async display(): Promise<void> {
+  display(): void {
     const { containerEl } = this;
     containerEl.empty();
     containerEl.addClass('bamboo-review-settings');
@@ -152,24 +152,27 @@ export class PluginSettings extends PluginSettingTab {
     const authorRow = authorBox.createDiv({ cls: 'bamboo-about-author-row' });
     const avatar = authorRow.createDiv({ cls: 'bamboo-about-avatar' });
     // 从插件目录读取头像（通过 Vault API 读取 .obsidian/plugins/ 下的自有资源）
-    try {
-      const pluginDir = this.plugin.manifest.dir ?? '';
-      const adapter = this.app.vault.adapter;
-      const candidates = [
-        `${pluginDir}/author-avatar.jpg`,
-        `${pluginDir}/webapp/assets/images/author-avatar.jpg`,
-      ];
-      for (const avatarPath of candidates) {
-        const exists = await adapter.exists(avatarPath);
-        if (!exists) continue;
-        const avatarData = await adapter.readBinary(avatarPath);
-        const b64 = Buffer.from(avatarData).toString('base64');
-        avatar.setCssStyles({
-          backgroundImage: `url(data:image/jpeg;base64,${b64})`,
-        });
-        break;
-      }
-    } catch { /* silently skip — show default empty avatar */ }
+    // fire-and-forget：头像非关键，加载失败静默显示默认空头像
+    void (async () => {
+      try {
+        const pluginDir = this.plugin.manifest.dir ?? '';
+        const adapter = this.app.vault.adapter;
+        const candidates = [
+          `${pluginDir}/author-avatar.jpg`,
+          `${pluginDir}/webapp/assets/images/author-avatar.jpg`,
+        ];
+        for (const avatarPath of candidates) {
+          const exists = await adapter.exists(avatarPath);
+          if (!exists) continue;
+          const avatarData = await adapter.readBinary(avatarPath);
+          const b64 = Buffer.from(avatarData).toString('base64');
+          avatar.setCssStyles({
+            backgroundImage: `url(data:image/jpeg;base64,${b64})`,
+          });
+          break;
+        }
+      } catch { /* silently skip — show default empty avatar */ }
+    })();
 
 
     const authorInfo = authorRow.createDiv({ cls: 'bamboo-about-author-info' });

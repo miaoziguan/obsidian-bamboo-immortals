@@ -159,7 +159,7 @@ html.dark {
     background: linear-gradient(180deg, var(--bg-gradient-start) 0%, var(--bg-gradient-mid1) 50%, var(--bg-gradient-mid2) 100%);
 }
 
-html.dark body {
+html.dark body.bamboo-immortals-root {
     background: transparent;
 }
 

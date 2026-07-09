@@ -99,7 +99,7 @@ function downloadAndExtractWebapp(_pluginDir: string, destDir: string, version: 
           redir.on('end', () => {
             try {
               extractZip(Buffer.concat(chunks), destDir).then(resolve).catch(reject);
-            } catch (e) { reject(e); }
+            } catch (e) { reject(e instanceof Error ? e : new Error(String(e))); }
           });
           redir.on('error', reject);
         }).on('error', reject);
@@ -114,7 +114,7 @@ function downloadAndExtractWebapp(_pluginDir: string, destDir: string, version: 
       res.on('end', () => {
         try {
           extractZip(Buffer.concat(chunks), destDir).then(resolve).catch(reject);
-        } catch (e) { reject(e); }
+        } catch (e) { reject(e instanceof Error ? e : new Error(String(e))); }
       });
       res.on('error', reject);
     }).on('error', reject);
@@ -139,7 +139,8 @@ function setupWebappInBackground(
   }
 
   // 用 setImmediate / setTimeout 推迟到下一个 tick，确保 onload 先返回
-  setImmediate(async () => {
+  setImmediate(() => {
+    void (async () => {
     try {
       if (fs.existsSync(webappDir)) {
         try { fs.rmSync(webappDir, { recursive: true, force: true }); } catch { /* 目录可能不存在，忽略 */ }
@@ -164,8 +165,9 @@ function setupWebappInBackground(
       this.webappReady = true;
     } catch (e) {
       console.error('[BambooReview] Webapp setup failed:', e);
-      new Notice('竹林修仙传: 资源包安装失败，请检查网络后重启 Obsidian', 0);
+        new Notice('竹林修仙传: 资源包安装失败，请检查网络后重启 Obsidian', 0);
     }
+    })();
   });
 }
 
@@ -306,7 +308,7 @@ export default class BambooReviewPlugin extends Plugin {
 
   /** 加载设置 */
   async loadSettings(): Promise<void> {
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData()) as BambooReviewSettings;
   }
 
   /** 保存设置 */

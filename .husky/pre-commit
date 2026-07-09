@@ -1,2 +1,2 @@
-# 提交前对 staged 的改动文件做 lint 自动修复 + 类型检查（husky v9 无需 shebang 两行）
-npx lint-staged
+# 提交前对改动做 lint 自动修复 + 类型检查（husky v9 无需 shebang 两行）
+npx eslint . && npx tsc --noEmit

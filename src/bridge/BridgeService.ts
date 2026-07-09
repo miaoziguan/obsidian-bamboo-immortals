@@ -209,7 +209,7 @@ export class BridgeService {
     // 自定义白噪音音源持久化
     if (msg.type === 'app:saveCustomNoises') {
       if (this.settings) {
-        this.settings.noiseItems = msg.payload as unknown[] || [];
+        this.settings.noiseItems = Array.isArray(msg.payload) ? msg.payload : [];
         if (this.saveSettings) await this.saveSettings();
       }
       this.respond(msg.id, { ok: true });

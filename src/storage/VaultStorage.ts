@@ -107,7 +107,7 @@ export class VaultStorage {
         if (!dateKey) return;
         try {
           const content: string = await this.app.vault.adapter.read(file);
-          days[dateKey] = JSON.parse(content);
+          days[dateKey] = JSON.parse(content) as DayData;
         } catch (e) {
           console.warn(`Failed to parse day file: ${file}`, e);
         }

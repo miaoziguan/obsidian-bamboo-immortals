@@ -115,9 +115,10 @@ export const ImportValidator = {
       return [];
     }
     let counter = 0;
-    return goals.map((g) => {
-      if (!g || typeof g !== 'object' || Array.isArray(g)) return g as GoalItem;
-      const clean: GoalItem = { ...g };
+    return goals.map((raw): GoalItem => {
+      if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return raw as unknown as GoalItem;
+      const obj = raw as Record<string, unknown>;
+      const clean = { ...obj } as unknown as GoalItem;
       if (!clean.id) {
         clean.id = `goal_import_${counter++}_${Date.now().toString(36)}`;
       }

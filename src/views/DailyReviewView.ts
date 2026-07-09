@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf } from 'obsidian';
+import { ItemView, WorkspaceLeaf, EventRef } from 'obsidian';
 import * as path from 'path';
 import * as fs from 'fs';
 import type BambooReviewPlugin from '../../main';
@@ -25,7 +25,7 @@ export class DailyReviewView extends ItemView {
   private iframeErrorHandler: ((e: Event) => void) | null = null;
   private keydownForwarder: ((e: KeyboardEvent) => void) | null = null;
   private _checkInterval: number | null = null;
-  private cssChangeRef: any = null;
+  private cssChangeRef: EventRef | null = null;
   private webappPath: string;
   private settings: BambooReviewSettings;
   private saveSettings: () => Promise<void>;
@@ -53,7 +53,7 @@ export class DailyReviewView extends ItemView {
   }
 
   async onOpen(): Promise<void> {
-    const container: HTMLElement = this.containerEl.children[1];
+    const container: HTMLElement = this.containerEl.children[1] as HTMLElement;
     container.empty();
     container.addClass('bamboo-review-container');
 
@@ -108,7 +108,7 @@ export class DailyReviewView extends ItemView {
     });
 
     // iframe 加载失败时显示提示
-    this.iframeErrorHandler = (e: Event) => {
+    this.iframeErrorHandler = (_e: Event) => {
       console.error('[BambooReview] iframe failed to load:', this.webappPath);
     };
     this.iframe.addEventListener('error', this.iframeErrorHandler);
@@ -155,7 +155,7 @@ export class DailyReviewView extends ItemView {
     this.bridgeService.setCustomThemes(customThemes);
 
     // 传递库根目录路径（供白噪音库内音频扫描/读取使用）
-    const vaultBasePath = (this.app.vault.adapter as any).basePath || '';
+    const vaultBasePath = (this.app.vault.adapter as unknown as { basePath: string }).basePath || '';
     if (vaultBasePath) {
       this.bridgeService.setVaultBasePath(vaultBasePath);
     }
@@ -218,7 +218,7 @@ export class DailyReviewView extends ItemView {
     const themes: Array<{ name: string; code: string }> = [];
 
     try {
-      const vaultBasePath = (this.app.vault.adapter as any).basePath || '';
+      const vaultBasePath = (this.app.vault.adapter as unknown as { basePath: string }).basePath || '';
       if (!vaultBasePath) return themes;
 
       const themeDirName = this.settings.themePath || '竹林复盘主题';
@@ -245,16 +245,18 @@ export class DailyReviewView extends ItemView {
             name: entry.replace(/\.js$/, ''),
             code
           });
-        } catch (err: any) {
-          console.error(`[BambooReview] 读取自定义主题 ${entry} 失败:`, err.message);
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : String(err);
+          console.error(`[BambooReview] 读取自定义主题 ${entry} 失败:`, msg);
         }
       }
 
       if (themes.length > 0) {
         console.debug(`[BambooReview] 发现 ${themes.length} 个自定义主题:`, themes.map(t => t.name));
       }
-    } catch (err: any) {
-      console.debug('[BambooReview] 扫描自定义主题时出错:', err.message);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.debug('[BambooReview] 扫描自定义主题时出错:', msg);
     }
 
     return themes;

@@ -127,7 +127,7 @@ export class PluginSettings extends PluginSettingTab {
             if (!value) {
               ThemeBridge.restoreDefaults();
             }
-            const frame = activeDocument.querySelector('.bamboo-review-frame');
+            const frame = activeDocument.querySelector('.bamboo-review-frame') as HTMLIFrameElement | null;
             if (frame?.contentWindow) {
               frame.contentWindow.postMessage({
                 type: 'theme:syncPaletteEnabled',
@@ -156,8 +156,8 @@ export class PluginSettings extends PluginSettingTab {
     // 从插件目录读取头像文件（避免过长的 base64 被 Obsidian 截断导致空白）
     // 优先读插件根目录（dev/BRAT），其次从 webapp 资源中读取（插件市场安装）
     try {
-      const pluginDir = (this.plugin.manifest as any).dir;
-      const vaultBasePath = (this.app.vault.adapter as any).basePath || '';
+      const pluginDir = this.plugin.manifest.dir ?? '';
+      const vaultBasePath = (this.app.vault.adapter as unknown as { basePath: string }).basePath || '';
       const candidates = [
         path.join(vaultBasePath, pluginDir, 'author-avatar.jpg'),               // dev / BRAT / release asset
         path.join(vaultBasePath, pluginDir, 'webapp', 'assets', 'images', 'author-avatar.jpg'), // webapp 内置

@@ -1,33 +1,7 @@
 /**
  * MarkdownSync - 将 DayData JSON 转换为可读的 Markdown 摘要
  */
-
-interface DayData {
-  date: string;
-  weekday: string;
-  metrics?: {
-    firstCheckIn?: string;
-    lastCheckIn?: string;
-    completedTasks?: string;
-    inspirationCount?: string;
-    activeTime?: string;
-    emptySlots?: string;
-  };
-  timeline?: Array<{
-    period: string;
-    name: string;
-    time: string;
-    icon?: string;
-    eval?: string;
-    items?: Array<{ time: string; task: string; eval?: string }>;
-  }>;
-  goals?: Array<{
-    icon?: string;
-    title: string;
-    meta?: string;
-    items?: Array<{ name: string; percent?: number; detail?: string }>;
-  }>;
-}
+import type { DayData } from '../types/data';
 
 export class MarkdownSync {
   /** 将 DayData 转换为 Markdown */

@@ -34,8 +34,23 @@ echo ""
 
 # 1. 编译 TypeScript
 if [ -f "$SRC_DIR/package.json" ]; then
-    echo "📦 编译 TypeScript..."
     cd "$SRC_DIR"
+    # 1a. 类型门禁：tsc 报错即中断，避免类型错误的代码被打包进插件目录
+    echo "📦 类型检查 (tsc --noEmit)..."
+    if ! npx tsc --noEmit; then
+        echo "❌ 类型检查未通过，同步中断。请修复 tsc 错误后重试。"
+        exit 1
+    fi
+    echo "   ✓ 类型检查通过"
+    # 1b. lint 门禁：拦截 any 回潮 / 未用变量 / console 泄漏等坏味道
+    echo "📦 代码 lint (eslint)..."
+    if ! npx eslint .; then
+        echo "❌ Lint 未通过，同步中断。请修复上述 eslint 错误后重试（或运行 npm run lint 查看详情）。"
+        exit 1
+    fi
+    echo "   ✓ lint 通过"
+    # 1b. esbuild 打包
+    echo "📦 编译 TypeScript..."
     npx node esbuild.config.mjs
     BUILD_OK=$?
     if [ $BUILD_OK -ne 0 ]; then
@@ -48,10 +63,22 @@ fi
 
 # 2. 同步核心文件
 echo "📄 同步核心文件..."
-cp -f "$SRC_DIR/main.js" "$DEST_DIR/" 2>/dev/null && echo "   ✓ main.js"
-cp -f "$SRC_DIR/styles.css" "$DEST_DIR/" 2>/dev/null && echo "   ✓ styles.css"
-cp -f "$SRC_DIR/manifest.json" "$DEST_DIR/" 2>/dev/null && echo "   ✓ manifest.json"
-cp -f "$SRC_DIR/author-avatar.jpg" "$DEST_DIR/" 2>/dev/null && echo "   ✓ author-avatar.jpg"
+# 关键文件缺失即中断，禁止“假成功”
+for f in main.js styles.css manifest.json; do
+  if [ ! -f "$SRC_DIR/$f" ]; then
+    echo "   ❌ 源文件缺失: $SRC_DIR/$f，同步中断"
+    exit 1
+  fi
+  cp -f "$SRC_DIR/$f" "$DEST_DIR/" || { echo "   ❌ 拷贝失败: $f"; exit 1; }
+  echo "   ✓ $f ($(wc -c < "$SRC_DIR/$f" | tr -d ' ')B)"
+done
+# author-avatar.jpg 可选，缺失仅告警
+if [ -f "$SRC_DIR/author-avatar.jpg" ]; then
+  cp -f "$SRC_DIR/author-avatar.jpg" "$DEST_DIR/" || { echo "   ❌ 拷贝失败: author-avatar.jpg"; exit 1; }
+  echo "   ✓ author-avatar.jpg"
+else
+  echo "   ⚠️  未找到 author-avatar.jpg，跳过"
+fi
 echo ""
 
 # 3. 同步 webapp 目录（先删后建，与用户端「删目录→解压 zip」流程一致，避免浏览器缓存旧文件）
@@ -61,25 +88,37 @@ if [ -d "$SRC_DIR/webapp" ]; then
     mkdir -p "$DEST_DIR/webapp"
     rsync -rlDv --no-times --no-perms --no-owner --no-group "$SRC_DIR/webapp/" "$DEST_DIR/webapp/"
 
+    # 清理 .DS_Store（macOS 系统文件）
+    find "$DEST_DIR/webapp" -name ".DS_Store" -delete 2>/dev/null
+
     # 写入 .version，防止插件误判 webapp 未安装从 GitHub 下载覆盖
     VERSION=$(grep '"version"' "$SRC_DIR/manifest.json" | sed 's/.*"\([0-9.]*\)".*/\1/')
     echo "$VERSION" > "$DEST_DIR/webapp/.version"
 
-    # 清理 .DS_Store（macOS 系统文件）
-    find "$DEST_DIR/webapp" -name ".DS_Store" -delete 2>/dev/null
-
-    # 生成内容哈希（基于 webapp 目录所有文件内容）
-    HASH=$(find "$DEST_DIR/webapp" -type f | sort | while read f; do
-        cat "$f"
-    done | md5 | sed 's/.*= //' | tr -d ' ')
+    # 跨平台内容哈希（macOS 用 md5，Linux 用 md5sum），基于 webapp 目录所有文件内容
+    if command -v md5 >/dev/null 2>&1; then
+        HASH=$(find "$DEST_DIR/webapp" -type f -not -name '.DS_Store' | sort | while read -r f; do cat "$f"; done | md5 | sed 's/.*= //' | tr -d ' ')
+    else
+        HASH=$(find "$DEST_DIR/webapp" -type f -not -name '.DS_Store' | sort | while read -r f; do cat "$f"; done | md5sum | awk '{print $1}')
+    fi
     if [ -z "$HASH" ]; then
         # 保底：用时间戳
         HASH=$(date +%s)
     fi
     echo "   📦 内容哈希: $HASH"
 
-    # 替换 __BUILD__ 占位符为实际哈希
-    sed -i '' "s/__BUILD__/$HASH/g" "$DEST_DIR/webapp/index.html"
+    # 替换 __BUILD__ 占位符为实际哈希（必须在哈希计算之后，确保指纹反映最终产物）
+    if grep -q '__BUILD__' "$DEST_DIR/webapp/index.html"; then
+        sed -i '' "s/__BUILD__/$HASH/g" "$DEST_DIR/webapp/index.html"
+        # 后置校验：确认所有 __BUILD__ 均已被替换，否则视为同步失败
+        if grep -q '__BUILD__' "$DEST_DIR/webapp/index.html"; then
+            echo "   ❌ __BUILD__ 替换不完整，同步中断"
+            exit 1
+        fi
+        echo "   ✓ __BUILD__ 占位符已替换 ($HASH)"
+    else
+        echo "   ⚠️  index.html 中未发现 __BUILD__ 占位符，跳过替换"
+    fi
     echo "   ✓ webapp/ (完整同步)"
 else
     echo "   ⚠️  源目录中不存在 webapp 目录"

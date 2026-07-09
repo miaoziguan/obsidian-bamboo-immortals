@@ -4,19 +4,33 @@
   "description": "竹林修仙传 - Obsidian 每日复盘插件",
   "main": "main.js",
   "scripts": {
-    "dev": "node esbuild.config.mjs",
-    "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
+    "dev": "tsc --noEmit && node esbuild.config.mjs",
+    "build": "tsc -noEmit -skipLibCheck && npm run lint && node esbuild.config.mjs production",
     "test": "jest",
     "test:coverage": "jest --coverage",
-    "lint:css": "node scripts/lint-css-tokens.mjs"
+    "test:host": "vitest run",
+    "lint": "eslint .",
+    "lint:css": "node scripts/lint-css-tokens.mjs",
+    "prepare": "husky"
   },
   "devDependencies": {
     "@types/node": "^22.10.5",
+    "@typescript-eslint/eslint-plugin": "^7.18.0",
+    "@typescript-eslint/parser": "^7.18.0",
     "esbuild": "^0.24.2",
+    "eslint": "^8.57.1",
+    "husky": "^9.1.7",
     "jest": "^29.7.0",
     "jest-environment-jsdom": "^29.7.0",
+    "lint-staged": "^15.5.2",
     "obsidian": "latest",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "vitest": "^2.1.9"
   },
-  "dependencies": {}
+  "lint-staged": {
+    "*.ts": [
+      "eslint --fix",
+      "bash -c 'npx tsc --noEmit'"
+    ]
+  }
 }

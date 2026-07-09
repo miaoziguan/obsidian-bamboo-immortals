@@ -1,4 +1,13 @@
 import { App, normalizePath, TFile } from 'obsidian';
+import { ImportValidator } from './ImportValidator';
+import type {
+  DayData,
+  GoalItem,
+  AppSettings,
+  PurchaseHistory,
+  IncomeHistory,
+  ExportShape,
+} from '../types/data';
 
 /**
  * VaultStorage - 封装 Obsidian Vault adapter 的文件操作
@@ -71,25 +80,25 @@ export class VaultStorage {
     return normalizePath(`${this.basePath}/data/${dateKey}.json`);
   }
 
-  async getDay(dateKey: string): Promise<unknown> {
+  async getDay(dateKey: string): Promise<DayData | null> {
     const path = this.dayPath(dateKey);
     if (!(await this.app.vault.adapter.exists(path))) {
       return null;
     }
     try {
       const content: string = await this.app.vault.adapter.read(path);
-      return JSON.parse(content) as unknown;
+      return JSON.parse(content) as DayData;
     } catch (e) {
       console.warn(`[BambooReview] 日期数据文件损坏，将跳过: ${path}`, e);
       return null;
     }
   }
 
-  async getAllDays(): Promise<Record<string, any>> {
+  async getAllDays(): Promise<Record<string, DayData>> {
     await this.ensureDir('data');
     const dataDir = normalizePath(`${this.basePath}/data`);
     const files = await this.app.vault.adapter.list(dataDir);
-    const days: Record<string, any> = {};
+    const days: Record<string, DayData> = {};
 
     const reads = files.files
       .filter(f => f.endsWith('.json'))
@@ -131,7 +140,7 @@ export class VaultStorage {
    * @returns { days, total, page, pageSize, hasMore }
    */
   async getDaysPaginated(page = 0, pageSize = 30): Promise<{
-    days: Record<string, any>;
+    days: Record<string, DayData>;
     keys: string[];
     total: number;
     page: number;
@@ -142,7 +151,7 @@ export class VaultStorage {
     const total = allKeys.length;
     const start = page * pageSize;
     const pageKeys = allKeys.slice(start, start + pageSize);
-    const days: Record<string, any> = {};
+    const days: Record<string, DayData> = {};
 
     const reads = pageKeys.map(async (dateKey) => {
       try {
@@ -164,7 +173,7 @@ export class VaultStorage {
     };
   }
 
-  async putDay(dayData: Record<string, unknown>): Promise<void> {
+  async putDay(dayData: DayData): Promise<void> {
     await this.ensureDir('data');
     const dateKey = dayData.date;
     if (!dateKey) {
@@ -187,16 +196,16 @@ export class VaultStorage {
     return normalizePath(`${this.basePath}/goals.json`);
   }
 
-  async getGoals(): Promise<any[]> {
+  async getGoals(): Promise<GoalItem[]> {
     const path = this.goalsPath();
     if (!(await this.app.vault.adapter.exists(path))) {
       return [];
     }
     const content: string = await this.app.vault.adapter.read(path);
-    return JSON.parse(content) as unknown;
+    return JSON.parse(content) as GoalItem[];
   }
 
-  async putGoals(goals: unknown[]): Promise<void> {
+  async putGoals(goals: GoalItem[]): Promise<void> {
     const path = this.goalsPath();
     await this.vaultWrite(path, JSON.stringify(goals, null, 2));
   }
@@ -228,14 +237,14 @@ export class VaultStorage {
     }
   }
 
-  async getAllSettings(): Promise<Record<string, any>> {
+  async getAllSettings(): Promise<AppSettings> {
     const path = this.settingsPath();
     if (!(await this.app.vault.adapter.exists(path))) {
       return {};
     }
     try {
       const content: string = await this.app.vault.adapter.read(path);
-      return JSON.parse(content) as unknown;
+      return JSON.parse(content) as AppSettings;
     } catch {
       return {};
     }
@@ -247,16 +256,16 @@ export class VaultStorage {
     return normalizePath(`${this.basePath}/purchase-history.json`);
   }
 
-  async getPurchaseHistory(): Promise<unknown> {
+  async getPurchaseHistory(): Promise<PurchaseHistory | null> {
     const path = this.purchaseHistoryPath();
     if (!(await this.app.vault.adapter.exists(path))) {
       return null;
     }
     const content: string = await this.app.vault.adapter.read(path);
-    return JSON.parse(content) as unknown;
+    return JSON.parse(content) as PurchaseHistory;
   }
 
-  async putPurchaseHistory(data: unknown): Promise<void> {
+  async putPurchaseHistory(data: PurchaseHistory): Promise<void> {
     const path = this.purchaseHistoryPath();
     await this.vaultWrite(path, JSON.stringify(data, null, 2));
   }
@@ -267,23 +276,23 @@ export class VaultStorage {
     return normalizePath(`${this.basePath}/income-history.json`);
   }
 
-  async getIncomeHistory(): Promise<unknown> {
+  async getIncomeHistory(): Promise<IncomeHistory | null> {
     const path = this.incomeHistoryPath();
     if (!(await this.app.vault.adapter.exists(path))) {
       return null;
     }
     const content: string = await this.app.vault.adapter.read(path);
-    return JSON.parse(content) as unknown;
+    return JSON.parse(content) as IncomeHistory;
   }
 
-  async putIncomeHistory(data: unknown): Promise<void> {
+  async putIncomeHistory(data: IncomeHistory): Promise<void> {
     const path = this.incomeHistoryPath();
     await this.vaultWrite(path, JSON.stringify(data, null, 2));
   }
 
   // ---- 导出/导入 ----
 
-  async exportAllData(): Promise<any> {
+  async exportAllData(): Promise<ExportShape> {
     const [days, goals, settings, purchaseHistory, incomeHistory] = await Promise.all([
       this.getAllDays(),
       this.getGoals(),
@@ -309,14 +318,14 @@ export class VaultStorage {
   async importData(data: unknown, options: { strategy?: 'overwrite' | 'merge' } = {}): Promise<void> {
     await this.ensureStructure();
     const strategy = options.strategy ?? 'overwrite';
-    const record = (data && typeof data === 'object' && !Array.isArray(data))
-      ? (data as Record<string, unknown>)
-      : {};
+
+    // P2：导入前校验 + 字段补齐；损坏文件在此被拒绝，不污染 Vault
+    const record = ImportValidator.validate(data);
 
     if (record.days !== undefined) {
       // 防御：days 必须是对象；空对象表示清空全部日数据（仅 overwrite 语义下允许）
       const days = (record.days && typeof record.days === 'object' && !Array.isArray(record.days))
-        ? record.days as Record<string, any>
+        ? record.days
         : {};
       if (strategy === 'overwrite') {
         await this.clearAllDays();
@@ -327,7 +336,7 @@ export class VaultStorage {
     }
 
     if (record.goals !== undefined) {
-      const incoming = Array.isArray(record.goals) ? record.goals : [];
+      const incoming: GoalItem[] = Array.isArray(record.goals) ? record.goals : [];
       if (strategy === 'merge') {
         // 合并：保留现有目标，导入目标按 id 覆盖；空数组不触发清空
         const existing = (await this.getGoals()) || [];
@@ -343,13 +352,15 @@ export class VaultStorage {
     }
 
     if (record.settings !== undefined && record.settings && typeof record.settings === 'object') {
-      const settings = record.settings as Record<string, unknown>;
-      if (strategy === 'overwrite') {
-        await this.clearAllSettings();
+      const incoming = record.settings;
+      let toWrite: AppSettings;
+      if (strategy === 'merge') {
+        const existing = (await this.getAllSettings()) || {};
+        toWrite = { ...existing, ...incoming };
+      } else {
+        toWrite = incoming;
       }
-      for (const [key, value] of Object.entries(settings)) {
-        await this.putSetting(key, value);
-      }
+      await this.vaultWrite(this.settingsPath(), JSON.stringify(toWrite, null, 2));
     }
 
     if (record.purchaseHistory !== undefined) {

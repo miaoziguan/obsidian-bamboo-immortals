@@ -1,6 +1,7 @@
 import { VaultStorage } from '../storage/VaultStorage';
 import { MarkdownSync } from '../storage/MarkdownSync';
 import type { AnyBridgeMessage } from '../types/messages';
+import type { DayData, GoalItem, PurchaseHistory, IncomeHistory } from '../types/data';
 
 /**
  * StorageBridge - 将 storage:* 消息映射到 VaultStorage 操作
@@ -20,11 +21,11 @@ export class StorageBridge {
         return await this.storage.getDay(message.payload.dateKey);
 
       case 'storage:writeDay': {
-        const result = await this.storage.putDay(message.payload.data as Record<string, unknown>);
+        const result = await this.storage.putDay(message.payload.data as DayData);
         // 双写 Markdown 摘要
         if (this.enableMarkdownSync && message.payload.data) {
           try {
-            const md = MarkdownSync.generateMarkdown(message.payload.data as Record<string, unknown>);
+            const md = MarkdownSync.generateMarkdown(message.payload.data as DayData);
             await this.storage.writeMarkdownReview(message.payload.dateKey, md);
           } catch (e) {
             console.warn('Markdown sync failed:', e);
@@ -54,19 +55,19 @@ export class StorageBridge {
         return await this.storage.getGoals();
 
       case 'storage:putGoals':
-        return await this.storage.putGoals(message.payload.goals);
+        return await this.storage.putGoals(message.payload.goals as GoalItem[]);
 
       case 'storage:getPurchaseHistory':
         return await this.storage.getPurchaseHistory();
 
       case 'storage:putPurchaseHistory':
-        return await this.storage.putPurchaseHistory(message.payload.data);
+        return await this.storage.putPurchaseHistory(message.payload.data as PurchaseHistory);
 
       case 'storage:getIncomeHistory':
         return await this.storage.getIncomeHistory();
 
       case 'storage:putIncomeHistory':
-        return await this.storage.putIncomeHistory(message.payload.data);
+        return await this.storage.putIncomeHistory(message.payload.data as IncomeHistory);
 
       case 'storage:getDayKeys':
         return await this.storage.getDayKeys();

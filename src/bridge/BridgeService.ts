@@ -255,9 +255,10 @@ export class BridgeService {
         // _scanVaultAudioFiles() 内部已异步检查路径是否存在
         const files = await this._scanVaultAudioFiles();
         this.respond(msg.id, { files });
-      } catch (error: any) {
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : '扫描库文件失败';
         console.error('[Bamboo] 扫描库内音频文件失败:', error);
-        this.respondError(msg.id, error.message || '扫描库文件失败');
+        this.respondError(msg.id, message);
       }
       return;
     }
@@ -282,8 +283,8 @@ export class BridgeService {
           throw new Error('文件不存在：' + relativePath);
         }
         this.respond(msg.id, { filePath: fullPath, name: path.basename(relativePath, ext) });
-      } catch (error: any) {
-        this.respondError(msg.id, error.message || '读取库文件失败');
+      } catch (error: unknown) {
+        this.respondError(msg.id, error instanceof Error ? error.message : '读取库文件失败');
       }
       return;
     }
@@ -303,8 +304,8 @@ export class BridgeService {
           throw new Error('文件不存在：' + filePath);
         }
         this.respond(msg.id, { filePath, name: path.basename(filePath, ext) });
-      } catch (error: any) {
-        this.respondError(msg.id, error.message || '读取文件失败');
+      } catch (error: unknown) {
+        this.respondError(msg.id, error instanceof Error ? error.message : '读取文件失败');
       }
       return;
     }
@@ -313,14 +314,14 @@ export class BridgeService {
     try {
       const result = await this.storageBridge.handle(msg);
       this.respond(msg.id, result);
-    } catch (error: any) {
-      this.respondError(msg.id, error.message || 'Unknown error');
+    } catch (error: unknown) {
+      this.respondError(msg.id, error instanceof Error ? error.message : 'Unknown error');
     }
   }
 
 
   /** 向 iframe 发送成功响应 */
-  private respond(id: string, payload: any): void {
+  private respond(id: string, payload: unknown): void {
     if (!this.iframe?.contentWindow) return;
     this.iframe.contentWindow.postMessage({ id, payload }, '*');
   }

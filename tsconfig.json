@@ -10,6 +10,11 @@
     "moduleResolution": "bundler",
     "isolatedModules": true,
     "strictNullChecks": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "strict": true,
     "lib": ["DOM", "ES2020"]
   },
   "include": ["main.ts", "src/**/*.ts"]

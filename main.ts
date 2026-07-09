@@ -1,4 +1,4 @@
-import { Plugin, WorkspaceLeaf } from 'obsidian';
+import { Plugin, WorkspaceLeaf, Notice } from 'obsidian';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as zlib from 'zlib';
@@ -87,7 +87,7 @@ async function extractZip(source: string | Buffer, destDir: string): Promise<voi
 }
 
 /** 从 GitHub Release 下载 webapp.zip 并解压 */
-function downloadAndExtractWebapp(pluginDir: string, destDir: string, version: string): Promise<void> {
+function downloadAndExtractWebapp(_pluginDir: string, destDir: string, version: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const url = `https://github.com/miaoziguan/obsidian-bamboo-immortals/releases/download/${version}/webapp.zip`;
     https.get(url, { headers: { 'User-Agent': 'obsidian-bamboo-immortals' } }, (res) => {
@@ -142,7 +142,7 @@ function setupWebappInBackground(
   setImmediate(async () => {
     try {
       if (fs.existsSync(webappDir)) {
-        try { fs.rmSync(webappDir, { recursive: true, force: true }); } catch {}
+        try { fs.rmSync(webappDir, { recursive: true, force: true }); } catch { /* 目录可能不存在，忽略 */ }
       }
       const webappZip = path.join(vaultBasePath, pluginDir, 'webapp.zip');
       fs.mkdirSync(webappDir, { recursive: true });
@@ -150,7 +150,7 @@ function setupWebappInBackground(
       if (fs.existsSync(webappZip)) {
         new Notice('竹林修仙传: 正在解压资源包…', 0);
         await extractZip(webappZip, webappDir);
-        try { fs.unlinkSync(webappZip); } catch {}
+        try { fs.unlinkSync(webappZip); } catch { /* 解压产物已就位，删除 zip 失败可忽略 */ }
         new Notice('竹林修仙传: 资源包已更新', 3000);
       } else {
         const downloadNotice = new Notice('竹林修仙传: 正在下载资源包…', 0);
@@ -181,9 +181,9 @@ export default class BambooReviewPlugin extends Plugin {
     await this.loadSettings();
 
     // 启动本地 HTTP 服务器
-    const pluginDir = (this.manifest as any).dir;
+    const pluginDir = this.manifest.dir;
     if (pluginDir) {
-      const vaultBasePath = (this.app.vault.adapter as any).basePath || '';
+      const vaultBasePath = (this.app.vault.adapter as unknown as { basePath: string }).basePath || '';
       const webappDir = path.join(vaultBasePath, pluginDir, 'webapp');
       const webappIndexPath = path.join(webappDir, 'index.html');
       this.localServer = new LocalServer(webappDir);
@@ -293,7 +293,7 @@ export default class BambooReviewPlugin extends Plugin {
     if (leaves.length === 0) return;
 
     const view = leaves[0].view as DailyReviewView;
-    const iframe = (view as any).iframe as HTMLIFrameElement | null;
+    const iframe = (view as unknown as { iframe: HTMLIFrameElement | null }).iframe;
     if (iframe?.contentWindow) {
       let origin = '*';
       try { origin = new URL(iframe.src).origin; } catch { /* keep '*' */ }

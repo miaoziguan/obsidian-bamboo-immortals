@@ -264,7 +264,7 @@ export class LocalServer {
           res.writeHead(502); res.end('Upstream connection failed');
         }
       });
-    } catch (e: any) {
+    } catch (e: unknown) {
       if (!res.headersSent) {
         console.error('[BambooReview] Audio URL proxy error:', e);
         res.writeHead(500);
@@ -334,7 +334,7 @@ export class LocalServer {
           }
         });
       });
-    } catch (e: any) {
+    } catch (e: unknown) {
       if (!res.headersSent) {
         res.writeHead(500);
         console.error('[BambooReview] Audio proxy error:', e);

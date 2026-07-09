@@ -1,0 +1,5 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# 提交前对 staged 的改动文件做 lint 自动修复 + 类型检查
+npx lint-staged

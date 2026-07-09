@@ -5,8 +5,7 @@
  */
 export class ThemeBridge {
     private iframe: HTMLIFrameElement | null = null;
-    private expectedOrigin = '';
-    private _paletteSyncTimer: ReturnType<typeof setTimeout> | null = null;
+    private _paletteSyncTimer: number | null = null;
 
     /** 存储注入的 CSS 变量键名，用于 restoreDefaults 清理 */
     private static readonly INJECTED_VARS = [
@@ -24,11 +23,6 @@ export class ThemeBridge {
 
   attachIframe(iframe: HTMLIFrameElement): void {
     this.iframe = iframe;
-    try {
-      this.expectedOrigin = new URL(iframe.src).origin;
-    } catch {
-      this.expectedOrigin = '';
-    }
   }
 
   detachIframe(): void {

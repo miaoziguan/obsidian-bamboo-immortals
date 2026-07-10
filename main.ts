@@ -92,11 +92,11 @@ function downloadAndExtractWebapp(_pluginDir: string, destDir: string, version: 
     const DOWNLOAD_TIMEOUT_MS = 30_000;
     const url = `https://github.com/miaoziguan/obsidian-bamboo-immortals/releases/download/${version}/webapp.zip`;
 
-    let timeoutId: ReturnType<typeof setTimeout> | null = null;
-    const clearTimer = () => { if (timeoutId) { clearTimeout(timeoutId); timeoutId = null; } };
+    let timeoutId: number | null = null;
+    const clearTimer = () => { if (timeoutId !== null) { window.clearTimeout(timeoutId); timeoutId = null; } };
     const fail = (err: Error) => { clearTimer(); reject(err); };
 
-    timeoutId = setTimeout(() => {
+    timeoutId = window.setTimeout(() => {
       fail(new Error(`下载超时（${DOWNLOAD_TIMEOUT_MS / 1000}s），请检查网络连通性: ${url}`));
     }, DOWNLOAD_TIMEOUT_MS);
 

@@ -103,7 +103,7 @@ export class ThemeBridge {
   pushTheme(followObsidianTheme = false): void {
     if (!this.iframe?.contentWindow) return;
 
-    const payload: { isDark: boolean; hue?: number; bg?: string } = {
+    const payload: { isDark: boolean; hue?: number; bg?: string; textNormal?: string; textMuted?: string } = {
       isDark: this.isDarkMode(),
     };
 
@@ -120,6 +120,19 @@ export class ThemeBridge {
         .trim();
       const bg = ThemeBridge.rgbToRgbString(sidebar);
       if (bg !== null) payload.bg = bg;
+
+      // 文字色：驱动插件文字色温贴近 Obsidian
+      const textNormal = getComputedStyle(activeDocument.body)
+        .getPropertyValue('--text-normal')
+        .trim();
+      const textNormalRgb = ThemeBridge.rgbToRgbString(textNormal);
+      if (textNormalRgb !== null) payload.textNormal = textNormalRgb;
+
+      const textMuted = getComputedStyle(activeDocument.body)
+        .getPropertyValue('--text-muted')
+        .trim();
+      const textMutedRgb = ThemeBridge.rgbToRgbString(textMuted);
+      if (textMutedRgb !== null) payload.textMuted = textMutedRgb;
     }
 
     this.iframe.contentWindow.postMessage(

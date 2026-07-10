@@ -128,7 +128,7 @@ export class PluginSettings extends PluginSettingTab {
             const frame = activeDocument.querySelector<HTMLIFrameElement>('.bamboo-review-frame');
             if (!frame?.contentWindow) return;
             if (value) {
-              // 立即推送当前主题强调色反推的色相 + 侧边栏背景色温
+              // 立即推送当前主题强调色反推的色相 + 侧边栏背景色温 + 文字色温
               const accent = getComputedStyle(activeDocument.body)
                 .getPropertyValue('--interactive-accent')
                 .trim();
@@ -137,11 +137,21 @@ export class PluginSettings extends PluginSettingTab {
                 .getPropertyValue('--background-secondary')
                 .trim();
               const bg = ThemeBridge.rgbToRgbString(sidebar);
-              const payload: { isDark: boolean; hue?: number; bg?: string } = {
+              const textNormal = getComputedStyle(activeDocument.body)
+                .getPropertyValue('--text-normal')
+                .trim();
+              const textNormalRgb = ThemeBridge.rgbToRgbString(textNormal);
+              const textMuted = getComputedStyle(activeDocument.body)
+                .getPropertyValue('--text-muted')
+                .trim();
+              const textMutedRgb = ThemeBridge.rgbToRgbString(textMuted);
+              const payload: { isDark: boolean; hue?: number; bg?: string; textNormal?: string; textMuted?: string } = {
                 isDark: activeDocument.body.classList.contains('theme-dark'),
               };
               if (hue !== null) payload.hue = hue;
               if (bg !== null) payload.bg = bg;
+              if (textNormalRgb !== null) payload.textNormal = textNormalRgb;
+              if (textMutedRgb !== null) payload.textMuted = textMutedRgb;
               frame.contentWindow.postMessage({
                 type: 'theme:changed',
                 id: 'settings_' + Date.now(),

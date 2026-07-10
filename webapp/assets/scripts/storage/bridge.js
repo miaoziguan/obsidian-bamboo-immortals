@@ -360,13 +360,16 @@ window.addEventListener('message', (event) => {
   const data = event.data;
   if (!data) return;
 
-  // 关闭主题联动 → 恢复用户手动调色与卡片底色
+  // 关闭主题联动 → 恢复用户手动调色、卡片底色与文字色
   if (data.type === 'theme:followDisabled') {
     if (typeof window.DisplayManager !== 'undefined' && window.DisplayManager._restoreUserHue) {
       window.DisplayManager._restoreUserHue();
     }
     if (typeof window.DisplayManager !== 'undefined' && window.DisplayManager._restoreUserBg) {
       window.DisplayManager._restoreUserBg();
+    }
+    if (typeof window.DisplayManager !== 'undefined' && window.DisplayManager._restoreUserText) {
+      window.DisplayManager._restoreUserText();
     }
     return;
   }
@@ -388,6 +391,22 @@ window.addEventListener('message', (event) => {
   if (data.payload && typeof data.payload.hue === 'number') {
     if (typeof window.DisplayManager !== 'undefined' && window.DisplayManager._applyHue) {
       window.DisplayManager._applyHue(data.payload.hue, true);
+    }
+  }
+
+  // 侧边栏色温联动：主题推来背景 rgb 时，驱动插件卡片底色贴近 Obsidian
+  // fromTheme=true → 不回写 Obsidian，避免循环
+  if (data.payload && typeof data.payload.bg === 'string') {
+    if (typeof window.DisplayManager !== 'undefined' && window.DisplayManager._applyObsidianBg) {
+      window.DisplayManager._applyObsidianBg(data.payload.bg, true);
+    }
+  }
+
+  // 文字色温联动：主题推来 --text-normal / --text-muted 时，驱动插件文字贴近 Obsidian
+  // fromTheme=true → 不回写 Obsidian，避免循环
+  if (data.payload && (typeof data.payload.textNormal === 'string' || typeof data.payload.textMuted === 'string')) {
+    if (typeof window.DisplayManager !== 'undefined' && window.DisplayManager._applyObsidianText) {
+      window.DisplayManager._applyObsidianText(data.payload.textNormal, data.payload.textMuted, true);
     }
   }
 });

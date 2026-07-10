@@ -59,6 +59,7 @@
     width: 100%;
     height: 300px;
     overflow: hidden;
+    border-radius: inherit;
     background: linear-gradient(180deg,
         hsla(calc(var(--accent-hue) + 0), 32%, 97%, 0.95) 0%,
         hsla(calc(var(--accent-hue) + 0), 28%, 94%, 0.92) 30%,
@@ -94,6 +95,7 @@
     content: '';
     position: absolute;
     inset: 0;
+    border-radius: inherit;
     backdrop-filter: blur(var(--glass-blur));
     -webkit-backdrop-filter: blur(var(--glass-blur));
     pointer-events: none;
@@ -105,6 +107,7 @@
     content: '';
     position: absolute;
     inset: 0;
+    border-radius: inherit;
     background: linear-gradient(
         180deg,
         hsla(calc(var(--accent-hue) + 0), 50%, 100%, 0.15) 0%,

@@ -169,9 +169,10 @@ export class DailyReviewView extends ItemView {
     this.bridgeService.attach(this.iframe);
     this.themeBridge.attachIframe(this.iframe);
 
-    // 监听 Obsidian 主题变化
+    // 监听 Obsidian 主题变化（含意境配色切换）
+    // 开启「跟随 Obsidian 主题配色」时，把主题强调色反推的色相一并推给 iframe
     this.cssChangeRef = this.app.workspace.on('css-change', () => {
-      this.themeBridge?.onThemeChanged();
+      this.themeBridge?.onThemeChanged(this.settings.followObsidianTheme);
     });
   }
 

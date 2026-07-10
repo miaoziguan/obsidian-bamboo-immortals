@@ -34,23 +34,107 @@ export class ThemeBridge {
     return activeDocument.body.classList.contains('theme-dark');
   }
 
-  /** 向 iframe 推送当前主题状态 */
-  pushTheme(): void {
+  /**
+   * 解析 CSS 颜色字符串 → [r, g, b]（0–255 整数）
+   * 支持 rgb()/rgba()/#hex（3 或 6 位）；无法解析返回 null
+   */
+  private static parseColorToRgb(color: string): [number, number, number] | null {
+    if (!color) return null;
+    const c = color.trim();
+    let r: number, g: number, b: number;
+
+    const rgbMatch = c.match(/rgba?\(([^)]+)\)/i);
+    if (rgbMatch) {
+      const parts = rgbMatch[1].split(',').map((s) => parseFloat(s));
+      [r, g, b] = parts;
+    } else if (c[0] === '#') {
+      let hex = c.slice(1);
+      if (hex.length === 3) hex = hex.split('').map((ch) => ch + ch).join('');
+      if (hex.length < 6) return null;
+      r = parseInt(hex.slice(0, 2), 16);
+      g = parseInt(hex.slice(2, 4), 16);
+      b = parseInt(hex.slice(4, 6), 16);
+    } else {
+      return null;
+    }
+
+    if ([r, g, b].some((v) => isNaN(v))) return null;
+    return [Math.round(r), Math.round(g), Math.round(b)];
+  }
+
+  /**
+   * 解析 CSS 颜色字符串 → HSL 色相 H（0–360）
+   * 用于把 Obsidian 主题的 --interactive-accent 反推为插件的 --accent-hue
+   */
+  static rgbToHue(color: string): number | null {
+    const rgb = ThemeBridge.parseColorToRgb(color);
+    if (!rgb) return null;
+    const [r, g, b] = rgb;
+
+    const rn = r / 255, gn = g / 255, bn = b / 255;
+    const max = Math.max(rn, gn, bn), min = Math.min(rn, gn, bn), d = max - min;
+    if (d === 0) return 0;
+
+    let h: number;
+    if (max === rn) h = ((gn - bn) / d) % 6;
+    else if (max === gn) h = (bn - rn) / d + 2;
+    else h = (rn - gn) / d + 4;
+
+    h = Math.round(h * 60);
+    return h < 0 ? h + 360 : h;
+  }
+
+  /**
+   * 解析 CSS 颜色字符串 → "r, g, b" 三元组字符串
+   * 用于把 Obsidian 侧边栏背景 --background-secondary 同步为插件卡片底色，
+   * 让插件卡片色温贴近 Obsidian 原生界面
+   */
+  static rgbToRgbString(color: string): string | null {
+    const rgb = ThemeBridge.parseColorToRgb(color);
+    if (!rgb) return null;
+    return rgb.join(', ');
+  }
+
+  /**
+   * 向 iframe 推送当前主题状态
+   * @param followObsidianTheme 为 true 时，附带从 Obsidian 主题
+   *        --interactive-accent 反推的意境色相 hue，驱动插件整盘配色联动
+   */
+  pushTheme(followObsidianTheme = false): void {
     if (!this.iframe?.contentWindow) return;
+
+    const payload: { isDark: boolean; hue?: number; bg?: string } = {
+      isDark: this.isDarkMode(),
+    };
+
+    if (followObsidianTheme) {
+      const accent = getComputedStyle(activeDocument.body)
+        .getPropertyValue('--interactive-accent')
+        .trim();
+      const hue = ThemeBridge.rgbToHue(accent);
+      if (hue !== null) payload.hue = hue;
+
+      // 侧边栏背景色：驱动插件卡片底色贴近 Obsidian 色温
+      const sidebar = getComputedStyle(activeDocument.body)
+        .getPropertyValue('--background-secondary')
+        .trim();
+      const bg = ThemeBridge.rgbToRgbString(sidebar);
+      if (bg !== null) payload.bg = bg;
+    }
 
     this.iframe.contentWindow.postMessage(
       {
         type: 'theme:changed',
         id: 'theme_push_' + Date.now(),
-        payload: { isDark: this.isDarkMode() },
+        payload,
       },
       '*'
     );
   }
 
   /** 供外部调用：Obsidian 主题变化时触发 */
-  onThemeChanged(): void {
-    this.pushTheme();
+  onThemeChanged(followObsidianTheme = false): void {
+    this.pushTheme(followObsidianTheme);
   }
 
   // ===== 双向调色 =====

@@ -179,7 +179,7 @@ export class BridgeService {
 
     // 生命周期消息
     if (msg.type === 'app:ready') {
-      this.themeBridge.pushTheme();
+      this.themeBridge.pushTheme(this.settings?.followObsidianTheme ?? false);
       // 把持久化的 sectionConfig、自定义主题和自定义音源随 ready 响应发给 webapp
       this.respond(msg.id, {
         ok: true,
@@ -228,7 +228,7 @@ export class BridgeService {
           activeDocument.body.classList.add('theme-light');
         }
         // 通知 iframe 主题已切换
-        this.themeBridge.pushTheme();
+        this.themeBridge.pushTheme(this.settings?.followObsidianTheme ?? false);
       }
       this.respond(msg.id, { ok: true, isDark: targetIsDark });
       return;

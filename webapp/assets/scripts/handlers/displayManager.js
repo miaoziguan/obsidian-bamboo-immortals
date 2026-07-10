@@ -550,6 +550,42 @@ export const DisplayManager = {
         root.style.removeProperty('--card-glass');
     },
 
+    /**
+     * 用 Obsidian 文字色温覆盖插件文字色变量
+     * - 主文字 --text-normal → --ink-dark / --ink-medium（主/次强调）
+     * - 弱化文字 --text-muted → --ink-light / --ink-pale（辅助/弱化）
+     * 暗色模式下插件原文字带 --accent-hue 绿调，覆盖后即贴近 Obsidian 中性文字色温
+     * @param {string} [normalRgb] "r, g, b" 主文字三元组
+     * @param {string} [mutedRgb] "r, g, b" 弱化文字三元组
+     * @param {boolean} [fromTheme=false] 来自主题联动时为 true（不回写 Obsidian）
+     */
+    _applyObsidianText(normalRgb, mutedRgb, fromTheme = false) {
+        const root = getCssVarRoot();
+        if (!root) return;
+
+        if (normalRgb) {
+            root.style.setProperty('--ink-dark', `rgb(${normalRgb})`);
+            root.style.setProperty('--ink-medium', `rgb(${normalRgb})`);
+        }
+        if (mutedRgb) {
+            root.style.setProperty('--ink-light', `rgb(${mutedRgb})`);
+            root.style.setProperty('--ink-pale', `rgb(${mutedRgb})`);
+        }
+    },
+
+    /**
+     * 恢复文字色（关闭「跟随 Obsidian 主题配色」时调用）
+     * 移除内联覆盖，回退到 variables.css 的明暗模式默认文字色
+     */
+    _restoreUserText() {
+        const root = getCssVarRoot();
+        if (!root) return;
+        root.style.removeProperty('--ink-dark');
+        root.style.removeProperty('--ink-medium');
+        root.style.removeProperty('--ink-light');
+        root.style.removeProperty('--ink-pale');
+    },
+
     _syncHueUI(hue) {
         if (this._hueSliderEl) {
             this._hueSliderEl.value = hue;

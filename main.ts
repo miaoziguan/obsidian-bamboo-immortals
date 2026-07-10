@@ -86,38 +86,42 @@ async function extractZip(source: string | Buffer, destDir: string): Promise<voi
   }
 }
 
-/** 从 GitHub Release 下载 webapp.zip 并解压 */
+/** 从 GitHub Release 下载 webapp.zip 并解压，内置 30 秒超时防止网络不通时永久挂起 */
 function downloadAndExtractWebapp(_pluginDir: string, destDir: string, version: string): Promise<void> {
   return new Promise((resolve, reject) => {
+    const DOWNLOAD_TIMEOUT_MS = 30_000;
     const url = `https://github.com/miaoziguan/obsidian-bamboo-immortals/releases/download/${version}/webapp.zip`;
-    https.get(url, { headers: { 'User-Agent': 'obsidian-bamboo-immortals' } }, (res) => {
-      if (res.statusCode === 302 || res.statusCode === 301) {
-        // Follow redirect
-        https.get(res.headers.location || '', { headers: { 'User-Agent': 'obsidian-bamboo-immortals' } }, (redir) => {
-          const chunks: Buffer[] = [];
-          redir.on('data', (c: Buffer) => chunks.push(c));
-          redir.on('end', () => {
-            try {
-              extractZip(Buffer.concat(chunks), destDir).then(resolve).catch(reject);
-            } catch (e) { reject(e instanceof Error ? e : new Error(String(e))); }
-          });
-          redir.on('error', reject);
-        }).on('error', reject);
-        return;
-      }
-      if (res.statusCode !== 200) {
-        reject(new Error(`HTTP ${res.statusCode}: ${url}`));
-        return;
-      }
-      const chunks: Buffer[] = [];
-      res.on('data', (c: Buffer) => chunks.push(c));
-      res.on('end', () => {
-        try {
-          extractZip(Buffer.concat(chunks), destDir).then(resolve).catch(reject);
-        } catch (e) { reject(e instanceof Error ? e : new Error(String(e))); }
-      });
-      res.on('error', reject);
-    }).on('error', reject);
+
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    const clearTimer = () => { if (timeoutId) { clearTimeout(timeoutId); timeoutId = null; } };
+    const fail = (err: Error) => { clearTimer(); reject(err); };
+
+    timeoutId = setTimeout(() => {
+      fail(new Error(`下载超时（${DOWNLOAD_TIMEOUT_MS / 1000}s），请检查网络连通性: ${url}`));
+    }, DOWNLOAD_TIMEOUT_MS);
+
+    const fetchWithRedirect = (targetUrl: string, cb: (chunks: Buffer[]) => void): void => {
+      https.get(targetUrl, { headers: { 'User-Agent': 'obsidian-bamboo-immortals' } }, (res) => {
+        if (res.statusCode === 302 || res.statusCode === 301) {
+          const loc = res.headers.location;
+          if (!loc) { fail(new Error('重定向缺少 Location 头')); return; }
+          fetchWithRedirect(loc, cb);
+          return;
+        }
+        if (res.statusCode !== 200) {
+          fail(new Error(`HTTP ${res.statusCode}: ${targetUrl}`));
+          return;
+        }
+        const chunks: Buffer[] = [];
+        res.on('data', (c: Buffer) => chunks.push(c));
+        res.on('end', () => { clearTimer(); cb(chunks); });
+        res.on('error', (e) => fail(e instanceof Error ? e : new Error(String(e))));
+      }).on('error', (e) => fail(e instanceof Error ? e : new Error(String(e))));
+    };
+
+    fetchWithRedirect(url, (chunks) => {
+      extractZip(Buffer.concat(chunks), destDir).then(resolve).catch((e) => reject(e instanceof Error ? e : new Error(String(e))));
+    });
   });
 }
 

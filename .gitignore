@@ -22,6 +22,5 @@ yarn-error.log*
 # Temp files
 *.tmp
 *.bak
-webapp/
 webapp.zip
 author-avatar-from-base64.jpg

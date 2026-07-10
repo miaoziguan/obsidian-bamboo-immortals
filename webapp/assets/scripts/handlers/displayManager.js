@@ -419,14 +419,26 @@ export const DisplayManager = {
         }
     },
 
-    /* ===== 应用色相 ===== */
-    _applyHue(hue) {
+    /* 用户手动设定的色相（用于关闭主题联动后恢复），默认竹青绿 */
+    _userHue: 120,
+
+    /**
+     * 应用色相
+     * @param {number} hue 色相值 0–360
+     * @param {boolean} [fromTheme=false] 是否来自 Obsidian 主题联动。
+     *        为 true 时跳过回写 Obsidian（防止死循环），且不覆盖用户手动色记录
+     */
+    _applyHue(hue, fromTheme = false) {
         const root = getCssVarRoot();
         if (!root) return;
 
+        // 记录用户手动色相，供关闭联动后恢复
+        if (!fromTheme) this._userHue = hue;
+
         root.style.setProperty('--accent-hue', hue);
 
-        this._maybeSyncPalette();
+        // 主题联动来的色相不回写 Obsidian，避免 iframe→Obsidian→iframe 循环
+        if (!fromTheme) this._maybeSyncPalette();
 
         // 同步更新所有绿色系 RGB 变量（用于 rgba() 半透明色）
         // 竹青绿主色 hsl(hue, 27%, 48%) → #5A9A5A
@@ -490,6 +502,52 @@ export const DisplayManager = {
         root.style.setProperty('--pale-green-alt-rgb-dark', paleGreenAltRgbDark);
 
         this._syncHueUI(hue);
+    },
+
+    /**
+     * 恢复用户手动设定的色相（关闭「跟随 Obsidian 主题配色」时调用）
+     * 优先用内存记录，缺失时回退持久化设置，再回退默认竹青绿
+     */
+    async _restoreUserHue() {
+        let hue = this._userHue;
+        if (hue === null || hue === undefined || isNaN(hue)) {
+            try {
+                const saved = await storageManager.getSetting('displayHue');
+                hue = (saved !== null && saved !== undefined) ? Number(saved) : this.DEFAULT_HUE;
+            } catch (e) {
+                hue = this.DEFAULT_HUE;
+            }
+        }
+        if (isNaN(hue) || hue < this.HUE_MIN || hue > this.HUE_MAX) hue = this.DEFAULT_HUE;
+        this._applyHue(hue, false);
+    },
+
+    /**
+     * 用 Obsidian 侧边栏背景色温（"r, g, b"）覆盖插件卡片底色
+     * 保留原有的两层透明度：--card-bg 较透（0.60），--card-glass 更实（0.84）
+     * @param {string} rgb "r, g, b" 三元组
+     * @param {boolean} [fromTheme=false] 来自主题联动时为 true（不回写 Obsidian）
+     */
+    _applyObsidianBg(rgb, fromTheme = false) {
+        const root = getCssVarRoot();
+        if (!root) return;
+        if (!rgb) return;
+
+        root.style.setProperty('--obsidian-sidebar-rgb', rgb);
+        root.style.setProperty('--card-bg', `rgba(${rgb}, 0.60)`);
+        root.style.setProperty('--card-glass', `rgba(${rgb}, 0.84)`);
+    },
+
+    /**
+     * 恢复卡片底色（关闭「跟随 Obsidian 主题配色」时调用）
+     * 移除内联覆盖，回退到 variables.css 的明暗模式默认卡片底色
+     */
+    _restoreUserBg() {
+        const root = getCssVarRoot();
+        if (!root) return;
+        root.style.removeProperty('--obsidian-sidebar-rgb');
+        root.style.removeProperty('--card-bg');
+        root.style.removeProperty('--card-glass');
     },
 
     _syncHueUI(hue) {

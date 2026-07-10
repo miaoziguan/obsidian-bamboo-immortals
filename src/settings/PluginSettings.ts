@@ -18,6 +18,8 @@ export interface BambooReviewSettings {
   noiseItems: unknown[];
   /** 是否将 webapp 调色同步到 Obsidian 原生界面 */
   syncPaletteToObsidian: boolean;
+  /** 是否让插件配色跟随 Obsidian 主题（读取 --interactive-accent 反推色相） */
+  followObsidianTheme: boolean;
 }
 
 export const DEFAULT_SETTINGS: BambooReviewSettings = {
@@ -28,6 +30,7 @@ export const DEFAULT_SETTINGS: BambooReviewSettings = {
   noisePath: '',
   noiseItems: [],
   syncPaletteToObsidian: false,
+  followObsidianTheme: true,
 };
 
 /**
@@ -112,6 +115,48 @@ export class PluginSettings extends PluginSettingTab {
 
     // === 调色联动 ===
     new Setting(containerEl).setName('调色联动').setHeading();
+
+    new Setting(containerEl)
+      .setName('跟随 Obsidian 主题配色')
+      .setDesc('打开后，插件整体配色会跟随当前 Obsidian 主题的强调色（--interactive-accent）。切换 Bamboo China 的竹影 / 墨夜 / 胭脂 / 青绿等意境时，插件配色随之联动')
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.followObsidianTheme)
+          .onChange(async (value) => {
+            this.plugin.settings.followObsidianTheme = value;
+            await this.plugin.saveSettings();
+            const frame = activeDocument.querySelector<HTMLIFrameElement>('.bamboo-review-frame');
+            if (!frame?.contentWindow) return;
+            if (value) {
+              // 立即推送当前主题强调色反推的色相 + 侧边栏背景色温
+              const accent = getComputedStyle(activeDocument.body)
+                .getPropertyValue('--interactive-accent')
+                .trim();
+              const hue = ThemeBridge.rgbToHue(accent);
+              const sidebar = getComputedStyle(activeDocument.body)
+                .getPropertyValue('--background-secondary')
+                .trim();
+              const bg = ThemeBridge.rgbToRgbString(sidebar);
+              const payload: { isDark: boolean; hue?: number; bg?: string } = {
+                isDark: activeDocument.body.classList.contains('theme-dark'),
+              };
+              if (hue !== null) payload.hue = hue;
+              if (bg !== null) payload.bg = bg;
+              frame.contentWindow.postMessage({
+                type: 'theme:changed',
+                id: 'settings_' + Date.now(),
+                payload,
+              }, '*');
+            } else {
+              // 关闭联动 → 通知 iframe 恢复用户手动调色
+              frame.contentWindow.postMessage({
+                type: 'theme:followDisabled',
+                id: 'settings_' + Date.now(),
+                payload: {},
+              }, '*');
+            }
+          })
+      );
 
     new Setting(containerEl)
       .setName('将调色同步到 Obsidian')

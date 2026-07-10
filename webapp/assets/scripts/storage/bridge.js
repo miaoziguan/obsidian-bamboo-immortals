@@ -358,14 +358,36 @@ window.addEventListener('message', (event) => {
   if (event.source !== window.parent) return;
 
   const data = event.data;
-  if (!data || data.type !== 'theme:changed') return;
+  if (!data) return;
+
+  // 关闭主题联动 → 恢复用户手动调色与卡片底色
+  if (data.type === 'theme:followDisabled') {
+    if (typeof window.DisplayManager !== 'undefined' && window.DisplayManager._restoreUserHue) {
+      window.DisplayManager._restoreUserHue();
+    }
+    if (typeof window.DisplayManager !== 'undefined' && window.DisplayManager._restoreUserBg) {
+      window.DisplayManager._restoreUserBg();
+    }
+    return;
+  }
+
+  if (data.type !== 'theme:changed') return;
 
   // 同步 Obsidian 的明暗模式到 iframe 内部（仅在自动跟随开启时）
   if (data.payload && typeof data.payload.isDark === 'boolean') {
     if (typeof store !== 'undefined') {
       const state = store.getState ? store.getState() : store.state;
-      if (state && state.ui && state.ui.autoSyncTheme === false) return;
-      store.setDarkMode(data.payload.isDark);
+      if (!(state && state.ui && state.ui.autoSyncTheme === false)) {
+        store.setDarkMode(data.payload.isDark);
+      }
+    }
+  }
+
+  // 意境配色联动：主题推来色相时，驱动插件整盘配色
+  // fromTheme=true → 不回写 Obsidian，杜绝 iframe→Obsidian→iframe 死循环
+  if (data.payload && typeof data.payload.hue === 'number') {
+    if (typeof window.DisplayManager !== 'undefined' && window.DisplayManager._applyHue) {
+      window.DisplayManager._applyHue(data.payload.hue, true);
     }
   }
 });

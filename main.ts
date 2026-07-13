@@ -1,6 +1,7 @@
 import { Plugin, WorkspaceLeaf } from 'obsidian';
 import { DailyReviewView, VIEW_TYPE_DAILY_REVIEW } from './src/views/DailyReviewView';
 import { AppHost } from './src/host/AppHost';
+import { WebappController } from './src/host/WebappController';
 import { ThemeBridge } from './src/bridge/ThemeBridge';
 import {
   PluginSettings,
@@ -19,6 +20,7 @@ import {
  */
 export default class BambooReviewPlugin extends Plugin {
   settings: BambooReviewSettings = DEFAULT_SETTINGS;
+  private webapp!: WebappController;
 
   async onload(): Promise<void> {
     // 加载设置
@@ -36,6 +38,13 @@ export default class BambooReviewPlugin extends Plugin {
       return new DailyReviewView(leaf, pluginDir, this, this.settings, () => this.saveSettings());
     });
 
+    // 宿主 → webapp 直连接口（Phase3 门面，内部仍走 sendCommand 线协议）
+    this.webapp = new WebappController(() => {
+      const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_DAILY_REVIEW);
+      if (leaves.length === 0) return null;
+      return leaves[0].view as DailyReviewView;
+    });
+
     // 注册命令
     this.addCommand({
       id: 'open-daily-review',
@@ -46,31 +55,31 @@ export default class BambooReviewPlugin extends Plugin {
     this.addCommand({
       id: 'navigate-prev-day',
       name: '前一天',
-      callback: () => this.sendToWebapp('nav:prevDay'),
+      callback: () => this.webapp.navPrevDay(),
     });
 
     this.addCommand({
       id: 'navigate-next-day',
       name: '后一天',
-      callback: () => this.sendToWebapp('nav:nextDay'),
+      callback: () => this.webapp.navNextDay(),
     });
 
     this.addCommand({
       id: 'navigate-today',
       name: '回到今天',
-      callback: () => this.sendToWebapp('nav:today'),
+      callback: () => this.webapp.navToday(),
     });
 
     this.addCommand({
       id: 'open-stats',
       name: '打开统计分析',
-      callback: () => this.sendToWebapp('action:openStats'),
+      callback: () => this.webapp.openStats(),
     });
 
     this.addCommand({
       id: 'open-settings-in-app',
       name: '打开应用设置',
-      callback: () => this.sendToWebapp('action:openSettings'),
+      callback: () => this.webapp.openSettings(),
     });
 
     // 注册设置面板
@@ -108,15 +117,6 @@ export default class BambooReviewPlugin extends Plugin {
     if (leaf) {
       await workspace.revealLeaf(leaf);
     }
-  }
-
-  /** 向 webapp 发送导航/操作指令（Phase 3 将替换为直接 API 调用） */
-  private sendToWebapp(type: string): void {
-    const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_DAILY_REVIEW);
-    if (leaves.length === 0) return;
-
-    const view = leaves[0].view as DailyReviewView;
-    view.sendCommand(type);
   }
 
   /** 加载设置 */

@@ -8,6 +8,22 @@ import type { DayData } from '../types/data';
 /** 扫描音频时默认跳过的目录名 */
 const SKIP_DIRS = ['.trash', '.git', 'node_modules'];
 
+/**
+ * 校验音源代理 URL：仅允许 http/https 协议，限制长度，
+ * 防止 `app:proxyAudioUrl` 成为运行在用户机器上的开放 fetch 代理。
+ */
+export function isValidAudioUrl(url: string): boolean {
+  if (!url || typeof url !== 'string') return false;
+  if (url.length > 2048) return false;
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return false;
+  }
+  return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+}
+
 /** ArrayBuffer → base64 字符串（大文件分块，避免调用栈溢出） */
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
@@ -380,7 +396,7 @@ export class AppAPI {
     try {
       const p = payload as { url: string };
       const url = p.url || '';
-      if (!url) throw new Error('未提供音源链接');
+      if (!isValidAudioUrl(url)) throw new Error('非法音源链接（仅支持 http/https）');
 
       const resp = await requestUrl({ url, method: 'GET' });
       if (resp.status < 200 || resp.status >= 300) {

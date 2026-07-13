@@ -108,9 +108,11 @@ describe('AppAPI 音频读取', () => {
     expect(res!.error).toContain('HTTP 404');
   });
 
-  it('proxyAudioUrl 缺少 URL 返回错误', async () => {
+  it('proxyAudioUrl 缺少/非法 URL 返回错误', async () => {
     const res = await call('handleProxyAudioUrl', 'p3', { url: '' });
-    expect(res!.error).toContain('未提供音源链接');
+    expect(res!.error).toContain('非法音源链接');
+    const res2 = await call('handleProxyAudioUrl', 'p4', { url: 'file:///etc/passwd' });
+    expect(res2!.error).toContain('非法音源链接');
   });
 
   it('大文件 base64 分块编码正确（跨越 0x8000 分块边界）', async () => {

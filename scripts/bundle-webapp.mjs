@@ -112,3 +112,11 @@ fs.writeFileSync(appOutFile, appHtml);
 const openCount = (appHtml.match(/<script\b/gi) || []).length;
 const closeCount = (appHtml.match(/<\/script>/gi) || []).length;
 console.log(`App HTML: 自包含 → ${appOutFile} (含内联 CSS + 内联 bundle, <script>=${openCount}, </script>=${closeCount})`);
+
+// 6. 写入版本戳：运行时 AppHost 据其对 webapp 做版本守卫（版本不符则重新自举下载）。
+//    该文件位于 webapp/ 下，会被 release.yml 的 `zip -r webapp.zip .` 一并打包进
+//    webapp.zip，解压后自动落盘。
+const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "package.json"), "utf-8"));
+const versionStampFile = path.join(webappDir, ".webapp-version");
+fs.writeFileSync(versionStampFile, String(pkg.version));
+console.log(`Webapp version stamp → ${versionStampFile} (v${pkg.version})`);

@@ -96,16 +96,16 @@ describe('SearchService 搜索服务', () => {
         expect(SearchService.search(data, [], '不存在的')).toHaveLength(0);
     });
 
-    test('JSON 整体匹配兜底', () => {
-        // 构造一个特殊字段（不在指标/目标/时间线覆盖范围内），通过 JSON 整体匹配
+    test('自由文本字段兜底匹配', () => {
+        // 构造一个自由文本字段（不在指标/目标/时间线覆盖范围内），
+        // 经由 FALLBACK_FIELDS 兜底命中（note 为真实日数据复盘字段）。
         const data = {
             '2026-06-17': {
                 ...makeDay(),
-                notes: '今天学习了很多新知识',
+                note: '今天学习了很多新知识',
             },
         };
         const results = SearchService.search(data, [], '新知识');
-        // JSON.stringify(day) 会包含 notes 字段
         expect(results).toHaveLength(1);
     });
 

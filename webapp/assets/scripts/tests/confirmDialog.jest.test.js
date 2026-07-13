@@ -13,7 +13,12 @@ describe('ConfirmDialog', () => {
         };
         window.escapeHtml = jest.fn(s => s);
         document.body.innerHTML = '<div id="modalContainer"></div>';
-        loadModule('utils/confirmDialog.js', []);
+        // 镜像生产打包行为：导出经 window[key]=mod[key] 暴露为 window.Confirm，
+        // 且被 import 剥离的 modalMount 以全局 mock 注入。
+        const { Confirm } = loadModule('utils/confirmDialog.js', ['Confirm'], {
+            modalMount: () => document.getElementById('modalContainer'),
+        });
+        window.Confirm = Confirm;
     });
 
     afterEach(() => {

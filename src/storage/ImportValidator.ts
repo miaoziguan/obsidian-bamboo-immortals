@@ -34,7 +34,7 @@ const KNOWN_FIELDS = ['days', 'goals', 'settings', 'purchaseHistory', 'incomeHis
  * 本项目无富文本需求，统一文本化是安全的。
  */
 function sanitizeString(input: unknown): string {
-  if (typeof input !== 'string') return input as unknown as string;
+  if (typeof input !== 'string') return input as string;
   const out = input
     .replace(/<[^>]*>/g, '') // 移除所有 HTML 标签
     .replace(/\son\w+\s*=\s*"[^"]*"/gi, '') // 移除 on*="..."
@@ -50,7 +50,7 @@ function sanitizeValue(value: unknown): unknown {
   if (Array.isArray(value)) return value.map((v) => sanitizeValue(v));
   if (value && typeof value === 'object') {
     const out: Record<string, unknown> = {};
-    for (const key of Object.keys(value as Record<string, unknown>)) {
+    for (const key of Object.keys(value)) {
       out[key] = sanitizeValue((value as Record<string, unknown>)[key]);
     }
     return out;

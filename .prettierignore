@@ -1,0 +1,5 @@
+# 自动生成的大文件，跳过格式化
+src/host/webappAssets.generated.ts
+webapp.zip
+node_modules/
+main.js

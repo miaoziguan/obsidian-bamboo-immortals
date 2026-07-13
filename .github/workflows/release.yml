@@ -25,6 +25,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Build webapp assets (bundle + embed into main.js)
+        run: npm run build:webapp
+
       - name: Type check
         run: npx tsc --noEmit
 
@@ -37,20 +40,6 @@ jobs:
       - name: Build
         run: node esbuild.config.mjs production
 
-      - name: Package webapp
-        run: |
-          cd webapp
-          zip -r ../webapp.zip . -x "*.DS_Store"
-          cd ..
-      - name: Generate artifact attestation
-        uses: actions/attest-build-provenance@v2
-        with:
-          subject-path: |
-            main.js
-            manifest.json
-            styles.css
-            webapp.zip
-
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
@@ -58,6 +47,4 @@ jobs:
             main.js
             manifest.json
             styles.css
-            author-avatar.jpg
-            webapp.zip
           generate_release_notes: true

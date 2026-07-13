@@ -24,3 +24,6 @@ yarn-error.log*
 *.bak
 webapp.zip
 author-avatar-from-base64.jpg
+
+# Generated webapp assets (embedded into main.js at build time)
+src/host/webappAssets.generated.ts

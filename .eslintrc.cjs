@@ -30,6 +30,7 @@ module.exports = {
     'coverage/',
     'test/',          // 测试 mock 与基础设施，不约束 any/console
     'scripts/',       // 构建工具链（CSS 作用域化等），不参与应用 lint
+    'src/host/webappAssets.generated.ts', // 自动生成的大文件，不参与 lint
     '*.config.js',
     '*.config.mjs',
   ],

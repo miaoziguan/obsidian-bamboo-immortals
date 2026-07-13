@@ -50,6 +50,8 @@ export const ThemeEffects = {
 
         var section = byId('themeEffectSection');
         if (!section) return;
+        // 确保切换有渐变（淡出→替换→淡入），避免 opacity 瞬断造成白闪观感
+        section.style.transition = 'opacity 0.25s ease';
 
         // 淡出 → 替换内容 → 淡入，消除 innerHTML 瞬间白屏
         var self = this;
@@ -364,8 +366,16 @@ export const ThemeEffects = {
 
     /** 静态审计主题代码，检测危险 API 调用 */
     _auditThemeCode(name, code) {
-        // 先剥离注释，避免注释中的关键词误触发
-        const stripped = code
+        // 先剥离字符串字面量（单/双引号/模板串），避免「说明文字里提到 window.top」
+        // 这类无害内容被误判为危险调用。字符串本身不会执行危险 API，
+        // 真正调用会以裸 `eval(` / `window.top` 等形式出现在代码里，仍会被下方规则命中。
+        const noStrings = code
+            .replace(/`(?:\\.|[^`\\])*`/g, '``')   // 模板字符串
+            .replace(/'(?:\\.|[^'\\])*'/g, "''")     // 单引号字符串
+            .replace(/"(?:\\.|[^"\\])*"/g, '""');    // 双引号字符串
+
+        // 再剥离注释，避免注释中的关键词误触发
+        const stripped = noStrings
             .replace(/\/\*[\s\S]*?\*\//g, '')  // 多行注释
             .replace(/\/\/.*$/gm, '');           // 单行注释
 

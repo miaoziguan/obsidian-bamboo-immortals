@@ -16,8 +16,10 @@ import JSZip from 'jszip';
  * 本地开发/内测通过 sync.sh 同步整个 webapp/ 目录（含 app.html），运行时直接读取，
  * 无需内嵌、无外部联网，main.js 保持轻量。
  *
- * 自愈：若插件目录缺失 webapp/app.html（例如从内嵌版升级、而分发渠道未重新放置
- * webapp/），检测缺失时自动从对应版本 GitHub Release 下载 webapp.zip 并解压。
+ * 自愈（版本守卫）：运行时比对 webapp/.webapp-version 与当前插件版本。
+ *   - 本地缺失 webapp/，或版本戳缺失（老 clone / 历史遗留）→ 信任磁盘或降级；
+ *   - 版本不符（插件已升级但 webapp 未跟随）→ 重新从对应版本 GitHub Release
+ *     自举下载 webapp.zip 并解压，使「webapp 更新经 GitHub 随插件版本送达」真正成立。
  */
 export class AppHost {
   private app: App;
@@ -80,12 +82,25 @@ export class AppHost {
   }
 
   /**
-   * 自愈：若本地 webapp/app.html 不存在，则从 GitHub Release 下载对应版本的 webapp.zip 解压。
-   * 正常安装（webapp/ 已随插件分发）完全不触发联网；仅缺失时兜底。
+   * 自愈（版本守卫）：若本地 webapp 缺失，或已存在但版本戳与当前插件版本不符，
+   * 则重新从 GitHub Release 下载对应版本的 webapp.zip 解压（覆盖）。
+   * 正常安装（webapp/ 已随插件分发且版本匹配）完全不触发联网；仅缺失或过期时兜底。
    */
   private async ensureWebapp(adapter: DataAdapter): Promise<void> {
+    const versionStampFile = '.webapp-version';
     const appHtmlPath = normalizePath(`${this.webappDir}/app.html`);
-    if (await this.fileExists(adapter, appHtmlPath)) return;
+    const stampPath = normalizePath(`${this.webappDir}/${versionStampFile}`);
+
+    if (await this.fileExists(adapter, appHtmlPath)) {
+      // webapp/ 存在：仅当版本戳缺失（老 clone / 历史遗留）或版本不符时才重下，
+      // 否则信任磁盘 —— BRAT / git-clone 随仓库同步的最新 webapp 即正确，无需联网。
+      if (!(await this.fileExists(adapter, stampPath))) return;
+      const local = await this.readVersionStamp(adapter, stampPath);
+      if (local === this.version) return;
+      console.log(
+        `[AppHost] 本地 webapp 版本(${local}) 与插件版本(${this.version}) 不符，重新自举下载。`
+      );
+    }
 
     if (!this.version) {
       console.warn('[AppHost] 无法获取插件版本，跳过自举下载。请确认插件安装完整。');
@@ -93,13 +108,20 @@ export class AppHost {
     }
 
     const url = `https://github.com/${this.repo}/releases/download/${this.version}/webapp.zip`;
-    console.log(`[AppHost] 未检测到本地 webapp，尝试自举下载：${url}`);
+    console.log(`[AppHost] 未检测到匹配的本地 webapp，尝试自举下载：${url}`);
     try {
       const resp = await requestUrl({ url, method: 'GET' });
       if (resp.status < 200 || resp.status >= 300 || !resp.arrayBuffer) {
         throw new Error(`下载返回异常状态 ${resp.status}`);
       }
       await this.extractZip(adapter, resp.arrayBuffer);
+      // webapp.zip 已携带 .webapp-version，解压后自动落盘；此处兜底再写一次，
+      // 避免同版本反复重下。
+      try {
+        await adapter.write(stampPath, this.version);
+      } catch (e) {
+        console.warn('[AppHost] 写入 webapp 版本戳失败（不影响使用）：', e);
+      }
       console.log('[AppHost] webapp 自举下载并解压完成。');
     } catch (e) {
       console.error('[AppHost] webapp 自举下载失败：', e);
@@ -107,6 +129,14 @@ export class AppHost {
         `无法自动获取 webapp（${e instanceof Error ? e.message : '未知错误'}）。` +
         '请检查网络后重试，或在 Obsidian 中重新安装本插件。'
       );
+    }
+  }
+
+  private async readVersionStamp(adapter: DataAdapter, filePath: string): Promise<string | null> {
+    try {
+      return (await adapter.read(filePath)).trim();
+    } catch {
+      return null;
     }
   }
 

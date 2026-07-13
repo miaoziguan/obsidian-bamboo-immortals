@@ -1,2 +1,5 @@
-# 提交前对改动做 lint 自动修复 + 类型检查（husky v9 无需 shebang 两行）
-npx eslint . && npx tsc --noEmit
+# 门禁：提交前必须通过 lint 与两套测试，避免破窗回归。
+# 测试已通过 CI 强制（release.yml），此处为本地最后一道防线。
+npm run lint
+npm run test:host
+npm run test

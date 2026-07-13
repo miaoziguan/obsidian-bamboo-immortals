@@ -42,10 +42,10 @@ jobs:
         run: npx tsc --noEmit
 
       - name: Test (host)
-        run: npm run test:host || echo "Skipped - vitest issue"
+        run: npm run test:host
 
       - name: Test (webapp)
-        run: npm run test || echo "Skipped - jest issue"
+        run: npm run test
 
       - name: Build main.js
         run: node esbuild.config.mjs production

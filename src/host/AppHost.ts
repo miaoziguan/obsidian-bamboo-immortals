@@ -5,13 +5,12 @@ import JSZip from 'jszip';
  * AppHost — webapp 资源加载与注入中心
  *
  * 加载策略（轻量、零内嵌）：
- *   1. 读取构建期生成的自包含 webapp/app.html（CSS 已内联、外部脚本已替换为
- *      `__BUNDLE_BLOB__` 占位符）。
- *   2. 读取 webapp/assets/scripts/bundle.js，创建 blob URL，替换占位符。
- *   3. 将整页 HTML 以 blob URL 形式交给 iframe 加载。
+ *   1. 读取构建期生成的自包含 webapp/app.html（CSS 已内联、bundle 已内联为静态
+ *      <script type="module"> 标签，无任何外部脚本、无占位符）。
+ *   2. 将整页 HTML 以 blob URL 形式交给 iframe 加载。
  *
- * 由于所有 <script> 拼接都在构建期（bundle-webapp.mjs）完成，运行时 main.js
- * 不再包含任何动态创建 script 元素的代码，规避安全扫描误报。
+ * 由于所有 <script> 均在构建期（bundle-webapp.mjs）静态写入 app.html，运行时
+ * main.js 不创建、不拼接任何 script 元素，规避安全扫描「动态注入脚本」误报。
  *
  * webapp 由发布流程打包为 webapp.zip 随版本分发（见 .github/workflows/release.yml），
  * 本地开发/内测通过 sync.sh 同步整个 webapp/ 目录（含 app.html），运行时直接读取，
@@ -47,20 +46,8 @@ export class AppHost {
       throw new Error('无法读取 webapp/app.html，且自动下载失败。请尝试在 Obsidian 中重新安装本插件，或手动放置 webapp/ 目录');
     }
 
-    // 读取 bundle.js 并创建 blob URL，替换占位符（替换函数避免 $ 特殊字符问题）
-    const bundlePath = normalizePath(`${this.webappDir}/assets/scripts/bundle.js`);
-    let bundleBlobUrl = '';
-    try {
-      const bundleContent = await adapter.read(bundlePath);
-      const blob = new Blob([bundleContent], { type: 'application/javascript' });
-      bundleBlobUrl = URL.createObjectURL(blob);
-      this.blobUrls.push(bundleBlobUrl);
-    } catch (e) {
-      throw new Error(`无法读取 webapp/assets/scripts/bundle.js：${e instanceof Error ? e.message : '未知错误'}`);
-    }
-
-    html = html.replace('__BUNDLE_BLOB__', () => bundleBlobUrl);
-
+    // 整页 HTML 已自包含（CSS 内联 + bundle 内联为静态 <script>），直接 blob 交给 iframe。
+    // 运行时不创建、不拼接任何 script 元素。
     const pageBlob = new Blob([html], { type: 'text/html' });
     const pageUrl = URL.createObjectURL(pageBlob);
     this.blobUrls.push(pageUrl);

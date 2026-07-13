@@ -48,12 +48,11 @@ const entryContent = [
 
 fs.writeFileSync(entryFile, entryContent);
 
-// 3. 打包
-const outFile = path.join(webappDir, "assets/scripts/bundle.js");
-await esbuild.build({
+// 3. 打包（不落盘，直接取产物字符串用于内联）
+const bundleResult = await esbuild.build({
   entryPoints: [entryFile],
   bundle: true,
-  outfile: outFile,
+  write: false,
   format: "iife",
   target: "es2020",
   logLevel: "info",
@@ -64,8 +63,12 @@ await esbuild.build({
 // 4. 清理临时入口
 fs.unlinkSync(entryFile);
 
-const sizeKB = (fs.statSync(outFile).size / 1024).toFixed(1);
-console.log(`Bundle: ${modules.length} modules → ${outFile} (${sizeKB}KB)`);
+const bundleOut =
+  bundleResult.outputFiles.find((f) => f.path.endsWith("bundle.js")) ||
+  bundleResult.outputFiles[0];
+const bundleCode = bundleOut.text;
+const sizeKB = (Buffer.byteLength(bundleCode, "utf-8") / 1024).toFixed(1);
+console.log(`Bundle: ${modules.length} modules (${sizeKB}KB)`);
 
 // 5. 生成自包含 app.html（内联 CSS + 用占位符替代外部脚本）
 //    运行时 AppHost 只需读取 app.html 并将占位符替换为 bundle 的 blob URL，
@@ -88,24 +91,24 @@ appHtml = appHtml.replace(/<link\b[^>]*?rel=["']stylesheet["'][^>]*?>/gi, (tag) 
   }
 });
 
-// 5b. 移除所有外部 <script src>，并在首个位置插入 bundle 占位符脚本
-const scriptTagRegex = /<script\s+[^>]*?src=["']([^"']+)["'][^>]*?>/gi;
-const extScripts = [];
-let sm;
-while ((sm = scriptTagRegex.exec(appHtml)) !== null) {
-  extScripts.push({ index: sm.index, full: sm[0] });
-}
-// 从后往前删除，保持前面索引有效
-for (let i = extScripts.length - 1; i >= 0; i--) {
-  const { index, full } = extScripts[i];
-  appHtml = appHtml.slice(0, index) + appHtml.slice(index + full.length);
-}
-if (extScripts.length > 0) {
-  const firstIndex = extScripts[0].index;
-  const bundleTag = `<script src="__BUNDLE_BLOB__"></script>`;
+// 5b. 移除所有外部 <script src>...</script> 完整配对标签（含闭标签，修复原只删开标签导致
+//     残留大量孤立 </script> 的畸形问题）
+const scriptPairRegex = /<script\b[^>]*?src=["'][^"']+["'][^>]*?>\s*<\/script>/gi;
+let firstMatch = scriptPairRegex.exec(appHtml);
+const firstIndex = firstMatch ? firstMatch.index : -1;
+appHtml = appHtml.replace(scriptPairRegex, "");
+
+// 5c. 在首个外部脚本原位置内联 bundle（构建期完成，运行时不再拼接任何 <script>）。
+//     内联为静态 <script type="module">，非运行时动态创建，规避安全扫描误报。
+//     对 </script> 做转义，避免 bundle 内容中的该串提前闭合标签。
+if (firstIndex >= 0) {
+  const escaped = bundleCode.replace(/<\/script/gi, "<\\/script");
+  const bundleTag = `<script type="module">\n${escaped}\n</script>`;
   appHtml = appHtml.slice(0, firstIndex) + bundleTag + appHtml.slice(firstIndex);
 }
 
 const appOutFile = path.join(webappDir, "app.html");
 fs.writeFileSync(appOutFile, appHtml);
-console.log(`App HTML: 自包含 → ${appOutFile} (含内联 CSS + bundle 占位符)`);
+const openCount = (appHtml.match(/<script\b/gi) || []).length;
+const closeCount = (appHtml.match(/<\/script>/gi) || []).length;
+console.log(`App HTML: 自包含 → ${appOutFile} (含内联 CSS + 内联 bundle, <script>=${openCount}, </script>=${closeCount})`);

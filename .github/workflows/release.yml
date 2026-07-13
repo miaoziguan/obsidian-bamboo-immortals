@@ -25,7 +25,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build webapp bundle (生成 webapp/assets/scripts/bundle.js)
+      - name: Build webapp (内联 CSS + 内联 bundle 生成自包含 webapp/app.html)
         run: node scripts/bundle-webapp.mjs
 
       - name: Type check

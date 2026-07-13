@@ -203,7 +203,7 @@ window.DatePicker = {
         store.goToDate(newDate);
         renderAll();
         PanelManager.close();
-        Toast.showToast(`已跳转到${label}`, 'success');
+        // 日期显示已随 renderAll 更新，无需再弹成功 Toast（避免高频切换疲劳）
     },
 
     goToSelectedDate() {
@@ -244,7 +244,7 @@ window.DatePicker = {
         store.goToDate(today);
         renderAll();
         PanelManager.close();
-        Toast.showToast('已回到今天', 'success');
+        // 日期显示已随 renderAll 更新，无需再弹成功 Toast
     },
 
     close() {

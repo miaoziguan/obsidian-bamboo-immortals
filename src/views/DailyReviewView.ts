@@ -81,6 +81,12 @@ export class DailyReviewView extends ItemView {
     const version = (this.plugin as { manifest?: { version?: string } } | undefined)?.manifest?.version ?? '';
     this.appHost = new AppHost(this.app, this.pluginDir, version);
 
+    // 加载态占位：webapp 体积较大，构建 blob（必要时联网下载）期间先展示，避免空白
+    const loadingEl = container.createEl('div', {
+      text: '竹林修仙传加载中…',
+      cls: 'bamboo-review-loading',
+    });
+
     try {
       const blobUrl = await this.appHost.buildBlobUrl();
 
@@ -92,6 +98,9 @@ export class DailyReviewView extends ItemView {
         },
       });
 
+      // blob 就绪后移除加载态
+      loadingEl.remove();
+
       // 绑定通信
       this.appAPI.attach(this.iframe);
 
@@ -100,6 +109,7 @@ export class DailyReviewView extends ItemView {
         this.appAPI?.onThemeChanged(this.settings.followObsidianTheme);
       });
     } catch (e) {
+      loadingEl.remove();
       console.error('[BambooReview] 加载 webapp 失败:', e);
       container.createEl('div', {
         text: `竹林修仙传加载失败: ${e instanceof Error ? e.message : '未知错误'}`,

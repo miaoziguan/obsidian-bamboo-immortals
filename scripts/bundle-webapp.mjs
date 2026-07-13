@@ -56,7 +56,7 @@ const bundleResult = await esbuild.build({
   format: "iife",
   target: "es2020",
   logLevel: "info",
-  minify: false,
+  minify: true,
   absWorkingDir: webappDir,
 });
 

@@ -32,6 +32,31 @@ export class AppHost {
     this.version = version;
   }
 
+  // 后台预拉取的去重缓存：避免插件 onload 预拉取与视图打开时重复下载
+  private static prefetchCache = new Map<string, Promise<void>>();
+
+  /**
+   * 后台预拉取：插件 onload 时调用，提前把缺失的 webapp 下载并解压到插件目录。
+   * 正常安装（webapp/ 已随插件分发）时仅做一次存在性检查，几乎零开销。
+   * 失败仅告警（不抛出），真正打开视图时 buildBlobUrl 会再次尝试；
+   * 同一插件目录并发只触发一次下载。
+   */
+  static prefetch(app: App, pluginDir: string, version: string): Promise<void> {
+    const key = normalizePath(`${pluginDir}/webapp`);
+    let p = AppHost.prefetchCache.get(key);
+    if (!p) {
+      const host = new AppHost(app, pluginDir, version);
+      p = host.ensureWebapp(app.vault.adapter).catch((e: unknown) => {
+        console.warn(
+          '[AppHost] 后台预拉取 webapp 失败（打开视图时将重试）：',
+          e instanceof Error ? e.message : String(e)
+        );
+      });
+      AppHost.prefetchCache.set(key, p);
+    }
+    return p;
+  }
+
   async buildBlobUrl(): Promise<string> {
     const adapter = this.app.vault.adapter;
 

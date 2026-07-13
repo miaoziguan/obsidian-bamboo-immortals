@@ -1,5 +1,6 @@
 import { Plugin, WorkspaceLeaf } from 'obsidian';
 import { DailyReviewView, VIEW_TYPE_DAILY_REVIEW } from './src/views/DailyReviewView';
+import { AppHost } from './src/host/AppHost';
 import { ThemeBridge } from './src/bridge/ThemeBridge';
 import {
   PluginSettings,
@@ -24,6 +25,11 @@ export default class BambooReviewPlugin extends Plugin {
     await this.loadSettings();
 
     const pluginDir = this.manifest.dir || '';
+    const version = this.manifest.version || '';
+
+    // 后台预拉取 webapp：插件加载即触发，打开视图前大概率已就绪，消除「打开空白」体感。
+    // 失败不阻塞 onload，打开视图时 buildBlobUrl 会再次尝试。
+    void AppHost.prefetch(this.app, pluginDir, version);
 
     // 注册 View（传递 pluginDir 供 ItemView 加载 webapp 静态资源）
     this.registerView(VIEW_TYPE_DAILY_REVIEW, (leaf: WorkspaceLeaf) => {

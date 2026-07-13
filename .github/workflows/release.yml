@@ -17,6 +17,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Verify version sync
+        run: |
+          PKG_VER=$(node -p "require('./package.json').version")
+          MF_VER=$(node -p "require('./manifest.json').version")
+          echo "package.json: $PKG_VER | manifest.json: $MF_VER"
+          if [ "$PKG_VER" != "$MF_VER" ]; then
+            echo "::error::package.json 版本($PKG_VER) 与 manifest.json 版本($MF_VER) 不一致。请先同步两者，否则 webapp 版本守卫会误判，导致标准安装用户重复自举下载。"
+            exit 1
+          fi
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:

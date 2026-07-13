@@ -1,14 +1,16 @@
 import { App, DataAdapter, normalizePath } from 'obsidian';
-import { WEBAPP_HTML } from './webappAssets.generated';
 
 /**
  * AppHost — webapp 资源加载与注入中心
  *
  * 策略：
- *   1. 发布模式：webapp 已内嵌进 main.js（WEBAPP_HTML），零外部文件依赖，
- *      彻底避免「无法读取 webapp/index.html」类分发缺文件问题。
- *   2. 开发模式：若插件目录存在 webapp/，优先读取源文件以支持热更新，
- *      读取失败则回退到内嵌 HTML。
+ *   1. 若 webapp/assets/scripts/bundle.js 存在（构建产物），
+ *      替换所有外部 module 脚本为单个 bundle <script>，零 import 问题。
+ *   2. 若不存在，回退到逐个 blob URL + import 重写。
+ *
+ * webapp 由发布流程打包为 webapp.zip 随版本分发（见 .github/workflows/release.yml），
+ * 本地开发/内测通过 sync.sh 同步整个 webapp/ 目录，运行时直接读取插件目录，
+ * 无需内嵌、无外部联网，main.js 保持轻量。
  */
 export class AppHost {
   private app: App;
@@ -25,16 +27,20 @@ export class AppHost {
     const indexPath = normalizePath(`${this.webappDir}/index.html`);
     let html: string;
     try {
-      // 开发模式：优先读取仓库内的 webapp 源文件，支持热更新
       html = await adapter.read(indexPath);
-      html = await this.inlineStyles(html, adapter);
-      html = await this.processScripts(html, adapter);
-      if (!await this.fileExists(adapter, normalizePath(`${this.webappDir}/assets/scripts/bundle.js`))) {
-        html = this.fixBridgeSelection(html);
-      }
     } catch {
-      // 发布模式：使用内嵌的自包含 HTML，无需任何外部文件
-      html = WEBAPP_HTML;
+      throw new Error('无法读取 webapp/index.html，请确认插件安装完整（webapp/ 目录缺失或被误删）');
+    }
+
+    // 内联 CSS
+    html = await this.inlineStyles(html, adapter);
+
+    // JS 处理 — 优先使用 bundle
+    html = await this.processScripts(html, adapter);
+
+    // bridge.js 选择逻辑（仅非 bundle 模式需要）
+    if (!await this.fileExists(adapter, normalizePath(`${this.webappDir}/assets/scripts/bundle.js`))) {
+      html = this.fixBridgeSelection(html);
     }
 
     const blob = new Blob([html], { type: 'text/html' });

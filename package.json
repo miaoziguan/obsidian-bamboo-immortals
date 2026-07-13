@@ -1,12 +1,12 @@
 {
   "name": "obsidian-bamboo-review",
-  "version": "2.1.9",
+  "version": "2.2.0",
   "description": "竹林修仙传 - Obsidian 每日复盘插件",
   "main": "main.js",
   "scripts": {
     "dev": "npm run build:webapp && tsc --noEmit && node esbuild.config.mjs",
     "build": "npm run build:webapp && tsc --noEmit -skipLibCheck && npm run lint && node esbuild.config.mjs production",
-    "build:webapp": "node scripts/bundle-webapp.mjs && node scripts/build-embed-assets.mjs",
+    "build:webapp": "node scripts/bundle-webapp.mjs",
     "test": "jest",
     "test:coverage": "jest --coverage",
     "test:host": "vitest run",

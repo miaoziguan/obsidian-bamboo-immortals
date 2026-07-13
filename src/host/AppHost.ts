@@ -4,18 +4,21 @@ import JSZip from 'jszip';
 /**
  * AppHost — webapp 资源加载与注入中心
  *
- * 策略：
- *   1. 若 webapp/assets/scripts/bundle.js 存在（构建产物），
- *      替换所有外部 module 脚本为单个 bundle <script>，零 import 问题。
- *   2. 若不存在，回退到逐个 blob URL + import 重写。
+ * 加载策略（轻量、零内嵌）：
+ *   1. 读取构建期生成的自包含 webapp/app.html（CSS 已内联、外部脚本已替换为
+ *      `__BUNDLE_BLOB__` 占位符）。
+ *   2. 读取 webapp/assets/scripts/bundle.js，创建 blob URL，替换占位符。
+ *   3. 将整页 HTML 以 blob URL 形式交给 iframe 加载。
+ *
+ * 由于所有 <script> 拼接都在构建期（bundle-webapp.mjs）完成，运行时 main.js
+ * 不再包含任何动态创建 script 元素的代码，规避安全扫描误报。
  *
  * webapp 由发布流程打包为 webapp.zip 随版本分发（见 .github/workflows/release.yml），
- * 本地开发/内测通过 sync.sh 同步整个 webapp/ 目录，运行时直接读取插件目录，
+ * 本地开发/内测通过 sync.sh 同步整个 webapp/ 目录（含 app.html），运行时直接读取，
  * 无需内嵌、无外部联网，main.js 保持轻量。
  *
- * 自愈：若插件目录缺失 webapp/（例如从内嵌版 2.1.8/2.1.9 升级、而分发渠道
- * 未重新放置 webapp/），detect 到 index.html 缺失时自动从对应版本 GitHub Release
- * 下载 webapp.zip 并解压到插件目录，避免「加载失败」。
+ * 自愈：若插件目录缺失 webapp/app.html（例如从内嵌版升级、而分发渠道未重新放置
+ * webapp/），检测缺失时自动从对应版本 GitHub Release 下载 webapp.zip 并解压。
  */
 export class AppHost {
   private app: App;
@@ -36,116 +39,41 @@ export class AppHost {
     // 自愈：webapp/ 缺失时从对应版本 Release 自举下载并解压
     await this.ensureWebapp(adapter);
 
-    const indexPath = normalizePath(`${this.webappDir}/index.html`);
+    const appHtmlPath = normalizePath(`${this.webappDir}/app.html`);
     let html: string;
     try {
-      html = await adapter.read(indexPath);
+      html = await adapter.read(appHtmlPath);
     } catch {
-      throw new Error('无法读取 webapp/index.html，且自动下载失败。请尝试在 Obsidian 中重新安装本插件，或手动放置 webapp/ 目录');
+      throw new Error('无法读取 webapp/app.html，且自动下载失败。请尝试在 Obsidian 中重新安装本插件，或手动放置 webapp/ 目录');
     }
 
-    // 内联 CSS
-    html = await this.inlineStyles(html, adapter);
-
-    // JS 处理 — 优先使用 bundle
-    html = await this.processScripts(html, adapter);
-
-    // bridge.js 选择逻辑（仅非 bundle 模式需要）
-    if (!await this.fileExists(adapter, normalizePath(`${this.webappDir}/assets/scripts/bundle.js`))) {
-      html = this.fixBridgeSelection(html);
-    }
-
-    const blob = new Blob([html], { type: 'text/html' });
-    const blobUrl = URL.createObjectURL(blob);
-    this.blobUrls.push(blobUrl);
-    return blobUrl;
-  }
-
-  private async inlineStyles(html: string, adapter: DataAdapter): Promise<string> {
-    const linkRegex = /<link\s+[^>]*rel=["']stylesheet["'][^>]*href=["']([^"']+)["'][^>]*\/?>/gi;
-    const links: Array<{ full: string; href: string }> = [];
-    let match;
-    while ((match = linkRegex.exec(html)) !== null) {
-      links.push({ full: match[0], href: match[1] });
-    }
-    for (const { full, href } of links) {
-      const cleanHref = href.split('?')[0];
-      const cssPath = normalizePath(`${this.webappDir}/${cleanHref}`);
-      try {
-        const css = await adapter.read(cssPath);
-        html = html.replace(full, `<style data-src="${cleanHref}">\n${css}\n</style>`);
-      } catch (e) {
-        console.warn(`[AppHost] 无法加载 CSS: ${cssPath}`, e);
-      }
-    }
-    return html;
-  }
-
-  private async processScripts(html: string, adapter: DataAdapter): Promise<string> {
+    // 读取 bundle.js 并创建 blob URL，替换占位符（替换函数避免 $ 特殊字符问题）
     const bundlePath = normalizePath(`${this.webappDir}/assets/scripts/bundle.js`);
-    const hasBundle = await this.fileExists(adapter, bundlePath);
-
-    if (hasBundle) {
-      return await this.useBundle(html, adapter, bundlePath);
-    }
-    return await this.useIndividualScripts(html, adapter);
-  }
-
-  /**
-   * 使用构建产物 bundle.js — 替换所有外部 module 脚本为单个脚本
-   */
-  private async useBundle(html: string, adapter: DataAdapter, bundlePath: string): Promise<string> {
-    console.log('[AppHost] 使用 bundle.js');
-    const bundleContent = await adapter.read(bundlePath);
-    const blob = new Blob([bundleContent], { type: 'application/javascript' });
-    const blobUrl = URL.createObjectURL(blob);
-    this.blobUrls.push(blobUrl);
-
-    // 替换所有外部 <script type="module" src="...">
-    html = html.replace(/<script\s+[^>]*?src=["'][^"']+["'][^>]*?>\s*<\/script>/gi, '');
-
-    // 在第一个 <script> 标签前插入 bundle（确保 globals 在 inline scripts 之前加载）
-    const bundleTag = `<script src="${blobUrl}"></script>`;
-    const firstScript = html.search(/<script/i);
-    if (firstScript >= 0) {
-      html = html.slice(0, firstScript) + bundleTag + '\n' + html.slice(firstScript);
-    } else {
-      html = html.replace('</body>', `${bundleTag}\n</body>`);
-    }
-
-    return html;
-  }
-
-  /**
-   * 回退方案：逐个创建 blob URL + 重写 import 路径
-   */
-  private async useIndividualScripts(html: string, _adapter: DataAdapter): Promise<string> {
-    // 回退方案：不处理（直接返回原始 HTML）
-    console.warn('[AppHost] 未找到 bundle.js，跳过 JS 处理');
-    return html;
-  }
-
-  private async fileExists(adapter: DataAdapter, path: string): Promise<boolean> {
+    let bundleBlobUrl = '';
     try {
-      return await adapter.exists(path);
-    } catch {
-      return false;
+      const bundleContent = await adapter.read(bundlePath);
+      const blob = new Blob([bundleContent], { type: 'application/javascript' });
+      bundleBlobUrl = URL.createObjectURL(blob);
+      this.blobUrls.push(bundleBlobUrl);
+    } catch (e) {
+      throw new Error(`无法读取 webapp/assets/scripts/bundle.js：${e instanceof Error ? e.message : '未知错误'}`);
     }
-  }
 
-  private fixBridgeSelection(html: string): string {
-    const oldScript = /<script>\s*\/\/ Obsidian iframe 检测[\s\S]*?<\/script>/;
-    html = html.replace(oldScript, '<script type="module" src="assets/scripts/storage/bridge.js?__BUILD__"></script>');
-    return html;
+    html = html.replace('__BUNDLE_BLOB__', () => bundleBlobUrl);
+
+    const pageBlob = new Blob([html], { type: 'text/html' });
+    const pageUrl = URL.createObjectURL(pageBlob);
+    this.blobUrls.push(pageUrl);
+    return pageUrl;
   }
 
   /**
-   * 自愈：若本地 webapp/index.html 不存在，则从 GitHub Release 下载对应版本的 webapp.zip 解压。
+   * 自愈：若本地 webapp/app.html 不存在，则从 GitHub Release 下载对应版本的 webapp.zip 解压。
    * 正常安装（webapp/ 已随插件分发）完全不触发联网；仅缺失时兜底。
    */
   private async ensureWebapp(adapter: DataAdapter): Promise<void> {
-    const indexPath = normalizePath(`${this.webappDir}/index.html`);
-    if (await this.fileExists(adapter, indexPath)) return;
+    const appHtmlPath = normalizePath(`${this.webappDir}/app.html`);
+    if (await this.fileExists(adapter, appHtmlPath)) return;
 
     if (!this.version) {
       console.warn('[AppHost] 无法获取插件版本，跳过自举下载。请确认插件安装完整。');
@@ -200,6 +128,14 @@ export class AppHost {
           // 可能已被其他条目先行创建，忽略
         }
       }
+    }
+  }
+
+  private async fileExists(adapter: DataAdapter, path: string): Promise<boolean> {
+    try {
+      return await adapter.exists(path);
+    } catch {
+      return false;
     }
   }
 

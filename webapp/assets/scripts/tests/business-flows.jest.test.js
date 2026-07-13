@@ -288,6 +288,11 @@ describe('核心业务流', () => {
         });
         installBrowserGlobals(store);
         installServices();
+        // 固定时间相关方法，使断言与运行机器时区解耦：
+        // setSystemTime 固定的是绝对时刻，但 getCurrentPeriod/getCurrentTime 依赖本地时区，
+        // 在 UTC（CI）下同一时刻会落到 lateNight / 02:15，导致非确定性失败。
+        jest.spyOn(window.TimelineService, 'getCurrentPeriod').mockReturnValue('morning');
+        jest.spyOn(window.TimelineService, 'getCurrentTime').mockReturnValue('10:15');
         loadModule('modules/goals/renderer.js', []);
 
         window.GoalsRenderer.completeGoalTask('goal_1', 0, '2026-05-17', false);

@@ -49,7 +49,14 @@ if [ -f "$SRC_DIR/package.json" ]; then
         exit 1
     fi
     echo "   ✓ lint 通过"
-    # 1b. esbuild 打包
+    # 1b. 构建内嵌 webapp 资源（bundle + 内联进 main.js），必须在 esbuild 之前
+    echo "📦 构建内嵌 webapp 资源 (bundle + embed)..."
+    if ! npm run build:webapp; then
+        echo "❌ 内嵌资源构建失败，同步中断。"
+        exit 1
+    fi
+    echo "   ✓ 内嵌资源已生成"
+    # 1c. esbuild 打包
     echo "📦 编译 TypeScript..."
     npx node esbuild.config.mjs
     BUILD_OK=$?

@@ -20884,7 +20884,7 @@ nav .date-display-sub {
         </nav>
 
 
-<script type="module">
+<script>
 "use strict";
 (() => {
   var __create = Object.create;

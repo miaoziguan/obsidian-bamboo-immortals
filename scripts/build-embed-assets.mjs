@@ -82,7 +82,10 @@ html = html.replace(scriptRegex, (_full, src) => {
   if (!/assets\/scripts\//.test(src)) return _full; // 仅处理本地 webapp 脚本
   if (!inserted) {
     inserted = true;
-    return `<script type="module">\n${bundle}\n</script>`;
+    // bundle.js 是 esbuild IIFE（classic 脚本），必须用 classic <script> 内联，
+    // 保持与运行时 AppHost.useBundle() 一致——同步执行、在入口 module 之前把
+    // 模块挂载到 window，否则入口 module 拿不到 SectionManager/Todo/store 等全局。
+    return `<script>\n${bundle}\n</script>`;
   }
   return "";
 });

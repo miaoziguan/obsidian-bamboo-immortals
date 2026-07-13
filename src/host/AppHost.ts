@@ -150,7 +150,7 @@ export class AppHost {
       const target = normalizePath(`${this.webappDir}/${rel}`);
       await this.ensureParentDir(adapter, target);
       // Uint8Array → 独立 ArrayBuffer，避免共享底层 buffer 导致越界
-      await adapter.writeBinary(target, content.slice().buffer as ArrayBuffer);
+      await adapter.writeBinary(target, content.slice().buffer);
     }
   }
 

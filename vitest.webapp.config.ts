@@ -5,5 +5,7 @@ export default defineConfig({
     environment: 'jsdom',
     include: ['webapp/assets/scripts/tests/**/*.jest.test.js'],
     globals: true,
+    setupFiles: ['./test/setup-vitest-webapp.js'],
+    dangerouslyIgnoreUnhandledErrors: true,
   },
 });

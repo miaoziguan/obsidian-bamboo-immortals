@@ -25,6 +25,18 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Test (host)
+        run: npm run test:host
+
+      - name: Test (webapp)
+        run: npm run test
+
       - name: Build
         run: node esbuild.config.mjs production
 

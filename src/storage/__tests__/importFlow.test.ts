@@ -1,13 +1,11 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { VaultStorage } from '../VaultStorage';
-import { StorageBridge } from '../../bridge/StorageBridge';
 import { createMockApp } from '../../../test/mocks/obsidian';
 
-function makeBridge() {
+function makeStorage() {
   const { app, adapter } = createMockApp();
   const storage = new VaultStorage(app as any, 'bamboo-review');
-  const bridge = new StorageBridge(storage, false);
-  return { storage, bridge, adapter };
+  return { storage, adapter };
 }
 
 /** 构造一份"真实结构"的导出数据 */
@@ -38,11 +36,11 @@ function makeSampleData() {
   };
 }
 
-describe('业务关键路径：导出 → 导入 → 读回', () => {
-  let ctx: ReturnType<typeof makeBridge>;
+describe('VaultStorage 导入导出关键路径', () => {
+  let ctx: ReturnType<typeof makeStorage>;
 
   beforeEach(() => {
-    ctx = makeBridge();
+    ctx = makeStorage();
   });
 
   it('黄金路径 overwrite：导入后与导出数据逐字段相等', async () => {
@@ -90,19 +88,15 @@ describe('业务关键路径：导出 → 导入 → 读回', () => {
     expect(goals.find((g: any) => g.id === 'a')!.title).toBe('新');
   });
 
-  it('损坏文件经 StorageBridge 端到端被拒绝，且不污染 Vault', async () => {
+  it('损坏文件经 importData 被拒绝，且不污染 Vault', async () => {
     // 先放一份正常数据
     await ctx.storage.importData(makeSampleData(), { strategy: 'overwrite' });
 
     const before = await ctx.storage.exportAllData();
 
-    // 走 bridge 导入损坏数据（无已知字段）
+    // 导入损坏数据（无已知字段）
     await expect(
-      ctx.bridge.handle({
-        type: 'storage:importAll',
-        id: 'x',
-        payload: { data: { foo: 'bar' }, options: { strategy: 'overwrite' } },
-      } as any)
+      ctx.storage.importData({ foo: 'bar' } as any, { strategy: 'overwrite' })
     ).rejects.toThrow();
 
     // Vault 内容应未被损坏数据改动

@@ -9,12 +9,6 @@ esbuild
     bundle: true,
     external: [
       "obsidian",
-      "fs",
-      "path",
-      "zlib",
-      "https",
-      "http",
-      "net",
     ],
     format: "cjs",
     target: "es2020",

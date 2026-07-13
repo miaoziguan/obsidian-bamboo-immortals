@@ -1,0 +1,339 @@
+import { App, DataAdapter, normalizePath } from 'obsidian';
+import { VaultStorage } from '../storage/VaultStorage';
+import { ThemeBridge } from '../bridge/ThemeBridge';
+import type { BambooReviewSettings, NoiseItem } from '../settings/PluginSettings';
+import { ALLOWED_AUDIO_EXTENSIONS } from '../constants/audio';
+import type { DayData } from '../types/data';
+
+/** 扫描音频时默认跳过的目录名 */
+const SKIP_DIRS = ['.trash', '.git', 'node_modules'];
+
+/**
+ * AppAPI — 统一通信接口
+ *
+ * 替代旧的 BridgeService + StorageBridge + ThemeBridge 三层架构，
+ * 将 postMessage 路由、存储操作、主题同步合并为单一 API。
+ */
+export class AppAPI {
+  private storage: VaultStorage;
+  private themeBridge: ThemeBridge;
+  private settings: BambooReviewSettings;
+  private saveSettings: () => Promise<void>;
+  private iframe: HTMLIFrameElement | null = null;
+  private messageHandler: ((event: MessageEvent) => void) | null = null;
+  private customThemes: Array<{ name: string; code: string }> = [];
+  private vaultAdapter: DataAdapter;
+  private noisePath: string;
+  private configDir: string;
+
+  constructor(
+    app: App,
+    settings: BambooReviewSettings,
+    saveSettings: () => Promise<void>,
+    noisePath: string,
+    configDir: string
+  ) {
+    this.settings = settings;
+    this.saveSettings = saveSettings;
+    this.storage = new VaultStorage(app);
+    this.themeBridge = new ThemeBridge();
+    this.vaultAdapter = app.vault.adapter;
+    this.noisePath = noisePath;
+    this.configDir = configDir;
+  }
+
+  /** 确保存储结构存在 */
+  async ensureStructure(): Promise<void> {
+    await this.storage.ensureStructure();
+  }
+
+  /** 设置自定义主题列表 */
+  setCustomThemes(themes: Array<{ name: string; code: string }>): void {
+    this.customThemes = themes;
+  }
+
+  /** 绑定 iframe 并开始监听消息 */
+  attach(iframe: HTMLIFrameElement): void {
+    this.detach();
+    this.iframe = iframe;
+    this.themeBridge.attachIframe(iframe);
+
+    this.messageHandler = (event: MessageEvent) => {
+      void this.onMessage(event);
+    };
+    window.addEventListener('message', this.messageHandler);
+  }
+
+  /** 解绑并停止监听 */
+  detach(): void {
+    if (this.messageHandler) {
+      window.removeEventListener('message', this.messageHandler);
+      this.messageHandler = null;
+    }
+    this.themeBridge.detachIframe();
+    this.iframe = null;
+  }
+
+  /** Obsidian 主题变化时触发（由 DailyReviewView 的 css-change 事件调用） */
+  onThemeChanged(followObsidianTheme: boolean): void {
+    this.settings.followObsidianTheme = followObsidianTheme;
+    this.themeBridge.pushTheme(followObsidianTheme);
+  }
+
+  /** 向 iframe 发送成功响应 */
+  private respond(id: string, payload: unknown): void {
+    if (!this.iframe?.contentWindow) return;
+    this.iframe.contentWindow.postMessage({ id, payload }, '*');
+  }
+
+  /** 向 iframe 发送错误响应 */
+  private respondError(id: string, error: string): void {
+    if (!this.iframe?.contentWindow) return;
+    this.iframe.contentWindow.postMessage({ id, error }, '*');
+  }
+
+  /** 消息路由 */
+  private async onMessage(event: MessageEvent): Promise<void> {
+    const msg = event.data as { type?: string; id?: string; payload?: unknown };
+    if (!msg || !msg.type || !msg.id) return;
+
+    // 来源校验
+    if (this.iframe && event.source !== this.iframe.contentWindow) return;
+
+    // 消息类型白名单
+    const validPrefixes = ['storage:', 'app:', 'file:', 'theme:'];
+    if (!validPrefixes.some((p) => msg.type!.startsWith(p))) return;
+
+    try {
+      await this.handleMessage(msg.type, msg.id, msg.payload ?? {});
+    } catch (e) {
+      this.respondError(msg.id, e instanceof Error ? e.message : 'Unknown error');
+    }
+  }
+
+  /** 消息分发处理 */
+  private async handleMessage(type: string, id: string, payload: unknown): Promise<void> {
+    // ---- 生命周期 ----
+    if (type === 'app:ready') {
+      this.themeBridge.pushTheme(this.settings.followObsidianTheme);
+      this.respond(id, {
+        ok: true,
+        sectionConfig: this.settings.sectionConfig || null,
+        customThemes: this.customThemes,
+        customNoises: this.settings.noiseItems || [],
+        syncPaletteToObsidian: this.settings.syncPaletteToObsidian || false,
+      });
+      return;
+    }
+
+    if (type === 'app:close') {
+      this.respond(id, { ok: true });
+      return;
+    }
+
+    // ---- 板块配置 ----
+    if (type === 'app:saveSectionConfig') {
+      this.settings.sectionConfig = payload as Record<string, unknown> | null;
+      await this.saveSettings();
+      this.respond(id, { ok: true });
+      return;
+    }
+
+    // ---- 白噪音音源 ----
+    if (type === 'app:saveCustomNoises') {
+      this.settings.noiseItems = (Array.isArray(payload) ? payload : []) as NoiseItem[];
+      await this.saveSettings();
+      this.respond(id, { ok: true });
+      return;
+    }
+
+    // ---- 主题切换 ----
+    if (type === 'app:toggleTheme') {
+      const p = payload as { isDark: boolean };
+      const currentIsDark = activeDocument.body.classList.contains('theme-dark');
+      if (p.isDark !== currentIsDark) {
+        const targetClass = p.isDark ? 'theme-dark' : 'theme-light';
+        const removeClass = p.isDark ? 'theme-light' : 'theme-dark';
+        activeDocument.body.classList.remove(removeClass);
+        activeDocument.body.classList.add(targetClass);
+        this.themeBridge.pushTheme(this.settings.followObsidianTheme);
+      }
+      this.respond(id, { ok: true, isDark: p.isDark });
+      return;
+    }
+
+    // ---- 调色同步（webapp → Obsidian）----
+    if (type === 'theme:syncPalette') {
+      const p = payload as { hue: number; lightnessOffset: number; isDark: boolean };
+      if (this.settings.syncPaletteToObsidian) {
+        this.themeBridge.applyPalette(p.hue, p.lightnessOffset, p.isDark);
+      }
+      this.respond(id, { ok: true });
+      return;
+    }
+
+    // ---- 音频文件扫描 ----
+    if (type === 'app:listVaultAudioFiles') {
+      try {
+        const files = await this.scanVaultAudioFiles();
+        this.respond(id, { files });
+      } catch (e) {
+        this.respondError(id, e instanceof Error ? e.message : '扫描库文件失败');
+      }
+      return;
+    }
+
+    // ---- 读取库内音频 ----
+    if (type === 'app:readVaultFile') {
+      await this.handleReadVaultFile(id, payload);
+      return;
+    }
+
+    // ---- 存储类消息（委托给 VaultStorage）----
+    const result = await this.handleStorageMessage(type, payload);
+    this.respond(id, result);
+  }
+
+  /** 存储消息处理 */
+  private async handleStorageMessage(type: string, payload: unknown): Promise<unknown> {
+    const p = payload as Record<string, unknown>;
+    switch (type) {
+      case 'storage:readDay':
+        return await this.storage.getDay(p.dateKey as string);
+      case 'storage:writeDay':
+        return await this.storage.putDay(p.data as DayData);
+      case 'storage:listDays':
+        return await this.storage.getAllDays();
+      case 'storage:deleteDay':
+        return await this.storage.deleteDay(p.dateKey as string);
+      case 'storage:getSetting':
+        return await this.storage.getSetting(p.key as string);
+      case 'storage:putSetting':
+        return await this.storage.putSetting(p.key as string, p.value);
+      case 'storage:getAllSettings':
+        return await this.storage.getAllSettings();
+      case 'storage:getGoals':
+        return await this.storage.getGoals();
+      case 'storage:putGoals':
+        return await this.storage.putGoals(p.goals as never);
+      case 'storage:getPurchaseHistory':
+        return await this.storage.getPurchaseHistory();
+      case 'storage:putPurchaseHistory':
+        return await this.storage.putPurchaseHistory(p.data as never);
+      case 'storage:getIncomeHistory':
+        return await this.storage.getIncomeHistory();
+      case 'storage:putIncomeHistory':
+        return await this.storage.putIncomeHistory(p.data as never);
+      case 'storage:getDayKeys':
+        return await this.storage.getDayKeys();
+      case 'storage:getDaysPaginated':
+        return await this.storage.getDaysPaginated(
+          (p.page as number) ?? 0,
+          (p.pageSize as number) ?? 30
+        );
+      case 'storage:exportAll':
+        return await this.storage.exportAllData();
+      case 'storage:importAll':
+        return await this.storage.importData(
+          p.data,
+          { strategy: (p.options as Record<string, unknown>)?.strategy as 'overwrite' | 'merge' | undefined }
+        );
+      case 'storage:clearAll':
+        return await this.storage.clearAll();
+      default:
+        throw new Error(`Unknown storage message type: ${type}`);
+    }
+  }
+
+  /** 扫描库内音频文件 */
+  private async scanVaultAudioFiles(
+    maxDepth = 5
+  ): Promise<Array<{ path: string; name: string; size: number; ext: string }>> {
+    const results: Array<{ path: string; name: string; size: number; ext: string }> = [];
+    const adapter = this.vaultAdapter;
+
+    if (this.noisePath) {
+      try {
+        const list = await adapter.list(this.noisePath);
+        for (const file of list.files) {
+          if (file.startsWith('.')) continue;
+          const ext = file.substring(file.lastIndexOf('.')).toLowerCase();
+          if (ALLOWED_AUDIO_EXTENSIONS.includes(ext)) {
+            try {
+              const fullPath = normalizePath(`${this.noisePath}/${file}`);
+              const stat = await adapter.stat(fullPath);
+              results.push({ path: fullPath, name: file, size: stat?.size ?? 0, ext });
+            } catch { /* skip */ }
+          }
+        }
+      } catch { /* skip */ }
+      results.sort((a, b) => a.path.localeCompare(b.path));
+      return results;
+    }
+
+    // 全库扫描
+    const scanDir = async (relativeDir: string, depth: number): Promise<void> => {
+      if (depth > maxDepth) return;
+      let list;
+      try {
+        list = await adapter.list(relativeDir);
+      } catch {
+        return;
+      }
+
+      for (const folder of list.folders) {
+        if (folder.startsWith('.')) continue;
+        const skipSet = new Set([...SKIP_DIRS, ...(this.configDir ? [this.configDir] : [])]);
+        if (skipSet.has(folder)) continue;
+        const subPath = relativeDir ? normalizePath(`${relativeDir}/${folder}`) : folder;
+        await scanDir(subPath, depth + 1);
+      }
+
+      for (const file of list.files) {
+        if (file.startsWith('.')) continue;
+        const ext = file.substring(file.lastIndexOf('.')).toLowerCase();
+        if (ALLOWED_AUDIO_EXTENSIONS.includes(ext)) {
+          try {
+            const relativePath = relativeDir ? normalizePath(`${relativeDir}/${file}`) : file;
+            const stat = await adapter.stat(relativePath);
+            results.push({ path: relativePath, name: file, size: stat?.size ?? 0, ext });
+          } catch { /* skip */ }
+        }
+      }
+    };
+
+    await scanDir('', 0);
+    results.sort((a, b) => a.path.localeCompare(b.path));
+    return results;
+  }
+
+  /** 读取库内音频文件 */
+  private async handleReadVaultFile(id: string, payload: unknown): Promise<void> {
+    try {
+      const p = payload as { path: string };
+      const relativePath = p.path || '';
+      if (!relativePath) throw new Error('未提供文件路径');
+
+      const ext = relativePath.substring(relativePath.lastIndexOf('.')).toLowerCase();
+      if (!ALLOWED_AUDIO_EXTENSIONS.includes(ext)) throw new Error('不支持的音频格式：' + ext);
+      if (relativePath.includes('..')) throw new Error('路径遍历禁止');
+
+      const adapter = this.vaultAdapter;
+      const stat = await adapter.stat(relativePath);
+      if (!stat || stat.type !== 'file') throw new Error('文件不存在：' + relativePath);
+
+      // 获取文件的完整路径供音频使用
+      const basePath = (adapter as unknown as { basePath: string }).basePath || '';
+      if (!basePath) throw new Error('无法获取库根目录路径');
+      const fullPath = normalizePath(`${basePath}/${relativePath}`);
+      if (!fullPath.startsWith(basePath)) throw new Error('路径遍历禁止');
+
+      this.respond(id, {
+        filePath: fullPath,
+        name: relativePath.split('/').pop()?.replace(ext, '') || '',
+      });
+    } catch (e) {
+      this.respondError(id, e instanceof Error ? e.message : '读取文件失败');
+    }
+  }
+}

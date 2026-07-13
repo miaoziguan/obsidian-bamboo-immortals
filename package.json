@@ -6,11 +6,13 @@
   "scripts": {
     "dev": "tsc --noEmit && node esbuild.config.mjs",
     "build": "tsc -noEmit -skipLibCheck && npm run lint && node esbuild.config.mjs production",
-    "test": "jest",
-    "test:coverage": "jest --coverage",
+    "test": "vitest run --config vitest.webapp.config.ts",
+    "test:coverage": "vitest run --config vitest.webapp.config.ts --coverage",
     "test:host": "vitest run",
     "lint": "eslint .",
     "lint:css": "node scripts/lint-css-tokens.mjs",
+    "format": "prettier --write \"src/**/*.ts\" \"webapp/**/*.js\"",
+    "format:check": "prettier --check \"src/**/*.ts\" \"webapp/**/*.js\"",
     "prepare": "husky"
   },
   "devDependencies": {
@@ -20,9 +22,9 @@
     "esbuild": "^0.24.2",
     "eslint": "^8.57.1",
     "husky": "^9.1.7",
-    "jest": "^29.7.0",
-    "jest-environment-jsdom": "^29.7.0",
-    "obsidian": "latest",
+    "jsdom": "^25.0.0",
+    "obsidian": "^1.8.0",
+    "prettier": "^3.4.0",
     "typescript": "^5.7.3",
     "vitest": "^2.1.9"
   }

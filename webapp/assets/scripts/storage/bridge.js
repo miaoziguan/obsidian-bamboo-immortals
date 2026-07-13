@@ -28,14 +28,7 @@ export class BridgeStorage {
   }
 
   async initialize() {
-    // 检测是否在 iframe 中运行
-    if (window.parent === window) {
-      console.warn('[Bridge] Not running in iframe, bridge will not function');
-      this.ready = true;
-      return;
-    }
-
-    // 通知父窗口已就绪，并接收持久化的 sectionConfig
+    // 在 Obsidian ItemView 中始终通过 blob URL iframe 运行
     this.ready = true;
     try {
       const readyResp = await this._send('app:ready', {});
@@ -65,17 +58,20 @@ export class BridgeStorage {
       console.warn('[Bridge] Failed to get sectionConfig from plugin:', e.message);
     }
 
-    // 桥接就绪后，二次应用板块配置（覆盖 load() 的默认值）
+    // 桥接就绪后，二次应用板块配置
     if (typeof SectionRegistry !== 'undefined' && SectionRegistry.applyBridgeConfig) {
       SectionRegistry.applyBridgeConfig();
     }
 
-    if (typeof EventBus !== 'undefined') {
-      EventBus.emit('storage:initialized', {
-        adapter: 'bridge',
-        fallback: false,
-      });
-    }
+    // 延迟触发 storage:initialized，确保所有模块脚本已注册监听器
+    setTimeout(() => {
+      if (typeof EventBus !== 'undefined') {
+        EventBus.emit('storage:initialized', {
+          adapter: 'bridge',
+          fallback: false,
+        });
+      }
+    }, 0);
   }
 
   /** 发送请求到父窗口并等待响应 */

@@ -2,20 +2,38 @@ import { App, PluginSettingTab, Setting } from 'obsidian';
 import type BambooReviewPlugin from '../../main';
 import { ThemeBridge } from '../bridge/ThemeBridge';
 
+/** 自定义白噪音音源 */
+export interface NoiseItem {
+  id: string;
+  name: string;
+  type: 'url' | 'vault' | 'generated';
+  url?: string;
+  path?: string;
+  volume?: number;
+}
+
+/** 板块配置（由 webapp SectionRegistry 定义，插件仅透传） */
+export interface SectionConfigItem {
+  id: string;
+  enabled: boolean;
+  visible: boolean;
+  order: number;
+}
+
 /** 插件设置接口 */
 export interface BambooReviewSettings {
   /** 数据存储根路径 */
   dataPath: string;
   /** 是否自动生成 Markdown 摘要 */
   enableMarkdownSync: boolean;
-  /** 板块管理配置（可见性 + 排序），用于 webapp iframe localStorage 不可靠时持久化 */
+  /** 板块管理配置（JSON 解析后结构不固定，使用宽松类型） */
   sectionConfig: Record<string, unknown> | null;
   /** 自定义主题动效文件夹路径（Vault 根目录下的相对路径） */
   themePath: string;
   /** 白噪音文件夹路径（Vault 根目录下的相对路径，留空则扫描全库） */
   noisePath: string;
-  /** 自定义白噪音音源列表（通过桥接持久化，克服 localStorage port-scoped 问题） */
-  noiseItems: unknown[];
+  /** 自定义白噪音音源列表 */
+  noiseItems: NoiseItem[];
   /** 是否将 webapp 调色同步到 Obsidian 原生界面 */
   syncPaletteToObsidian: boolean;
   /** 是否让插件配色跟随 Obsidian 主题（读取 --interactive-accent 反推色相） */

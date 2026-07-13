@@ -81,7 +81,16 @@ else
 fi
 echo ""
 
-# 3. 同步 webapp 目录（先删后建，与用户端「删目录→解压 zip」流程一致，避免浏览器缓存旧文件）
+# 3. 打包 webapp JS 模块（消除 blob URL import 解析问题）
+echo "📦 打包 webapp JS..."
+if [ -f "$SRC_DIR/scripts/bundle-webapp.mjs" ]; then
+    node "$SRC_DIR/scripts/bundle-webapp.mjs" || { echo "❌ webapp JS 打包失败"; exit 1; }
+else
+    echo "   ⚠️  未找到 scripts/bundle-webapp.mjs，跳过打包"
+fi
+echo ""
+
+# 4. 同步 webapp 目录（先删后建，与用户端「删目录→解压 zip」流程一致，避免浏览器缓存旧文件）
 echo "🌐 同步 webapp 目录..."
 if [ -d "$SRC_DIR/webapp" ]; then
     rm -rf "$DEST_DIR/webapp"

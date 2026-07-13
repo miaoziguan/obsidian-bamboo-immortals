@@ -58,11 +58,20 @@ function initShadow() {
     window.__bambooShadowRoot = sr;
 
     // 1) 复制 <head> 中的样式表到 shadow，并移除 head 原 link（light DOM 仅剩 host，避免重复样式作用）
+    // 1a) 复制 <link rel="stylesheet"> 到 shadow（AppHost 可能使用 blob URL，href 不限于 assets/styles/）
     const links = Array.from(
-        document.querySelectorAll('head link[rel="stylesheet"][href*="assets/styles/"]')
+        document.querySelectorAll('head link[rel="stylesheet"]')
     );
     links.forEach((link) => sr.appendChild(link.cloneNode(true)));
     links.forEach((link) => link.remove());
+
+    // 1b) 复制 <head> 中的 <style> 到 shadow（AppHost 内联 CSS 后需要）
+    // 排除 shadowBootstrap 自己创建的 light-reset style
+    const styles = Array.from(
+        document.querySelectorAll('head style:not(#bamboo-light-reset)')
+    );
+    styles.forEach((style) => sr.appendChild(style.cloneNode(true)));
+    styles.forEach((style) => style.remove());
 
     // 2) 将应用 markup 搬入 shadow（跳过 <script> 与 host 自身，脚本已执行无需移动）
     const moveNodes = Array.from(body.children).filter(

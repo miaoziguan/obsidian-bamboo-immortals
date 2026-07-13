@@ -154,17 +154,7 @@
 <script type="module" src="assets/scripts/handlers/shopManager.js?__BUILD__"></script>
 <script type="module" src="assets/scripts/utils/htmlUtils.js?__BUILD__"></script>
 <script type="module" src="assets/scripts/utils/toast.js?__BUILD__"></script>
-<script>
-// Obsidian iframe 检测：使用 document.write 保证同步加载顺序
-(function() {
-  var isIframe = false;
-  try { isIframe = window.self !== window.top; } catch(e) { isIframe = true; }
-  var src = isIframe
-    ? 'assets/scripts/storage/bridge.js?__BUILD__'
-    : 'assets/scripts/storage/storageManager.js?__BUILD__';
-  document.write('<script type="module" src="' + src + '"><\/script>');
-})();
-</script>
+<script type="module" src="assets/scripts/storage/bridge.js?__BUILD__"></script>
 <script type="module" src="assets/scripts/state/dataValidator.js?__BUILD__"></script>
 <script type="module" src="assets/scripts/state/defaultData.js?__BUILD__"></script>
 <script type="module" src="assets/scripts/services/searchService.js?__BUILD__"></script>

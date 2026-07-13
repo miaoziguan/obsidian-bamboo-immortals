@@ -76,11 +76,11 @@ export const WhiteNoiseManager = {
 
         // 根据音源类型加载音频
         if (noiseType.source === 'url') {
-            // 外部链接 — 通过本地服务器代理，绕过浏览器 CORS 限制
+            // 外部链接 — 通过插件端代理，绕过 webview CORS 限制（桌面/移动一致）
             try {
                 Toast.showToast('正在加载外部音源...', 'info');
-                const proxyUrl = location.origin + '/bamboo-audio-proxy?url=' + encodeURIComponent(noiseType.data);
-                const response = await fetch(proxyUrl);
+                const dataUrl = await this._requestBinaryFile('app:proxyAudioUrl', { url: noiseType.data });
+                const response = await fetch(dataUrl);
                 if (!response.ok) throw new Error('网络请求失败');
                 const arrayBuffer = await response.arrayBuffer();
                 buffer = await ctx.decodeAudioData(arrayBuffer);
@@ -484,9 +484,9 @@ export const WhiteNoiseManager = {
             let arrayBuffer;
 
             if (sourceType === 'url') {
-                // 网络音源：通过代理 fetch，绕过 CORS
-                const proxyUrl = location.origin + '/bamboo-audio-proxy?url=' + encodeURIComponent(data);
-                const resp = await fetch(proxyUrl, {
+                // 网络音源：通过插件端代理，绕过 CORS
+                const dataUrl = await this._requestBinaryFile('app:proxyAudioUrl', { url: data });
+                const resp = await fetch(dataUrl, {
                     signal: AbortSignal.timeout(20000)  // 20s 超时
                 });
                 if (!resp.ok) {
@@ -744,15 +744,10 @@ export const WhiteNoiseManager = {
         });
     },
 
-    // 直接构造 HTTP URL，通过服务器流式代理读取（绕过 postMessage 大文件限制）
-    _requestVaultFileRead(relativePath) {
-        return Promise.resolve(location.origin + '/bamboo-audio?path=' + encodeURIComponent(relativePath));
-    },
-
-    // 向插件请求读取本地文件（保留兼容旧音源，绝对路径）
-    _requestFileRead(filePath) {
+    // 通用：通过插件 postMessage 读取二进制音频，返回 base64 data URL（桌面/移动一致，不依赖 location.origin）
+    _requestBinaryFile(messageType, payload) {
         return new Promise((resolve, reject) => {
-            const requestId = 'file_read_' + Date.now() + '_' + Math.random().toString(36).substring(2, 10);
+            const requestId = messageType + '_' + Date.now() + '_' + Math.random().toString(36).substring(2, 10);
             const handler = (event) => {
                 const msg = event.data;
                 if (!msg || msg.id !== requestId) return;
@@ -764,17 +759,27 @@ export const WhiteNoiseManager = {
                 }
             };
             window.addEventListener('message', handler);
-            // 超时保护 10s
+            // 超时保护 20s（大文件 base64 回传较慢）
             setTimeout(() => {
                 window.removeEventListener('message', handler);
-                reject(new Error('读取本地文件超时'));
-            }, 10000);
+                reject(new Error('读取文件超时，文件可能过大'));
+            }, 20000);
             window.parent.postMessage({
-                type: 'app:readLocalFile',
+                type: messageType,
                 id: requestId,
-                payload: { path: filePath }
+                payload
             }, '*');
         });
+    },
+
+    // 库内相对路径文件
+    _requestVaultFileRead(relativePath) {
+        return this._requestBinaryFile('app:readVaultFile', { path: relativePath });
+    },
+
+    // 本机绝对路径文件（保留兼容旧音源）
+    _requestFileRead(filePath) {
+        return this._requestBinaryFile('app:readLocalFile', { path: filePath });
     },
 
     // 通用输入型 Modal

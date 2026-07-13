@@ -1,5 +1,5 @@
 import { App, DataAdapter, normalizePath, requestUrl } from 'obsidian';
-import JSZip from 'jszip';
+import { unzipSync } from 'fflate';
 
 /**
  * AppHost — webapp 资源加载与注入中心
@@ -141,20 +141,16 @@ export class AppHost {
   }
 
   private async extractZip(adapter: DataAdapter, buffer: ArrayBuffer): Promise<void> {
-    const zip = await JSZip.loadAsync(buffer);
-    for (const [rawPath, entry] of Object.entries(zip.files)) {
+    // fflate 零依赖（无 setimmediate 之类会动态创建 <script> 的传递依赖），
+    // 返回的 entries 仅含文件（不含目录条目），目录由 ensureParentDir 按需创建。
+    const files = unzipSync(new Uint8Array(buffer));
+    for (const [rawPath, content] of Object.entries(files)) {
       const rel = normalizePath(rawPath.replace(/^\.?\//, ''));
       if (!rel) continue;
       const target = normalizePath(`${this.webappDir}/${rel}`);
-      if (entry.dir) {
-        if (!(await this.fileExists(adapter, target))) {
-          await adapter.mkdir(target);
-        }
-        continue;
-      }
       await this.ensureParentDir(adapter, target);
-      const content = await entry.async('arraybuffer');
-      await adapter.writeBinary(target, content);
+      // Uint8Array → 独立 ArrayBuffer，避免共享底层 buffer 导致越界
+      await adapter.writeBinary(target, content.slice().buffer as ArrayBuffer);
     }
   }
 

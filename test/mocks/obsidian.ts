@@ -14,13 +14,35 @@ export function normalizePath(p: string): string {
   return p.replace(/\\/g, '/').replace(/\/+/g, '/').replace(/\/$/, '');
 }
 
+/** requestUrl mock：默认抛错，测试可通过 __setRequestUrlHandler 注入行为 */
+export interface RequestUrlResponse {
+  status: number;
+  arrayBuffer: ArrayBuffer;
+  headers: Record<string, string>;
+}
+type RequestUrlHandler = (opts: { url: string; method?: string }) => Promise<RequestUrlResponse>;
+let requestUrlHandler: RequestUrlHandler = async () => {
+  throw new Error('requestUrl 未在测试中注入');
+};
+export function __setRequestUrlHandler(fn: RequestUrlHandler): void {
+  requestUrlHandler = fn;
+}
+export function requestUrl(opts: { url: string; method?: string }): Promise<RequestUrlResponse> {
+  return requestUrlHandler(opts);
+}
+
 /** 内存文件系统，按路径存字符串内容 */
 export class MemoryAdapter {
   private store = new Map<string, string>();
+  private binStore = new Map<string, ArrayBuffer>();
 
   async exists(p: string): Promise<boolean> {
     const n = normalizePath(p);
-    return this.store.has(n) || [...this.store.keys()].some((k) => k.startsWith(n + '/'));
+    return (
+      this.store.has(n) ||
+      this.binStore.has(n) ||
+      [...this.store.keys()].some((k) => k.startsWith(n + '/'))
+    );
   }
 
   async mkdir(p: string): Promise<void> {
@@ -50,7 +72,29 @@ export class MemoryAdapter {
   }
 
   async remove(p: string): Promise<void> {
-    this.store.delete(normalizePath(p));
+    const n = normalizePath(p);
+    this.store.delete(n);
+    this.binStore.delete(n);
+  }
+
+  async writeBinary(p: string, data: ArrayBuffer): Promise<void> {
+    this.binStore.set(normalizePath(p), data);
+  }
+
+  async readBinary(p: string): Promise<ArrayBuffer> {
+    const n = normalizePath(p);
+    const v = this.binStore.get(n);
+    if (v === undefined) throw new Error('File not found: ' + n);
+    return v;
+  }
+
+  async stat(p: string): Promise<{ type: 'file' | 'folder'; size: number } | null> {
+    const n = normalizePath(p);
+    if (this.binStore.has(n)) return { type: 'file', size: this.binStore.get(n)!.byteLength };
+    const v = this.store.get(n);
+    if (v === undefined) return null;
+    if (v === '__dir__') return { type: 'folder', size: 0 };
+    return { type: 'file', size: v.length };
   }
 
   async list(p: string): Promise<{ files: string[]; folders: string[] }> {

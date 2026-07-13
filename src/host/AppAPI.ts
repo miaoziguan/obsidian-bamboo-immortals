@@ -1,12 +1,28 @@
-import { App, DataAdapter, normalizePath } from 'obsidian';
+import { App, DataAdapter, normalizePath, requestUrl } from 'obsidian';
 import { VaultStorage } from '../storage/VaultStorage';
 import { ThemeBridge } from '../bridge/ThemeBridge';
 import type { BambooReviewSettings, NoiseItem } from '../settings/PluginSettings';
-import { ALLOWED_AUDIO_EXTENSIONS } from '../constants/audio';
+import { ALLOWED_AUDIO_EXTENSIONS, MIME_TYPES } from '../constants/audio';
 import type { DayData } from '../types/data';
 
 /** 扫描音频时默认跳过的目录名 */
 const SKIP_DIRS = ['.trash', '.git', 'node_modules'];
+
+/** ArrayBuffer → base64 字符串（大文件分块，避免调用栈溢出） */
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.subarray(i, i + chunkSize);
+    let chunkStr = '';
+    for (let j = 0; j < chunk.length; j++) {
+      chunkStr += String.fromCharCode(chunk[j]);
+    }
+    binary += chunkStr;
+  }
+  return btoa(binary);
+}
 
 /**
  * AppAPI — 统一通信接口
@@ -189,6 +205,18 @@ export class AppAPI {
       return;
     }
 
+    // ---- 读取本机绝对路径音频（兼容旧音源）----
+    if (type === 'app:readLocalFile') {
+      await this.handleReadLocalFile(id, payload);
+      return;
+    }
+
+    // ---- 代理外部音源链接（绕过 webview CORS，桌面/移动一致）----
+    if (type === 'app:proxyAudioUrl') {
+      await this.handleProxyAudioUrl(id, payload);
+      return;
+    }
+
     // ---- 存储类消息（委托给 VaultStorage）----
     const result = await this.handleStorageMessage(type, payload);
     this.respond(id, result);
@@ -307,7 +335,7 @@ export class AppAPI {
     return results;
   }
 
-  /** 读取库内音频文件 */
+  /** 读取库内音频文件，返回可播放的 base64 data URL（桌面/移动一致，不依赖 basePath） */
   private async handleReadVaultFile(id: string, payload: unknown): Promise<void> {
     try {
       const p = payload as { path: string };
@@ -322,18 +350,55 @@ export class AppAPI {
       const stat = await adapter.stat(relativePath);
       if (!stat || stat.type !== 'file') throw new Error('文件不存在：' + relativePath);
 
-      // 获取文件的完整路径供音频使用
-      const basePath = (adapter as unknown as { basePath: string }).basePath || '';
-      if (!basePath) throw new Error('无法获取库根目录路径');
-      const fullPath = normalizePath(`${basePath}/${relativePath}`);
-      if (!fullPath.startsWith(basePath)) throw new Error('路径遍历禁止');
-
-      this.respond(id, {
-        filePath: fullPath,
-        name: relativePath.split('/').pop()?.replace(ext, '') || '',
-      });
+      const buffer = await adapter.readBinary(relativePath);
+      this.respond(id, { data: this.toDataUrl(buffer, ext) });
     } catch (e) {
       this.respondError(id, e instanceof Error ? e.message : '读取文件失败');
     }
+  }
+
+  /** 读取本机绝对路径音频（兼容旧音源；移动端沙盒下可能不可读） */
+  private async handleReadLocalFile(id: string, payload: unknown): Promise<void> {
+    try {
+      const p = payload as { path: string };
+      const filePath = p.path || '';
+      if (!filePath) throw new Error('未提供文件路径');
+
+      const ext = filePath.substring(filePath.lastIndexOf('.')).toLowerCase();
+      if (!ALLOWED_AUDIO_EXTENSIONS.includes(ext)) throw new Error('不支持的音频格式：' + ext);
+      if (filePath.includes('..')) throw new Error('路径遍历禁止');
+
+      const buffer = await this.vaultAdapter.readBinary(filePath);
+      this.respond(id, { data: this.toDataUrl(buffer, ext) });
+    } catch (e) {
+      this.respondError(id, e instanceof Error ? e.message : '读取本地文件失败');
+    }
+  }
+
+  /** 代理外部音源链接：插件端 requestUrl 不受 webview CORS 限制（桌面/移动均支持） */
+  private async handleProxyAudioUrl(id: string, payload: unknown): Promise<void> {
+    try {
+      const p = payload as { url: string };
+      const url = p.url || '';
+      if (!url) throw new Error('未提供音源链接');
+
+      const resp = await requestUrl({ url, method: 'GET' });
+      if (resp.status < 200 || resp.status >= 300) {
+        throw new Error('音源访问失败 (HTTP ' + resp.status + ')');
+      }
+      const buffer = resp.arrayBuffer;
+      if (!buffer) throw new Error('音源响应为空');
+
+      const mime = (resp.headers && resp.headers['content-type']) || 'application/octet-stream';
+      this.respond(id, { data: `data:${mime};base64,${arrayBufferToBase64(buffer)}` });
+    } catch (e) {
+      this.respondError(id, e instanceof Error ? e.message : '代理音源失败');
+    }
+  }
+
+  /** ArrayBuffer → 带 MIME 的 base64 data URL */
+  private toDataUrl(buffer: ArrayBuffer, ext: string): string {
+    const mime = MIME_TYPES[ext] || 'application/octet-stream';
+    return `data:${mime};base64,${arrayBufferToBase64(buffer)}`;
   }
 }

@@ -1,6 +1,6 @@
 {
   "name": "obsidian-bamboo-review",
-  "version": "2.2.5",
+  "version": "2.2.6",
   "description": "竹林修仙传 - Obsidian 每日复盘插件",
   "main": "main.js",
   "scripts": {
@@ -31,6 +31,6 @@
     "vitest": "^2.1.9"
   },
   "dependencies": {
-    "jszip": "^3.10.1"
+    "fflate": "^0.8.3"
   }
 }

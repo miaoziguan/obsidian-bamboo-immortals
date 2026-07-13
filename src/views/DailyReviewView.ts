@@ -15,6 +15,7 @@ export const VIEW_TYPE_DAILY_REVIEW = 'bamboo-immortals';
  */
 export class DailyReviewView extends ItemView {
   private pluginDir: string;
+  private plugin: unknown;
   private settings: BambooReviewSettings;
   private saveSettings: () => Promise<void>;
 
@@ -32,6 +33,7 @@ export class DailyReviewView extends ItemView {
   ) {
     super(leaf);
     this.pluginDir = pluginDir;
+    this.plugin = _plugin;
     this.settings = settings;
     this.saveSettings = saveSettings;
   }
@@ -75,8 +77,9 @@ export class DailyReviewView extends ItemView {
     const customThemes = await this.scanCustomThemes();
     this.appAPI.setCustomThemes(customThemes);
 
-    // 创建 AppHost 并构建 blob URL
-    this.appHost = new AppHost(this.app, this.pluginDir);
+    // 创建 AppHost 并构建 blob URL（传入插件版本用于 webapp 缺失时自举下载）
+    const version = (this.plugin as { manifest?: { version?: string } } | undefined)?.manifest?.version ?? '';
+    this.appHost = new AppHost(this.app, this.pluginDir, version);
 
     try {
       const blobUrl = await this.appHost.buildBlobUrl();

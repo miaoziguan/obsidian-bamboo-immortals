@@ -27,6 +27,37 @@ export class ImportValidationError extends Error {
 
 const KNOWN_FIELDS = ['days', 'goals', 'settings', 'purchaseHistory', 'incomeHistory'] as const;
 
+/**
+ * 纵深防御：导入数据是不可信边界（可能来自他人分享/下载的备份）。
+ * 在落盘前递归净化所有字符串叶子，剥离 HTML 标签、事件处理属性
+ * 与 javascript:/data: 伪协议，避免恶意负载经 innerHTML 渲染触发 XSS。
+ * 本项目无富文本需求，统一文本化是安全的。
+ */
+function sanitizeString(input: unknown): string {
+  if (typeof input !== 'string') return input as unknown as string;
+  const out = input
+    .replace(/<[^>]*>/g, '') // 移除所有 HTML 标签
+    .replace(/\son\w+\s*=\s*"[^"]*"/gi, '') // 移除 on*="..."
+    .replace(/\son\w+\s*=\s*'[^']*'/gi, '') // 移除 on*='...'
+    .replace(/\son\w+\s*=\s*[^\s>]+/gi, '') // 移除 on*=value（无引号）
+    .replace(/javascript:/gi, '') // 移除 javascript: 伪协议
+    .replace(/data:/gi, ''); // 移除 data: 伪协议
+  return out;
+}
+
+function sanitizeValue(value: unknown): unknown {
+  if (typeof value === 'string') return sanitizeString(value);
+  if (Array.isArray(value)) return value.map((v) => sanitizeValue(v));
+  if (value && typeof value === 'object') {
+    const out: Record<string, unknown> = {};
+    for (const key of Object.keys(value as Record<string, unknown>)) {
+      out[key] = sanitizeValue((value as Record<string, unknown>)[key]);
+    }
+    return out;
+  }
+  return value; // 数字 / 布尔 / null 等原样保留
+}
+
 export interface ValidatedImport {
   days?: Record<string, DayData>;
   goals?: GoalItem[];
@@ -59,19 +90,19 @@ export const ImportValidator = {
     const result: ValidatedImport = {};
 
     if (record.days !== undefined) {
-      result.days = ImportValidator.normalizeDays(record.days);
+      result.days = sanitizeValue(ImportValidator.normalizeDays(record.days)) as Record<string, DayData>;
     }
     if (record.goals !== undefined) {
-      result.goals = ImportValidator.normalizeGoals(record.goals);
+      result.goals = sanitizeValue(ImportValidator.normalizeGoals(record.goals)) as GoalItem[];
     }
     if (record.settings !== undefined) {
-      result.settings = ImportValidator.normalizeSettings(record.settings);
+      result.settings = sanitizeValue(ImportValidator.normalizeSettings(record.settings)) as AppSettings;
     }
     if (record.purchaseHistory !== undefined) {
-      result.purchaseHistory = record.purchaseHistory as PurchaseHistory;
+      result.purchaseHistory = sanitizeValue(record.purchaseHistory) as PurchaseHistory;
     }
     if (record.incomeHistory !== undefined) {
-      result.incomeHistory = record.incomeHistory as IncomeHistory;
+      result.incomeHistory = sanitizeValue(record.incomeHistory) as IncomeHistory;
     }
 
     return result;

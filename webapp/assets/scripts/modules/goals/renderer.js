@@ -181,7 +181,7 @@ export const GoalsRenderer = {
                               data-goal-id="${HTMLUtils.escapeHtmlAttr(goal.id)}" 
                               data-sub-idx="${originalIdx}"
                               ${formatCurrent && formatCurrent.displayValue !== formatCurrent.fullValue ? `title="${HTMLUtils.escapeHtmlAttr(formatCurrent.fullValue)}"` : ''}>
-                            ${formatCurrent ? formatCurrent.displayValue : '<span class="goal-item-empty-placeholder">当前</span>'}
+                            ${formatCurrent ? escapeHtml(formatCurrent.displayValue) : '<span class="goal-item-empty-placeholder">当前</span>'}
                         </span>
                         <span class="goal-item-value-sep">/</span>
                         <span class="goal-item-target-value" 
@@ -189,11 +189,11 @@ export const GoalsRenderer = {
                               data-goal-id="${HTMLUtils.escapeHtmlAttr(goal.id)}" 
                               data-sub-idx="${originalIdx}"
                               ${formatTarget && formatTarget.displayValue !== formatTarget.fullValue ? `title="${HTMLUtils.escapeHtmlAttr(formatTarget.fullValue)}"` : ''}>
-                            ${formatTarget ? formatTarget.displayValue : '<span class="goal-item-empty-placeholder">目标</span>'}
+                            ${formatTarget ? escapeHtml(formatTarget.displayValue) : '<span class="goal-item-empty-placeholder">目标</span>'}
                         </span>
                     </span>`;
                 const dailyBadge =
-                    `<span class="goal-item-daily ${dailyCompleted ? 'goal-item-daily-complete' : ''}" data-inline-edit="dailyMin" data-goal-id="${HTMLUtils.escapeHtmlAttr(goal.id)}" data-sub-idx="${originalIdx}">${item.dailyMin ? `每日${item.dailyMin}` : '<span class="goal-item-empty-placeholder">每日</span>'}</span>`;
+                    `<span class="goal-item-daily ${dailyCompleted ? 'goal-item-daily-complete' : ''}" data-inline-edit="dailyMin" data-goal-id="${HTMLUtils.escapeHtmlAttr(goal.id)}" data-sub-idx="${originalIdx}">${item.dailyMin ? `每日${escapeHtml(item.dailyMin)}` : '<span class="goal-item-empty-placeholder">每日</span>'}</span>`;
                 const dateTag = `<span class="goal-item-date" data-inline-edit="dateRange" data-goal-id="${HTMLUtils.escapeHtmlAttr(goal.id)}" data-sub-idx="${originalIdx}">${dateTagHtml || '<span class="goal-item-empty-placeholder">设置日期</span>'}</span>`;
                 // 剩余天数徽章
                 let remainingBadge = '';

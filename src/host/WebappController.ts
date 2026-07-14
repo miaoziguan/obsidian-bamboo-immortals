@@ -8,15 +8,14 @@
  *
  * 该边界保持不动：webapp 仍通过 `message` 监听 `{type,id}` 并响应，
  * 因此本重构零回归风险、且可在宿主侧单测锁定指令映射。
+ *
+ * CommandType 从 protocol.ts 集中定义（阶段3 · 契约化），
+ * 此处重导出以保持向后兼容（既有 import { CommandType } from 'WebappController' 不破）。
  */
 
-/** 受支持的指令类型（与 webapp 侧 message 监听白名单保持一致） */
-export type CommandType =
-  | 'nav:prevDay'
-  | 'nav:nextDay'
-  | 'nav:today'
-  | 'action:openStats'
-  | 'action:openSettings';
+import type { CommandType } from './protocol';
+
+export type { CommandType } from './protocol';
 
 /** 指令下发目标（DailyReviewView 满足此契约） */
 export interface CommandTarget {

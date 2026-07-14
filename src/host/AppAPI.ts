@@ -4,6 +4,7 @@ import { ThemeBridge } from '../bridge/ThemeBridge';
 import type { BambooReviewSettings, NoiseItem } from '../settings/PluginSettings';
 import { ALLOWED_AUDIO_EXTENSIONS, MIME_TYPES } from '../constants/audio';
 import type { DayData } from '../types/data';
+import { PROTOCOL_VERSION, INBOUND_PREFIXES } from './protocol';
 
 /** 扫描音频时默认跳过的目录名 */
 const SKIP_DIRS = ['.trash', '.git', 'node_modules'];
@@ -132,9 +133,8 @@ export class AppAPI {
     // 来源校验
     if (this.iframe && event.source !== this.iframe.contentWindow) return;
 
-    // 消息类型白名单
-    const validPrefixes = ['storage:', 'app:', 'file:', 'theme:'];
-    if (!validPrefixes.some((p) => msg.type!.startsWith(p))) return;
+    // 消息类型白名单（阶段3 · 契约化：从 protocol.ts 集中定义）
+    if (!INBOUND_PREFIXES.some((p) => msg.type!.startsWith(p))) return;
 
     try {
       await this.handleMessage(msg.type, msg.id, msg.payload ?? {});
@@ -147,6 +147,14 @@ export class AppAPI {
   private async handleMessage(type: string, id: string, payload: unknown): Promise<void> {
     // ---- 生命周期 ----
     if (type === 'app:ready') {
+      // 阶段3 · 契约化：版本协商 — 插件升级但 webapp 缓存旧版时可见告警
+      const pv = (payload as Record<string, unknown>)?.protocolVersion;
+      if (typeof pv === 'number' && pv !== PROTOCOL_VERSION) {
+        console.warn(
+          `[Bamboo] 协议版本不匹配：插件=${PROTOCOL_VERSION}，webapp=${pv}。` +
+            `请重新加载视图以获取最新 webapp。`,
+        );
+      }
       this.themeBridge.pushTheme(this.settings.followObsidianTheme);
       this.respond(id, {
         ok: true,
@@ -179,27 +187,19 @@ export class AppAPI {
       return;
     }
 
-    // ---- 主题切换 ----
-    if (type === 'app:toggleTheme') {
-      const p = payload as { isDark: boolean };
-      const currentIsDark = activeDocument.body.classList.contains('theme-dark');
-      if (p.isDark !== currentIsDark) {
-        const targetClass = p.isDark ? 'theme-dark' : 'theme-light';
-        const removeClass = p.isDark ? 'theme-light' : 'theme-dark';
-        activeDocument.body.classList.remove(removeClass);
-        activeDocument.body.classList.add(targetClass);
-        this.themeBridge.pushTheme(this.settings.followObsidianTheme);
-      }
-      this.respond(id, { ok: true, isDark: p.isDark });
-      return;
-    }
-
     // ---- 调色同步（webapp → Obsidian）----
     if (type === 'theme:syncPalette') {
       const p = payload as { hue: number; lightnessOffset: number; isDark: boolean };
       if (this.settings.syncPaletteToObsidian) {
         this.themeBridge.applyPalette(p.hue, p.lightnessOffset, p.isDark);
       }
+      this.respond(id, { ok: true });
+      return;
+    }
+
+    // ---- 重新开启主题跟随（webapp → Obsidian）----
+    if (type === 'app:theme:sync') {
+      this.themeBridge.pushTheme(this.settings.followObsidianTheme);
       this.respond(id, { ok: true });
       return;
     }

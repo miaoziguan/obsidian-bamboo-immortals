@@ -262,7 +262,25 @@ flowchart LR
 **验证**：`npx jest bridge protocol` → 17/17 通过；`build:webapp` → 69 模块（含 protocol.js）。
 **TDD 收益**：jsdom 中 `window.parent.origin` 为 `http://localhost`（非空），发送目标用真实 origin 而非通配符，安全性更好。
 
+### 2026-07-14 · 阶段3 后续（host TS 类型镜像 + 版本协商告警）✅ 完成
+
+**交付物**
+- 新增 `src/host/protocol.ts`：webapp protocol.js 的 TypeScript 并行副本。
+  - `PROTOCOL_VERSION = 1`（与 webapp 一致）、`ALL_MESSAGE_TYPES`（36 个类型，as const → union）、`INBOUND_PREFIXES`（host 侧 onMessage 白名单）、`AppMessage` 接口、`isKnownType()` / `parseAppMessage()`（与 webapp 侧语义一致）。
+  - `CommandType` — `nav:`/`action:` 指令联合类型，`WebappController` 从 protocol.ts 重导出。
+- `AppAPI.ts` 改动：
+  - `validPrefixes` 内联数组 → `INBOUND_PREFIXES` from protocol.ts（**单一事实源**：前缀改一处，host 接收白名单自动跟变）。
+  - `app:ready` 新增版本协商：提取 `payload.protocolVersion`，与 `PROTOCOL_VERSION` 比对，不匹配时 `console.warn`（**直击发布失配风险**：插件升级而 webapp 缓存旧版运行时可见告警）。
+- `WebappController.ts` 改动：`CommandType` 改为从 `protocol.ts` 导入+重导出（外部 `import { CommandType } from 'WebappController'` 不破）。
+- `routing.test.ts` 新增 3 个版本协商用例（协议匹配/不匹配/老版无字段），原有 5 个路由测试不变。
+
+**验证（均通过）**
+| 检查 | 命令 | 结果 |
+|---|---|---|
+| vitest 全套 | `npx vitest run` | 10 suite / 67 passed（+3 routing） |
+| TypeScript | `npx tsc --noEmit` | 0 errors |
+| ESLint | `npx eslint src/host/protocol.ts AppAPI.ts WebappController.ts` | 0 errors（2 warnings：既有 non-null + console.warn 预期） |
+
 ### 待启动
 - [ ] 阶段2 后续：补 renderers / GoalService 等缺口单测（可选）
-- [ ] 阶段3 后续：host 侧 TS 并行维护类型镜像 + 版本协商告警（dev 环境版本不匹配可见告警）
 - [ ] 阶段4 · 形态演进（仅当 UI 越线）

@@ -282,5 +282,40 @@ flowchart LR
 | ESLint | `npx eslint src/host/protocol.ts AppAPI.ts WebappController.ts` | 0 errors（2 warnings：既有 non-null + console.warn 预期） |
 
 ### 待启动
-- [ ] 阶段2 后续：补 renderers / GoalService 等缺口单测（可选）
+- [ ] 阶段4 · 形态演进（仅当 UI 越线）
+
+---
+
+### 2026-07-14 · 阶段2 后续（核心模块单测补齐）✅ 完成
+
+**交付物**
+- 新增 `undoRedoManager.jest.test.js`（12 用例）：撤销/重做栈操作全覆盖。
+  - push 深拷贝 + 50 条 FIFO 上限 + onChange 回调 + redoStack 清空。
+  - undo/redo 双向栈转移 + 空栈返回 null + 跨日期隔离。
+  - `canUndo`/`canRedo` 状态反映。
+- 新增 `goalStatsCalculator.jest.test.js`（20 用例）：目标统计纯计算全维度覆盖。
+  - 基础计数（完成/进行中/未开始）、平均进度、子项完成率。
+  - 高优先级完成率、分类分组统计（含无目标分类过滤）。
+  - 截止日期三分类（逾期/紧急3天/即将4-7天）、已完成逾期不归入。
+  - 进度五层分桶（tier0_25 ~ tier100）、停滞检测（>14天 / 无startDate → 停滞）、时间跨度统计。
+  - 空输入全零、activeGoals 计数。
+- 新增 `cultivationData.jest.test.js`（17 用例）：修仙境界体系全覆盖。
+  - LAYERS 100 层结构完整性（realm/title/goal）、10 境界各 10 层、goal 单调递增。
+  - `getRealmData` 查境：边界精确（凡尘→练气切换）、满级 next=null、layersInCurrentRealm/allLayers。
+  - `checkBreakthrough`：无突破不 toast、小境界晋级（layer+title）、大境界突破（含"突破X境"）、降级不 toast。
+  - interval 积分制验算。
+- 踩坑记录：`loadModule` 需传入 `bindings` 数组（第二个参数），否则 `bindings.length` 抛 TypeError；`undoRedoManager.js` 用 `structuredClone`（Node < 17 无），jest 需 polyfill（JSON.parse/stringify）。
+
+**验证**
+| 检查 | 结果 |
+|---|---|
+| jest 全套 | 20 suite / 199 passed（+49，themeAudit 仍绿） |
+| vitest | 10 suite / 67 passed（不变） |
+| build | tsc 0 errors，eslint 0 errors |
+
+**阶段2 后续盘点**
+- 本批补齐了最高优先级的 3 个零覆盖核心模块（undoRedoManager / goalStatsCalculator / cultivationData）。
+- 仍可补的 P0 模块：`migrationService.js`（数据迁移）、`healthScore.js`（40KB 复杂算法）、`WalletService.js`（金额计算）——留待后续批次按需补。
+
+### 待启动
 - [ ] 阶段4 · 形态演进（仅当 UI 越线）

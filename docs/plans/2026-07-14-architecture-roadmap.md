@@ -234,8 +234,21 @@ flowchart LR
 - [ ] 视情况将重名守卫从「门面层」下沉到「window 挂载层」（需拦截 `window.X = X`，改动较大，单独评估）。
 - [ ] 命令行类型补全：确认 `DailyReviewView.sendCommand` 仅发 nav:/action: 5 种（已覆盖），无遗漏；若新增命令类型，同步 `WebappController.CommandType`。
 
+### 2026-07-14 · 阶段2 第一批（bridge.js 协议边界单测）✅ 完成
+
+**交付物**
+- 新增 `webapp/assets/scripts/tests/bridge.jest.test.js`（9 用例）：
+  - 接收端：`nav:prevDay/nextDay/today`、`action:openStats/openSettings` 正确分发到 `store`/`Handlers`/`StatsModal`；来源非 `window.parent` 被拒绝。
+  - 发送端：`_send` 携带 `{type,id,payload}`，目标使用 `window.parent.origin`（非空时优先于 `'*'`，比通配符更安全）；连续 id 唯一。
+- TDD 过程中**纠正了一个错误假设**：原本以为 jsdom 中 `window.parent.origin` 为空会回退 `'*'`，实测为 `http://localhost`——说明实际发送目标用的是真实 origin，安全性更好。
+
+**验证**：`npx jest bridge` → 9/9 通过；bridge.js 此前零单测，本批为协议边界建立首道锁。
+
+**阶段2 现状盘点**
+- 已覆盖：store（`store.jest.test.js` 覆盖 navigateDate/goToDate/subscribe 等）、dataValidator、helpers、TimelineService、searchService、eventBus、GoalService?、themeAudit 等。
+- 仍可能缺口：renderers（`renderSkeleton`/`renderAll`）、GoalService 纯计算等——视情况补。
+
 ### 待启动
-- [ ] 阶段1 后续批次（上方）
-- [ ] 阶段2 · 类型化（store/bridge/renderer 单测）
-- [ ] 阶段3 · 契约化（共享 protocol.ts，最高杠杆）
+- [ ] 阶段2 后续：补 renderers / GoalService 等缺口单测（可选、按缺口）
+- [ ] 阶段3 · 契约化（共享 protocol.ts/ protocol.js，最高杠杆）
 - [ ] 阶段4 · 形态演进（仅当 UI 越线）

@@ -46,6 +46,16 @@ else
 fi
 echo "📌 manifest.json: $CURRENT_VERSION -> $NEW_VERSION (minAppVersion $MIN_APP)"
 
+# 1b. 同步 package.json 版本号（CI 版本一致性守卫要求 package.json == manifest.json）
+if [ -f "$SRC_DIR/package.json" ]; then
+  if [[ "$OSTYPE" == "darwin"* ]]; then
+    sed -i '' "s/\"version\": \"$CURRENT_VERSION\"/\"version\": \"$NEW_VERSION\"/" "$SRC_DIR/package.json"
+  else
+    sed -i "s/\"version\": \"$CURRENT_VERSION\"/\"version\": \"$NEW_VERSION\"/" "$SRC_DIR/package.json"
+  fi
+  echo "   ✓ package.json: $CURRENT_VERSION -> $NEW_VERSION"
+fi
+
 # 2. 追加 versions.json 映射（键=插件版本，值=minAppVersion）；已存在则跳过
 if grep -q "\"$NEW_VERSION\"" "$VERSIONS"; then
   echo "   ⚠️  versions.json 已含 $NEW_VERSION，跳过追加"

@@ -2,6 +2,9 @@ import { App, PluginSettingTab, Setting } from 'obsidian';
 import type BambooReviewPlugin from '../../main';
 import { ThemeBridge } from '../bridge/ThemeBridge';
 
+/** Obsidian 插件运行时注入的主窗口 document（非 iframe 内的 document） */
+declare const activeDocument: Document;
+
 /** 自定义白噪音音源 */
 export interface NoiseItem {
   id: string;
@@ -10,14 +13,6 @@ export interface NoiseItem {
   url?: string;
   path?: string;
   volume?: number;
-}
-
-/** 板块配置（由 webapp SectionRegistry 定义，插件仅透传） */
-export interface SectionConfigItem {
-  id: string;
-  enabled: boolean;
-  visible: boolean;
-  order: number;
 }
 
 /** 插件设置接口 */

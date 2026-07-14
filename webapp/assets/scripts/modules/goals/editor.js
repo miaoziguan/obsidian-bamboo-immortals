@@ -289,7 +289,7 @@ export const GoalsEditor = {
                 </div>
                 <div class="tmpl-tabs">
                     <button class="tmpl-tab active" data-tab="builtin">内置模板</button>
-                    <button class="tmpl-tab" data-tab="custom">我的模板${customTemplates.length > 0 ? ` (${customTemplates.length})` : ''}</button>
+                    <button class="tmpl-tab" data-tab="custom">我的模板${customTemplates.length > 0 ? `<span class="tmpl-tab-count">${customTemplates.length}</span>` : ''}</button>
                 </div>
                 <div class="tmpl-body">
                     <div class="tmpl-list" data-pane="builtin">

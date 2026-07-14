@@ -77,17 +77,17 @@ export class DailyReviewView extends ItemView {
     const customThemes = await this.scanCustomThemes();
     this.appAPI.setCustomThemes(customThemes);
 
-    // 创建 AppHost 并构建 blob URL（传入插件版本用于 webapp 缺失时自举下载）
+    // 创建 AppHost 并构建 blob URL
     const version = (this.plugin as { manifest?: { version?: string } } | undefined)?.manifest?.version ?? '';
     this.appHost = new AppHost(this.app, this.pluginDir, version);
 
-    // 加载态占位：webapp 体积较大，构建 blob（必要时联网下载）期间先展示，避免空白
     const loadingEl = container.createEl('div', {
       text: '竹林修仙传加载中…',
       cls: 'bamboo-review-loading',
     });
 
     try {
+      this.appAPI.startListening();
       const blobUrl = await this.appHost.buildBlobUrl();
 
       this.iframe = container.createEl('iframe', {
@@ -98,13 +98,9 @@ export class DailyReviewView extends ItemView {
         },
       });
 
-      // blob 就绪后移除加载态
       loadingEl.remove();
+      this.appAPI.bindIframe(this.iframe);
 
-      // 绑定通信
-      this.appAPI.attach(this.iframe);
-
-      // 监听 Obsidian 主题变化
       this.cssChangeRef = this.app.workspace.on('css-change', () => {
         this.appAPI?.onThemeChanged(this.settings.followObsidianTheme);
       });

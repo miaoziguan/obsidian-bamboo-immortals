@@ -520,6 +520,250 @@
     background: rgba(var(--primary-rgb), 0.15);
 }
 
+/* ========== 任务抽签 ========== */
+.todo-lottery-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    flex-shrink: 0;
+    padding: 0;
+    position: relative;
+    z-index: 1;
+}
+
+.todo-lottery-btn svg {
+    stroke: var(--bamboo-primary);
+    transition: transform 0.3s ease, stroke 0.2s ease;
+    opacity: 0.7;
+}
+
+.todo-lottery-btn:hover {
+    background: transparent;
+    box-shadow: none;
+    transform: translateY(-1px);
+}
+
+.todo-lottery-btn:hover svg {
+    transform: rotate(15deg) scale(1.1);
+    opacity: 1;
+}
+
+.todo-lottery-btn:active {
+    transform: scale(0.92);
+}
+
+.todo-lottery-btn:disabled,
+.todo-lottery-btn.disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.todo-lottery-btn:disabled svg,
+.todo-lottery-btn.disabled svg {
+    opacity: 0.3;
+}
+
+.todo-lottery-btn:disabled:hover,
+.todo-lottery-btn.disabled:hover {
+    background: transparent;
+    box-shadow: none;
+    transform: none;
+}
+
+.todo-lottery-btn:disabled:hover svg,
+.todo-lottery-btn.disabled:hover svg {
+    transform: none;
+    opacity: 0.3;
+}
+
+/* 抽签滚动高亮 */
+.todo-item-lottery-spinning {
+    position: relative;
+    z-index: 1;
+}
+
+.todo-item-lottery-spinning::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: rgba(var(--primary-rgb), 0.08);
+    border: 2px solid rgba(var(--primary-rgb), 0.35);
+    z-index: -1;
+    animation: lotterySpinPulse 0.12s ease-in-out;
+}
+
+@keyframes lotterySpinPulse {
+    0% { opacity: 0; transform: scale(0.96); }
+    50% { opacity: 1; transform: scale(1.02); }
+    100% { opacity: 0.6; transform: scale(1); }
+}
+
+/* 抽中高亮 + 脉冲 + 行末呼吸箭头 */
+.todo-item-lottery-picked {
+    position: relative;
+    z-index: 1;
+    cursor: pointer;
+    border-color: var(--bamboo-primary) !important;
+    box-shadow: 0 0 0 4px rgba(var(--primary-rgb), 0.12), 0 4px 16px rgba(var(--primary-rgb), 0.2) !important;
+}
+
+.todo-item-lottery-picked::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: rgba(var(--primary-rgb), 0.06);
+    z-index: -1;
+    animation: lotteryPickedGlow 1.8s ease-in-out infinite;
+}
+
+/* 抽中态 checkbox 变 ▶ 播放键：纯 SVG mask 绘制，零文字字符 */
+.todo-item-lottery-picked .todo-checkbox::before {
+    content: '';
+    position: absolute;
+    inset: 4px;
+    background-color: var(--bamboo-primary);
+    mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2010%2010%22%3E%3Cpolygon%20points%3D%222%2C1%208%2C5%202%2C9%22%20fill%3D%22white%22%2F%3E%3C%2Fsvg%3E");
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2010%2010%22%3E%3Cpolygon%20points%3D%222%2C1%208%2C5%202%2C9%22%20fill%3D%22white%22%2F%3E%3C%2Fsvg%3E");
+    mask-size: contain;
+    -webkit-mask-size: contain;
+    mask-repeat: no-repeat;
+    -webkit-mask-repeat: no-repeat;
+    mask-position: center;
+    -webkit-mask-position: center;
+    opacity: 0.85;
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.todo-item-lottery-picked:hover .todo-checkbox::before {
+    transform: scale(1.2);
+}
+
+@keyframes lotteryPickedGlow {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 0.8; }
+}
+
+/* 暗色模式抽签 */
+::host(.dark) .todo-lottery-btn {
+    background: transparent;
+    border: none;
+}
+
+::host(.dark) .todo-lottery-btn svg {
+    stroke: var(--bamboo-light);
+}
+
+::host(.dark) .todo-lottery-btn:hover {
+    background: transparent;
+    box-shadow: none;
+}
+
+::host(.dark) .todo-item-lottery-spinning::before {
+    background: rgba(var(--primary-rgb), 0.12);
+    border-color: rgba(var(--primary-rgb), 0.45);
+}
+
+::host(.dark) .todo-item-lottery-picked {
+    border-color: var(--bamboo-light) !important;
+    box-shadow: 0 0 0 4px rgba(var(--primary-rgb), 0.18), 0 4px 16px rgba(var(--primary-rgb), 0.3) !important;
+}
+
+::host(.dark) .todo-item-lottery-picked::before {
+    background: rgba(var(--primary-rgb), 0.1);
+}
+
+
+
+/* ========== 聚焦态（「开始做」不=完成） ========== */
+/* 三连选择器特异性足够，无需 !important */
+.todo-item.todo-item-goal.todo-item-lottery-focus {
+    background: linear-gradient(
+        135deg,
+        rgba(var(--primary-rgb), 0.1) 0%,
+        var(--card-bg) 40%
+    );
+    /* 内发光 + 微弱外投影：视觉从 picked 态的「外扩脉冲」升级为「内收锚定」 */
+    box-shadow:
+        inset 0 0 0 1px rgba(var(--primary-rgb), 0.12),
+        inset 0 0 24px rgba(var(--primary-rgb), 0.06),
+        0 2px 12px rgba(var(--primary-rgb), 0.1);
+    animation: focusSnap 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.todo-item.todo-item-goal.todo-item-lottery-focus:hover {
+    transform: translateY(-2px);
+    box-shadow:
+        inset 0 0 0 1px rgba(var(--primary-rgb), 0.16),
+        inset 0 0 28px rgba(var(--primary-rgb), 0.08),
+        0 4px 18px rgba(var(--primary-rgb), 0.15);
+}
+
+.todo-item.todo-item-goal.todo-item-lottery-focus:active {
+    transform: scale(0.98);
+}
+
+/* 弹性锚定：从 picked 态 scale(1) 微微弹大再回正，传递「锁定」心理暗示 */
+@keyframes focusSnap {
+    0%   { transform: scale(1); }
+    35%  { transform: scale(1.028); }
+    100% { transform: scale(1); }
+}
+
+/* 聚焦态 + 完成态兼容 */
+.todo-item.todo-item-goal.todo-item-lottery-focus.todo-item-completed {
+    background: rgba(var(--primary-rgb), 0.12);
+    box-shadow:
+        inset 0 0 0 1px rgba(var(--primary-rgb), 0.12),
+        0 2px 12px rgba(var(--primary-rgb), 0.12);
+    animation: none;
+}
+.todo-item.todo-item-goal.todo-item-lottery-focus.todo-item-completed:hover {
+    transform: translateY(-1px);
+}
+
+
+
+/* ========== 暗色模式聚焦态 ========== */
+::host(.dark) .todo-item.todo-item-goal.todo-item-lottery-focus {
+    border-left-color: var(--bamboo-light);
+    background: linear-gradient(
+        135deg,
+        rgba(var(--primary-rgb), 0.16) 0%,
+        rgba(var(--surface-dark-rgb), 0.9) 40%
+    );
+    box-shadow:
+        inset 0 0 0 1px rgba(var(--primary-rgb), 0.18),
+        inset 0 0 28px rgba(var(--primary-rgb), 0.1),
+        0 2px 16px rgba(var(--primary-rgb), 0.15);
+}
+
+::host(.dark) .todo-item.todo-item-goal.todo-item-lottery-focus:hover {
+    box-shadow:
+        inset 0 0 0 1px rgba(var(--primary-rgb), 0.22),
+        inset 0 0 32px rgba(var(--primary-rgb), 0.12),
+        0 4px 22px rgba(var(--primary-rgb), 0.2);
+}
+
+::host(.dark) .todo-item.todo-item-goal.todo-item-lottery-focus.todo-item-completed {
+    border-left-color: var(--bamboo-light);
+    background: rgba(var(--primary-rgb), 0.15);
+    box-shadow:
+        inset 0 0 0 1px rgba(var(--primary-rgb), 0.15),
+        0 2px 16px rgba(var(--primary-rgb), 0.16);
+}
+
+
+
 /* === TINY VIEWPORT (≤360px): 待办紧凑布局 === */
 @media (max-width: 360px) {
     .todo-item {

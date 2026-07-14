@@ -18,7 +18,7 @@ import type { CommandType } from './protocol';
 export type { CommandType } from './protocol';
 
 /** 指令下发目标（DailyReviewView 满足此契约） */
-export interface CommandTarget {
+interface CommandTarget {
   sendCommand(type: string): void;
 }
 

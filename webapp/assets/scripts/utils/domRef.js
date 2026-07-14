@@ -64,7 +64,7 @@ export function setGlobalCssVar(name, value) {
     }
 }
 
-// 返回用于 .style.setProperty 的代理对象（仅 shadow 模式下指向 host 代理）。
+// 返回用于 .style.setProperty / .style.removeProperty 的代理对象（仅 shadow 模式下指向 host 代理）。
 // 调用方可直接 `const root = getCssVarRoot(); root.style.setProperty(name, val);`
 export function getCssVarRoot() {
     const host = getHost();
@@ -72,6 +72,12 @@ export function getCssVarRoot() {
         return {
             style: {
                 setProperty: (name, value) => setGlobalCssVar(name, value),
+                removeProperty: (name) => {
+                    if (host) host.style.removeProperty(name);
+                    if (typeof document !== 'undefined' && document.documentElement) {
+                        document.documentElement.style.removeProperty(name);
+                    }
+                },
             },
         };
     }

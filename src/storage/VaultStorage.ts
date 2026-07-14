@@ -1,4 +1,4 @@
-import { App, normalizePath, TFile } from 'obsidian';
+import { App, normalizePath, TFile, Notice } from 'obsidian';
 import { ImportValidator } from './ImportValidator';
 import type {
   DayData,
@@ -24,6 +24,8 @@ import type {
 export class VaultStorage {
   private app: App;
   private basePath: string;
+  /** 写守卫：已警告过的路径，第二次写入放行（用户确认意图） */
+  private _warnedPaths = new Set<string>();
 
   constructor(app: App, basePath = 'bamboo-review') {
     this.app = app;
@@ -180,6 +182,27 @@ export class VaultStorage {
       throw new Error('DayData must have a date field');
     }
     const path = this.dayPath(dateKey);
+
+    // 写守卫：检测数据量悬崖（多条时间线 → 近乎空壳）
+    if (!this._warnedPaths.has(path)) {
+      const newTimelineLen = Array.isArray(dayData.timeline) ? dayData.timeline.length : 0;
+      if (newTimelineLen <= 1) {
+        try {
+          if (await this.app.vault.adapter.exists(path)) {
+            const existing = JSON.parse(await this.app.vault.adapter.read(path)) as DayData;
+            const existingTimelineLen = Array.isArray(existing.timeline) ? existing.timeline.length : 0;
+            if (existingTimelineLen > 10) {
+              new Notice(
+                `⚠️ 检测到 ${dateKey} 数据异常清空（${existingTimelineLen} 条 → ${newTimelineLen} 条），已自动拦截。\n如果确实要清空该日数据，请再次操作。`
+              );
+              this._warnedPaths.add(path);
+              return;
+            }
+          }
+        } catch { /* 文件损坏或不存在，继续正常写入 */ }
+      }
+    }
+
     await this.vaultWrite(path, JSON.stringify(dayData, null, 2));
   }
 
@@ -207,6 +230,23 @@ export class VaultStorage {
 
   async putGoals(goals: GoalItem[]): Promise<void> {
     const path = this.goalsPath();
+
+    // 写守卫：检测数据量悬崖（N条目标 → 空数组）
+    if (goals.length === 0 && !this._warnedPaths.has(path)) {
+      try {
+        if (await this.app.vault.adapter.exists(path)) {
+          const existing = JSON.parse(await this.app.vault.adapter.read(path)) as GoalItem[];
+          if (Array.isArray(existing) && existing.length > 0) {
+            new Notice(
+              `⚠️ 检测到目标数据异常清空（${existing.length} 条 → 空），已自动拦截。\n如果确实要清空所有目标，请再次操作。`
+            );
+            this._warnedPaths.add(path);
+            return;
+          }
+        }
+      } catch { /* 文件损坏或不存在，继续正常写入 */ }
+    }
+
     await this.vaultWrite(path, JSON.stringify(goals, null, 2));
   }
 

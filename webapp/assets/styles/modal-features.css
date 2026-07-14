@@ -281,6 +281,15 @@
     font-weight: 600;
     color: var(--text-primary);
 }
+.import-preview-divider {
+    height: 1px;
+    background: var(--border-light);
+    margin: 8px 0;
+}
+.import-preview-value--highlight {
+    color: var(--bamboo-primary);
+    font-size: var(--type-md);
+}
 .import-strategy-options {
     display: flex;
     flex-direction: column;

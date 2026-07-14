@@ -101,6 +101,14 @@ export const ShopManager = {
     _loadSortPreference() {
         try {
             const saved = storageManager.getSetting('shopSortBy');
+            // getSetting 返回 Promise，在 open() 中已 await
+            this._loadSortPreferencePromise = saved;
+        } catch (e) { /* ignore */ }
+    },
+
+    async _loadSortPreferenceAsync() {
+        try {
+            const saved = await storageManager.getSetting('shopSortBy');
             if (saved) {
                 this._sortBy = { food: saved.food || 'default', entertainment: saved.entertainment || 'default' };
             }
@@ -189,9 +197,16 @@ export const ShopManager = {
         }
     },
 
-    open() {
-        this._loadSortPreference();
+    async open() {
+        await store.ready();
+        await this._loadSortPreferenceAsync();
         const { balance, purchaseHistory, incomeHistory, stats } = store.getState();
+
+        // [诊断] 记录打开时的数据状态
+        console.log('[Shop] open: balance=' + balance +
+            ' todayEarnings=' + stats.todayEarnings +
+            ' ph_records=' + purchaseHistory.records.length +
+            ' ih_records=' + incomeHistory.records.length);
 
         // 从 incomeHistory.records 重新计算今日收入
         const today = new Date().toDateString();

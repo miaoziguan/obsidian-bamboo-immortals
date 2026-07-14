@@ -109,28 +109,120 @@ export const SettingsModal = {
         return `
             <div class="fab-tab-content" id="tab-content-data">
                 <div class="fab-panel-section">
-                    <div class="fab-panel-section-title">导入导出</div>
-                    <div class="settings-action-grid">
-                        <button class="btn btn-sm btn-secondary btn-block" data-action="settings-export-data">
-                            ${LucideUtils.createIcon('download', { size: 12 })} 导出备份
+                    <div class="data-section-header">
+                        ${LucideUtils.createIcon('upload', { size: 18 })} 导出备份
+                    </div>
+                    <div class="data-action-card">
+                        <button class="btn-primary-action" data-action="settings-export-data">
+                            ${LucideUtils.createIcon('package', { size: 16 })} 一键打包全部数据
                         </button>
-                        <button class="btn btn-sm btn-secondary btn-block" data-action="settings-import-data">
-                            ${LucideUtils.createIcon('upload', { size: 12 })} 导入数据
-                        </button>
+                        <div class="data-subgroup-label">
+                            ${LucideUtils.createIcon('file', { size: 12 })} 单独导出文件
+                        </div>
+                        <div class="data-file-grid">
+                            <button class="data-file-tile" data-action="settings-export-goals" title="导出 goals.json">
+                                ${LucideUtils.createIcon('target', { size: 18 })}
+                                <span class="data-file-tile-name">goals</span>
+                                <span class="data-file-tile-sub">目标数据</span>
+                            </button>
+                            <button class="data-file-tile" data-action="settings-export-settings" title="导出 settings.json">
+                                ${LucideUtils.createIcon('settings', { size: 18 })}
+                                <span class="data-file-tile-name">settings</span>
+                                <span class="data-file-tile-sub">应用设置</span>
+                            </button>
+                            <button class="data-file-tile" data-action="settings-export-purchase" title="导出 purchase-history.json">
+                                ${LucideUtils.createIcon('shopping-cart', { size: 18 })}
+                                <span class="data-file-tile-name">purchase</span>
+                                <span class="data-file-tile-sub">购买历史</span>
+                            </button>
+                            <button class="data-file-tile" data-action="settings-export-income" title="导出 income-history.json">
+                                ${LucideUtils.createIcon('trending-up', { size: 18 })}
+                                <span class="data-file-tile-name">income</span>
+                                <span class="data-file-tile-sub">收入历史</span>
+                            </button>
+                            <button class="data-file-tile" data-action="settings-export-days" title="导出 data/ 全部每日记录">
+                                ${LucideUtils.createIcon('calendar-days', { size: 18 })}
+                                <span class="data-file-tile-name">days</span>
+                                <span class="data-file-tile-sub">每日记录</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
-                <div class="fab-panel-section fab-section-danger">
-                    <div class="fab-panel-section-title">清理每日记录</div>
-                    <div class="settings-item-info" style="margin-bottom: 10px;">
-                        <div class="settings-item-label">按日期裁剪历史记录</div>
-                        <div class="settings-item-desc">当前 ${dataCount} 天，删除指定日期之前的所有记录</div>
+                <div class="fab-panel-section">
+                    <div class="data-section-header">
+                        ${LucideUtils.createIcon('download', { size: 18 })} 导入恢复
                     </div>
-                    <div class="settings-clear-row">
-                        <input type="date" class="form-input settings-date-input" id="clearBeforeDate" max="${today}" placeholder="选择截止日期">
-                        <button class="btn btn-sm btn-danger" data-action="settings-confirm-clear-data">
-                            ${LucideUtils.createIcon('trash', { size: 12 })} 清理
+                    <div class="data-action-card">
+                        <button class="btn-primary-action" data-action="settings-import-data" style="background: var(--bamboo-light);">
+                            ${LucideUtils.createIcon('file-up', { size: 16 })} 导入完整备份
                         </button>
+                        ${(() => {
+                            try {
+                                const meta = JSON.parse(localStorage.getItem('br_last_export'));
+                                if (!meta || !meta.name) return '';
+                                const t = new Date(meta.time);
+                                const now = new Date();
+                                const isToday = t.toDateString() === now.toDateString();
+                                const label = isToday ? '今天' : `${t.getMonth()+1}月${t.getDate()}日`;
+                                const timeStr = t.toLocaleTimeString('zh-CN', { hour:'2-digit', minute:'2-digit' });
+                                return `<div class="data-last-export">
+                                    ${LucideUtils.createIcon('history', { size: 12 })} 最近备份：<code>${meta.name}</code> · ${label} ${timeStr}
+                                </div>`;
+                            } catch (_) { return ''; }
+                        })()}
+                        <div class="data-hint-card">
+                            ${LucideUtils.createIcon('info', { size: 14 })}
+                            <span>完整备份文件以 <code>daily-review-</code> 开头，扩展名为 <code>.json</code>，支持预览与策略选择</span>
+                        </div>
+                        <div class="data-subgroup-label">
+                            ${LucideUtils.createIcon('file-input', { size: 12 })} 单独导入文件
+                        </div>
+                        <div class="data-file-grid">
+                            <button class="data-file-tile" data-action="settings-import-goals" title="仅恢复目标">
+                                ${LucideUtils.createIcon('target', { size: 18 })}
+                                <span class="data-file-tile-name">仅目标</span>
+                                <span class="data-file-tile-sub">goals</span>
+                            </button>
+                            <button class="data-file-tile" data-action="settings-import-settings" title="仅恢复设置">
+                                ${LucideUtils.createIcon('settings', { size: 18 })}
+                                <span class="data-file-tile-name">仅设置</span>
+                                <span class="data-file-tile-sub">settings</span>
+                            </button>
+                            <button class="data-file-tile" data-action="settings-import-purchase" title="仅恢复购买记录">
+                                ${LucideUtils.createIcon('shopping-cart', { size: 18 })}
+                                <span class="data-file-tile-name">仅购买</span>
+                                <span class="data-file-tile-sub">purchase</span>
+                            </button>
+                            <button class="data-file-tile" data-action="settings-import-income" title="仅恢复收入记录">
+                                ${LucideUtils.createIcon('trending-up', { size: 18 })}
+                                <span class="data-file-tile-name">仅收入</span>
+                                <span class="data-file-tile-sub">income</span>
+                            </button>
+                            <button class="data-file-tile" data-action="settings-import-days" title="仅恢复每日记录">
+                                ${LucideUtils.createIcon('calendar-days', { size: 18 })}
+                                <span class="data-file-tile-name">仅每日</span>
+                                <span class="data-file-tile-sub">days</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="fab-panel-section">
+                    <div class="danger-zone">
+                        <div class="danger-zone-header">
+                            ${LucideUtils.createIcon('alert-triangle', { size: 16 })} 危险操作区
+                        </div>
+                        <div class="settings-item-info" style="margin-bottom: 12px;">
+                            <div class="settings-item-label">按日期裁剪历史记录</div>
+                            <div class="settings-item-desc">当前 ${dataCount} 天，删除指定日期之前的所有记录</div>
+                        </div>
+                        <div class="settings-clear-row">
+                            <input type="date" class="form-input settings-date-input" id="clearBeforeDate" max="${today}" placeholder="选择截止日期">
+                            <button class="btn btn-sm btn-danger" data-action="settings-confirm-clear-data">
+                                ${LucideUtils.createIcon('trash', { size: 12 })} 清理
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -325,6 +417,24 @@ export const SettingsModal = {
         DataIO.exportData();
     },
 
+    exportShopData() {
+        DataIO.exportShopData();
+    },
+
+    // ---- 文件级导出 ----
+    exportGoals() { DataIO.exportGoals(); },
+    exportSettings() { DataIO.exportSettings(); },
+    exportPurchaseHistory() { DataIO.exportPurchaseHistory(); },
+    exportIncomeHistory() { DataIO.exportIncomeHistory(); },
+    exportDays() { DataIO.exportDays(); },
+
+    // ---- 文件级导入 ----
+    importGoalsFromFile() { DataIO.importGoalsFromFile(); },
+    importSettingsFromFile() { DataIO.importSettingsFromFile(); },
+    importPurchaseHistoryFromFile() { DataIO.importPurchaseHistoryFromFile(); },
+    importIncomeHistoryFromFile() { DataIO.importIncomeHistoryFromFile(); },
+    importDaysFromFile() { DataIO.importDaysFromFile(); },
+
     openImportPreview() {
         const input = document.createElement('input');
         input.type = 'file';
@@ -363,6 +473,14 @@ export const SettingsModal = {
         const hasData = dataKeys.length > 0;
         const hasGoals = goalCount > 0;
 
+        // 解析商店数据
+        const bal = backup.settings?.balance != null ? parseFloat(backup.settings.balance) : null;
+        const phRecords = backup.purchaseHistory?.records || [];
+        const ihRecords = backup.incomeHistory?.records || [];
+        const hasShop = bal !== null || phRecords.length > 0 || ihRecords.length > 0;
+        const totalSpent = hasShop ? phRecords.reduce((s, r) => s + (r.price || 0), 0) : 0;
+        const totalEarnings = hasShop ? ihRecords.reduce((s, r) => s + (r.amount || 0), 0) : 0;
+
         const currentGoalCount = store.getState().globalGoals.length;
         const currentDataKeys = Object.keys(store.getState().data);
         const hasCurrentData = currentDataKeys.length > 0;
@@ -392,10 +510,26 @@ export const SettingsModal = {
                         <span class="import-preview-label">目标数据</span>
                         <span class="import-preview-value">${hasGoals ? goalCount + ' 个' : '无'}</span>
                     </div>
+                    ${hasShop ? `
+                    <div class="import-preview-divider"></div>
                     <div class="import-preview-row">
-                        <span class="import-preview-label">消费/收入历史</span>
-                        <span class="import-preview-value">${backup.purchaseHistory || backup.incomeHistory ? '有' : '无'}</span>
+                        <span class="import-preview-label">余额</span>
+                        <span class="import-preview-value import-preview-value--highlight">${bal != null ? bal + ' 竹币' : '—'}</span>
                     </div>
+                    <div class="import-preview-row">
+                        <span class="import-preview-label">历史总收入</span>
+                        <span class="import-preview-value">${totalEarnings} 竹币</span>
+                    </div>
+                    <div class="import-preview-row">
+                        <span class="import-preview-label">历史总消费</span>
+                        <span class="import-preview-value">${totalSpent} 竹币</span>
+                    </div>
+                    ` : `
+                    <div class="import-preview-row">
+                        <span class="import-preview-label">商店数据</span>
+                        <span class="import-preview-value" style="color: var(--text-secondary)">无商店数据</span>
+                    </div>
+                    `}
                 </div>
             </div>
 
@@ -421,8 +555,37 @@ export const SettingsModal = {
             </div>
             ` : ''}
 
+            <div class="form-group">
+                <label class="form-label">导入范围</label>
+                <div class="import-strategy-options">
+                    <label class="import-strategy-option">
+                        <input type="radio" name="importScope" value="all" checked>
+                        <div class="import-strategy-card">
+                            <div class="import-strategy-title">全部数据</div>
+                            <div class="import-strategy-desc">日记录 + 目标 + 商店数据（余额/历史）</div>
+                        </div>
+                    </label>
+                    <label class="import-strategy-option">
+                        <input type="radio" name="importScope" value="daysAndGoals">
+                        <div class="import-strategy-card">
+                            <div class="import-strategy-title">仅日记录与目标</div>
+                            <div class="import-strategy-desc">导入日记录和目标，不改变商店余额和历史</div>
+                        </div>
+                    </label>
+                    ${hasShop ? `
+                    <label class="import-strategy-option">
+                        <input type="radio" name="importScope" value="shopOnly">
+                        <div class="import-strategy-card">
+                            <div class="import-strategy-title">仅商店数据</div>
+                            <div class="import-strategy-desc">只恢复余额和消费/收入历史，不动日记录和目标</div>
+                        </div>
+                    </label>
+                    ` : ''}
+                </div>
+            </div>
+
             <div class="import-warning">
-                导入前建议先导出当前数据作为备份
+                导入前已自动下载当前数据备份到下载目录
             </div>
 
             <div class="modal-footer">
@@ -440,8 +603,14 @@ export const SettingsModal = {
         const strategyRadio = $('input[name="importStrategy"]:checked');
         const strategy = strategyRadio ? strategyRadio.value : 'overwrite';
 
+        const scopeRadio = $('input[name="importScope"]:checked');
+        const scope = scopeRadio ? scopeRadio.value : 'all';
+
+        // 自动备份当前数据，防止误操作丢失
+        await DataIO.silentExport();
+
         try {
-            const result = await DataIO.importData(backup, { strategy });
+            const result = await DataIO.importData(backup, { strategy, scope });
             if (result.success) {
                 Handlers.closeModal();
                 renderAll();
@@ -512,8 +681,16 @@ export const SettingsModal = {
             return;
         }
 
+        // 自动备份当前数据，防止误操作丢失
+        await DataIO.silentExport();
+
         StorageAdapter.remove(StorageKeys.DAILY_REVIEW_DATA);
         StorageAdapter.remove(StorageKeys.AUTO_BACKUPS);
+        // 清理商店数据缓存（防止离线恢复残留）
+        StorageAdapter.remove('br_balance_cache');
+        StorageAdapter.remove('br_purchase_history_cache');
+        StorageAdapter.remove('br_income_history_cache');
+        StorageAdapter.remove('br_shop_stats_cache');
 
         try {
             await storageManager.clearAll();
@@ -595,7 +772,18 @@ ActionDispatcher.registerMany({
     'settings-toggle-weather-expanded': (_ds, target) => SettingsModal.toggleWeatherExpanded(target.checked),
     'settings-toggle-quote': (_ds, target) => SettingsModal.toggleQuoteEnabled(target.checked),
     'settings-export-data': () => SettingsModal.exportData(),
+    'settings-export-shop-data': () => SettingsModal.exportShopData(),
+    'settings-export-goals': () => SettingsModal.exportGoals(),
+    'settings-export-settings': () => SettingsModal.exportSettings(),
+    'settings-export-purchase': () => SettingsModal.exportPurchaseHistory(),
+    'settings-export-income': () => SettingsModal.exportIncomeHistory(),
+    'settings-export-days': () => SettingsModal.exportDays(),
     'settings-import-data': () => SettingsModal.openImportPreview(),
+    'settings-import-goals': () => SettingsModal.importGoalsFromFile(),
+    'settings-import-settings': () => SettingsModal.importSettingsFromFile(),
+    'settings-import-purchase': () => SettingsModal.importPurchaseHistoryFromFile(),
+    'settings-import-income': () => SettingsModal.importIncomeHistoryFromFile(),
+    'settings-import-days': () => SettingsModal.importDaysFromFile(),
     'settings-confirm-import': () => SettingsModal.confirmImport(),
     'settings-confirm-clear-data': () => SettingsModal.confirmClearData(),
     'settings-show-reset-modal': () => SettingsModal.showResetModal(),

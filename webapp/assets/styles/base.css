@@ -163,6 +163,8 @@ button:focus-visible, a:focus-visible {
     pointer-events: none;
     background: linear-gradient(165deg, var(--bg-gradient-start) 0%, var(--bg-gradient-mid1) 20%, var(--bg-gradient-mid2) 40%, var(--bg-gradient-mid1) 60%, var(--bg-gradient-end) 80%, var(--bg-gradient-start) 100%);
 }
+
+
 :host::-webkit-scrollbar {
     display: none;
     width: 0;

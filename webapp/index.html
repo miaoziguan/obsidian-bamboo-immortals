@@ -258,8 +258,6 @@ setTimeout(() => {
         }
     }
 
-    // 阶段1（收口）：把所有核心全局收敛进显式门面 window.WebApp
-    // 加性接入，失败不影响既有裸全局调用（store / Handlers 等仍可直接解析）。
     try {
         const CORE_NAMES = [
             'store', 'Handlers', 'Navigation', 'SectionManager', 'Todo',

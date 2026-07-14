@@ -6,6 +6,9 @@ import { ALLOWED_AUDIO_EXTENSIONS, MIME_TYPES } from '../constants/audio';
 import type { DayData } from '../types/data';
 import { PROTOCOL_VERSION, INBOUND_PREFIXES } from './protocol';
 
+/** Obsidian 插件运行时注入的主窗口 document（非插件沙箱内的 document） */
+declare const activeDocument: Document;
+
 /** 扫描音频时默认跳过的目录名 */
 const SKIP_DIRS = ['.trash', '.git', 'node_modules'];
 
@@ -85,22 +88,40 @@ export class AppAPI {
     this.customThemes = themes;
   }
 
-  /** 绑定 iframe 并开始监听消息 */
-  attach(iframe: HTMLIFrameElement): void {
+  /** 
+   * 预注册 message 监听器。
+   * 在 iframe 创建前调用，消除竞态窗口。
+   * 使用 activeDocument.defaultView（主 Obsidian 窗口）而非插件沙箱 window。
+   */
+  startListening(): void {
     this.detach();
-    this.iframe = iframe;
-    this.themeBridge.attachIframe(iframe);
-
     this.messageHandler = (event: MessageEvent) => {
       void this.onMessage(event);
     };
-    window.addEventListener('message', this.messageHandler);
+    // bridge.js 的 postMessage 目标是 window.parent（主 Obsidian 窗口），
+    // 必须在该窗口上监听才能收到消息（插件沙箱的 window 不是同一对象）。
+    (activeDocument.defaultView || window).addEventListener('message', this.messageHandler);
+  }
+
+  /** 
+   * 绑定 iframe 引用并初始化主题桥接。
+   * 在 iframe 元素创建后调用，供 respond() 获取 contentWindow。
+   */
+  bindIframe(iframe: HTMLIFrameElement): void {
+    this.iframe = iframe;
+    this.themeBridge.attachIframe(iframe);
+  }
+
+  /** 绑定 iframe 并开始监听消息（一步到位，兼容旧调用） */
+  attach(iframe: HTMLIFrameElement): void {
+    this.startListening();
+    this.bindIframe(iframe);
   }
 
   /** 解绑并停止监听 */
   detach(): void {
     if (this.messageHandler) {
-      window.removeEventListener('message', this.messageHandler);
+      (activeDocument.defaultView || window).removeEventListener('message', this.messageHandler);
       this.messageHandler = null;
     }
     this.themeBridge.detachIframe();
@@ -116,13 +137,14 @@ export class AppAPI {
   /** 向 iframe 发送成功响应 */
   private respond(id: string, payload: unknown): void {
     if (!this.iframe?.contentWindow) return;
-    this.iframe.contentWindow.postMessage({ id, payload }, '*');
+    // 必须带 type 字段：bridge.js 的 parseAppMessage 要求 typeof data.type === 'string'
+    this.iframe.contentWindow.postMessage({ type: 'storage:response', id, payload }, '*');
   }
 
   /** 向 iframe 发送错误响应 */
   private respondError(id: string, error: string): void {
     if (!this.iframe?.contentWindow) return;
-    this.iframe.contentWindow.postMessage({ id, error }, '*');
+    this.iframe.contentWindow.postMessage({ type: 'storage:response', id, error }, '*');
   }
 
   /** 消息路由 */

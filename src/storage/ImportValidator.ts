@@ -18,7 +18,7 @@ import type {
   IncomeHistory,
 } from '../types/data';
 
-export class ImportValidationError extends Error {
+class ImportValidationError extends Error {
   constructor(message: string) {
     super(message);
     this.name = 'ImportValidationError';
@@ -58,7 +58,7 @@ function sanitizeValue(value: unknown): unknown {
   return value; // 数字 / 布尔 / null 等原样保留
 }
 
-export interface ValidatedImport {
+interface ValidatedImport {
   days?: Record<string, DayData>;
   goals?: GoalItem[];
   settings?: AppSettings;

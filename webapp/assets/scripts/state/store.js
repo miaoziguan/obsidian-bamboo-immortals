@@ -53,8 +53,12 @@ export class Store {
             await this.handleDataMigration();
             await this.loadFromStorage();
         } catch (e) {
-            console.error('IndexedDB initialization failed, falling back to localStorage:', e);
-            this.storageType = 'localstorage';
+            console.error('Storage initialization failed, entering offline read-only mode:', e);
+            // 弹出可见警告，不再静默降级
+            if (typeof Toast !== 'undefined' && typeof Toast.showToast === 'function') {
+                Toast.showToast('插件通信异常，当前为离线模式。编辑不会保存到 Vault，请检查插件状态。', 'warning');
+            }
+            this.storageType = 'localstorage-offline';
             this.loadFromLocalStorage();
         }
         
@@ -70,7 +74,18 @@ export class Store {
 
     loadFromLocalStorage() {
         this.loadFromStorageLegacy();
-        this.loadGlobalGoals().catch(e => console.error('Failed to load global goals from localStorage:', e));
+        // 优先通过 bridge 加载 goals，失败则从 localStorage 缓存恢复
+        this.loadGlobalGoals().catch(e => {
+            console.error('Failed to load global goals from bridge, trying localStorage cache:', e);
+            try {
+                const cached = StorageAdapter.get('br_goals_cache');
+                if (cached) {
+                    this.state.globalGoals = JSON.parse(cached);
+                }
+            } catch (cacheErr) {
+                console.error('Failed to load goals from localStorage cache:', cacheErr);
+            }
+        });
     }
 
     getState() {
@@ -100,75 +115,25 @@ export class Store {
 
     async loadFromStorage() {
         try {
-            // 先获取所有日期 key（轻量操作）
-            let dayKeys = [];
+            // ── Phase 1: 并行加载商店关键数据（必须在任何 saveToStorage 之前） ──
+            let balance, phData, ihData;
             try {
-                dayKeys = await storageManager.getDayKeys();
+                [balance, phData, ihData] = await Promise.all([
+                    storageManager.getSetting('balance'),
+                    storageManager.getPurchaseHistory(),
+                    storageManager.getIncomeHistory(),
+                ]);
             } catch (e) {
-                console.warn('[Store] getDayKeys failed, falling back to getAllDays:', e.message);
-                const all = await storageManager.getAllDays();
-                dayKeys = Object.keys(all).sort().reverse();
-            }
-            this.state.dayKeys = dayKeys;
-
-            // 分页加载：只加载最近 30 天
-            const PAGE_SIZE = 30;
-            let paginated;
-            try {
-                paginated = await storageManager.getDaysPaginated(0, PAGE_SIZE);
-            } catch (e) {
-                // 兜底：如果插件端不支持分页，回退到全量加载
-                console.warn('[Store] getDaysPaginated failed, falling back to getAllDays:', e.message);
-                paginated = {
-                    days: await storageManager.getAllDays(),
-                    keys: dayKeys.slice(0, PAGE_SIZE),
-                    total: dayKeys.length,
-                    page: 0,
-                    pageSize: PAGE_SIZE,
-                    hasMore: dayKeys.length > PAGE_SIZE,
-                };
+                console.error('[Store] Failed to preload shop data:', e);
             }
 
-            const days = paginated.days;
-            this.state._loadedPages = new Set([0]); // 已加载的页码集合
-            this.state._hasMoreDays = paginated.hasMore;
-
-            if (Object.keys(days).length > 0) {
-                Object.assign(this.state.data, days);
-                let needSave = false;
-                Object.keys(days).forEach(dateKey => {
-                    if (!this.state.data[dateKey]) return;
-                    const originalLength = this.state.data[dateKey].timeline ? this.state.data[dateKey].timeline.length : 0;
-                    DataValidator.cleanupTimeline(this.state.data[dateKey]);
-                    const newLength = this.state.data[dateKey].timeline ? this.state.data[dateKey].timeline.length : 0;
-                    if (originalLength !== newLength) {
-                        needSave = true;
-                    }
-                });
-                if (needSave) {
-                    await this.saveToStorage();
-                }
-            } else {
-                Object.assign(this.state.data, DEFAULT_DATA);
-                await this.saveToStorage();
-            }
-            
-            await this.loadGlobalGoals();
-            
-            const balance = await storageManager.getSetting('balance');
             if (balance !== null) {
                 this.state.balance = parseFloat(balance) || 0;
             }
-
-            // 从独立文件加载购买/收入历史
-            const phData = await storageManager.getPurchaseHistory();
             if (phData) {
                 this.state.purchaseHistory = phData;
             }
-
-            const ihData = await storageManager.getIncomeHistory();
             if (ihData) {
-                // 去重清理：按 desc+日期 去重，同一天同一 desc 只保留最新一条正收入记录
                 const seen = new Set();
                 const deduped = [];
                 for (const inc of ihData.records) {
@@ -191,10 +156,67 @@ export class Store {
                 }
             }
 
-            // 自动归档旧月数据
+            // 自动归档旧月数据（依赖已加载的 purchaseHistory/incomeHistory）
             await WalletService.archiveOldRecords();
 
-            // 加载缓存的统计数据 — 始终以 incomeHistory + purchaseHistory + balance 为真实来源重新派生
+            // ── Phase 2: 加载日数据（此时 balance 已正确，saveToStorage 不会再覆盖） ──
+            let dayKeys = [];
+            try {
+                dayKeys = await storageManager.getDayKeys();
+            } catch (e) {
+                console.warn('[Store] getDayKeys failed, falling back to getAllDays:', e.message);
+                const all = await storageManager.getAllDays();
+                dayKeys = Object.keys(all).sort().reverse();
+            }
+            this.state.dayKeys = dayKeys;
+
+            const PAGE_SIZE = 30;
+            let paginated;
+            try {
+                paginated = await storageManager.getDaysPaginated(0, PAGE_SIZE);
+            } catch (e) {
+                console.warn('[Store] getDaysPaginated failed, falling back to getAllDays:', e.message);
+                paginated = {
+                    days: await storageManager.getAllDays(),
+                    keys: dayKeys.slice(0, PAGE_SIZE),
+                    total: dayKeys.length,
+                    page: 0,
+                    pageSize: PAGE_SIZE,
+                    hasMore: dayKeys.length > PAGE_SIZE,
+                };
+            }
+
+            const days = paginated.days;
+            this.state._loadedPages = new Set([0]);
+            this.state._hasMoreDays = paginated.hasMore;
+
+            if (Object.keys(days).length > 0) {
+                Object.assign(this.state.data, days);
+                let needSave = false;
+                Object.keys(days).forEach(dateKey => {
+                    if (!this.state.data[dateKey]) return;
+                    const originalLength = this.state.data[dateKey].timeline ? this.state.data[dateKey].timeline.length : 0;
+                    DataValidator.cleanupTimeline(this.state.data[dateKey]);
+                    const newLength = this.state.data[dateKey].timeline ? this.state.data[dateKey].timeline.length : 0;
+                    if (originalLength !== newLength) {
+                        needSave = true;
+                    }
+                });
+                if (needSave) {
+                    await this.saveToStorage();
+                }
+            } else {
+                Object.assign(this.state.data, DEFAULT_DATA);
+                await this.saveToStorage();
+            }
+            
+            // ── Phase 3: Goals + Stats（依赖已加载的余额和历史） ──
+            try {
+                await this.loadGlobalGoals();
+            } catch (e) {
+                console.error('[Store] loadGlobalGoals failed, continuing with rest of init:', e);
+            }
+
             WalletService.recalibrateStats();
             await storageManager.putSetting('shopStats', this.state.stats);
 
@@ -257,6 +279,14 @@ export class Store {
             }
             htmlEl.classList.add('theme-bamboo');
             this.state.ui.currentTheme = 'bamboo';
+
+            // Layer 3: Vault 是唯一事实源，同步到 localStorage 作为离线缓存
+            this._syncVaultToLocalCache();
+            
+            // [诊断] 数据加载完成，记录状态
+            console.log('[Store] init complete: balance=' + this.state.balance +
+                ' ph_records=' + this.state.purchaseHistory.records.length +
+                ' ih_records=' + this.state.incomeHistory.records.length);
             
         } catch (e) {
             console.error('Failed to load from storage:', e);
@@ -285,6 +315,29 @@ export class Store {
             this.saveToStorageLegacy();
         }
 
+        // 从 localStorage 缓存恢复商店数据（桥接不可用时的兜底）
+        try {
+            const cachedBalance = StorageAdapter.get('br_balance_cache');
+            if (cachedBalance !== null) {
+                this.state.balance = parseFloat(cachedBalance) || 0;
+            }
+            const cachedPH = StorageAdapter.get('br_purchase_history_cache');
+            if (cachedPH) {
+                this.state.purchaseHistory = JSON.parse(cachedPH);
+            }
+            const cachedIH = StorageAdapter.get('br_income_history_cache');
+            if (cachedIH) {
+                this.state.incomeHistory = JSON.parse(cachedIH);
+            }
+            const cachedStats = StorageAdapter.get('br_shop_stats_cache');
+            if (cachedStats) {
+                this.state.stats = JSON.parse(cachedStats);
+            }
+        } catch (e) {
+            // 缓存恢复失败降级为空数据
+            console.error('Failed to restore shop data from cache:', e);
+        }
+
         const theme = StorageAdapter.get(StorageKeys.THEME);
         if (theme === 'dark') {
             this.state.ui.isDarkMode = true;
@@ -304,7 +357,37 @@ export class Store {
 
         }
 
+    /**
+     * Layer 3: 将 Vault 数据同步到 localStorage 缓存。
+     * Vault 赢 — localStorage 永远是跟班，不参与决策。
+     * 缓存最近 60 天 + goals，避免 localStorage 配额溢出。
+     */
+    _syncVaultToLocalCache() {
+        try {
+            const recent = {};
+            const keys = Object.keys(this.state.data).sort().reverse().slice(0, 60);
+            for (const k of keys) {
+                if (this.state.data[k]) recent[k] = this.state.data[k];
+            }
+            StorageAdapter.set(StorageKeys.DAILY_REVIEW_DATA, JSON.stringify(recent));
+            StorageAdapter.set('br_goals_cache', JSON.stringify(this.state.globalGoals));
+            // 商店数据缓存：桥接不可用时从 localStorage 恢复
+            StorageAdapter.set('br_balance_cache', String(this.state.balance));
+            StorageAdapter.set('br_purchase_history_cache', JSON.stringify(this.state.purchaseHistory));
+            StorageAdapter.set('br_income_history_cache', JSON.stringify(this.state.incomeHistory));
+            StorageAdapter.set('br_shop_stats_cache', JSON.stringify(this.state.stats));
+        } catch (e) {
+            // 缓存是非关键路径，静默忽略
+        }
+    }
+
     async saveToStorage() {
+        // 离线模式：跳过 bridge 写入，只写 localStorage 缓存
+        if (this.storageType === 'localstorage-offline') {
+            this.saveToStorageLegacy();
+            return;
+        }
+
         try {
             // 1) 收集脏 days
             let dirtyDays = [];
@@ -400,9 +483,11 @@ export class Store {
         if (this.state.autoSaveTimer) {
             clearTimeout(this.state.autoSaveTimer);
         }
+        // 离线模式：拉长 debounce 到 10s（反正写不进 Vault，避免无效等待）
+        const defaultInterval = this.storageType === 'localstorage-offline' ? 10000 : 2000;
         const interval = (typeof SettingsModal !== 'undefined' && SettingsModal.autoSaveInterval)
             ? SettingsModal.autoSaveInterval
-            : 2000;
+            : defaultInterval;
         this.state.autoSaveTimer = setTimeout(async () => {
             if (this.storageType === 'indexeddb') {
                 await this.saveToStorage();

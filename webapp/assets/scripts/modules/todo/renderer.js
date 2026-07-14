@@ -83,6 +83,11 @@ export const TodoRenderer = {
                             <span>目标任务</span>
                             <span class="todo-group-badge">${pending.length}</span>
                         </div>
+                        <button class="todo-lottery-btn" data-action="todo-lottery-start"
+                                title="随机抽选一个任务来执行"
+                                aria-label="任务抽签">
+                            ${LucideUtils.createIcon('dice5', { size: 16 })}
+                        </button>
                     </div>
                     <div class="todo-group-items">
                         ${pending.map((todo, idx) => this.renderTodoItem(todo, idx, false)).join('')}
@@ -148,7 +153,9 @@ export const TodoRenderer = {
 
 ActionDispatcher.registerMany({
     'todo-toggle': (data) => Todo.toggle(data.todoId, data.type, data.goalId, data.itemIdx, data.isCompleted === 'true'),
-    'todo-toggle-completed-group': () => Todo.toggleCompletedGroup()
+    'todo-toggle-completed-group': () => Todo.toggleCompletedGroup(),
+    'todo-lottery-start': () => { console.log('[抽签] 骰子按钮被点击'); Todo.startLottery(); },
+    'todo-lottery-start-task': (data) => Todo.startLotteryTask(data.todoId)
 });
 
 window.TodoRenderer = TodoRenderer;

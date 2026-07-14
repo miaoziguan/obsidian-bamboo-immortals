@@ -91,9 +91,7 @@ describe('index.html 脚本加载完整性', () => {
         expect(loadedScripts.size).toBeGreaterThan(50);
     });
 
-    test('bridge.js / storageManager.js 二选一被加载（iframe 判断走 document.write）', () => {
-        const hasBridge = loadedScripts.has('storage/bridge.js');
-        const hasStorage = loadedScripts.has('storage/storageManager.js');
-        expect(hasBridge || hasStorage).toBe(true);
+    test('bridge.js 必须被加载（iframe 存储层入口）', () => {
+        expect(loadedScripts.has('storage/bridge.js')).toBe(true);
     });
 });

@@ -396,4 +396,221 @@
     color: var(--bamboo-primary);
 }
 
+/* ========== 数据 Tab 升级样式 (导入/导出) ========== */
+
+/* 区域标题：带图标的强视觉锚点 */
+.data-section-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--type-md);
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: var(--space-4) 0 var(--space-3);
+    padding-left: var(--space-1);
+}
+.data-section-header svg {
+    width: 18px;
+    height: 18px;
+    color: var(--bamboo-primary);
+    flex-shrink: 0;
+}
+
+/* 卡片容器：把整组操作包成一个有边界的"区块" */
+.data-action-card {
+    background: var(--card-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-lg);
+    padding: var(--space-4);
+    box-shadow: var(--shadow-surface);
+}
+
+/* 主操作按钮：全宽、渐变、阴影，与次要按钮明显拉开 */
+.btn-primary-action {
+    width: 100%;
+    background: var(--btn-primary-bg);
+    color: white;
+    border: none;
+    border-radius: var(--radius-md);
+    padding: var(--space-3) var(--space-4);
+    font-size: var(--type-base);
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    box-shadow: var(--shadow-card);
+    font-family: inherit;
+}
+.btn-primary-action:hover {
+    background: var(--btn-primary-hover);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-elevated);
+}
+.btn-primary-action:active {
+    transform: scale(0.98);
+    box-shadow: var(--shadow-surface);
+}
+.btn-primary-action svg {
+    width: 16px;
+    height: 16px;
+}
+
+/* 次要分组标签：小号大写、强提示 */
+.data-subgroup-label {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    font-size: var(--type-xs);
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin: var(--space-4) 0 var(--space-2);
+    letter-spacing: 0.02em;
+}
+.data-subgroup-label svg {
+    width: 12px;
+    height: 12px;
+    color: var(--text-secondary);
+}
+
+/* 文件网格：auto-fill 三列 tile，比 2×2+1 优雅 */
+.data-file-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: var(--space-2);
+}
+
+/* 文件 tile：图标 + 文件名 + 副标签，密度更高 */
+.data-file-tile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: var(--space-3) var(--space-2);
+    background: var(--btn-secondary-bg);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.18s ease;
+    font-family: inherit;
+    text-align: center;
+    min-height: 72px;
+}
+.data-file-tile:hover {
+    background: var(--btn-secondary-hover);
+    border-color: var(--bamboo-primary);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-card);
+    color: var(--bamboo-primary);
+}
+.data-file-tile:active {
+    transform: scale(0.96);
+}
+.data-file-tile svg {
+    width: 18px;
+    height: 18px;
+    color: var(--bamboo-primary);
+    flex-shrink: 0;
+}
+.data-file-tile-name {
+    font-size: var(--type-xs);
+    font-weight: 600;
+    line-height: 1.2;
+}
+.data-file-tile-sub {
+    font-size: var(--type-xs);
+    color: var(--text-secondary);
+    line-height: 1.2;
+    font-weight: 500;
+}
+
+/* 提示卡片：左 border 强调、灰底内嵌 */
+.data-hint-card {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    background: rgba(var(--primary-rgb), 0.06);
+    border: 1px solid rgba(var(--primary-rgb), 0.12);
+    border-left: 3px solid var(--bamboo-primary);
+    border-radius: var(--radius-sm);
+    margin: var(--space-3) 0;
+    font-size: var(--type-xs);
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+.data-hint-card svg {
+    width: 14px;
+    height: 14px;
+    color: var(--bamboo-primary);
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+.data-hint-card code {
+    background: rgba(var(--primary-rgb), 0.12);
+    padding: 1px 5px;
+    border-radius: var(--radius-3xs);
+    font-family: inherit;
+    font-weight: 600;
+    color: var(--bamboo-primary);
+    font-size: var(--type-xs);
+}
+
+/* 最近备份 chip */
+.data-last-export {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    margin: var(--space-2) 0 var(--space-1);
+    font-size: var(--type-xs);
+    color: var(--text-secondary);
+}
+.data-last-export svg {
+    width: 12px;
+    height: 12px;
+    color: var(--bamboo-primary);
+}
+.data-last-export code {
+    background: var(--btn-secondary-bg);
+    padding: 2px 6px;
+    border-radius: var(--radius-3xs);
+    font-size: var(--type-xs);
+    color: var(--text-primary);
+    font-family: inherit;
+}
+
+/* 危险区：明确视觉容器 */
+.danger-zone {
+    background: rgba(var(--danger-rgb), 0.04);
+    border: 1px solid rgba(var(--danger-rgb), 0.18);
+    border-radius: var(--radius-lg);
+    padding: var(--space-4);
+    box-shadow: var(--shadow-surface);
+}
+.danger-zone-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    color: var(--cinnabar);
+    font-size: var(--type-md);
+    font-weight: 700;
+    margin-bottom: var(--space-3);
+}
+.danger-zone-header svg {
+    width: 16px;
+    height: 16px;
+}
+.danger-zone .settings-item-label {
+    color: var(--text-primary);
+}
+.danger-zone .settings-item-desc {
+    color: var(--text-secondary);
+}
+
 /* ========== 统计模态框样式 ========== */

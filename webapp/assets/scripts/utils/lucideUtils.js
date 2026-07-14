@@ -91,6 +91,7 @@ export const LucideUtils = {
         rotateCcw: (s, sw) => LucideUtils._svg('rotate-ccw', '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>', s, sw),
         flame: (s, sw) => LucideUtils._svg('flame', '<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-1.12-2.5-2.5-2.5S6 10.62 6 12a2.5 2.5 0 0 0 2.5 2.5z"/><path d="M12 2c0 4-4 6-4 10a4 4 0 1 0 8 0c0-4-4-6-4-10z"/>', s, sw),
         filePlus: (s, sw) => LucideUtils._svg('file-plus', '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/>', s, sw),
+        dice5: (s, sw) => LucideUtils._svg('dice-5', '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><path d="M8 8h.01"/><path d="M16 8h.01"/><path d="M8 16h.01"/><path d="M16 16h.01"/><path d="M12 12h.01"/>', s, sw),
     },
 
     emojiMap: {
@@ -105,7 +106,7 @@ export const LucideUtils = {
         '🏔️': 'mountain', '🌸': 'flower', '☔': 'cloudRain', '🍵': 'coffee',
         '🎵': 'music', '🎉': 'partyPopper', '📌': 'pin', '💼': 'briefcase',
         '☀️': 'sun', '🗑️': 'trash', '✏️': 'edit', '🔴': 'circle',
-        '🟡': 'circle', '🟢': 'circle', '📦': 'archive'
+        '🟡': 'circle', '🟢': 'circle', '📦': 'archive', '🎲': 'dice5'
     },
 
     getIconName(emoji) {

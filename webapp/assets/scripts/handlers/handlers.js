@@ -217,6 +217,7 @@ ActionDispatcher.registerMany({
     'import-from-textarea': () => DataIO.importFromTextarea(),
     'toggle-dark-mode': () => {
         store.setDarkMode();
+        store.setSyncTheme(false);
         Handlers.updateDarkModeButton();
     },
     'open-date-picker': () => Handlers.openDatePicker(),
@@ -242,6 +243,7 @@ ActionDispatcher.registerMany({
     },
     'fab-dark-mode': () => { 
         store.setDarkMode();
+        store.setSyncTheme(false);
         if (typeof ThemeSelector !== 'undefined') ThemeSelector.updateDarkModeButton();
         if (typeof FABManager !== 'undefined') FABManager.close();
     },

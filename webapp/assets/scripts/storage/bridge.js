@@ -31,7 +31,9 @@ export class BridgeStorage {
     // 在 Obsidian ItemView 中始终通过 blob URL iframe 运行
     this.ready = true;
     try {
-      const readyResp = await this._send('app:ready', {});
+      const readyResp = await this._send('app:ready', {
+        protocolVersion: window.AppProtocol ? window.AppProtocol.PROTOCOL_VERSION : 1,
+      });
       if (readyResp && readyResp.sectionConfig) {
         this.sectionConfig = readyResp.sectionConfig;
       }
@@ -97,10 +99,10 @@ export class BridgeStorage {
 
   /** 接收父窗口的响应 */
   _onMessage(event) {
-    // 只接受来自父窗口的消息
-    if (event.source !== window.parent) return;
-
-    const data = event.data;
+    // 统一来源校验 + type 合法性（阶段3 · 契约化，替代裸 event.source 比较）
+    const data = (window.AppProtocol
+      ? window.AppProtocol.parseAppMessage(event, window.parent)
+      : (event.source === window.parent ? event.data : null));
     if (!data) return;
 
     // 处理来自父窗口的同步消息（非请求响应）

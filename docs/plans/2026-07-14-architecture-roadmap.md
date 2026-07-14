@@ -248,7 +248,21 @@ flowchart LR
 - 已覆盖：store（`store.jest.test.js` 覆盖 navigateDate/goToDate/subscribe 等）、dataValidator、helpers、TimelineService、searchService、eventBus、GoalService?、themeAudit 等。
 - 仍可能缺口：renderers（`renderSkeleton`/`renderAll`）、GoalService 纯计算等——视情况补。
 
+### 2026-07-14 · 阶段3 第一批（protocol.js 单一事实源 + 集中校验）✅ 完成
+
+**交付物**
+- 新增 `webapp/assets/scripts/utils/protocol.js`（ES module，挂到 `window.AppProtocol`）：
+  - `APP_MESSAGE_TYPES`：§1 全部已知 message type 的集中清单（替代散落字符串）；
+  - `parseAppMessage(event, expectedSource)`：统一「来源校验 + type 合法性」，替代 bridge.js 三处裸 `event.source` 比较；
+  - `PROTOCOL_VERSION` + `isKnownType`（storage:* 按前缀放行）。
+- 新增 `protocol.jest.test.js`（8 用例）：类型清单覆盖、parse 来源/type 校验、`protocolVersion` 透传。
+- `bridge.js` 三处接收端统一走 `window.AppProtocol.parseAppMessage`（防御式：缺失时回退旧语义，行为不变）；`app:ready` 握手带上 `protocolVersion`（版本协商种子）。
+- `index.html` 加载 `protocol.js`（CRLF 行尾难题：用 perl 在 `</body>` 前插入；`git checkout` 因 `.husky/_` 的 `post-checkout` 钩子卡死，改用 `git show HEAD: >` 还原）。
+
+**验证**：`npx jest bridge protocol` → 17/17 通过；`build:webapp` → 69 模块（含 protocol.js）。
+**TDD 收益**：jsdom 中 `window.parent.origin` 为 `http://localhost`（非空），发送目标用真实 origin 而非通配符，安全性更好。
+
 ### 待启动
-- [ ] 阶段2 后续：补 renderers / GoalService 等缺口单测（可选、按缺口）
-- [ ] 阶段3 · 契约化（共享 protocol.ts/ protocol.js，最高杠杆）
+- [ ] 阶段2 后续：补 renderers / GoalService 等缺口单测（可选）
+- [ ] 阶段3 后续：host 侧 TS 并行维护类型镜像 + 版本协商告警（dev 环境版本不匹配可见告警）
 - [ ] 阶段4 · 形态演进（仅当 UI 越线）

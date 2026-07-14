@@ -317,5 +317,20 @@ flowchart LR
 - 本批补齐了最高优先级的 3 个零覆盖核心模块（undoRedoManager / goalStatsCalculator / cultivationData）。
 - 仍可补的 P0 模块：`migrationService.js`（数据迁移）、`healthScore.js`（40KB 复杂算法）、`WalletService.js`（金额计算）——留待后续批次按需补。
 
+### 2026-07-14 · 阶段2 追加 — actionDispatcher 事件路由单测 ✅ 完成
+
+**交付物**
+- 新增 `actionDispatcher.jest.test.js`（16 用例）：全局事件委托路由全覆盖。
+  - `register`/`registerMany` 注册与读取。
+  - click 委托：`[data-action]` 触发 handler（含 dataset/el/event 传参验证）、未知 action 不触发、无属性不触发。
+  - checkbox/radio 特殊处理不调 `preventDefault`。
+  - `[data-stop-propagation]`：无 data-action 祖先时阻止后续监听器；有 data-action 祖先时 handler 正常触发（源码逻辑确认：data-action 命中后 return，不检查 stop）。
+  - 嵌套 `[data-action]` 取最近祖先。
+  - 键盘事件：Enter/Space 触发、Escape 不触发、无 data-action 时不触发。
+  - `_findClosestAttr`：composedPath 不可用时 fallback `e.target`、无匹配返回 null。
+- TDD 纠正：第 1 版误解了 `data-stop-propagation` 语义（以为"取消 action"，实际是"无 action 时阻止冒泡"），已修正。
+
+**验证**：jest 21 suite / 215 passed（+16），themeAudit 沙箱红线未破。
+
 ### 待启动
 - [ ] 阶段4 · 形态演进（仅当 UI 越线）

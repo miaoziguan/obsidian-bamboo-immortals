@@ -221,7 +221,7 @@ window.addEventListener('error', function(e) {
 <script type="module" src="assets/scripts/utils/weatherService.js?__BUILD__"></script>
 <script type="module" src="assets/scripts/utils/quoteService.js?__BUILD__"></script>
 <script type="module" src="assets/scripts/handlers/weatherModal.js?__BUILD__"></script>
-
+<script type="module" src="assets/scripts/utils/facade.js?__BUILD__"></script>
 
 <script type="module">
 // 模块入口：所有模块脚本按 DOM 顺序执行，此时 DOM 已就绪
@@ -256,6 +256,19 @@ setTimeout(() => {
         try { fn(); } catch (e) {
             console.error('[Bamboo] ' + name + ' init failed:', e);
         }
+    }
+
+    // 阶段1（收口）：把所有核心全局收敛进显式门面 window.WebApp
+    // 加性接入，失败不影响既有裸全局调用（store / Handlers 等仍可直接解析）。
+    try {
+        const CORE_NAMES = [
+            'store', 'Handlers', 'Navigation', 'SectionManager', 'Todo',
+            'SettingsModal', 'ActionDispatcher', 'DisplayManager',
+            'renderAll', 'renderSkeleton',
+        ];
+        window.WebApp = window.buildFacadeFromWindow(CORE_NAMES, window).toObject();
+    } catch (e) {
+        console.error('[Bamboo] WebApp facade build failed:', e);
     }
 
     document.body.classList.remove('loading');

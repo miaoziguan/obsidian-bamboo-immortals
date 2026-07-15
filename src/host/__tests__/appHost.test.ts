@@ -38,6 +38,36 @@ describe('AppHost.extractZip（fflate 实现）', () => {
     expect(await adapter.exists('plugins/bamboo/webapp/assets/scripts')).toBe(true);
   });
 
+  it('zip 含目录占位条目(assets/scripts)与嵌套文件时，目录不被写成文件（修复 ENOTDIR）', async () => {
+    const { app, adapter } = createMockApp();
+    const host = new AppHost(app as never, 'plugins/bamboo', '2.3.0');
+
+    // 模拟发布 zip：既有 `assets/scripts` 占位（被某些 zip 工具写成 0 字节文件），
+    // 又有真正嵌套文件 `assets/scripts/x.js`。旧实现会把 `assets/scripts` 当文件写出，
+    // 导致后续 writeBinary(`assets/scripts/x.js`) 抛 ENOTDIR。
+    const zipData = zipSync({
+      'app.html': strToU8('<html>bamboo</html>'),
+      'assets/scripts': strToU8(''), // 目录占位（坏条目）
+      'assets/scripts/x.js': strToU8('console.log(1)'), // 嵌套文件
+      '.webapp-version': strToU8('2.3.0'),
+    });
+
+    await (host as unknown as { extractZip: (a: unknown, b: ArrayBuffer) => Promise<void> }).extractZip(
+      adapter,
+      zipData.buffer
+    );
+
+    // 目录占位条目不应把 assets/scripts 写成文件，而应作为目录存在
+    const dirStat = await adapter.stat('plugins/bamboo/webapp/assets/scripts');
+    expect(dirStat?.type).toBe('folder');
+
+    // 嵌套文件应正常落盘
+    const nested = new TextDecoder().decode(
+      await adapter.readBinary('plugins/bamboo/webapp/assets/scripts/x.js')
+    );
+    expect(nested).toBe('console.log(1)');
+  });
+
   it('空根路径条目被忽略，不会写出空文件', async () => {
     const { app, adapter } = createMockApp();
     const host = new AppHost(app as never, 'plugins/bamboo', '2.2.5');

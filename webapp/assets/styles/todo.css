@@ -608,12 +608,12 @@
 }
 
 /* 抽中高亮 + 脉冲 + 行末呼吸箭头 */
-.todo-item-lottery-picked {
+.todo-item.todo-item-lottery-picked {
     position: relative;
     z-index: 1;
     cursor: pointer;
-    border-color: var(--bamboo-primary) !important;
-    box-shadow: 0 0 0 4px rgba(var(--primary-rgb), 0.12), 0 4px 16px rgba(var(--primary-rgb), 0.2) !important;
+    border-color: var(--bamboo-primary);
+    box-shadow: 0 0 0 4px rgba(var(--primary-rgb), 0.12), 0 4px 16px rgba(var(--primary-rgb), 0.2);
 }
 
 .todo-item-lottery-picked::before {
@@ -654,31 +654,31 @@
 }
 
 /* 暗色模式抽签 */
-::host(.dark) .todo-lottery-btn {
+:host(.dark) .todo-lottery-btn {
     background: transparent;
     border: none;
 }
 
-::host(.dark) .todo-lottery-btn svg {
+:host(.dark) .todo-lottery-btn svg {
     stroke: var(--bamboo-light);
 }
 
-::host(.dark) .todo-lottery-btn:hover {
+:host(.dark) .todo-lottery-btn:hover {
     background: transparent;
     box-shadow: none;
 }
 
-::host(.dark) .todo-item-lottery-spinning::before {
+:host(.dark) .todo-item-lottery-spinning::before {
     background: rgba(var(--primary-rgb), 0.12);
     border-color: rgba(var(--primary-rgb), 0.45);
 }
 
-::host(.dark) .todo-item-lottery-picked {
-    border-color: var(--bamboo-light) !important;
-    box-shadow: 0 0 0 4px rgba(var(--primary-rgb), 0.18), 0 4px 16px rgba(var(--primary-rgb), 0.3) !important;
+:host(.dark) .todo-item.todo-item-lottery-picked {
+    border-color: var(--bamboo-light);
+    box-shadow: 0 0 0 4px rgba(var(--primary-rgb), 0.18), 0 4px 16px rgba(var(--primary-rgb), 0.3);
 }
 
-::host(.dark) .todo-item-lottery-picked::before {
+:host(.dark) .todo-item-lottery-picked::before {
     background: rgba(var(--primary-rgb), 0.1);
 }
 
@@ -734,7 +734,7 @@
 
 
 /* ========== 暗色模式聚焦态 ========== */
-::host(.dark) .todo-item.todo-item-goal.todo-item-lottery-focus {
+:host(.dark) .todo-item.todo-item-goal.todo-item-lottery-focus {
     border-left-color: var(--bamboo-light);
     background: linear-gradient(
         135deg,
@@ -747,14 +747,14 @@
         0 2px 16px rgba(var(--primary-rgb), 0.15);
 }
 
-::host(.dark) .todo-item.todo-item-goal.todo-item-lottery-focus:hover {
+:host(.dark) .todo-item.todo-item-goal.todo-item-lottery-focus:hover {
     box-shadow:
         inset 0 0 0 1px rgba(var(--primary-rgb), 0.22),
         inset 0 0 32px rgba(var(--primary-rgb), 0.12),
         0 4px 22px rgba(var(--primary-rgb), 0.2);
 }
 
-::host(.dark) .todo-item.todo-item-goal.todo-item-lottery-focus.todo-item-completed {
+:host(.dark) .todo-item.todo-item-goal.todo-item-lottery-focus.todo-item-completed {
     border-left-color: var(--bamboo-light);
     background: rgba(var(--primary-rgb), 0.15);
     box-shadow:

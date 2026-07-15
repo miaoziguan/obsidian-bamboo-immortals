@@ -206,10 +206,10 @@
     font-weight: 500;
     color: var(--text-primary);
 }
-.tmpl-empty-hint {
-    font-size: var(--type-sm) !important;
-    color: var(--text-secondary) !important;
-    font-weight: 400 !important;
+.tmpl-empty .tmpl-empty-hint {
+    font-size: var(--type-sm);
+    color: var(--text-secondary);
+    font-weight: 400;
     max-width: 260px;
     line-height: 1.5;
 }

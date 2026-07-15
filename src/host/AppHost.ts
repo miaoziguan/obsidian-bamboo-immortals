@@ -142,31 +142,71 @@ export class AppHost {
 
   private async extractZip(adapter: DataAdapter, buffer: ArrayBuffer): Promise<void> {
     // fflate 零依赖（无 setimmediate 之类会动态创建 <script> 的传递依赖），
-    // 返回的 entries 仅含文件（不含目录条目），目录由 ensureParentDir 按需创建。
+    // 返回的 entries 仅含文件（不含目录条目），目录由 ensureParentDirSafe 按需创建。
     const files = unzipSync(new Uint8Array(buffer));
+    const entries: { target: string; content: Uint8Array }[] = [];
     for (const [rawPath, content] of Object.entries(files)) {
       const rel = normalizePath(rawPath.replace(/^\.?\//, ''));
       if (!rel) continue;
-      const target = normalizePath(`${this.webappDir}/${rel}`);
-      await this.ensureParentDir(adapter, target);
+      if (rel.endsWith('/')) continue; // 目录占位条目，无需写出
+      entries.push({ target: normalizePath(`${this.webappDir}/${rel}`), content });
+    }
+
+    // 第一遍：先建好所有父目录。若某一级已被同名文件占用（zip 目录占位条目、
+    // 或本地残留的坏文件），先删除再建目录，避免后续 writeBinary 触发 ENOTDIR。
+    for (const { target } of entries) {
+      await this.ensureParentDirSafe(adapter, target);
+    }
+
+    // 第二遍：写文件。若某条目路径已被当作目录写入（占位文件与真实目录冲突），
+    // 跳过该占位文件，不覆盖为文件，保证 assets/scripts/* 等嵌套文件能正常落盘。
+    for (const { target, content } of entries) {
+      if (await this.isFolder(adapter, target)) continue;
       // Uint8Array → 独立 ArrayBuffer，避免共享底层 buffer 导致越界
       await adapter.writeBinary(target, content.slice().buffer);
     }
   }
 
-  private async ensureParentDir(adapter: DataAdapter, filePath: string): Promise<void> {
+  /**
+   * 逐级确保父目录存在；遇到「同名文件占位」时先删除再 mkdir，
+   * 解决 zip 占位条目 / 本地坏文件导致 writeBinary 抛 ENOTDIR 的问题。
+   */
+  private async ensureParentDirSafe(adapter: DataAdapter, filePath: string): Promise<void> {
     const parts = filePath.split('/');
     let acc = '';
     for (let i = 0; i < parts.length - 1; i++) {
       acc += (acc ? '/' : '') + parts[i];
-      if (acc && !(await this.fileExists(adapter, acc))) {
+      if (!acc) continue;
+      const kind = await this.statKind(adapter, acc);
+      if (kind === 'folder') continue; // 已是目录，跳过
+      if (kind === 'file') {
         try {
-          await adapter.mkdir(acc);
+          await adapter.remove(acc);
         } catch {
-          // 可能已被其他条目先行创建，忽略
+          // 删除失败也不阻断，交由下方 mkdir 暴露真实错误
         }
       }
+      try {
+        await adapter.mkdir(acc);
+      } catch {
+        // 可能已被其他条目先行创建，忽略
+      }
     }
+  }
+
+  /** 返回路径类型：'file' | 'folder' | 'none'（不存在或无法判定） */
+  private async statKind(adapter: DataAdapter, path: string): Promise<'file' | 'folder' | 'none'> {
+    try {
+      const st = await adapter.stat(path);
+      if (!st) return 'none';
+      return st.type === 'folder' ? 'folder' : 'file';
+    } catch {
+      return 'none';
+    }
+  }
+
+  private async isFolder(adapter: DataAdapter, path: string): Promise<boolean> {
+    return (await this.statKind(adapter, path)) === 'folder';
   }
 
   private async fileExists(adapter: DataAdapter, path: string): Promise<boolean> {

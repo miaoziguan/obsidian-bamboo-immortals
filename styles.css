@@ -148,3 +148,604 @@ html body .workspace-leaf-content[data-type="bamboo-immortals"] .view-header-tit
     transform: rotate(360deg);
   }
 }
+
+/* ===== AI 规划审阅弹窗（竹林设计语言） ===== */
+.bamboo-ai-plan-modal {
+  max-width: 720px;
+  padding: 8px 0;
+}
+.bamboo-ai-plan-modal h2 {
+  font-family: 'PingFang SC', 'Noto Sans SC', 'Microsoft YaHei', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  margin: 0 0 8px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  position: relative;
+}
+.bamboo-ai-plan-modal h2::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  width: 24px;
+  height: 2px;
+  background: var(--interactive-accent);
+}
+.bamboo-ai-plan-desc {
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  margin: 0 0 16px;
+  line-height: 1.65;
+}
+.bamboo-ai-plan-subtitle {
+  color: var(--text-accent);
+  font-size: var(--font-ui-small);
+  font-weight: var(--font-semibold, 600);
+  margin: -10px 0 16px;
+  line-height: 1.65;
+}
+.bamboo-ai-plan-list {
+  max-height: 60vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-right: 4px;
+}
+.bamboo-ai-plan-goal {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  padding: 16px;
+  background: var(--background-secondary);
+  position: relative;
+}
+.bamboo-ai-plan-goal-removed {
+  opacity: 0.4;
+  text-decoration: line-through;
+}
+.bamboo-ai-plan-goal-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.bamboo-ai-plan-goal-title {
+  flex: 1 1 200px;
+  min-width: 160px;
+  font-weight: 600;
+  font-family: 'PingFang SC', 'Noto Sans SC', 'Microsoft YaHei', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: var(--font-ui-large);
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  padding: 6px 10px;
+  transition: border-color 150ms ease;
+}
+.bamboo-ai-plan-goal-title:hover {
+  border-color: var(--text-muted);
+}
+.bamboo-ai-plan-goal-title:focus {
+  border-color: var(--interactive-accent);
+  outline: none;
+}
+.bamboo-ai-plan-analysis {
+  flex-basis: 100%;
+  flex-grow: 1;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  font-style: italic;
+  line-height: 1.5;
+  padding: 2px 0 4px;
+  border-top: 1px dashed var(--background-modifier-border);
+  margin-top: 2px;
+}
+.bamboo-ai-plan-cat {
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: var(--font-ui-smaller);
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: border-color 150ms ease, color 150ms ease;
+}
+.bamboo-ai-plan-cat:hover {
+  border-color: var(--interactive-accent);
+  color: var(--text-normal);
+}
+.bamboo-ai-plan-daterange {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--font-ui-small);
+  color: var(--text-muted);
+}
+.bamboo-ai-plan-daterange-label {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-faint);
+}
+.bamboo-ai-plan-daterange-sep {
+  color: var(--text-faint);
+  margin: 0 2px;
+}
+.bamboo-ai-plan-daterange-input {
+  width: 128px;
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-variant-numeric: tabular-nums;
+}
+.bamboo-ai-plan-del {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--text-faint);
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 150ms ease, background 150ms ease, border-color 150ms ease;
+}
+.bamboo-ai-plan-del:hover {
+  color: var(--text-error);
+  background: var(--background-modifier-error-hover);
+  border-color: var(--text-error);
+}
+.bamboo-ai-plan-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 8px;
+  font-size: var(--font-ui-smaller);
+  color: var(--text-success);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+.bamboo-ai-plan-badge::before {
+  content: "";
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.bamboo-ai-plan-badge-thin {
+  color: var(--text-warning);
+}
+.bamboo-ai-plan-items {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.bamboo-ai-plan-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px;
+  border-radius: 4px;
+  background: var(--background-primary);
+  border: 1px solid transparent;
+  transition: border-color 150ms ease, background 150ms ease;
+}
+.bamboo-ai-plan-item:hover {
+  border-color: var(--background-modifier-border);
+}
+.bamboo-ai-plan-item-off {
+  opacity: 0.4;
+}
+.bamboo-ai-plan-item-off .bamboo-ai-plan-item-name {
+  text-decoration: line-through;
+  text-decoration-color: var(--text-faint);
+}
+.bamboo-ai-plan-item-cb {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border: 1.5px solid var(--background-modifier-border);
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+  position: relative;
+  flex-shrink: 0;
+  transition: border-color 150ms ease, background 150ms ease, transform 150ms ease;
+}
+.bamboo-ai-plan-item-cb:hover {
+  border-color: var(--interactive-accent);
+  transform: scale(1.08);
+}
+.bamboo-ai-plan-item-cb:active {
+  transform: scale(0.95);
+}
+.bamboo-ai-plan-item-cb:checked {
+  background: var(--interactive-accent);
+  border-color: var(--interactive-accent);
+}
+.bamboo-ai-plan-item-cb:checked::after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 1px;
+  width: 5px;
+  height: 9px;
+  border: solid var(--text-on-accent);
+  border-width: 0 1.5px 1.5px 0;
+  transform: rotate(45deg);
+}
+.bamboo-ai-plan-item-name {
+  flex: 1 1 160px;
+  min-width: 120px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid transparent;
+  padding: 2px 4px;
+  font-size: var(--font-ui-medium);
+  transition: border-color 150ms ease;
+}
+.bamboo-ai-plan-item-name:hover,
+.bamboo-ai-plan-item-name:focus {
+  border-bottom-color: var(--background-modifier-border);
+  outline: none;
+}
+.bamboo-ai-plan-item-daily {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  background: var(--background-primary);
+  overflow: hidden;
+  transition: border-color 150ms ease;
+  flex-shrink: 0;
+}
+.bamboo-ai-plan-item-daily:focus-within {
+  border-color: var(--interactive-accent);
+}
+.bamboo-ai-plan-item-label {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 8px;
+  background: var(--background-secondary);
+  color: var(--text-faint);
+  font-size: var(--font-ui-smaller);
+  border-right: 1px solid var(--background-modifier-border);
+}
+.bamboo-ai-plan-item-daily-input {
+  width: 56px;
+  background: transparent;
+  border: none;
+  padding: 4px 8px;
+  font-size: var(--font-ui-small);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.bamboo-ai-plan-item-daily-input:focus {
+  outline: none;
+}
+.bamboo-ai-plan-item-unit-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 8px;
+  background: var(--background-secondary);
+  color: var(--text-faint);
+  font-size: var(--font-ui-smaller);
+  border-left: 1px solid var(--background-modifier-border);
+  min-width: 32px;
+  justify-content: center;
+}
+.bamboo-ai-plan-item-unit-chip:empty {
+  display: none;
+}
+.bamboo-ai-plan-item-no-daily {
+  border-color: var(--text-warning);
+  background: var(--background-modifier-error-hover);
+}
+.bamboo-ai-plan-item-no-daily .bamboo-ai-plan-item-unit-chip,
+.bamboo-ai-plan-item-no-daily .bamboo-ai-plan-item-label {
+  border-color: var(--text-warning);
+}
+.bamboo-ai-plan-item-reason {
+  width: 100%;
+  padding-left: 24px;
+  font-size: var(--font-ui-smaller);
+  color: var(--text-faint);
+  font-style: italic;
+  line-height: 1.5;
+}
+.bamboo-ai-plan-item-warn {
+  display: none;
+  width: 100%;
+  padding-left: 24px;
+  font-size: var(--font-ui-smaller);
+  color: var(--text-warning);
+  line-height: 1.5;
+}
+.bamboo-ai-plan-item-warn-show {
+  display: block;
+}
+.bamboo-ai-plan-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--background-modifier-border);
+}
+.bamboo-ai-plan-btn {
+  border-radius: 4px;
+  padding: 8px 20px;
+  cursor: pointer;
+  border: 1px solid var(--background-modifier-border);
+  font-size: var(--font-ui-small);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  transition: all 150ms ease;
+}
+.bamboo-ai-plan-btn-ghost {
+  background: transparent;
+  color: var(--text-muted);
+}
+.bamboo-ai-plan-btn-ghost:hover {
+  color: var(--text-normal);
+  border-color: var(--text-muted);
+}
+.bamboo-ai-plan-btn-primary {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-color: var(--interactive-accent);
+}
+.bamboo-ai-plan-btn-primary:hover {
+  filter: brightness(1.08);
+}
+.bamboo-ai-plan-btn-primary:active {
+  transform: translateY(1px);
+}
+.bamboo-ai-plan-modal input:focus,
+.bamboo-ai-plan-modal select:focus {
+  outline: 2px solid var(--interactive-accent);
+  outline-offset: 1px;
+}
+
+/* ===== 对话式规划审阅台（Agentic，Phase 4） ===== */
+/* 双栏布局需要更宽的弹窗 */
+.bamboo-ai-agentic {
+  max-width: 1000px;
+}
+.bamboo-ai-agentic-topbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.bamboo-ai-agentic-topbar .bamboo-ai-plan-subtitle {
+  margin: 0;
+  flex: 1;
+}
+.bamboo-ai-agentic-body {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 16px;
+  align-items: start;
+}
+.bamboo-ai-agentic-left {
+  min-width: 0;
+}
+.bamboo-ai-agentic-right {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-left: 1px solid var(--background-modifier-border);
+  padding-left: 16px;
+  position: sticky;
+  top: 0;
+  height: 64vh;
+}
+.bamboo-ai-chat {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-right: 4px;
+}
+.bamboo-ai-chat-bubble {
+  max-width: 92%;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: var(--font-ui-small);
+  line-height: 1.6;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+.bamboo-ai-chat-user {
+  align-self: flex-end;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-bottom-right-radius: 2px;
+}
+.bamboo-ai-chat-assistant {
+  align-self: flex-start;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-bottom-left-radius: 2px;
+}
+.bamboo-ai-chat-composer {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+.bamboo-ai-chat-input {
+  flex: 1;
+  resize: none;
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  padding: 8px 10px;
+  font-family: inherit;
+  font-size: var(--font-ui-small);
+  line-height: 1.5;
+  transition: border-color 150ms ease;
+}
+.bamboo-ai-chat-input:focus {
+  outline: none;
+  border-color: var(--interactive-accent);
+}
+.bamboo-ai-chat-composer .bamboo-ai-plan-btn-primary {
+  flex-shrink: 0;
+}
+/* diff 高亮：本轮 AI 新增/改动的目标与子项 */
+.bamboo-ai-plan-goal-updated {
+  border-color: var(--interactive-accent);
+  box-shadow: 0 0 0 2px var(--background-modifier-hover);
+  animation: bamboo-ai-flash 1.2s ease;
+}
+.bamboo-ai-plan-item-updated {
+  background: var(--background-modifier-hover);
+  border-radius: 4px;
+  animation: bamboo-ai-flash 1.2s ease;
+}
+@keyframes bamboo-ai-flash {
+  0% { background-color: var(--background-modifier-success-hover); }
+  100% { background-color: transparent; }
+}
+@media (max-width: 720px) {
+  .bamboo-ai-agentic-body {
+    grid-template-columns: 1fr;
+  }
+  .bamboo-ai-agentic-right {
+    border-left: none;
+    padding-left: 0;
+    height: auto;
+    position: static;
+  }
+  .bamboo-ai-chat {
+    max-height: 40vh;
+  }
+}
+
+/* ===== AI 诊断报告弹窗（DiagnosisModal，飞轮：诊断→行动） ===== */
+.bamboo-diag-modal {
+  max-width: 720px;
+}
+.bamboo-diag-modal h2 {
+  margin-top: 0;
+  margin-bottom: 12px;
+  font-size: var(--font-ui-larger);
+  letter-spacing: 0.02em;
+}
+.bamboo-diag-summary {
+  margin: 0 0 16px;
+  padding: 10px 14px;
+  background: var(--background-secondary);
+  border-left: 3px solid var(--interactive-accent);
+  border-radius: 4px;
+  font-size: var(--font-ui-small);
+  line-height: 1.7;
+  color: var(--text-normal);
+}
+.bamboo-diag-goal {
+  margin-bottom: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  background: var(--background-primary);
+}
+.bamboo-diag-goal-title {
+  font-weight: 600;
+  font-size: var(--font-ui-medium);
+  margin-bottom: 6px;
+}
+.bamboo-diag-status {
+  display: inline-block;
+  margin-bottom: 8px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: var(--font-ui-smaller);
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  border: 1px solid transparent;
+}
+.bamboo-diag-on_track,
+.bamboo-diag-done {
+  background: var(--background-modifier-success-hover);
+  color: var(--text-success);
+  border-color: var(--text-success);
+}
+.bamboo-diag-behind {
+  background: var(--background-modifier-warning-hover, rgba(168, 134, 45, 0.14));
+  color: var(--text-warning);
+  border-color: var(--text-warning);
+}
+.bamboo-diag-at_risk {
+  background: rgba(193, 96, 27, 0.14);
+  color: rgb(193, 96, 27);
+  border-color: rgb(193, 96, 27);
+}
+.bamboo-diag-stuck {
+  background: var(--background-modifier-error-hover);
+  color: var(--text-error);
+  border-color: var(--text-error);
+}
+.bamboo-diag-bottleneck {
+  margin: 0 0 8px;
+  font-size: var(--font-ui-small);
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+.bamboo-diag-sugg {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 0;
+  border-top: 1px dashed var(--background-modifier-border);
+  font-size: var(--font-ui-small);
+  line-height: 1.6;
+}
+.bamboo-diag-sugg span {
+  flex: 1;
+  min-width: 0;
+}
+.bamboo-diag-apply {
+  flex-shrink: 0;
+  border-radius: 4px;
+  padding: 5px 16px;
+  cursor: pointer;
+  border: 1px solid var(--interactive-accent);
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  font-size: var(--font-ui-smaller);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  transition: filter 150ms ease, transform 150ms ease;
+}
+.bamboo-diag-apply:hover {
+  filter: brightness(1.08);
+}
+.bamboo-diag-apply:active {
+  transform: translateY(1px);
+}
+.bamboo-diag-next {
+  margin: 16px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--background-modifier-border);
+  font-size: var(--font-ui-small);
+  font-weight: 500;
+  color: var(--text-normal);
+  line-height: 1.7;
+}
+.bamboo-diag-raw {
+  margin: 0;
+  padding: 12px 14px;
+  background: var(--background-secondary);
+  border-radius: 6px;
+  font-size: var(--font-ui-small);
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--text-muted);
+}

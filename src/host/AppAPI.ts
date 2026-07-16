@@ -57,6 +57,12 @@ export class AppAPI {
   private saveSettings: () => Promise<void>;
   private iframe: HTMLIFrameElement | null = null;
   private messageHandler: ((event: MessageEvent) => void) | null = null;
+
+  /**
+   * 「战略复盘面板 → AI 改进」入口回调（由 DailyReviewView 注入，转发到插件 requestAiImprove）。
+   * webapp 健康分详情点「用 AI 改进」时触发，参数为目标标识 + 本地 hints。
+   */
+  onAiImproveGoal?: (payload: { goalId: string; title?: string; hints?: string }) => void;
   private customThemes: Array<{ name: string; code: string }> = [];
   private vaultAdapter: DataAdapter;
   private noisePath: string;
@@ -254,6 +260,22 @@ export class AppAPI {
     // ---- 代理外部音源链接（绕过 webview CORS，桌面/移动一致）----
     if (type === 'app:proxyAudioUrl') {
       await this.handleProxyAudioUrl(id, payload);
+      return;
+    }
+
+    // ---- 战略复盘面板 → AI 改进入口 ----
+    if (type === 'app:aiImproveGoal') {
+      const p = payload as { goalId?: unknown; title?: unknown; hints?: unknown };
+      if (typeof p.goalId !== 'string' || p.goalId.length === 0) {
+        this.respondError(id, 'app:aiImproveGoal 缺少 goalId');
+        return;
+      }
+      this.onAiImproveGoal?.({
+        goalId: p.goalId,
+        title: typeof p.title === 'string' ? p.title : undefined,
+        hints: typeof p.hints === 'string' ? p.hints : undefined,
+      });
+      this.respond(id, { ok: true });
       return;
     }
 

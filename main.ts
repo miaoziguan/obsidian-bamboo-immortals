@@ -398,6 +398,52 @@ export default class BambooReviewPlugin extends Plugin {
     new Notice(`已写入 ${goals.length} 个目标（应用 AI 诊断建议）`);
   }
 
+  /**
+   * 战略复盘面板「用 AI 改进」入口：webapp 健康分详情点按钮 → postMessage(app:aiImproveGoal)
+   * → AppAPI.onAiImproveGoal → 此处。复用诊断闭环的 AgenticPlanModal 预填 + 落库链路。
+   */
+  async requestAiImprove(p: { goalId: string; title?: string; hints?: string }): Promise<void> {
+    const s = this.settings;
+    if (!s.aiEnabled) {
+      new Notice('先到设置里开启 AI 规划，才能用 AI 改进目标');
+      return;
+    }
+    const storage = new VaultStorage(this.app);
+    const goals = await storage.getGoals();
+    if (goals.length === 0) {
+      new Notice('你还没有目标，先跑一次 AI 规划');
+      return;
+    }
+    const goal = goals.find((g) => g.id === p.goalId) ?? goals.find((g) => g.title === p.title);
+    if (!goal) {
+      new Notice('未在目标库中找到该目标，可能它已被删除');
+      return;
+    }
+
+    const plannerSettings: PlannerSettings = {
+      aiApiKey: s.aiApiKey,
+      aiBaseUrl: s.aiBaseUrl,
+      aiModel: s.aiModel,
+      aiDecomposeDepth: s.aiDecomposeDepth,
+    };
+    const hintsLine = p.hints
+      ? p.hints
+      : '（无具体提示，请结合该目标当前子项与进度自行诊断并改进）';
+    const instruction =
+      `请根据以下健康分诊断，优化目标「${goal.title}」：\n${hintsLine}\n` +
+      '要求：保持量化铁律（纯数字 dailyMin、日颗粒度、可数代理指标），只做必要的增删改。';
+
+    new AgenticPlanModal(this.app, {
+      content: '',
+      scope: 'note',
+      goals,
+      initialInstruction: instruction,
+      settings: plannerSettings,
+      subtitle: `AI 改进 · ${goal.title}`,
+      onConfirm: (g) => void this.writeDiagnosedGoals(g),
+    }).open();
+  }
+
   /** 激活或创建复盘视图 */
   async activateView(): Promise<void> {
     const { workspace } = this.app;

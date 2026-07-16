@@ -384,6 +384,10 @@ export const GoalsRenderer = {
         if (goals.length > 0) {
             goalsDetailHtml = goals.map((goal, idx) => {
                 const healthScore = results[idx];
+                const hints = [
+                    healthScore.L1.onTime.hint,
+                    healthScore.L3.stagnation.hint,
+                ].filter(Boolean).join('；');
                 return `
                     <div class="health-goal-item">
                         <div class="health-goal-title">${escapeHtml(goal.title)}</div>
@@ -393,6 +397,9 @@ export const GoalsRenderer = {
                         <div class="health-goal-hints">
                             ${healthScore.L1.onTime.hint ? `<div class="health-goal-hint">${LucideUtils.createIcon('calendar', { size: 14, strokeWidth: 1.8 })} ${healthScore.L1.onTime.hint}</div>` : ''}
                             ${healthScore.L3.stagnation.hint ? `<div class="health-goal-hint">${LucideUtils.createIcon('clock', { size: 14, strokeWidth: 1.8 })} ${healthScore.L3.stagnation.hint}</div>` : ''}
+                        </div>
+                        <div class="health-goal-actions">
+                            <button class="health-goal-improve" data-goal-id="${HTMLUtils.escapeHtmlAttr(goal.id)}" data-goal-title="${HTMLUtils.escapeHtmlAttr(goal.title)}" data-hints="${HTMLUtils.escapeHtmlAttr(hints)}">✨ 用 AI 改进</button>
                         </div>
                     </div>
                 `;
@@ -639,6 +646,27 @@ export const GoalsRenderer = {
                     const scoreEl = panel.querySelector('.health-score-number');
                     if (scoreEl) scoreEl.classList.add('shake-element');
                 }
+
+                // 「用 AI 改进」按钮：把目标喂给插件侧 Agentic 编辑链路
+                panel.querySelectorAll('.health-goal-improve').forEach((btn) => {
+                    btn.addEventListener('click', () => {
+                        const el = btn;
+                        const goalId = el.getAttribute('data-goal-id') || '';
+                        const title = el.getAttribute('data-goal-title') || '';
+                        const hints = el.getAttribute('data-hints') || '';
+                        window.parent.postMessage(
+                            {
+                                type: 'app:aiImproveGoal',
+                                id: 'ai_improve_' + Date.now(),
+                                payload: { goalId, title, hints },
+                            },
+                            '*'
+                        );
+                        if (typeof Toast !== 'undefined') {
+                            Toast.showToast('已在 Obsidian 中打开 AI 改进…', 'info');
+                        }
+                    });
+                });
             }
         });
     },

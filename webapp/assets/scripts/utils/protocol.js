@@ -26,6 +26,7 @@ export const APP_MESSAGE_TYPES = [
   'app:readVaultFile',
   'app:readLocalFile',
   'app:proxyAudioUrl',
+  'app:aiImproveGoal',
   // storage:*（17 个子类型，运行期统一按前缀匹配）
   'storage:readDay',
   'storage:writeDay',

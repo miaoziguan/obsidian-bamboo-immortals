@@ -73,6 +73,14 @@ export class DailyReviewView extends ItemView {
     );
     await this.appAPI.ensureStructure();
 
+    // 战略复盘面板「用 AI 改进」入口：webapp 健康分详情 → 插件 Agentic 编辑链路
+    this.appAPI.onAiImproveGoal = (payload) => {
+      const plugin = this.plugin as
+        | { requestAiImprove?: (p: typeof payload) => void }
+        | undefined;
+      plugin?.requestAiImprove?.(payload);
+    };
+
     // 扫描自定义主题
     const customThemes = await this.scanCustomThemes();
     this.appAPI.setCustomThemes(customThemes);

@@ -36,6 +36,7 @@ describe('protocol.js 协议单一事实源', () => {
       'app:ready', 'app:close', 'app:saveSectionConfig', 'app:saveCustomNoises',
       'app:theme:sync', 'theme:syncPalette', 'app:listVaultAudioFiles',
       'app:readVaultFile', 'app:readLocalFile', 'app:proxyAudioUrl',
+      'app:aiImproveGoal',
       'storage:readDay', 'storage:writeDay', 'storage:clearAll',
       'theme:changed', 'theme:followDisabled', 'theme:syncPaletteEnabled',
       'nav:prevDay', 'nav:nextDay', 'nav:today',

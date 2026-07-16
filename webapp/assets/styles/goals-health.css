@@ -832,6 +832,37 @@
     flex-shrink: 0;
 }
 
+/* 「用 AI 改进」按钮：把该目标喂给插件侧 Agentic 编辑链路 */
+.health-goal-actions {
+    margin-top: 12px;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.health-goal-improve {
+    font-size: var(--type-micro);
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    padding: 6px 14px;
+    cursor: pointer;
+    color: var(--bamboo-primary);
+    background: rgba(var(--primary-rgb), 0.08);
+    border: 1px solid rgba(var(--primary-rgb), 0.22);
+    border-radius: var(--radius-pill);
+    transition: all 0.18s ease;
+}
+
+.health-goal-improve:hover {
+    background: rgba(var(--primary-rgb), 0.16);
+    border-color: rgba(var(--primary-rgb), 0.4);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(var(--primary-rgb), 0.18);
+}
+
+.health-goal-improve:active {
+    transform: translateY(0);
+}
+
 .health-tips-list {
     list-style: none;
     padding: 0;

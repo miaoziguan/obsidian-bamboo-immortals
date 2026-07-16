@@ -372,6 +372,14 @@ window.addEventListener('message', (event) => {
     return;
   }
 
+  // 目标库变更 → 重读 goals.json 并局部刷新（不触发全局重绘）
+  if (data.type === 'goals:changed') {
+    if (typeof window.GoalService !== 'undefined' && window.GoalService.load) {
+      window.GoalService.load();
+    }
+    return;
+  }
+
   if (data.type !== 'theme:changed') return;
 
   // 同步 Obsidian 的明暗模式到 iframe 内部（仅在自动跟随开启时）

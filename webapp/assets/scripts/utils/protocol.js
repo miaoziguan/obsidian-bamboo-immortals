@@ -46,6 +46,7 @@ export const APP_MESSAGE_TYPES = [
   'storage:importAll',
   'storage:clearAll',
   // host → webapp
+  'goals:changed',
   'theme:changed',
   'theme:followDisabled',
   'theme:syncPaletteEnabled',

@@ -1541,6 +1541,7 @@
 :host(.dark) .goal-row-title:hover { background: rgba(var(--primary-rgb), 0.08); border-color: rgba(var(--primary-rgb), 0.12); }
 :host(.dark) .goal-row-meta { color: var(--bamboo-light) }
 :host(.dark) .goal-row-meta:hover { background: rgba(var(--primary-rgb), 0.06); border-color: rgba(var(--primary-rgb), 0.08); }
+:host(.dark) .goal-row-analysis { color: var(--bamboo-light); border-left-color: rgba(var(--primary-rgb), 0.5); }
 :host(.dark) .goal-row-category { color: var(--bamboo-pale); }
 :host(.dark) .goal-row-percent { color: var(--bamboo-light); }
 :host(.dark) .goal-row-toggle:hover { background: rgba(var(--primary-rgb), 0.08); color: var(--bamboo-pale); }

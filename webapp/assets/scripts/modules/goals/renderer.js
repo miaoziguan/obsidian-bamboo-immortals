@@ -327,6 +327,7 @@ export const GoalsRenderer = {
                     </div>
                     <div class="goal-row-meta-row">
                         ${goal.meta ? `<span class="goal-row-meta" data-inline-edit="meta" data-goal-id="${HTMLUtils.escapeHtmlAttr(goal.id)}">${escapeHtml(goal.meta)}</span>` : ''}
+                        ${goal.analysis ? `<span class="goal-row-analysis" title="AI 分析">${escapeHtml(goal.analysis)}</span>` : ''}
                         ${dateTag}
                         ${remainingBadge}
                         <span class="goal-row-percent ${isComplete ? 'goal-percent-complete' : ''}">${Math.min(progress, 100)}%</span>

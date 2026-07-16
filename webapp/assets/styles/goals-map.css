@@ -251,6 +251,15 @@
 .goal-row:hover .goal-row-toggle {
     opacity: 0.9;
 }
+.goal-row-analysis {
+    font-size: var(--type-mini);
+    color: var(--bamboo-muted, #8a8f98);
+    font-style: italic;
+    line-height: 1.4;
+    max-width: min(70vw, 680px);
+    border-left: 2px solid var(--bamboo-light, rgba(var(--primary-rgb), 0.4));
+    padding-left: 8px;
+}
 .goal-row-progress {
     display: flex;
     align-items: center;

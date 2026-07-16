@@ -118,6 +118,36 @@ export class MemoryAdapter {
   }
 }
 
+/** 最小 Modal 桩：仅保存 app，contentEl 提供无副作用的 DOM 方法 */
+export class Modal {
+  app: any;
+  contentEl: any = {
+    empty() {},
+    addClass() {},
+    createEl() {
+      return {};
+    },
+    createDiv() {
+      return {};
+    },
+  };
+  scope: any;
+  constructor(app: any) {
+    this.app = app;
+  }
+  onOpen(): void {}
+  onClose(): void {}
+  close(): void {}
+}
+
+/** 最小 Notice 桩 */
+export class Notice {
+  constructor(_message?: string) {}
+}
+
+/** App 类型桩（值导入场景下仅占位） */
+export class App {}
+
 /** 构造一个挂载了 MemoryAdapter 的伪 App */
 export function createMockApp() {
   const adapter = new MemoryAdapter();

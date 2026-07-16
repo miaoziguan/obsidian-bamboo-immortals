@@ -60,7 +60,9 @@ describe('runDiagnosis', () => {
     expect(openArgs.diagnosis).toBe(diag);
 
     // 触发「应用」回调
-    openArgs.onApply(diag.goals[0]);
+    if (diag.ok) {
+      openArgs.onApply(diag.goals[0]);
+    }
     expect(d.openAgentic).toHaveBeenCalledTimes(1);
     const agenticArgs = (d.openAgentic as any).mock.calls[0][0];
     expect(agenticArgs.goals).toEqual([{ id: 'g1', title: '减重' }]); // 载入真实树

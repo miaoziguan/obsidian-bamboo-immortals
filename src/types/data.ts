@@ -16,20 +16,63 @@ export interface TimelinePeriod {
   items?: Array<{ time: string; task: string; eval?: string }>;
 }
 
-/** 目标项（goals 下的一项进度） */
+/**
+ * 目标领域枚举（与 webapp DEFAULT_CATEGORIES 保持一致）
+ * work=工作 / personal=个人 / health=健康 / study=学习 / finance=财务 / other=其他
+ */
+export const GOAL_CATEGORIES = [
+  { id: 'work', name: '工作', icon: '💼' },
+  { id: 'personal', name: '个人', icon: '🌱' },
+  { id: 'health', name: '健康', icon: '🏃' },
+  { id: 'study', name: '学习', icon: '📚' },
+  { id: 'finance', name: '财务', icon: '💰' },
+  { id: 'other', name: '其他', icon: '🧩' },
+] as const;
+
+export type GoalCategory = (typeof GOAL_CATEGORIES)[number]['id'];
+
+/** 子项节奏类型（与 webapp taskDayType 对齐） */
+export type TaskDayType = 'daily' | 'weekly' | 'monthly' | 'custom';
+
+/**
+ * 目标项（goals 下的一项进度）
+ * 字段向 webapp GoalService 期望的子项结构对齐（见 GoalService._migrateFromDayData / defaultData.js）：
+ *  - dailyMin / taskDayType 驱动「今日任务」自动生成
+ *  - startValue / targetValue / currentValue 驱动进度追踪
+ */
 export interface GoalSubItem {
   name: string;
   percent?: number;
   detail?: string;
+  startDate?: string;
+  endDate?: string;
+  startValue?: string;
+  targetValue?: string;
+  currentValue?: string;
+  /** 每日量（如 '30'、'2'），驱动今日任务增量；空则不生成今日任务 */
+  dailyMin?: string;
+  taskDayType?: TaskDayType | string;
+  /** 规划来源标注（仅审阅展示/日报，可选） */
+  sourceRef?: string;
 }
 
 /** 单个目标 */
 export interface GoalItem {
   id: string;
   title: string;
+  /** AI 对笔记的归纳分析（1-2 句主旨 + 拆解理由/关键风险），仅展示用，不持久化为子项 */
+  analysis?: string;
   icon?: string;
   meta?: string;
+  /** 领域（work/personal/health/study/finance/other），webapp 据此分组着色 */
+  category?: GoalCategory | string;
+  startDate?: string;
+  endDate?: string;
+  progress?: number;
+  priority?: string | number;
   items?: GoalSubItem[];
+  /** 规划来源：来源笔记的 vault 路径，用于日报标注 */
+  sourceRef?: string;
 }
 
 /** 单日复盘数据 */

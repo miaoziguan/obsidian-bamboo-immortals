@@ -111,8 +111,9 @@ describe('PlanningSession.loadGoals (edit mode)', () => {
     const s = new PlanningSession('笔记', settings, vi.fn());
     s.loadGoals(existingTree);
     s.goals[0].title = '改了';
-    expect(existingTree[0].title).toBe('减重');
-    expect(s.initialGoals[0].title).toBe('减重');
+    expect(existingTree[0].title).toBe('减重'); // 传入原对象未被改
+    s.reset();
+    expect(s.goals[0].title).toBe('减重'); // reset 回到首版快照
   });
 
   it('messages 首条为「编辑现有树」system 上下文（含树 JSON）', () => {

@@ -250,6 +250,31 @@ export class VaultStorage {
     await this.vaultWrite(path, JSON.stringify(goals, null, 2));
   }
 
+  // ---- AI 规划侧车索引（plans-map.json）----
+  // 结构：{ "<vaultPath>#<contentHash>": string[] (goalIds) }
+  // 用途：同一笔记重复规划时按 contentHash 幂等，避免目标重复追加。
+
+  private plansIndexPath(): string {
+    return normalizePath(`${this.basePath}/plans-map.json`);
+  }
+
+  async getPlansIndex(): Promise<Record<string, string[]>> {
+    const path = this.plansIndexPath();
+    if (!(await this.app.vault.adapter.exists(path))) return {};
+    try {
+      const content = await this.app.vault.adapter.read(path);
+      const parsed = JSON.parse(content) as unknown;
+      if (parsed && typeof parsed === 'object') return parsed as Record<string, string[]>;
+      return {};
+    } catch {
+      return {};
+    }
+  }
+
+  async putPlansIndex(map: Record<string, string[]>): Promise<void> {
+    await this.vaultWrite(this.plansIndexPath(), JSON.stringify(map, null, 2));
+  }
+
   // ---- 设置 (settings) ----
 
   private settingsPath(): string {

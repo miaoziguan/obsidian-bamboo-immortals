@@ -71,6 +71,8 @@ export class AppAPI {
   ) {
     this.settings = settings;
     this.saveSettings = saveSettings;
+    // 注意：webapp 读取目标的实际路径由此处决定（VaultStorage 默认 basePath = bamboo-review）。
+    // writeAiGoals 必须写入同一路径，否则 AI 目标不显示。详见 main.ts writeAiGoals 的注释。
     this.storage = new VaultStorage(app);
     this.themeBridge = new ThemeBridge();
     this.vaultAdapter = app.vault.adapter;

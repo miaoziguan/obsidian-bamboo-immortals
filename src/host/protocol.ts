@@ -57,6 +57,7 @@ export const ALL_MESSAGE_TYPES = [
   'storage:clearAll',
 
   // ---- host → webapp ----
+  'goals:changed',
   'theme:changed',
   'theme:followDisabled',
   'theme:syncPaletteEnabled',

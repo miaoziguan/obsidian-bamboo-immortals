@@ -53,4 +53,13 @@ export class WebappController {
   openSettings(): void {
     this.send('action:openSettings');
   }
+
+  /**
+   * 通知 webapp 目标库已变更（host→webapp）。
+   * webapp 收到后调用 GoalService.load() 重读 goals.json 并 store.notify() 局部刷新，
+   * 不触发全局 renderAll，避免冲掉时间轴 / 进行中状态。
+   */
+  notifyGoalsChanged(): void {
+    this.getTarget()?.sendCommand('goals:changed');
+  }
 }

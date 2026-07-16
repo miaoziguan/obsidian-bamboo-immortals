@@ -33,6 +33,16 @@ export interface BambooReviewSettings {
   syncPaletteToObsidian: boolean;
   /** 是否让插件配色跟随 Obsidian 主题（读取 --interactive-accent 反推色相） */
   followObsidianTheme: boolean;
+  /** 是否启用 AI 自然语言规划（笔记 → 目标卡片） */
+  aiEnabled: boolean;
+  /** AI 服务 API Key（Bearer 鉴权） */
+  aiApiKey: string;
+  /** AI 服务 Base URL（不含 /chat/completions 后缀，如 https://api.deepseek.com/v1） */
+  aiBaseUrl: string;
+  /** 模型名（如 deepseek-chat） */
+  aiModel: string;
+  /** 默认拆解粒度：粗(2-3) / 中(3-6) / 细(5-8) 子项 */
+  aiDecomposeDepth: '粗' | '中' | '细';
 }
 
 export const DEFAULT_SETTINGS: BambooReviewSettings = {
@@ -44,6 +54,11 @@ export const DEFAULT_SETTINGS: BambooReviewSettings = {
   noiseItems: [],
   syncPaletteToObsidian: false,
   followObsidianTheme: true,
+  aiEnabled: false,
+  aiApiKey: '',
+  aiBaseUrl: 'https://api.deepseek.com/v1',
+  aiModel: 'deepseek-chat',
+  aiDecomposeDepth: '中',
 };
 
 /**
@@ -201,6 +216,80 @@ export class PluginSettings extends PluginSettingTab {
                 payload: { enabled: value }
               }, '*');
             }
+          })
+      );
+
+    // === AI 规划 ===
+    new Setting(containerEl).setName('AI 规划（自然语言 → 目标卡片）').setHeading();
+
+    new Setting(containerEl)
+      .setName('启用 AI 规划')
+      .setDesc('开启后，可在笔记中运行「AI 规划：将当前笔记转为目标卡片」命令，由大模型拆解目标并写入复盘。')
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.aiEnabled)
+          .onChange(async (value) => {
+            this.plugin.settings.aiEnabled = value;
+            await this.plugin.saveSettings();
+          })
+      );
+
+    new Setting(containerEl)
+      .setName('API Key')
+      .setDesc('大模型服务鉴权密钥（Bearer Token）。仅保存在本库 settings.json，不上传。')
+      .addText((text) =>
+        text
+          .setPlaceholder('sk-...')
+          .setValue(this.plugin.settings.aiApiKey)
+          .onChange(async (value) => {
+            this.plugin.settings.aiApiKey = value.trim();
+            await this.plugin.saveSettings();
+          })
+      )
+      .then((setting) => {
+        // 密码框样式：输入隐藏
+        const input = setting.controlEl.querySelector('input');
+        if (input) input.type = 'password';
+      });
+
+    new Setting(containerEl)
+      .setName('Base URL')
+      .setDesc('API 基地址（不含 /chat/completions 后缀）。默认 DeepSeek v1。')
+      .addText((text) =>
+        text
+          .setPlaceholder('https://api.deepseek.com/v1')
+          .setValue(this.plugin.settings.aiBaseUrl)
+          .onChange(async (value) => {
+            this.plugin.settings.aiBaseUrl = value.trim() || 'https://api.deepseek.com/v1';
+            await this.plugin.saveSettings();
+          })
+      );
+
+    new Setting(containerEl)
+      .setName('模型')
+      .setDesc('模型名，如 deepseek-chat / gpt-4o-mini。需兼容 OpenAI Chat Completions JSON 模式。')
+      .addText((text) =>
+        text
+          .setPlaceholder('deepseek-chat')
+          .setValue(this.plugin.settings.aiModel)
+          .onChange(async (value) => {
+            this.plugin.settings.aiModel = value.trim() || 'deepseek-chat';
+            await this.plugin.saveSettings();
+          })
+      );
+
+    new Setting(containerEl)
+      .setName('默认拆解粒度')
+      .setDesc('AI 把目标拆成子项的细粒度：粗(2-3) / 中(3-6) / 细(5-8)。可在审阅弹窗里再逐条删改。')
+      .addDropdown((dropdown) =>
+        dropdown
+          .addOption('粗', '粗（2-3 子项）')
+          .addOption('中', '中（3-6 子项）')
+          .addOption('细', '细（5-8 子项）')
+          .setValue(this.plugin.settings.aiDecomposeDepth)
+          .onChange(async (value) => {
+            this.plugin.settings.aiDecomposeDepth = value as '粗' | '中' | '细';
+            await this.plugin.saveSettings();
           })
       );
 

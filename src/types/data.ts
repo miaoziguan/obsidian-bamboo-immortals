@@ -70,6 +70,9 @@ export interface GoalItem {
   endDate?: string;
   progress?: number;
   priority?: string | number;
+  /** 已归档（不参与进行中诊断） */
+  archived?: boolean;
+  archivedAt?: string;
   items?: GoalSubItem[];
   /** 规划来源：来源笔记的 vault 路径，用于日报标注 */
   sourceRef?: string;

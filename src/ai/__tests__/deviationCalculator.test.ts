@@ -3,6 +3,9 @@ import {
   buildCache,
   computeGoalDeviation,
   summarize,
+  buildItemEvidence,
+  buildItemEvidenceMap,
+  formatItemEvidenceForPrompt,
   type DayCacheEntry,
 } from '../DeviationCalculator';
 import type { DayData, GoalItem } from '../../types/data';
@@ -106,5 +109,118 @@ describe('DeviationCalculator.summarize', () => {
     const text = summarize(goals, cache, new Date('2026-01-11T00:00:00'));
     expect(text).toContain('减重');
     expect(text).toContain('at_risk');
+  });
+});
+
+describe('DeviationCalculator.buildCache — 子项级完成计数', () => {
+  it('按天累计 itemCompletions / itemLastDone（下标 ↔ items.index）', () => {
+    const goals: GoalItem[] = [
+      { id: 'g1', title: '字库研发', items: [{ name: 'x' }, { name: 'y' }] },
+    ];
+    const days: DayData[] = [
+      { date: '2026-07-10', goalTaskCompletions: { g1: { '0': true, '1': false } } } as unknown as DayData,
+      { date: '2026-07-11', goalTaskCompletions: { g1: { '0': true } } } as unknown as DayData,
+    ];
+    const cache = buildCache(goals, days);
+    expect(cache.itemCompletions['g1']).toEqual({ '0': 2 });
+    expect(cache.itemCompletions['g1']['1']).toBeUndefined();
+    expect(cache.itemLastDone['g1']['0']).toBe('2026-07-11');
+    expect(cache.itemLastDone['g1']['1']).toBeUndefined();
+  });
+});
+
+describe('DeviationCalculator.buildItemEvidence', () => {
+  const today = new Date('2026-07-16T00:00:00');
+  const goal: GoalItem = {
+    id: 'g1',
+    title: '字库研发',
+    startDate: '2026-01-01',
+    endDate: '2027-05-24',
+    items: [
+      {
+        name: '喵字摇滚体',
+        percent: 34,
+        dailyMin: '10',
+        startDate: '2026-01-01',
+        endDate: '2027-03-21',
+        currentValue: '2320',
+        targetValue: '6763',
+      },
+      {
+        name: '未来甲骨文', // 无 percent → 应从 current/target 推导
+        dailyMin: '5',
+        currentValue: '1163',
+        targetValue: '3708',
+      },
+    ],
+  };
+  const days: DayData[] = [
+    { date: '2026-07-14', goalTaskCompletions: { g1: { '0': true } } } as unknown as DayData,
+    { date: '2026-07-15', goalTaskCompletions: { g1: { '0': true } } } as unknown as DayData,
+  ];
+
+  it('输出每真实子项的节奏偏差 + 完成证据', () => {
+    const cache = buildCache([goal], days);
+    const ev = buildItemEvidence(goal, cache, today);
+    expect(ev).toHaveLength(2);
+
+    const e0 = ev[0];
+    expect(e0.name).toBe('喵字摇滚体');
+    expect(e0.dailyMin).toBe('10');
+    expect(e0.percent).toBe(34);
+    expect(e0.pacePct).toBeGreaterThan(0);
+    expect(e0.pacePct).toBeLessThanOrEqual(100);
+    // 落后节奏 → 负数（四舍五入整数）
+    expect(e0.paceDeviation).toBeLessThan(0);
+    expect(typeof e0.paceDeviation).toBe('number');
+    expect(e0.doneDays).toBe(2);
+    expect(e0.lastDone).toBe('2026-07-15');
+
+    // 无 percent 时由 currentValue/targetValue 推导
+    expect(ev[1].percent).toBeCloseTo((1163 / 3708) * 100, 0);
+  });
+
+  it('归档/缺日期子项：pacePct 为 null，不抛错', () => {
+    const g2: GoalItem = { id: 'g2', title: '无日期', items: [{ name: 'z', dailyMin: '1' }] };
+    const cache = buildCache([g2], []);
+    expect(() => buildItemEvidence(g2, cache, today)).not.toThrow();
+    const ev = buildItemEvidence(g2, cache, today);
+    expect(ev[0].pacePct).toBeNull();
+    expect(ev[0].paceDeviation).toBeNull();
+    expect(ev[0].doneDays).toBe(0);
+    expect(ev[0].lastDone).toBeNull();
+  });
+});
+
+describe('DeviationCalculator.buildItemEvidenceMap / formatItemEvidenceForPrompt', () => {
+  const today = new Date('2026-07-16T00:00:00');
+  const goal: GoalItem = {
+    id: 'g1',
+    title: '字库研发',
+    startDate: '2026-01-01',
+    endDate: '2027-05-24',
+    items: [
+      { name: '喵字摇滚体', percent: 34, dailyMin: '10' },
+      { name: '未来甲骨文', dailyMin: '5' },
+    ],
+  };
+
+  it('buildItemEvidenceMap 按 goal.title 索引', () => {
+    const cache = buildCache([goal], []);
+    const map = buildItemEvidenceMap([goal], cache, today);
+    expect(map['字库研发']).toHaveLength(2);
+    expect(map['字库研发'][0].name).toBe('喵字摇滚体');
+  });
+
+  it('formatItemEvidenceForPrompt 含真实子项名与 dailyMin', () => {
+    const cache = buildCache([goal], []);
+    const text = formatItemEvidenceForPrompt([goal], cache, today);
+    expect(text).toContain('喵字摇滚体');
+    expect(text).toContain('dailyMin=10');
+    expect(text).toContain('未来甲骨文');
+  });
+
+  it('formatItemEvidenceForPrompt 空目标 → 占位说明', () => {
+    expect(formatItemEvidenceForPrompt([], buildCache([], []), today)).toContain('无子项');
   });
 });

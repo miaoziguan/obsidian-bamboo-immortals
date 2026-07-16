@@ -8,6 +8,13 @@
  *
  * 零 Obsidian 依赖，fetchFn 可注入，便于单测。
  */
+import { requestUrl } from 'obsidian';
+import type { ChatMessage } from './PlanningSession';
+import { extractChatText } from './MarkdownPlanner';
+import type { AiFetchFn, AiResponse, PlannerSettings } from './MarkdownPlanner';
+import { buildCache, summarize } from './DeviationCalculator';
+import type { DayData, GoalItem } from '../types/data';
+
 export type DiagnosisStatus = 'on_track' | 'behind' | 'stuck' | 'done' | 'at_risk';
 
 export interface GoalDiagnosis {
@@ -89,3 +96,69 @@ export function parseDiagnosis(text: string): DiagnosisResult {
     nextActions: asStringArray(o.nextActions),
   };
 }
+
+/**
+ * 构造诊断提示词：system 强制「只输出 JSON / status 取枚举 / suggestions 为可操作指令」；
+ * user 注入 DeviationCalculator 算好的硬指标文本。
+ */
+export function buildDiagnosisMessages(summary: string): ChatMessage[] {
+  const system = [
+    '你是「战略复盘」教练。用户已有一棵目标树，并提供了各目标的执行偏差硬指标。',
+    '请基于这些硬指标做因果归因（为什么落后/停滞），并给出可操作建议。',
+    '严格要求：',
+    '- 只输出一个 JSON 对象，不要 markdown 围栏、不要任何额外解释文字。',
+    '- JSON 结构：{ "summary": string, "goals": [ { "title": string, "completion": number(0-100), "status": "on_track"|"behind"|"stuck"|"done"|"at_risk", "bottleneck": string, "suggestions": string[] } ], "nextActions": string[] }',
+    '- status 必须取自给定枚举。',
+    '- suggestions 每条必须是一句【可直接交给另一个 AI 去改目标树】的自然语言指令，例如「将子项『每天跑步』的 dailyMin 从 30 降到 15」「为目标『健康减重』新增子项『每周游泳 3 次』」。不要写空泛建议。',
+  ].join('\n');
+  const user = `各目标执行偏差如下：\n${summary}\n请据此诊断并给出可应用建议。`;
+  return [
+    { role: 'system', content: system },
+    { role: 'user', content: user },
+  ];
+}
+
+async function callAi(
+  messages: ChatMessage[],
+  settings: PlannerSettings,
+  fetchFn: AiFetchFn
+): Promise<AiResponse> {
+  const url = `${settings.aiBaseUrl.replace(/\/+$/, '')}/chat/completions`;
+  return fetchFn({
+    url,
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${settings.aiApiKey}`,
+    },
+    body: JSON.stringify({
+      model: settings.aiModel,
+      messages,
+      response_format: { type: 'json_object' },
+      temperature: 0.3,
+    }),
+  });
+}
+
+/**
+ * 编排：算硬指标 → 构造提示词 → 调 AI（复用 extractChatText + requestUrl 绕 CORS）→ 解析（坏 JSON 回退）。
+ * AI 调用失败 → 回退 { ok:false, rawText }，绝不抛错。
+ */
+export async function diagnose(
+  goals: GoalItem[],
+  days: DayData[],
+  settings: PlannerSettings,
+  fetchFn: AiFetchFn = requestUrl as unknown as AiFetchFn
+): Promise<DiagnosisResult> {
+  const cache = buildCache(goals, days);
+  const summary = summarize(goals, cache);
+  const messages = buildDiagnosisMessages(summary);
+  try {
+    const resp = await callAi(messages, settings, fetchFn);
+    const text = extractChatText(resp);
+    return parseDiagnosis(text);
+  } catch (e) {
+    return { ok: false, rawText: e instanceof Error ? e.message : 'AI 诊断调用失败' };
+  }
+}
+

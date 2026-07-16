@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { parseDiagnosis } from '../GoalDiagnoser';
+import { parseDiagnosis, buildDiagnosisMessages, diagnose } from '../GoalDiagnoser';
+import type { AiFetchFn, AiResponse, PlannerSettings } from '../MarkdownPlanner';
+import type { GoalItem, DayData } from '../../types/data';
 
 describe('GoalDiagnoser.parseDiagnosis', () => {
   it('合法 JSON → 返回结构化 Diagnosis，并校验/补全字段', () => {
@@ -44,5 +46,56 @@ describe('GoalDiagnoser.parseDiagnosis', () => {
     expect(d.summary).toBe('');
     expect(d.goals[0].suggestions).toEqual([]);
     expect(d.nextActions).toEqual([]);
+  });
+});
+
+describe('GoalDiagnoser.buildDiagnosisMessages', () => {
+  it('system 强制 JSON / status 枚举 / suggestions 为可操作指令', () => {
+    const msgs = buildDiagnosisMessages('- 减重｜status=behind');
+    expect(msgs).toHaveLength(2);
+    const sys = msgs[0].content;
+    expect(sys).toContain('只输出一个 JSON');
+    expect(sys).toContain('on_track');
+    expect(sys).toContain('at_risk');
+    expect(sys).toContain('可直接交给另一个 AI 去改目标树');
+    expect(msgs[1].content).toContain('减重');
+  });
+});
+
+describe('GoalDiagnoser.diagnose (注入 fetchFn)', () => {
+  const settings: PlannerSettings = {
+    aiApiKey: 'k',
+    aiBaseUrl: 'https://x',
+    aiModel: 'm',
+    aiDecomposeDepth: '中',
+  };
+  const goals: GoalItem[] = [{ id: 'g1', title: '减重' }];
+  const days: DayData[] = [];
+
+  it('合法 AI 回执 → 结构化 Diagnosis', async () => {
+    const aiResp: AiResponse = {
+      status: 200,
+      json: {
+        summary: 'S',
+        goals: [{ title: '减重', completion: 62, status: 'behind', suggestions: ['降 dailyMin'] }],
+        nextActions: ['A'],
+      },
+    };
+    const fetchFn: AiFetchFn = async () => aiResp;
+    const d = await diagnose(goals, days, settings, fetchFn);
+    expect(d.ok).toBe(true);
+    if (!d.ok) return;
+    expect(d.goals[0].title).toBe('减重');
+    expect(d.nextActions).toEqual(['A']);
+  });
+
+  it('AI 调用失败 → 回退 rawText，不抛错', async () => {
+    const fetchFn: AiFetchFn = async () => {
+      throw new Error('network down');
+    };
+    const d = await diagnose(goals, days, settings, fetchFn);
+    expect(d.ok).toBe(false);
+    if (d.ok) return;
+    expect(d.rawText).toContain('network down');
   });
 });

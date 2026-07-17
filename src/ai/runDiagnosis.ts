@@ -43,6 +43,8 @@ export interface DiagnosisDeps {
     onApply: (goal: GoalDiagnosis, suggestion: Suggestion) => void;
     /** 可选：应用该 goal 全部建议 */
     onApplyAll?: (goal: GoalDiagnosis) => void;
+    /** 可选：报告级「一键应用全部建议」（MVP-2），跨所有目标批量 */
+    onApplyAllDiagnosis?: () => void;
   }) => void;
   /** 确定性改写后的聚焦预览（#7） */
   openApplyPreview: (opts: ApplyPreviewOpts) => void;
@@ -132,6 +134,33 @@ export async function runDiagnosis(deps: DiagnosisDeps): Promise<void> {
             onConfirm: (f) => void deps.writeGoals(f),
           }),
         title: `应用建议 · ${goal.title}`,
+      });
+    },
+    onApplyAllDiagnosis: () => {
+      // 坏 JSON 回退形态无 goals，直接退出
+      if (!result.ok) return;
+      // MVP-2：跨所有目标，把全部建议一次性确定性批量改写
+      const all = result.goals.flatMap((g) => g.suggestions ?? []);
+      if (all.length === 0) return;
+      const res = applySuggestions(all, goals);
+      if (!res.applied) {
+        deps.notice('所有建议均未匹配到目标/子项，未改动');
+        return;
+      }
+      deps.openApplyPreview({
+        suggestions: all,
+        before: goals,
+        after: res.goals,
+        onConfirm: (final) => void deps.writeGoals(final),
+        onEscalateAI: (final) =>
+          deps.openAgentic({
+            content: '',
+            scope: 'note',
+            settings: deps.plannerSettings,
+            goals: final,
+            onConfirm: (f) => void deps.writeGoals(f),
+          }),
+        title: '一键应用全部建议',
       });
     },
   });

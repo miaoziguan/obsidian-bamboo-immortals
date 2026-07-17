@@ -123,6 +123,76 @@ describe('runDiagnosis', () => {
     expect(d.writeGoals).not.toHaveBeenCalled();
   });
 
+  it('一键应用全部建议（MVP-2）→ 跨多目标确定性批量改写 + 单次预览', async () => {
+    const goals = [
+      { id: 'g1', title: '减重', items: [{ name: '跑步', dailyMin: '30' }] },
+      { id: 'g2', title: '读书', items: [{ name: '晨读', dailyMin: '10' }] },
+    ];
+    const diag = {
+      ok: true,
+      summary: 's',
+      goals: [
+        {
+          title: '减重',
+          status: 'behind',
+          suggestions: [
+            { id: 's1', action: 'adjust_dailyMin', goalRef: { goalId: 'g1', goalTitle: '减重' }, target: { subItemName: '跑步' }, params: { dailyMin: 15 }, text: '跑步 15' },
+          ],
+        },
+        {
+          title: '读书',
+          status: 'behind',
+          suggestions: [
+            { id: 's2', action: 'adjust_dailyMin', goalRef: { goalId: 'g2', goalTitle: '读书' }, target: { subItemName: '晨读' }, params: { dailyMin: 5 }, text: '晨读 5' },
+          ],
+        },
+      ],
+      nextActions: [],
+    } as Diagnosis;
+    const d = baseDeps({ diagnose: vi.fn().mockResolvedValue(diag), storage: makeStorage(goals) });
+    await runDiagnosis(d);
+    const openArgs = (d.openDiagnosis as any).mock.calls[0][0];
+    expect(typeof openArgs.onApplyAllDiagnosis).toBe('function');
+    // 触发报告级批量应用
+    openArgs.onApplyAllDiagnosis();
+    expect(d.openApplyPreview).toHaveBeenCalledTimes(1);
+    const pv = (d.openApplyPreview as any).mock.calls[0][0];
+    expect(pv.suggestions).toHaveLength(2);
+    const g1 = pv.after.find((g: any) => g.id === 'g1');
+    const g2 = pv.after.find((g: any) => g.id === 'g2');
+    expect(g1.items[0].dailyMin).toBe('15'); // 跨目标 1 命中
+    expect(g2.items[0].dailyMin).toBe('5'); // 跨目标 2 命中
+    expect(pv.before).toEqual(goals);
+    // 确认写入
+    pv.onConfirm(pv.after);
+    expect(d.writeGoals).toHaveBeenCalledWith(pv.after);
+  });
+
+  it('一键应用：全部建议未命中 → notice 且不打开预览/不落库', async () => {
+    const goals = [{ id: 'g1', title: '减重', items: [{ name: '跑步', dailyMin: '30' }] }];
+    const diag = {
+      ok: true,
+      summary: 's',
+      goals: [
+        {
+          title: '减重',
+          status: 'behind',
+          suggestions: [
+            { id: 's1', action: 'adjust_dailyMin', goalRef: { goalId: 'g1' }, target: { subItemName: '不存在' }, params: { dailyMin: 15 }, text: 'x' },
+          ],
+        },
+      ],
+      nextActions: [],
+    } as Diagnosis;
+    const d = baseDeps({ diagnose: vi.fn().mockResolvedValue(diag), storage: makeStorage(goals) });
+    await runDiagnosis(d);
+    const openArgs = (d.openDiagnosis as any).mock.calls[0][0];
+    openArgs.onApplyAllDiagnosis();
+    expect(d.notice).toHaveBeenCalled();
+    expect(d.openApplyPreview).not.toHaveBeenCalled();
+    expect(d.writeGoals).not.toHaveBeenCalled();
+  });
+
   it('过滤 archived：只把活跃目标送进 diagnose', async () => {
     const storage = makeStorage([
       { id: 'a', title: '归档', archived: true },

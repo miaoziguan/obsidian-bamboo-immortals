@@ -65,6 +65,10 @@ function openModal(
   return { modal, root, onApply };
 }
 
+function findBatchBtn(root: any): any {
+  return root.find((e: any) => e.text === '一键应用全部建议');
+}
+
 const validDiag: Diagnosis = {
   ok: true,
   summary: '3 目标 1 达标 2 落后',
@@ -301,11 +305,39 @@ describe('DiagnosisModal — 健康分三维渲染', () => {
     expect(chip!.text).toBe('聚焦节奏');
   });
 
-  it('无 weakest（旧数据）时不渲染聚焦维度标签', () => {
+  it('无 weakest（旧 data）时不渲染聚焦维度标签', () => {
     const { root } = openModal(validDiag);
     const title = root.find((e) => e.cls.includes('bamboo-diag-suggestions-title'));
     expect(title).toBeDefined();
     expect(title!.text).not.toContain('聚焦');
     expect(title!.find((c) => c.cls.includes('bamboo-diag-focus-dim'))).toBeUndefined();
+  });
+
+  it('提供 onApplyAllDiagnosis 且有建议 → 显示「一键应用全部建议」并触发+关闭', () => {
+    const onApplyAllDiagnosis = vi.fn();
+    const { root, modal } = openModal(validDiag, undefined, { onApplyAllDiagnosis });
+    const btn = findBatchBtn(root);
+    expect(btn).toBeDefined();
+    const closeSpy = vi.spyOn(modal, 'close');
+    btn!.click();
+    expect(onApplyAllDiagnosis).toHaveBeenCalledTimes(1);
+    expect(closeSpy).toHaveBeenCalled();
+  });
+
+  it('未提供 onApplyAllDiagnosis → 不显示「一键应用全部建议」', () => {
+    const { root } = openModal(validDiag);
+    expect(findBatchBtn(root)).toBeUndefined();
+  });
+
+  it('报告 0 条建议时即使提供 onApplyAllDiagnosis 也不显示', () => {
+    const onApplyAllDiagnosis = vi.fn();
+    const empty: Diagnosis = {
+      ok: true,
+      summary: '',
+      goals: [{ title: '空', completion: 0, status: 'stuck', bottleneck: '', suggestions: [] }],
+      nextActions: [],
+    };
+    const { root } = openModal(empty, undefined, { onApplyAllDiagnosis });
+    expect(findBatchBtn(root)).toBeUndefined();
   });
 });

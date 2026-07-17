@@ -1027,6 +1027,48 @@ html body .workspace-leaf-content[data-type="bamboo-immortals"] .view-header-tit
   box-shadow: 0 1px 2px color-mix(in srgb, var(--interactive-accent) 30%, transparent);
 }
 
+/* ===== 报告级「一键应用全部建议」（MVP-2） ===== */
+.bamboo-diag-batchbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 10px 0 4px;
+  padding: 10px 14px;
+  border: 1px solid color-mix(in srgb, var(--interactive-accent) 45%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--interactive-accent) 8%, var(--background-primary));
+}
+.bamboo-diag-batch-btn {
+  flex-shrink: 0;
+  height: 34px;
+  padding: 0 18px;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 1px solid var(--interactive-accent);
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  font-size: 13.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--interactive-accent) 35%, transparent);
+  transition: filter 150ms ease, transform 150ms ease, box-shadow 150ms ease;
+}
+.bamboo-diag-batch-btn:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--interactive-accent) 40%, transparent);
+}
+.bamboo-diag-batch-btn:active {
+  transform: translateY(0);
+  filter: brightness(0.95);
+}
+.bamboo-diag-batch-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
 /* ===== 诊断建议「应用」聚焦预览弹窗（#7） ===== */
 .bamboo-sugg-apply-modal {
   max-width: 560px;

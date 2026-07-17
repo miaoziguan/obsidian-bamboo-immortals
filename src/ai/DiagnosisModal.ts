@@ -48,6 +48,8 @@ export interface DiagnosisModalOptions {
   onApply: (goal: GoalDiagnosis, suggestion: Suggestion) => void;
   /** 可选：提供时，建议区顶部显示「应用全部」按钮（应用该 goal 全部建议） */
   onApplyAll?: (goal: GoalDiagnosis) => void;
+  /** 可选：报告级「一键应用全部建议」（MVP-2），跨所有目标批量确定性应用 */
+  onApplyAllDiagnosis?: () => void;
   /** 真实子项证据（按 goal.title 索引），默认折叠，展开后是紧凑表格 */
   itemEvidence?: Record<string, ItemEvidence[]>;
   title?: string;
@@ -75,6 +77,24 @@ export class DiagnosisModal extends Modal {
       // 坏 JSON 兜底：只展示纯文本，不渲染任何目标卡
       contentEl.createEl('p', { text: d.rawText, cls: 'bamboo-diag-raw' });
       return;
+    }
+
+    // ===== MVP-2：报告级「一键应用全部建议」（跨所有目标批量） =====
+    const totalSuggestions = d.goals.reduce((n, g) => n + (g.suggestions?.length ?? 0), 0);
+    if (this.opts.onApplyAllDiagnosis && totalSuggestions > 0) {
+      const bar = contentEl.createDiv({ cls: 'bamboo-diag-batchbar' });
+      const batchBtn = bar.createEl('button', {
+        text: '一键应用全部建议',
+        cls: 'bamboo-diag-batch-btn',
+      });
+      batchBtn.addEventListener('click', () => {
+        this.opts.onApplyAllDiagnosis?.();
+        this.close();
+      });
+      bar.createSpan({
+        text: `共 ${totalSuggestions} 条建议，确认后将一次性改写并写入目标`,
+        cls: 'bamboo-diag-batch-hint',
+      });
     }
 
     // ===== Summary =====

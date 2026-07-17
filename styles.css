@@ -512,9 +512,10 @@ html body .workspace-leaf-content[data-type="bamboo-immortals"] .view-header-tit
 }
 
 /* ===== 对话式规划审阅台（Agentic，Phase 4） ===== */
-/* 双栏布局需要更宽的弹窗 */
+/* 弹窗 / 中央窗口共用的基础布局：头部 + 双栏主体 + 底部 */
 .bamboo-ai-agentic {
-  max-width: 1000px;
+  display: flex;
+  flex-direction: column;
 }
 .bamboo-ai-agentic-topbar {
   display: flex;
@@ -541,9 +542,7 @@ html body .workspace-leaf-content[data-type="bamboo-immortals"] .view-header-tit
   gap: 8px;
   border-left: 1px solid var(--background-modifier-border);
   padding-left: 16px;
-  position: sticky;
-  top: 0;
-  height: 64vh;
+  min-height: 0;
 }
 .bamboo-ai-chat {
   flex: 1;
@@ -552,6 +551,58 @@ html body .workspace-leaf-content[data-type="bamboo-immortals"] .view-header-tit
   flex-direction: column;
   gap: 10px;
   padding-right: 4px;
+}
+
+/* 弹窗形态：限宽，双栏各自滚动（保留你熟悉的原始版面） */
+.bamboo-ai-plan-modal.bamboo-ai-agentic {
+  max-width: 1000px;
+}
+.bamboo-ai-plan-modal .bamboo-ai-agentic-right {
+  height: 64vh;
+}
+
+/* 中央窗口形态（ItemView）：占满整页，双栏在固定高度内各滚各的 */
+.bamboo-ai-plan-view.bamboo-ai-agentic {
+  height: 100%;
+}
+.bamboo-ai-plan-view .bamboo-ai-agentic-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  align-items: stretch;
+}
+.bamboo-ai-plan-view .bamboo-ai-agentic-left {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.bamboo-ai-plan-view .bamboo-ai-plan-list {
+  max-height: none;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.bamboo-ai-plan-view .bamboo-ai-agentic-right {
+  height: 100%;
+}
+
+/* 规划台「遗留标签页」占位页（重启恢复且无可恢复数据时显示） */
+.bamboo-plan-editor-legacy {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  height: 100%;
+  text-align: center;
+  padding: 0 24px;
+}
+.bamboo-plan-editor-legacy h2 {
+  margin: 0;
+}
+.bamboo-plan-editor-legacy-hint {
+  margin: 0;
+  max-width: 420px;
+  color: var(--text-muted);
+  line-height: 1.6;
 }
 .bamboo-ai-chat-bubble {
   max-width: 92%;

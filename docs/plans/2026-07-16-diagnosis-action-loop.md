@@ -115,7 +115,7 @@ commit：`feat: DiagnosisModal (read-only AI diagnosis report)`
 - 有目标 → 产出 `DiagnosisModal` 且内部数据来自 `GoalDiagnoser.diagnose` 结果（mock 返回固定 Diagnosis 断言被渲染）。
 
 绿：
-- `main.ts` 注册 `addCommand({id:'ai-diagnose', name:'AI 诊断：分析目标执行并给出可应用建议', callback})`。
+- `main.ts` 注册 `addCommand({id:'ai-diagnose', name:'AI 诊断：分析目标执行情况并给出可落地纠偏建议', callback})`。
 - 编排：`aiEnabled` 门禁 → `getGoals()`（空则 Notice）→ `getDayKeys()` 取最近 14 天 → `getDay()` 批量 → `GoalDiagnoser.diagnose(...)` → 打开 `DiagnosisModal`，`onApply` → 打开 `AgenticPlanModal({goals, initialInstruction, onConfirm: 复用 writeAiGoals 落库+notifyGoalsChanged})`。
 
 commit：`feat: ai-diagnose command (diagnosis → action loop)`

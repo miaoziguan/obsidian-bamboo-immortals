@@ -17,8 +17,9 @@ import { validateGoals } from './src/ai/GoalCardValidator';
 // 删除前务必确认这两条调用（见 planFromSelection / ai-plan 流程）已迁移，否则会破坏线上功能。
 import { deriveStableGoalId } from './src/ai/goalId';
 import { shouldSkipPlanned } from './src/ai/idempotency';
-import { AgenticPlanModal } from './src/ai/AgenticPlanModal';
 import { DiagnosisModal } from './src/ai/DiagnosisModal';
+import type { AgenticPlanOptions } from './src/ai/AgenticPlanController';
+import { PlanEditorView, VIEW_TYPE_PLAN_EDITOR } from './src/views/PlanEditorView';
 import { SuggestionApplyModal } from './src/ai/SuggestionApplyModal';
 import { diagnose } from './src/ai/GoalDiagnoser';
 import { runDiagnosis } from './src/ai/runDiagnosis';
@@ -61,6 +62,13 @@ export default class BambooReviewPlugin extends Plugin {
     // 注册 View（传递 pluginDir 供 ItemView 加载 webapp 静态资源）
     this.registerView(VIEW_TYPE_DAILY_REVIEW, (leaf: WorkspaceLeaf) => {
       return new DailyReviewView(leaf, pluginDir, this, this.settings, () => this.saveSettings());
+    });
+
+    // 注册「AI 规划台」中央窗口视图（对话式规划审阅台，占满编辑器区域）
+    // 注意：pendingPlanOpts 是打开时临时塞入的实例字段，重启恢复时必为 undefined，
+    // 工厂用可选参数接收，由 PlanEditorView.render() 兜底渲染「遗留占位页」。
+    this.registerView(VIEW_TYPE_PLAN_EDITOR, (leaf: WorkspaceLeaf) => {
+      return new PlanEditorView(leaf, this.pendingPlanOpts);
     });
 
     // 宿主 → webapp 直连接口（Phase3 门面，内部仍走 sendCommand 线协议）
@@ -131,6 +139,12 @@ export default class BambooReviewPlugin extends Plugin {
       callback: () => void this.aiDiagnose(),
     });
 
+    this.addCommand({
+      id: 'open-plan-editor-goals',
+      name: 'AI 规划：打开规划台编辑当前目标库',
+      callback: () => void this.openPlanEditorForGoals(),
+    });
+
     // 编辑器右键菜单：选中文本后右键直接出现「转为目标卡片」
     this.registerEvent(
       this.app.workspace.on('editor-menu', (menu, editor) => {
@@ -193,12 +207,12 @@ export default class BambooReviewPlugin extends Plugin {
       aiDecomposeDepth: s.aiDecomposeDepth,
     };
 
-    new AgenticPlanModal(this.app, {
+    void this.openPlanEditor({
       content,
       scope: 'note',
       settings: plannerSettings,
       onConfirm: (finalGoals) => void this.writeAiGoals(file, content, finalGoals),
-    }).open();
+    });
   }
 
   /** 选中文本转目标卡片：取编辑器选区 → 调大模型(标注 selection) → 校验 → 审阅弹窗 → 写入目标库 */
@@ -232,13 +246,13 @@ export default class BambooReviewPlugin extends Plugin {
       aiDecomposeDepth: s.aiDecomposeDepth,
     };
 
-    new AgenticPlanModal(this.app, {
+    void this.openPlanEditor({
       content: selection,
       scope: 'selection',
       settings: plannerSettings,
       subtitle: '以下目标基于你在笔记中选中的文本拆解（非整篇笔记）。',
       onConfirm: (finalGoals) => void this.writeAiGoals(file, selection, finalGoals),
-    }).open();
+    });
   }
 
   /** 把审阅后的目标追加写入目标库（零污染：existing + parsed）并更新幂等索引 */
@@ -396,7 +410,7 @@ export default class BambooReviewPlugin extends Plugin {
         new DiagnosisModal(this.app, o).open();
       },
       openApplyPreview: (o) => new SuggestionApplyModal(this.app, o).open(),
-      openAgentic: (o) => new AgenticPlanModal(this.app, o).open(),
+      openAgentic: (o) => void this.openPlanEditor(o),
       writeGoals: (g) => void this.writeDiagnosedGoals(g),
       notice: (m) => new Notice(m),
       recentDays: 14,
@@ -447,7 +461,7 @@ export default class BambooReviewPlugin extends Plugin {
       `请根据以下健康分诊断，优化目标「${goal.title}」：\n${hintsLine}\n` +
       '要求：保持量化铁律（纯数字 dailyMin、日颗粒度、可数代理指标），只做必要的增删改。';
 
-    new AgenticPlanModal(this.app, {
+    void this.openPlanEditor({
       content: '',
       scope: 'note',
       goals,
@@ -455,7 +469,56 @@ export default class BambooReviewPlugin extends Plugin {
       settings: plannerSettings,
       subtitle: `AI 改进 · ${goal.title}`,
       onConfirm: (g) => void this.writeDiagnosedGoals(g),
-    }).open();
+    });
+  }
+
+  /** 打开「AI 规划台」中央窗口（复用已有标签页，否则新建）并挂载给定 opts */
+  private pendingPlanOpts?: AgenticPlanOptions;
+
+  async openPlanEditor(opts: AgenticPlanOptions): Promise<void> {
+    const { workspace } = this.app;
+    const leaves = workspace.getLeavesOfType(VIEW_TYPE_PLAN_EDITOR);
+    if (leaves.length > 0) {
+      const view = leaves[0].view as PlanEditorView;
+      await view.reload(opts);
+      await workspace.revealLeaf(leaves[0]);
+      return;
+    }
+    const leaf = workspace.getLeaf(false);
+    this.pendingPlanOpts = opts;
+    await leaf.setViewState({ type: VIEW_TYPE_PLAN_EDITOR, active: true });
+    // 消费后立即清理，避免遗留值被后续重启工厂误用（也无法跨重启保留）
+    this.pendingPlanOpts = undefined;
+    await workspace.revealLeaf(leaf);
+  }
+
+  /** 命令面板：直接打开规划台编辑当前目标库（不依赖笔记，随时可调用） */
+  private async openPlanEditorForGoals(): Promise<void> {
+    const s = this.settings;
+    if (!s.aiEnabled) {
+      new Notice('AI 规划未启用：请先在插件设置中开启并填写 API Key');
+      return;
+    }
+    const storage = new VaultStorage(this.app);
+    const goals = await storage.getGoals();
+    if (goals.length === 0) {
+      new Notice('你还没有目标，先跑一次 AI 规划');
+      return;
+    }
+    const plannerSettings: PlannerSettings = {
+      aiApiKey: s.aiApiKey,
+      aiBaseUrl: s.aiBaseUrl,
+      aiModel: s.aiModel,
+      aiDecomposeDepth: s.aiDecomposeDepth,
+    };
+    await this.openPlanEditor({
+      content: '',
+      scope: 'note',
+      settings: plannerSettings,
+      goals,
+      subtitle: '正在编辑你当前的目标库，可直接改或用自然语言让我调整。',
+      onConfirm: (finalGoals) => void this.writeDiagnosedGoals(finalGoals),
+    });
   }
 
   /** 激活或创建复盘视图 */

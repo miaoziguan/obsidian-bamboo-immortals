@@ -18,6 +18,7 @@ import { DiagnosisModal } from './src/ai/DiagnosisModal';
 import { SuggestionApplyModal } from './src/ai/SuggestionApplyModal';
 import { diagnose } from './src/ai/GoalDiagnoser';
 import { runDiagnosis } from './src/ai/runDiagnosis';
+import { DiagnosisProgressModal } from './src/ai/DiagnosisProgressModal';
 import type { GoalItem } from './src/types/data';
 
 /** 内容指纹（djb2），用于 AI 规划幂等判重 */
@@ -378,18 +379,25 @@ export default class BambooReviewPlugin extends Plugin {
       aiDecomposeDepth: s.aiDecomposeDepth,
     };
     const storage = new VaultStorage(this.app);
+    const progress = new DiagnosisProgressModal(this.app);
+    progress.open();
     await runDiagnosis({
       aiEnabled: s.aiEnabled,
       plannerSettings,
       storage,
       diagnose: diagnose as unknown as typeof diagnose,
-      openDiagnosis: (o) => new DiagnosisModal(this.app, o).open(),
+      onPhase: (p, l) => progress.setPhase(p, l),
+      openDiagnosis: (o) => {
+        progress.close();
+        new DiagnosisModal(this.app, o).open();
+      },
       openApplyPreview: (o) => new SuggestionApplyModal(this.app, o).open(),
       openAgentic: (o) => new AgenticPlanModal(this.app, o).open(),
       writeGoals: (g) => void this.writeDiagnosedGoals(g),
       notice: (m) => new Notice(m),
       recentDays: 14,
     });
+    progress.close(); // 安全兜底：报告异常未打开时也关闭
   }
 
   /** 诊断建议应用后的落库：写 goals.json + 刷新常驻视图（不碰幂等索引/ sourceRef） */

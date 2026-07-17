@@ -1027,6 +1027,68 @@ html body .workspace-leaf-content[data-type="bamboo-immortals"] .view-header-tit
   box-shadow: 0 1px 2px color-mix(in srgb, var(--interactive-accent) 30%, transparent);
 }
 
+/* ===== 诊断分阶段进度指示（替代 ⑤ 流式 SSE 逐字） ===== */
+.bamboo-progress-title {
+  margin: 0 0 4px;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-normal);
+}
+.bamboo-progress-sub {
+  margin: 0 0 16px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+.bamboo-progress-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.bamboo-progress-step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13.5px;
+  color: var(--text-muted);
+  transition: color 160ms ease;
+}
+.bamboo-progress-dot {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid var(--background-modifier-border);
+  background: var(--background-primary);
+  transition: border-color 160ms ease, background 160ms ease, box-shadow 160ms ease;
+}
+.bamboo-progress-step.is-done {
+  color: var(--text-normal);
+}
+.bamboo-progress-step.is-done .bamboo-progress-dot {
+  border-color: var(--interactive-success, #4caf82);
+  background: var(--interactive-success, #4caf82);
+}
+.bamboo-progress-step.is-current {
+  color: var(--text-normal);
+  font-weight: 700;
+}
+.bamboo-progress-step.is-current .bamboo-progress-dot {
+  border-color: var(--interactive-accent);
+  background: var(--interactive-accent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--interactive-accent) 22%, transparent);
+  animation: bamboo-progress-pulse 1.2s ease-in-out infinite;
+}
+.bamboo-progress-step.is-pending {
+  opacity: 0.55;
+}
+@keyframes bamboo-progress-pulse {
+  0%, 100% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--interactive-accent) 18%, transparent); }
+  50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--interactive-accent) 10%, transparent); }
+}
+.bamboo-progress-label {
+  line-height: 1.4;
+}
+
 /* ===== 报告级「一键应用全部建议」（MVP-2） ===== */
 .bamboo-diag-batchbar {
   display: flex;

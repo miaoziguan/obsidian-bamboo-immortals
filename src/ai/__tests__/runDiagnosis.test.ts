@@ -28,6 +28,13 @@ function baseDeps(over: Partial<DiagnosisDeps> = {}): DiagnosisDeps {
   };
 }
 
+const PHASE_LABELS: Record<string, string> = {
+  collect: '收集目标与执行记录',
+  analyze: '计算三维健康分与偏差',
+  ai: '调用 AI 诊断中…',
+  render: '解析诊断结果',
+};
+
 describe('runDiagnosis', () => {
   it('aiEnabled=false → notice 且不调 getGoals/diagnose', async () => {
     const d = baseDeps({ aiEnabled: false });
@@ -89,6 +96,24 @@ describe('runDiagnosis', () => {
     // 确认写入
     pv.onConfirm(edited);
     expect(d.writeGoals).toHaveBeenCalledWith(edited);
+  });
+
+  it('提供 onPhase → 按 collect→analyze→ai→render 顺序收到阶段事件且 label 正确', async () => {
+    const onPhase = vi.fn();
+    const d = baseDeps({ onPhase });
+    await runDiagnosis(d);
+    const calls = onPhase.mock.calls.map((c) => c[0]);
+    expect(calls).toEqual(['collect', 'analyze', 'ai', 'render']);
+    onPhase.mock.calls.forEach((c) => {
+      expect(c[1]).toBe(PHASE_LABELS[c[0] as string]);
+    });
+  });
+
+  it('不提供 onPhase → 仍正常完成诊断（可选字段无副作用）', async () => {
+    const d = baseDeps(); // 无 onPhase
+    await runDiagnosis(d);
+    expect(d.diagnose).toHaveBeenCalled();
+    expect(d.openDiagnosis).toHaveBeenCalledTimes(1);
   });
 
   it('「应用」建议未命中目标/子项 → notice 且不打开预览/不落库', async () => {

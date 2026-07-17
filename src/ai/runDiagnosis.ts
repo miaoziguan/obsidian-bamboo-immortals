@@ -21,6 +21,18 @@ export interface DiagnosisStorage {
   getDay(key: string): Promise<DayData | null>;
 }
 
+/** 诊断编排阶段（用于分阶段进度指示，替代 ⑤ 流式 SSE 逐字） */
+export type DiagnosisPhase = 'collect' | 'analyze' | 'ai' | 'render' | 'done';
+
+/** 阶段中文标签（与 DiagnosisProgressModal 共用，保持单一来源） */
+export const DIAGNOSIS_PHASE_LABEL: Record<DiagnosisPhase, string> = {
+  collect: '收集目标与执行记录',
+  analyze: '计算三维健康分与偏差',
+  ai: '调用 AI 诊断中…',
+  render: '解析诊断结果',
+  done: '完成',
+};
+
 /** SuggestionApplyModal 的入参（聚焦预览 + 人工闸门） */
 export interface ApplyPreviewOpts {
   suggestions: Suggestion[];
@@ -52,14 +64,19 @@ export interface DiagnosisDeps {
   writeGoals: (goals: GoalItem[]) => Promise<void> | void;
   notice: (msg: string) => void;
   recentDays?: number;
+  /** 可选：分阶段进度指示（替代 ⑤ 流式 SSE 逐字），编排各边界发事件 */
+  onPhase?: (phase: DiagnosisPhase, label: string) => void;
 }
 
 export async function runDiagnosis(deps: DiagnosisDeps): Promise<void> {
+  const emit = (p: DiagnosisPhase) => deps.onPhase?.(p, DIAGNOSIS_PHASE_LABEL[p]);
+
   if (!deps.aiEnabled) {
     deps.notice('AI 诊断未启用：请先在插件设置中开启并填写 API Key');
     return;
   }
 
+  emit('collect'); // ① 收集目标与执行记录
   const all = await deps.storage.getGoals();
   if (all.length === 0) {
     deps.notice('你还没有目标，先跑一次 AI 规划');
@@ -83,11 +100,14 @@ export async function runDiagnosis(deps: DiagnosisDeps): Promise<void> {
   }
 
   // 基于真实子项 + 完成记录，给报告弹窗提供证据
+  emit('analyze'); // ② 计算三维健康分与偏差
   const cache = buildCache(goals, days);
   const itemEvidence = buildItemEvidenceMap(goals, cache);
 
+  emit('ai'); // ③ 调用 AI 诊断（主要耗时）
   const result = await deps.diagnose(goals, days, deps.plannerSettings);
 
+  emit('render'); // ④ 解析诊断结果
   deps.openDiagnosis({
     diagnosis: result,
     itemEvidence,

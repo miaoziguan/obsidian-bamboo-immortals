@@ -10,7 +10,7 @@
  */
 import { requestUrl } from 'obsidian';
 import type { ChatMessage } from './PlanningSession';
-import { extractChatText } from './MarkdownPlanner';
+import { extractChatText, AI_TEMPERATURE } from './MarkdownPlanner';
 import type { AiFetchFn, AiResponse, PlannerSettings } from './MarkdownPlanner';
 import {
   buildCache,
@@ -322,7 +322,7 @@ export function buildDiagnosisMessages(
     '- evidenceRef 必须是该目标清单里真实存在的某个子项名（若瓶颈是目标级而非具体子项，填空字符串 ""）。',
     '- 这些建议会被**确定性程序**按 goalRef/target/params 直接改目标树（不再经 AI 重新理解），所以务必保证子项名/下标与清单完全一致、dailyMin 给具体数字。',
   ].join('\n');
-  const user = `各目标「健康分三维摘要」如下（诊断主依据，请据此判定 level / weakest / L1L2L3）：\n${healthBlock}\n\n各目标执行偏差硬指标如下（辅助参考）：\n${summary}\n\n各目标真实子项与完成证据如下（仅供归因参考，禁止编造清单外的子项）：\n${contextBlock}\n\n请据此诊断并给出可应用建议。`;
+  const user = `各目标「健康分三维摘要」如下（诊断主依据，请据此判定 level / weakest / L1L2L3）：\n${healthBlock}\n\n各目标执行偏差硬指标如下（辅助参考）：\n${summary}\n\n各目标真实子项与完成证据如下（仅供归因参考，禁止编造清单外的子项）：\n${contextBlock}\n\n请据此诊断并给出可落地纠偏建议。`;
   return [
     { role: 'system', content: system },
     { role: 'user', content: user },
@@ -346,7 +346,7 @@ async function callAi(
       model: settings.aiModel,
       messages,
       response_format: { type: 'json_object' },
-      temperature: 0.3,
+      temperature: AI_TEMPERATURE,
     }),
   });
 }

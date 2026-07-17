@@ -409,3 +409,51 @@ describe('GoalDiagnoser.parseDiagnosis — 结构化建议解析（#7）', () =>
     expect(s.params?.taskDayType).toBe('weekly');
   });
 });
+
+describe('GoalDiagnoser.buildDiagnosisMessages — 铁律快照（锁关键 token）', () => {
+  // 这些 token 是诊断提示词的「铁律」：三维模型 / 反直觉价值观 / 禁编造 /
+  // 确定性改写 / 结构化动作 / 健康分 schema。任一条被改丢，本测试即红，
+  // 防止将来调整 prompt 时把核心约束连同删掉（治理「文档与代码不同步」）。
+  const sys = buildDiagnosisMessages('硬指标摘要', '真实子项上下文', '健康分 62/100（需关注）')[0]
+    .content;
+
+  it('三维模型 L1/L2/L3 齐备', () => {
+    expect(sys).toContain('L1');
+    expect(sys).toContain('L2');
+    expect(sys).toContain('L3');
+  });
+
+  it('等级枚举 excellent/good/warning/risk 齐备', () => {
+    expect(sys).toContain('excellent');
+    expect(sys).toContain('good');
+    expect(sys).toContain('warning');
+    expect(sys).toContain('risk');
+  });
+
+  it('反直觉价值观（领先≠健康 / 停滞 / 均衡 / 最弱维度）齐备', () => {
+    expect(sys).toContain('领先');
+    expect(sys).toContain('停滞');
+    expect(sys).toContain('均衡');
+    expect(sys).toContain('最弱维度');
+  });
+
+  it('禁编造约束（严禁编造 + 清单白名单）齐备', () => {
+    expect(sys).toContain('严禁编造');
+    expect(sys).toContain('清单');
+  });
+
+  it('确定性改写说明齐备', () => {
+    expect(sys).toContain('确定性程序');
+  });
+
+  it('结构化动作枚举 adjust_dailyMin / remove_subitem / add_subitem 齐备', () => {
+    expect(sys).toContain('adjust_dailyMin');
+    expect(sys).toContain('remove_subitem');
+    expect(sys).toContain('add_subitem');
+  });
+
+  it('健康分 schema（healthScore / weakest）齐备', () => {
+    expect(sys).toContain('healthScore');
+    expect(sys).toContain('weakest');
+  });
+});

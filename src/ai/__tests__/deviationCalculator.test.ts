@@ -8,6 +8,7 @@ import {
   formatItemEvidenceForPrompt,
   type DayCacheEntry,
 } from '../DeviationCalculator';
+import { countWorkdays, getHolidays } from '../workdayCalendar';
 import type { DayData, GoalItem } from '../../types/data';
 
 function dayWithCompletion(date: string, gid: string, done = true): DayData {
@@ -230,5 +231,31 @@ describe('DeviationCalculator.buildItemEvidenceMap / formatItemEvidenceForPrompt
 
   it('formatItemEvidenceForPrompt 空目标 → 占位说明', () => {
     expect(formatItemEvidenceForPrompt([], buildCache([], []), today)).toContain('无子项');
+  });
+});
+
+describe('DeviationCalculator.computeGoalDeviation — 节假日感知（统一口径）', () => {
+  const today = new Date('2026-02-18T00:00:00');
+  const goal: GoalItem = {
+    id: 'g1',
+    title: '跨春节目标',
+    startDate: '2026-02-10',
+    endDate: '2026-03-01',
+    progress: 0,
+  };
+  it('预期进度排除法定节假日（春节整段被扣减），与共享函数口径一致', () => {
+    const cache = buildCache([goal], []);
+    const d = computeGoalDeviation(goal, cache, today);
+    const holidays = getHolidays(2026);
+    const start = new Date('2026-02-10T00:00:00');
+    const end = new Date('2026-03-01T00:00:00');
+    const expectedWd = countWorkdays(start, end, holidays);
+    const elapsedWd = countWorkdays(start, today, holidays);
+    const expected = expectedWd > 0 ? Math.round((elapsedWd / expectedWd) * 100) : 50;
+    // 与共享 workdayCalendar 计算完全一致（不重复造轮子）
+    expect(d.expectedProgress).toBe(expected);
+    // 关键回归锁：该窗口含春节（02-16~02-20 全为节假日），
+    // 不含节假日的旧口径会给出 50，统一后应更低
+    expect(d.expectedProgress).toBeLessThan(50);
   });
 });

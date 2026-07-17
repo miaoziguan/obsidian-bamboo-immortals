@@ -13,6 +13,7 @@
  * 零 Obsidian 依赖，纯函数可单测。
  */
 import type { DayData, GoalItem } from '../types/data';
+import { getHolidays, countWorkdays } from './workdayCalendar';
 
 export type DeviationStatus = 'on_track' | 'behind' | 'stuck' | 'done' | 'at_risk';
 
@@ -102,20 +103,6 @@ export function buildCache(goals: GoalItem[], days: DayData[]): DeviationCache {
   return { byDateKey, goalIds, totalDays: (days || []).length, itemCompletions, itemLastDone };
 }
 
-/** 含端点的工作日计数（周一~周五） */
-function countWorkdays(start: Date, end: Date): number {
-  let count = 0;
-  const cur = new Date(start.getFullYear(), start.getMonth(), start.getDate());
-  const last = new Date(end.getFullYear(), end.getMonth(), end.getDate());
-  if (cur > last) return 0;
-  while (cur <= last) {
-    const dow = cur.getDay();
-    if (dow !== 0 && dow !== 6) count++;
-    cur.setDate(cur.getDate() + 1);
-  }
-  return count;
-}
-
 function parseDate(s?: string): Date | null {
   if (!s) return null;
   const d = new Date(`${s}T00:00:00`);
@@ -144,13 +131,14 @@ export function computeGoalDeviation(
   const start = parseDate(goal.startDate);
   const end = parseDate(goal.endDate);
   const actualProgress = clamp(Number(goal.progress) || 0, 0, 100);
+  const holidays = getHolidays(today.getFullYear());
 
   let expectedProgress: number;
   let hasDates = false;
   if (start && end && start <= end) {
     hasDates = true;
-    const total = countWorkdays(start, end);
-    const elapsed = countWorkdays(start, today);
+    const total = countWorkdays(start, end, holidays);
+    const elapsed = countWorkdays(start, today, holidays);
     expectedProgress = total > 0 ? clamp((elapsed / total) * 100, 0, 100) : 50;
   } else {
     expectedProgress = 50; // 缺日期：保守中性基准
@@ -242,10 +230,11 @@ export function buildItemEvidence(
 
     const start = parseDate(it.startDate ?? goal.startDate);
     const end = parseDate(it.endDate ?? goal.endDate);
+    const holidays = getHolidays(today.getFullYear());
     let pacePct: number | null = null;
     if (start && end && start <= end) {
-      const total = countWorkdays(start, end);
-      const elapsed = countWorkdays(start, today);
+      const total = countWorkdays(start, end, holidays);
+      const elapsed = countWorkdays(start, today, holidays);
       pacePct = total > 0 ? clamp((elapsed / total) * 100, 0, 100) : null;
     }
     const paceDeviation =

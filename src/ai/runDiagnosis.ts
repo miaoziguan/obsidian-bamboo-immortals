@@ -6,6 +6,26 @@
  *  - 报告里点「应用」→ 打开 AgenticPlanModal（载入真实树 + 预填建议指令）；
  *  - Agentic 确认 → writeGoals 落库。
  * 所有副作用（读存储 / 打开 Modal / Notice / 落库）均通过 deps 注入，便于单测。
+ *
+ * ── 双路径出口状态机（应用建议时）───────────────────────────────────
+ * 入口：报告里 onApply / onApplyAll / onApplyAllDiagnosis
+ *    │
+ *    ▼
+ * ① 确定性改写（applySuggestion / applySuggestions，纯函数、按子项名/下标精准命中）
+ *    │  res.applied === false → Notice 退出（未改动）
+ *    ▼
+ * ② openApplyPreview（聚焦 diff 预览 + 人工闸门）
+ *    │
+ *    ├─ onConfirm     → writeGoals 落库           【主路径：确定性落库，结束】
+ *    │
+ *    └─ onEscalateAI → openAgentic（载入改写后树，让 AI 再打磨）
+ *                        │
+ *                        ▼
+ *                     Agentic 确认 → writeGoals 落库   【可选路径：AI 再打磨，结束】
+ *
+ * 设计意图：AI 只「提建议」，确定性程序「保准确」；升级 Agentic 是可选项，
+ * 不是确定性应用后的默认下一步（避免双重确认疲劳）。
+ * ─────────────────────────────────────────────────────────────────────
  */
 import type { PlannerSettings } from './MarkdownPlanner';
 import type { GoalItem, DayData } from '../types/data';

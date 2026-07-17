@@ -21,6 +21,7 @@ import {
   buildPrompt,
   extractChatText,
   parseGoals,
+  AI_TEMPERATURE,
   type AiFetchFn,
   type AiResponse,
   type PlannerSettings,
@@ -165,7 +166,7 @@ export class PlanningSession {
         model: this.settings.aiModel,
         messages: this.messages,
         response_format: { type: 'json_object' },
-        temperature: 0.3,
+        temperature: AI_TEMPERATURE,
       }),
     });
   }

@@ -11,6 +11,10 @@ import {
 import { VaultStorage } from './src/storage/VaultStorage';
 import { planFromNote, type PlannerSettings } from './src/ai/MarkdownPlanner';
 import { validateGoals } from './src/ai/GoalCardValidator';
+// 注意：goalId / idempotency 看似小模块，但被本文件真正使用（非孤儿）：
+//  - deriveStableGoalId：规划时由「笔记路径+标题」派生稳定 goalId，重规划原地更新而非追加重复；
+//  - shouldSkipPlanned：笔记内容未变时跳过重复规划写入（幂等）。
+// 删除前务必确认这两条调用（见 planFromSelection / ai-plan 流程）已迁移，否则会破坏线上功能。
 import { deriveStableGoalId } from './src/ai/goalId';
 import { shouldSkipPlanned } from './src/ai/idempotency';
 import { AgenticPlanModal } from './src/ai/AgenticPlanModal';
@@ -123,7 +127,7 @@ export default class BambooReviewPlugin extends Plugin {
 
     this.addCommand({
       id: 'ai-diagnose',
-      name: 'AI 诊断：分析目标执行并给出可应用建议',
+      name: 'AI 诊断：分析目标执行情况并给出可落地纠偏建议',
       callback: () => void this.aiDiagnose(),
     });
 

@@ -20,6 +20,13 @@ const DEPTH_HINT: Record<'粗' | '中' | '细', string> = {
   细: '5-8',
 };
 
+/**
+ * AI 推理温度（JSON 结构化输出场景下偏低，保证稳定可解析）。
+ * 三处 LLM 调用（MarkdownPlanner / PlanningSession / GoalDiagnoser）共用此常量，
+ * 避免散落写死、将来要调参时只改一处。
+ */
+export const AI_TEMPERATURE = 0.3;
+
 /** AI 服务返回的最小结构（兼容 Obsidian requestUrl 的 ResponseData） */
 export interface AiResponse {
   status: number;
@@ -288,7 +295,7 @@ export async function planFromNote(
           { role: 'user', content: user },
         ],
         response_format: { type: 'json_object' },
-        temperature: 0.3,
+        temperature: AI_TEMPERATURE,
       }),
     });
     if (resp.status < 200 || resp.status >= 300) {

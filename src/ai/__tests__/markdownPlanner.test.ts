@@ -1,5 +1,11 @@
 import { describe, it, expect, vi } from 'vitest';
-import { buildPrompt, parseGoals, planFromNote, type AiResponse } from '../MarkdownPlanner';
+import {
+  buildPrompt,
+  parseGoals,
+  planFromNote,
+  backfillItemDates,
+  type AiResponse,
+} from '../MarkdownPlanner';
 
 const settings = {
   aiApiKey: 'sk-test',
@@ -128,6 +134,138 @@ describe('parseGoals', () => {
     expect(system).toContain('硬性两关');
     expect(system).toContain('items 留空');
     expect(system).toContain('伪量化');
+  });
+});
+
+describe('子项日期兜底 backfillItemDates（对齐 web「大目标区间=子项最早/最晚」）', () => {
+  it('子项带日期 → 大目标区间被聚合为 min/max（web 口径，即使大目标原为空）', () => {
+    const goals = backfillItemDates([
+      {
+        id: 'g1',
+        title: '减重',
+        category: 'health',
+        startDate: '',
+        endDate: '',
+        progress: 0,
+        items: [
+          { name: '启动', dailyMin: '500', taskDayType: 'daily', startDate: '2026-07-18', endDate: '2026-08-15' },
+          { name: '减脂', dailyMin: '500', taskDayType: 'daily', startDate: '2026-08-15', endDate: '2026-09-12' },
+          { name: '冲刺', dailyMin: '350', taskDayType: 'daily', startDate: '2026-09-12', endDate: '2026-10-18' },
+        ],
+      },
+    ]);
+    expect(goals[0].startDate).toBe('2026-07-18');
+    expect(goals[0].endDate).toBe('2026-10-18');
+  });
+
+  it('单个 daily 子项 + 大目标有区间 → 子项继承全程', () => {
+    const goals = backfillItemDates([
+      {
+        id: 'g1',
+        title: 'x',
+        category: 'other',
+        startDate: '2026-01-01',
+        endDate: '2026-12-31',
+        progress: 0,
+        items: [{ name: '每日', dailyMin: '30', taskDayType: 'daily' }],
+      },
+    ]);
+    expect(goals[0].items![0].startDate).toBe('2026-01-01');
+    expect(goals[0].items![0].endDate).toBe('2026-12-31');
+  });
+
+  it('多个 daily 子项 + 大目标有区间 → 区间按数组顺序等切', () => {
+    const goals = backfillItemDates([
+      {
+        id: 'g1',
+        title: 'x',
+        category: 'other',
+        startDate: '2026-01-01',
+        endDate: '2026-01-31',
+        progress: 0,
+        items: [
+          { name: '阶段一', dailyMin: '1', taskDayType: 'daily' },
+          { name: '阶段二', dailyMin: '1', taskDayType: 'daily' },
+          { name: '阶段三', dailyMin: '1', taskDayType: 'daily' },
+        ],
+      },
+    ]);
+    const [a, b, c] = goals[0].items!;
+    expect(a.startDate).toBe('2026-01-01');
+    expect(a.endDate).toBe(b.startDate); // 段段相接
+    expect(b.endDate).toBe(c.startDate);
+    expect(c.endDate).toBe('2026-01-31'); // 末段落在总终点
+  });
+
+  it('非 daily 子项缺日期 → 继承大目标全程', () => {
+    const goals = backfillItemDates([
+      {
+        id: 'g1',
+        title: 'x',
+        category: 'other',
+        startDate: '2026-01-01',
+        endDate: '2026-12-31',
+        progress: 0,
+        items: [{ name: '每周体检', dailyMin: '1', taskDayType: 'weekly' }],
+      },
+    ]);
+    expect(goals[0].items![0].startDate).toBe('2026-01-01');
+    expect(goals[0].items![0].endDate).toBe('2026-12-31');
+  });
+
+  it('大目标与子项都无日期 → 原样返回，不崩溃', () => {
+    const goals = backfillItemDates([
+      {
+        id: 'g1',
+        title: 'x',
+        category: 'other',
+        startDate: '',
+        endDate: '',
+        progress: 0,
+        items: [{ name: '每日', dailyMin: '30', taskDayType: 'daily' }],
+      },
+    ]);
+    expect(goals[0].items![0].startDate).toBeUndefined();
+    expect(goals[0].items![0].endDate).toBeUndefined();
+  });
+
+  it('模型已给的子项日期不被覆盖', () => {
+    const goals = backfillItemDates([
+      {
+        id: 'g1',
+        title: 'x',
+        category: 'other',
+        startDate: '2026-01-01',
+        endDate: '2026-12-31',
+        progress: 0,
+        items: [
+          { name: '已有', dailyMin: '1', taskDayType: 'daily', startDate: '2026-03-01', endDate: '2026-03-31' },
+          { name: '缺的', dailyMin: '1', taskDayType: 'daily' },
+        ],
+      },
+    ]);
+    expect(goals[0].items![0].startDate).toBe('2026-03-01');
+    expect(goals[0].items![0].endDate).toBe('2026-03-31');
+  });
+
+  it('parseGoals 端到端：阶段子项日期随模型输出保留，并被聚合进大目标', () => {
+    const out = parseGoals({
+      goals: [
+        {
+          title: '健康减重',
+          category: 'health',
+          startDate: '',
+          endDate: '',
+          items: [
+            { name: '快速启动', dailyMin: '500', taskDayType: 'daily', startDate: '2026-07-18', endDate: '2026-08-15' },
+            { name: '稳定减脂', dailyMin: '500', taskDayType: 'daily', startDate: '2026-08-15', endDate: '2026-09-12' },
+          ],
+        },
+      ],
+    });
+    expect(out[0].startDate).toBe('2026-07-18');
+    expect(out[0].endDate).toBe('2026-09-12');
+    expect(out[0].items![0].startDate).toBe('2026-07-18');
   });
 });
 

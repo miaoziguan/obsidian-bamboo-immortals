@@ -12,6 +12,7 @@
 import { requestUrl } from 'obsidian';
 import { GOAL_CATEGORIES, type GoalCategory, type GoalItem, type GoalSubItem } from '../types/data';
 import { cleanDailyMin } from './GoalCardValidator';
+import { FRAMEWORKS, type FrameworkType } from './frameworks';
 
 /** 拆解粒度 → 建议子项数量区间描述 */
 const DEPTH_HINT: Record<'粗' | '中' | '细', string> = {
@@ -56,11 +57,15 @@ const CATEGORY_IDS = GOAL_CATEGORIES.map((c) => c.id).join(' | ');
  * 构造提示词。
  * @returns { system, user } 两段消息
  */
-export function buildPrompt(
-  content: string,
-  depth: '粗' | '中' | '细' = '中',
-  scope: 'note' | 'selection' = 'note'
-): { system: string; user: string } {
+/**
+ * 通用「量化铁律」system（不含任何专业框架指引）。
+ * 单目标 buildPrompt 与多目标 buildMultiPrompt 共用同一份，
+ * 确保框架注入只发生在「追加」位置，通用铁律单一来源、零漂移。
+ */
+function buildSystemBase(
+  depth: '粗' | '中' | '细',
+  scope: 'note' | 'selection'
+): string {
   const count = DEPTH_HINT[depth] ?? DEPTH_HINT['中'];
 
   // 选中片段模式：明确告诉模型把它当完整意图，不要当成整篇笔记/假设还有其它内容。
@@ -69,7 +74,7 @@ export function buildPrompt(
       ? '若输入是用户从笔记中选中的片段，请直接把它当作用户的完整意图来拆解，不要假设笔记里还有其它内容、也不要当成整篇笔记的摘要。'
       : '';
 
-  const system = `你是一个目标拆解助手，服务于个人目标管理插件「竹林修仙传」。
+  return `你是一个目标拆解助手，服务于个人目标管理插件「竹林修仙传」。
 输入是一篇 Markdown 笔记正文；你的任务是从中识别用户想要达成的目标（Goal），并把每个目标拆成多个可执行的子项（SubItem）。${scopeNote}
 
 # 核心哲学（最重要，凌驾于一切）
@@ -124,6 +129,8 @@ export function buildPrompt(
           "currentValue": "当前已达成值(字符串)，未知留空串",
           "dailyMin": "每天需推进的量，必须是纯数字字符串(如 '30')，不带单位",
           "taskDayType": "daily",
+          "startDate": "该子项(阶段)的起始日期 YYYY-MM-DD。若是贯穿整个目标的日级动作可留空由系统兜底；若是明确阶段(如'第1-4周')应填该阶段起止日期",
+          "endDate": "该子项的截止日期 YYYY-MM-DD，未知留空串",
           "reason": "为何这样拆（仅展示用，不持久化）"
         }
       ]
@@ -155,12 +162,79 @@ export function buildPrompt(
       · 笔记「每天跑步 30 分钟、控制饮食」 → 标题「养成运动习惯」
     - 反例（禁止）：标题与笔记首句逐字相同、保留原始"3个月"/"5kg"/"我想"等具体数字与时间限定。
 13. **每个目标必须给出 analysis（归纳分析）**：用 1-2 句概括笔记主旨，并说明「为何这样拆、关键风险或注意点」，≤40 字。这是给用户的"归纳 + 分析"，不要只复述标题或留空。仅展示用，不持久化为子项。`;
+}
+
+export function buildPrompt(
+  content: string,
+  depth: '粗' | '中' | '细' = '中',
+  scope: 'note' | 'selection' = 'note',
+  framework?: FrameworkType
+): { system: string; user: string } {
+  let system = buildSystemBase(depth, scope);
 
   const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
   const user =
     scope === 'selection'
       ? `今天是 ${today}。\n\n以下是用户在笔记中选中的一段文本，请直接把它作为一个/多个目标来拆解（不要当成整篇笔记）：\n${content}`
       : `今天是 ${today}。\n\n笔记正文：\n${content}`;
+
+  // Layer A：专业框架选择（Phase 3）。
+  // 不传 / 'quantify' → 不追加，提示词与历史版本【完全一致】（向后兼容老路径）。
+  // 传 milestone / stage → 在其通用量化铁律之后【追加】对应专业框架指引，
+  // 仍要求产出纯数字 dailyMin（代理进度），兼容 GoalSubItem 数据模型与健康引擎。
+  if (framework && framework !== 'quantify') {
+    const frag = FRAMEWORKS[framework].fragment;
+    if (frag) system += frag;
+  }
+
+  return { system, user };
+}
+
+/**
+ * 多目标多框架（Phase 5）：一次把多个【相互独立】的目标交给规划器，
+ * 每个目标可指定各自的拆解框架（milestone / stage / quantify）。
+ *
+ * 设计：
+ *  - 通用量化铁律（buildSystemBase）只放【一份】在 system；
+ *  - 每个目标的【专属专业框架指引】追加在该目标的 user 段里
+ *    （而非塞进全局 system），这样每个目标都被正确框架化，互不串味；
+ *  - 纯数字 dailyMin 协议不变，兼容 GoalSubItem 数据模型与健康引擎。
+ *
+ * 向后兼容：旧路径（ai-plan-from-note / selection）仍走 buildPrompt（单目标），
+ * 本函数仅由「多目标分诊」链路调用。
+ */
+export interface PlanTarget {
+  /** 该目标已澄清的简报文本（由 briefToPlanningText 生成） */
+  content: string;
+  /** 该目标采用的拆解框架；缺省 / 'quantify' = 默认量化日级 */
+  framework?: FrameworkType;
+}
+
+export function buildMultiPrompt(
+  targets: PlanTarget[],
+  depth: '粗' | '中' | '细' = '中'
+): { system: string; user: string } {
+  const system = buildSystemBase(depth, 'note'); // 多目标无 scope 语义（每条已是简报文本）
+  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  const n = targets.length;
+
+  let user = `今天是 ${today}。\n\n下方包含 ${n} 个相互独立的目标（来自用户的不同意图）。请为【每一个目标】分别产出 goals 数组中的对应 GoalItem，且每个目标【必须】使用其标注的「拆解框架」：\n`;
+
+  targets.forEach((t, i) => {
+    const fw = t.framework && t.framework !== 'quantify' ? t.framework : undefined;
+    const fwName = fw ? FRAMEWORKS[fw].label : '量化日级框架（默认）';
+    user += `\n===== 目标 ${i + 1} · 采用「${fwName}」 =====\n${t.content}\n`;
+    if (fw) {
+      const frag = FRAMEWORKS[fw].fragment;
+      if (frag) user += frag + '\n';
+    }
+  });
+
+  user +=
+    `\n# 总要求\n` +
+    `- 输出一个 goals 数组，其中【第 k 个元素】对应上方的「目标 k」（k 从 1 开始计数）。\n` +
+    `- 每个目标严格使用其标注的框架拆解，但都须遵守通用量化铁律（纯数字 dailyMin、日颗粒度、可数代理指标）。\n` +
+    `- 只输出 JSON，不要任何解释、不要 markdown 围栏。`;
 
   return { system, user };
 }
@@ -200,7 +274,7 @@ export function parseGoals(rawText: unknown): GoalItem[] {
     throw new Error('goals 不是数组');
   }
 
-  return goals.map((g, gi): GoalItem => {
+  const mapped = goals.map((g, gi): GoalItem => {
     const goal = (g ?? {}) as Record<string, unknown>;
     const items = Array.isArray(goal.items)
       ? (goal.items as Record<string, unknown>[]).map((it, ii): GoalSubItem => {
@@ -211,6 +285,8 @@ export function parseGoals(rawText: unknown): GoalItem[] {
             currentValue: typeof item.currentValue === 'string' ? item.currentValue : '',
             dailyMin: cleanDailyMin(item.dailyMin),
             taskDayType: typeof item.taskDayType === 'string' ? item.taskDayType : 'daily',
+            startDate: typeof item.startDate === 'string' ? item.startDate : undefined,
+            endDate: typeof item.endDate === 'string' ? item.endDate : undefined,
             detail: typeof item.reason === 'string' ? item.reason : undefined,
           };
         })
@@ -230,6 +306,99 @@ export function parseGoals(rawText: unknown): GoalItem[] {
       progress: 0,
       items,
     };
+  });
+  return backfillItemDates(mapped);
+}
+
+/**
+ * 子项 / 大目标日期的【确定性】处理——口径与 web 端「大目标区间 = 子项最早/最晚」保持一致。
+ * 设计原则（与通用量化铁律一致）：日期推算必须确定、可复现，不依赖模型随机性。
+ *
+ * 两阶段（仅补全缺口，绝不覆盖模型已给的日期）：
+ *  阶段 1 · 聚合大目标区间：若至少有一个子项带合法起止日期，则
+ *           goal.startDate = min(子项.startDate)，goal.endDate = max(子项.endDate)。
+ *           这样 planner 产出与 web「由子项推算大目标」的口径完全一致。
+ *  阶段 2 · 兜底子项日期：以（阶段1 可能更新过的）大目标区间为锚：
+ *           - 非 daily 节奏(weekly / monthly / custom) → 继承大目标全程；
+ *           - 多个 daily 子项（典型阶段拆分）→ 将区间【等切】为对应段数、按数组顺序分配；
+ *           - 单个 daily 子项 → 继承大目标全程。
+ *  若大目标本身也无有效区间（模型既没给子项日期也没给大目标日期），则无法推算，原样返回。
+ */
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+function isValidDateStr(s?: string): boolean {
+  return typeof s === 'string' && DATE_RE.test(s);
+}
+function parseDateStr(s: string): Date {
+  const [y, m, d] = s.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d));
+}
+function fmtDate(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * 阶段 1：由子项最早/最晚日期反推大目标区间（与 web 同款口径）。
+ * 仅当至少一个子项带合法起止日期时才覆盖；否则保留模型给的大目标区间（可能也为空）。
+ */
+function aggregateGoalRange(items: GoalSubItem[], goal: GoalItem): void {
+  const dated = items.filter((it) => isValidDateStr(it.startDate) && isValidDateStr(it.endDate));
+  if (dated.length === 0) return;
+  let minT = Infinity;
+  let maxT = -Infinity;
+  for (const it of dated) {
+    const s = parseDateStr(it.startDate as string).getTime();
+    const e = parseDateStr(it.endDate as string).getTime();
+    if (s < minT) minT = s;
+    if (e > maxT) maxT = e;
+  }
+  goal.startDate = fmtDate(new Date(minT));
+  goal.endDate = fmtDate(new Date(maxT));
+}
+
+export function backfillItemDates(goals: GoalItem[]): GoalItem[] {
+  return goals.map((g) => {
+    const items = g.items ?? [];
+    if (items.length === 0) return g;
+
+    // 阶段 1：子项有日期 → 大目标区间跟随子项（web 口径，避免口径冲突）
+    aggregateGoalRange(items, g);
+
+    // 没有可用的大目标区间则无法兜底，原样返回
+    if (!isValidDateStr(g.startDate) || !isValidDateStr(g.endDate)) return g;
+    const start = parseDateStr(g.startDate as string);
+    const end = parseDateStr(g.endDate as string);
+    if (end.getTime() < start.getTime()) return g;
+
+    const dailyIdx: number[] = [];
+    items.forEach((it, i) => {
+      const nonDaily =
+        it.taskDayType === 'weekly' || it.taskDayType === 'monthly' || it.taskDayType === 'custom';
+      const hasDate = isValidDateStr(it.startDate) && isValidDateStr(it.endDate);
+      if (nonDaily && !hasDate) {
+        it.startDate = g.startDate;
+        it.endDate = g.endDate;
+      } else if (!nonDaily && !hasDate) {
+        dailyIdx.push(i);
+      }
+    });
+
+    const n = dailyIdx.length;
+    if (n === 1) {
+      const i = dailyIdx[0];
+      items[i].startDate = g.startDate;
+      items[i].endDate = g.endDate;
+    } else if (n > 1) {
+      const totalMs = end.getTime() - start.getTime();
+      const segMs = Math.floor(totalMs / n);
+      for (let k = 0; k < n; k++) {
+        const segStart = new Date(start.getTime() + segMs * k);
+        const segEnd = k === n - 1 ? end : new Date(start.getTime() + segMs * (k + 1));
+        const i = dailyIdx[k];
+        items[i].startDate = fmtDate(segStart);
+        items[i].endDate = fmtDate(segEnd);
+      }
+    }
+    return g;
   });
 }
 

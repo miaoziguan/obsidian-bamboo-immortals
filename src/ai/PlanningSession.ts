@@ -19,13 +19,16 @@ import { requestUrl } from 'obsidian';
 import { type GoalItem } from '../types/data';
 import {
   buildPrompt,
+  buildMultiPrompt,
   extractChatText,
   parseGoals,
   AI_TEMPERATURE,
   type AiFetchFn,
   type AiResponse,
   type PlannerSettings,
+  type PlanTarget,
 } from './MarkdownPlanner';
+import { type FrameworkType } from './frameworks';
 import { validateGoals as _validate } from './GoalCardValidator';
 
 /** 对话消息（对齐 OpenAI chat/completions messages） */
@@ -62,16 +65,28 @@ export class PlanningSession {
   private mode: 'note' | 'edit' = 'note';
   /** edit 模式的 system 上下文（含载入树 JSON），供 reset 还原 */
   private editSystemContent = '';
+  /** 多目标多框架（Phase 5）：每条目标各自 content + framework */
+  private targets?: PlanTarget[];
 
   constructor(
     private content: string,
     private settings: PlannerSettings,
     private fetchFn: AiFetchFn = requestUrl as unknown as AiFetchFn,
-    private scope: 'note' | 'selection' = 'note'
+    private scope: 'note' | 'selection' = 'note',
+    private framework?: FrameworkType,
+    targets?: PlanTarget[]
   ) {
-    const { system, user } = buildPrompt(content, settings.aiDecomposeDepth, scope);
-    this.messages.push({ role: 'system', content: system + AGENT_SUFFIX });
-    this.messages.push({ role: 'user', content: user });
+    this.targets = targets && targets.length > 0 ? targets : undefined;
+    if (this.targets) {
+      // 多目标多框架：通用铁律只放一份 system，各目标专属框架指引在 user 段
+      const { system, user } = buildMultiPrompt(this.targets, settings.aiDecomposeDepth);
+      this.messages.push({ role: 'system', content: system + AGENT_SUFFIX });
+      this.messages.push({ role: 'user', content: user });
+    } else {
+      const { system, user } = buildPrompt(content, settings.aiDecomposeDepth, scope, framework);
+      this.messages.push({ role: 'system', content: system + AGENT_SUFFIX });
+      this.messages.push({ role: 'user', content: user });
+    }
   }
 
   /** 首轮规划：返回初版 goals 并保存快照 */
@@ -124,7 +139,20 @@ export class PlanningSession {
       return;
     }
     this.goals = this.initialGoals;
-    const { system, user } = buildPrompt(this.content, this.settings.aiDecomposeDepth, this.scope);
+    if (this.targets) {
+      const { system, user } = buildMultiPrompt(this.targets, this.settings.aiDecomposeDepth);
+      this.messages = [
+        { role: 'system', content: system + AGENT_SUFFIX },
+        { role: 'user', content: user },
+      ];
+      return;
+    }
+    const { system, user } = buildPrompt(
+      this.content,
+      this.settings.aiDecomposeDepth,
+      this.scope,
+      this.framework
+    );
     this.messages = [
       { role: 'system', content: system + AGENT_SUFFIX },
       { role: 'user', content: user },

@@ -9,8 +9,7 @@ import {
   type BambooReviewSettings,
 } from './src/settings/PluginSettings';
 import { VaultStorage } from './src/storage/VaultStorage';
-import { planFromNote, type PlannerSettings } from './src/ai/MarkdownPlanner';
-import { validateGoals } from './src/ai/GoalCardValidator';
+import { type PlannerSettings } from './src/ai/MarkdownPlanner';
 // 注意：goalId / idempotency 看似小模块，但被本文件真正使用（非孤儿）：
 //  - deriveStableGoalId：规划时由「笔记路径+标题」派生稳定 goalId，重规划原地更新而非追加重复；
 //  - shouldSkipPlanned：笔记内容未变时跳过重复规划写入（幂等）。
@@ -18,6 +17,11 @@ import { validateGoals } from './src/ai/GoalCardValidator';
 import { deriveStableGoalId } from './src/ai/goalId';
 import { shouldSkipPlanned } from './src/ai/idempotency';
 import { DiagnosisModal } from './src/ai/DiagnosisModal';
+import { briefToPlanningText, type ElicitSettings } from './src/ai/GoalElicitor';
+import { GoalElicitorModal } from './src/ai/GoalElicitorModal';
+import { frameworkLabel, type FrameworkType } from './src/ai/frameworks';
+import type { PlanTarget } from './src/ai/MarkdownPlanner';
+import type { GoalBrief } from './src/types/data';
 import type { AgenticPlanOptions } from './src/ai/AgenticPlanController';
 import { PlanEditorView, VIEW_TYPE_PLAN_EDITOR } from './src/views/PlanEditorView';
 import { SuggestionApplyModal } from './src/ai/SuggestionApplyModal';
@@ -128,9 +132,15 @@ export default class BambooReviewPlugin extends Plugin {
     });
 
     this.addCommand({
-      id: 'ai-rebuild-goals',
-      name: 'AI 规划：批量重建已规划笔记的目标',
-      callback: () => void this.rebuildAiGoals(),
+      id: 'ai-elicit-from-note',
+      name: 'AI 澄清：先把模糊目标 sharpen 成可规划简报（当前笔记）',
+      callback: () => void this.elicitFromNote(),
+    });
+
+    this.addCommand({
+      id: 'ai-elicit-from-selection',
+      name: 'AI 澄清：先把模糊目标 sharpen 成可规划简报（选中文本）',
+      callback: () => void this.elicitFromSelection(),
     });
 
     this.addCommand({
@@ -156,6 +166,14 @@ export default class BambooReviewPlugin extends Plugin {
             .setIcon('leaf')
             .onClick(() => {
               void this.aiPlanFromSelection(text);
+            })
+        );
+        menu.addItem((item) =>
+          item
+            .setTitle('AI 澄清：先把模糊目标 sharpen 成简报')
+            .setIcon('quote')
+            .onClick(() => {
+              void this.elicitFromSelection(text);
             })
         );
       })
@@ -255,28 +273,127 @@ export default class BambooReviewPlugin extends Plugin {
     });
   }
 
+  /**
+   * Layer 0 入口：先把模糊意图送进「目标澄清」弹窗（压力测试 + 苏格拉底追问），
+   * 拿到一份通过/强制跳过的 GoalBrief 后，再把它编译成「已澄清文本」交给下游规划器拆解。
+   * 这是规划的前门——避免把"成为行业第一"这类不靠谱目标直接喂给除法式拆解。
+   */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async runElicit(rawIntent: string, file: TFile, _scope: 'note' | 'selection'): Promise<void> {
+    const s = this.settings;
+    if (!s.aiEnabled) {
+      new Notice('AI 规划未启用：请先在插件设置中开启并填写 API Key');
+      return;
+    }
+    const plannerSettings: PlannerSettings = {
+      aiApiKey: s.aiApiKey,
+      aiBaseUrl: s.aiBaseUrl,
+      aiModel: s.aiModel,
+      aiDecomposeDepth: s.aiDecomposeDepth,
+    };
+    const elicitorSettings: ElicitSettings = {
+      aiApiKey: s.aiApiKey,
+      aiBaseUrl: s.aiBaseUrl,
+      aiModel: s.aiModel,
+    };
+    new GoalElicitorModal(this.app, {
+      rawIntent,
+      settings: elicitorSettings,
+      onConfirm: (briefs: GoalBrief[], frameworks: FrameworkType[]) => {
+        const targets: PlanTarget[] = briefs.map((b, i) => ({
+          content: briefToPlanningText(b),
+          framework: frameworks[i],
+        }));
+        const fwNote =
+          targets.length > 1
+            ? `（多目标 · 分别采用 ${targets
+                .map((t) => frameworkLabel(t.framework ?? 'quantify'))
+                .join(' / ')}）`
+            : `（采用「${frameworkLabel(frameworks[0])}」）`;
+        const primary = briefs[0];
+        const planningText = targets.map((t) => t.content).join('\n\n');
+        void this.openPlanEditor({
+          targets,
+          scope: 'note',
+          settings: plannerSettings,
+          subtitle:
+            (primary.reliabilityStatus === 'forced'
+              ? '目标未完全澄清（已强制提交），下面是规划拆解，请谨慎核对其量化口径。'
+              : '目标已澄清（可靠性通过），下面是规划拆解。可继续调整。') + fwNote,
+          onConfirm: (goals) => void this.writeAiGoals(file, planningText, goals),
+        });
+      },
+    }).open();
+  }
+
+  /** 选中文本先澄清：取编辑器选区 → 澄清弹窗 → 简报 → 下游规划 */
+  async elicitFromSelection(selectionArg?: string): Promise<void> {
+    const s = this.settings;
+    if (!s.aiEnabled) {
+      new Notice('AI 规划未启用：请先在插件设置中开启并填写 API Key');
+      return;
+    }
+    const file = this.app.workspace.getActiveFile();
+    if (!file || !(file instanceof TFile) || file.extension !== 'md') {
+      new Notice('AI 澄清：请先打开一篇 Markdown 笔记');
+      return;
+    }
+    const selection =
+      (selectionArg && selectionArg.trim()) ||
+      this.app.workspace.getActiveViewOfType(MarkdownView)?.editor.getSelection()?.trim() ||
+      '';
+    if (!selection) {
+      new Notice('请先选中一段文本，再执行「先把模糊目标 sharpen」');
+      return;
+    }
+    void this.runElicit(selection, file, 'selection');
+  }
+
+  /** 整篇笔记先澄清：取当前笔记 → 澄清弹窗 → 简报 → 下游规划 */
+  async elicitFromNote(): Promise<void> {
+    const s = this.settings;
+    if (!s.aiEnabled) {
+      new Notice('AI 规划未启用：请先在插件设置中开启并填写 API Key');
+      return;
+    }
+    const file = this.app.workspace.getActiveFile();
+    if (!file || !(file instanceof TFile) || file.extension !== 'md') {
+      new Notice('AI 澄清：请先打开一篇 Markdown 笔记');
+      return;
+    }
+    let content = '';
+    try {
+      content = await this.app.vault.read(file);
+    } catch (e) {
+      new Notice(`读取笔记失败：${e instanceof Error ? e.message : '未知错误'}`);
+      return;
+    }
+    if (!content.trim()) {
+      new Notice('AI 澄清：笔记内容为空');
+      return;
+    }
+    void this.runElicit(content, file, 'note');
+  }
+
   /** 把审阅后的目标追加写入目标库（零污染：existing + parsed）并更新幂等索引 */
   /**
    * 把审阅后的目标追加写入目标库（零污染：existing + parsed）并更新幂等索引。
-   * @param silent 批量重建时抑制逐条通知，由调用方统一汇总（默认 false）
    */
   async writeAiGoals(
     file: TFile,
     content: string,
-    goals: GoalItem[],
-    silent = false
+    goals: GoalItem[]
   ): Promise<void> {
     // 统一写入 webapp 实际读取的默认路径（bamboo-review），确保 AI 写入的目标与界面读取一致。
     const storage = new VaultStorage(this.app);
     const existing = await storage.getGoals();
 
-    // 幂等：同一笔记 + 相同内容已规划过，且目标仍全部存在 → 跳过（批量重建模式强制重写）。
-    // 关键修复：若目标已被清空/丢失（plans-map 残留旧哈希），则必须允许重新写入以恢复，
-    // 否则“已规划过”会永久阻塞恢复，表现为“写入了但不显示/丢失”。
+    // 幂等：同一笔记 + 相同内容已规划过，且目标仍全部存在 → 跳过；
+    // 若目标已被清空/丢失（plans-map 残留旧哈希），则继续向下重新写入以恢复。
     const index = await storage.getPlansIndex();
     const key = `${file.path}#${hashContent(content)}`;
     const plannedIds = index[key];
-    if (!silent && shouldSkipPlanned(plannedIds, new Set(existing.map((g) => g.id)))) {
+    if (shouldSkipPlanned(plannedIds, new Set(existing.map((g) => g.id)))) {
       new Notice('该笔记已规划过（内容未变），已跳过重复写入');
       return;
     }
@@ -321,66 +438,7 @@ export default class BambooReviewPlugin extends Plugin {
     // 局部刷新常驻视图（host→webapp goals:changed）
     this.webapp.notifyGoalsChanged();
 
-    if (!silent) {
-      new Notice(`已写入 ${withRef.length} 个目标到「竹林修仙传」`);
-    }
-  }
-
-  /**
-   * 批量重建 AI 目标：扫描 plans-map 中「已规划过」的笔记，逐篇重新规划，
-   * 以找回那些目标已丢失/被清的历史遗留。笔记已删除则跳过（其 stale entry 由索引清理处理）。
-   */
-  async rebuildAiGoals(): Promise<void> {
-    const storage = new VaultStorage(this.app);
-    const index = await storage.getPlansIndex();
-    const paths = new Set<string>();
-    for (const k of Object.keys(index)) {
-      const hashIdx = k.lastIndexOf('#');
-      if (hashIdx > 0) paths.add(k.slice(0, hashIdx));
-    }
-    if (paths.size === 0) {
-      new Notice('未发现任何已规划的笔记');
-      return;
-    }
-
-    const s = this.settings;
-    if (!s.aiEnabled) {
-      new Notice('AI 规划未启用：请先在插件设置中开启并填写 API Key');
-      return;
-    }
-    const plannerSettings: PlannerSettings = {
-      aiApiKey: s.aiApiKey,
-      aiBaseUrl: s.aiBaseUrl,
-      aiModel: s.aiModel,
-      aiDecomposeDepth: s.aiDecomposeDepth,
-    };
-
-    const loading = new Notice(`正在重建 ${paths.size} 篇笔记的 AI 目标…`, 0);
-    let ok = 0;
-    let failed = 0;
-    for (const p of paths) {
-      const file = this.app.vault.getAbstractFileByPath(p);
-      if (!(file instanceof TFile)) continue; // 笔记已删除 → 跳过
-      let content: string;
-      try {
-        content = await this.app.vault.read(file);
-      } catch {
-        continue;
-      }
-      if (!content.trim()) continue;
-      try {
-        const raw = await planFromNote(content, plannerSettings);
-        const parsed = validateGoals(raw);
-        if (parsed.length > 0) {
-          await this.writeAiGoals(file, content, parsed, true);
-          ok++;
-        }
-      } catch {
-        failed++;
-      }
-    }
-    loading.hide();
-    new Notice(`已重建 ${ok} 篇笔记的 AI 目标${failed > 0 ? `，${failed} 篇失败` : ''}`);
+    new Notice(`已写入 ${withRef.length} 个目标到「竹林修仙传」`);
   }
 
   /**

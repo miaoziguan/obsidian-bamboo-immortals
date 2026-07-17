@@ -1237,3 +1237,258 @@ html body .workspace-leaf-content[data-type="bamboo-immortals"] .view-header-tit
   word-break: break-word;
   color: var(--text-muted);
 }
+
+/* ===== Layer 0：AI 目标澄清弹窗 ===== */
+.bamboo-elicit-modal {
+  max-width: 620px;
+}
+.bamboo-elicit-desc {
+  margin: 2px 0 14px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+.bamboo-elicit-raw {
+  display: flex;
+  gap: 8px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  background: var(--background-secondary);
+}
+.bamboo-elicit-raw-label {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-faint);
+}
+.bamboo-elicit-raw-text {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-normal);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.bamboo-elicit-status {
+  min-height: 18px;
+  margin-bottom: 8px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+.bamboo-elicit-status-loading {
+  color: var(--interactive-accent);
+}
+.bamboo-elicit-status-error {
+  color: var(--text-error);
+  margin-right: 10px;
+}
+.bamboo-elicit-summary {
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-normal);
+}
+.bamboo-elicit-tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.bamboo-elicit-tags-label {
+  font-size: 12px;
+  color: var(--text-faint);
+}
+.bamboo-elicit-tag {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 9px;
+  border-radius: 999px;
+  color: color-mix(in srgb, var(--text-warning) 82%, var(--text-normal));
+  background: color-mix(in srgb, var(--text-warning) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text-warning) 30%, transparent);
+}
+.bamboo-elicit-questions {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+.bamboo-elicit-q {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 10px;
+  background: var(--background-primary);
+}
+.bamboo-elicit-q-disease {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: color-mix(in srgb, var(--interactive-accent) 78%, var(--text-normal));
+}
+.bamboo-elicit-q-text {
+  font-size: 13.5px;
+  line-height: 1.55;
+  font-weight: 500;
+  color: var(--text-normal);
+}
+.bamboo-elicit-q-input {
+  width: 100%;
+  resize: vertical;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-modifier-form-field);
+  color: var(--text-normal);
+  font-size: 13px;
+  line-height: 1.5;
+  font-family: var(--font-text);
+}
+.bamboo-elicit-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.bamboo-elicit-btn {
+  height: 32px;
+  padding: 0 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  transition: filter 150ms ease, transform 150ms ease, box-shadow 150ms ease;
+}
+.bamboo-elicit-btn-primary {
+  border: 1px solid var(--interactive-accent);
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--interactive-accent) 35%, transparent);
+}
+.bamboo-elicit-btn-primary:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+.bamboo-elicit-btn-ghost {
+  border: 1px solid var(--background-modifier-border);
+  background: transparent;
+  color: var(--text-muted);
+}
+.bamboo-elicit-btn-ghost:hover {
+  color: var(--text-normal);
+  border-color: color-mix(in srgb, var(--interactive-accent) 40%, var(--background-modifier-border));
+}
+.bamboo-elicit-brief-title-ok {
+  margin: 0 0 12px;
+  color: var(--text-success);
+}
+.bamboo-elicit-brief-title-warn {
+  margin: 0 0 12px;
+  color: var(--text-warning);
+}
+.bamboo-elicit-brief {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 10px;
+  background: var(--background-secondary);
+}
+.bamboo-elicit-brief-row {
+  display: flex;
+  gap: 10px;
+  font-size: 13px;
+  line-height: 1.55;
+}
+.bamboo-elicit-brief-label {
+  flex-shrink: 0;
+  width: 96px;
+  font-weight: 600;
+  color: var(--text-faint);
+}
+.bamboo-elicit-brief-value {
+  flex: 1;
+  min-width: 0;
+  color: var(--text-normal);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.bamboo-elicit-brief-qa {
+  margin-top: 4px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--background-modifier-border);
+}
+.bamboo-elicit-brief-qa-q {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+.bamboo-elicit-brief-qa-a {
+  font-size: 13px;
+  color: var(--text-normal);
+  line-height: 1.55;
+  margin-bottom: 6px;
+}
+
+/* ===== Layer A：拆解框架选择（Phase 3） ===== */
+.bamboo-elicit-framework {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  border: 1px solid color-mix(in srgb, var(--interactive-accent) 28%, var(--background-modifier-border));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--interactive-accent) 7%, var(--background-secondary));
+}
+.bamboo-elicit-framework-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-faint);
+}
+.bamboo-elicit-framework-select {
+  align-self: flex-start;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-modifier-form-field);
+  color: var(--text-normal);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.bamboo-elicit-framework-desc {
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--text-muted);
+}
+
+/* ===== 多目标（Phase 5） ===== */
+.bamboo-elicit-split {
+  align-self: flex-start;
+  margin: 4px 0 12px;
+}
+.bamboo-elicit-brief + .bamboo-elicit-brief {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--background-modifier-border);
+}
+.bamboo-elicit-brief-idx {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--interactive-accent);
+  letter-spacing: 0.04em;
+  margin-bottom: 6px;
+}
+.bamboo-elicit-brief-del {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--text-error, var(--text-muted));
+}

@@ -24,7 +24,8 @@ import {
 } from '../types/data';
 import { classifyCompleteness, extractUnit } from './GoalCardValidator';
 import { PlanningSession } from './PlanningSession';
-import type { PlannerSettings } from './MarkdownPlanner';
+import type { PlannerSettings, PlanTarget } from './MarkdownPlanner';
+import type { FrameworkType } from './frameworks';
 
 interface ItemEntry {
   item: GoalSubItem;
@@ -37,11 +38,16 @@ interface GoalEntry {
 }
 
 export interface AgenticPlanOptions {
-  content: string;
+  /** 单目标正文（多目标 targets 模式时可省略，仅作占位） */
+  content?: string;
   scope: 'note' | 'selection';
   settings: PlannerSettings;
   subtitle?: string;
   onConfirm: (goals: GoalItem[]) => void;
+  /** Layer A：专业框架选择（Phase 3）；缺省回落默认量化日级框架 */
+  framework?: FrameworkType;
+  /** 多目标多框架（Phase 5）：每条目标各自 content + 拆解框架；优先于上面的单目标字段 */
+  targets?: PlanTarget[];
   /** 提供时：以「编辑现有树」模式打开（走 session.loadGoals 而非 init） */
   goals?: GoalItem[];
   /** 载入后自动作为指令发送给 AI（用于「应用诊断建议」预填） */
@@ -71,7 +77,14 @@ export class AgenticPlanController {
   constructor(opts: AgenticPlanOptions) {
     this.subtitle = opts.subtitle;
     this.opts = opts;
-    this.session = new PlanningSession(opts.content, opts.settings, undefined, opts.scope);
+    this.session = new PlanningSession(
+      opts.content ?? '',
+      opts.settings,
+      undefined,
+      opts.scope,
+      opts.framework,
+      opts.targets
+    );
   }
 
   /** 把规划台渲染进给定的根元素（弹窗用 contentEl，中央窗口用 view 容器） */

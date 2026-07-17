@@ -10,6 +10,7 @@
 import type { PlannerSettings } from './MarkdownPlanner';
 import type { GoalItem, DayData } from '../types/data';
 import { diagnose, type DiagnosisResult, type GoalDiagnosis } from './GoalDiagnoser';
+import { applySuggestion, applySuggestions, type Suggestion } from './Suggestion';
 import { buildCache, buildItemEvidenceMap, type ItemEvidence } from './DeviationCalculator';
 import { TUNING } from './healthScore';
 import type { AgenticPlanOptions } from './AgenticPlanModal';
@@ -20,6 +21,16 @@ export interface DiagnosisStorage {
   getDay(key: string): Promise<DayData | null>;
 }
 
+/** SuggestionApplyModal 的入参（聚焦预览 + 人工闸门） */
+export interface ApplyPreviewOpts {
+  suggestions: Suggestion[];
+  before: GoalItem[];
+  after: GoalItem[];
+  onConfirm: (goals: GoalItem[]) => void;
+  onEscalateAI?: (goals: GoalItem[]) => void;
+  title?: string;
+}
+
 export interface DiagnosisDeps {
   aiEnabled: boolean;
   plannerSettings: PlannerSettings;
@@ -28,8 +39,13 @@ export interface DiagnosisDeps {
   openDiagnosis: (opts: {
     diagnosis: DiagnosisResult;
     itemEvidence?: Record<string, ItemEvidence[]>;
-    onApply: (goal: GoalDiagnosis) => void;
+    /** 逐条应用：点某条建议传入 (goal, suggestion)（#7 结构化） */
+    onApply: (goal: GoalDiagnosis, suggestion: Suggestion) => void;
+    /** 可选：应用该 goal 全部建议 */
+    onApplyAll?: (goal: GoalDiagnosis) => void;
   }) => void;
+  /** 确定性改写后的聚焦预览（#7） */
+  openApplyPreview: (opts: ApplyPreviewOpts) => void;
   openAgentic: (opts: AgenticPlanOptions) => void;
   writeGoals: (goals: GoalItem[]) => Promise<void> | void;
   notice: (msg: string) => void;
@@ -73,14 +89,49 @@ export async function runDiagnosis(deps: DiagnosisDeps): Promise<void> {
   deps.openDiagnosis({
     diagnosis: result,
     itemEvidence,
-    onApply: (goal) => {
-      deps.openAgentic({
-        content: '',
-        scope: 'note',
-        settings: deps.plannerSettings,
-        goals,
-        initialInstruction: goal.suggestions.join('；'),
-        onConfirm: (finalGoals) => void deps.writeGoals(finalGoals),
+    onApply: (goal, suggestion) => {
+      // #7：确定性改写，按子项名精准命中，不再交给 AI 二次猜测
+      const res = applySuggestion(suggestion, goals);
+      if (!res.applied) {
+        deps.notice('该建议未匹配到目标/子项，未改动');
+        return;
+      }
+      deps.openApplyPreview({
+        suggestions: [suggestion],
+        before: goals,
+        after: res.goals,
+        onConfirm: (final) => void deps.writeGoals(final),
+        onEscalateAI: (final) =>
+          deps.openAgentic({
+            content: '',
+            scope: 'note',
+            settings: deps.plannerSettings,
+            goals: final,
+            onConfirm: (f) => void deps.writeGoals(f),
+          }),
+        title: `应用建议 · ${goal.title}`,
+      });
+    },
+    onApplyAll: (goal) => {
+      const res = applySuggestions(goal.suggestions, goals);
+      if (!res.applied) {
+        deps.notice('该目标建议未匹配到目标/子项，未改动');
+        return;
+      }
+      deps.openApplyPreview({
+        suggestions: goal.suggestions,
+        before: goals,
+        after: res.goals,
+        onConfirm: (final) => void deps.writeGoals(final),
+        onEscalateAI: (final) =>
+          deps.openAgentic({
+            content: '',
+            scope: 'note',
+            settings: deps.plannerSettings,
+            goals: final,
+            onConfirm: (f) => void deps.writeGoals(f),
+          }),
+        title: `应用建议 · ${goal.title}`,
       });
     },
   });

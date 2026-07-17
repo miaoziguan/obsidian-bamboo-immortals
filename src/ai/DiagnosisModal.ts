@@ -16,6 +16,7 @@
  */
 import { Modal, App } from 'obsidian';
 import type { DiagnosisResult, GoalDiagnosis } from './GoalDiagnoser';
+import type { Suggestion } from './Suggestion';
 import type { ItemEvidence } from './DeviationCalculator';
 
 const STATUS_LABEL: Record<string, string> = {
@@ -43,7 +44,10 @@ const DIM_LABEL: Record<string, string> = {
 
 export interface DiagnosisModalOptions {
   diagnosis: DiagnosisResult;
-  onApply: (goal: GoalDiagnosis) => void;
+  /** 逐条应用：点某条建议时传入该 goal + 具体 suggestion（#7 结构化） */
+  onApply: (goal: GoalDiagnosis, suggestion: Suggestion) => void;
+  /** 可选：提供时，建议区顶部显示「应用全部」按钮（应用该 goal 全部建议） */
+  onApplyAll?: (goal: GoalDiagnosis) => void;
   /** 真实子项证据（按 goal.title 索引），默认折叠，展开后是紧凑表格 */
   itemEvidence?: Record<string, ItemEvidence[]>;
   title?: string;
@@ -235,6 +239,17 @@ export class DiagnosisModal extends Modal {
         cls: `bamboo-diag-focus-dim bamboo-diag-focus-dim-${goal.weakest}`,
       });
     }
+    // 「应用全部」：一次性应用该 goal 的全部建议（#7，确定性逐条应用）
+    if (this.opts.onApplyAll && goal.suggestions.length > 0) {
+      const allBtn = suggWrap.createEl('button', {
+        text: '应用全部',
+        cls: 'bamboo-diag-apply-all',
+      });
+      allBtn.addEventListener('click', () => {
+        this.opts.onApplyAll?.(goal);
+        this.close();
+      });
+    }
     for (const s of goal.suggestions) {
       this.renderSuggestionRow(suggWrap, s, goal);
     }
@@ -242,17 +257,24 @@ export class DiagnosisModal extends Modal {
 
   private renderSuggestionRow(
     parent: HTMLElement,
-    text: string,
+    s: Suggestion,
     goal: GoalDiagnosis
   ): void {
     const row = parent.createDiv({ cls: 'bamboo-diag-suggestion' });
-    row.createEl('div', { text, cls: 'bamboo-diag-suggestion-text' });
+    row.createEl('div', { text: s.text, cls: 'bamboo-diag-suggestion-text' });
+    // 维度标签（建议聚焦维度）
+    if (s.dimension && DIM_LABEL[s.dimension]) {
+      row.createSpan({
+        text: DIM_LABEL[s.dimension],
+        cls: `bamboo-diag-focus-dim bamboo-diag-focus-dim-${s.dimension}`,
+      });
+    }
     const btn = row.createEl('button', {
       text: '应用',
       cls: 'bamboo-diag-apply',
     });
     btn.addEventListener('click', () => {
-      this.opts.onApply(goal);
+      this.opts.onApply(goal, s);
       this.close();
     });
   }

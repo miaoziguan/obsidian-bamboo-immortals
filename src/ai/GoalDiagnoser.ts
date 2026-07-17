@@ -26,6 +26,7 @@ import {
   type HealthDimension,
 } from './healthScore';
 import type { DayData, GoalItem } from '../types/data';
+import type { Suggestion } from './Suggestion';
 
 export type DiagnosisStatus = 'on_track' | 'behind' | 'stuck' | 'done' | 'at_risk';
 
@@ -53,7 +54,8 @@ export interface GoalDiagnosis {
   /** 最弱维度：诊断与建议应聚焦于此 */
   weakest?: HealthDimension;
   bottleneck?: string;
-  suggestions: string[];
+  /** 结构化建议：每条精准命中具体子项（#7），弃用旧的自然语言 string[] */
+  suggestions: Suggestion[];
   /** 本诊断聚焦的真实子项名（必须来自真实子项清单，禁止编造） */
   evidenceRef?: string;
 }
@@ -92,6 +94,81 @@ function asNumber(v: unknown): number | undefined {
   return typeof v === 'number' && Number.isFinite(v) ? v : undefined;
 }
 
+/**
+ * 解析 suggestions：兼容旧的自然语言 string[] 与新的结构化对象[]。
+ * - 旧 string → 包成 { action:'note', text }（仅展示，不触发结构改动）；
+ * - 新对象 → 抽取 action/goalRef/target/params，非法 action 默认 'note'，
+ *   未给 goalRef.goalTitle 时回退到所属 goal 的 title。
+ */
+const VALID_ACTION: ReadonlySet<string> = new Set([
+  'adjust_dailyMin',
+  'remove_subitem',
+  'add_subitem',
+  'note',
+]);
+
+function parseSuggestions(raw: unknown, fallbackTitle: string): Suggestion[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.map((e): Suggestion => {
+    if (typeof e === 'string') {
+      return { action: 'note', goalRef: { goalTitle: fallbackTitle }, text: e };
+    }
+    if (!e || typeof e !== 'object') {
+      return { action: 'note', goalRef: { goalTitle: fallbackTitle }, text: '' };
+    }
+    const o = e as Record<string, unknown>;
+    const action = typeof o.action === 'string' && VALID_ACTION.has(o.action)
+      ? (o.action as Suggestion['action'])
+      : 'note';
+    const grRaw = o.goalRef && typeof o.goalRef === 'object' ? o.goalRef : o;
+    const gr = grRaw as Record<string, unknown>;
+    const goalRef = {
+      goalId: typeof gr.goalId === 'string' ? gr.goalId : undefined,
+      goalTitle:
+        typeof gr.goalTitle === 'string'
+          ? gr.goalTitle
+          : typeof o.goalTitle === 'string'
+            ? o.goalTitle
+            : fallbackTitle,
+    };
+    const t = o.target && typeof o.target === 'object' ? (o.target as Record<string, unknown>) : {};
+    const target =
+      typeof t.subItemName === 'string' || typeof t.subItemIndex === 'number'
+        ? {
+            subItemName: typeof t.subItemName === 'string' ? t.subItemName : undefined,
+            subItemIndex: typeof t.subItemIndex === 'number' ? t.subItemIndex : undefined,
+          }
+        : undefined;
+    const p = o.params && typeof o.params === 'object' ? (o.params as Record<string, unknown>) : {};
+    const params = {
+      dailyMin: asNumber(p.dailyMin),
+      name: typeof p.name === 'string' ? p.name : undefined,
+      taskDayType: typeof p.taskDayType === 'string' ? p.taskDayType : undefined,
+      detail: typeof p.detail === 'string' ? p.detail : undefined,
+    };
+    const dimension =
+      o.dimension === 'L1' || o.dimension === 'L2' || o.dimension === 'L3'
+        ? (o.dimension as 'L1' | 'L2' | 'L3')
+        : undefined;
+    return {
+      id: typeof o.id === 'string' ? o.id : undefined,
+      action,
+      goalRef,
+      target,
+      params:
+        params.dailyMin != null ||
+        params.name != null ||
+        params.taskDayType != null ||
+        params.detail != null
+          ? params
+          : undefined,
+      text: typeof o.text === 'string' ? o.text : '',
+      rationale: typeof o.rationale === 'string' ? o.rationale : undefined,
+      dimension,
+    };
+  });
+}
+
 function normalizeGoal(raw: unknown): GoalDiagnosis {
   const g = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
   const status: DiagnosisStatus = typeof g.status === 'string' && VALID_STATUS.has(g.status)
@@ -115,7 +192,7 @@ function normalizeGoal(raw: unknown): GoalDiagnosis {
     L3: asNumber(g.L3),
     weakest,
     bottleneck: typeof g.bottleneck === 'string' ? g.bottleneck : undefined,
-    suggestions: asStringArray(g.suggestions),
+    suggestions: parseSuggestions(g.suggestions, typeof g.title === 'string' ? g.title : ''),
     evidenceRef: typeof g.evidenceRef === 'string' ? g.evidenceRef : undefined,
   };
 }
@@ -229,15 +306,21 @@ export function buildDiagnosisMessages(
     '请基于上述模型 + 每目标真实子项证据做因果归因，并给出可操作建议。',
     '严格要求：',
     '- 只输出一个 JSON 对象，不要 markdown 围栏、不要任何额外解释文字。',
-    '- JSON 结构：{ "summary": string, "goals": [ { "title": string, "completion": number(0-100), "healthScore": number(0-100), "level": "excellent"|"good"|"warning"|"risk", "L1": number, "L2": number, "L3": number, "weakest": "L1"|"L2"|"L3", "status": "on_track"|"behind"|"stuck"|"done"|"at_risk", "bottleneck": string, "evidenceRef": string, "suggestions": string[] } ], "nextActions": string[] }',
+    '- JSON 结构：{ "summary": string, "goals": [ { "title": string, "completion": number(0-100), "healthScore": number(0-100), "level": "excellent"|"good"|"warning"|"risk", "L1": number, "L2": number, "L3": number, "weakest": "L1"|"L2"|"L3", "status": "on_track"|"behind"|"stuck"|"done"|"at_risk", "bottleneck": string, "evidenceRef": string, "suggestions": [ { "id": string, "action": "adjust_dailyMin"|"remove_subitem"|"add_subitem"|"note", "goalRef": {"goalId": string, "goalTitle": string}, "target": {"subItemName": string, "subItemIndex": number}, "params": {"dailyMin": number, "name": string, "taskDayType": string}, "text": string, "dimension": "L1"|"L2"|"L3" } ] } ], "nextActions": string[] }',
     '- healthScore/level/L1/L2/L3/weakest 必须与给定「健康分三维摘要」保持一致（直接采用摘要中的数值与最弱维度，不要自行另算）。',
     '- level 取自 excellent/good/warning/risk；weakest 取自 L1/L2/L3；status 取自给定枚举。',
     '- bottleneck 与 suggestions 必须围绕 weakest 维度展开：L1→履约/节奏、L2→重新激活动力（如先完成一个简单子项）、L3→停滞或均衡（关注边缘子项）。',
-    '- 「真实子项清单」是你唯一允许引用的子项来源。任何建议只能点名清单里真实存在的子项，并基于其真实的 dailyMin / percent / 节奏偏差给出具体数值建议。',
-    '- 严禁编造清单外的子项（例如虚构「每日研发字量」等），也禁止在 suggestions 里凭空新增子项；如需调整，只能对清单内已有子项提建议。',
+    '- 「真实子项清单」是你唯一允许引用的子项来源。suggestions 必须是**结构化对象**，能精准命中具体子项，而不是自然语言句子：',
+    '  · action 取枚举：adjust_dailyMin（调某子项每日量）/ remove_subitem（删某子项）/ add_subitem（新增子项）/ note（仅文案无改动）。',
+    '  · goalRef.goalId 必须填清单里该目标的 goalId（清单目标行已标注）；goalRef.goalTitle 填目标名。',
+    '  · target.subItemName 必须是清单里**真实存在的子项名（精确一致）**；也可填 target.subItemIndex（清单子项行已标注 [下标]）。',
+    '  · adjust_dailyMin 时，params.dailyMin 必须给**具体数字**（如把 30 降到 15 就写 15），不要写相对描述。',
+    '  · add_subitem 仅在确需新增时用，params.name 给子项名、params.dailyMin 给具体数字、params.taskDayType 给 daily/weekly/monthly。',
+    '  · remove_subitem 时 target 指向要删的子项名。',
+    '  · text 用一句中文说明这条建议（给人看），dimension 标它聚焦的维度（L1/L2/L3）。',
+    '- 严禁编造清单外的子项（例如虚构「每日研发字量」等）；add_subitem 也只允许你判断确有必要、且 name 明确。',
     '- evidenceRef 必须是该目标清单里真实存在的某个子项名（若瓶颈是目标级而非具体子项，填空字符串 ""）。',
-    '- suggestions 每条必须是一句【可直接交给另一个 AI 去改目标树】的自然语言指令，例如「将子项『喵字摇滚体』的 dailyMin 从 10 降到 7」「子项『未来甲骨文』当前落后节奏 Xpt，建议把 dailyMin 从 5 提到 8」。不要写空泛建议。',
-    '- 这些建议会被另一个 AI 当作指令执行去改目标树，所以只写针对清单内真实子项的、可落地的指令。',
+    '- 这些建议会被**确定性程序**按 goalRef/target/params 直接改目标树（不再经 AI 重新理解），所以务必保证子项名/下标与清单完全一致、dailyMin 给具体数字。',
   ].join('\n');
   const user = `各目标「健康分三维摘要」如下（诊断主依据，请据此判定 level / weakest / L1L2L3）：\n${healthBlock}\n\n各目标执行偏差硬指标如下（辅助参考）：\n${summary}\n\n各目标真实子项与完成证据如下（仅供归因参考，禁止编造清单外的子项）：\n${contextBlock}\n\n请据此诊断并给出可应用建议。`;
   return [

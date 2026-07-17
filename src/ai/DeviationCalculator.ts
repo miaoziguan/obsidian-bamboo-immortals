@@ -291,7 +291,7 @@ export function formatItemEvidenceForPrompt(
         ? evs
             .map(
               (e) =>
-                `    - ${e.name}｜dailyMin=${e.dailyMin || '?'}｜完成度=${
+                `    - [${e.index}] ${e.name}｜dailyMin=${e.dailyMin || '?'}｜完成度=${
                   e.percent != null ? e.percent + '%' : '?'
                 }｜节奏应完成=${e.pacePct != null ? e.pacePct + '%' : '?'}｜节奏偏差=${
                   e.paceDeviation != null ? e.paceDeviation + 'pt' : '?'
@@ -299,7 +299,7 @@ export function formatItemEvidenceForPrompt(
             )
             .join('\n')
         : '    （无子项）';
-      return `目标「${g.title}」：\n${lines}`;
+      return `目标「${g.title}」（goalId=${g.id}）：\n${lines}`;
     })
     .join('\n');
 }

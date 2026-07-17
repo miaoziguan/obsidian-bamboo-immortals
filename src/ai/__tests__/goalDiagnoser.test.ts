@@ -20,7 +20,11 @@ describe('GoalDiagnoser.parseDiagnosis', () => {
     expect(d.summary).toBe('3 个目标 1 达标 2 落后');
     expect(d.goals).toHaveLength(2);
     expect(d.goals[0].status).toBe('behind');
-    expect(d.goals[0].suggestions).toEqual(['将跑步 dailyMin 降到 15']);
+    // #7：旧的自然语言 string[] 被包成 note 结构化建议
+    expect(d.goals[0].suggestions).toHaveLength(1);
+    expect(d.goals[0].suggestions[0].action).toBe('note');
+    expect(d.goals[0].suggestions[0].text).toBe('将跑步 dailyMin 降到 15');
+    expect(d.goals[0].suggestions[0].goalRef.goalTitle).toBe('健康减重');
     // 非法 status 回退 behind
     expect(d.goals[1].status).toBe('behind');
     expect(d.nextActions).toEqual(['整体下调 dailyMin 约 20%']);
@@ -58,7 +62,11 @@ describe('GoalDiagnoser.buildDiagnosisMessages', () => {
     expect(sys).toContain('只输出一个 JSON');
     expect(sys).toContain('on_track');
     expect(sys).toContain('at_risk');
-    expect(sys).toContain('可直接交给另一个 AI 去改目标树');
+    // #7：结构化建议（确定性命中，而非自然语言交 AI 二次猜测）
+    expect(sys).toContain('adjust_dailyMin');
+    expect(sys).toContain('goalRef');
+    expect(sys).toContain('subItemName');
+    expect(sys).toContain('确定性程序');
     expect(msgs[1].content).toContain('减重');
   });
 });
@@ -125,8 +133,9 @@ describe('GoalDiagnoser.buildDiagnosisMessages — 真实子项上下文 + 禁�
     expect(sys).toContain('只输出一个 JSON');
     expect(sys).toContain('on_track');
     expect(sys).toContain('at_risk');
-    expect(sys).toContain('可直接交给另一个 AI 去改目标树');
-    expect(sys).toContain('禁止');
+    // #7：确定性程序直接改树（替代旧的“交另一个 AI”）
+    expect(sys).toContain('确定性程序');
+    expect(sys).toContain('严禁编造');
     expect(sys).toContain('清单');
     // user 同时含硬指标摘要与真实子项上下文
     const user = msgs[1].content;
@@ -184,7 +193,7 @@ describe('GoalDiagnoser.buildDiagnosisMessages — 健康分哲学注入', () =>
     expect(sys).toContain('只输出一个 JSON');
     expect(sys).toContain('on_track');
     expect(sys).toContain('at_risk');
-    expect(sys).toContain('可直接交给另一个 AI 去改目标树');
+    // #7：确定性程序直接改树（替代旧的“交另一个 AI”）
     // 新：三维健康模型 + 反直觉价值观
     expect(sys).toContain('L1');
     expect(sys).toContain('L2');
@@ -313,5 +322,90 @@ describe('GoalDiagnoser.diagnose — 透传真实子项上下文', () => {
     const body = JSON.parse(capturedBody);
     const userMsg = body.messages.find((m: { role: string }) => m.role === 'user');
     expect(userMsg.content).toContain('喵字摇滚体');
+  });
+});
+
+describe('GoalDiagnoser.parseDiagnosis — 结构化建议解析（#7）', () => {
+  it('结构化对象 → 解析为 Suggestion（action/goalRef/target/params）', () => {
+    const text = JSON.stringify({
+      goals: [
+        {
+          title: '健康减重',
+          status: 'behind',
+          suggestions: [
+            {
+              id: 's1',
+              action: 'adjust_dailyMin',
+              goalRef: { goalId: 'g1', goalTitle: '健康减重' },
+              target: { subItemName: '每天跑步' },
+              params: { dailyMin: 15 },
+              text: '跑步降到 15',
+              dimension: 'L1',
+            },
+          ],
+        },
+      ],
+    });
+    const d = parseDiagnosis(text);
+    expect(d.ok).toBe(true);
+    if (!d.ok) return;
+    const s = d.goals[0].suggestions[0];
+    expect(s.action).toBe('adjust_dailyMin');
+    expect(s.goalRef.goalId).toBe('g1');
+    expect(s.goalRef.goalTitle).toBe('健康减重');
+    expect(s.target?.subItemName).toBe('每天跑步');
+    expect(s.params?.dailyMin).toBe(15);
+    expect(s.dimension).toBe('L1');
+  });
+
+  it('旧的自然语言 string[] → 包成 note（goalTitle 回退到所属 goal）', () => {
+    const text = JSON.stringify({
+      goals: [{ title: '减重', status: 'behind', suggestions: ['激活惯性：先完成子项 B 一次'] }],
+    });
+    const d = parseDiagnosis(text);
+    expect(d.ok).toBe(true);
+    if (!d.ok) return;
+    const s = d.goals[0].suggestions[0];
+    expect(s.action).toBe('note');
+    expect(s.text).toBe('激活惯性：先完成子项 B 一次');
+    expect(s.goalRef.goalTitle).toBe('减重');
+  });
+
+  it('非法 action → 默认 note；缺 goalRef 时回退 goal.title', () => {
+    const text = JSON.stringify({
+      goals: [{ title: 'X', status: 'on_track', suggestions: [{ action: 'magic', text: '?', goalTitle: 'X' }] }],
+    });
+    const d = parseDiagnosis(text);
+    expect(d.ok).toBe(true);
+    if (!d.ok) return;
+    expect(d.goals[0].suggestions[0].action).toBe('note');
+    expect(d.goals[0].suggestions[0].goalRef.goalTitle).toBe('X');
+  });
+
+  it('add_subitem 解析 params.name/dailyMin/taskDayType', () => {
+    const text = JSON.stringify({
+      goals: [
+        {
+          title: '读书',
+          status: 'behind',
+          suggestions: [
+            {
+              action: 'add_subitem',
+              goalRef: { goalTitle: '读书' },
+              params: { name: '每周输出 1 篇', dailyMin: 1, taskDayType: 'weekly' },
+              text: '加输出',
+            },
+          ],
+        },
+      ],
+    });
+    const d = parseDiagnosis(text);
+    expect(d.ok).toBe(true);
+    if (!d.ok) return;
+    const s = d.goals[0].suggestions[0];
+    expect(s.action).toBe('add_subitem');
+    expect(s.params?.name).toBe('每周输出 1 篇');
+    expect(s.params?.dailyMin).toBe(1);
+    expect(s.params?.taskDayType).toBe('weekly');
   });
 });

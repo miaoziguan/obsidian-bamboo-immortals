@@ -15,6 +15,7 @@ import { deriveStableGoalId } from './src/ai/goalId';
 import { shouldSkipPlanned } from './src/ai/idempotency';
 import { AgenticPlanModal } from './src/ai/AgenticPlanModal';
 import { DiagnosisModal } from './src/ai/DiagnosisModal';
+import { SuggestionApplyModal } from './src/ai/SuggestionApplyModal';
 import { diagnose } from './src/ai/GoalDiagnoser';
 import { runDiagnosis } from './src/ai/runDiagnosis';
 import type { GoalItem } from './src/types/data';
@@ -383,6 +384,7 @@ export default class BambooReviewPlugin extends Plugin {
       storage,
       diagnose: diagnose as unknown as typeof diagnose,
       openDiagnosis: (o) => new DiagnosisModal(this.app, o).open(),
+      openApplyPreview: (o) => new SuggestionApplyModal(this.app, o).open(),
       openAgentic: (o) => new AgenticPlanModal(this.app, o).open(),
       writeGoals: (g) => void this.writeDiagnosedGoals(g),
       notice: (m) => new Notice(m),

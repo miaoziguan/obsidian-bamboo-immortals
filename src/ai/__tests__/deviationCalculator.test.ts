@@ -220,6 +220,14 @@ describe('DeviationCalculator.buildItemEvidenceMap / formatItemEvidenceForPrompt
     expect(text).toContain('未来甲骨文');
   });
 
+  it('formatItemEvidenceForPrompt 标注 goalId 与子项 [index]（供结构化引用）', () => {
+    const cache = buildCache([goal], []);
+    const text = formatItemEvidenceForPrompt([goal], cache, today);
+    expect(text).toContain('goalId=g1');
+    expect(text).toContain('[0] 喵字摇滚体');
+    expect(text).toContain('[1] 未来甲骨文');
+  });
+
   it('formatItemEvidenceForPrompt 空目标 → 占位说明', () => {
     expect(formatItemEvidenceForPrompt([], buildCache([], []), today)).toContain('无子项');
   });

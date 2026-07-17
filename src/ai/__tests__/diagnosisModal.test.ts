@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { DiagnosisModal, type DiagnosisModalOptions } from '../DiagnosisModal';
-import type { DiagnosisResult } from '../GoalDiagnoser';
+import type { DiagnosisResult, Diagnosis } from '../GoalDiagnoser';
 import type { ItemEvidence } from '../DeviationCalculator';
 
 /** 轻量 DOM 桩：覆盖 Modal.contentEl，供 onOpen 渲染并断言 */
@@ -51,9 +51,13 @@ class FakeEl {
 
 const fakeApp: any = { workspace: {} };
 
-function openModal(diagnosis: DiagnosisResult, itemEvidence?: Record<string, ItemEvidence[]>) {
+function openModal(
+  diagnosis: DiagnosisResult,
+  itemEvidence?: Record<string, ItemEvidence[]>,
+  extra: Partial<DiagnosisModalOptions> = {}
+) {
   const onApply = vi.fn();
-  const opts: DiagnosisModalOptions = { diagnosis, onApply, itemEvidence };
+  const opts: DiagnosisModalOptions = { diagnosis, onApply, itemEvidence, ...extra };
   const modal = new DiagnosisModal(fakeApp, opts);
   const root = new FakeEl();
   (modal as any).contentEl = root;
@@ -61,7 +65,7 @@ function openModal(diagnosis: DiagnosisResult, itemEvidence?: Record<string, Ite
   return { modal, root, onApply };
 }
 
-const validDiag: DiagnosisResult = {
+const validDiag: Diagnosis = {
   ok: true,
   summary: '3 目标 1 达标 2 落后',
   goals: [
@@ -70,7 +74,17 @@ const validDiag: DiagnosisResult = {
       completion: 62,
       status: 'behind',
       bottleneck: '跑步停滞',
-      suggestions: ['将跑步 dailyMin 降到 15', '加入周六长距离'],
+      suggestions: [
+        {
+          id: 's1',
+          action: 'adjust_dailyMin',
+          goalRef: { goalTitle: '健康减重' },
+          target: { subItemName: '跑步' },
+          params: { dailyMin: 15 },
+          text: '将跑步 dailyMin 降到 15',
+        },
+        { id: 's2', action: 'note', goalRef: { goalTitle: '健康减重' }, text: '加入周六长距离' },
+      ],
     },
   ],
   nextActions: ['整体下调 dailyMin'],
@@ -95,7 +109,7 @@ describe('DiagnosisModal', () => {
     const btn = root.find((e) => e.text === '应用')!;
     btn.click();
     expect(onApply).toHaveBeenCalledTimes(1);
-    expect(onApply).toHaveBeenCalledWith(validDiag.goals[0]);
+    expect(onApply).toHaveBeenCalledWith(validDiag.goals[0], validDiag.goals[0].suggestions[0]);
     expect(() => modal.onClose()).not.toThrow();
   });
 
@@ -168,7 +182,7 @@ describe('DiagnosisModal', () => {
   });
 
   it('无 goals.suggestions 时不渲染「建议」块', () => {
-    const noSugg: DiagnosisResult = {
+    const noSugg: Diagnosis = {
       ok: true,
       summary: '空',
       goals: [{ title: '空目标', completion: 0, status: 'stuck', bottleneck: '', suggestions: [] }],
@@ -192,7 +206,7 @@ describe('DiagnosisModal', () => {
 });
 
 describe('DiagnosisModal — 健康分三维渲染', () => {
-  const healthDiag: DiagnosisResult = {
+  const healthDiag: Diagnosis = {
     ok: true,
     summary: '整体节奏可持续',
     goals: [
@@ -207,7 +221,15 @@ describe('DiagnosisModal — 健康分三维渲染', () => {
         L3: 55,
         weakest: 'L3',
         bottleneck: '子项进度不均衡',
-        suggestions: ['关注边缘子项 B：先完成一次以激活惯性'],
+        suggestions: [
+          {
+            id: 's1',
+            action: 'note',
+            goalRef: { goalTitle: '字库研发' },
+            dimension: 'L3',
+            text: '关注边缘子项 B：先完成一次以激活惯性',
+          },
+        ],
       },
     ],
     nextActions: [],
@@ -248,11 +270,25 @@ describe('DiagnosisModal — 健康分三维渲染', () => {
     expect(l1!.cls).not.toContain('bamboo-diag-dim-weakest');
   });
 
-  it('点「应用」仍回传该目标诊断', () => {
+  it('点「应用」回传（该目标诊断, 该条建议）', () => {
     const { root, onApply } = openModal(healthDiag);
     const btn = root.find((e) => e.text === '应用')!;
     btn.click();
-    expect(onApply).toHaveBeenCalledWith(healthDiag.goals[0]);
+    expect(onApply).toHaveBeenCalledWith(healthDiag.goals[0], healthDiag.goals[0].suggestions[0]);
+  });
+
+  it('提供 onApplyAll → 显示「应用全部」按钮，点击回传该目标', () => {
+    const onApplyAll = vi.fn();
+    const { root } = openModal(validDiag, undefined, { onApplyAll });
+    const allBtn = root.find((e) => e.text === '应用全部');
+    expect(allBtn).toBeDefined();
+    allBtn!.click();
+    expect(onApplyAll).toHaveBeenCalledWith(validDiag.goals[0]);
+  });
+
+  it('未提供 onApplyAll → 不显示「应用全部」按钮', () => {
+    const { root } = openModal(validDiag);
+    expect(root.find((e) => e.text === '应用全部')).toBeUndefined();
   });
 
   it('建议分组标题带「聚焦<维度>」标签（当 weakest 存在）', () => {

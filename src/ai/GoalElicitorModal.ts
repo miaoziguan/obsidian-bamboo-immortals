@@ -291,14 +291,16 @@ export class GoalElicitorModal extends Modal {
       text: '复制简报',
       cls: 'bamboo-elicit-btn bamboo-elicit-btn-ghost',
     });
-    copy.addEventListener('click', async () => {
-      try {
-        const all = this.briefs.map((b) => briefToPlanningText(b)).join('\n\n');
-        await navigator.clipboard.writeText(all);
-        new Notice('已复制目标简报到剪贴板');
-      } catch {
-        new Notice('复制失败，请手动选择文本复制');
-      }
+    copy.addEventListener('click', () => {
+      void (async () => {
+        try {
+          const all = this.briefs.map((b) => briefToPlanningText(b)).join('\n\n');
+          await navigator.clipboard.writeText(all);
+          new Notice('已复制目标简报到剪贴板');
+        } catch {
+          new Notice('复制失败，请手动选择文本复制');
+        }
+      })();
     });
 
     const again = footer.createEl('button', {

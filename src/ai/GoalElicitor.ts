@@ -15,9 +15,9 @@
  * 它回答的是：这个目标是具体的吗、是自属的吗、是有承诺的吗？而不是「每天做多少」。
  */
 
-import { requestUrl } from 'obsidian';
 import {
   AI_TEMPERATURE,
+  obsidianRequestFetch,
   type AiFetchFn,
   type AiResponse,
   extractChatText,
@@ -58,7 +58,7 @@ const VALID_DISEASES = new Set<DiseaseType>([
   'outcome_as_input',
 ]);
 
-const VALID_KINDS = new Set<GoalKind>([
+const VALID_KINDS = new Set<string>([
   'habit',
   'project',
   'creative',
@@ -197,7 +197,7 @@ function extractJsonObject(raw: unknown): Record<string, unknown> {
   if (start === -1 || end === -1 || end <= start) {
     throw new Error('回执中未找到 JSON 对象');
   }
-  return JSON.parse(text.slice(start, end + 1));
+  return JSON.parse(text.slice(start, end + 1)) as Record<string, unknown>;
 }
 
 /** 把模型回执解析为 ElicitationResult（纯函数，便于单测） */
@@ -205,7 +205,7 @@ export function parseElicitation(rawText: unknown): ElicitationResult {
   const obj = extractJsonObject(rawText);
 
   const goalKindRaw = typeof obj.goalKind === 'string' ? obj.goalKind : '';
-  const goalKind = VALID_KINDS.has(goalKindRaw as GoalKind)
+  const goalKind = VALID_KINDS.has(goalKindRaw)
     ? (goalKindRaw as GoalKind)
     : undefined;
 
@@ -215,7 +215,7 @@ export function parseElicitation(rawText: unknown): ElicitationResult {
       (d): d is DiseaseType =>
         typeof d === 'string' && VALID_DISEASES.has(d as DiseaseType)
     )
-    .map((d) => d as DiseaseType);
+    .map((d) => d);
 
   const questionsRaw = Array.isArray(obj.questions)
     ? (obj.questions as Record<string, unknown>[])
@@ -259,7 +259,7 @@ export function parseElicitation(rawText: unknown): ElicitationResult {
 export async function elicitGoal(
   rawIntent: string,
   settings: ElicitSettings,
-  fetchFn: AiFetchFn = requestUrl as unknown as AiFetchFn,
+  fetchFn: AiFetchFn = obsidianRequestFetch,
   history?: ElicitTurn[]
 ): Promise<ElicitationResult> {
   const url = `${settings.aiBaseUrl.replace(/\/+$/, '')}/chat/completions`;
@@ -386,12 +386,12 @@ ${GOAL_KIND_RUBRIC}`;
 
 /** 把「拆分回执」解析为多条 GoalBrief（继承原 brief 的可靠性/问答/原句） */
 export function parseSplit(rawText: unknown, base: GoalBrief): GoalBrief[] {
-  const obj = extractJsonObject(rawText) as Record<string, unknown>;
+  const obj = extractJsonObject(rawText);
   const arr = Array.isArray(obj.goals) ? (obj.goals as Record<string, unknown>[]) : [];
   return arr.map((g): GoalBrief => ({
     rawIntent: base.rawIntent,
     goalKind:
-      typeof g.goalKind === 'string' && VALID_KINDS.has(g.goalKind as GoalKind)
+      typeof g.goalKind === 'string' && VALID_KINDS.has(g.goalKind)
         ? (g.goalKind as GoalKind)
         : base.goalKind,
     clarifiedOutcome: strFieldOf(g.clarifiedOutcome) ?? base.clarifiedOutcome,
@@ -414,7 +414,7 @@ export function parseSplit(rawText: unknown, base: GoalBrief): GoalBrief[] {
 export async function splitGoals(
   brief: GoalBrief,
   settings: ElicitSettings,
-  fetchFn: AiFetchFn = requestUrl as unknown as AiFetchFn
+  fetchFn: AiFetchFn = obsidianRequestFetch
 ): Promise<GoalBrief[]> {
   const url = `${settings.aiBaseUrl.replace(/\/+$/, '')}/chat/completions`;
   const { system, user } = buildSplitPrompt(brief);

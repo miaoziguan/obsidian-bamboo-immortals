@@ -15,7 +15,6 @@
  * 零 Obsidian 依赖，fetchFn 可注入，便于单测（参考 markdownPlanner.test.ts）。
  */
 
-import { requestUrl } from 'obsidian';
 import { type GoalItem } from '../types/data';
 import {
   buildPrompt,
@@ -23,6 +22,7 @@ import {
   extractChatText,
   parseGoals,
   AI_TEMPERATURE,
+  obsidianRequestFetch,
   type AiFetchFn,
   type AiResponse,
   type PlannerSettings,
@@ -71,7 +71,7 @@ export class PlanningSession {
   constructor(
     private content: string,
     private settings: PlannerSettings,
-    private fetchFn: AiFetchFn = requestUrl as unknown as AiFetchFn,
+    private fetchFn: AiFetchFn = obsidianRequestFetch,
     private scope: 'note' | 'selection' = 'note',
     private framework?: FrameworkType,
     targets?: PlanTarget[]
@@ -95,7 +95,7 @@ export class PlanningSession {
     const obj = JSON.parse(text) as Record<string, unknown>;
     this.goals = this.callParse(parseGoals(obj));
     // 深拷贝首版快照，避免后续手动 edit 工作副本污染 initialGoals（note 模式 reset 依赖它）
-    this.initialGoals = JSON.parse(JSON.stringify(this.goals));
+    this.initialGoals = JSON.parse(JSON.stringify(this.goals)) as GoalItem[];
     return this.goals;
   }
 
@@ -135,11 +135,11 @@ export class PlanningSession {
   /** 回到 AI 首版，清空对话历史 */
   reset(): void {
     if (this.mode === 'edit') {
-      this.goals = JSON.parse(JSON.stringify(this.initialGoals));
+      this.goals = JSON.parse(JSON.stringify(this.initialGoals)) as GoalItem[];
       this.messages = [{ role: 'system', content: this.editSystemContent + AGENT_SUFFIX }];
       return;
     }
-    this.goals = JSON.parse(JSON.stringify(this.initialGoals));
+    this.goals = JSON.parse(JSON.stringify(this.initialGoals)) as GoalItem[];
     if (this.targets) {
       const { system, user } = buildMultiPrompt(this.targets, this.settings.aiDecomposeDepth);
       this.messages = [

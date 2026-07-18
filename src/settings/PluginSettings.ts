@@ -1,4 +1,4 @@
-import { App, PluginSettingTab, Setting } from 'obsidian';
+import { App, PluginSettingTab, Setting, type SettingDefinitionItem } from 'obsidian';
 import type BambooReviewPlugin from '../../main';
 import { ThemeBridge } from '../bridge/ThemeBridge';
 import { arrayBufferToBase64 } from '../utils/base64';
@@ -357,5 +357,31 @@ export class PluginSettings extends PluginSettingTab {
     contactBox.createEl('p', { text: '联系方式', cls: 'bamboo-about-label' });
     contactBox.createEl('p', { text: '邮箱：yanyulin2100@qq.com', cls: 'bamboo-about-desc' });
     contactBox.createEl('p', { text: '微信：yanhu94', cls: 'bamboo-about-desc' });
+  }
+
+  getControlValue(key: string): unknown {
+    return (this.plugin.settings as unknown as Record<string, unknown>)[key];
+  }
+
+  setControlValue(key: string, value: unknown): void {
+    (this.plugin.settings as unknown as Record<string, unknown>)[key] = value;
+    void this.plugin.saveSettings();
+  }
+
+  getSettingDefinitions(): SettingDefinitionItem[] {
+    const s = this.plugin.settings;
+    return [
+      { name: '数据存储路径', desc: '复盘数据在 Vault 中的存储目录', control: { key: 'dataPath', type: 'text', defaultValue: s.dataPath, placeholder: 'bamboo-review' } },
+      { name: '自动生成 Markdown 摘要', desc: '每次保存复盘数据时自动生成可读 .md 文件', control: { key: 'enableMarkdownSync', type: 'toggle', defaultValue: s.enableMarkdownSync } },
+      { name: '自定义主题路径', desc: '存放自定义主题 .js 文件的文件夹', control: { key: 'themePath', type: 'text', defaultValue: s.themePath, placeholder: '竹林复盘主题' } },
+      { name: '白噪音文件夹', desc: '扫描音频文件的文件夹（留空扫描全库）', control: { key: 'noisePath', type: 'text', defaultValue: s.noisePath, placeholder: '留空扫描全库' } },
+      { name: '跟随 Obsidian 主题配色', desc: '插件配色跟随当前 Obsidian 主题强调色', control: { key: 'followObsidianTheme', type: 'toggle', defaultValue: s.followObsidianTheme } },
+      { name: '将调色同步到 Obsidian', desc: 'webapp 调色实时同步到原生界面', control: { key: 'syncPaletteToObsidian', type: 'toggle', defaultValue: s.syncPaletteToObsidian } },
+      { name: '启用 AI 规划', desc: '运行「AI 规划」命令由大模型拆解目标', control: { key: 'aiEnabled', type: 'toggle', defaultValue: s.aiEnabled } },
+      { name: 'API Key', desc: '大模型服务鉴权密钥', control: { key: 'aiApiKey', type: 'text', defaultValue: s.aiApiKey, placeholder: 'sk-...' } },
+      { name: 'Base URL', desc: 'API 基地址（不含 /chat/completions 后缀）', control: { key: 'aiBaseUrl', type: 'text', defaultValue: s.aiBaseUrl, placeholder: 'https://api.deepseek.com/v1' } },
+      { name: '模型', desc: '模型名，如 deepseek-chat', control: { key: 'aiModel', type: 'text', defaultValue: s.aiModel, placeholder: 'deepseek-chat' } },
+      { name: '默认拆解粒度', desc: 'AI 拆解子项的细粒度：粗 / 中 / 细', control: { key: 'aiDecomposeDepth', type: 'dropdown', defaultValue: s.aiDecomposeDepth, options: { '粗': '粗（2-3 子项）', '中': '中（3-6 子项）', '细': '细（5-8 子项）' } } },
+    ];
   }
 }

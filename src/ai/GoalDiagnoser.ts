@@ -8,9 +8,8 @@
  *
  * 零 Obsidian 依赖，fetchFn 可注入，便于单测。
  */
-import { requestUrl } from 'obsidian';
 import type { ChatMessage } from './PlanningSession';
-import { extractChatText, AI_TEMPERATURE } from './MarkdownPlanner';
+import { extractChatText, AI_TEMPERATURE, obsidianRequestFetch } from './MarkdownPlanner';
 import type { AiFetchFn, AiResponse, PlannerSettings } from './MarkdownPlanner';
 import {
   buildCache,
@@ -89,7 +88,7 @@ const VALID_DIMENSION: ReadonlySet<string> = new Set(['L1', 'L2', 'L3']);
 
 function asStringArray(v: unknown): string[] {
   if (!Array.isArray(v)) return [];
-  return v.filter((x) => typeof x === 'string') as string[];
+  return v.filter((x) => typeof x === 'string');
 }
 
 function asNumber(v: unknown): number | undefined {
@@ -150,7 +149,7 @@ function parseSuggestions(raw: unknown, fallbackTitle: string): Suggestion[] {
     };
     const dimension =
       o.dimension === 'L1' || o.dimension === 'L2' || o.dimension === 'L3'
-        ? (o.dimension as 'L1' | 'L2' | 'L3')
+        ? o.dimension
         : undefined;
     return {
       id: typeof o.id === 'string' ? o.id : undefined,
@@ -361,7 +360,7 @@ export async function diagnose(
   goals: GoalItem[],
   days: DayData[],
   settings: PlannerSettings,
-  fetchFn: AiFetchFn = requestUrl as unknown as AiFetchFn,
+  fetchFn: AiFetchFn = obsidianRequestFetch,
   today: Date = new Date()
 ): Promise<DiagnosisResult> {
   const cache: DeviationCache = buildCache(goals, days);

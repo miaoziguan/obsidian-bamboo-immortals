@@ -75,7 +75,7 @@ export function buildCache(goals: GoalItem[], days: DayData[]): DeviationCache {
       let active = false;
       let count = 0;
       if (completionsByGoal && completionsByGoal[gid]) {
-        const gMap = completionsByGoal[gid] as Record<string, unknown>;
+        const gMap = completionsByGoal[gid];
         for (const [key, v] of Object.entries(gMap)) {
           if (v) {
             active = true;

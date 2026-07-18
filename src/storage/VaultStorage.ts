@@ -225,7 +225,7 @@ export class VaultStorage {
     }
     const content: string = await this.app.vault.adapter.read(path);
     // 损坏为非数组（null/{}数字）时返回 []，避免下游 as GoalItem[] 后 .map/.length 抛错（H11）
-    const parsed = JSON.parse(content);
+    const parsed: unknown = JSON.parse(content);
     return Array.isArray(parsed) ? (parsed as GoalItem[]) : [];
   }
 
@@ -318,7 +318,7 @@ export class VaultStorage {
     }
     try {
       const content: string = await this.app.vault.adapter.read(path);
-      const parsed = JSON.parse(content);
+      const parsed: unknown = JSON.parse(content);
       // parse 成功但非对象（如 "abc" / 数字 / 数组）会被 {...existing} 展开导致合并错乱，按损坏兜底
       if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return {};
       return parsed as AppSettings;

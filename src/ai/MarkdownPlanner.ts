@@ -44,6 +44,19 @@ export type AiFetchFn = (opts: {
   body?: string;
 }) => Promise<AiResponse>;
 
+/**
+ * 默认 fetch 实现：用 Obsidian 的 requestUrl 适配 AiFetchFn。
+ * 直接 `requestUrl as unknown as AiFetchFn` 是双断言（requestUrl 签名 ≠ AiFetchFn），
+ * 用此适配器可免去 any 类断言，且类型安全（RequestUrlResponse 结构兼容 AiResponse）。
+ */
+export const obsidianRequestFetch: AiFetchFn = (opts) =>
+  requestUrl({
+    url: opts.url,
+    method: opts.method,
+    headers: opts.headers,
+    body: opts.body,
+  });
+
 export interface PlannerSettings {
   aiApiKey: string;
   aiBaseUrl: string;
@@ -259,7 +272,7 @@ function extractGoalsObject(raw: unknown): { goals?: unknown } {
   if (start === -1 || end === -1 || end <= start) {
     throw new Error('回执中未找到 JSON 对象');
   }
-  const parsed = JSON.parse(text.slice(start, end + 1));
+  const parsed = JSON.parse(text.slice(start, end + 1)) as Record<string, unknown>;
   if (parsed && typeof parsed === 'object' && 'goals' in parsed) return parsed;
   throw new Error('JSON 中缺少 goals 字段');
 }
@@ -446,7 +459,7 @@ export function extractChatText(resp: AiResponse): string {
 export async function planFromNote(
   content: string,
   settings: PlannerSettings,
-  fetchFn: AiFetchFn = requestUrl as unknown as AiFetchFn,
+  fetchFn: AiFetchFn = obsidianRequestFetch,
   scope: 'note' | 'selection' = 'note'
 ): Promise<GoalItem[]> {
   const url = `${settings.aiBaseUrl.replace(/\/+$/, '')}/chat/completions`;

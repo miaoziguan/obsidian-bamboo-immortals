@@ -13,7 +13,6 @@ import {
   GOAL_CATEGORIES,
   type GoalItem,
   type GoalSubItem,
-  type GoalCategory,
 } from '../types/data';
 import { classifyCompleteness, extractUnit } from './GoalCardValidator';
 
@@ -113,7 +112,7 @@ export class PlanConfirmModal extends Modal {
       if (c.id === entry.goal.category) opt.selected = true;
     });
     catSelect.addEventListener('change', () => {
-      entry.goal.category = catSelect.value as GoalCategory;
+      entry.goal.category = catSelect.value;
       this.refreshThinBadge(card, entry);
     });
 
@@ -163,7 +162,7 @@ export class PlanConfirmModal extends Modal {
   }
 
   private refreshThinBadge(card: HTMLElement, entry: GoalEntry): void {
-    const badge = card.querySelector('.bamboo-ai-plan-badge') as HTMLElement | null;
+    const badge = card.querySelector('.bamboo-ai-plan-badge');
     if (!badge) return;
     const { level, missing } = classifyCompleteness(entry.goal);
     badge.empty();

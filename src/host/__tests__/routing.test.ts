@@ -81,7 +81,7 @@ describe('AppAPI 消息路由与来源校验', () => {
     }
   });
 
-  it('app:ready 协议版本不匹配时 console.warn', async () => {
+  it('app:ready 协议版本不匹配时不告警（由 webapp 自愈，重新加载视图即可）', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     try {
       await send(iframeContentWindow, {
@@ -90,9 +90,7 @@ describe('AppAPI 消息路由与来源校验', () => {
         payload: { protocolVersion: 999 },
       });
       expect(captured!.error).toBeUndefined();
-      expect(warn).toHaveBeenCalledTimes(1);
-      expect(warn.mock.calls[0][0]).toContain('协议版本不匹配');
-      expect(warn.mock.calls[0][0]).toContain(String(PROTOCOL_VERSION));
+      expect(warn).not.toHaveBeenCalled();
     } finally {
       warn.mockRestore();
     }

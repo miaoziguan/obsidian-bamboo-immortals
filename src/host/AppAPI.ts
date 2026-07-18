@@ -5,7 +5,7 @@ import { ThemeBridge } from '../bridge/ThemeBridge';
 import type { BambooReviewSettings, NoiseItem } from '../settings/PluginSettings';
 import { ALLOWED_AUDIO_EXTENSIONS, MIME_TYPES } from '../constants/audio';
 import type { DayData } from '../types/data';
-import { PROTOCOL_VERSION, INBOUND_PREFIXES } from './protocol';
+import { INBOUND_PREFIXES } from './protocol';
 
 /** Obsidian 插件运行时注入的主窗口 document（非插件沙箱内的 document） */
 declare const activeDocument: Document;
@@ -172,14 +172,7 @@ export class AppAPI {
   private async handleMessage(type: string, id: string, payload: unknown): Promise<void> {
     // ---- 生命周期 ----
     if (type === 'app:ready') {
-      // 阶段3 · 契约化：版本协商 — 插件升级但 webapp 缓存旧版时可见告警
-      const pv = (payload as Record<string, unknown>)?.protocolVersion;
-      if (typeof pv === 'number' && pv !== PROTOCOL_VERSION) {
-        console.warn(
-          `[Bamboo] 协议版本不匹配：插件=${PROTOCOL_VERSION}，webapp=${pv}。` +
-            `请重新加载视图以获取最新 webapp。`,
-        );
-      }
+      // 阶段3 · 契约化：版本协商 — 插件升级但 webapp 缓存旧版时，用户重新加载视图即可获取最新 webapp
       this.themeBridge.pushTheme(this.settings.followObsidianTheme);
       this.respond(id, {
         ok: true,

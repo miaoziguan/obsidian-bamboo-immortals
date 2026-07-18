@@ -48,11 +48,8 @@ export class AppHost {
     let p = AppHost.prefetchCache.get(key);
     if (!p) {
       const host = new AppHost(app, pluginDir, version);
-      p = host.ensureWebapp(app.vault.adapter).catch((e: unknown) => {
-        console.warn(
-          '[AppHost] 后台预拉取 webapp 失败（打开视图时将重试）：',
-          e instanceof Error ? e.message : String(e)
-        );
+      p = host.ensureWebapp(app.vault.adapter).catch(() => {
+        // 后台预拉取失败不阻断，打开视图时会重试
       });
       AppHost.prefetchCache.set(key, p);
     }
@@ -97,18 +94,13 @@ export class AppHost {
       if (!(await this.fileExists(adapter, stampPath))) return;
       const local = await this.readVersionStamp(adapter, stampPath);
       if (local === this.version) return;
-      console.log(
-        `[AppHost] 本地 webapp 版本(${local}) 与插件版本(${this.version}) 不符，重新自举下载。`
-      );
     }
 
     if (!this.version) {
-      console.warn('[AppHost] 无法获取插件版本，跳过自举下载。请确认插件安装完整。');
       return;
     }
 
     const url = `https://github.com/${this.repo}/releases/download/${this.version}/webapp.zip`;
-    console.log(`[AppHost] 未检测到匹配的本地 webapp，尝试自举下载：${url}`);
     try {
       const resp = await requestUrl({ url, method: 'GET' });
       if (resp.status < 200 || resp.status >= 300 || !resp.arrayBuffer) {
@@ -119,12 +111,10 @@ export class AppHost {
       // 避免同版本反复重下。
       try {
         await adapter.write(stampPath, this.version);
-      } catch (e) {
-        console.warn('[AppHost] 写入 webapp 版本戳失败（不影响使用）：', e);
+      } catch {
+        // 写入版本戳失败不影响使用
       }
-      console.log('[AppHost] webapp 自举下载并解压完成。');
     } catch (e) {
-      console.error('[AppHost] webapp 自举下载失败：', e);
       throw new Error(
         `无法自动获取 webapp（${e instanceof Error ? e.message : '未知错误'}）。` +
         '请检查网络后重试，或在 Obsidian 中重新安装本插件。'

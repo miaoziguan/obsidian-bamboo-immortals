@@ -114,7 +114,6 @@ export class DailyReviewView extends ItemView {
       });
     } catch (e) {
       loadingEl.remove();
-      console.error('[BambooReview] 加载 webapp 失败:', e);
       container.createEl('div', {
         text: `竹林修仙传加载失败: ${e instanceof Error ? e.message : '未知错误'}`,
         cls: 'bamboo-review-error',
@@ -172,20 +171,15 @@ export class DailyReviewView extends ItemView {
         try {
           const code: string = await adapter.read(filePath);
           if (!code.includes('__bamboo_theme_')) {
-            console.warn(`[BambooReview] 自定义主题 ${entry} 缺少 __bamboo_theme_ 标识符，已跳过`);
             continue;
           }
           themes.push({ name: entry.replace(/\.js$/, ''), code });
-        } catch (err: unknown) {
-          console.error(`[BambooReview] 读取自定义主题 ${entry} 失败:`, err instanceof Error ? err.message : String(err));
+        } catch {
+          // 读取失败跳过该主题
         }
       }
-
-      if (themes.length > 0) {
-        console.debug(`[BambooReview] 发现 ${themes.length} 个自定义主题:`, themes.map(t => t.name));
-      }
-    } catch (err: unknown) {
-      console.debug('[BambooReview] 扫描自定义主题时出错:', err instanceof Error ? err.message : String(err));
+    } catch {
+      // 扫描自定义主题出错时返回已收集的主题
     }
 
     return themes;

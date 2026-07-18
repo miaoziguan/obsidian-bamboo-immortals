@@ -90,8 +90,7 @@ export class VaultStorage {
     try {
       const content: string = await this.app.vault.adapter.read(path);
       return JSON.parse(content) as DayData;
-    } catch (e) {
-      console.warn(`[BambooReview] 日期数据文件损坏，将跳过: ${path}`, e);
+    } catch {
       return null;
     }
   }
@@ -110,8 +109,8 @@ export class VaultStorage {
         try {
           const content: string = await this.app.vault.adapter.read(file);
           days[dateKey] = JSON.parse(content) as DayData;
-        } catch (e) {
-          console.warn(`Failed to parse day file: ${file}`, e);
+        } catch {
+          // 解析失败跳过该文件
         }
       });
 
@@ -159,8 +158,8 @@ export class VaultStorage {
       try {
         const data = await this.getDay(dateKey);
         if (data) days[dateKey] = data;
-      } catch (e) {
-        console.warn(`Failed to load day: ${dateKey}`, e);
+      } catch {
+        // 加载失败跳过该日
       }
     });
     await Promise.all(reads);

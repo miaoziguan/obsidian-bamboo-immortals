@@ -51,6 +51,7 @@ export interface GoalSubItem {
   currentValue?: string;
   /** 每日量（如 '30'、'2'），驱动今日任务增量；空则不生成今日任务 */
   dailyMin?: string;
+  // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents -- 允许 webapp/导入透传的任意节奏字符串，运行时由 cleanDailyMin/sanitize 回落合法值
   taskDayType?: TaskDayType | string;
   /** 规划来源标注（仅审阅展示/日报，可选） */
   sourceRef?: string;
@@ -65,6 +66,7 @@ export interface GoalItem {
   icon?: string;
   meta?: string;
   /** 领域（work/personal/health/study/finance/other），webapp 据此分组着色 */
+  // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents -- 允许 webapp/导入透传的任意分类字符串，运行时由 sanitizeGoal 回落合法值
   category?: GoalCategory | string;
   startDate?: string;
   endDate?: string;

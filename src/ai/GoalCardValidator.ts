@@ -90,6 +90,7 @@ export function sanitizeSubItem(raw: unknown, idx: number): GoalSubItem {
 export function sanitizeGoal(raw: unknown): GoalItem {
   const g = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
   const categoryRaw = str(g.category);
+  // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents -- 兼容 webapp 透传的任意分类字符串，下方 sanitize 回落
   const category: GoalCategory | string = CATEGORY_SET.has(categoryRaw) ? categoryRaw : 'other';
 
   const itemsRaw = Array.isArray(g.items) ? g.items : [];

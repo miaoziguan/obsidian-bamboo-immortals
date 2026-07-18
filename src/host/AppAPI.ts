@@ -1,3 +1,4 @@
+/* eslint-disable no-console -- 协议/通信诊断日志，发布态保留以便排查 */
 import { App, DataAdapter, normalizePath, requestUrl } from 'obsidian';
 import { arrayBufferToBase64 } from '../utils/base64';
 import { VaultStorage } from '../storage/VaultStorage';

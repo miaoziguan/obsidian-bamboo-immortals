@@ -295,6 +295,7 @@ export function parseGoals(rawText: unknown): GoalItem[] {
       : [];
 
     const categoryRaw = typeof goal.category === 'string' ? goal.category : '';
+    // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents -- 兼容 webapp 透传的任意分类字符串，下方 sanitize 回落
     const category: GoalCategory | string =
       GOAL_CATEGORIES.some((c) => c.id === categoryRaw) ? categoryRaw : 'other';
 

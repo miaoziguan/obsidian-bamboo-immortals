@@ -278,7 +278,7 @@ export default class BambooReviewPlugin extends Plugin {
    * 拿到一份通过/强制跳过的 GoalBrief 后，再把它编译成「已澄清文本」交给下游规划器拆解。
    * 这是规划的前门——避免把"成为行业第一"这类不靠谱目标直接喂给除法式拆解。
    */
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- _scope 保留以对齐规划入口统一形参（当前未使用，维持签名一致）
   async runElicit(rawIntent: string, file: TFile, _scope: 'note' | 'selection'): Promise<void> {
     const s = this.settings;
     if (!s.aiEnabled) {
@@ -415,7 +415,6 @@ export default class BambooReviewPlugin extends Plugin {
     }
 
     // 最终防线：AI 写入的目标禁止包含 icon 字段（即使审阅弹窗误填入也剥离）
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const withRef = goals.map((g) => {
       const { icon: _icon, ...rest } = g as GoalItem & { icon?: unknown };
       void _icon;

@@ -1,3 +1,4 @@
+/* eslint-disable no-console -- 视图诊断日志，发布态保留以便排查 */
 import { ItemView, WorkspaceLeaf, EventRef } from 'obsidian';
 import type { BambooReviewSettings } from '../settings/PluginSettings';
 import { AppHost } from '../host/AppHost';

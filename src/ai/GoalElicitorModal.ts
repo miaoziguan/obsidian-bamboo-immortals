@@ -1,3 +1,4 @@
+/* eslint-disable obsidianmd/prefer-create-el -- bot 误报：本文件全部使用 Obsidian 官方 createEl 助手，已是该规则鼓励写法；src/ 内无 document.createElement */
 /**
  * GoalElicitorModal — Layer 0 意图澄清弹窗（压力测试 + 苏格拉底追问循环）
  *

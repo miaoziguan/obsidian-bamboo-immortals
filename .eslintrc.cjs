@@ -13,7 +13,7 @@ module.exports = {
     ecmaVersion: 2020,
     sourceType: 'module',
   },
-  plugins: ['@typescript-eslint'],
+  plugins: ['@typescript-eslint', 'obsidianmd'],
   extends: [
     'eslint:recommended',
     'plugin:@typescript-eslint/recommended',

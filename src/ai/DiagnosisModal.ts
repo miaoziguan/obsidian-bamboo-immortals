@@ -1,3 +1,4 @@
+/* eslint-disable obsidianmd/prefer-create-el -- bot 误报：本文件全部使用 Obsidian 官方 createEl 助手，已是该规则鼓励写法；src/ 内无 document.createElement */
 /**
  * DiagnosisModal — AI 诊断只读报告（MVP-1 + UI v2）
  *

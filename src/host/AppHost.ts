@@ -1,4 +1,3 @@
-/* eslint-disable no-console -- webapp 自举/资源加载诊断日志，发布态保留以便排查 */
 import { App, DataAdapter, normalizePath, requestUrl } from 'obsidian';
 import { unzipSync } from 'fflate';
 

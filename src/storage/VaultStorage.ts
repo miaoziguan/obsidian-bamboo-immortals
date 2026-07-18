@@ -1,4 +1,3 @@
-/* eslint-disable no-console -- 存储/导入诊断日志，发布态保留以便排查 */
 import { App, normalizePath, TFile, Notice } from 'obsidian';
 import { ImportValidator } from './ImportValidator';
 import type {

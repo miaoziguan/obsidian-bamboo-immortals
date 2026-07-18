@@ -1,4 +1,3 @@
-/* eslint-disable obsidianmd/prefer-create-el -- bot 误报：本文件全部使用 Obsidian 官方 createEl 助手，已是该规则鼓励写法；src/ 内无 document.createElement */
 import { ItemView, WorkspaceLeaf, EventRef } from 'obsidian';
 import type { BambooReviewSettings } from '../settings/PluginSettings';
 import { AppHost } from '../host/AppHost';
@@ -57,7 +56,7 @@ export class DailyReviewView extends ItemView {
     container.addClass('bamboo-review-container');
 
     if (!this.pluginDir) {
-      container.createEl('div', {
+      container.createDiv({
         text: '竹林修仙传: 无法定位插件目录',
         cls: 'bamboo-review-error',
       });
@@ -90,7 +89,7 @@ export class DailyReviewView extends ItemView {
     const version = (this.plugin as { manifest?: { version?: string } } | undefined)?.manifest?.version ?? '';
     this.appHost = new AppHost(this.app, this.pluginDir, version);
 
-    const loadingEl = container.createEl('div', {
+    const loadingEl = container.createDiv({
       text: '竹林修仙传加载中…',
       cls: 'bamboo-review-loading',
     });
@@ -115,7 +114,7 @@ export class DailyReviewView extends ItemView {
       });
     } catch (e) {
       loadingEl.remove();
-      container.createEl('div', {
+      container.createDiv({
         text: `竹林修仙传加载失败: ${e instanceof Error ? e.message : '未知错误'}`,
         cls: 'bamboo-review-error',
       });

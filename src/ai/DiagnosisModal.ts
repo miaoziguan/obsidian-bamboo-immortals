@@ -1,4 +1,3 @@
-/* eslint-disable obsidianmd/prefer-create-el -- bot 误报：本文件全部使用 Obsidian 官方 createEl 助手，已是该规则鼓励写法；src/ 内无 document.createElement */
 /**
  * DiagnosisModal — AI 诊断只读报告（MVP-1 + UI v2）
  *
@@ -133,12 +132,12 @@ export class DiagnosisModal extends Modal {
       const badge = `${LEVEL_LABEL[g.level as string] ?? g.level}${
         typeof g.healthScore === 'number' ? ` · ${g.healthScore}分` : ''
       }`;
-      goalHeader.createEl('span', {
+      goalHeader.createSpan({
         text: badge,
         cls: `bamboo-diag-level bamboo-diag-level-${g.level} bamboo-diag-healthscore`,
       });
     } else {
-      goalHeader.createEl('span', {
+      goalHeader.createSpan({
         text: STATUS_LABEL[g.status] ?? g.status,
         cls: `bamboo-diag-status bamboo-diag-status-${g.status}`,
       });
@@ -192,13 +191,13 @@ export class DiagnosisModal extends Modal {
 
     // 左侧：chevron + 子项数
     const left = summary.createDiv({ cls: 'bamboo-diag-evidence-summary-left' });
-    left.createEl('span', { text: '▸', cls: 'bamboo-diag-evidence-chevron' });
+    left.createSpan({ text: '▸', cls: 'bamboo-diag-evidence-chevron' });
     left.createSpan({
       text: `${evList.length} 个子项 · ${stats.label}`,
     });
 
     // 右侧：可执行摘要
-    summary.createEl('span', {
+    summary.createSpan({
       text: stats.headline,
       cls: `bamboo-diag-evidence-headline bamboo-diag-evidence-headline-${stats.level}`,
     });
@@ -214,10 +213,10 @@ export class DiagnosisModal extends Modal {
     const row = parent.createDiv({ cls: 'bamboo-diag-evidence-row' });
 
     // 名字
-    row.createEl('span', { text: e.name, cls: 'bamboo-diag-evidence-name' });
+    row.createSpan({ text: e.name, cls: 'bamboo-diag-evidence-name' });
 
     // dailyMin
-    row.createEl('span', {
+    row.createSpan({
       text: e.dailyMin || '?',
       cls: 'bamboo-diag-evidence-cell bamboo-diag-evidence-daily',
     });
@@ -225,7 +224,7 @@ export class DiagnosisModal extends Modal {
     // 完成度：色点 + 百分比
     const pctEl = row.createSpan({ cls: 'bamboo-diag-evidence-cell' });
     const pctLevel = percentLevel(e.percent);
-    pctEl.createEl('span', { cls: `bamboo-diag-dot bamboo-diag-dot-${pctLevel}` });
+    pctEl.createSpan({ cls: `bamboo-diag-dot bamboo-diag-dot-${pctLevel}` });
     pctEl.createSpan({
       text: e.percent != null ? `${e.percent}%` : '?',
       cls: `bamboo-diag-evidence-pct bamboo-diag-evidence-pct-${pctLevel}`,
@@ -234,14 +233,14 @@ export class DiagnosisModal extends Modal {
     // 节奏偏差：色点 + ±pt
     const paceEl = row.createSpan({ cls: 'bamboo-diag-evidence-cell' });
     const paceLevel = paceLevelOf(e.paceDeviation);
-    paceEl.createEl('span', { cls: `bamboo-diag-dot bamboo-diag-dot-${paceLevel}` });
+    paceEl.createSpan({ cls: `bamboo-diag-dot bamboo-diag-dot-${paceLevel}` });
     paceEl.createSpan({
       text: e.paceDeviation != null ? `${fmtSigned(e.paceDeviation)}pt` : '?',
       cls: `bamboo-diag-evidence-pace bamboo-diag-evidence-pace-${paceLevel}`,
     });
 
     // 元信息
-    row.createEl('span', {
+    row.createSpan({
       text: `${e.doneDays} 天${e.lastDone ? ' · ' + e.lastDone : ''}`,
       cls: 'bamboo-diag-evidence-foot',
     });
@@ -282,7 +281,7 @@ export class DiagnosisModal extends Modal {
     goal: GoalDiagnosis
   ): void {
     const row = parent.createDiv({ cls: 'bamboo-diag-suggestion' });
-    row.createEl('div', { text: s.text, cls: 'bamboo-diag-suggestion-text' });
+    row.createDiv({ text: s.text, cls: 'bamboo-diag-suggestion-text' });
     // 维度标签（建议聚焦维度）
     if (s.dimension && DIM_LABEL[s.dimension]) {
       row.createSpan({

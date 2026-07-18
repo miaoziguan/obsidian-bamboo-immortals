@@ -1,4 +1,3 @@
-/* eslint-disable obsidianmd/prefer-create-el -- bot 误报：本文件全部使用 Obsidian 官方 createEl 助手，已是该规则鼓励写法；src/ 内无 document.createElement */
 /**
  * AgenticPlanController — 对话式规划审阅台的核心（Phase 4）
  *
@@ -97,7 +96,7 @@ export class AgenticPlanController {
 
     const topBar = root.createDiv({ cls: 'bamboo-ai-agentic-topbar' });
     if (this.subtitle) {
-      topBar.createEl('span', { text: this.subtitle, cls: 'bamboo-ai-plan-subtitle' });
+      topBar.createSpan({ text: this.subtitle, cls: 'bamboo-ai-plan-subtitle' });
     }
     const resetBtn = topBar.createEl('button', {
       text: '↺ 重置初版',
@@ -302,7 +301,7 @@ export class AgenticPlanController {
     });
 
     if (entry.goal.analysis) {
-      head.createEl('div', {
+      head.createDiv({
         text: `AI 分析：${entry.goal.analysis}`,
         cls: 'bamboo-ai-plan-analysis',
       });
@@ -420,7 +419,7 @@ export class AgenticPlanController {
     });
     const unitChip = dailyWrap.createSpan({ cls: 'bamboo-ai-plan-item-unit-chip' });
     unitChip.setText(extractUnit(itemEntry.item.name));
-    const dailyWarn = row.createEl('div', {
+    const dailyWarn = row.createDiv({
       cls: 'bamboo-ai-plan-item-warn',
       text: '⚠ 不可量化，建议删除或改写为可计数动作',
     });
@@ -440,7 +439,7 @@ export class AgenticPlanController {
     });
 
     if (itemEntry.item.detail) {
-      row.createEl('div', {
+      row.createDiv({
         text: `AI：${itemEntry.item.detail}`,
         cls: 'bamboo-ai-plan-item-reason',
       });

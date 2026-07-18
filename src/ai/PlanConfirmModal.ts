@@ -1,4 +1,3 @@
-/* eslint-disable obsidianmd/prefer-create-el -- bot 误报：本文件全部使用 Obsidian 官方 createEl 助手，已是该规则鼓励写法；src/ 内无 document.createElement */
 /**
  * PlanConfirmModal — AI 规划结果审阅弹窗（Phase 3）
  *
@@ -97,7 +96,7 @@ export class PlanConfirmModal extends Modal {
 
     // AI 归纳分析（灰色小字，仅展示，不持久化）。随标题换行独占一行。
     if (entry.goal.analysis) {
-      head.createEl('div', {
+      head.createDiv({
         text: `AI 分析：${entry.goal.analysis}`,
         cls: 'bamboo-ai-plan-analysis',
       });
@@ -212,7 +211,7 @@ export class PlanConfirmModal extends Modal {
     const unitChip = dailyWrap.createSpan({ cls: 'bamboo-ai-plan-item-unit-chip' });
     unitChip.setText(extractUnit(itemEntry.item.name));
     // 不可量化提示：明确告诉用户「删除或改写」，而不是只红框
-    const dailyWarn = row.createEl('div', {
+    const dailyWarn = row.createDiv({
       cls: 'bamboo-ai-plan-item-warn',
       text: '⚠ 不可量化，建议删除或改写为可计数动作',
     });
@@ -230,7 +229,7 @@ export class PlanConfirmModal extends Modal {
 
     // AI reason（灰色小字，不持久化）
     if (itemEntry.item.detail) {
-      row.createEl('div', {
+      row.createDiv({
         text: `AI：${itemEntry.item.detail}`,
         cls: 'bamboo-ai-plan-item-reason',
       });

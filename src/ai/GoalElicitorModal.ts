@@ -1,4 +1,3 @@
-/* eslint-disable obsidianmd/prefer-create-el -- bot 误报：本文件全部使用 Obsidian 官方 createEl 助手，已是该规则鼓励写法；src/ 内无 document.createElement */
 /**
  * GoalElicitorModal — Layer 0 意图澄清弹窗（压力测试 + 苏格拉底追问循环）
  *
@@ -91,7 +90,7 @@ export class GoalElicitorModal extends Modal {
     rawWrap.createSpan({ text: this.opts.rawIntent, cls: 'bamboo-elicit-raw-text' });
 
     // 状态行（分析中 / 错误）
-    contentEl.createEl('div', { cls: 'bamboo-elicit-status' });
+    contentEl.createDiv({ cls: 'bamboo-elicit-status' });
 
     // 主体（问答 / 简报 动态渲染）
     contentEl.createDiv({ cls: 'bamboo-elicit-body' });
@@ -278,11 +277,11 @@ export class GoalElicitorModal extends Modal {
     // 多目标时各卡继承自同一份问答，这里只展示一次
     if (!this.multi && primary.questions.length > 0) {
       const qaWrap = body.createDiv({ cls: 'bamboo-elicit-brief-qa' });
-      qaWrap.createEl('div', { text: '澄清问答：', cls: 'bamboo-elicit-brief-label' });
+      qaWrap.createDiv({ text: '澄清问答：', cls: 'bamboo-elicit-brief-label' });
       for (const q of primary.questions) {
         if (!q.answer) continue;
-        qaWrap.createEl('div', { text: `· 问：${q.question}`, cls: 'bamboo-elicit-brief-qa-q' });
-        qaWrap.createEl('div', { text: `  答：${q.answer}`, cls: 'bamboo-elicit-brief-qa-a' });
+        qaWrap.createDiv({ text: `· 问：${q.question}`, cls: 'bamboo-elicit-brief-qa-q' });
+        qaWrap.createDiv({ text: `  答：${q.answer}`, cls: 'bamboo-elicit-brief-qa-a' });
       }
     }
 
@@ -346,7 +345,7 @@ export class GoalElicitorModal extends Modal {
     if (!body) return;
     const card = body.createDiv({ cls: 'bamboo-elicit-brief' });
     if (this.briefs.length > 1) {
-      card.createEl('div', { text: `目标 ${gi + 1}`, cls: 'bamboo-elicit-brief-idx' });
+      card.createDiv({ text: `目标 ${gi + 1}`, cls: 'bamboo-elicit-brief-idx' });
     }
     const field = (label: string, value?: string) => {
       if (!value) return;
@@ -372,7 +371,7 @@ export class GoalElicitorModal extends Modal {
       const opt = fwSel.createEl('option', { text: FRAMEWORKS[id].label, value: id });
       if (id === chosen) opt.selected = true;
     }
-    const fwDesc = fwWrap.createEl('div', {
+    const fwDesc = fwWrap.createDiv({
       text: FRAMEWORKS[chosen].description,
       cls: 'bamboo-elicit-framework-desc',
     });

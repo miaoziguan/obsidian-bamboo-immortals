@@ -1,4 +1,3 @@
-/* eslint-disable obsidianmd/prefer-create-el -- bot 误报：本文件全部使用 Obsidian 官方 createEl 助手，已是该规则鼓励写法；src/ 内无 document.createElement */
 import { App, PluginSettingTab, Setting, type SettingDefinitionItem } from 'obsidian';
 import type BambooReviewPlugin from '../../main';
 import { ThemeBridge } from '../bridge/ThemeBridge';
@@ -344,7 +343,7 @@ export class PluginSettings extends PluginSettingTab {
 
     [{ name: '竹叶飞刃', url: 'https://github.com/miaoziguan/obsidian-Bamboo-Darts' },
      { name: '竹林修仙传', url: 'https://github.com/miaoziguan/obsidian-bamboo-immortals' }].forEach(work => {
-      const tag = worksRow.createEl('span', { text: work.name, cls: 'bamboo-about-tag' });
+      const tag = worksRow.createSpan({ text: work.name, cls: 'bamboo-about-tag' });
       if (work.url) {
         tag.setCssStyles({ cursor: 'pointer' });
         tag.addEventListener('click', () => {

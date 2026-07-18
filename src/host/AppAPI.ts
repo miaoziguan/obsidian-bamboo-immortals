@@ -159,7 +159,10 @@ export class AppAPI {
     if (this.iframe && event.source !== this.iframe.contentWindow) return;
 
     // 消息类型白名单（阶段3 · 契约化：从 protocol.ts 集中定义）
-    if (!INBOUND_PREFIXES.some((p) => msg.type!.startsWith(p))) return;
+    const type = msg.type;
+    if (!INBOUND_PREFIXES.some((p) => type.startsWith(p))) return;
+
+
 
     try {
       await this.handleMessage(msg.type, msg.id, msg.payload ?? {});

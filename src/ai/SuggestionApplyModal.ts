@@ -39,7 +39,8 @@ function findItem(goals: GoalItem[], s: Suggestion): { name: string; dailyMin?: 
   if (!goal) return null;
   const items = goal.items ?? [];
   let idx = -1;
-  if (s.target?.subItemName != null) idx = items.findIndex((i) => i.name === s.target!.subItemName);
+  const target = s.target;
+  if (target && target.subItemName != null) idx = items.findIndex((i) => i.name === target.subItemName);
   else if (s.target?.subItemIndex != null) idx = s.target.subItemIndex;
   if (idx < 0 || idx >= items.length) return null;
   return { name: items[idx].name, dailyMin: items[idx].dailyMin };

@@ -97,7 +97,10 @@ export function applySuggestion(s: Suggestion, goals: GoalItem[]): ApplyResult {
     (x) =>
       (s.goalRef.goalId != null && x.id === s.goalRef.goalId) ||
       x.title === s.goalRef.goalTitle
-  )!;
+  );
+  if (!g) {
+    return { goals, applied: false, message: '未找到目标' };
+  }
 
   switch (s.action) {
     case 'adjust_dailyMin': {

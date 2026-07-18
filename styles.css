@@ -340,7 +340,7 @@ html body .workspace-leaf-content[data-type="bamboo-immortals"] .view-header-tit
   opacity: 0.4;
 }
 .bamboo-ai-plan-item-off .bamboo-ai-plan-item-name {
-  text-decoration-line: line-through;
+  text-decoration: line-through;
 }
 .bamboo-ai-plan-item-cb {
   appearance: none;

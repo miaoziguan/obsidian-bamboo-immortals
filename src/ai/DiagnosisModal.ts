@@ -50,7 +50,7 @@ export interface DiagnosisModalOptions {
   onApplyAll?: (goal: GoalDiagnosis) => void;
   /** 可选：报告级「一键应用全部建议」（MVP-2），跨所有目标批量确定性应用 */
   onApplyAllDiagnosis?: () => void;
-  /** 真实子项证据（按 goal.title 索引），默认折叠，展开后是紧凑表格 */
+  /** 真实子项证据（按 goal.id 索引，title 为回退），默认折叠，展开后是紧凑表格 */
   itemEvidence?: Record<string, ItemEvidence[]>;
   title?: string;
 }
@@ -154,7 +154,7 @@ export class DiagnosisModal extends Modal {
     }
 
     // ----- 真实子项证据：默认折叠，点击展开 -----
-    const evList = this.opts.itemEvidence?.[g.title];
+    const evList = this.opts.itemEvidence?.[g.id ?? g.title];
     if (evList && evList.length > 0) {
       this.renderEvidence(card, evList);
     }

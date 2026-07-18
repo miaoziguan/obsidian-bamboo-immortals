@@ -94,4 +94,12 @@ describe('VaultStorage 数据读写', () => {
     expect(await storage.getDay('2026-07-13')).toBeNull();
     expect(await storage.getGoals()).toEqual([]);
   });
+
+  it('H11 getGoals：文件内容非数组（损坏）时返回 [] 不抛错', async () => {
+    const path = (storage as any).goalsPath();
+    await (storage as any).app.vault.adapter.write(path, '{"not":"an array"}');
+    const back = await storage.getGoals();
+    expect(Array.isArray(back)).toBe(true);
+    expect(back).toEqual([]);
+  });
 });

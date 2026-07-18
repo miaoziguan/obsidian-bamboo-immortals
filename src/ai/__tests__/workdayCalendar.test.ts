@@ -3,6 +3,7 @@ import {
   fmt,
   buildHolidays,
   getHolidays,
+  getHolidaysForRange,
   isWorkday,
   countWorkdays,
   workdaysBetween,
@@ -88,5 +89,24 @@ describe('workdayCalendar.workdaysBetween', () => {
   });
   it('反向返回负值（符号翻转）', () => {
     expect(workdaysBetween(new Date(2026, 2, 6), new Date(2026, 2, 2), h)).toBe(-5);
+  });
+});
+
+describe('workdayCalendar.getHolidaysForRange（H7 跨年支持）', () => {
+  it('跨年区间合并多年节假日集合', () => {
+    const range = getHolidaysForRange(new Date(2025, 11, 25), new Date(2026, 1, 10));
+    expect(range.has('2026-01-01')).toBe(true); // 2026 元旦在区间内
+    expect(range.has('2025-01-01')).toBe(true); // buildHolidays(2025) 含 2025 全年节假日
+  });
+
+  it('相比单年 getHolidays，跨年目标不漏算起始年节假日', () => {
+    const from = new Date(2025, 11, 1);
+    const to = new Date(2026, 0, 31);
+    const range = getHolidaysForRange(from, to);
+    // 单年 getHolidays(2026) 不含 2025 年节假日
+    expect(getHolidays(2026).has('2025-01-01')).toBe(false);
+    // 区间集合同时含 2025（目标起始年）与 2026 节假日
+    expect(range.has('2025-01-01')).toBe(true);
+    expect(range.has('2026-01-01')).toBe(true);
   });
 });

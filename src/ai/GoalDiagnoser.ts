@@ -39,6 +39,8 @@ const DIMENSION_LABEL: Record<HealthDimension, string> = {
 
 export interface GoalDiagnosis {
   title: string;
+  /** 对应原 GoalItem.id（诊断编排层补全），供报告弹窗按 id 索引子项证据 */
+  id?: string;
   completion?: number;
   status: DiagnosisStatus;
   /** 健康分总分 0-100（来自三维健康模型，AI 归因应基于此而非「是否落后」） */

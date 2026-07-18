@@ -82,7 +82,9 @@ describe('runDiagnosis', () => {
     expect(d.openDiagnosis).toHaveBeenCalledTimes(1);
 
     const openArgs = (d.openDiagnosis as any).mock.calls[0][0];
-    expect(openArgs.diagnosis).toBe(diag);
+    // M9: 诊断结果按 title 补全原目标 id（goalDiagnoses 带上 GoalItem.id）
+    expect(openArgs.diagnosis.ok).toBe(true);
+    expect(openArgs.diagnosis.goals[0]).toMatchObject({ title: '减重', id: 'g1' });
 
     // 触发逐条「应用」回调（#7 结构化）
     openArgs.onApply(diag.goals[0], diag.goals[0].suggestions[0]);
@@ -93,8 +95,9 @@ describe('runDiagnosis', () => {
     expect(edited.items[0].dailyMin).toBe('15');
     expect(pv.before).toEqual([goal]);
 
-    // 确认写入
+    // 确认写入（H6: 写回前重新拉库合并，异步落库）
     pv.onConfirm(edited);
+    await new Promise((r) => setTimeout(r, 0));
     expect(d.writeGoals).toHaveBeenCalledWith(edited);
   });
 
@@ -188,8 +191,9 @@ describe('runDiagnosis', () => {
     expect(g1.items[0].dailyMin).toBe('15'); // 跨目标 1 命中
     expect(g2.items[0].dailyMin).toBe('5'); // 跨目标 2 命中
     expect(pv.before).toEqual(goals);
-    // 确认写入
+    // 确认写入（H6: 写回前重新拉库合并，异步落库）
     pv.onConfirm(pv.after);
+    await new Promise((r) => setTimeout(r, 0));
     expect(d.writeGoals).toHaveBeenCalledWith(pv.after);
   });
 
@@ -259,5 +263,114 @@ describe('runDiagnosis', () => {
     expect(openArgs.itemEvidence).toBeTypeOf('object');
     // 本次 getDay 返回 null → 无完成记录，证据列表为空
     expect(Array.isArray(openArgs.itemEvidence['减重'])).toBe(true);
+  });
+
+  it('H6 写回前重新拉库：仅覆盖被建议命中的目标，尊重外部增删', async () => {
+    const startGoals = [
+      { id: 'g1', title: '减重', items: [{ name: '跑步', dailyMin: '30' }] },
+      { id: 'g-del', title: '将被外部删除', items: [] },
+    ];
+    const diag = {
+      ok: true,
+      summary: 's',
+      goals: [
+        {
+          title: '减重',
+          status: 'behind',
+          suggestions: [
+            { id: 's1', action: 'adjust_dailyMin', goalRef: { goalId: 'g1', goalTitle: '减重' }, target: { subItemName: '跑步' }, params: { dailyMin: 15 }, text: '跑步 15' },
+          ],
+        },
+      ],
+      nextActions: [],
+    } as Diagnosis;
+    // 启动诊断时库含 g1+g-del；确认写回时库已变（用户删除 g-del、新增 g-other）
+    const latest = [
+      { id: 'g1', title: '减重', items: [{ name: '跑步', dailyMin: '30' }] },
+      { id: 'g-other', title: '外部新增', items: [] },
+    ];
+    const storage = {
+      getGoals: vi
+        .fn()
+        .mockResolvedValueOnce(startGoals) // collect（诊断启动）
+        .mockResolvedValueOnce(latest) // onConfirm 重新拉库
+        .mockResolvedValue(latest), // 兜底
+      getDayKeys: vi.fn().mockResolvedValue([]),
+      getDay: vi.fn().mockResolvedValue(null),
+    };
+    const d = baseDeps({ diagnose: vi.fn().mockResolvedValue(diag), storage });
+    await runDiagnosis(d);
+
+    const openArgs = (d.openDiagnosis as any).mock.calls[0][0];
+    openArgs.onApply(diag.goals[0], diag.goals[0].suggestions[0]);
+    const pv = (d.openApplyPreview as any).mock.calls[0][0];
+    pv.onConfirm(pv.after); // pv.after 仅 g1 被建议改成 15
+    await new Promise((r) => setTimeout(r, 0));
+    expect(d.writeGoals).toHaveBeenCalledTimes(1);
+
+    const written = (d.writeGoals as any).mock.calls[0][0] as any[];
+    // g1 应用了诊断建议（15），外部新增 g-other 保留，被外部删除的 g-del 不回写
+    expect(written.find((g) => g.id === 'g1').items[0].dailyMin).toBe('15');
+    expect(written.find((g) => g.id === 'g-other')).toBeDefined();
+    expect(written.find((g) => g.id === 'g-del')).toBeUndefined();
+  });
+
+  it('L10 单条应用写回失败 → 通过 notice 暴露而非 void 静默吞掉', async () => {
+    const goal = { id: 'g1', title: '减重', items: [{ name: '跑步', dailyMin: '30' }] };
+    const diag = {
+      ok: true,
+      summary: 's',
+      goals: [
+        {
+          title: '减重',
+          status: 'behind',
+          suggestions: [
+            { id: 's1', action: 'adjust_dailyMin', goalRef: { goalId: 'g1', goalTitle: '减重' }, target: { subItemName: '跑步' }, params: { dailyMin: 15 }, text: '跑步 15' },
+          ],
+        },
+      ],
+      nextActions: [],
+    } as Diagnosis;
+    const writeGoals = vi.fn().mockRejectedValue(new Error('磁盘写满'));
+    const d = baseDeps({ diagnose: vi.fn().mockResolvedValue(diag), storage: makeStorage([goal]), writeGoals });
+    await runDiagnosis(d);
+    const openArgs = (d.openDiagnosis as any).mock.calls[0][0];
+    openArgs.onApply(diag.goals[0], diag.goals[0].suggestions[0]);
+    const pv = (d.openApplyPreview as any).mock.calls[0][0];
+    pv.onConfirm(pv.after); // 触发写回（void 调用）
+    await new Promise((r) => setTimeout(r, 0));
+    expect(d.writeGoals).toHaveBeenCalledTimes(1); // 仍尝试写入
+    // 关键修复：异常被 notice 暴露给用户，而非被 void 调用静默吞掉
+    expect(d.notice).toHaveBeenCalledWith(expect.stringContaining('磁盘写满'));
+  });
+
+  it('L10 escalate(AI 接管)写回失败 → 同样通过 notice 暴露', async () => {
+    const goal = { id: 'g1', title: '减重', items: [{ name: '跑步', dailyMin: '30' }] };
+    const diag = {
+      ok: true,
+      summary: 's',
+      goals: [
+        {
+          title: '减重',
+          status: 'behind',
+          suggestions: [
+            { id: 's1', action: 'adjust_dailyMin', goalRef: { goalId: 'g1', goalTitle: '减重' }, target: { subItemName: '跑步' }, params: { dailyMin: 15 }, text: '跑步 15' },
+          ],
+        },
+      ],
+      nextActions: [],
+    } as Diagnosis;
+    const writeGoals = vi.fn().mockRejectedValue(new Error('权限不足'));
+    const d = baseDeps({ diagnose: vi.fn().mockResolvedValue(diag), storage: makeStorage([goal]), writeGoals });
+    await runDiagnosis(d);
+    const openArgs = (d.openDiagnosis as any).mock.calls[0][0];
+    openArgs.onApply(diag.goals[0], diag.goals[0].suggestions[0]);
+    const pv = (d.openApplyPreview as any).mock.calls[0][0];
+    pv.onEscalateAI(pv.after); // 进入 AI 接管，触发 openAgentic
+    const agenticArgs = (d.openAgentic as any).mock.calls[0][0];
+    agenticArgs.onConfirm(pv.after); // 触发写回（void 调用）
+    await new Promise((r) => setTimeout(r, 0));
+    expect(d.writeGoals).toHaveBeenCalledTimes(1);
+    expect(d.notice).toHaveBeenCalledWith(expect.stringContaining('权限不足'));
   });
 });

@@ -43,6 +43,20 @@ export function getHolidays(year: number): Set<string> {
   return set;
 }
 
+/**
+ * 覆盖区间所有年份的节假日集合（含端点年的相邻年，因 buildHolidays 已多带 +1 年）。
+ * 用于跨年目标：避免非当前年的法定节假日漏算导致工作日计数偏高。
+ */
+export function getHolidaysForRange(from: Date, to: Date): Set<string> {
+  const lo = Number.isFinite(from.getFullYear()) ? from.getFullYear() : new Date().getFullYear();
+  const hi = Number.isFinite(to.getFullYear()) ? to.getFullYear() : lo;
+  const set = new Set<string>();
+  for (let y = lo; y <= hi; y++) {
+    for (const d of buildHolidays(y)) set.add(d);
+  }
+  return set;
+}
+
 export function isWorkday(d: Date, holidays: Set<string>): boolean {
   const day = d.getDay();
   if (day === 0 || day === 6) return false;

@@ -22,7 +22,7 @@
 import type { DeviationCache } from './DeviationCalculator';
 import type { GoalItem, GoalSubItem } from '../types/data';
 import {
-  getHolidays,
+  getHolidaysForRange,
   isWorkday,
   fmt,
   countWorkdays,
@@ -617,7 +617,8 @@ export function computeGoalHealth(
   const isComplete = progress >= 100;
   // 统一归一为当日 0 点，避免 hours 偏差影响工作日/停滞判定
   const t = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-  const holidays = getHolidays(t.getFullYear());
+  const from = goal.startDate ? new Date(`${goal.startDate}T00:00:00`) : t;
+  const holidays = getHolidaysForRange(from, t);
 
   const L1 = scoreL1(goal, items, progress, isComplete, cache, holidays, t);
   const L2 = scoreL2(goal, items, progress, isComplete, cache, holidays, t);

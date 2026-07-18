@@ -172,7 +172,8 @@ export function buildPrompt(
 ): { system: string; user: string } {
   let system = buildSystemBase(depth, scope);
 
-  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`; // YYYY-MM-DD（本地时区，避免 UTC 跨午夜偏移）
   const user =
     scope === 'selection'
       ? `今天是 ${today}。\n\n以下是用户在笔记中选中的一段文本，请直接把它作为一个/多个目标来拆解（不要当成整篇笔记）：\n${content}`
@@ -215,7 +216,8 @@ export function buildMultiPrompt(
   depth: '粗' | '中' | '细' = '中'
 ): { system: string; user: string } {
   const system = buildSystemBase(depth, 'note'); // 多目标无 scope 语义（每条已是简报文本）
-  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`; // YYYY-MM-DD（本地时区，避免 UTC 跨午夜偏移）
   const n = targets.length;
 
   let user = `今天是 ${today}。\n\n下方包含 ${n} 个相互独立的目标（来自用户的不同意图）。请为【每一个目标】分别产出 goals 数组中的对应 GoalItem，且每个目标【必须】使用其标注的「拆解框架」：\n`;

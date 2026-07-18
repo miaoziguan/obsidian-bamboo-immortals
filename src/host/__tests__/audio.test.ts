@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createMockApp, __setRequestUrlHandler } from '../../../test/mocks/obsidian';
 import { AppAPI } from '../AppAPI';
 
@@ -123,5 +123,27 @@ describe('AppAPI 音频读取', () => {
     const expected =
       'data:audio/flac;base64,' + Buffer.from(new Uint8Array(bytes)).toString('base64');
     expect((res!.payload as any).data).toBe(expected);
+  });
+
+  it('L14 已 detach → 扫描直接返回空且不再读库', async () => {
+    const listSpy = vi.spyOn(adapter, 'list');
+    (api as any).disposed = true;
+    captured = null;
+    await (api as any).handleMessage('app:listVaultAudioFiles', 'scan1', {});
+    expect((captured!.payload as any).files).toEqual([]);
+    expect(listSpy).not.toHaveBeenCalled();
+  });
+
+  it('L14 扫描进行中 detach → 提前终止（list 执行时置 disposed，文件不被收集）', async () => {
+    const listSpy = vi.spyOn(adapter, 'list').mockImplementation(
+      async () => {
+        (api as any).disposed = true; // 模拟扫描中途用户关闭面板
+        return { folders: [], files: ['a.mp3'] } as any;
+      },
+    );
+    captured = null;
+    await (api as any).handleMessage('app:listVaultAudioFiles', 'scan2', {});
+    expect((captured!.payload as any).files).toEqual([]); // 已开始 list，但被 disposed 中止
+    expect(listSpy).toHaveBeenCalledTimes(1);
   });
 });

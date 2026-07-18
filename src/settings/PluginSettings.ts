@@ -1,6 +1,7 @@
 import { App, PluginSettingTab, Setting } from 'obsidian';
 import type BambooReviewPlugin from '../../main';
 import { ThemeBridge } from '../bridge/ThemeBridge';
+import { arrayBufferToBase64 } from '../utils/base64';
 
 /** Obsidian 插件运行时注入的主窗口 document（非 iframe 内的 document） */
 declare const activeDocument: Document;
@@ -206,7 +207,7 @@ export class PluginSettings extends PluginSettingTab {
             this.plugin.settings.syncPaletteToObsidian = value;
             await this.plugin.saveSettings();
             if (!value) {
-              ThemeBridge.restoreDefaults();
+              ThemeBridge.default.restoreDefaults();
             }
             const frame = activeDocument.querySelector<HTMLIFrameElement>('.bamboo-review-frame');
             if (frame?.contentWindow) {
@@ -322,7 +323,7 @@ export class PluginSettings extends PluginSettingTab {
           const exists = await adapter.exists(avatarPath);
           if (!exists) continue;
           const avatarData = await adapter.readBinary(avatarPath);
-          const b64 = Buffer.from(avatarData).toString('base64');
+          const b64 = arrayBufferToBase64(avatarData);
           avatar.setCssStyles({
             backgroundImage: `url(data:image/jpeg;base64,${b64})`,
           });

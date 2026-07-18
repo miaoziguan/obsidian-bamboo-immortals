@@ -168,7 +168,8 @@ export function buildElicitPrompt(
 
 ${GOAL_KIND_RUBRIC}`;
 
-  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`; // YYYY-MM-DD（本地时区，避免 UTC 跨午夜偏移）
   let user = `今天是 ${today}。\n\n用户的原始意图：\n${rawIntent}`;
 
   if (history && history.length > 0) {
@@ -376,7 +377,8 @@ export function buildSplitPrompt(brief: GoalBrief): { system: string; user: stri
 
 ${GOAL_KIND_RUBRIC}`;
 
-  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`; // YYYY-MM-DD（本地时区，避免 UTC 跨午夜偏移）
   const user = `今天是 ${today}。\n\n用户已澄清的总目标简报：\n${briefToPlanningText(brief)}\n\n请判断它包含几个独立目标，并拆成对应数量的子目标简报。若只有一个目标就返回长度为 1 的数组。`;
 
   return { system, user };

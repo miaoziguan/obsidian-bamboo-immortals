@@ -225,7 +225,9 @@ export class VaultStorage {
       return [];
     }
     const content: string = await this.app.vault.adapter.read(path);
-    return JSON.parse(content) as GoalItem[];
+    // 损坏为非数组（null/{}数字）时返回 []，避免下游 as GoalItem[] 后 .map/.length 抛错（H11）
+    const parsed = JSON.parse(content);
+    return Array.isArray(parsed) ? (parsed as GoalItem[]) : [];
   }
 
   async putGoals(goals: GoalItem[]): Promise<void> {
@@ -293,7 +295,15 @@ export class VaultStorage {
     if (abstract instanceof TFile) {
       // vault.process 原子 read-modify-write，杜绝竞态丢数据
       await this.app.vault.process(abstract, (data) => {
-        const settings: Record<string, unknown> = JSON.parse(data) as Record<string, unknown>;
+        let settings: Record<string, unknown> = {};
+        if (data && data.trim()) {
+          try {
+            settings = JSON.parse(data) as Record<string, unknown>;
+          } catch {
+            // 损坏的 settings.json：以空对象为基准继续，避免抛错中断且不丢旧盘（process 失败不写）
+            settings = {};
+          }
+        }
         settings[key] = value;
         return JSON.stringify(settings, null, 2);
       });
@@ -309,7 +319,10 @@ export class VaultStorage {
     }
     try {
       const content: string = await this.app.vault.adapter.read(path);
-      return JSON.parse(content) as AppSettings;
+      const parsed = JSON.parse(content);
+      // parse 成功但非对象（如 "abc" / 数字 / 数组）会被 {...existing} 展开导致合并错乱，按损坏兜底
+      if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return {};
+      return parsed as AppSettings;
     } catch {
       return {};
     }

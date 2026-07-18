@@ -94,7 +94,8 @@ export class PlanningSession {
     const text = extractChatText(await this.call());
     const obj = JSON.parse(text) as Record<string, unknown>;
     this.goals = this.callParse(parseGoals(obj));
-    this.initialGoals = this.goals;
+    // 深拷贝首版快照，避免后续手动 edit 工作副本污染 initialGoals（note 模式 reset 依赖它）
+    this.initialGoals = JSON.parse(JSON.stringify(this.goals));
     return this.goals;
   }
 
@@ -138,7 +139,7 @@ export class PlanningSession {
       this.messages = [{ role: 'system', content: this.editSystemContent + AGENT_SUFFIX }];
       return;
     }
-    this.goals = this.initialGoals;
+    this.goals = JSON.parse(JSON.stringify(this.initialGoals));
     if (this.targets) {
       const { system, user } = buildMultiPrompt(this.targets, this.settings.aiDecomposeDepth);
       this.messages = [

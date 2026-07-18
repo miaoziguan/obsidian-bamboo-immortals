@@ -18,8 +18,8 @@ export class ThemeBridge {
       '--text-muted',
     ];
 
-    /** 防抖竞态标记：restoreDefaults 被调用后设为 true，阻止延迟回调覆写 */
-    private static _suppressed = false;
+    /** 防抖竞态标记：restoreDefaults 被调用后设为 true，阻止延迟回调覆写（实例级，避免分屏多实例互相干扰 H9） */
+    private _suppressed = false;
 
   attachIframe(iframe: HTMLIFrameElement): void {
     this.iframe = iframe;
@@ -160,11 +160,14 @@ export class ThemeBridge {
     const h = Math.round(hue);
     const lo = Math.max(-30, Math.min(30, lightnessOffset));
 
-    // 强调色
+    // 强调色：明度偏移 lo 同步作用于强调色，使 webapp 的「明度」滑块
+    // 在 Obsidian 原生界面同样可见（与 webapp 侧 --accent-lightness-offset 方向一致：正值提亮）。
     const accentS = 40;
-    const accentL = isDark ? 50 : 40;
+    const accentL = isDark
+      ? Math.max(30, Math.min(80, 50 + lo))
+      : Math.max(15, Math.min(70, 40 + lo));
     const accent = `hsl(${h}, ${accentS}%, ${accentL}%)`;
-    const accentHover = `hsl(${h}, ${accentS}%, ${accentL + 5}%)`;
+    const accentHover = `hsl(${h}, ${accentS}%, ${Math.min(95, accentL + 5)}%)`;
 
     // 背景色
     const bgS = isDark ? 8 : 12;
@@ -195,9 +198,9 @@ export class ThemeBridge {
    */
   applyPalette(hue: number, lightnessOffset: number, isDark: boolean): void {
     if (this._paletteSyncTimer) window.clearTimeout(this._paletteSyncTimer);
-    ThemeBridge._suppressed = false; // 新调色请求到来 → 解除抑制
+    this._suppressed = false; // 新调色请求到来 → 解除抑制
     this._paletteSyncTimer = window.setTimeout(() => {
-      if (ThemeBridge._suppressed) return; // restoreDefaults 在防抖窗口内被调用
+      if (this._suppressed) return; // restoreDefaults 在防抖窗口内被调用
       const vars = ThemeBridge.computeObsidianVars(hue, lightnessOffset, isDark);
       for (const [key, value] of Object.entries(vars)) {
         activeDocument.body.style.setProperty(key, value);
@@ -206,10 +209,16 @@ export class ThemeBridge {
   }
 
   /** 清除注入的 CSS 变量，恢复 Obsidian 主题默认值 */
-  static restoreDefaults(): void {
-    ThemeBridge._suppressed = true;
+  restoreDefaults(): void {
+    this._suppressed = true;
     for (const key of ThemeBridge.INJECTED_VARS) {
       activeDocument.body.style.removeProperty(key);
     }
+  }
+
+  /** 进程级单例，供 onunload 等无实例上下文处恢复默认（与 AppAPI 持有的实例相互独立，避免 _suppressed 跨实例干扰 H9） */
+  private static _default: ThemeBridge | null = null;
+  static get default(): ThemeBridge {
+    return (this._default ??= new ThemeBridge());
   }
 }

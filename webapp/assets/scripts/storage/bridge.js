@@ -65,6 +65,18 @@ export class BridgeStorage {
       SectionRegistry.applyBridgeConfig();
     }
 
+    // 首屏补发调色同步：DisplayManager.init 与 bridge 就绪是两条异步链路，
+    // 若 DisplayManager 早于本 readyResp 完成加载，其 _maybeSyncPalette 会因
+    // storageManager.syncPaletteToObsidian 尚未赋值而提前 return，导致首屏漏同步。
+    // 开关开启时，延迟一拍（等 DisplayManager._loadAndApply 应用完色相/明度）主动补发。
+    if (this.syncPaletteToObsidian) {
+      setTimeout(() => {
+        if (typeof window.DisplayManager !== 'undefined' && window.DisplayManager._maybeSyncPalette) {
+          window.DisplayManager._maybeSyncPalette();
+        }
+      }, 60);
+    }
+
     // 延迟触发 storage:initialized，确保所有模块脚本已注册监听器
     setTimeout(() => {
       if (typeof EventBus !== 'undefined') {

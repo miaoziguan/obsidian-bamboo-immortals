@@ -91,6 +91,48 @@ export interface DiagnosisDeps {
 export async function runDiagnosis(deps: DiagnosisDeps): Promise<void> {
   const emit = (p: DiagnosisPhase) => deps.onPhase?.(p, DIAGNOSIS_PHASE_LABEL[p]);
 
+  // H6：写回前重新拉取最新目标库，仅以「被本次建议命中的目标」覆盖，
+  // 写回失败时转成用户可见提示，避免 fire-and-forget 的 void 调用吞掉写入异常（#L10）
+  const writeGoalsSafe = (goals: GoalItem[]) =>
+    Promise.resolve()
+      .then(() => deps.writeGoals(goals))
+      .catch((e) =>
+        deps.notice(`应用 AI 建议失败：${e instanceof Error ? e.message : '写入目标库出错'}`),
+      );
+
+  // 写回前重新拉取最新目标库，仅覆盖本次诊断命中的目标，避免陈旧快照覆盖外部改动（诊断快照陈旧问题）。
+  // final 可能为单对象（单条应用）或数组（批量应用），需保持入参形状回写。
+  const writeMergedWithLatest = async (final: GoalItem | GoalItem[], hitGoalIds: string[]): Promise<void> => {
+    try {
+      const hit = new Set(hitGoalIds);
+      if (hit.size === 0) {
+        await deps.writeGoals(final as GoalItem[]);
+        return;
+      }
+      const latest = await deps.storage.getGoals().catch(() => null);
+      if (!latest) {
+        await deps.writeGoals(final as GoalItem[]);
+        return;
+      }
+      const finals = Array.isArray(final) ? final : [final];
+      const finalById = new Map(finals.map((g) => [g.id, g]));
+      const merged = latest.map((g) => (hit.has(g.id) ? (finalById.get(g.id) ?? g) : g));
+      // 仅追加 final 中「被命中且 latest 不存在」的新目标（如 AI 新增），未命中目标不追加以尊重外部删除
+      for (const g of finals) {
+        if (hit.has(g.id) && !merged.some((m) => m.id === g.id)) merged.push(g);
+      }
+      // 保持 onConfirm 入参形状：单对象则回写对应单对象（兼容历史单对象写回），否则回写合并数组
+      if (!Array.isArray(final)) {
+        const only = merged.find((g) => g.id === final.id) ?? final;
+        await deps.writeGoals(only as unknown as GoalItem[]);
+      } else {
+        await deps.writeGoals(merged);
+      }
+    } catch (e) {
+      deps.notice(`应用 AI 建议失败：${e instanceof Error ? e.message : '写入目标库出错'}`);
+    }
+  };
+
   if (!deps.aiEnabled) {
     deps.notice('AI 诊断未启用：请先在插件设置中开启并填写 API Key');
     return;
@@ -128,8 +170,14 @@ export async function runDiagnosis(deps: DiagnosisDeps): Promise<void> {
   const result = await deps.diagnose(goals, days, deps.plannerSettings);
 
   emit('render'); // ④ 解析诊断结果
+  // 补全每条诊断结果的原目标 id，供报告弹窗按 id 索引子项证据（解决重名目标证据互相覆盖 #M9）
+  const idByTitle = new Map(goals.map((g) => [g.title, g.id]));
+  const diagnosisResult: DiagnosisResult =
+    result.ok
+      ? { ...result, goals: result.goals.map((g) => ({ ...g, id: idByTitle.get(g.title) ?? g.title })) }
+      : result;
   deps.openDiagnosis({
-    diagnosis: result,
+    diagnosis: diagnosisResult,
     itemEvidence,
     onApply: (goal, suggestion) => {
       // #7：确定性改写，按子项名精准命中，不再交给 AI 二次猜测
@@ -138,18 +186,19 @@ export async function runDiagnosis(deps: DiagnosisDeps): Promise<void> {
         deps.notice('该建议未匹配到目标/子项，未改动');
         return;
       }
+      const hitIds = [suggestion.goalRef.goalId].filter(Boolean) as string[];
       deps.openApplyPreview({
         suggestions: [suggestion],
         before: goals,
         after: res.goals,
-        onConfirm: (final) => void deps.writeGoals(final),
+        onConfirm: (final) => void writeMergedWithLatest(final, hitIds),
         onEscalateAI: (final) =>
           deps.openAgentic({
             content: '',
             scope: 'note',
             settings: deps.plannerSettings,
             goals: final,
-            onConfirm: (f) => void deps.writeGoals(f),
+            onConfirm: (f) => void writeGoalsSafe(f),
           }),
         title: `应用建议 · ${goal.title}`,
       });
@@ -160,18 +209,19 @@ export async function runDiagnosis(deps: DiagnosisDeps): Promise<void> {
         deps.notice('该目标建议未匹配到目标/子项，未改动');
         return;
       }
+      const hitIds = goal.suggestions.map((s) => s.goalRef.goalId).filter(Boolean) as string[];
       deps.openApplyPreview({
         suggestions: goal.suggestions,
         before: goals,
         after: res.goals,
-        onConfirm: (final) => void deps.writeGoals(final),
+        onConfirm: (final) => void writeMergedWithLatest(final, hitIds),
         onEscalateAI: (final) =>
           deps.openAgentic({
             content: '',
             scope: 'note',
             settings: deps.plannerSettings,
             goals: final,
-            onConfirm: (f) => void deps.writeGoals(f),
+            onConfirm: (f) => void writeGoalsSafe(f),
           }),
         title: `应用建议 · ${goal.title}`,
       });
@@ -187,18 +237,19 @@ export async function runDiagnosis(deps: DiagnosisDeps): Promise<void> {
         deps.notice('所有建议均未匹配到目标/子项，未改动');
         return;
       }
+      const hitIds = all.map((s) => s.goalRef.goalId).filter(Boolean) as string[];
       deps.openApplyPreview({
         suggestions: all,
         before: goals,
         after: res.goals,
-        onConfirm: (final) => void deps.writeGoals(final),
+        onConfirm: (final) => void writeMergedWithLatest(final, hitIds),
         onEscalateAI: (final) =>
           deps.openAgentic({
             content: '',
             scope: 'note',
             settings: deps.plannerSettings,
             goals: final,
-            onConfirm: (f) => void deps.writeGoals(f),
+            onConfirm: (f) => void writeGoalsSafe(f),
           }),
         title: '一键应用全部建议',
       });

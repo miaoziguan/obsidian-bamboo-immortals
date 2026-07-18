@@ -59,4 +59,30 @@ describe('ImportValidator 字符串净化（XSS 纵深防御）', () => {
     const settings = res.settings as any;
     expect(settings.noiseItems[0].name).not.toContain('<img');
   });
+
+  it('M15 收紧净化：含比较符号 a < b 的文本不被误剥离', () => {
+    const res = ImportValidator.validate({
+      goals: [{ id: 'g', title: '当 x < y 时触发' }],
+    });
+    expect(res.goals![0].title).toBe('当 x < y 时触发');
+  });
+
+  it('M15 合法 data: 资源不被清空（仅移除可执行 data: 类型）', () => {
+    const res = ImportValidator.validate({
+      goals: [{ id: 'g', title: '配图 data:image/png;base64,ABC 资源' }],
+    });
+    expect(res.goals![0].title).toContain('data:image/png');
+  });
+
+  it('M16 非对象 goal 项（字符串/数字）被跳过，不污染 goals 数组', () => {
+    const res = ImportValidator.validate({
+      goals: [
+        { id: 'g1', title: '正常目标' },
+        '垃圾字符串' as any,
+        123 as any,
+        { id: 'g2', title: '另一个正常' },
+      ],
+    });
+    expect(res.goals!.map((g) => g.id)).toEqual(['g1', 'g2']);
+  });
 });

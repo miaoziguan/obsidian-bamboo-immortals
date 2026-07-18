@@ -13,7 +13,7 @@
  * 零 Obsidian 依赖，纯函数可单测。
  */
 import type { DayData, GoalItem } from '../types/data';
-import { getHolidays, countWorkdays } from './workdayCalendar';
+import { getHolidaysForRange, countWorkdays } from './workdayCalendar';
 
 export type DeviationStatus = 'on_track' | 'behind' | 'stuck' | 'done' | 'at_risk';
 
@@ -131,7 +131,7 @@ export function computeGoalDeviation(
   const start = parseDate(goal.startDate);
   const end = parseDate(goal.endDate);
   const actualProgress = clamp(Number(goal.progress) || 0, 0, 100);
-  const holidays = getHolidays(today.getFullYear());
+  const holidays = getHolidaysForRange(start ?? today, today);
 
   let expectedProgress: number;
   let hasDates = false;
@@ -230,7 +230,7 @@ export function buildItemEvidence(
 
     const start = parseDate(it.startDate ?? goal.startDate);
     const end = parseDate(it.endDate ?? goal.endDate);
-    const holidays = getHolidays(today.getFullYear());
+    const holidays = getHolidaysForRange(start ?? today, today);
     let pacePct: number | null = null;
     if (start && end && start <= end) {
       const total = countWorkdays(start, end, holidays);
@@ -261,7 +261,9 @@ export function buildItemEvidenceMap(
 ): Record<string, ItemEvidence[]> {
   const out: Record<string, ItemEvidence[]> = {};
   for (const g of goals || []) {
-    out[g.title] = buildItemEvidence(g, cache, today);
+    const ev = buildItemEvidence(g, cache, today);
+    out[g.id] = ev;
+    out[g.title] = ev; // 双写：title 作为 AI 异常 title 时的回退索引
   }
   return out;
 }

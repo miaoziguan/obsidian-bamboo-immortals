@@ -189,7 +189,7 @@ export default class BambooReviewPlugin extends Plugin {
   }
 
   onunload(): void {
-    ThemeBridge.restoreDefaults();
+    ThemeBridge.default.restoreDefaults();
   }
 
   /** AI 规划主流程：取当前笔记 → 调大模型 → 校验 → 审阅弹窗 → 写入目标库 */
@@ -405,8 +405,14 @@ export default class BambooReviewPlugin extends Plugin {
       if (g.sourceRef && g.title) byRefTitle.set(`${g.sourceRef}#${g.title}`, g.id);
     }
 
+    // 跳过同笔记且标题已不在本次规划新标题集中的旧目标：视为被重命名，
+    // 由新目标以新派生 id 上位，避免「旧标题残留 + 新标题」形成双条（H1）
+    const newTitles = new Set(goals.map((g) => g.title));
     const merged = new Map<string, GoalItem>();
-    for (const g of existing) if (g.id) merged.set(g.id, g);
+    for (const g of existing) {
+      if (g.sourceRef === file.path && g.title && !newTitles.has(g.title)) continue;
+      if (g.id) merged.set(g.id, g);
+    }
 
     // 最终防线：AI 写入的目标禁止包含 icon 字段（即使审阅弹窗误填入也剥离）
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -461,7 +467,7 @@ export default class BambooReviewPlugin extends Plugin {
       aiEnabled: s.aiEnabled,
       plannerSettings,
       storage,
-      diagnose: diagnose as unknown as typeof diagnose,
+      diagnose,
       onPhase: (p, l) => progress.setPhase(p, l),
       openDiagnosis: (o) => {
         progress.close();
@@ -558,9 +564,16 @@ export default class BambooReviewPlugin extends Plugin {
       return;
     }
     const storage = new VaultStorage(this.app);
-    const goals = await storage.getGoals();
-    if (goals.length === 0) {
-      new Notice('你还没有目标，先跑一次 AI 规划');
+    const allGoals = await storage.getGoals();
+    // 归档目标不进规划台编辑（避免误改/误删）；但写回时必须并回，否则 putGoals 整体覆盖会丢失它们
+    const activeGoals = allGoals.filter((g) => !g.archived);
+    const archivedGoals = allGoals.filter((g) => g.archived);
+    if (activeGoals.length === 0) {
+      new Notice(
+        archivedGoals.length > 0
+          ? '当前没有活跃目标（目标都已归档），无需编辑。'
+          : '你还没有目标，先跑一次 AI 规划',
+      );
       return;
     }
     const plannerSettings: PlannerSettings = {
@@ -573,9 +586,10 @@ export default class BambooReviewPlugin extends Plugin {
       content: '',
       scope: 'note',
       settings: plannerSettings,
-      goals,
+      goals: activeGoals,
       subtitle: '正在编辑你当前的目标库，可直接改或用自然语言让我调整。',
-      onConfirm: (finalGoals) => void this.writeDiagnosedGoals(finalGoals),
+      onConfirm: (finalGoals) =>
+        void this.writeDiagnosedGoals([...finalGoals, ...archivedGoals]),
     });
   }
 

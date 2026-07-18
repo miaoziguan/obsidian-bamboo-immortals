@@ -1,4 +1,5 @@
 import { App, DataAdapter, normalizePath, requestUrl } from 'obsidian';
+import { arrayBufferToBase64 } from '../utils/base64';
 import { VaultStorage } from '../storage/VaultStorage';
 import { ThemeBridge } from '../bridge/ThemeBridge';
 import type { BambooReviewSettings, NoiseItem } from '../settings/PluginSettings';
@@ -11,6 +12,9 @@ declare const activeDocument: Document;
 
 /** 扫描音频时默认跳过的目录名 */
 const SKIP_DIRS = ['.trash', '.git', 'node_modules'];
+
+/** 读取音频文件入内存前的体积上限（base64 再膨胀 ~33%，避免大文件 OOM） */
+const MAX_AUDIO_FILE_BYTES = 50 * 1024 * 1024; // 50MB
 
 /**
  * 校验音源代理 URL：仅允许 http/https 协议，限制长度，
@@ -28,21 +32,7 @@ export function isValidAudioUrl(url: string): boolean {
   return parsed.protocol === 'http:' || parsed.protocol === 'https:';
 }
 
-/** ArrayBuffer → base64 字符串（大文件分块，避免调用栈溢出） */
-function arrayBufferToBase64(buffer: ArrayBuffer): string {
-  const bytes = new Uint8Array(buffer);
-  let binary = '';
-  const chunkSize = 0x8000;
-  for (let i = 0; i < bytes.length; i += chunkSize) {
-    const chunk = bytes.subarray(i, i + chunkSize);
-    let chunkStr = '';
-    for (let j = 0; j < chunk.length; j++) {
-      chunkStr += String.fromCharCode(chunk[j]);
-    }
-    binary += chunkStr;
-  }
-  return btoa(binary);
-}
+// ArrayBuffer → base64 见 ../utils/base64（跨平台，不依赖 Node Buffer）
 
 /**
  * AppAPI — 统一通信接口
@@ -67,6 +57,8 @@ export class AppAPI {
   private vaultAdapter: DataAdapter;
   private noisePath: string;
   private configDir: string;
+  /** 视图已 detach 后置 true，扫描等异步任务据此提前终止（#L14） */
+  private disposed = false;
 
   constructor(
     app: App,
@@ -109,6 +101,7 @@ export class AppAPI {
     // bridge.js 的 postMessage 目标是 window.parent（主 Obsidian 窗口），
     // 必须在该窗口上监听才能收到消息（插件沙箱的 window 不是同一对象）。
     (activeDocument.defaultView || window).addEventListener('message', this.messageHandler);
+    this.disposed = false; // 重新 attach 后恢复可扫描状态（detach 已置 true）
   }
 
   /** 
@@ -128,6 +121,7 @@ export class AppAPI {
 
   /** 解绑并停止监听 */
   detach(): void {
+    this.disposed = true;
     if (this.messageHandler) {
       (activeDocument.defaultView || window).removeEventListener('message', this.messageHandler);
       this.messageHandler = null;
@@ -140,6 +134,7 @@ export class AppAPI {
   onThemeChanged(followObsidianTheme: boolean): void {
     this.settings.followObsidianTheme = followObsidianTheme;
     this.themeBridge.pushTheme(followObsidianTheme);
+    void this.saveSettings(); // 与 saveSectionConfig/saveCustomNoises 一致，持久化主题跟随开关
   }
 
   /** 向 iframe 发送成功响应 */
@@ -342,9 +337,13 @@ export class AppAPI {
     const results: Array<{ path: string; name: string; size: number; ext: string }> = [];
     const adapter = this.vaultAdapter;
 
+    // 视图已 detach 后提前终止（#L14）
+    if (this.disposed) return results;
+
     if (this.noisePath) {
       try {
         const list = await adapter.list(this.noisePath);
+        if (this.disposed) return results;
         for (const file of list.files) {
           if (file.startsWith('.')) continue;
           const ext = file.substring(file.lastIndexOf('.')).toLowerCase();
@@ -361,9 +360,11 @@ export class AppAPI {
       return results;
     }
 
-    // 全库扫描
+    // 全库扫描（detach 后 this.disposed 置 true，提前终止避免无谓耗时）
+    if (this.disposed) return results;
     const scanDir = async (relativeDir: string, depth: number): Promise<void> => {
       if (depth > maxDepth) return;
+      if (this.disposed) return;
       let list;
       try {
         list = await adapter.list(relativeDir);
@@ -377,6 +378,7 @@ export class AppAPI {
         if (skipSet.has(folder)) continue;
         const subPath = relativeDir ? normalizePath(`${relativeDir}/${folder}`) : folder;
         await scanDir(subPath, depth + 1);
+        if (this.disposed) return;
       }
 
       for (const file of list.files) {
@@ -411,6 +413,7 @@ export class AppAPI {
       const adapter = this.vaultAdapter;
       const stat = await adapter.stat(relativePath);
       if (!stat || stat.type !== 'file') throw new Error('文件不存在：' + relativePath);
+      if (stat.size > MAX_AUDIO_FILE_BYTES) throw new Error('音频文件过大，无法加载');
 
       const buffer = await adapter.readBinary(relativePath);
       this.respond(id, { data: this.toDataUrl(buffer, ext) });
@@ -429,6 +432,14 @@ export class AppAPI {
       const ext = filePath.substring(filePath.lastIndexOf('.')).toLowerCase();
       if (!ALLOWED_AUDIO_EXTENSIONS.includes(ext)) throw new Error('不支持的音频格式：' + ext);
       if (filePath.includes('..')) throw new Error('路径遍历禁止');
+
+      try {
+        const st = await this.vaultAdapter.stat(filePath);
+        if (st && st.size > MAX_AUDIO_FILE_BYTES) throw new Error('音频文件过大，无法加载');
+      } catch (e) {
+        // 沙盒下 stat 可能不可用；仅「过大」错误阻断，其余忽略继续读取
+        if (e instanceof Error && e.message.includes('过大')) throw e;
+      }
 
       const buffer = await this.vaultAdapter.readBinary(filePath);
       this.respond(id, { data: this.toDataUrl(buffer, ext) });

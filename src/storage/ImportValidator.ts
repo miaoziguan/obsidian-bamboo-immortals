@@ -36,12 +36,12 @@ const KNOWN_FIELDS = ['days', 'goals', 'settings', 'purchaseHistory', 'incomeHis
 function sanitizeString(input: unknown): string {
   if (typeof input !== 'string') return input as string;
   const out = input
-    .replace(/<[^>]*>/g, '') // 移除所有 HTML 标签
+    .replace(/<\/?[a-zA-Z][^>]*>/g, '') // 仅移除真正的 HTML 标签（<a> </div>），保留 "a < b" 这类文本
     .replace(/\son\w+\s*=\s*"[^"]*"/gi, '') // 移除 on*="..."
     .replace(/\son\w+\s*=\s*'[^']*'/gi, '') // 移除 on*='...'
     .replace(/\son\w+\s*=\s*[^\s>]+/gi, '') // 移除 on*=value（无引号）
     .replace(/javascript:/gi, '') // 移除 javascript: 伪协议
-    .replace(/data:/gi, ''); // 移除 data: 伪协议
+    .replace(/data:(text\/html|application\/(?:.*script|octet-stream)|image\/svg\+xml)/gi, ''); // 仅移除可执行 data: URI，保留 data:image/png 等合法资源
   return out;
 }
 
@@ -146,16 +146,18 @@ export const ImportValidator = {
       return [];
     }
     let counter = 0;
-    return goals.map((raw): GoalItem => {
-      if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return raw as GoalItem;
-      const obj = raw as Record<string, unknown>;
-      const clean = { ...obj } as unknown as GoalItem;
-      if (!clean.id) {
-        clean.id = `goal_import_${counter++}_${Date.now().toString(36)}`;
-      }
-      if (clean.items && !Array.isArray(clean.items)) clean.items = [];
-      return clean;
-    });
+    return goals
+      .map((raw): GoalItem | null => {
+        if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null; // 跳过非对象项，不污染 Vault goals 数组
+        const obj = raw as Record<string, unknown>;
+        const clean = { ...obj } as unknown as GoalItem;
+        if (!clean.id) {
+          clean.id = `goal_import_${counter++}_${Date.now().toString(36)}`;
+        }
+        if (clean.items && !Array.isArray(clean.items)) clean.items = [];
+        return clean;
+      })
+      .filter((g): g is GoalItem => g !== null);
   },
 
   /**

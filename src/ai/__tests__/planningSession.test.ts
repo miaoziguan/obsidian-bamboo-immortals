@@ -136,4 +136,17 @@ describe('PlanningSession.loadGoals (edit mode)', () => {
     expect(s.goals[0].title).toBe('减重');
     expect(s.getMessages()[0].content).toContain('目标卡片编辑器');
   });
+
+  it('H3 init 深拷贝首版快照：手动篡改工作副本不污染 reset 回到的首版', async () => {
+    const fake = vi.fn().mockResolvedValue(aiReply({ goals: [goalWithRun] }));
+    const s = new PlanningSession('笔记', settings, fake);
+    await s.init();
+    // 手动篡改工作副本
+    s.goals[0].items!.push({ name: '手动加', dailyMin: '1' } as any);
+    expect(s.goals[0].items).toHaveLength(3);
+    s.reset();
+    // 回到 AI 首版，不含手动篡改（initialGoals 未被工作副本污染）
+    expect(s.goals[0].items).toHaveLength(2);
+    expect(s.goals[0].title).toBe('健康减重');
+  });
 });

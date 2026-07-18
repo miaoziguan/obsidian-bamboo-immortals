@@ -1,4 +1,4 @@
-import { byId, $, modalMount, eventInTargets, getCssVarRoot, getGlobalComputedStyle } from '../utils/domRef.js';
+import { byId, $, modalMount, eventInTargets, getCssVarRoot, getGlobalComputedStyle, getHost } from '../utils/domRef.js';
 /**
  * DisplayManager — 显示设置管理器
  *
@@ -388,10 +388,19 @@ export const DisplayManager = {
         if (typeof storageManager === 'undefined' || !storageManager.syncPaletteToObsidian) return;
         // 读取当前调色值（从生效根的计算样式，保证准确性）
         const cs = getGlobalComputedStyle();
-        const hue = parseInt(cs.getPropertyValue('--accent-hue').trim()) || this.DEFAULT_HUE;
+        // 注意：不能用 `|| DEFAULT_HUE` 兜底——色相为 0（纯红）时 parseInt 返回 0，
+        // 会被误判为未设置而回退成默认竹青绿。仅当解析失败/空时才回退。
+        const hueRaw = cs.getPropertyValue('--accent-hue').trim();
+        const parsedHue = parseInt(hueRaw);
+        const hue = (hueRaw !== '' && !isNaN(parsedHue)) ? parsedHue : this.DEFAULT_HUE;
         const offsetStr = cs.getPropertyValue('--accent-lightness-offset').trim();
-        const lightnessOffset = parseInt(offsetStr) || 0;
-        const isDark = document.documentElement.classList.contains('dark');
+        const parsedLo = parseInt(offsetStr);
+        // 明度偏移同理：0 是合法值，不能 `|| 0` 兜底（不过 0 与兜底 0 等价，这里统一走 NaN 守卫）
+        const lightnessOffset = (offsetStr !== '' && !isNaN(parsedLo)) ? parsedLo : 0;
+        // 明暗状态必须与 --accent-hue 同一根读取：shadow 模式下变量挂在 host 上，
+        // 若仍读 document.documentElement 会与上方 cs 来源不一致（host 有 dark、documentElement 未置时误判亮色）。
+        const isDarkRoot = getHost() || document.documentElement;
+        const isDark = isDarkRoot.classList.contains('dark');
         try {
             window.parent.postMessage({
                 type: 'theme:syncPalette',

@@ -318,6 +318,56 @@ export class BridgeStorage {
     }
   }
 
+  /**
+   * 健康分权威快照（单一数据源）。
+   * 插件用 getStrategyOverview() 即时重算并返回 { health, goals, results }，
+   * webapp 的「综合健康分」环与「健康分详情」弹窗统一消费这份数据，
+   * 不再自行用前端引擎计算，从而与竹杖芒鞋 100% 一致。
+   * 失败（非 Obsidian 环境 / 通道异常）返回 null，由调用方降级到本地计算。
+   */
+  async getHealthOverview() {
+    await this.ensureReady();
+    try {
+      return await this._send('app:getHealthOverview', {});
+    } catch (e) {
+      console.warn('[Bridge] app:getHealthOverview 不可用，降级为本地计算:', e && e.message);
+      return null;
+    }
+  }
+
+  /** 当前修行境界（竹杖芒鞋侧栏常驻展示，单一数据源来自插件） */
+  async getCultivationRealm() {
+    await this.ensureReady();
+    try {
+      return await this._send('app:getCultivationRealm', {});
+    } catch (e) {
+      console.warn('[Bridge] app:getCultivationRealm 不可用，降级为 null:', e && e.message);
+      return null;
+    }
+  }
+
+  /** 当前竹币余额（竹杖芒鞋侧栏常驻展示，单一数据源来自插件） */
+  async getBambooCoinBalance() {
+    await this.ensureReady();
+    try {
+      return await this._send('app:getBambooCoinBalance', {});
+    } catch (e) {
+      console.warn('[Bridge] app:getBambooCoinBalance 不可用，降级为 0:', e && e.message);
+      return 0;
+    }
+  }
+
+  /** 当前可用竹币余额（与 webapp 商店界面对齐，单一数据源来自插件） */
+  async getBambooCoinAvailableBalance() {
+    await this.ensureReady();
+    try {
+      return await this._send('app:getBambooCoinAvailableBalance', {});
+    } catch (e) {
+      console.warn('[Bridge] app:getBambooCoinAvailableBalance 不可用，降级为 0:', e && e.message);
+      return 0;
+    }
+  }
+
   // ---- 读取 Obsidian Vault 内的文件 ----
 
   async getFile(filename) {

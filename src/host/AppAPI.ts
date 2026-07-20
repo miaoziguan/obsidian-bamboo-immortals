@@ -5,6 +5,8 @@ import { ThemeBridge } from '../bridge/ThemeBridge';
 import type { BambooReviewSettings, NoiseItem } from '../settings/PluginSettings';
 import { ALLOWED_AUDIO_EXTENSIONS, MIME_TYPES } from '../constants/audio';
 import type { DayData } from '../types/data';
+import type { StrategyOverview } from '../ai/strategyOverview';
+import type { CultivationRealm } from '../cultivation';
 import { INBOUND_PREFIXES } from './protocol';
 
 /** Obsidian 插件运行时注入的主窗口 document（非插件沙箱内的 document） */
@@ -53,6 +55,36 @@ export class AppAPI {
    * webapp 健康分详情点「用 AI 改进」时触发，参数为目标标识 + 本地 hints。
    */
   onAiImproveGoal?: (payload: { goalId: string; title?: string; hints?: string }) => void;
+
+  /**
+   * 健康分权威快照数据源（由 DailyReviewView 注入，转发到插件的 getStrategyOverview()）。
+   * webapp 通过 app:getHealthOverview 向插件请求单一数据源的健康分套件，
+   * 避免插件与前端各算一遍导致的分数漂移。
+   */
+  private strategyOverviewProvider?: () => Promise<StrategyOverview | null>;
+
+  /** 注入健康分数据源（单一数据源） */
+  setStrategyOverviewProvider(fn: () => Promise<StrategyOverview | null>): void {
+    this.strategyOverviewProvider = fn;
+  }
+
+  /** 当前修行境界数据源（由 DailyReviewView 注入，转发到插件 getCultivationRealm()） */
+  private cultivationRealmProvider?: () => Promise<CultivationRealm | null>;
+  /** 当前竹币余额数据源（转发到插件 getBambooCoinBalance()） */
+  private bambooCoinBalanceProvider?: () => Promise<number | null>;
+  /** 当前可用竹币余额数据源（转发到插件 getBambooCoinAvailableBalance()） */
+  private bambooCoinAvailableBalanceProvider?: () => Promise<number | null>;
+
+  setCultivationRealmProvider(fn: () => Promise<CultivationRealm | null>): void {
+    this.cultivationRealmProvider = fn;
+  }
+  setBambooCoinBalanceProvider(fn: () => Promise<number | null>): void {
+    this.bambooCoinBalanceProvider = fn;
+  }
+  setBambooCoinAvailableBalanceProvider(fn: () => Promise<number | null>): void {
+    this.bambooCoinAvailableBalanceProvider = fn;
+  }
+
   private customThemes: Array<{ name: string; code: string }> = [];
   private vaultAdapter: DataAdapter;
   private noisePath: string;
@@ -267,6 +299,76 @@ export class AppAPI {
         hints: typeof p.hints === 'string' ? p.hints : undefined,
       });
       this.respond(id, { ok: true });
+      return;
+    }
+
+    // ---- 健康分权威快照（单一数据源，供 webapp 健康分环/详情消费）----
+    if (type === 'app:getHealthOverview') {
+      const provider = this.strategyOverviewProvider;
+      if (!provider) {
+        this.respondError(id, 'app:getHealthOverview 未配置数据源');
+        return;
+      }
+      try {
+        const overview = await provider();
+        if (!overview) {
+          this.respondError(id, '暂无目标数据，无法计算健康分');
+          return;
+        }
+        this.respond(id, {
+          updatedAt: overview.updatedAt,
+          health: overview.health,
+          goals: overview.goals,
+          results: overview.results,
+        });
+      } catch (e) {
+        this.respondError(id, `app:getHealthOverview 计算失败: ${(e as Error)?.message ?? String(e)}`);
+      }
+      return;
+    }
+
+    // ---- 当前修行境界（竹杖芒鞋侧栏常驻展示）----
+    if (type === 'app:getCultivationRealm') {
+      const provider = this.cultivationRealmProvider;
+      if (!provider) {
+        this.respondError(id, 'app:getCultivationRealm 未配置数据源');
+        return;
+      }
+      try {
+        this.respond(id, await provider());
+      } catch (e) {
+        this.respondError(id, `app:getCultivationRealm 计算失败: ${(e as Error)?.message ?? String(e)}`);
+      }
+      return;
+    }
+
+    // ---- 当前竹币余额（竹杖芒鞋侧栏常驻展示）----
+    if (type === 'app:getBambooCoinBalance') {
+      const provider = this.bambooCoinBalanceProvider;
+      if (!provider) {
+        this.respondError(id, 'app:getBambooCoinBalance 未配置数据源');
+        return;
+      }
+      try {
+        this.respond(id, await provider());
+      } catch (e) {
+        this.respondError(id, `app:getBambooCoinBalance 计算失败: ${(e as Error)?.message ?? String(e)}`);
+      }
+      return;
+    }
+
+    // ---- 当前可用竹币余额（竹杖芒鞋侧栏常驻展示，与 webapp 商店界面对齐）----
+    if (type === 'app:getBambooCoinAvailableBalance') {
+      const provider = this.bambooCoinAvailableBalanceProvider;
+      if (!provider) {
+        this.respondError(id, 'app:getBambooCoinAvailableBalance 未配置数据源');
+        return;
+      }
+      try {
+        this.respond(id, await provider());
+      } catch (e) {
+        this.respondError(id, `app:getBambooCoinAvailableBalance 计算失败: ${(e as Error)?.message ?? String(e)}`);
+      }
       return;
     }
 

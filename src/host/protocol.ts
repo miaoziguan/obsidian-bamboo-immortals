@@ -37,6 +37,10 @@ export const ALL_MESSAGE_TYPES = [
   'app:readLocalFile',
   'app:proxyAudioUrl',
   'app:aiImproveGoal',
+  'app:getHealthOverview',
+  'app:getCultivationRealm',
+  'app:getBambooCoinBalance',
+  'app:getBambooCoinAvailableBalance',
   // storage:*（17 个子类型）
   'storage:readDay',
   'storage:writeDay',

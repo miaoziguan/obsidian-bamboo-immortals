@@ -2,6 +2,8 @@ import { ItemView, WorkspaceLeaf, EventRef } from 'obsidian';
 import type { BambooReviewSettings } from '../settings/PluginSettings';
 import { AppHost } from '../host/AppHost';
 import { AppAPI } from '../host/AppAPI';
+import type { StrategyOverview } from '../ai/strategyOverview';
+import type { CultivationRealm } from '../cultivation';
 
 export const VIEW_TYPE_DAILY_REVIEW = 'bamboo-immortals';
 
@@ -80,6 +82,35 @@ export class DailyReviewView extends ItemView {
         | undefined;
       plugin?.requestAiImprove?.(payload);
     };
+
+    // 健康分单一数据源：webapp 通过 app:getHealthOverview 向插件请求权威健康快照，
+    // 彻底消除插件(竹杖芒鞋)与前端(竹林修仙 webapp)各自计算导致的分数漂移。
+    this.appAPI.setStrategyOverviewProvider(async () => {
+      const plugin = this.plugin as
+        | { getStrategyOverview?: () => Promise<StrategyOverview | null> }
+        | undefined;
+      return plugin?.getStrategyOverview ? plugin.getStrategyOverview() : null;
+    });
+
+    // 修行境界 / 竹币余额 / 可用竹币余额：同样以插件方法为单一数据源，经 AppAPI 暴露给 webapp 侧栏
+    this.appAPI.setCultivationRealmProvider(async () => {
+      const plugin = this.plugin as
+        | { getCultivationRealm?: () => Promise<CultivationRealm | null> }
+        | undefined;
+      return plugin?.getCultivationRealm ? plugin.getCultivationRealm() : null;
+    });
+    this.appAPI.setBambooCoinBalanceProvider(async () => {
+      const plugin = this.plugin as
+        | { getBambooCoinBalance?: () => Promise<number | null> }
+        | undefined;
+      return plugin?.getBambooCoinBalance ? plugin.getBambooCoinBalance() : null;
+    });
+    this.appAPI.setBambooCoinAvailableBalanceProvider(async () => {
+      const plugin = this.plugin as
+        | { getBambooCoinAvailableBalance?: () => Promise<number | null> }
+        | undefined;
+      return plugin?.getBambooCoinAvailableBalance ? plugin.getBambooCoinAvailableBalance() : null;
+    });
 
     // 扫描自定义主题
     const customThemes = await this.scanCustomThemes();

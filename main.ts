@@ -29,6 +29,9 @@ import { diagnose } from './src/ai/GoalDiagnoser';
 import { runDiagnosis } from './src/ai/runDiagnosis';
 import { DiagnosisProgressModal } from './src/ai/DiagnosisProgressModal';
 import type { GoalItem } from './src/types/data';
+import { buildCache } from './src/ai/DeviationCalculator';
+import { buildStrategyOverview, type StrategyOverview } from './src/ai/strategyOverview';
+import { toCultivationRealm, type CultivationRealm } from './src/cultivation';
 
 /** 内容指纹（djb2），用于 AI 规划幂等判重 */
 function hashContent(s: string): string {
@@ -375,12 +378,13 @@ export default class BambooReviewPlugin extends Plugin {
     void this.runElicit(content, file, 'note');
   }
 
-  /** 把审阅后的目标追加写入目标库（零污染：existing + parsed）并更新幂等索引 */
   /**
-   * 把审阅后的目标追加写入目标库（零污染：existing + parsed）并更新幂等索引。
+   * 把审阅后的目标合并写入目标库的核心逻辑（零污染：existing + parsed）并更新幂等索引。
+   * sourceRef 标识来源（笔记路径或外部来源标识），用于 sourceRef 标注与幂等判重；
+   * 抽成独立方法以便「笔记入口」(writeAiGoals) 与「外部联动入口」(planExternalText) 共用。
    */
-  async writeAiGoals(
-    file: TFile,
+  private async mergeAndWriteGoals(
+    sourceRef: string,
     content: string,
     goals: GoalItem[]
   ): Promise<void> {
@@ -388,13 +392,13 @@ export default class BambooReviewPlugin extends Plugin {
     const storage = new VaultStorage(this.app);
     const existing = await storage.getGoals();
 
-    // 幂等：同一笔记 + 相同内容已规划过，且目标仍全部存在 → 跳过；
+    // 幂等：同一来源 + 相同内容已规划过，且目标仍全部存在 → 跳过；
     // 若目标已被清空/丢失（plans-map 残留旧哈希），则继续向下重新写入以恢复。
     const index = await storage.getPlansIndex();
-    const key = `${file.path}#${hashContent(content)}`;
+    const key = `${sourceRef}#${hashContent(content)}`;
     const plannedIds = index[key];
     if (shouldSkipPlanned(plannedIds, new Set(existing.map((g) => g.id)))) {
-      new Notice('该笔记已规划过（内容未变），已跳过重复写入');
+      new Notice('该内容已规划过（内容未变），已跳过重复写入');
       return;
     }
     // 部分/全部目标已丢失 → 继续向下重新写入以恢复
@@ -405,12 +409,12 @@ export default class BambooReviewPlugin extends Plugin {
       if (g.sourceRef && g.title) byRefTitle.set(`${g.sourceRef}#${g.title}`, g.id);
     }
 
-    // 跳过同笔记且标题已不在本次规划新标题集中的旧目标：视为被重命名，
-    // 由新目标以新派生 id 上位，避免「旧标题残留 + 新标题」形成双条（H1）
+    // 跳过同来源且标题已不在本次规划新标题集中的旧目标：视为被重命名，
+    // 由新目标以新派生 id 上位，避免「旧标题残留 + 新标题」形成双条
     const newTitles = new Set(goals.map((g) => g.title));
     const merged = new Map<string, GoalItem>();
     for (const g of existing) {
-      if (g.sourceRef === file.path && g.title && !newTitles.has(g.title)) continue;
+      if (g.sourceRef === sourceRef && g.title && !newTitles.has(g.title)) continue;
       if (g.id) merged.set(g.id, g);
     }
 
@@ -418,18 +422,18 @@ export default class BambooReviewPlugin extends Plugin {
     const withRef = goals.map((g) => {
       const { icon: _icon, ...rest } = g as GoalItem & { icon?: unknown };
       void _icon;
-      const ref: GoalItem = { ...rest, sourceRef: file.path };
-      // 确定性 ID：同笔记+同标题恒得同一 id → 重新规划原地更新而非追加重复；
+      const ref: GoalItem = { ...rest, sourceRef };
+      // 确定性 ID：同来源+同标题恒得同一 id → 重新规划原地更新而非追加重复；
       // 若该标题的旧随机 id 仍存在于库，则复用它（兼容历史目标）。
-      const legacyId = byRefTitle.get(`${file.path}#${g.title}`);
-      ref.id = legacyId ?? deriveStableGoalId(`${file.path}|${g.title}`);
+      const legacyId = byRefTitle.get(`${sourceRef}#${g.title}`);
+      ref.id = legacyId ?? deriveStableGoalId(`${sourceRef}|${g.title}`);
       return ref;
     });
     for (const g of withRef) if (g.id) merged.set(g.id, g);
     const finalGoals = [...merged.values()];
     await storage.putGoals(finalGoals);
 
-    // 失效索引清理（F）：剔除“其全部 id 均已不在最终目标库”的陈旧 entry，避免索引无限增长。
+    // 失效索引清理：剔除“其全部 id 均已不在最终目标库”的陈旧 entry，避免索引无限增长。
     const finalIds = new Set(finalGoals.map((g) => g.id));
     for (const k of Object.keys(index)) {
       const ids = index[k];
@@ -444,6 +448,56 @@ export default class BambooReviewPlugin extends Plugin {
     this.webapp.notifyGoalsChanged();
 
     new Notice(`已写入 ${withRef.length} 个目标到「竹林修仙传」`);
+  }
+
+  /** 把审阅后的目标追加写入目标库（零污染：existing + parsed）并更新幂等索引 */
+  async writeAiGoals(
+    file: TFile,
+    content: string,
+    goals: GoalItem[]
+  ): Promise<void> {
+    // 笔记来源：以文件 vault 路径作为 sourceRef，复用核心合并逻辑。
+    await this.mergeAndWriteGoals(file.path, content, goals);
+  }
+
+  /**
+   * 外部联动入口（供「竹杖芒鞋」等插件调用）：把一段外部文本（如阅读中选中的金句）
+   * 经大模型拆解为修行目标卡片，无需当前打开 Markdown 笔记。
+   * 这是「金句 → 修行目标」跨插件联动的稳定契约方法。
+   *
+   * @param text 待拆解的原文（金句/段落）
+   * @param opts.sourceLabel 来源展示名（如「竹杖芒鞋·金句」），仅用于规划台副标题
+   * @param opts.sourceRef 来源标识（默认由 sourceLabel 推导），写入目标 sourceRef 用于溯源与幂等
+   */
+  async planExternalText(
+    text: string,
+    opts?: { sourceLabel?: string; sourceRef?: string }
+  ): Promise<void> {
+    const s = this.settings;
+    if (!s.aiEnabled) {
+      new Notice('AI 规划未启用：请先在插件设置中开启并填写 API Key');
+      return;
+    }
+    const trimmed = (text ?? '').trim();
+    if (!trimmed) {
+      new Notice('传入文本为空，无法规划');
+      return;
+    }
+    const plannerSettings: PlannerSettings = {
+      aiApiKey: s.aiApiKey,
+      aiBaseUrl: s.aiBaseUrl,
+      aiModel: s.aiModel,
+      aiDecomposeDepth: s.aiDecomposeDepth,
+    };
+    const sourceLabel = opts?.sourceLabel?.trim() || '外部文本';
+    const sourceRef = opts?.sourceRef?.trim() || `external:${sourceLabel}`;
+    void this.openPlanEditor({
+      content: trimmed,
+      scope: 'selection',
+      settings: plannerSettings,
+      subtitle: `以下目标基于「${sourceLabel}」中的文本拆解（非整篇笔记）。`,
+      onConfirm: (finalGoals) => void this.mergeAndWriteGoals(sourceRef, trimmed, finalGoals),
+    });
   }
 
   /**
@@ -479,6 +533,83 @@ export default class BambooReviewPlugin extends Plugin {
       recentDays: 14,
     });
     progress.close(); // 安全兜底：报告异常未打开时也关闭
+  }
+
+  /**
+   * 实时战略复盘总览（供竹杖芒鞋侧栏 / 阅读抽屉消费）。
+   * 零 AI、纯计算、确定性：每次调用重读 vault 的 goals.json + 每日执行数据并即时核算，
+   * 即竹杖芒鞋「一键重新诊断」的底层实现。未安装目标数据或无目标时返回 null。
+   */
+  async getStrategyOverview(): Promise<StrategyOverview | null> {
+    const storage = new VaultStorage(this.app);
+    const all = await storage.getGoals();
+    if (!all || all.length === 0) return null;
+
+    // 与 webapp「综合健康分」环一致：已归档目标不参与整体健康分核算
+    const goals = all.filter((g) => !g.archived);
+    if (goals.length === 0) return null;
+
+    const daysMap = await storage.getAllDays();
+    const days = Object.values(daysMap);
+    const cache = buildCache(goals, days);
+    const today = new Date();
+
+    return buildStrategyOverview(goals, cache, today);
+  }
+
+  /**
+   * 当前修行境界（供竹杖芒鞋侧栏常驻展示）。
+   * 由「已完成目标数」经纯函数映射出境界层/称号，零 AI、确定性。
+   * 即使无任何目标，亦返回「凡尘·第1层」（与 webapp 境界体系一致）；
+   * 仅当无法读取目标数据（如竹林未启用）时返回 null。
+   */
+  async getCultivationRealm(): Promise<CultivationRealm | null> {
+    const storage = new VaultStorage(this.app);
+    const goals = (await storage.getGoals()) ?? [];
+    const toN = (v: unknown): number =>
+      typeof v === 'number' ? v : parseFloat(String(v ?? '')) || 0;
+    const completedGoals = goals.filter((g: GoalItem) => toN(g.progress) >= 100).length;
+    return toCultivationRealm(completedGoals);
+  }
+
+  /**
+   * 当前竹币余额（供竹杖芒鞋侧栏常驻展示）。
+   * 读取 VaultStorage 的 balance 设置项（与 webapp WalletService 持久化落点一致）。
+   * 未设置时返回 0（而非 null），使展示端无需区分「未启用」与「0 余额」。
+   */
+  async getBambooCoinBalance(): Promise<number | null> {
+    const storage = new VaultStorage(this.app);
+    const raw = await storage.getSetting('balance');
+    if (raw == null) return 0;
+    const n = typeof raw === 'number' ? raw : Number(raw);
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  /**
+   * 当前「可用竹币余额」（供竹杖芒鞋侧栏常驻展示，与 webapp 商店界面口径对齐）。
+   * 可用余额 = 总额 balance − 今日收入（今日收入次日才可用，界面标注为「冻结」）。
+   * 逻辑与 webapp WalletService.getAvailableBalance() 保持一致，避免两侧漂移。
+   * 未启用 / 无余额设置时返回 0。
+   */
+  async getBambooCoinAvailableBalance(): Promise<number | null> {
+    const storage = new VaultStorage(this.app);
+    const raw = await storage.getSetting('balance');
+    const total = raw == null ? 0 : typeof raw === 'number' ? raw : Number(raw);
+    const income = await storage.getIncomeHistory();
+    const today = new Date().toDateString();
+    const todayEarnings = ((income?.records) ?? []).reduce((sum: number, r) => {
+      const d = r.date;
+      if (d == null) return sum;
+      try {
+        return new Date(String(d)).toDateString() === today
+          ? sum + (Number(r.amount) || 0)
+          : sum;
+      } catch {
+        return sum;
+      }
+    }, 0);
+    const available = total - todayEarnings;
+    return Number.isFinite(available) ? Math.max(0, parseFloat(available.toFixed(2))) : 0;
   }
 
   /** 诊断建议应用后的落库：写 goals.json + 刷新常驻视图（不碰幂等索引/ sourceRef） */

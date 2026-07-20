@@ -66,9 +66,9 @@ describe('workdayCalendar.countWorkdays — 节假日感知', () => {
     expect(countWorkdays(new Date(2026, 1, 16), new Date(2026, 1, 20), h)).toBe(0);
   });
 
-  it('普通周一~周五（无节假日）→ 5', () => {
+  it('普通周一~周五（无节假日）→ 5（半开区间 [Mon, Sat) 含 Mon~Fri 共 5 个工日）', () => {
     const h = getHolidays(2026);
-    expect(countWorkdays(new Date(2026, 2, 2), new Date(2026, 2, 6), h)).toBe(5);
+    expect(countWorkdays(new Date(2026, 2, 2), new Date(2026, 2, 7), h)).toBe(5);
   });
 
   it('跨周末正确排除（周五~周日 → 1）', () => {
@@ -84,11 +84,11 @@ describe('workdayCalendar.countWorkdays — 节假日感知', () => {
 
 describe('workdayCalendar.workdaysBetween', () => {
   const h = getHolidays(2026);
-  it('正向与 countWorkdays 一致', () => {
-    expect(workdaysBetween(new Date(2026, 2, 2), new Date(2026, 2, 6), h)).toBe(5);
+  it('正向与 countWorkdays 一致（半开区间 [Mon, Sat) = 5 个工日）', () => {
+    expect(workdaysBetween(new Date(2026, 2, 2), new Date(2026, 2, 7), h)).toBe(5);
   });
   it('反向返回负值（符号翻转）', () => {
-    expect(workdaysBetween(new Date(2026, 2, 6), new Date(2026, 2, 2), h)).toBe(-5);
+    expect(workdaysBetween(new Date(2026, 2, 7), new Date(2026, 2, 2), h)).toBe(-5);
   });
 });
 

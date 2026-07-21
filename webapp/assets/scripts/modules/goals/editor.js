@@ -426,20 +426,29 @@ export const GoalsEditor = {
                 <div class="tstd-overlay"></div>
                 <div class="tstd-container">
                     <div class="tstd-header">
-                        <span class="tstd-title">保存为自定义模板</span>
+                        <div class="tstd-header-text">
+                            <div class="tstd-title-row">
+                                <span class="tstd-title-icon">${LucideUtils.createIcon('bookmark', { size: 18 })}</span>
+                                <span class="tstd-title">保存为自定义模板</span>
+                            </div>
+                            <span class="tstd-subtitle">将当前目标存为可复用的模板</span>
+                        </div>
                         <button class="tstd-close-btn" aria-label="关闭">${LucideUtils.createIcon('x', { size: 16 })}</button>
                     </div>
                     <div class="tstd-body">
                         <div class="tstd-field">
-                            <label class="tstd-label">模板名称</label>
-                            <input type="text" class="tstd-input" maxlength="30" value="${HTMLUtils.escapeHtmlAttr(goal.title || '')}" placeholder="如：晨间计划">
+                            <label class="tstd-label" for="tstd-name">模板名称</label>
+                            <input id="tstd-name" type="text" class="tstd-input" maxlength="30" value="${HTMLUtils.escapeHtmlAttr(goal.title || '')}" placeholder="如：晨间计划">
                         </div>
                         <div class="tstd-field">
-                            <label class="tstd-label">模板说明</label>
-                            <input type="text" class="tstd-input tstd-desc" maxlength="60" placeholder="一句话描述这个模板的用途">
+                            <label class="tstd-label" for="tstd-desc">模板说明<span class="tstd-label-hint">选填</span></label>
+                            <input id="tstd-desc" type="text" class="tstd-input tstd-desc" maxlength="60" placeholder="一句话描述这个模板的用途">
                         </div>
                         <div class="tstd-field">
-                            <label class="tstd-label">选择图标</label>
+                            <div class="tstd-field-head">
+                                <label class="tstd-label">选择图标</label>
+                                <span class="tstd-selected-name">${selectedIcon}</span>
+                            </div>
                             <div class="tstd-icons">
                                 ${iconOptions.map((name, i) => `
                                     <button class="tstd-icon-btn ${i === 0 ? 'active' : ''}" data-icon="${name}" title="${name}">
@@ -449,12 +458,16 @@ export const GoalsEditor = {
                             </div>
                         </div>
                         <div class="tstd-preview">
-                            <span class="tstd-preview-label">将保存 ${(goal.items || []).length} 个子项目</span>
+                            <span class="tstd-preview-icon">${LucideUtils.createIcon(selectedIcon, { size: 18, strokeWidth: 1.5 })}</span>
+                            <div class="tstd-preview-text">
+                                <span class="tstd-preview-title">${HTMLUtils.escapeHtml(goal.title || '未命名模板')}</span>
+                                <span class="tstd-preview-sub">将保存 ${(goal.items || []).length} 个子项目</span>
+                            </div>
                         </div>
                     </div>
                     <div class="tstd-footer">
                         <button class="tstd-cancel">取消</button>
-                        <button class="tstd-save">保存模板</button>
+                        <button class="tstd-save">${LucideUtils.createIcon('check', { size: 15, strokeWidth: 2.5 })}<span>保存模板</span></button>
                     </div>
                 </div>
             `;
@@ -475,12 +488,23 @@ export const GoalsEditor = {
             container.querySelector('.tstd-close-btn').addEventListener('click', () => close(null));
             container.querySelector('.tstd-cancel').addEventListener('click', () => close(null));
 
+            const previewIcon = container.querySelector('.tstd-preview-icon');
+            const selectedName = container.querySelector('.tstd-selected-name');
+            const previewTitle = container.querySelector('.tstd-preview-title');
+            const nameInput = container.querySelector('#tstd-name');
+
             container.querySelectorAll('.tstd-icon-btn').forEach(btn => {
                 btn.addEventListener('click', () => {
                     container.querySelectorAll('.tstd-icon-btn').forEach(b => b.classList.remove('active'));
                     btn.classList.add('active');
                     selectedIcon = btn.dataset.icon;
+                    selectedName.textContent = selectedIcon;
+                    previewIcon.innerHTML = LucideUtils.createIcon(selectedIcon, { size: 18, strokeWidth: 1.5 });
                 });
+            });
+
+            nameInput.addEventListener('input', () => {
+                previewTitle.textContent = nameInput.value.trim() || '未命名模板';
             });
 
             container.querySelector('.tstd-save').addEventListener('click', () => {

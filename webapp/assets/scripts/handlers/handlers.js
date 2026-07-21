@@ -15,7 +15,6 @@ export const Handlers = {
         this.setupGlobalErrorHandler();
         Navigation.init();
         this.setupFabMenu();
-        Keyboard.init();
         Gestures.init();
         QuickNav.init();
         ThemeSelector.updateDarkModeButton();

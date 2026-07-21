@@ -21,7 +21,6 @@ export const FABManager = {
 
         this.loadSavedPosition();
         this.setupDrag();
-        this.setupKeyboardSupport();
         this.setupOutsideClick();
         this.setupResponsive();
     },
@@ -139,55 +138,6 @@ export const FABManager = {
 
     },
 
-    setupKeyboardSupport() {
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && this.isOpen) {
-                e.preventDefault();
-                this.close();
-                this.mainBtn.focus();
-                return;
-            }
-            
-            if (!this.isOpen) return;
-            
-            const buttons = this.getMenuButtons();
-            const currentIndex = buttons.indexOf(document.activeElement);
-            
-            switch (e.key) {
-                case 'ArrowDown':
-                case 'ArrowRight':
-                    e.preventDefault();
-                    const nextIndex = currentIndex < buttons.length - 1 ? currentIndex + 1 : 0;
-                    buttons[nextIndex].focus();
-                    break;
-                case 'ArrowUp':
-                case 'ArrowLeft':
-                    e.preventDefault();
-                    const prevIndex = currentIndex > 0 ? currentIndex - 1 : buttons.length - 1;
-                    buttons[prevIndex].focus();
-                    break;
-                case 'Home':
-                    e.preventDefault();
-                    if (buttons.length > 0) buttons[0].focus();
-                    break;
-                case 'End':
-                    e.preventDefault();
-                    if (buttons.length > 0) buttons[buttons.length - 1].focus();
-                    break;
-                case 'Tab':
-                    e.preventDefault();
-                    if (e.shiftKey) {
-                        const prevIdx = currentIndex > 0 ? currentIndex - 1 : buttons.length - 1;
-                        buttons[prevIdx].focus();
-                    } else {
-                        const nextIdx = currentIndex < buttons.length - 1 ? currentIndex + 1 : 0;
-                        buttons[nextIdx].focus();
-                    }
-                    break;
-            }
-        });
-    },
-    
     getMenuButtons() {
         return Array.from(this.actions.querySelectorAll('.fab-action-btn'));
     },

@@ -699,7 +699,9 @@ export const GoalHealthScore = {
     },
 
     // ─── 渲染 ───
-    renderOverviewCard(goals) {
+    // precomputedSet：单一数据源模式下，由插件权威计算后传入（与竹杖芒鞋同源），
+    // 传 null/undefined 时退化为本地 computeSet(goals)。
+    renderOverviewCard(goals, precomputedSet) {
         if (!goals || goals.length === 0) {
             return `
                 <div class="goal-health-overview goal-health-empty" role="region" aria-label="健康分空状态">
@@ -709,7 +711,7 @@ export const GoalHealthScore = {
             `;
         }
 
-        const set = this.computeSet(goals);
+        const set = precomputedSet || this.computeSet(goals);
         const colors = {
             excellent: { start: 'var(--bamboo-primary)', end: 'var(--bamboo-light)' },
             good:      { start: 'var(--bamboo-light)', end: 'var(--bamboo-pale)' },

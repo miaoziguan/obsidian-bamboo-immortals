@@ -4,6 +4,12 @@ export const GoalsRenderer = {
     _collapsedCompleted: new Set(),
     _pendingEditPromise: null,
 
+    // 健康分单一数据源缓存：插件 app:getHealthOverview 返回的权威套件。
+    // 同一份数据同时驱动「综合健康分」环与健康分详情弹窗，与竹杖芒鞋 100% 一致。
+    _remoteHealth: null,        // { health, results, updatedAt } | null
+    _remoteHealthLoading: false,
+    _remoteHealthGoalKey: '',   // 已缓存快照对应的目标集合指纹，变化时失效重拉
+
     // 数值格式化 - 已抽至 utils/goalCalculations.formatNumber
     _formatNumber(value) {
         return GoalCalculations.formatNumber(value);
@@ -123,8 +129,12 @@ export const GoalsRenderer = {
 
         const healthHost = container.querySelector('#goalHealthOverviewHost');
         if (healthHost && window.GoalHealthScore) {
+            // 先用本地计算渲染（即时可见），随后若有插件权威套件到达会覆盖刷新
             healthHost.innerHTML = GoalHealthScore.renderOverviewCard(goals);
         }
+
+        // 异步请求插件权威健康分（单一数据源）；到达后自动用同一份数据刷新环
+        this._requestRemoteHealth(goals);
 
         this.bindViewEvents(container);
         this.setupHoverEffects(container);
@@ -362,22 +372,81 @@ export const GoalsRenderer = {
         return GoalsArchiver.deleteArchivedGoal(goalId);
     },
 
+    // ────────────────────────────────────────────────────────────
+    //  健康分单一数据源：优先消费插件 app:getHealthOverview 的权威套件
+    // ────────────────────────────────────────────────────────────
+
+    /** 目标集合指纹（用于判断缓存是否失效） */
+    _goalSetKey(goals) {
+        return (goals || []).map(g => g.id + ':' + (g.archived ? 'a' : 'n')).sort().join('|');
+    },
+
+    /**
+     * 向插件请求权威健康分套件（单一数据源）。
+     * 失败或不可用（非 Obsidian 环境）时静默跳过，沿用本地计算。
+     */
+    async _requestRemoteHealth(goals) {
+        if (this._remoteHealthLoading) return;
+        const key = this._goalSetKey(goals);
+        // 目标集合变化 → 失效旧快照，重新拉取
+        if (this._remoteHealth && this._remoteHealthGoalKey !== key) {
+            this._remoteHealth = null;
+        }
+        if (this._remoteHealth) return;
+        if (typeof window.storageManager === 'undefined' || !window.storageManager.getHealthOverview) return;
+        this._remoteHealthLoading = true;
+        try {
+            const data = await window.storageManager.getHealthOverview();
+            if (data && data.health) {
+                this._remoteHealth = {
+                    health: data.health,
+                    results: data.results || null,
+                    updatedAt: data.updatedAt || null,
+                };
+                this._remoteHealthGoalKey = key;
+                this._renderRemoteHealthCard();
+            }
+        } catch (e) {
+            // 静默降级：保留本地计算
+            console.warn('[Bamboo] 远程健康分不可用，沿用本地计算:', e && e.message);
+        } finally {
+            this._remoteHealthLoading = false;
+        }
+    },
+
+    /** 用插件权威 set 重渲染健康卡（仅替换环部分，不影响目标列表） */
+    _renderRemoteHealthCard() {
+        if (!this._remoteHealth || !window.GoalHealthScore) return;
+        const host = byId('goalHealthOverviewHost');
+        if (host) {
+            const goals = store.getGlobalGoals().filter(g => !g.archived);
+            host.innerHTML = GoalHealthScore.renderOverviewCard(goals, this._remoteHealth.health);
+        }
+    },
 
     openHealthScoreDetail() {
         if (!window.GoalHealthScore) return;
 
         const goals = store.getGlobalGoals().filter(g => !g.archived);
 
-        // Build cache ONCE and reuse everywhere — one pass over last 60 days of store data
-        const dataCache = GoalHealthScore._buildDataCache
-            ? GoalHealthScore._buildDataCache(goals)
-            : null;
+        // 单一数据源：优先使用插件 app:getHealthOverview 返回的权威套件（与竹杖芒鞋同源同算）。
+        // 仅在远程不可用（非 Obsidian 环境 / 通道异常）时退化为本地计算。
+        let results, set;
+        if (this._remoteHealth && this._remoteHealth.results) {
+            set = this._remoteHealth.health;
+            results = this._remoteHealth.results;
+        } else {
+            // Build cache ONCE and reuse everywhere — one pass over last 60 days of store data
+            const dataCache = GoalHealthScore._buildDataCache
+                ? GoalHealthScore._buildDataCache(goals)
+                : null;
 
-        // Compute every goal ONCE (using shared cache → 1 pass over 60 days
-        const results = goals.map(g => GoalHealthScore.compute(g, dataCache));
+            // Compute every goal ONCE (using shared cache → 1 pass over 60 days
+            results = goals.map(g => GoalHealthScore.compute(g, dataCache));
 
-        // Pass the precomputed results to computeSet — reuses them 0 extra store reads.
-        const set = GoalHealthScore.computeSet(goals, results);
+            // Pass the precomputed results to computeSet — reuses them 0 extra store reads.
+            set = GoalHealthScore.computeSet(goals, results);
+        }
         const dynamicHints = GoalHealthScore.generateDynamicHints(set, results);
 
         let goalsDetailHtml = '';

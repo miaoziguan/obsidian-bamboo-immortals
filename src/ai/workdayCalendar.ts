@@ -63,13 +63,17 @@ export function isWorkday(d: Date, holidays: Set<string>): boolean {
   return !holidays.has(fmt(d));
 }
 
-/** 含端点的工作日计数（排除周末与法定节假日） */
+/**
+ * 半开区间 [from, to) 的工作日计数（排除周末与法定节假日，不含 to 当日）。
+ * 与 webapp 端 `GoalHealthScore._countWorkdays` 保持同一边界约定，
+ * 避免「竹杖 vs 竹林修仙」因端点是否计入而差 1 分。
+ */
 export function countWorkdays(from: Date, to: Date, holidays: Set<string>): number {
   let count = 0;
   const cur = new Date(from.getFullYear(), from.getMonth(), from.getDate());
   const last = new Date(to.getFullYear(), to.getMonth(), to.getDate());
-  if (cur > last) return 0;
-  while (cur <= last) {
+  if (cur >= last) return 0;
+  while (cur < last) {
     if (isWorkday(cur, holidays)) count++;
     cur.setDate(cur.getDate() + 1);
   }

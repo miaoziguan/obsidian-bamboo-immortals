@@ -12,7 +12,6 @@ export const QuickNav = {
     init() {
         this.setupQuickNavigation();
         this.setupScrollSpy();
-        this.setupKeyboardNav();
     },
 
     setupQuickNavigation() {
@@ -102,24 +101,6 @@ export const QuickNav = {
 
         window.addEventListener('scroll', onScroll, { passive: true });
         updateActiveSection();
-    },
-
-    setupKeyboardNav() {
-        document.addEventListener('keydown', (e) => {
-            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-
-            const num = parseInt(e.key);
-            if (num >= 1 && num <= this.sections.length) {
-                this.scrollToSection(this.sections[num - 1].id);
-            }
-
-            if (e.key === 'Escape') {
-                const nav = $('.quick-nav');
-                if (nav.classList.contains('expanded')) {
-                    this.toggle();
-                }
-            }
-        });
     },
 
     scrollToTop() {

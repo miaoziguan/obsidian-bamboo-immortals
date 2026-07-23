@@ -58,3 +58,98 @@
 > 注：以上为静态分析推断，实际每行替换需打开文件逐处核对上下文（如 rgba 的透明度、渐变端点的语义），避免误替换。
 >
 > **执行状态（2026-07-09）**：✅ 精确对应部分已在 **2.0.4** 全部完成（goals-map / section-manager / modal-settings / goals-stats 共 8 处）。🔶/➕ 近似与需新增变量部分、以及 bamboo-garden.css 的批量写死色，**经评估决定保留（部分装饰色为设计意图写死）**，本清单不再作为待办。
+>
+> ---
+>
+> ## 四、z-index 层级体系（2026-07-23 新增）
+>
+> **问题**：14 个 CSS 文件中共 79 处 z-index，其中 30 处为硬编码魔数（10000 × 7、9999 × 6、10001 × 3、999999 × 1 等），相同层级多处撞值，堆叠顺序依赖 DOM 顺序而非设计意图。
+>
+> **方案**：在 `variables.css` `:host` 下定义 `--z-layer-*` 变量体系：
+>
+> | 变量 | 值 | 用途 |
+> |------|-----|------|
+> | `--z-layer-below` | -2 | 装饰层/背景装饰 |
+> | `--z-layer-behind` | -1 | 背景伪元素 |
+> | `--z-layer-base` | 0 | 正常流 |
+> | `--z-layer-raised` | 1 | 轻微抬起（card hover 等） |
+> | `--z-layer-floating` | 2 | 浮动元素（日期悬浮等） |
+> | `--z-layer-dropdown` | 100 | 下拉菜单/颜色面板 |
+> | `--z-layer-keyboard-hint` | 900-1000 | 键盘快捷键提示 |
+> | `--z-layer-tooltip` | 9999 | tooltip / 悬浮预览 / KPI 悬浮 |
+> | `--z-layer-overlay` | 10000 | 通用遮罩层（FAB/modal-overlay/弹层底部） |
+> | `--z-layer-modal` | 10001-10002 | 模态容器 / widget 覆盖 |
+> | `--z-layer-toast` | 10010 | Toast 全屏通知 |
+> | `--z-layer-max` | 11000 | 最顶层（搜索/日期选择器） |
+>
+> **执行**：已替换 14 个文件共 30 处硬编码 z-index → `var(--z-layer-*)`。局部层级（1/2/5/10/20/-1/-2/0）保留原值不变。
+>
+> ---
+>
+> ## 五、死代码清理记录（2026-07-23）
+>
+> ### undo/redo 全链路移除
+>
+> **背景**：`#21/#22`（暴露隐藏功能）曾将撤销/重做/搜索按钮注入 `.date-nav-right`，后移入底部浮动工具栏，最终因无价值全部移除。
+>
+> **清理范围**：
+>
+> | 文件 | 操作 | 行数 |
+> |------|------|------|
+> | `state/undoRedoManager.js` | 删除整个文件 | - |
+> | `state/store.js` | 移除 `UndoRedoManager` 导入、`undoStack`/`redoStack` 状态字段、`pushUndo()`/`undo()`/`redo()`/`canUndo()`/`canRedo()` 方法 | ~40 |
+> | `handlers/handlers.js` | 移除 Ctrl+Z / Ctrl+Shift+Z 快捷键 + undo/redo action handler | ~20 |
+> | `renderers/renderers.js` | 移除 `renderUndoRedoBar()` 函数 + 调用 | ~25 |
+> | `styles/date-nav.css` | 移除 `.undo-redo-bar`、`.undo-redo-indicator`、`.undo-redo-btn` 全套 CSS | ~80 |
+> | `styles/base.css` | 移除选择器列表中 `.undo-redo-btn` | 1 |
+> | `styles/components-interaction.css` | 移除选择器列表中 `.undo-redo-btn` | 1 |
+> | `index.html` | 移除 `.undo-redo-bar`、`searchBtn` HTML 节点 | ~20 |
+> | `tests/undoRedoManager.jest.test.js` | 删除测试文件 | - |
+> | `tests/store.jest.test.js` | 移除 7 个 undo/redo 测试用例 | ~70 |
+>
+> ### historyList 死代码移除
+>
+> `renderHistoryList()` 引用 `byId('historyList')`，该元素不存在于 HTML 且无 JS 动态创建逻辑，函数静默无效。已移除函数体（~30 行）。
+>
+> ### date-nav-right 视觉修复
+>
+> `.date-nav-right` 的 `border-left` 竖线在只剩 `gotoDateBtn` 一个按钮时视觉多余，已移除。
+>
+> ---
+>
+> ## 六、暗色模式修复记录（2026-07-23）
+>
+> ### 根因修复：JS `_applyHue` setProperty 覆盖 `:host(.dark)`
+>
+> `displayManager._applyHue()` 通过 `root.style.setProperty()` 写入内联样式，优先级高于 `:host(.dark)` CSS 变量声明。在 `_applyHue` 中添加 `isDark` 检测逻辑，暗色下所有前景色变量 +10% 明度提升；新增 `reapplyHueForDarkMode()` 方法由 `store.setDarkMode()` 在 class 切换后调用。
+>
+> ### SearchUI `_ensurePanel` null 引用
+>
+> shadow 模式下 `byId('searchResults')` 走到 `host.shadowRoot` 而非 `document`，返回 null。改用 `panel.querySelector()` 直接查找。
+>
+> ### 暗色卡片背景补充覆盖
+>
+> `dark.css` 补充以下 `:host(.dark)` 规则：
+> - `.core-metric-card:hover` — 暗色背景替换 `rgba(var(--white-rgb), 0.75)`
+> - `.alert-item:hover` — 暗色阴影替换
+> - `.achievement-card-full` / `:hover` — 暗色下裸 RGBA 字面量替换
+> - `.stats-section-warning` — 暗色背景替换裸 `rgba(255,250,245,0.95)`
+>
+> ### 性能优化（#14, #17, #18）
+>
+> | 优化 | 内容 |
+> |------|------|
+> | #14 backdrop-filter 减层 | 移除 25 个冗余嵌套 `backdrop-filter`，保留最外层父级 |
+> | #17 will-change 按需 | 4 个选择器从静态 CSS 移至 hover/focus 状态 |
+> | #18 渐变预渲染 | `--glass-card-gradient` 提取为 CSS 变量 |
+>
+> ---
+>
+> ## 七、键盘事件 Shadow DOM 适配（2026-07-23）
+>
+> **问题**：全局键盘快捷键直接绑定在 `document` 上，Shadow DOM 启用后与 Obsidian 宿主隔离不彻底。
+>
+> **修复**：3 个文件共 6 处 `document.addEventListener('keydown', ...)` → `getDomRoot().addEventListener('keydown', ...)`：
+> - `handlers/handlers.js` — 全局快捷键 + modal key handler
+> - `handlers/fabManager.js` — FAB 菜单键盘导航
+> - `utils/actionDispatcher.js` — click + Enter/Space 委托

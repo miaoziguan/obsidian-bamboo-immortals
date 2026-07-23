@@ -1,7 +1,7 @@
 /* ========== 显示设置面板 ========== */
 .display-panel {
     position: fixed;
-    z-index: 9998;
+    z-index: calc(var(--z-layer-tooltip) - 1);
     width: 280px;
     background: var(--card-glass);
     backdrop-filter: blur(var(--glass-blur));

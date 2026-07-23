@@ -137,23 +137,6 @@ function setupGlobals() {
     global.DEFAULT_DATA = {};
     global.createEmptyDayData = (date) => ({ date, weekday: '周一', metrics: {}, timeline: [] });
 
-    // Mock 从 store.js import 的模块（loadModule 剥离了 import 语句）
-    global.UndoRedoManager = class {
-        constructor(state, onChange) { this._state = state; this._onChange = onChange || (() => {}); }
-        push(key, data) { this._state.undoStack.push({ key, data: structuredClone(data || {}) }); this._onChange(); }
-        undo(currentKey) {
-            if (!this._state.undoStack.length) return null;
-            this._state.redoStack.push({ key: currentKey, data: structuredClone(this._state.data[currentKey] || {}) });
-            const r = this._state.undoStack.pop(); this._onChange(); return r;
-        }
-        redo(currentKey) {
-            if (!this._state.redoStack.length) return null;
-            this._state.undoStack.push({ key: currentKey, data: structuredClone(this._state.data[currentKey] || {}) });
-            const r = this._state.redoStack.pop(); this._onChange(); return r;
-        }
-        canUndo() { return this._state.undoStack.length > 0; }
-        canRedo() { return this._state.redoStack.length > 0; }
-    };
     global.MigrationService = class {
         constructor() {}
         async handleDataMigration() {}
@@ -345,67 +328,6 @@ describe.skip('Store 核心功能', () => {
             const key = store.getDateKey();
             expect(store.state.data[key].metrics.invalidField).toBeUndefined();
             expect(store.state.data[key].metrics.firstCheckIn).toBe('08:30');
-        });
-
-        test('updateDayData 应推入撤销栈', async () => {
-            expect(store.state.undoStack.length).toBe(0);
-            await store.updateDayData({ metrics: { firstCheckIn: '09:00' } });
-            expect(store.state.undoStack.length).toBe(1);
-        });
-    });
-
-    describe('撤销/重做', () => {
-        test('undo 应撤销上一次操作', async () => {
-            const key = store.getDateKey();
-            const original = store.state.data[key].metrics.firstCheckIn;
-            await store.updateDayData({ metrics: { firstCheckIn: '10:00' } });
-            expect(store.state.data[key].metrics.firstCheckIn).toBe('10:00');
-
-            const result = await store.undo();
-            expect(result).toBe(true);
-            expect(store.state.data[key].metrics.firstCheckIn).toBe(original);
-        });
-
-        test('redo 应重做已撤销的操作', async () => {
-            const key = store.getDateKey();
-            await store.updateDayData({ metrics: { firstCheckIn: '10:00' } });
-            await store.undo();
-
-            const result = await store.redo();
-            expect(result).toBe(true);
-            expect(store.state.data[key].metrics.firstCheckIn).toBe('10:00');
-        });
-
-        test('空撤销栈时 undo 应返回 false', async () => {
-            const result = await store.undo();
-            expect(result).toBe(false);
-        });
-
-        test('空重做栈时 redo 应返回 false', async () => {
-            const result = await store.redo();
-            expect(result).toBe(false);
-        });
-
-        test('新操作应清空重做栈', async () => {
-            await store.updateDayData({ metrics: { firstCheckIn: '10:00' } });
-            await store.undo();
-            expect(store.canRedo()).toBe(true);
-
-            await store.updateDayData({ metrics: { firstCheckIn: '11:00' } });
-            expect(store.canRedo()).toBe(false);
-        });
-
-        test('canUndo 和 canRedo 应正确反映栈状态', async () => {
-            expect(store.canUndo()).toBe(false);
-            expect(store.canRedo()).toBe(false);
-
-            await store.updateDayData({ metrics: { firstCheckIn: '10:00' } });
-            expect(store.canUndo()).toBe(true);
-            expect(store.canRedo()).toBe(false);
-
-            await store.undo();
-            expect(store.canUndo()).toBe(false);
-            expect(store.canRedo()).toBe(true);
         });
     });
 

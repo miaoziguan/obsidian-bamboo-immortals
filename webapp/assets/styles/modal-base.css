@@ -3,7 +3,7 @@
     position: fixed;
     inset: 0;
     background: rgba(var(--black-rgb), 0.5);
-    z-index: 10000;
+    z-index: var(--z-layer-overlay);
     padding: var(--space-5);
     backdrop-filter: blur(var(--glass-blur));
     -webkit-backdrop-filter: blur(var(--glass-blur));
@@ -22,9 +22,8 @@
 }
 .modal-content {
     background: var(--card-bg);
-    backdrop-filter: blur(var(--glass-blur));
-    -webkit-backdrop-filter: blur(var(--glass-blur));
-    will-change: transform;
+    /* backdrop-filter 由父 .modal-overlay 提供 */
+    will-change: transform; /* 模态框打开/关闭的瞬时关键动画 */
     border-radius: var(--radius-3xl);
     border: 1px solid rgba(var(--white-rgb), 0.3);
     box-shadow: var(--shadow-floating);
@@ -370,7 +369,7 @@
     border-radius: var(--radius-lg);
     font-size: var(--type-sm);
     font-weight: 600;
-    z-index: 999;
+    z-index: var(--z-layer-keyboard-hint);
     animation: slideDown 0.3s ease;
 }
 @keyframes slideDown {

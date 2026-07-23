@@ -61,8 +61,7 @@
     align-items: center;
     padding: var(--space-4);
     background: var(--card-bg);
-    backdrop-filter: blur(var(--glass-blur));
-    -webkit-backdrop-filter: blur(var(--glass-blur));
+    /* backdrop-filter 由 .modal-overlay 提供 */
     border-radius: var(--radius-lg);
     margin-bottom: var(--space-2);
     border: 1px solid var(--border-light);
@@ -204,8 +203,7 @@
     align-items: center;
     gap: var(--space-1);
     background: var(--card-bg);
-    backdrop-filter: blur(var(--glass-blur));
-    -webkit-backdrop-filter: blur(var(--glass-blur));
+    /* backdrop-filter 由 .modal-overlay 提供 */
 }
 .settings-action-grid {
     display: grid;
@@ -218,8 +216,7 @@
     align-items: center;
     padding: var(--space-3) var(--space-4);
     background: var(--card-bg);
-    backdrop-filter: blur(var(--glass-blur));
-    -webkit-backdrop-filter: blur(var(--glass-blur));
+    /* backdrop-filter 由 .modal-overlay 提供 */
     border-radius: var(--radius-lg);
     border: 1px solid var(--border-light);
     font-size: var(--type-base);
@@ -235,8 +232,7 @@
 .about-description {
     padding: var(--space-4) var(--space-5);
     background: var(--card-bg);
-    backdrop-filter: blur(var(--glass-blur));
-    -webkit-backdrop-filter: blur(var(--glass-blur));
+    /* backdrop-filter 由 .modal-overlay 提供 */
     border-radius: var(--radius-lg);
     border: 1px solid var(--border-light);
     font-size: var(--type-sm);
@@ -248,8 +244,7 @@
 .about-author {
     padding: var(--space-4) var(--space-5);
     background: var(--card-bg);
-    backdrop-filter: blur(var(--glass-blur));
-    -webkit-backdrop-filter: blur(var(--glass-blur));
+    /* backdrop-filter 由 .modal-overlay 提供 */
     border-radius: var(--radius-lg);
     border: 1px solid var(--border-light);
     display: flex;
@@ -285,8 +280,7 @@
 .about-work-tag {
     padding: 6px 12px;
     background: var(--card-bg);
-    backdrop-filter: blur(var(--glass-blur));
-    -webkit-backdrop-filter: blur(var(--glass-blur));
+    /* backdrop-filter 由 .modal-overlay 提供 */
     border: 1px solid var(--border-light);
     border-radius: var(--radius-md);
     font-size: var(--type-sm);
@@ -303,8 +297,7 @@
     align-items: center;
     padding: var(--space-3);
     background: var(--card-bg);
-    backdrop-filter: blur(var(--glass-blur));
-    -webkit-backdrop-filter: blur(var(--glass-blur));
+    /* backdrop-filter 由 .modal-overlay 提供 */
     border-radius: var(--radius-lg);
     border: 1px solid var(--border-light);
 }
@@ -332,8 +325,7 @@
     gap: var(--space-2);
     padding: var(--space-3) var(--space-4);
     background: var(--card-bg);
-    backdrop-filter: blur(var(--glass-blur));
-    -webkit-backdrop-filter: blur(var(--glass-blur));
+    /* backdrop-filter 由 .modal-overlay 提供 */
     border-radius: var(--radius-md);
     border: 1px solid var(--border-light);
     font-size: var(--type-sm);
@@ -367,8 +359,7 @@
     border: 1px solid var(--border-light);
     border-radius: var(--radius-sm);
     background: var(--card-bg);
-    backdrop-filter: blur(var(--glass-blur));
-    -webkit-backdrop-filter: blur(var(--glass-blur));
+    /* backdrop-filter 由 .modal-overlay 提供 */
     font-size: var(--type-sm);
     color: var(--text-primary);
     font-family: inherit;
@@ -419,8 +410,7 @@
 /* 卡片容器：把整组操作包成一个有边界的"区块" */
 .data-action-card {
     background: var(--card-bg);
-    backdrop-filter: blur(var(--glass-blur));
-    -webkit-backdrop-filter: blur(var(--glass-blur));
+    /* backdrop-filter 由 .modal-overlay 提供 */
     border: 1px solid var(--border-light);
     border-radius: var(--radius-lg);
     padding: var(--space-4);
@@ -431,7 +421,7 @@
 .btn-primary-action {
     width: 100%;
     background: var(--btn-primary-bg);
-    color: white;
+    color: var(--white);
     border: none;
     border-radius: var(--radius-md);
     padding: var(--space-3) var(--space-4);

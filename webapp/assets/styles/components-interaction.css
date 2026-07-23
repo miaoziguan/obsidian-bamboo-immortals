@@ -8,9 +8,9 @@
     top: 0;
     left: 0;
     right: 0;
-    z-index: 9999;
+    z-index: var(--z-layer-tooltip);
     background: linear-gradient(135deg, var(--bamboo-deep), var(--bamboo-primary));
-    color: white;
+    color: var(--white);
     padding: var(--space-3) var(--space-6);
     display: flex;
     align-items: center;
@@ -28,7 +28,7 @@
 }
 .edit-mode-bar-close {
     background: rgba(var(--white-rgb), 0.2);
-    color: white;
+    color: var(--white);
     border: 1px solid rgba(var(--white-rgb), 0.3);
     padding: var(--space-2) var(--space-3);
     border-radius: var(--radius-md);
@@ -57,7 +57,7 @@
     top: calc(var(--space-3) * -1);
     right: var(--space-2);
     background: var(--bamboo-primary);
-    color: white;
+    color: var(--white);
     padding: var(--space-1) var(--space-3);
     border-radius: var(--radius-md);
     font-size: var(--type-xs);
@@ -88,7 +88,7 @@
     right: var(--space-5);
     background: var(--card-bg);
     backdrop-filter: blur(var(--glass-blur));
-    will-change: transform;
+    /* will-change 仅在一次性的 slideInUp 动画中需要，由 @keyframes 触发 */
     border-radius: var(--radius-xl);
     padding: var(--space-3) var(--space-4);
     display: flex;
@@ -96,7 +96,7 @@
     gap: var(--space-2);
     box-shadow: var(--shadow);
     border: 1px solid var(--border-light);
-    z-index: 9999;
+    z-index: var(--z-layer-tooltip);
     animation: slideInUp 0.4s ease;
 }
 @keyframes slideInUp {
@@ -107,7 +107,7 @@
 .keyboard-hint-text { font-size: var(--type-base); color: var(--text-secondary); }
 .keyboard-hint-text kbd {
     background: var(--bamboo-primary);
-    color: white;
+    color: var(--white);
     padding: var(--space-1) var(--space-2);
     border-radius: var(--radius-sm);
     font-family: inherit;
@@ -133,11 +133,11 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-2);
-    z-index: 900;
+    z-index: var(--z-layer-keyboard-hint);
     padding: var(--space-3);
     background: var(--card-glass);
     backdrop-filter: blur(var(--glass-blur));
-    will-change: transform;
+    /* will-change 由 :hover/.expanded 状态按需设置 */
     border-radius: 0 var(--radius-xl) var(--radius-xl) 0;
     border: 1px solid var(--border-light);
     border-left: none;
@@ -146,6 +146,7 @@
 }
 .quick-nav:hover,
 .quick-nav.expanded {
+    will-change: transform;
     transform: translateY(-50%) translateX(0);
 }
 .quick-nav-toggle {
@@ -221,7 +222,7 @@
     margin-left: 8px;
     padding: 6px 12px;
     background: var(--bamboo-deep);
-    color: white;
+    color: white; /* lint-disable: R7 — tooltip 白色文字，设计意图 */
     font-size: var(--type-sm);
     font-weight: 500;
     white-space: nowrap;
@@ -229,7 +230,7 @@
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.2s, transform 0.2s;
-    z-index: 1000;
+    z-index: var(--z-layer-keyboard-hint);
 }
 .quick-nav-btn:hover .quick-nav-btn-tooltip {
     opacity: 1;
@@ -389,7 +390,7 @@
 
 /* ========== 触控区域优化 ========== */
 .touch-friendly,
-button, .btn, .date-nav-btn, .edit-btn, .undo-redo-btn, .view-toggle-btn, .history-close, .modal-close, .tooltip-close {
+button, .btn, .date-nav-btn, .edit-btn, .view-toggle-btn, .history-close, .modal-close, .tooltip-close {
     min-height: var(--min-touch-target);
     min-width: var(--min-touch-target);
 }
@@ -517,7 +518,7 @@ button, .btn, .date-nav-btn, .edit-btn, .undo-redo-btn, .view-toggle-btn, .histo
     background: var(--card-bg);
     border-radius: var(--radius-xl);
     margin: var(--space-4) 0;
-    overflow: hidden;
+    overflow: clip; /* 允许 tooltip/focus ring 溢出 */
     border: 1px solid var(--border-light);
     transition: all 0.3s ease;
 }
@@ -693,7 +694,7 @@ button, .btn, .date-nav-btn, .edit-btn, .undo-redo-btn, .view-toggle-btn, .histo
     display: none;
     align-items: center;
     justify-content: center;
-    z-index: 9999;
+    z-index: var(--z-layer-tooltip);
     padding: var(--space-5);
 }
 .history-modal.active { display: flex; }

@@ -1,3 +1,5 @@
+import { getDomRoot } from './domRef.js';
+
 export const ActionDispatcher = {
     _handlers: {},
 
@@ -24,7 +26,7 @@ export const ActionDispatcher = {
     },
 
     init() {
-        document.addEventListener('click', (e) => {
+        getDomRoot().addEventListener('click', (e) => {
             const target = this._findClosestAttr(e, 'data-action');
             if (target) {
                 const action = target.dataset.action;
@@ -46,7 +48,7 @@ export const ActionDispatcher = {
             }
         });
 
-        document.addEventListener('keydown', (e) => {
+        getDomRoot().addEventListener('keydown', (e) => {
             if (e.key !== 'Enter' && e.key !== ' ') return;
 
             const target = this._findClosestAttr(e, 'data-action');

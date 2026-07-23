@@ -58,7 +58,7 @@
     margin-top: var(--space-2);
     padding: var(--space-3) var(--space-6);
     background: linear-gradient(135deg, var(--bamboo-primary), var(--bamboo-deep));
-    color: white;
+    color: var(--white);
     border: none;
     border-radius: var(--radius-4xl);
     cursor: pointer;

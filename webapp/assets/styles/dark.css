@@ -161,7 +161,6 @@
     justify-content: center;
     padding: 12px 10px;
     background: rgba(var(--white-rgb), 0.6);
-    backdrop-filter: blur(var(--glass-blur));
     border-radius: var(--radius-md);
     border: 1px solid rgba(var(--primary-rgb), 0.1);
     box-shadow: 0 2px 8px rgba(var(--deep-rgb), 0.04);
@@ -291,7 +290,6 @@
 .tier-card {
     padding: 12px 10px;
     background: rgba(var(--white-rgb), 0.55);
-    backdrop-filter: blur(var(--glass-blur));
     border-radius: var(--radius-md);
     border: 1px solid rgba(var(--primary-rgb), 0.1);
     box-shadow: 0 2px 8px rgba(var(--deep-rgb), 0.04);
@@ -799,11 +797,10 @@
     padding: 14px 12px;
     border-radius: var(--radius-lg);
     border: 1px solid rgba(var(--primary-rgb), 0.1);
-    overflow: hidden;
+    overflow: clip; /* 允许 tooltip/focus ring 溢出 */
     cursor: pointer;
     transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
     background: rgba(var(--white-rgb), 0.55);
-    backdrop-filter: blur(var(--glass-blur));
 }
 
 .alert-card:hover {
@@ -970,7 +967,6 @@
     background: rgba(var(--health-success-rgb), 0.08);
     border: 1px solid rgba(var(--health-success-rgb), 0.18);
     text-align: center;
-    backdrop-filter: blur(var(--glass-blur));
 }
 
 .all-good-icon {
@@ -1052,7 +1048,7 @@
     );
     border: 1px solid rgba(var(--primary-rgb), 0.1);
     cursor: pointer;
-    overflow: hidden;
+    overflow: clip; /* 允许 tooltip/focus ring 溢出 */
     transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), box-shadow 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
@@ -1186,7 +1182,7 @@
     );
     text-align: center;
     cursor: pointer;
-    overflow: hidden;
+    overflow: clip; /* 允许 tooltip/focus ring 溢出 */
     transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94), box-shadow 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
@@ -1374,7 +1370,7 @@
     cursor: pointer;
     transition: transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94), box-shadow 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
     position: relative;
-    overflow: hidden;
+    overflow: clip; /* 允许 tooltip/focus ring 溢出 */
 }
 
 .legend-item-horizontal:hover {
@@ -1773,7 +1769,6 @@
     background: rgba(var(--surface-dark-rgb-mid), 0.6);
     border-color: rgba(var(--primary-rgb), 0.12);
     box-shadow: 0 2px 8px rgba(var(--black-rgb), 0.15);
-    backdrop-filter: blur(var(--glass-blur));
 }
 
 
@@ -1819,6 +1814,24 @@
 :host(.dark) .alert-item {
     background: linear-gradient(145deg, rgba(var(--surface-deep-rgb), 0.95), rgba(var(--surface-deep-alt-rgb), 0.92));
     border-color: rgba(var(--primary-rgb), 0.15);
+}
+
+/* 暗色模式：hover 状态背景修复（全局规则用到 --white-rgb，需显式覆盖） */
+:host(.dark) .core-metric-card:hover {
+    background: rgba(var(--surface-dark-rgb-end), 0.85);
+    box-shadow: 0 4px 12px rgba(var(--black-rgb), 0.3);
+    border-color: rgba(var(--primary-rgb), 0.25);
+}
+
+:host(.dark) .alert-item:hover {
+    box-shadow: 0 4px 16px rgba(var(--black-rgb), 0.3);
+    border-color: rgba(var(--primary-rgb), 0.25);
+}
+
+/* 暗色模式：统计页预警卡片 — 替换全局 rule 的裸 RGBA 亮色背景 */
+:host(.dark) .stats-section-warning {
+    background: linear-gradient(145deg, rgba(var(--warning-orange-rgb), 0.12), rgba(var(--warning-orange-rgb), 0.06));
+    border-color: rgba(var(--warning-orange-rgb), 0.2);
 }
 
 :host(.dark) .time-alert,
@@ -1893,6 +1906,15 @@
 :host(.dark) .completed-item {
     background: linear-gradient(135deg, rgba(var(--health-success-rgb), 0.1), rgba(var(--mint-rgb), 0.06));
     border-color: rgba(var(--health-success-rgb), 0.2);
+}
+
+/* 暗色模式：成就卡片 — 替换全局规则中的裸 RGB 字面量 */
+:host(.dark) .achievement-card-full {
+    background: linear-gradient(135deg, rgba(var(--warning-orange-rgb), 0.08), rgba(var(--surface-dark-rgb), 0.3));
+}
+:host(.dark) .achievement-card-full:hover {
+    background: linear-gradient(135deg, rgba(var(--warning-orange-rgb), 0.14), rgba(var(--surface-dark-rgb-mid), 0.4));
+    box-shadow: 0 12px 32px rgba(var(--warning-orange-rgb), 0.14);
 }
 
 :host(.dark) .completed-icon {
@@ -2027,7 +2049,6 @@
 :host(.dark) .layer-detail-item {
     background: rgba(var(--surface-dark-rgb-mid), 0.7);
     border-color: rgba(var(--primary-rgb), 0.15);
-    backdrop-filter: blur(var(--glass-blur));
 }
 
 :host(.dark) .layer-detail-item.primary {

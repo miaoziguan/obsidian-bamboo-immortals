@@ -2,7 +2,7 @@
     position: fixed;
     top: var(--space-5);
     right: var(--space-5);
-    z-index: 9999;
+    z-index: var(--z-layer-tooltip);
     display: flex;
     flex-direction: column;
     gap: var(--space-2);
@@ -162,7 +162,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 10010;
+    z-index: var(--z-layer-toast);
     opacity: 0;
     transition: opacity 0.2s ease;
 }
@@ -193,7 +193,7 @@
 
 .confirm-danger .confirm-confirm-btn {
     background: var(--status-danger);
-    color: white;
+    color: var(--white);
     border-color: var(--status-danger);
 }
 
@@ -241,7 +241,7 @@
 
 .btn-primary {
     background: var(--bamboo-deep);
-    color: white;
+    color: var(--white);
     border-color: var(--bamboo-deep);
 }
 
@@ -260,7 +260,7 @@
 
 .btn-danger {
     background: var(--status-danger);
-    color: white;
+    color: var(--white);
     border-color: var(--status-danger);
 }
 
@@ -351,9 +351,8 @@
 .catm-migrate-picker {
     position: fixed;
     inset: 0;
-    z-index: 10000;
+    z-index: var(--z-layer-overlay);
 }
-
 .catm-migrate-picker .cmp-overlay {
     position: absolute;
     inset: 0;

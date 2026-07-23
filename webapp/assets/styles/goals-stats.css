@@ -543,7 +543,7 @@
     cursor: pointer;
     min-width: 100px;
     position: relative;
-    overflow: hidden;
+    overflow: clip; /* 允许 tooltip/focus ring 溢出 */
 }
 
 .time-span-card:hover {

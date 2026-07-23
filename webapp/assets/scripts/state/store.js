@@ -1,7 +1,6 @@
 // DataValidator / DATA_VERSION / DEFAULT_DATA / createEmptyDayData
 // 已抽至 state/dataValidator.js 和 state/defaultData.js（通过 window 访问）
 
-import { UndoRedoManager } from './undoRedoManager.js';
 import { MigrationService } from './migrationService.js';
 
 export class Store {
@@ -30,14 +29,10 @@ export class Store {
                 totalSpent: 0,
                 totalEarnings: 0
             },
-            undoStack: [],
-            redoStack: [],
             autoSaveTimer: null,
             isDirty: false
         };
         this.listeners = [];
-        this.onUndoStateChangedCallback = null;
-        this._undoRedo = new UndoRedoManager(this.state, () => this.notifyUndoStateChanged());
         this._migration = new MigrationService(this.state);
         this.storageType = 'indexeddb';
         this._dirtyDays = new Set(); // 脏标记：跟踪哪些天数据需要保存
@@ -561,7 +556,6 @@ export class Store {
     _recalibrateStats() { return WalletService.recalibrateStats(); }
 
     async updateDayData(updates) {
-        this.pushUndo();
         const key = this.getDateKey();
         if (!this.state.data[key]) {
             this.state.data[key] = createEmptyDayData(key);
@@ -579,7 +573,6 @@ export class Store {
     }
 
     async updateDayDataByDate(dateStr, updates) {
-        this.pushUndo();
         if (!this.state.data[dateStr]) {
             this.state.data[dateStr] = createEmptyDayData(dateStr);
         }
@@ -682,6 +675,11 @@ export class Store {
             document.documentElement.classList.remove('dark');
         }
 
+        // 重新计算前景色变量（暗色模式需要更高明度）
+        if (typeof window.DisplayManager !== 'undefined' && window.DisplayManager.reapplyHueForDarkMode) {
+            window.DisplayManager.reapplyHueForDarkMode();
+        }
+
         // 持久化（不等待 bridge 响应，防止循环
         if (typeof storageManager !== 'undefined' && typeof storageManager.putSetting === 'function') {
             try {
@@ -777,56 +775,6 @@ export class Store {
         }
         this.notify();
     }
-
-    setOnUndoStateChanged(callback) {
-        this.onUndoStateChangedCallback = callback;
-    }
-
-    notifyUndoStateChanged() {
-        if (this.onUndoStateChangedCallback) {
-            this.onUndoStateChangedCallback();
-        }
-    }
-
-    pushUndo() {
-        this._undoRedo.push(this.getDateKey(), this.state.data[this.getDateKey()]);
-        this.notifyUndoStateChanged();
-    }
-
-    async undo() {
-        const prev = this._undoRedo.undo(this.getDateKey());
-        if (!prev) return false;
-        if (this.state.data[prev.key]) {
-            this.state.data[prev.key] = prev.data;
-            this.markDayDirty(prev.key);
-        }
-        if (prev.key !== this.getDateKey()) {
-            this.state.currentDate = new Date(prev.key);
-        }
-        this.scheduleAutoSave();
-        this.notifyUndoStateChanged();
-        this.notify();
-        return true;
-    }
-
-    async redo() {
-        const next = this._undoRedo.redo(this.getDateKey());
-        if (!next) return false;
-        if (this.state.data[next.key]) {
-            this.state.data[next.key] = next.data;
-            this.markDayDirty(next.key);
-        }
-        if (next.key !== this.getDateKey()) {
-            this.state.currentDate = new Date(next.key);
-        }
-        this.scheduleAutoSave();
-        this.notifyUndoStateChanged();
-        this.notify();
-        return true;
-    }
-
-    canUndo() { return this._undoRedo.canUndo(); }
-    canRedo() { return this._undoRedo.canRedo(); }
 
     async exportData() { return DataIO.exportData(); }
     async importData(data, opts) { return DataIO.importData(data, opts); }

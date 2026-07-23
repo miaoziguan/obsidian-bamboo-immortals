@@ -34,7 +34,7 @@ export const renderSkeleton = () => {
 };
 
 export const renderAll = () => {
-    // 防抖动 - 50ms 内只执行一次
+    // 防抖动 - 150ms 内只执行一次（降低高频状态变更时的无效重渲染）
     if (_renderDebounceTimer) {
         clearTimeout(_renderDebounceTimer);
     }
@@ -56,6 +56,13 @@ export const renderAll = () => {
                 console.error('sectionsContainer 不存在!');
                 return;
             }
+
+            // 保存滚动位置，避免 innerHTML 重建后丢失
+            const scrollHost = getDomRoot();
+            const scrollTop = scrollHost ? scrollHost.scrollTop : 0;
+            const activeEl = document.activeElement;
+            const activeAction = activeEl ? activeEl.dataset?.action : null;
+            const activeTodoId = activeEl ? activeEl.dataset?.todoId : null;
 
             // 首次渲染时清空骨架屏占位
             if (_renderedSectionIds.size === 0) {
@@ -99,11 +106,22 @@ export const renderAll = () => {
 
             _renderedSectionIds = newSectionIds;
 
-            renderUndoRedoBar();
-
             // 恢复已完成组的折叠/展开状态
             if (typeof Todo !== 'undefined') {
                 Todo._syncCollapsedState();
+            }
+
+            // 恢复滚动位置
+            if (scrollHost) {
+                scrollHost.scrollTop = scrollTop;
+            }
+
+            // 恢复焦点到之前的活跃元素
+            if (activeAction) {
+                const restoredEl = activeTodoId
+                    ? document.querySelector(`[data-action="${activeAction}"][data-todo-id="${activeTodoId}"]`)
+                    : document.querySelector(`[data-action="${activeAction}"]`);
+                if (restoredEl) restoredEl.focus();
             }
 
             setupTimelineHoverEffects();
@@ -550,58 +568,6 @@ export const renderTodoSection = () => {
     return section;
 };
 
-export const renderUndoRedoBar = () => {
-    let bar = $('.undo-redo-bar');
-    const canUndo = store.canUndo();
-    const canRedo = store.canRedo();
-    
-    if (bar) {
-        const undoBtn = bar.querySelector('.undo-btn');
-        const redoBtn = bar.querySelector('.redo-btn');
-        const indicator = bar.querySelector('.undo-redo-indicator');
-        if (undoBtn) undoBtn.disabled = !canUndo;
-        if (redoBtn) redoBtn.disabled = !canRedo;
-        if (indicator) {
-            const { undoStack, redoStack } = store.getState();
-            indicator.textContent = `${undoStack.length}/${redoStack.length}`;
-        }
-    }
-};
-
-export const renderHistoryList = () => {
-    const container = byId('historyList');
-    if (!container) return;
-    
-    const { data, currentDate } = store.getState();
-    const dates = Object.keys(data).sort().reverse();
-    const currentKey = store.getDateKey(currentDate);
-    
-    if (dates.length === 0) {
-        container.innerHTML = '<div class="history-empty">暂无历史记录</div>';
-        return;
-    }
-    
-    container.innerHTML = dates.map(dateKey => {
-        const day = data[dateKey];
-        const isCurrent = dateKey === currentKey;
-        return `
-            <div class="history-item ${isCurrent ? 'current' : ''}" data-action="select-history-date" data-date="${dateKey}">
-                <div class="history-date">
-                    <div class="history-date-main">${day.date}</div>
-                    <div class="history-date-weekday">${day.weekday || ''}</div>
-                </div>
-                <div class="history-info">
-                    <div class="history-kpi">
-                        <span>${LucideUtils.createIcon('clock', { size: 14 })} ${(day.metrics || day).activeTime || '-'}</span>
-                        <span>${_iconSvg.checkCircle} ${(day.metrics || day).completedTasks || '-'}</span>
-                        <span>${LucideUtils.createIcon('messageCircle', { size: 14 })} ${(day.metrics || day).inspirationCount || '0'}</span>
-                    </div>
-                </div>
-            </div>
-        `;
-    }).join('');
-};
-
 export const highlightText = (text, query) => {
     if (!query || !text) return escapeHtml(text);
     const escapedText = escapeHtml(text);
@@ -769,8 +735,6 @@ window.getActivePeriod = getActivePeriod;
 window.renderTimelineSection = renderTimelineSection;
 window.renderGoalsSection = renderGoalsSection;
 window.renderTodoSection = renderTodoSection;
-window.renderUndoRedoBar = renderUndoRedoBar;
-window.renderHistoryList = renderHistoryList;
 window.highlightText = highlightText;
 window.escapeRegex = escapeRegex;
 window.renderSearchResults = renderSearchResults;

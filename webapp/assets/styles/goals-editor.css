@@ -228,7 +228,7 @@
     align-items: center;
     justify-content: center;
     font-size: var(--type-mini);
-    color: white; /* tooltip 白色文字，设计意图 */
+    color: white; /* lint-disable: R7 — tooltip 白色文字，设计意图 */
     flex-shrink: 0;
 }
 
@@ -464,7 +464,7 @@
 .goal-day-btn.selected {
     background: var(--bamboo-primary);
     border-color: var(--bamboo-primary);
-    color: white; /* tooltip 白色文字，设计意图 */
+    color: white; /* lint-disable: R7 — tooltip 白色文字，设计意图 */
 }
 
 /* 内联依赖按钮 */
@@ -1048,7 +1048,7 @@
 .goal-day-btn.selected {
     background: var(--bamboo-primary);
     border-color: var(--bamboo-primary);
-    color: white; /* tooltip 白色文字，设计意图 */
+    color: white; /* lint-disable: R7 — tooltip 白色文字，设计意图 */
 }
 
 /* 建议每日完成量说明 */
@@ -1184,7 +1184,7 @@
     align-items: center;
     justify-content: center;
     font-size: var(--type-sm);
-    color: white; /* tooltip 白色文字，设计意图 */
+    color: white; /* lint-disable: R7 — tooltip 白色文字，设计意图 */
     flex-shrink: 0;
     transition: all 0.3s ease;
 }

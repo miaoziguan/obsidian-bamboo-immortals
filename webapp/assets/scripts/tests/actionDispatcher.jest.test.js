@@ -10,7 +10,11 @@ describe('ActionDispatcher 全局事件委托路由', () => {
   let handlerB;
 
   beforeAll(() => {
-    AD = loadModule('utils/actionDispatcher.js', ['ActionDispatcher']).ActionDispatcher;
+    // actionDispatcher.js import { getDomRoot } from './domRef.js'，
+    // loadModule 会剥离 import，故注入 getDomRoot 全局 mock（jsdom 下回退 document）
+    AD = loadModule('utils/actionDispatcher.js', ['ActionDispatcher'], {
+      getDomRoot: () => document,
+    }).ActionDispatcher;
     handlerA = jest.fn();
     handlerB = jest.fn();
     AD.registerMany({

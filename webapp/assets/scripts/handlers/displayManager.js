@@ -441,6 +441,14 @@ export const DisplayManager = {
         const root = getCssVarRoot();
         if (!root) return;
 
+        // 暗色模式下提高前景色明度，确保文字 / 按钮 / 卡片在深色背景上可见
+        // :host(.dark) CSS 变量被 setProperty 覆盖，此处需同源处理
+        // 因 MutationObserver 是异步的，需同时检查 host 和 documentElement
+        const darkHost = getHost();
+        const isDark = (darkHost && darkHost.classList.contains('dark')) ||
+                       document.documentElement.classList.contains('dark');
+        const darkLift = isDark ? 10 : 0;  // 前景色明度提升（%）
+
         // 记录用户手动色相，供关闭联动后恢复
         if (!fromTheme) this._userHue = hue;
 
@@ -450,41 +458,42 @@ export const DisplayManager = {
         if (!fromTheme) this._maybeSyncPalette();
 
         // 同步更新所有绿色系 RGB 变量（用于 rgba() 半透明色）
-        // 竹青绿主色 hsl(hue, 27%, 48%) → #5A9A5A
-        const primaryRgb = this._hslToRgb(hue, 27, 48);
+        // 暗色模式下明度 +darkLift，确保前景色在深色背景上可见（匹配 :host(.dark) CSS 变量值）
+        // 竹青绿主色 hsl(hue, 27%, 48%) → 暗色 hsl(hue, 27%, 58%) #5A9A5A → #82C382
+        const primaryRgb = this._hslToRgb(hue, 27, 48 + darkLift);
         root.style.setProperty('--primary-rgb', primaryRgb);
 
-        // 竹青深色 hsl(hue-7, 40%, 25%) → #2D5A27
-        const deepRgb = this._hslToRgb(hue - 7, 40, 25);
+        // 竹青深色 hsl(hue-7, 40%, 25%) → 暗色 hsl(hue-7, 40%, 28%) #2D5A27 → #2D5A35
+        const deepRgb = this._hslToRgb(hue - 7, 40, 25 + (isDark ? 3 : 0));
         root.style.setProperty('--deep-rgb', deepRgb);
         root.style.setProperty('--bamboo-deep-rgb', deepRgb);  // 票面文案 RGB 变量
 
-        // 竹青浅色 hsl(hue, 35%, 75%) → #A8D5A8
-        const paleRgb = this._hslToRgb(hue, 35, 75);
+        // 竹青浅色 hsl(hue, 35%, 75%) → 暗色 hsl(hue, 35%, 80%) #A8D5A8 → #BCE2BC
+        const paleRgb = this._hslToRgb(hue, 35, 75 + (isDark ? 5 : 0));
         root.style.setProperty('--pale-rgb', paleRgb);
 
-        // 票根背景 hsl(hue, 36%, 68%) → #94C694
-        const ticketStubRgb = this._hslToRgb(hue, 36, 68);
+        // 票根背景 hsl(hue, 36%, 68%) → 暗色 hsl(hue, 36%, 78%) #94C694 → #B4E2B4
+        const ticketStubRgb = this._hslToRgb(hue, 36, 68 + darkLift);
         root.style.setProperty('--ticket-stub-bg-rgb', ticketStubRgb);
 
-        // 主色变体 hsl(hue, 28%, 55%) → #6BAE6B
-        const primaryAltRgb = this._hslToRgb(hue, 28, 55);
+        // 主色变体 hsl(hue, 28%, 55%) → 暗色 hsl(hue, 28%, 65%) #6BAE6B → #8CC58C
+        const primaryAltRgb = this._hslToRgb(hue, 28, 55 + darkLift);
         root.style.setProperty('--primary-alt-rgb', primaryAltRgb);
 
-        // 浅绿 hsl(hue, 27%, 83%) → #C8E0C8
-        const greenPaleRgb = this._hslToRgb(hue, 27, 83);
+        // 浅绿 hsl(hue, 27%, 83%) → 暗色 hsl(hue, 27%, 88%) #C8E0C8 → #D9EDD9
+        const greenPaleRgb = this._hslToRgb(hue, 27, 83 + (isDark ? 5 : 0));
         root.style.setProperty('--green-pale-rgb', greenPaleRgb);
 
-        // 亮绿 hsl(hue, 47%, 70%) → #8FD88F
-        const greenBrightRgb = this._hslToRgb(hue, 47, 70);
+        // 亮绿 hsl(hue, 47%, 70%) → 暗色 hsl(hue, 47%, 78%) #8FD88F → #B0E7B0
+        const greenBrightRgb = this._hslToRgb(hue, 47, 70 + (isDark ? 8 : 0));
         root.style.setProperty('--green-bright-rgb', greenBrightRgb);
 
-        // 次绿 hsl-16, 44%, 75% → #B4DCA5 (hue 偏移较大，保留偏移)
-        const greenAltRgb = this._hslToRgb(hue - 16, 44, 75);
+        // 次绿 hsl-16, 44%, 75% → 暗色 hsl-16, 44%, 82% (hue 偏移较大，保留偏移)
+        const greenAltRgb = this._hslToRgb(hue - 16, 44, 75 + (isDark ? 7 : 0));
         root.style.setProperty('--green-alt-rgb', greenAltRgb);
 
-        // 极亮绿 hsl(hue, 72%, 79%) → #C8FF96
-        const greenVeryBrightRgb = this._hslToRgb(hue, 72, 79);
+        // 极亮绿 hsl(hue, 72%, 79%) → 暗色 hsl(hue, 72%, 85%) #C8FF96 → #D6FFB5
+        const greenVeryBrightRgb = this._hslToRgb(hue, 72, 79 + (isDark ? 6 : 0));
         root.style.setProperty('--green-very-bright-rgb', greenVeryBrightRgb);
 
         // 暗色模式表面色（卡片、面板背景等）
@@ -529,6 +538,30 @@ export const DisplayManager = {
         }
         if (isNaN(hue) || hue < this.HUE_MIN || hue > this.HUE_MAX) hue = this.DEFAULT_HUE;
         this._applyHue(hue, false);
+    },
+
+    /**
+     * 暗色模式切换时重新计算所有前景色变量
+     * 由 store.setDarkMode 在 class 变更后调用
+     */
+    reapplyHueForDarkMode() {
+        const root = getCssVarRoot();
+        if (!root) return;
+
+        // 修复：代理对象无 getPropertyValue，改用 getComputedStyle 读取当前色相
+        const cs = getGlobalComputedStyle();
+        const hueRaw = cs.getPropertyValue('--accent-hue').trim();
+        const currentHue = (hueRaw !== '' && !isNaN(hueRaw)) ? Number(hueRaw) : this.DEFAULT_HUE;
+        this._applyHue(currentHue, true);
+
+        // 修复：_applyObsidianBg 内联的 --card-bg/--card-glass 优先级高于 :host(.dark) CSS，
+        // 模式切换时必须移除内联覆盖，让 CSS 变量层级的明暗切换生效。
+        // 移除后若 Obsidian 侧重新推送主题 bg，bridge.js 会再次调用 _applyObsidianBg。
+        const sidebarRgb = cs.getPropertyValue('--obsidian-sidebar-rgb').trim();
+        if (sidebarRgb) {
+            root.style.removeProperty('--card-bg');
+            root.style.removeProperty('--card-glass');
+        }
     },
 
     /**

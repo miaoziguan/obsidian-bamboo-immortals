@@ -24,7 +24,7 @@
 
 .btn-primary {
     background: var(--btn-primary-bg);
-    color: white;
+    color: var(--white);
     box-shadow: var(--shadow-surface);
 }
 .btn-primary:hover:not(:disabled) {
@@ -64,7 +64,7 @@
 
 .btn-danger {
     background: linear-gradient(135deg, var(--cinnabar), #e57368);
-    color: white;
+    color: var(--white);
 }
 .btn-danger:hover:not(:disabled) {
     transform: translateY(-1px);
@@ -80,7 +80,7 @@
 
 .btn-success {
     background: linear-gradient(135deg, var(--bamboo-primary), var(--bamboo-deep));
-    color: white;
+    color: var(--white);
 }
 
 /* ========== 通用编辑按钮 ========== */

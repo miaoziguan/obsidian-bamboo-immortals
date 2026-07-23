@@ -1,4 +1,4 @@
-import { byId, $, getHost } from '../utils/domRef.js';
+import { byId, $, getHost, getDomRoot } from '../utils/domRef.js';
 export const Handlers = {
     modalFocusStack: [],
     lastFocusedElement: null,
@@ -15,6 +15,7 @@ export const Handlers = {
         this.setupGlobalErrorHandler();
         Navigation.init();
         this.setupFabMenu();
+        this.setupGlobalKeyboardShortcuts();
         Gestures.init();
         QuickNav.init();
         ThemeSelector.updateDarkModeButton();
@@ -54,6 +55,24 @@ export const Handlers = {
         FABManager.init();
     },
 
+    setupGlobalKeyboardShortcuts() {
+        getDomRoot().addEventListener('keydown', (e) => {
+            // 编辑中不触发全局快捷键
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
+            // 模态框打开时不触发（已有自己的键盘处理）
+            const modalContainer = byId('modalContainer');
+            if (modalContainer && !modalContainer.classList.contains('no-keybind')) return;
+
+            const modKey = e.metaKey || e.ctrlKey;
+
+            // Ctrl+K 或 / 搜索
+            if ((modKey && e.key === 'k') || (!modKey && e.key === '/' && !e.shiftKey)) {
+                e.preventDefault();
+                ActionDispatcher.dispatch('open-search', null, null, e);
+            }
+        });
+    },
+
     openModal(content, title = '编辑') {
         this.lastFocusedElement = document.activeElement;
         const container = byId('modalContainer');
@@ -91,6 +110,10 @@ export const Handlers = {
         this.modalFocusStack = [closeBtn];
         const _scrollHost = getHost() || document.body;
         _scrollHost.style.overflow = 'hidden';
+
+        // 绑定焦点陷阱和 Escape 关闭
+        this._modalKeyHandler = (e) => this.setupModalFocusTrap(e);
+        getDomRoot().addEventListener('keydown', this._modalKeyHandler);
     },
 
     closeModal(event) {
@@ -102,6 +125,12 @@ export const Handlers = {
         if (this._modalObserver) {
             this._modalObserver.disconnect();
             this._modalObserver = null;
+        }
+
+        // 移除焦点陷阱监听器
+        if (this._modalKeyHandler) {
+            getDomRoot().removeEventListener('keydown', this._modalKeyHandler);
+            this._modalKeyHandler = null;
         }
 
         const container = byId('modalContainer');
@@ -261,6 +290,9 @@ ActionDispatcher.registerMany({
     'fab-theme': () => {
         if (typeof window.ThemeEffects !== 'undefined') window.ThemeEffects.showThemePanel();
         if (typeof FABManager !== 'undefined') FABManager.close();
+    },
+    'open-search': () => {
+        if (typeof SearchUI !== 'undefined') SearchUI.toggle();
     }
 });
 

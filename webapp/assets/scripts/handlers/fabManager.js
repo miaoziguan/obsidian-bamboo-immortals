@@ -1,4 +1,4 @@
-import { byId, $ } from '../utils/domRef.js';
+import { byId, $, getDomRoot } from '../utils/domRef.js';
 export const FABManager = {
     container: null,
     mainBtn: null,
@@ -156,6 +156,64 @@ export const FABManager = {
         });
     },
 
+    /** ArrowKey 循环 + Tab/Shift+Tab 陷阱 + Escape 关闭 */
+    _handleKeydown(e) {
+        if (!this.isOpen) return;
+        const buttons = this.getMenuButtons();
+        if (buttons.length === 0) return;
+        const idx = buttons.indexOf(document.activeElement);
+
+        switch (e.key) {
+            case 'ArrowDown':
+            case 'ArrowRight':
+                e.preventDefault();
+                if (idx < 0 || idx >= buttons.length - 1) {
+                    buttons[0].focus();
+                } else {
+                    buttons[idx + 1].focus();
+                }
+                break;
+            case 'ArrowUp':
+            case 'ArrowLeft':
+                e.preventDefault();
+                if (idx <= 0) {
+                    buttons[buttons.length - 1].focus();
+                } else {
+                    buttons[idx - 1].focus();
+                }
+                break;
+            case 'Home':
+                e.preventDefault();
+                buttons[0].focus();
+                break;
+            case 'End':
+                e.preventDefault();
+                buttons[buttons.length - 1].focus();
+                break;
+            case 'Tab':
+                e.preventDefault();
+                if (e.shiftKey) {
+                    if (idx <= 0) {
+                        buttons[buttons.length - 1].focus();
+                    } else {
+                        buttons[idx - 1].focus();
+                    }
+                } else {
+                    if (idx < 0 || idx >= buttons.length - 1) {
+                        buttons[0].focus();
+                    } else {
+                        buttons[idx + 1].focus();
+                    }
+                }
+                break;
+            case 'Escape':
+                e.preventDefault();
+                e.stopPropagation();
+                this.close();
+                break;
+        }
+    },
+
     toggle() { this.isOpen ? this.close() : this.open(); },
 
     positionPanel() {
@@ -203,6 +261,10 @@ export const FABManager = {
         this.mainBtn.setAttribute('aria-expanded', 'true');
         this.actions.classList.add('open');
         this.container.classList.add('fab-open');
+
+        // 绑定键盘导航
+        this._boundKeydown = this._handleKeydown.bind(this);
+        getDomRoot().addEventListener('keydown', this._boundKeydown);
         
         requestAnimationFrame(() => {
             const buttons = this.getMenuButtons();
@@ -222,6 +284,13 @@ export const FABManager = {
         this.container.classList.remove('fab-below', 'fab-align-left');
         this.actions.style.maxHeight = '';
         this.actions.style.width = '';
+
+        // 解绑键盘导航，归还焦点到主按钮
+        if (this._boundKeydown) {
+            getDomRoot().removeEventListener('keydown', this._boundKeydown);
+            this._boundKeydown = null;
+        }
+        this.mainBtn.focus();
     }
 };
 

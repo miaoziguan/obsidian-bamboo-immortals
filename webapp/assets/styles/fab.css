@@ -14,7 +14,7 @@
     font-weight: 400;
     cursor: pointer;
     box-shadow: var(--shadow-surface);
-    z-index: 10000;
+    z-index: var(--z-layer-overlay);
     opacity: 0;
     visibility: hidden;
     transform: translateY(12px) scale(0.8);
@@ -177,7 +177,7 @@
     position: fixed;
     bottom: 120px;
     right: 16px;
-    z-index: 9999;
+    z-index: var(--z-layer-tooltip);
     display: flex;
     align-items: flex-end;
     justify-content: flex-end;
@@ -266,7 +266,7 @@
     box-shadow: var(--shadow-floating);
     max-height: 80vh;
     overflow-y: auto;
-    min-width: 240px;
+    min-width: clamp(200px, 40vw, 320px);
 }
 .fab-actions.open {
     transform: translateY(0);
@@ -407,7 +407,7 @@
     transform: scale(0.95);
 }
 .fab-container.fab-open {
-    z-index: 10001;
+    z-index: var(--z-layer-modal);
 }
 .fab-container.dragging {
     transition: none;

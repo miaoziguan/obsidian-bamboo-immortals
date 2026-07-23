@@ -1,10 +1,44 @@
-/* ========== 全局变量（竹林中国风 - 亮色模式） ========== */
+/* ========== 全局变量（竹林中国风 - 亮色模式） ==========
+ *
+ * 命名规范（三层架构）：
+ *   基础色板层  --{palette}-{shade}       例：--bamboo-deep, --bamboo-primary
+ *   语义层      --{semantic}-{variant}     例：--text-primary, --status-danger
+ *   组件层      --{component}-{property}   例：--tag-execute-bg, --kpi-up-bg
+ *   RGB 通道    --{name}-rgb                例：--primary-rgb, --danger-rgb
+ *   动效/间距/圆角/字体  --{category}-{step}  例：--space-3, --radius-md, --type-sm
+ *
+ * 禁止：裸写 #fff / #000 / white / black / rgb(255,255,255) — 必须走令牌
+ * 禁止：裸写 px 圆角 / px 字号 — 必须走 --radius-* / --type-*
+ * 废弃别名（保留兼容，新代码禁止使用）：
+ *   --font-size-* → 用 --type-*
+ *   --bamboo-text-muted → 用 --text-tertiary
+ *   --bamboo-text-secondary → 用 --text-secondary
+ *   --bamboo-primary-dark → 用 --bamboo-dark
+ *   --tag-execute-bg → 用 --bamboo-primary（亮色）/ --bamboo-light（暗色）
+ *   --tag-miss-bg → 用 --ink-pale
+ *   --bamboo-success → 用 --bamboo-primary（当前同值）
+ *   --status-success → 用 --bamboo-primary（当前同值）
+ * ======================================================== */
 :host {
     /* === 主题色相（可变）=== */
     --accent-hue: 120;  /* 默认竹青绿，可通过 DisplayManager 色相滑块调整 */
 
     /* === 明度偏移（可变）=== */
     --accent-lightness-offset: 0%;  /* 默认 0%，可通过 DisplayManager 明度滑块调整（范围 ~-15% ~ +15%）*/
+
+    /* === z-index 层级体系（全局统一，禁止再写裸数字）=== */
+    --z-layer-below: -2;       /* 装饰层/背景装饰 */
+    --z-layer-behind: -1;      /* 背景伪元素/装饰 */
+    --z-layer-base: 0;         /* 正常流 */
+    --z-layer-raised: 1;       /* 轻微抬起（card hover 等）*/
+    --z-layer-floating: 2;     /* 浮动（日期悬浮、toolbar）*/
+    --z-layer-dropdown: 100;   /* 下拉菜单/颜色面板 */
+    --z-layer-keyboard-hint: 900;     /* 键盘快捷键提示 */
+    --z-layer-tooltip: 9999;          /* tooltip / 悬浮预览 / KPI 悬浮 */
+    --z-layer-overlay: 10000;         /* 通用遮罩层（FAB 背景 / skip-link / modal-overlay / 弹层底部）*/
+    --z-layer-modal: 10001;           /* 模态容器 / widget 覆盖 */
+    --z-layer-toast: 10010;           /* Toast 全屏通知 */
+    --z-layer-max: 11000;             /* 最顶层（搜索/日期选择）*/
 
     /* === 基础色彩系统（HSL 动态生成）=== */
     --bamboo-deep: hsl(calc(var(--accent-hue) - 7), 40%, calc(25% + var(--accent-lightness-offset)));
@@ -68,12 +102,12 @@
     --overdue-bg-mid-rgb: 255, 235, 235;
     --overdue-bg-light-rgb: 255, 230, 230;
     --ticket-gold: #B8860B;
-    --bamboo-text-muted: var(--ink-pale);
-    --bamboo-text-secondary: var(--ink-light);
+    --bamboo-text-muted: var(--ink-pale); /* DEPRECATED: 用 --text-tertiary */
+    --bamboo-text-secondary: var(--ink-light); /* DEPRECATED: 用 --text-secondary */
     --bamboo-border: rgba(var(--primary-rgb), 0.25);
     --bamboo-background: rgba(var(--primary-rgb), 0.06);
-    --bamboo-primary-dark: var(--bamboo-dark);
-    --bamboo-success: var(--bamboo-primary);
+    --bamboo-primary-dark: var(--bamboo-dark); /* DEPRECATED: 用 --bamboo-dark */
+    --bamboo-success: var(--bamboo-primary); /* DEPRECATED: 用 --bamboo-primary */
     --bamboo-warning: #c9a227;
     --bamboo-warning-pale: #fff59d;
     --bamboo-error: #dc3545;
@@ -195,6 +229,8 @@
     --glass-highlight-subtle: rgba(var(--white-rgb), 0.1);
     --glass-highlight-faint: rgba(var(--white-rgb), 0.04);
     --glass-highlight-wash: rgba(var(--white-rgb), 0.08);
+    /* 预渲染渐变组合：避免浏览器在每帧重新计算 linear-gradient */
+    --glass-card-gradient: linear-gradient(135deg, rgba(var(--white-rgb), 0.25) 0%, rgba(var(--white-rgb), 0.08) 50%, rgba(var(--white-rgb), 0.15) 100%), linear-gradient(45deg, rgba(var(--bamboo-deep-rgb),0.12) 0%, transparent 60%);
 
     /* === 圆角系统（统一为 2px 倍数，覆盖现网所有取值） ===
        映射约定（代码禁止再写裸 px 圆角）：
@@ -263,7 +299,7 @@
     --focus-transition: box-shadow 0.15s ease;
 
     /* === 状态色系统 === */
-    --status-success: var(--bamboo-primary);
+    --status-success: var(--bamboo-primary); /* DEPRECATED: 用 --bamboo-primary */
     --status-warning: var(--gold);
     --status-danger: var(--cinnabar);
     --status-info: #4FC3F7;
@@ -303,6 +339,7 @@
     /* 竹林星光 — 深邃、高级、有层次感的暗色背景 */
     --primary-rgb: 130, 195, 130;
     --deep-rgb: 45, 90, 53;
+    --bamboo-deep-rgb: 45, 90, 53;
     --danger-rgb: 255, 107, 107;
     --danger-alt-rgb: 255, 107, 107;
     --gold-rgb: 255, 217, 61;
@@ -454,6 +491,8 @@
     --wave-color: rgba(var(--primary-rgb), 0.5);
     /* 暗色模式降低模糊半径，避免 Chromium backdrop-filter 渲染伪影 */
     --glass-blur: 12px;
+    /* 暗色 pre-rendered 卡片渐变 — 降低白色分量适配深色背景 */
+    --glass-card-gradient: linear-gradient(135deg, rgba(var(--white-rgb), 0.12) 0%, rgba(var(--white-rgb), 0.04) 50%, rgba(var(--white-rgb), 0.08) 100%), linear-gradient(45deg, rgba(var(--bamboo-deep-rgb), 0.10) 0%, transparent 60%);
     
     /* 星空点缀色 */
     --star-glow: hsla(calc(var(--accent-hue) + 0), 36%, calc(78% + var(--accent-lightness-offset)), 0.6);

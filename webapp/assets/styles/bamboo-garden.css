@@ -115,7 +115,7 @@
         transparent 50%
     );
     pointer-events: none;
-    z-index: 999;
+    z-index: var(--z-layer-keyboard-hint);
 }
 
 /* 月亮 - 仅在暗色模式显示 */

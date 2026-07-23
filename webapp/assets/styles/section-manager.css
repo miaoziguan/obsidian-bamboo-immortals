@@ -178,7 +178,7 @@
     border-color: var(--bamboo-primary);
     transform: scale(1.03) translateY(-4px);
     box-shadow: 0 12px 40px rgba(var(--deep-rgb), 0.25), 0 4px 12px rgba(var(--black-rgb), 0.15);
-    z-index: 1000;
+    z-index: var(--z-layer-keyboard-hint);
     position: relative;
 }
 

@@ -189,9 +189,45 @@ export const WalletService = {
      * 基于 incomeHistory / purchaseHistory / balance 重新计算 stats，
      * 确保 stats 始终是派生事实，而非独立缓存。
      */
-    recalibrateStats() {
+    /** 从收入/消费历史派生理论余额（含归档），用于校准可能损坏的 balance 持久化 */
+    computeDerivedBalance() {
+        const s = store.state;
+        let income = 0;
+        for (const r of (s.incomeHistory?.records || [])) income += (r.amount || 0);
+        for (const month of Object.values(s.incomeHistory?.archive || {})) {
+            income += (month.totalEarned || 0);
+        }
+        let spent = 0;
+        for (const r of (s.purchaseHistory?.records || [])) spent += (r.price || 0);
+        for (const month of Object.values(s.purchaseHistory?.archive || {})) {
+            spent += (month.totalSpent || 0);
+        }
+        return parseFloat((income - spent).toFixed(2));
+    },
+
+    /**
+     * 基于 incomeHistory / purchaseHistory / balance 重新计算 stats，
+     * 确保 stats 始终是派生事实，而非独立缓存。
+     *
+     * 同时校准余额：balance 是「收入 − 消费」的派生事实（其唯一来源为任务完成 +1 /
+     * 购买 −price / 取消 −1，且这些动作都已记入 income/purchase 历史）。若持久化损坏
+     * 导致 balance 与派生值不符（如历史余额累计丢失、而收入/消费记录仍完好），以派生值
+     * 校正，修复「余额归零 / 统计错乱」类数据丢失，避免依赖脆弱的逐步累加持久化。
+     */
+    async recalibrateStats() {
         const s = store.state;
         const today = new Date().toDateString();
+
+        // 校准余额：以 income/purchase 派生值校正「余额归零/异常」类损坏。
+        // 仅在余额 ≤ 0 但派生值应为正时介入——正对应「余额持久化丢失、而收入/消费
+        // 记录仍完好」的损坏（如本次 0 vs 应有 273）。正常既有余额（>0 且与派生值一致）
+        // 不受影响，避免误伤。
+        const derivedBalance = this.computeDerivedBalance();
+        if ((parseFloat(s.balance) || 0) <= 0 && derivedBalance > 0.001) {
+            s.balance = derivedBalance;
+            await storageManager.putSetting('balance', s.balance);
+        }
+
         const todayIncomes = (s.incomeHistory?.records || []).filter(
             inc => new Date(inc.date).toDateString() === today
         );

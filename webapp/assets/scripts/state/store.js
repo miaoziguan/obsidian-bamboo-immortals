@@ -238,7 +238,7 @@ export class Store {
             // goals 已从 Vault 加载完成，解除首次保存强制写 goals 的门控
             this._goalsLoaded = true;
 
-            WalletService.recalibrateStats();
+            await WalletService.recalibrateStats();
             storageManager.putSetting('shopStats', this.state.stats).catch(e => console.warn('[Store] shopStats save failed:', e));
 
             // 天气字段异步拉取（不阻塞加载，失败静默）

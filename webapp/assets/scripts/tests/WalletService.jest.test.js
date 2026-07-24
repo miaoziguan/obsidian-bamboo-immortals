@@ -43,7 +43,7 @@ describe('WalletService.recalibrateStats 冻结一致性', () => {
         const { store } = makeGlobals(baseState());
         const { WalletService } = loadModule('services/WalletService.js', ['WalletService']);
 
-        WalletService.recalibrateStats();
+        await WalletService.recalibrateStats();
 
         const today = new Date().toDateString();
         expect(store.state._statsDate).toBe(today); // 关键：必须同步
@@ -63,7 +63,7 @@ describe('WalletService.recalibrateStats 冻结一致性', () => {
         const { store } = makeGlobals(state);
         const { WalletService } = loadModule('services/WalletService.js', ['WalletService']);
 
-        WalletService.recalibrateStats();
+        await WalletService.recalibrateStats();
         expect(store.state._statsDate).toBe(new Date().toDateString());
         expect(store.state.stats.todayEarnings).toBe(0);
 
@@ -71,12 +71,35 @@ describe('WalletService.recalibrateStats 冻结一致性', () => {
         expect(store.state.stats.todayEarnings).toBe(1); // 从 0 累加，而非从残留值
     });
 
-    test('getAvailableBalance 应正确扣除冻结的今日收入', () => {
+    test('getAvailableBalance 应正确扣除冻结的今日收入', async () => {
         const { store } = makeGlobals(baseState());
         const { WalletService } = loadModule('services/WalletService.js', ['WalletService']);
 
-        WalletService.recalibrateStats();
+        await WalletService.recalibrateStats();
         // balance(100) - frozen todayEarnings(5) = 95
         expect(WalletService.getAvailableBalance()).toBe(95);
+    });
+
+    test('recalibrateStats 应校准损坏的余额（派生 = 收入 − 消费）', async () => {
+        const state = baseState();
+        state.balance = 0; // 损坏：余额被持久化为 0
+        const month = new Date().toISOString().slice(0, 7);
+        const nowIso = new Date().toISOString();
+        state.incomeHistory.records = Array.from({ length: 280 }, (_, i) => ({
+            amount: 1, desc: `完成 任务${i}`, date: nowIso, month
+        }));
+        state.purchaseHistory.records = Array.from({ length: 7 }, (_, i) => ({
+            price: 1, name: `商品${i}`, date: nowIso, month
+        }));
+        const { store } = makeGlobals(state);
+        const { WalletService } = loadModule('services/WalletService.js', ['WalletService']);
+
+        await WalletService.recalibrateStats();
+
+        // 280 − 7 = 273，余额应从损坏的 0 校准回 273
+        expect(store.state.balance).toBe(273);
+        expect(store.state.stats.totalSpent).toBe(7);
+        expect(store.state.stats.totalEarnings).toBe(280); // 273 + 7
+        expect(store.state._statsDate).toBe(new Date().toDateString());
     });
 });

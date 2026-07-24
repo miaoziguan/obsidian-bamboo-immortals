@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.8.3] — 2026-07-24
+
+### Fixed
+- **竹林商店余额/统计数据丢失（余额归零）**：`balance` 本是「收入 − 消费」的派生事实，但其逐步累加的持久化在历史某刻损坏（余额被写成 0，而 `income-history.json` 280 条、`purchase-history.json` 7 条记录完好），且加载时首次全量保存又把读到的 0 写回覆盖。`WalletService.recalibrateStats` 新增余额校准：当余额 ≤ 0 但派生值应为正时，以 `income/purchase` 派生值校正并落盘，并据此修正 `shopStats.totalEarnings`。校准仅命中「余额归零 + 记录完好」的损坏场景，不影响任何正常既有余额
+- **新增回归测试**：`WalletService.jest.test.js` 覆盖余额校准（派生 = 收入 − 消费）、冻结一致性、今日无收入、可用余额扣减
+
+---
+
 ## [2.8.2] — 2026-07-24
 
 ### Fixed

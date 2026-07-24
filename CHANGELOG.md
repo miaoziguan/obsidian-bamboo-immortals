@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.8.5] — 2026-07-24
+
+### Added
+- **启动数据自洽校验与自动修复（ConsistencyService）**：新增 `services/ConsistencyService.js`，在 `store.initialize()` 加载数据后自动运行，从根上修复「目标任务待办 ↔ 时间线活动 ↔ 目标进度 ↔ 竹币收支」四方不一致。修复维度：(1) 每日 `goalTaskCompletions`（待办完成态）与时间线活动**双向对齐**（时间线有完成记录则补待办完成态，反之补时间线活动）；(2) 目标 `item.percent`/`goal.progress` 按 `currentValue` 派生**重算**，保证内部自洽；(3) 补齐今日已完成任务**缺失的竹币收入记录**并保守校准余额。设计原则：对已一致数据零副作用、任何异常不影响启动（错误记入 report 不抛出）
+- **新增回归测试**：`ConsistencyService.jest.test.js` 覆盖正/反向对齐、已一致零副作用、目标进度重算、竹币补齐、异常捕获
+
+### Background
+- 修复此前边缘场景（saveToStorage 分支失败导致当日 `goalTaskCompletions`/timeline/竹币未同步落 Vault）造成的「待办面板看不到完成但时间线有记录」「完成了却没加竹币」等历史数据不一致，且今后每次启动都会自动自检修复
+
+---
+
 ## [2.8.4] — 2026-07-24
 
 ### Fixed

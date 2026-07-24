@@ -2,6 +2,7 @@
 // 已抽至 state/dataValidator.js 和 state/defaultData.js（通过 window 访问）
 
 import { MigrationService } from './migrationService.js';
+import { ConsistencyService } from '../services/ConsistencyService.js';
 
 export class Store {
     constructor() {
@@ -48,6 +49,12 @@ export class Store {
             
             await this.handleDataMigration();
             await this.loadFromStorage();
+            // 2.8.5：启动后做数据自洽校验与自动修复（待办/时间线/进度/竹币 四方一致性）
+            try {
+                await ConsistencyService.repair(this);
+            } catch (e) {
+                console.error('[ConsistencyService] startup repair failed:', e);
+            }
         } catch (e) {
             console.error('Storage initialization failed, entering offline read-only mode:', e);
             // 弹出可见警告，不再静默降级

@@ -209,8 +209,10 @@ export const ConsistencyService = {
                         r => r.desc === desc && new Date(r.date).toDateString() === todayStr
                     );
                     if (!exists && typeof WS.addIncomeHistory === 'function') {
-                        // 仅补收入记录；余额由下方 recalibrateStats 统一校正为派生值，避免重复累加
-                        await WS.addIncomeHistory({ amount: 1, type: 'task_complete', desc, date: new Date().toISOString() });
+                        // 仅补收入记录；余额由下方 recalibrateStats 统一校正为派生值，避免重复累加。
+                        // 日期用 todayKey 对应的当日本地日期（本地风格串，toDateString 恒为该日），避免保存时刻跨天错记
+                        const repairDate = `${todayKey}T12:00:00`;
+                        await WS.addIncomeHistory({ amount: 1, type: 'task_complete', desc, date: repairDate });
                         changed = true;
                     }
                 }

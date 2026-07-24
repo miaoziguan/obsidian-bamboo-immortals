@@ -4,7 +4,7 @@
  */
 export const WalletService = {
 
-    async updateBalance(amount, type = 'manual', desc = '') {
+    async updateBalance(amount, type = 'manual', desc = '', date = new Date().toISOString()) {
         const s = store.state;
         s.balance = parseFloat((s.balance + amount).toFixed(2));
         await storageManager.putSetting('balance', s.balance);
@@ -19,11 +19,12 @@ export const WalletService = {
         if (amount > 0) {
             s.stats.todayEarnings = parseFloat((s.stats.todayEarnings + amount).toFixed(2));
             s.stats.totalEarnings = parseFloat((s.stats.totalEarnings + amount).toFixed(2));
+            // 竹币收入以「完成时刻对应的当日本地日期」记账，避免按保存时刻(toISOString/UTC)记账导致跨天错记
             await this.addIncomeHistory({
                 amount,
                 type,
                 desc,
-                date: new Date().toISOString()
+                date
             });
         } else if (amount < 0 && type !== 'task_cancel') {
             s.stats.totalSpent = parseFloat((s.stats.totalSpent + Math.abs(amount)).toFixed(2));
@@ -36,9 +37,12 @@ export const WalletService = {
 
     async addIncomeHistory(income) {
         const s = store.state;
+        // 收入时间以传入的 income.date 为准（完成时刻对应的当日本地日期），不再强制用保存时刻，
+        // 否则 UTC 时间戳被解析回本地时会跨天，导致「今日收益」统计错记到次日。
+        const effDate = income.date || new Date().toISOString();
         // 去重：如果今日已有相同 desc 的正收入记录，先删除所有旧的再添加
         if (income.desc && income.amount > 0) {
-            const today = new Date().toDateString();
+            const today = new Date(effDate).toDateString();
             let adjustedEarnings = 0;
             const filtered = s.incomeHistory.records.filter(inc => {
                 if (inc.desc === income.desc && inc.amount > 0 && new Date(inc.date).toDateString() === today) {
@@ -52,10 +56,10 @@ export const WalletService = {
                 s.stats.todayEarnings = Math.max(0, parseFloat((s.stats.todayEarnings - adjustedEarnings).toFixed(2)));
             }
         }
-        const month = new Date().toISOString().slice(0, 7);
+        const month = new Date(effDate).toISOString().slice(0, 7);
         s.incomeHistory.records.unshift({
             ...income,
-            date: new Date().toISOString(),
+            date: effDate,
             month
         });
         await storageManager.putIncomeHistory(s.incomeHistory);

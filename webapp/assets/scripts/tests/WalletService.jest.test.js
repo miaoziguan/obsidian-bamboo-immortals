@@ -103,3 +103,50 @@ describe('WalletService.recalibrateStats 冻结一致性', () => {
         expect(store.state._statsDate).toBe(new Date().toDateString());
     });
 });
+
+describe('WalletService 收入记账日期一致性（跨天不误记）', () => {
+    test('updateBalance 传入 date 时，收入记录应使用该 date 而非保存时刻', async () => {
+        const { store } = makeGlobals(baseState());
+        store.state.incomeHistory.records = [];
+        const { WalletService } = loadModule('services/WalletService.js', ['WalletService']);
+
+        const completionDate = '2026-07-23T01:14:00';
+        await WalletService.updateBalance(1, 'task_complete', '完成 章节', completionDate);
+
+        const rec = store.state.incomeHistory.records[0];
+        expect(rec.date).toBe(completionDate); // 关键：尊重传入日期，不被 toISOString 覆盖
+        expect(rec.month).toBe('2026-07'); // month 也由 effDate 推导
+    });
+
+    test('未传 date 时应回退到当前时刻（不破坏原有行为）', async () => {
+        const { store } = makeGlobals(baseState());
+        store.state.incomeHistory.records = [];
+        const { WalletService } = loadModule('services/WalletService.js', ['WalletService']);
+
+        const before = Date.now();
+        await WalletService.updateBalance(1, 'task_complete', '完成 任务D');
+        const after = Date.now();
+
+        const rec = store.state.incomeHistory.records[0];
+        const t = new Date(rec.date).getTime();
+        expect(t).toBeGreaterThanOrEqual(before - 1000);
+        expect(t).toBeLessThanOrEqual(after + 1000);
+    });
+
+    test('去重按传入 date 的当日判断，昨日同 desc 记录不应被误删', async () => {
+        const state = baseState();
+        state.incomeHistory.records = [
+            { amount: 1, desc: '完成 章节', date: '2026-07-23T01:14:00', month: '2026-07' }
+        ];
+        const { store } = makeGlobals(state);
+        const { WalletService } = loadModule('services/WalletService.js', ['WalletService']);
+
+        // 今日再次完成同名任务，date 为今日
+        const todayIso = new Date().toISOString();
+        await WalletService.updateBalance(1, 'task_complete', '完成 章节', todayIso);
+
+        // 昨日那条不同日，不应被去重删除；今日新增一条 => 共 2 条
+        const chapterRecs = store.state.incomeHistory.records.filter(r => r.desc === '完成 章节');
+        expect(chapterRecs.length).toBe(2);
+    });
+});

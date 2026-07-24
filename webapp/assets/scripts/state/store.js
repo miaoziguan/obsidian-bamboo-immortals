@@ -38,6 +38,7 @@ export class Store {
         this._dirtyDays = new Set(); // 脏标记：跟踪哪些天数据需要保存
         this._dirtySettings = new Set(); // 脏标记：跟踪哪些 setting 需要保存（balance/shopStats/dataVersion/purchaseHistory/incomeHistory）
         this._goalsDirty = false; // 标记 goals 是否需要保存
+        this._goalsLoaded = false; // 标记 goals 是否已从 Vault 加载完成（防止首屏保存竞态写出空数组）
         this.initPromise = this.initialize();
     }
 
@@ -70,7 +71,7 @@ export class Store {
     loadFromLocalStorage() {
         this.loadFromStorageLegacy();
         // 优先通过 bridge 加载 goals，失败则从 localStorage 缓存恢复
-        this.loadGlobalGoals().catch(e => {
+        this.loadGlobalGoals().then(() => { this._goalsLoaded = true; }).catch(e => {
             console.error('Failed to load global goals from bridge, trying localStorage cache:', e);
             try {
                 const cached = StorageAdapter.get('br_goals_cache');
@@ -234,6 +235,8 @@ export class Store {
                 settingsPromise,
                 goalsPromise
             ]);
+            // goals 已从 Vault 加载完成，解除首次保存强制写 goals 的门控
+            this._goalsLoaded = true;
 
             WalletService.recalibrateStats();
             storageManager.putSetting('shopStats', this.state.stats).catch(e => console.warn('[Store] shopStats save failed:', e));
@@ -440,7 +443,10 @@ export class Store {
                 Object.assign(dirtySettings, settingsMap);
             }
 
-            const goalsDirty = this._goalsDirty || !this._didInitialSave;
+            // 首次保存强制写 goals，但必须等 goals 真正从 Vault 加载完成，
+            // 否则并行加载阶段 globalGoals 仍为默认 [] 会被误写成空数组，
+            // 触发 VaultStorage 的“异常清空”拦截误报。
+            const goalsDirty = this._goalsDirty || (!this._didInitialSave && this._goalsLoaded);
 
             // 3) 一次 IPC 批量提交 — 替代原本 6+ 次串行 await
             const tasks = [];

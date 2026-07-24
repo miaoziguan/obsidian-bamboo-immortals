@@ -550,3 +550,97 @@ describe.skip('Store 核心功能', () => {
         });
     });
 });
+
+// 回归测试：saveToStorage 保存隔离
+// 修复背景：原实现用 Promise.all([dayData, settings, goals]) 一次性提交，任一
+// （如 putSetting 边缘失败）reject 会整体 catch 落到 saveToStorageLegacy()（localStorage），
+// 与 Vault 不互通，导致「当日 timeline/日数据丢失，而 income 完好」。
+// 现改为 dayData 优先且独立落 Vault，settings/goals 各自 try/catch，互不牵连。
+describe('saveToStorage 保存隔离（回归）', () => {
+    let store;
+
+    beforeEach(async () => {
+        jest.resetModules();
+        cleanupGlobals();
+        setupGlobals();
+        loadStoreModule();
+        store = window.store;
+        await store.ready();
+        // ready() 期间可能触发过写入，清空调用记录，保证断言干净
+        storageManager.putDay.mockClear();
+        storageManager.putSetting.mockClear();
+        storageManager.putGoals.mockClear();
+        // 模拟已完成首屏保存，避免走全量分支干扰断言
+        store._didInitialSave = true;
+        store._dirtyDays.clear();
+        store._dirtySettings.clear();
+        store._goalsDirty = false;
+        // 屏蔽 legacy 兜底真正写 localStorage 带来的噪音
+        jest.spyOn(store, 'saveToStorageLegacy').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+        if (store && store.state.autoSaveTimer) clearTimeout(store.state.autoSaveTimer);
+        cleanupGlobals();
+    });
+
+    test('putSetting 失败不应牵连 dayData 落库（时间线不丢失）', async () => {
+        const key = '2026-07-24';
+        const dayData = {
+            date: key,
+            metrics: {},
+            timeline: [{
+                period: 'dawn', name: '黎明', time: '04:00 - 05:30', icon: 'sunrise', eval: 'good',
+                items: [{ time: '04:15', task: '完成目标任务', eval: '完成' }]
+            }]
+        };
+        store.state.data[key] = dayData;
+        store.markDayDirty(key);
+        store.markSettingDirty('balance');
+
+        // settings 写入失败，dayData 写入成功
+        storageManager.putSetting.mockRejectedValueOnce(new Error('bridge putSetting failed'));
+
+        await expect(store.saveToStorage()).resolves.toBeUndefined();
+
+        // 关键断言：dayData 仍被独立持久化（含时间线）
+        expect(storageManager.putDay).toHaveBeenCalledTimes(1);
+        expect(storageManager.putDay).toHaveBeenCalledWith(
+            expect.objectContaining({ date: key })
+        );
+        const saved = storageManager.putDay.mock.calls[0][0];
+        expect(saved.timeline[0].items[0].task).toBe('完成目标任务');
+        // dayData 脏标记应被清除（已成功落库）
+        expect(store._dirtyDays.size).toBe(0);
+    });
+
+    test('putDay 失败才兜底 localStorage，且不影响 settings 保存尝试', async () => {
+        const key = '2026-07-24';
+        store.state.data[key] = { date: key, metrics: {}, timeline: [] };
+        store.markDayDirty(key);
+        store.markSettingDirty('balance');
+
+        storageManager.putDay.mockRejectedValueOnce(new Error('bridge putDay failed'));
+
+        await expect(store.saveToStorage()).resolves.toBeUndefined();
+
+        // dayData 失败 → 触发兜底
+        expect(store.saveToStorageLegacy).toHaveBeenCalled();
+        // settings 仍尝试写入（不因 dayData 失败被跳过）
+        expect(storageManager.putSetting).toHaveBeenCalled();
+    });
+
+    test('全部成功时不应触发 localStorage 兜底', async () => {
+        const key = '2026-07-24';
+        store.state.data[key] = { date: key, metrics: {}, timeline: [] };
+        store.markDayDirty(key);
+        store.markSettingDirty('balance');
+
+        await store.saveToStorage();
+
+        expect(storageManager.putDay).toHaveBeenCalledTimes(1);
+        expect(store.saveToStorageLegacy).not.toHaveBeenCalled();
+        expect(store._dirtyDays.size).toBe(0);
+        expect(store._dirtySettings.size).toBe(0);
+    });
+});

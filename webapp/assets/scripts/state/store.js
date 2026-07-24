@@ -246,7 +246,7 @@ export class Store {
                 const self = this;
                 WeatherService.getWeather().then(function(w) {
                     if (!w) return;
-                    const todayKey = new Date().toISOString().slice(0, 10);
+                    const todayKey = self.getDateKey();
                     if (!self.state.data[todayKey]) {
                         self.state.data[todayKey] = {
                             date: todayKey,
@@ -448,27 +448,64 @@ export class Store {
             // 触发 VaultStorage 的“异常清空”拦截误报。
             const goalsDirty = this._goalsDirty || (!this._didInitialSave && this._goalsLoaded);
 
-            // 3) 一次 IPC 批量提交 — 替代原本 6+ 次串行 await
-            const tasks = [];
+            // 3) 分批保存，互不牵连 —— 关键容错修复
+            //    原实现用 Promise.all([dayData, settings, goals]) 一次性提交，
+            //    任一（如某次 putSetting 边缘失败）reject 就会整体 catch 落到
+            //    saveToStorageLegacy() 写 localStorage，而 localStorage 与 Vault 不互通，
+            //    导致「当日 timeine/日数据只进了 localStorage，Vault 的当日文件始终为空」——
+            //    表现即「时间线卡片今日活动丢失，而 income 历史完好」（income 走独立的
+            //    putIncomeHistory，不受影响）。
+            //    现改为：dayData（时间线/日数据）优先且独立落 Vault，settings/goals 各自
+            //    try/catch，任一步失败都不会牵连 dayData 的持久化。
+            const errors = [];
+
+            // 3a) dayData —— 最关键，优先独立保存
             if (dirtyDays.length > 0) {
-                tasks.push(typeof storageManager.putDaysBatch === 'function'
-                    ? storageManager.putDaysBatch(dirtyDays)
-                    : (async () => { for (const d of dirtyDays) await storageManager.putDay(d); })());
+                try {
+                    if (typeof storageManager.putDaysBatch === 'function') {
+                        await storageManager.putDaysBatch(dirtyDays);
+                    } else {
+                        for (const d of dirtyDays) await storageManager.putDay(d);
+                    }
+                } catch (e) {
+                    errors.push(`dayData: ${e && e.message}`);
+                    console.error('[Store] 日数据保存失败:', e);
+                }
             }
+
+            // 3b) goals
             if (goalsDirty && typeof storageManager.putGoals === 'function') {
-                tasks.push(storageManager.putGoals(this.state.globalGoals));
+                try {
+                    await storageManager.putGoals(this.state.globalGoals);
+                } catch (e) {
+                    errors.push(`goals: ${e && e.message}`);
+                    console.error('[Store] 目标保存失败:', e);
+                }
             }
+
+            // 3c) settings
             if (Object.keys(dirtySettings).length > 0) {
-                tasks.push(typeof storageManager.putSettingsBatch === 'function'
-                    ? storageManager.putSettingsBatch(dirtySettings)
-                    : (async () => { for (const [k, v] of Object.entries(dirtySettings)) await storageManager.putSetting(k, v); })());
+                try {
+                    if (typeof storageManager.putSettingsBatch === 'function') {
+                        await storageManager.putSettingsBatch(dirtySettings);
+                    } else {
+                        for (const [k, v] of Object.entries(dirtySettings)) {
+                            await storageManager.putSetting(k, v);
+                        }
+                    }
+                } catch (e) {
+                    errors.push(`settings: ${e && e.message}`);
+                    console.error('[Store] 设置保存失败:', e);
+                }
             }
 
-            if (tasks.length > 0) {
-                await Promise.all(tasks);
+            if (errors.length > 0) {
+                // 仅当 dayData 也失败时，才兜底写 localStorage（与 Vault 不互通，属最后手段）
+                console.warn('[Store] 部分保存失败，兜底写入 localStorage:', errors.join('; '));
+                this.saveToStorageLegacy();
             }
 
-            // 4) 全部成功后才清脏标记
+            // 4) 全部尝试完成后清脏标记（dayData 已优先落 Vault，不受 settings/goals 失败牵连）
             this._dirtyDays.clear();
             this._dirtySettings.clear();
             this._goalsDirty = false;

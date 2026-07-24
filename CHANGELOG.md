@@ -1,5 +1,14 @@
 # Changelog
 
+## [2.8.4] — 2026-07-24
+
+### Fixed
+- **时间线卡片今日活动丢失**：`store.saveToStorage` 原用 `Promise.all([dayData, settings, goals])` 一次性提交，任一分支（如某次 `putSetting` 边缘失败）reject 就会整体落到 `saveToStorageLegacy()` 写 localStorage——而 localStorage 与 Vault 不互通，导致当日 `timeline`/日数据只进了 localStorage、Vault 当日文件始终为加载时的空状态，表现为「时间线卡片今日活动丢失，而 income 历史完好」（income 走独立的 `putIncomeHistory` 不受影响）。改为 **dayData 优先且独立落 Vault**，`settings`/`goals` 各自 `try/catch`，任一步失败都不再牵连日数据持久化；仅当 dayData 本身失败才兜底写 localStorage
+- **天气异步补读跨时区键**：天气补读用 `toISOString()`（UTC）日期键创建空 dayData，与 dayData 文件键（本地日期）不一致，跨时区下可能错配；统一改用 `getDateKey()` 本地键
+- **新增回归测试**：`store.jest.test.js` 覆盖「putSetting 失败不牵连 dayData 落库」「putDay 失败才兜底 localStorage」「全部成功不触发兜底」
+
+---
+
 ## [2.8.3] — 2026-07-24
 
 ### Fixed

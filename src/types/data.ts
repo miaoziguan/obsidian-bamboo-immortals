@@ -156,6 +156,8 @@ export interface ExportShape {
   incomeHistory: IncomeHistory | null;
   themes?: unknown[];
   reports?: unknown[];
+  /** 自定义目标模板（vault 内 templates/*.md 的序列化快照） */
+  customTemplates?: CustomTemplate[];
 }
 
 // =====================================================================

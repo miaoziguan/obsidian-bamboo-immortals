@@ -124,4 +124,45 @@ describe('VaultStorage 导入导出关键路径', () => {
     const keys = await ctx.storage.getDayKeys();
     expect(keys.length).toBe(0);
   });
+
+  it('自定义模板随备份导出并可在导入后还原', async () => {
+    const data = {
+      ...makeSampleData(),
+      customTemplates: [
+        {
+          id: 'tpl_1',
+          name: '模板一',
+          desc: '示例描述',
+          iconName: 'star',
+          createdAt: '2026-07-01T00:00:00.000Z',
+          data: { icon: 'star', title: 'T', meta: 'M', category: 'habit', progress: 0, items: [] },
+        },
+      ],
+    };
+    await ctx.storage.importData(data, { strategy: 'overwrite' });
+    const back = await ctx.storage.exportAllData();
+    expect(back.customTemplates).toBeDefined();
+    expect(back.customTemplates!.length).toBe(1);
+    expect(back.customTemplates![0].id).toBe('tpl_1');
+    expect(back.customTemplates![0].name).toBe('模板一');
+    expect(back.customTemplates![0].data.title).toBe('T');
+  });
+
+  it('仅含 customTemplates 的备份文件不被判为损坏', async () => {
+    const data = { customTemplates: [{ id: 'tpl_2', name: 'T2' }] };
+    await expect(ctx.storage.importData(data)).resolves.toBeUndefined();
+    const back = await ctx.storage.exportAllData();
+    expect(back.customTemplates!.some((t) => t.id === 'tpl_2')).toBe(true);
+  });
+
+  it('merge：导入仅含模板的包，不影响既有日数据', async () => {
+    await ctx.storage.importData(makeSampleData(), { strategy: 'overwrite' });
+    await ctx.storage.importData(
+      { customTemplates: [{ id: 'tpl_3', name: 'T3' }] },
+      { strategy: 'merge' }
+    );
+    const back = await ctx.storage.exportAllData();
+    expect(Object.keys(back.days).length).toBe(2);
+    expect(back.customTemplates!.some((t) => t.id === 'tpl_3')).toBe(true);
+  });
 });

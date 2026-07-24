@@ -16,6 +16,7 @@ import type {
   AppSettings,
   PurchaseHistory,
   IncomeHistory,
+  CustomTemplate,
 } from '../types/data';
 
 class ImportValidationError extends Error {
@@ -25,7 +26,14 @@ class ImportValidationError extends Error {
   }
 }
 
-const KNOWN_FIELDS = ['days', 'goals', 'settings', 'purchaseHistory', 'incomeHistory'] as const;
+const KNOWN_FIELDS = [
+  'days',
+  'goals',
+  'settings',
+  'purchaseHistory',
+  'incomeHistory',
+  'customTemplates',
+] as const;
 
 /**
  * 纵深防御：导入数据是不可信边界（可能来自他人分享/下载的备份）。
@@ -64,6 +72,7 @@ interface ValidatedImport {
   settings?: AppSettings;
   purchaseHistory?: PurchaseHistory;
   incomeHistory?: IncomeHistory;
+  customTemplates?: CustomTemplate[];
 }
 
 export const ImportValidator = {
@@ -83,7 +92,7 @@ export const ImportValidator = {
     const hasKnownField = KNOWN_FIELDS.some((f) => record[f] !== undefined);
     if (!hasKnownField) {
       throw new ImportValidationError(
-        '备份文件无效：未找到任何可识别的数据字段（days / goals / settings / purchaseHistory / incomeHistory）'
+        '备份文件无效：未找到任何可识别的数据字段（days / goals / settings / purchaseHistory / incomeHistory / customTemplates）'
       );
     }
 
@@ -103,6 +112,11 @@ export const ImportValidator = {
     }
     if (record.incomeHistory !== undefined) {
       result.incomeHistory = sanitizeValue(record.incomeHistory) as IncomeHistory;
+    }
+    if (record.customTemplates !== undefined) {
+      result.customTemplates = sanitizeValue(
+        ImportValidator.normalizeTemplates(record.customTemplates)
+      ) as CustomTemplate[];
     }
 
     return result;
@@ -169,5 +183,24 @@ export const ImportValidator = {
       return {};
     }
     return settings as AppSettings;
+  },
+
+  /**
+   * 归一化自定义目标模板。
+   *  - 必须是数组；非数组 → 返回空数组
+   *  - 每个模板缺 id 或非对象 → 跳过，不污染 Vault 的 templates/*.md
+   */
+  normalizeTemplates(templates: unknown): CustomTemplate[] {
+    if (!Array.isArray(templates)) {
+      return [];
+    }
+    return templates
+      .map((raw): CustomTemplate | null => {
+        if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+        const obj = raw as Record<string, unknown>;
+        if (!obj.id || typeof obj.id !== 'string') return null;
+        return obj as unknown as CustomTemplate;
+      })
+      .filter((t): t is CustomTemplate => t !== null);
   },
 };

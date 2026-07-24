@@ -417,12 +417,13 @@ export class VaultStorage {
   // ---- 导出/导入 ----
 
   async exportAllData(): Promise<ExportShape> {
-    const [days, goals, settings, purchaseHistory, incomeHistory] = await Promise.all([
+    const [days, goals, settings, purchaseHistory, incomeHistory, customTemplates] = await Promise.all([
       this.getAllDays(),
       this.getGoals(),
       this.getAllSettings(),
       this.getPurchaseHistory(),
       this.getIncomeHistory(),
+      this.getCustomTemplates(),
     ]);
 
     return {
@@ -436,6 +437,7 @@ export class VaultStorage {
       incomeHistory,
       themes: [],
       reports: [],
+      customTemplates,
     };
   }
 
@@ -492,6 +494,18 @@ export class VaultStorage {
     }
     if (record.incomeHistory !== undefined) {
       await this.putIncomeHistory(record.incomeHistory);
+    }
+
+    if (record.customTemplates !== undefined) {
+      const incoming: CustomTemplate[] = Array.isArray(record.customTemplates)
+        ? record.customTemplates
+        : [];
+      if (strategy === 'overwrite') {
+        await this.clearAllTemplates();
+      }
+      for (const tpl of incoming) {
+        if (tpl && tpl.id) await this.putCustomTemplate(tpl);
+      }
     }
   }
 
@@ -577,6 +591,22 @@ export class VaultStorage {
     if (await this.app.vault.adapter.exists(path)) {
       await this.app.vault.adapter.remove(path);
     }
+  }
+
+  /** 清空全部自定义模板（overwrite 导入前调用，不影响其它数据） */
+  async clearAllTemplates(): Promise<void> {
+    const dir = this.templateDir();
+    if (!(await this.app.vault.adapter.exists(dir))) return;
+    const list = await this.app.vault.adapter.list(dir);
+    await Promise.all(
+      list.files
+        .filter((f) => f.endsWith('.md'))
+        .map(async (file) => {
+          if (await this.app.vault.adapter.exists(file)) {
+            await this.app.vault.adapter.remove(file);
+          }
+        })
+    );
   }
 
   // ---- Markdown 摘要 ----

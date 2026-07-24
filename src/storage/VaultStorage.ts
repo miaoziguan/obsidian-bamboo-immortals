@@ -391,6 +391,24 @@ export class VaultStorage {
     }
   }
 
+  /**
+   * 解析历史文件内容，保证返回结构的 `records` 始终为数组。
+   * 磁盘文件损坏（JSON 解析失败 / 非对象 / records 非数组）时归一化为空记录，
+   * 以免 webapp 遍历 records 抛出 "s.records is not iterable" 而使首页全空白。
+   */
+  private static parseHistory(content: string): PurchaseHistory | IncomeHistory | null {
+    let parsed: Record<string, unknown> | null = null;
+    try {
+      parsed = JSON.parse(content);
+    } catch {
+      return { records: [] };
+    }
+    if (!parsed || typeof parsed !== 'object' || !Array.isArray(parsed.records)) {
+      return { records: [] };
+    }
+    return parsed as PurchaseHistory | IncomeHistory;
+  }
+
   // ---- 购买历史 (purchase-history.json) ----
 
   private purchaseHistoryPath(): string {
@@ -403,7 +421,9 @@ export class VaultStorage {
       return null;
     }
     const content: string = await this.app.vault.adapter.read(path);
-    return JSON.parse(content) as PurchaseHistory;
+    // 防御：磁盘文件可能损坏（records 非数组 / 非对象 / 解析失败），
+    // 归一化为空记录，避免 webapp 遍历 records 时崩溃导致首页全空白
+    return VaultStorage.parseHistory(content);
   }
 
   async putPurchaseHistory(data: PurchaseHistory): Promise<void> {
@@ -423,7 +443,9 @@ export class VaultStorage {
       return null;
     }
     const content: string = await this.app.vault.adapter.read(path);
-    return JSON.parse(content) as IncomeHistory;
+    // 防御：磁盘文件可能损坏（records 非数组 / 非对象 / 解析失败），
+    // 归一化为空记录，避免 webapp 遍历 records 时崩溃导致首页全空白
+    return VaultStorage.parseHistory(content);
   }
 
   async putIncomeHistory(data: IncomeHistory): Promise<void> {

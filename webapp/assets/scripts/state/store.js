@@ -139,7 +139,7 @@ export class Store {
             if (ihData) {
                 const seen = new Set();
                 const deduped = [];
-                for (const inc of ihData.records) {
+                for (const inc of (ihData.records || [])) {
                     if (inc.desc && inc.amount > 0) {
                         const incDay = new Date(inc.date).toDateString();
                         const key = `${incDay}::${inc.desc}`;
@@ -322,8 +322,8 @@ export class Store {
             
             // [诊断] 数据加载完成，记录状态
             console.log('[Store] init complete: balance=' + this.state.balance +
-                ' ph_records=' + this.state.purchaseHistory.records.length +
-                ' ih_records=' + this.state.incomeHistory.records.length);
+                ' ph_records=' + (this.state.purchaseHistory.records || []).length +
+                ' ih_records=' + (this.state.incomeHistory.records || []).length);
             
         } catch (e) {
             console.error('Failed to load from storage:', e);

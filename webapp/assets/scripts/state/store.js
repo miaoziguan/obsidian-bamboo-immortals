@@ -151,7 +151,7 @@ export class Store {
                         deduped.push(inc);
                     }
                 }
-                if (deduped.length !== ihData.records.length) {
+                if (deduped.length !== (ihData.records || []).length) {
                     this.state.incomeHistory.records = deduped;
                     await storageManager.putIncomeHistory(this.state.incomeHistory);
                 } else {

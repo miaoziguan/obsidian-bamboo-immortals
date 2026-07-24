@@ -72,6 +72,8 @@ export class AgenticPlanController {
   private chatLog: Array<{ role: 'user' | 'assistant'; text: string }> = [];
   private prevGoalTitles = new Set<string>();
   private prevItemKeys = new Set<string>();
+  /** 发送重入守卫：AI 回合(await session.send)进行中拒绝新发送，避免交错覆盖 session.goals（M4） */
+  private _busy = false;
 
   constructor(opts: AgenticPlanOptions) {
     this.subtitle = opts.subtitle;
@@ -204,9 +206,11 @@ export class AgenticPlanController {
   }
 
   private async onSend(): Promise<void> {
+    if (this._busy) return; // 重入守卫（M4）
     const input = this.inputEl;
     const text = input?.value.trim();
     if (!text || !this.sendBtn || !input) return;
+    this._busy = true;
     input.value = '';
     this.pushChat('user', text);
     this.setSending(true);
@@ -219,6 +223,7 @@ export class AgenticPlanController {
       this.pushChat('assistant', '⚠ 没听懂，换个说法试试（当前规划未改动）。');
     } finally {
       this.setSending(false);
+      this._busy = false;
     }
   }
 

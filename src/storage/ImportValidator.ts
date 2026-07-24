@@ -107,11 +107,20 @@ export const ImportValidator = {
     if (record.settings !== undefined) {
       result.settings = sanitizeValue(ImportValidator.normalizeSettings(record.settings)) as AppSettings;
     }
+    // 仅接受「有效对象」(非空、非数组、非 null) 的购买/收入历史；
+    // null / 数组 / 非对象视为无效，跳过导入 → 保留磁盘既有真实数据，
+    // 避免半截备份里 `purchaseHistory: null` 把真实历史覆盖成 "null"（C2）
     if (record.purchaseHistory !== undefined) {
-      result.purchaseHistory = sanitizeValue(record.purchaseHistory) as PurchaseHistory;
+      const ph = record.purchaseHistory;
+      if (ph && typeof ph === 'object' && !Array.isArray(ph)) {
+        result.purchaseHistory = sanitizeValue(ph) as PurchaseHistory;
+      }
     }
     if (record.incomeHistory !== undefined) {
-      result.incomeHistory = sanitizeValue(record.incomeHistory) as IncomeHistory;
+      const ih = record.incomeHistory;
+      if (ih && typeof ih === 'object' && !Array.isArray(ih)) {
+        result.incomeHistory = sanitizeValue(ih) as IncomeHistory;
+      }
     }
     if (record.customTemplates !== undefined) {
       result.customTemplates = sanitizeValue(
@@ -166,7 +175,9 @@ export const ImportValidator = {
         const obj = raw as Record<string, unknown>;
         const clean = { ...obj } as unknown as GoalItem;
         if (!clean.id) {
-          clean.id = `goal_import_${counter++}_${Date.now().toString(36)}`;
+          // 跨批次碰撞防护：counter 仅保证同批次内排序可复现，
+          // 追加随机后缀确保多次导入不会产生相同 id（M3）
+          clean.id = `goal_import_${counter++}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
         }
         if (clean.items && !Array.isArray(clean.items)) clean.items = [];
         return clean;

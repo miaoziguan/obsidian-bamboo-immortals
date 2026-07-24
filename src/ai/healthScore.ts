@@ -509,16 +509,17 @@ function scoreBalance(items: GoalSubItem[], isComplete: boolean): HealthSubScore
   if (isComplete) return { score: 100, hint: '已完成' };
   if (!items || items.length <= 1) return { score: 80, hint: '子项不足' };
 
-  const progresses = items.map((it) => {
-    const tar = parseFloat(it.targetValue ?? '0');
-    if (tar === 0) {
-      const cur = parseFloat(it.currentValue ?? '0') || 0;
-      return cur === 0 ? 100 : 0;
-    }
-    const tarSafe = tar || 100;
-    const cur = parseFloat(it.currentValue ?? '0') || 0;
-    return (cur / tarSafe) * 100;
-  });
+  // 仅统计可量化子项（targetValue 与 currentValue 均为有效数字且目标值 > 0）；
+  // 目标值/当前值缺失（解析为 0）的子项无法评估真实进度，应从均衡度计算中排除，
+  // 否则空值子项被算作 100% 进度会拉高均衡分、虚增健康分（M5）
+  const progresses: number[] = [];
+  for (const it of items) {
+    const tar = parseFloat(it.targetValue ?? '');
+    const cur = parseFloat(it.currentValue ?? '');
+    if (!Number.isFinite(tar) || !Number.isFinite(cur) || tar <= 0) continue;
+    progresses.push(clamp((cur / tar) * 100, 0, 100));
+  }
+  if (progresses.length === 0) return { score: 80, hint: '无量化子项' };
 
   const avg = progresses.reduce((s, v) => s + v, 0) / progresses.length;
   const variance = progresses.reduce((s, v) => s + Math.pow(v - avg, 2), 0) / progresses.length;

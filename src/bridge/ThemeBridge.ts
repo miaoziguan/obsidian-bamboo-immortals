@@ -45,12 +45,21 @@ export class ThemeBridge {
 
     const rgbMatch = c.match(/rgba?\(([^)]+)\)/i);
     if (rgbMatch) {
-      const parts = rgbMatch[1].split(',').map((s) => parseFloat(s));
+      // 兼容逗号 / 空格分隔：rgb(255, 128, 64) 与 rgb(255 128 64)（H1/M2）
+      const parts = rgbMatch[1]
+        .trim()
+        .split(/[\s,]+/)
+        .filter(Boolean)
+        .map((s) => parseFloat(s));
+      if (parts.length < 3) return null;
       [r, g, b] = parts;
     } else if (c[0] === '#') {
-      let hex = c.slice(1);
-      if (hex.length === 3) hex = hex.split('').map((ch) => ch + ch).join('');
-      if (hex.length < 6) return null;
+      let hex = c.slice(1).trim();
+      // 支持 3/4/6/8 位：#abc、#abcd（每字符重复）、#aabbcc、#aabbccdd（H1/M2）
+      if (hex.length === 3 || hex.length === 4) {
+        hex = hex.split('').map((ch) => ch + ch).join('');
+      }
+      if (hex.length !== 6 && hex.length !== 8) return null;
       r = parseInt(hex.slice(0, 2), 16);
       g = parseInt(hex.slice(2, 4), 16);
       b = parseInt(hex.slice(4, 6), 16);

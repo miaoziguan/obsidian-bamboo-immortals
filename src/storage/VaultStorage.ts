@@ -158,6 +158,9 @@ export class VaultStorage {
     pageSize: number;
     hasMore: boolean;
   }> {
+    // 入参归一化：pageSize=0 / 负数 / 非数字会导致 slice 返回空页却 hasMore=true → 前端分页死循环（H4）
+    page = Math.max(0, Math.floor(Number(page)) || 0);
+    pageSize = Math.max(1, Math.floor(Number(pageSize)) || 30);
     const allKeys = await this.getDayKeys();
     const total = allKeys.length;
     const start = page * pageSize;
@@ -449,8 +452,6 @@ export class VaultStorage {
       settings,
       purchaseHistory,
       incomeHistory,
-      themes: [],
-      reports: [],
       customTemplates,
     };
   }
@@ -521,6 +522,10 @@ export class VaultStorage {
         if (tpl && tpl.id) await this.putCustomTemplate(tpl);
       }
     }
+
+    // 导入代表一次全新数据集合，旧 plans-map.json 的 contentHash→goalIds 映射已不可信；
+    // 重置幂等索引，避免「AI 规划显示已规划却不写入目标」的孤儿阻塞（H3）
+    await this.putPlansIndex({});
   }
 
   /** 仅清空所有日数据（overwrite 导入 days 前调用，不影响 goals/settings） */

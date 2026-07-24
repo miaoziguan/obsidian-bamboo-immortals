@@ -211,6 +211,10 @@ export const WalletService = {
             totalEarnings: parseFloat((balance + totalSpent).toFixed(2)),
             date: today
         };
+        // 关键：同步 _statsDate，否则 reload 后首次 updateBalance 会误判跨天，
+        // 把刚重算的今日收入清零，导致 getAvailableBalance 虚高（今日收入被错误释放）。
+        // _statsDate 是纯内存字段、不持久化，recalibrate 后必须显式对齐到 today。
+        s._statsDate = today;
     }
 };
 

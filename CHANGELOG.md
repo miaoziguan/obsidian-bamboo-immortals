@@ -1,6 +1,12 @@
 # Changelog
 
-## [2.8.1] — 2026-07-24
+## [2.8.2] — 2026-07-24
+
+### Fixed
+- **可用竹币虚高（冻结机制错乱）**：`WalletService.recalibrateStats` 在加载时重算正确的今日收入，但旧代码未把 `_statsDate`（纯内存、不持久化）同步为今天，导致 reload 后首次 `updateBalance` 误判「跨天」把刚算好的今日收入清零，可用竹币（`balance − todayEarnings`）被错误释放而虚高。修复：recalibrate 末尾同步 `s._statsDate = today`，首次任务收入改为正确累加
+- **新增回归测试**：`WalletService.jest.test.js` 覆盖 recalibrate→首次 updateBalance 的冻结一致性、今日无收入场景、可用余额扣减
+
+---\n\n## [2.8.1] — 2026-07-24
 
 ### Fixed
 - **目标数据「异常清空」误报**：修复 `store.saveToStorage` 首次保存时用 `!_didInitialSave` 强制写出 `globalGoals`，导致并行加载阶段（Phase 2 早于 Phase 3 `loadGlobalGoals`）把未加载的 `[]` 误写、触发 `VaultStorage.putGoals` 的清空拦截误报。新增 `_goalsLoaded` 标志，goals 真正从 Vault 加载完成后才允许首次强制写入（数据未丢失，仅消除告警）

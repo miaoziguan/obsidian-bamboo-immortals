@@ -318,6 +318,51 @@ export class BridgeStorage {
     }
   }
 
+  // ---- 自定义目标模板持久化（vault templates/*.md；桥接不可用时回退 localStorage）----
+
+  _loadLocalTemplates() {
+    try {
+      const raw = StorageAdapter.get(StorageKeys.CUSTOM_TEMPLATES);
+      const list = raw ? JSON.parse(raw) : [];
+      return Array.isArray(list) ? list : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  async getCustomTemplates() {
+    try {
+      return await this._send('storage:getCustomTemplates', {});
+    } catch (e) {
+      return null; // 桥接不可用时由调用方回退 localStorage
+    }
+  }
+
+  async saveCustomTemplate(template) {
+    try {
+      return await this._send('storage:putCustomTemplate', { template });
+    } catch (e) {
+      if (typeof localStorage !== 'undefined') {
+        const list = this._loadLocalTemplates();
+        const idx = list.findIndex(t => t.id === template.id);
+        if (idx >= 0) list[idx] = template;
+        else list.push(template);
+        StorageAdapter.set(StorageKeys.CUSTOM_TEMPLATES, JSON.stringify(list));
+      }
+    }
+  }
+
+  async deleteCustomTemplate(id) {
+    try {
+      return await this._send('storage:deleteCustomTemplate', { id });
+    } catch (e) {
+      if (typeof localStorage !== 'undefined') {
+        const list = this._loadLocalTemplates().filter(t => t.id !== id);
+        StorageAdapter.set(StorageKeys.CUSTOM_TEMPLATES, JSON.stringify(list));
+      }
+    }
+  }
+
   /**
    * 健康分权威快照（单一数据源）。
    * 插件用 getStrategyOverview() 即时重算并返回 { health, goals, results }，

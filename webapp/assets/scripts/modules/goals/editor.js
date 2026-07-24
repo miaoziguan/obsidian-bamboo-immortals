@@ -397,7 +397,7 @@ export const GoalsEditor = {
         const result = await this._showSaveTemplateDialog(goal);
         if (!result) return;
         try {
-            CustomTemplateManager.add({
+            await CustomTemplateManager.add({
                 name: result.name,
                 desc: result.desc,
                 iconName: result.iconName,

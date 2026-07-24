@@ -50,6 +50,9 @@ export const APP_MESSAGE_TYPES = [
   'storage:exportAll',
   'storage:importAll',
   'storage:clearAll',
+  'storage:getCustomTemplates',
+  'storage:putCustomTemplate',
+  'storage:deleteCustomTemplate',
   // host → webapp
   'goals:changed',
   'theme:changed',

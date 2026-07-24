@@ -80,6 +80,26 @@ export interface GoalItem {
   sourceRef?: string;
 }
 
+/**
+ * 自定义目标模板（Option B：存为 vault 内 {basePath}/templates/<id>.md 的 frontmatter，
+ * 用户可直接在 Obsidian 中打开/编辑这些 .md 文件，最贴合「vault 即唯一真相源」）。
+ */
+export interface CustomTemplate {
+  id: string;
+  name: string;
+  desc: string;
+  iconName: string;
+  createdAt: string;
+  data: {
+    icon: string;
+    title: string;
+    meta: string;
+    category: GoalCategory | string;
+    progress: number;
+    items: GoalSubItem[];
+  };
+}
+
 /** 单日复盘数据 */
 export interface DayData {
   date: string;

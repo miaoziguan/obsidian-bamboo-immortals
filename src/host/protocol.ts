@@ -41,7 +41,7 @@ export const ALL_MESSAGE_TYPES = [
   'app:getCultivationRealm',
   'app:getBambooCoinBalance',
   'app:getBambooCoinAvailableBalance',
-  // storage:*（17 个子类型）
+  // storage:*（20 个子类型）
   'storage:readDay',
   'storage:writeDay',
   'storage:listDays',

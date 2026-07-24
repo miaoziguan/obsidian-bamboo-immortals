@@ -1,4 +1,4 @@
-import { App, normalizePath, TFile, Notice } from 'obsidian';
+import { App, normalizePath, TFile, Notice, parseYaml, stringifyYaml } from 'obsidian';
 import { ImportValidator } from './ImportValidator';
 import type {
   DayData,
@@ -7,6 +7,7 @@ import type {
   PurchaseHistory,
   IncomeHistory,
   ExportShape,
+  CustomTemplate,
 } from '../types/data';
 
 /**
@@ -47,6 +48,7 @@ export class VaultStorage {
     }
     await this.ensureDir('data');
     await this.ensureDir('reviews');
+    await this.ensureDir('templates');
   }
 
   /**
@@ -515,6 +517,66 @@ export class VaultStorage {
       await this.app.vault.adapter.rmdir(this.basePath, true);
     }
     await this.ensureStructure();
+  }
+
+  // ---- 自定义目标模板 (templates/<id>.md，frontmatter) ----
+
+  private templateDir(): string {
+    return normalizePath(`${this.basePath}/templates`);
+  }
+
+  private templatePath(id: string): string {
+    return normalizePath(`${this.templateDir()}/${id}.md`);
+  }
+
+  /** 解析模板 markdown 的 frontmatter；损坏/无 frontmatter 返回 null */
+  private parseTemplateFrontMatter(content: string): Partial<CustomTemplate> | null {
+    const m = content.match(/^---\n([\s\S]*?)\n---\n?/);
+    if (!m) return null;
+    try {
+      return parseYaml(m[1]) as Partial<CustomTemplate>;
+    } catch {
+      return null;
+    }
+  }
+
+  /** 读取全部自定义模板（按 createdAt 升序），桥接不可用时返回 [] */
+  async getCustomTemplates(): Promise<CustomTemplate[]> {
+    const dir = this.templateDir();
+    if (!(await this.app.vault.adapter.exists(dir))) return [];
+    const list = await this.app.vault.adapter.list(dir);
+    const tpls: CustomTemplate[] = [];
+    const reads = list.files
+      .filter((f) => f.endsWith('.md'))
+      .map(async (file) => {
+        try {
+          const content = await this.app.vault.adapter.read(file);
+          const parsed = this.parseTemplateFrontMatter(content);
+          if (parsed && parsed.id) {
+            tpls.push(parsed as CustomTemplate);
+          }
+        } catch {
+          // 损坏文件跳过
+        }
+      });
+    await Promise.all(reads);
+    tpls.sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
+    return tpls;
+  }
+
+  /** 写入/覆盖一个自定义模板（frontmatter + 可读正文） */
+  async putCustomTemplate(t: CustomTemplate): Promise<void> {
+    await this.ensureDir('templates');
+    const front = ['---', stringifyYaml(t), '---', '', `# ${t.name}`, '', t.desc || '', ''].join('\n');
+    await this.vaultWrite(this.templatePath(t.id), front);
+  }
+
+  /** 删除一个自定义模板 */
+  async deleteCustomTemplate(id: string): Promise<void> {
+    const path = this.templatePath(id);
+    if (await this.app.vault.adapter.exists(path)) {
+      await this.app.vault.adapter.remove(path);
+    }
   }
 
   // ---- Markdown 摘要 ----

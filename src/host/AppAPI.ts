@@ -4,7 +4,7 @@ import { VaultStorage } from '../storage/VaultStorage';
 import { ThemeBridge } from '../bridge/ThemeBridge';
 import type { BambooReviewSettings, NoiseItem } from '../settings/PluginSettings';
 import { ALLOWED_AUDIO_EXTENSIONS, MIME_TYPES } from '../constants/audio';
-import type { DayData } from '../types/data';
+import type { DayData, CustomTemplate } from '../types/data';
 import type { StrategyOverview } from '../ai/strategyOverview';
 import type { CultivationRealm } from '../cultivation';
 import { INBOUND_PREFIXES } from './protocol';
@@ -423,6 +423,12 @@ export class AppAPI {
         );
       case 'storage:clearAll':
         return await this.storage.clearAll();
+      case 'storage:getCustomTemplates':
+        return await this.storage.getCustomTemplates();
+      case 'storage:putCustomTemplate':
+        return await this.storage.putCustomTemplate(p.template as CustomTemplate);
+      case 'storage:deleteCustomTemplate':
+        return await this.storage.deleteCustomTemplate(p.id as string);
       default:
         throw new Error(`Unknown storage message type: ${type}`);
     }

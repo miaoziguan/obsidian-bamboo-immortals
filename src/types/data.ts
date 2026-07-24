@@ -94,6 +94,7 @@ export interface CustomTemplate {
     icon: string;
     title: string;
     meta: string;
+    // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents -- 允许 webapp/导入透传的任意分类字符串，运行时由 sanitize 回落合法值
     category: GoalCategory | string;
     progress: number;
     items: GoalSubItem[];

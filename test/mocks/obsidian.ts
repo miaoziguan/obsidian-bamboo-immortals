@@ -3,8 +3,7 @@
  * 提供 VaultStorage 实际用到的 API：normalizePath、TFile、parseYaml、stringifyYaml，
  * 以及内存版 vault.adapter。通过 vitest alias 注入，避免依赖真实 Obsidian 运行时。
  */
-// @ts-ignore - 测试 mock 专用，js-yaml 无类型声明，仅本地消费
-import * as yaml from 'js-yaml';
+import { parse, stringify } from 'yaml';
 
 export class TFile {
   path: string;
@@ -17,13 +16,13 @@ export function normalizePath(p: string): string {
   return p.replace(/\\/g, '/').replace(/\/+/g, '/').replace(/\/$/, '');
 }
 
-/** YAML 解析/序列化（镜像 obsidian 的 parseYaml/stringifyYaml，测试用 js-yaml 实现） */
+/** YAML 解析/序列化（镜像 obsidian 的 parseYaml/stringifyYaml，测试用 yaml 包实现） */
 export function parseYaml(s: string): any {
-  return yaml.load(s);
+  return parse(s);
 }
 
 export function stringifyYaml(obj: Record<string, unknown>): string {
-  return yaml.dump(obj, { lineWidth: -1, noRefs: true });
+  return stringify(obj, { lineWidth: -1, aliasDuplicateObjects: false });
 }
 
 /** requestUrl mock：默认抛错，测试可通过 __setRequestUrlHandler 注入行为 */

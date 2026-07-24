@@ -10,6 +10,14 @@ import type {
   CustomTemplate,
 } from '../types/data';
 
+/** 将 unknown 收窄为普通对象（含字符串索引），非对象/数组/null 返回 null */
+function asPlainObject(value: unknown): Record<string, unknown> | null {
+  if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+  return null;
+}
+
 /**
  * VaultStorage - 封装 Obsidian Vault adapter 的文件操作
  *
@@ -184,36 +192,42 @@ export class VaultStorage {
   private dayContentScore(day: Partial<DayData> | null | undefined): number {
     if (!day || typeof day !== 'object') return 0;
     let score = 0;
+
     // 时间线：所有时段(period)下的 items 总数（timeline 本身按时段分组，最多 9 段，不能用其 length 判空）
-    const timeline = (day as Record<string, unknown>).timeline;
+    const timeline = day.timeline;
     if (Array.isArray(timeline)) {
       for (const period of timeline) {
-        const items = period && (period as Record<string, unknown>).items;
+        const items = period.items;
         if (Array.isArray(items)) score += items.length;
       }
     }
+
     // 待办勾选：按 key 存在计数（含 false —— 代表用户显式操作过，不能丢）
-    const gtc = (day as Record<string, unknown>).goalTaskCompletions;
-    if (gtc && typeof gtc === 'object') {
-      for (const gid of Object.keys(gtc as Record<string, unknown>)) {
-        const sub = (gtc as Record<string, unknown>)[gid];
-        if (sub && typeof sub === 'object') score += Object.keys(sub as Record<string, unknown>).length;
+    const gtc = asPlainObject(day.goalTaskCompletions);
+    if (gtc) {
+      for (const gid of Object.keys(gtc)) {
+        const sub = asPlainObject(gtc[gid]);
+        if (sub) score += Object.keys(sub).length;
       }
     }
+
     // 目标进度快照
-    const gp = (day as Record<string, unknown>).goalProgress;
-    if (gp && typeof gp === 'object') score += Object.keys(gp as Record<string, unknown>).length;
+    const gp = asPlainObject(day.goalProgress);
+    if (gp) score += Object.keys(gp).length;
+
     // 指标：有实际值的字段
-    const metrics = (day as Record<string, unknown>).metrics;
-    if (metrics && typeof metrics === 'object') {
-      for (const k of Object.keys(metrics as Record<string, unknown>)) {
-        const v = (metrics as Record<string, unknown>)[k];
+    const metrics = asPlainObject(day.metrics);
+    if (metrics) {
+      for (const k of Object.keys(metrics)) {
+        const v = metrics[k];
         if (v !== undefined && v !== null && v !== '') score += 1;
       }
     }
+
     // 备注
-    const note = (day as Record<string, unknown>).note;
+    const note = day.note;
     if (typeof note === 'string' && note.trim() !== '') score += 1;
+
     return score;
   }
 

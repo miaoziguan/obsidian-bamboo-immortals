@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.8.1] — 2026-07-24
+
+### Fixed
+- **目标数据「异常清空」误报**：修复 `store.saveToStorage` 首次保存时用 `!_didInitialSave` 强制写出 `globalGoals`，导致并行加载阶段（Phase 2 早于 Phase 3 `loadGlobalGoals`）把未加载的 `[]` 误写、触发 `VaultStorage.putGoals` 的清空拦截误报。新增 `_goalsLoaded` 标志，goals 真正从 Vault 加载完成后才允许首次强制写入（数据未丢失，仅消除告警）
+
+---
+
 ## [2.8.0] — 2026-07-24
 
 ### Added

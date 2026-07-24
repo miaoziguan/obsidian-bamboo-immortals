@@ -103,3 +103,80 @@ describe('VaultStorage 数据读写', () => {
     expect(back).toEqual([]);
   });
 });
+
+describe('VaultStorage putDay 写守卫：空壳不覆盖真实内容（时间线/待办丢失根因）', () => {
+  let storage: VaultStorage;
+  beforeEach(() => {
+    storage = new VaultStorage(createMockApp().app as any, 'bamboo-review');
+  });
+
+  const dayWithTimeline = (date: string): DayData =>
+    ({
+      date,
+      weekday: '周三',
+      metrics: {},
+      timeline: [
+        { period: 'lateNight', items: [{ id: 'a', text: '写作' }, { id: 'b', text: '阅读' }] },
+        { period: 'morning', items: [{ id: 'c', text: '梳理章节' }] },
+      ],
+    } as unknown as DayData);
+
+  const emptyShell = (date: string): DayData =>
+    ({ date, weekday: '周三', metrics: {}, timeline: [] } as unknown as DayData);
+
+  it('空壳(score=0) 不覆盖磁盘上有时间线内容的当日文件', async () => {
+    await storage.putDay(dayWithTimeline('2026-07-24'));
+    // 模拟启动/天气回调写回空壳
+    await storage.putDay(emptyShell('2026-07-24'));
+    const back = await storage.getDay('2026-07-24');
+    expect(back).not.toBeNull();
+    expect(Array.isArray(back!.timeline)).toBe(true);
+    // 时间线仍在，未被空壳覆盖
+    expect(back!.timeline!.length).toBe(2);
+  });
+
+  it('空壳不覆盖仅有 goalTaskCompletions(待办勾选) 的当日文件', async () => {
+    const dayWithCompletions = {
+      date: '2026-07-24', weekday: '周三', metrics: {}, timeline: [],
+      goalTaskCompletions: { g1: { '0': true, '1': false } },
+    } as unknown as DayData;
+    await storage.putDay(dayWithCompletions);
+    await storage.putDay(emptyShell('2026-07-24'));
+    const back = await storage.getDay('2026-07-24');
+    expect((back as any).goalTaskCompletions).toBeDefined();
+    expect((back as any).goalTaskCompletions.g1['0']).toBe(true);
+  });
+
+  it('纯天气写入(无时间线/待办)视为空壳，不覆盖有内容的当日文件', async () => {
+    await storage.putDay(dayWithTimeline('2026-07-24'));
+    const weatherOnly = {
+      date: '2026-07-24', weekday: '周三', metrics: {}, timeline: [],
+      weather: { temperature: 30, weatherCode: 1, label: '晴', fetchedAt: Date.now() },
+    } as unknown as DayData;
+    await storage.putDay(weatherOnly);
+    const back = await storage.getDay('2026-07-24');
+    expect(back!.timeline!.length).toBe(2);
+  });
+
+  it('部分内容(仍非空)可正常覆盖：取消一个待办后仍保留 key，不被拦截', async () => {
+    const before = {
+      date: '2026-07-24', weekday: '周三', metrics: {}, timeline: [],
+      goalTaskCompletions: { g1: { '0': true, '1': true } },
+    } as unknown as DayData;
+    await storage.putDay(before);
+    const after = {
+      date: '2026-07-24', weekday: '周三', metrics: {}, timeline: [],
+      goalTaskCompletions: { g1: { '0': true, '1': false } }, // 取消一个，仍有内容
+    } as unknown as DayData;
+    await storage.putDay(after);
+    const back = await storage.getDay('2026-07-24');
+    expect((back as any).goalTaskCompletions.g1['1']).toBe(false);
+  });
+
+  it('空壳可写入不存在的当日文件（全新一天，无内容可丢）', async () => {
+    await storage.putDay(emptyShell('2026-07-25'));
+    const back = await storage.getDay('2026-07-25');
+    expect(back).not.toBeNull();
+    expect(back!.date).toBe('2026-07-25');
+  });
+});

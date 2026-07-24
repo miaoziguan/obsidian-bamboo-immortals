@@ -215,9 +215,14 @@ export class Store {
                 if (needSave) {
                     await this.saveToStorage();
                 }
-            } else {
+            } else if (dayKeys.length === 0) {
+                // 仅在「确实没有任何历史日数据」时才写入默认数据（全新安装）。
+                // 若 dayKeys 非空却分页返回空（瞬时读取异常），绝不能用 DEFAULT_DATA 覆盖并保存，
+                // 否则会整片抹掉磁盘上的历史日数据。
                 Object.assign(this.state.data, DEFAULT_DATA);
                 await this.saveToStorage();
+            } else {
+                console.warn('[Store] 分页返回空但存在 dayKeys，跳过默认数据写入以避免覆盖历史数据。dayKeys=', dayKeys.length);
             }
             
             // ── Phase 3: Goals + Stats + 设置（并行加载，缩短首屏等待） ──
@@ -251,9 +256,16 @@ export class Store {
             // 天气字段异步拉取（不阻塞加载，失败静默）
             if (weatherEnabledRaw === 'true' && typeof WeatherService !== 'undefined') {
                 const self = this;
-                WeatherService.getWeather().then(function(w) {
+                WeatherService.getWeather().then(async function(w) {
                     if (!w) return;
                     const todayKey = self.getDateKey();
+                    // 内存里没有当天数据时，先尝试从磁盘补读，避免用空壳覆盖已有的时间线/待办
+                    if (!self.state.data[todayKey]) {
+                        try {
+                            const disk = await storageManager.getDay(todayKey);
+                            if (disk) self.state.data[todayKey] = disk;
+                        } catch (e) { /* 补读失败则继续，天气仍附加到新建对象 */ }
+                    }
                     if (!self.state.data[todayKey]) {
                         self.state.data[todayKey] = {
                             date: todayKey,
@@ -701,9 +713,11 @@ export class Store {
         this._ensureCurrentDateLoaded();
     }
 
-    /** 将 Date 格式化为 YYYY-MM-DD key */
+    /** 将 Date 格式化为 YYYY-MM-DD key（必须用本地日期，与写入侧 getDateKey 一致；
+     *  旧实现用 toISOString() 得到 UTC 日期，凌晨时段会比本地早一天，导致懒加载补读错日期、
+     *  当天数据读不进内存，进而被空壳覆盖丢失） */
     _dateKey(date) {
-        return date.toISOString().slice(0, 10);
+        return this.getDateKey(date);
     }
 
     /** 如果当前日期有数据但未加载，异步补读并 notify */

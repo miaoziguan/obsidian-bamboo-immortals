@@ -174,6 +174,47 @@ export class VaultStorage {
     };
   }
 
+  /**
+   * 计算单日「有效内容量」：时间线条目数 + 待办勾选项数 + 目标进度项 + 有值指标 + 备注。
+   * 用于 putDay 写守卫，判断一次写入是否为「空壳」（会覆盖磁盘真实数据）。
+   * 注意：weather 等装饰字段不计入内容，故纯天气写入在守卫中视为空壳，不会覆盖有内容的当日文件。
+   */
+  private dayContentScore(day: Partial<DayData> | null | undefined): number {
+    if (!day || typeof day !== 'object') return 0;
+    let score = 0;
+    // 时间线：所有时段(period)下的 items 总数（timeline 本身按时段分组，最多 9 段，不能用其 length 判空）
+    const timeline = (day as Record<string, unknown>).timeline;
+    if (Array.isArray(timeline)) {
+      for (const period of timeline) {
+        const items = period && (period as Record<string, unknown>).items;
+        if (Array.isArray(items)) score += items.length;
+      }
+    }
+    // 待办勾选：按 key 存在计数（含 false —— 代表用户显式操作过，不能丢）
+    const gtc = (day as Record<string, unknown>).goalTaskCompletions;
+    if (gtc && typeof gtc === 'object') {
+      for (const gid of Object.keys(gtc as Record<string, unknown>)) {
+        const sub = (gtc as Record<string, unknown>)[gid];
+        if (sub && typeof sub === 'object') score += Object.keys(sub as Record<string, unknown>).length;
+      }
+    }
+    // 目标进度快照
+    const gp = (day as Record<string, unknown>).goalProgress;
+    if (gp && typeof gp === 'object') score += Object.keys(gp as Record<string, unknown>).length;
+    // 指标：有实际值的字段
+    const metrics = (day as Record<string, unknown>).metrics;
+    if (metrics && typeof metrics === 'object') {
+      for (const k of Object.keys(metrics as Record<string, unknown>)) {
+        const v = (metrics as Record<string, unknown>)[k];
+        if (v !== undefined && v !== null && v !== '') score += 1;
+      }
+    }
+    // 备注
+    const note = (day as Record<string, unknown>).note;
+    if (typeof note === 'string' && note.trim() !== '') score += 1;
+    return score;
+  }
+
   async putDay(dayData: DayData): Promise<void> {
     await this.ensureDir('data');
     const dateKey = dayData.date;
@@ -182,24 +223,28 @@ export class VaultStorage {
     }
     const path = this.dayPath(dateKey);
 
-    // 写守卫：检测数据量悬崖（多条时间线 → 近乎空壳）
-    if (!this._warnedPaths.has(path)) {
-      const newTimelineLen = Array.isArray(dayData.timeline) ? dayData.timeline.length : 0;
-      if (newTimelineLen <= 1) {
-        try {
-          if (await this.app.vault.adapter.exists(path)) {
-            const existing = JSON.parse(await this.app.vault.adapter.read(path)) as DayData;
-            const existingTimelineLen = Array.isArray(existing.timeline) ? existing.timeline.length : 0;
-            if (existingTimelineLen > 10) {
+    // 写守卫（修复「时间线/待办卡片今日活动丢失」根因）：
+    // 旧实现用 timeline.length > 10 作阈值，但 timeline 是按时段(period)分组的数组、最多 9 段，
+    // 该条件恒为 false → 守卫从不触发 → 空壳数据每次都能覆盖磁盘真实数据。
+    // 新实现：按「有效内容量」判断——当本次写入为空壳(score=0)、而磁盘现有文件有内容(score>0)时，
+    // 拦截写入，避免时间线/待办勾选被空数据覆盖丢失。
+    const newScore = this.dayContentScore(dayData);
+    if (newScore === 0) {
+      try {
+        if (await this.app.vault.adapter.exists(path)) {
+          const existing = JSON.parse(await this.app.vault.adapter.read(path)) as DayData;
+          const existingScore = this.dayContentScore(existing);
+          if (existingScore > 0) {
+            if (!this._warnedPaths.has(path)) {
               new Notice(
-                `⚠️ 检测到 ${dateKey} 数据异常清空（${existingTimelineLen} 条 → ${newTimelineLen} 条），已自动拦截。\n如果确实要清空该日数据，请再次操作。`
+                `⚠️ 已拦截 ${dateKey} 的空数据覆盖（现有 ${existingScore} 项内容 → 空），已保护当日时间线/待办不丢失。`
               );
               this._warnedPaths.add(path);
-              return;
             }
+            return;
           }
-        } catch { /* 文件损坏或不存在，继续正常写入 */ }
-      }
+        }
+      } catch { /* 文件损坏或不存在，继续正常写入 */ }
     }
 
     await this.vaultWrite(path, JSON.stringify(dayData, null, 2));

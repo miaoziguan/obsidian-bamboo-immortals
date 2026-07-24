@@ -514,15 +514,15 @@ export const SettingsModal = {
                     <div class="import-preview-divider"></div>
                     <div class="import-preview-row">
                         <span class="import-preview-label">余额</span>
-                        <span class="import-preview-value import-preview-value--highlight">${bal != null ? bal + ' 竹币' : '—'}</span>
+                        <span class="import-preview-value import-preview-value--highlight">${bal != null ? bal : '—'}</span>
                     </div>
                     <div class="import-preview-row">
                         <span class="import-preview-label">历史总收入</span>
-                        <span class="import-preview-value">${totalEarnings} 竹币</span>
+                        <span class="import-preview-value">${totalEarnings}</span>
                     </div>
                     <div class="import-preview-row">
                         <span class="import-preview-label">历史总消费</span>
-                        <span class="import-preview-value">${totalSpent} 竹币</span>
+                        <span class="import-preview-value">${totalSpent}</span>
                     </div>
                     ` : `
                     <div class="import-preview-row">

@@ -147,7 +147,7 @@ window.DataIO = {
     importPurchaseHistoryFromFile() { this._pickAndImport('purchaseHistory', '商店购买记录', () => {}); },
 
     /** 导入 income-history.json */
-    importIncomeHistoryFromFile() { this._pickAndImport('incomeHistory', '竹币收入记录', () => {}); },
+    importIncomeHistoryFromFile() { this._pickAndImport('incomeHistory', '收入记录', () => {}); },
 
     /** 导入 data/ 目录（全部每日记录，merge 写入） */
     importDaysFromFile() {

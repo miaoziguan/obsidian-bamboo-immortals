@@ -548,9 +548,9 @@ export const GoalService = {
                 const ss = String(now.getSeconds()).padStart(2, '0');
                 const completionDate = `${todayKey}T${hh}:${mm}:${ss}`;
                 await store.updateBalance(1, 'task_complete', `完成：${goal.title} - ${item.name}`, completionDate);
-                Toast.showToast('目标任务已完成，奖励 1 竹币', 'success');
+                Toast.showToast('目标任务已完成，奖励 +1', 'success');
             } else {
-                Toast.showToast('目标任务已完成（非今日任务，不奖励竹币）', 'info');
+                Toast.showToast('目标任务已完成（非今日任务，不奖励）', 'info');
             }
 
         }

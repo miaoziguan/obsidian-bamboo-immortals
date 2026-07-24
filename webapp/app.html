@@ -10941,11 +10941,11 @@ input[type="number"].goal-inline-edit-input {
 
 .rw-460 .goal-item-meta {
     gap: var(--space-1);
+    flex-wrap: wrap;
 }
 
-.rw-460 .goal-item-daily,
 .rw-460 .goal-item-date {
-    display: none;
+    font-size: var(--type-xs);
 }
 
 .rw-460 .goal-item-value,
@@ -12497,6 +12497,7 @@ input[type="number"].goal-inline-edit-input {
 }
 .rw-460 .goal-item-meta {
     gap: var(--space-1);
+    flex-wrap: wrap;
 }
 .rw-460 .goal-item-name {
     font-size: var(--type-micro);
@@ -12517,7 +12518,8 @@ input[type="number"].goal-inline-edit-input {
     font-size: var(--type-mini);
 }
 .rw-460 .goal-item-date {
-    display: none;
+    font-size: var(--type-mini);
+    gap: 1px;
 }
 .rw-460 .goal-item-daily {
     font-size: var(--type-mini);
@@ -12533,13 +12535,11 @@ input[type="number"].goal-inline-edit-input {
     min-width: 24px;
 }
 .rw-460 .goal-item-delete-btn {
-    position: absolute;
-    right: 0;
-    top: 4px;
     padding: var(--space-1);
     min-width: 28px;
     min-height: 28px;
     opacity: 0.7;
+    flex-shrink: 0;
 }
 .rw-460 .goal-list-footer {
     gap: var(--space-2);

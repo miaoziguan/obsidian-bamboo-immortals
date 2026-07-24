@@ -963,11 +963,11 @@
 
 .rw-460 .goal-item-meta {
     gap: var(--space-1);
+    flex-wrap: wrap;
 }
 
-.rw-460 .goal-item-daily,
 .rw-460 .goal-item-date {
-    display: none;
+    font-size: var(--type-xs);
 }
 
 .rw-460 .goal-item-value,

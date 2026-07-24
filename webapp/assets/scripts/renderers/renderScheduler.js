@@ -240,6 +240,10 @@ export const RenderScheduler = {
             return;
         }
 
+        // 清除骨架卡片（renderSkeleton 创建的占位 DOM 没有 data-section-id，
+        // _doPartialRender 只会插入不会替换它们，导致 4 个多余空白卡残留）
+        sectionsContainer.innerHTML = '';
+
         const allVisible = (typeof SectionRegistry !== 'undefined' && SectionRegistry.getVisible)
             ? SectionRegistry.getVisible()
             : [];

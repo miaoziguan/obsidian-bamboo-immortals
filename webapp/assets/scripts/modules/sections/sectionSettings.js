@@ -3,7 +3,7 @@ export const SectionSettings = {
         const section = SectionRegistry.get(sectionId);
         if (!section) {
             console.error('[SectionSettings] Section not found:', sectionId);
-            store?.showToast('板块未找到: ' + sectionId, 'error');
+            if (typeof Toast !== 'undefined') Toast.showToast('板块未找到: ' + sectionId, 'error');
             return;
         }
 

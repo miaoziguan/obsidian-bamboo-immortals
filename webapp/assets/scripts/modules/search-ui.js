@@ -1,6 +1,6 @@
 /**
  * 搜索 UI 模块 —— 内联搜索面板
- * Ctrl+K 或 / 键唤起，输入关键词实时搜索日记内容
+ * Ctrl+K 或 / 键唤起，输入关键词实时搜索目标、活动、待办等内容
  */
 import { byId, $ } from '../utils/domRef.js';
 
@@ -55,7 +55,7 @@ export const SearchUI = {
         panel.id = 'searchPanel';
         panel.className = 'search-panel';
         panel.setAttribute('role', 'dialog');
-        panel.setAttribute('aria-label', '搜索日记');
+        panel.setAttribute('aria-label', '搜索');
         panel.hidden = true;
         panel.innerHTML = `
             <div class="search-panel-header">

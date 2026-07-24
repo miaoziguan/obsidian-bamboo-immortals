@@ -52,7 +52,7 @@ export const TimelineEditor = {
         data.metrics.firstCheckIn = checkInTimes.firstCheckIn;
         data.metrics.lastCheckIn = checkInTimes.lastCheckIn;
         store.updateDayData({ timeline: data.timeline, metrics: data.metrics }).then(() => {
-            renderAll();
+            markSectionDirty('timeline');
             this.renderForm();
         }).catch(e => console.error('[Bamboo] 保存时间线失败:', e));
     },
@@ -182,7 +182,7 @@ export const TimelineEditor = {
         data.metrics.lastCheckIn = checkInTimes.lastCheckIn;
 
         store.updateDayData({ timeline: data.timeline, metrics: data.metrics }).then(() => {
-            renderAll();
+            markSectionDirty('timeline');
             this.renderList();
             Toast.showToast('时段已保存', 'success');
         }).catch(e => console.error('[Bamboo] 保存时间线失败:', e));
@@ -198,7 +198,7 @@ export const TimelineEditor = {
         data.metrics.firstCheckIn = checkInTimes.firstCheckIn;
         data.metrics.lastCheckIn = checkInTimes.lastCheckIn;
         store.updateDayData({ timeline: data.timeline, metrics: data.metrics }).then(() => {
-            renderAll();
+            markSectionDirty('timeline');
             this.renderList();
         }).catch(e => console.error('[Bamboo] 删除时间线时段失败:', e));
         });

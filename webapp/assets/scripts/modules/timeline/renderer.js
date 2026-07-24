@@ -1,5 +1,7 @@
 import { byId, $, $$, modalMount } from '../../utils/domRef.js';
 export const TimelineRenderer = {
+    _periodsCache: [],
+
     render(data) {
         const container = byId('timelinePath');
         if (!container) return;
@@ -66,6 +68,8 @@ export const TimelineRenderer = {
             } else {
                 hint = `这个时段有 ${count} 条活动记录`;
             }
+
+            const itemsHtml = isFocus ? this._renderItems(period.items) : '';
             
             return `
                 <div class="bamboo-node ${isFocus ? 'focus-now' : ''}" style="animation-delay: ${index * 0.1}s">
@@ -88,26 +92,32 @@ export const TimelineRenderer = {
                                 ${LucideUtils.createIcon('leaf', { size: 16 })}
                             </div>
                         </div>
-                        <div class="bamboo-card-content${!isFocus ? ' collapsed' : ''}" id="timeline-content-${index}">
-                            <div class="bamboo-items">
-                                ${(period.items || []).map(item => `
-                                    <div class="bamboo-item">
-                                        <div class="bamboo-item-time">${escapeHtml(item.time)}</div>
-                                        <div class="bamboo-item-content">
-                                            <div class="bamboo-item-task">${escapeHtml(item.task)}</div>
-                                            ${item.eval ? `<div class="bamboo-item-eval ${item.eval === 'warn' ? 'warn' : ''}">${escapeHtml(item.eval)}</div>` : ''}
-                                        </div>
-                                    </div>
-                                `).join('')}
-                            </div>
+                        <div class="bamboo-card-content${!isFocus ? ' collapsed' : ''}" id="timeline-content-${index}"${!isFocus ? ' data-empty="true"' : ''}>
+                            ${itemsHtml}
                         </div>
                     </div>
                 </div>
             `;
         }).join('');
 
+        this._periodsCache = data.timeline;
         this.setupHoverEffects();
         this.setupTooltips();
+    },
+
+    _renderItems(items) {
+        if (!items || items.length === 0) return '';
+        return `<div class="bamboo-items">
+            ${items.map(item => `
+                <div class="bamboo-item">
+                    <div class="bamboo-item-time">${escapeHtml(item.time)}</div>
+                    <div class="bamboo-item-content">
+                        <div class="bamboo-item-task">${escapeHtml(item.task)}</div>
+                        ${item.eval ? `<div class="bamboo-item-eval ${item.eval === 'warn' ? 'warn' : ''}">${escapeHtml(item.eval)}</div>` : ''}
+                    </div>
+                </div>
+            `).join('')}
+        </div>`;
     },
 
     toggle(index) {
@@ -116,6 +126,13 @@ export const TimelineRenderer = {
         if (!content || !chevron) return;
 
         if (content.classList.contains('collapsed')) {
+            if (content.dataset.empty === 'true') {
+                const period = this._periodsCache[index];
+                if (period) {
+                    content.innerHTML = this._renderItems(period.items);
+                    delete content.dataset.empty;
+                }
+            }
             content.classList.remove('collapsed');
             chevron.classList.remove('collapsed');
             chevron.innerHTML = LucideUtils.createIcon('chevronDown', { size: 14 });
@@ -128,31 +145,38 @@ export const TimelineRenderer = {
 
     setupHoverEffects() {
         if (this._hoverCleanup) this._hoverCleanup();
-        const cleanups = [];
-        const headers = $$('.bamboo-card-header');
-        headers.forEach(header => {
-            const onMouseMove = (e) => {
-                const rect = header.getBoundingClientRect();
-                const x = ((e.clientX - rect.left) / rect.width) * 100;
-                const y = ((e.clientY - rect.top) / rect.height) * 100;
-                header.style.setProperty('--mouse-x', `${x}%`);
-                header.style.setProperty('--mouse-y', `${y}%`);
-            };
-            const onMouseLeave = () => {
-                header.style.setProperty('--mouse-x', '50%');
-                header.style.setProperty('--mouse-y', '50%');
-            };
-            header.addEventListener('mousemove', onMouseMove);
-            header.addEventListener('mouseleave', onMouseLeave);
-            cleanups.push(() => {
-                header.removeEventListener('mousemove', onMouseMove);
-                header.removeEventListener('mouseleave', onMouseLeave);
-            });
-        });
-        this._hoverCleanup = () => cleanups.forEach(fn => fn());
+        const container = byId('timelinePath');
+        if (!container) return;
+
+        const onMouseMove = (e) => {
+            const header = e.target.closest('.bamboo-card-header');
+            if (!header) return;
+            const rect = header.getBoundingClientRect();
+            const x = ((e.clientX - rect.left) / rect.width) * 100;
+            const y = ((e.clientY - rect.top) / rect.height) * 100;
+            header.style.setProperty('--mouse-x', `${x}%`);
+            header.style.setProperty('--mouse-y', `${y}%`);
+        };
+        const onMouseLeave = (e) => {
+            const header = e.target.closest('.bamboo-card-header');
+            if (!header) return;
+            header.style.setProperty('--mouse-x', '50%');
+            header.style.setProperty('--mouse-y', '50%');
+        };
+
+        container.addEventListener('mousemove', onMouseMove);
+        container.addEventListener('mouseleave', onMouseLeave);
+        this._hoverCleanup = () => {
+            container.removeEventListener('mousemove', onMouseMove);
+            container.removeEventListener('mouseleave', onMouseLeave);
+        };
     },
 
     setupTooltips() {
+        if (this._tooltipCleanup) this._tooltipCleanup();
+        const container = byId('timelinePath');
+        if (!container) return;
+
         let tooltip = $('.bamboo-tooltip');
         if (!tooltip) {
             tooltip = document.createElement('div');
@@ -160,46 +184,45 @@ export const TimelineRenderer = {
             modalMount().appendChild(tooltip);
         }
 
-        const counts = $$('.bamboo-count');
-        counts.forEach(count => {
-            count.addEventListener('mouseenter', () => {
-                const hint = count.dataset.hint;
-                if (!hint) return;
+        const positionTooltip = (count) => {
+            const rect = count.getBoundingClientRect();
+            const tooltipRect = tooltip.getBoundingClientRect();
+            let left = rect.left + rect.width / 2 - tooltipRect.width / 2;
+            let top = rect.top - tooltipRect.height - 8;
+            left = Math.max(8, Math.min(left, window.innerWidth - tooltipRect.width - 8));
+            top = Math.max(8, top);
+            tooltip.style.left = `${left}px`;
+            tooltip.style.top = `${top}px`;
+        };
 
-                tooltip.textContent = hint;
-                tooltip.style.opacity = '1';
+        const onMouseMove = (e) => {
+            const count = e.target.closest('.bamboo-count');
+            if (!count) return;
+            positionTooltip(count);
+        };
+        const onMouseEnter = (e) => {
+            const count = e.target.closest('.bamboo-count');
+            if (!count) return;
+            const hint = count.dataset.hint;
+            if (!hint) return;
+            tooltip.textContent = hint;
+            tooltip.style.opacity = '1';
+            positionTooltip(count);
+        };
+        const onMouseLeave = (e) => {
+            const count = e.target.closest('.bamboo-count');
+            if (!count) return;
+            tooltip.style.opacity = '0';
+        };
 
-                const rect = count.getBoundingClientRect();
-                const tooltipRect = tooltip.getBoundingClientRect();
-                
-                let left = rect.left + rect.width / 2 - tooltipRect.width / 2;
-                let top = rect.top - tooltipRect.height - 8;
-
-                left = Math.max(8, Math.min(left, window.innerWidth - tooltipRect.width - 8));
-                top = Math.max(8, top);
-
-                tooltip.style.left = `${left}px`;
-                tooltip.style.top = `${top}px`;
-            });
-
-            count.addEventListener('mouseleave', () => {
-                tooltip.style.opacity = '0';
-            });
-
-            count.addEventListener('mousemove', () => {
-                const rect = count.getBoundingClientRect();
-                const tooltipRect = tooltip.getBoundingClientRect();
-                
-                let left = rect.left + rect.width / 2 - tooltipRect.width / 2;
-                let top = rect.top - tooltipRect.height - 8;
-
-                left = Math.max(8, Math.min(left, window.innerWidth - tooltipRect.width - 8));
-                top = Math.max(8, top);
-
-                tooltip.style.left = `${left}px`;
-                tooltip.style.top = `${top}px`;
-            });
-        });
+        container.addEventListener('mousemove', onMouseMove);
+        container.addEventListener('mouseover', onMouseEnter);
+        container.addEventListener('mouseout', onMouseLeave);
+        this._tooltipCleanup = () => {
+            container.removeEventListener('mousemove', onMouseMove);
+            container.removeEventListener('mouseover', onMouseEnter);
+            container.removeEventListener('mouseout', onMouseLeave);
+        };
     }
 };
 

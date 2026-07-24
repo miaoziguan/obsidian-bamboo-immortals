@@ -124,8 +124,24 @@ export const GoalInlineEditService = {
             await store.updateGlobalGoal(goal.id, goal);
             if (typeof TodoRenderer !== 'undefined') TodoRenderer._invalidateCache();
             // category/priority 影响全局布局，name/title/currentValue 影响待办显示文案
-            if (editType === 'category' || editType === 'priority' || editType === 'name' || editType === 'title') {
-                if (typeof renderAll === 'function') renderAll();
+            if (editType === 'category' || editType === 'priority') {
+                if (typeof markSectionDirty === 'function') {
+                    markSectionDirty('goals');
+                    markSectionDirty('timeline');
+                } else if (typeof window.markSectionDirty === 'function') {
+                    window.markSectionDirty('goals');
+                    window.markSectionDirty('timeline');
+                }
+            } else if (editType === 'name' || editType === 'title') {
+                if (typeof markSectionDirty === 'function') {
+                    markSectionDirty('goals');
+                    markSectionDirty('todo');
+                    markSectionDirty('timeline');
+                } else if (typeof window.markSectionDirty === 'function') {
+                    window.markSectionDirty('goals');
+                    window.markSectionDirty('todo');
+                    window.markSectionDirty('timeline');
+                }
             } else {
                 deps.renderSingleGoal(goal.id);
             }

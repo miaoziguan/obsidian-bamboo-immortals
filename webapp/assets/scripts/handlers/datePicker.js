@@ -200,10 +200,15 @@ window.DatePicker = {
             return;
         }
         
-        store.goToDate(newDate);
-        renderAll();
+        const { currentDate } = store.getState();
+        const direction = newDate >= currentDate ? 1 : -1;
+        RenderScheduler.startDateTransition(direction, () => {
+            store.goToDate(newDate);
+            renderDate();
+            markSectionDirty('timeline');
+            markSectionDirty('todo');
+        });
         PanelManager.close();
-        // 日期显示已随 renderAll 更新，无需再弹成功 Toast（避免高频切换疲劳）
     },
 
     goToSelectedDate() {
@@ -233,18 +238,29 @@ window.DatePicker = {
             return;
         }
 
-        store.goToDate(newDate);
-        renderAll();
+        const { currentDate } = store.getState();
+        const direction = newDate >= currentDate ? 1 : -1;
+        RenderScheduler.startDateTransition(direction, () => {
+            store.goToDate(newDate);
+            renderDate();
+            markSectionDirty('timeline');
+            markSectionDirty('todo');
+        });
         PanelManager.close();
         Toast.showToast('已跳转到选择的日期', 'success');
     },
 
     goToToday() {
         const today = new Date();
-        store.goToDate(today);
-        renderAll();
+        const { currentDate } = store.getState();
+        const direction = today >= currentDate ? 1 : -1;
+        RenderScheduler.startDateTransition(direction, () => {
+            store.goToDate(today);
+            renderDate();
+            markSectionDirty('timeline');
+            markSectionDirty('todo');
+        });
         PanelManager.close();
-        // 日期显示已随 renderAll 更新，无需再弹成功 Toast
     },
 
     close() {

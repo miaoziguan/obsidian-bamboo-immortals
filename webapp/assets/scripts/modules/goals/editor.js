@@ -38,7 +38,7 @@ export const GOAL_TEMPLATES = [
         icon: LucideUtils.createIcon('dumbbell', { size: 32, strokeWidth: 1.5 }),
         data: {
             icon: '',
-            title: '健身计划',
+            title: '健身锻炼',
             meta: '',
             category: 'health',
             progress: 0,
@@ -75,7 +75,7 @@ export const GOAL_TEMPLATES = [
         icon: LucideUtils.createIcon('edit', { size: 32, strokeWidth: 1.5 }),
         data: {
             icon: '',
-            title: '写作计划',
+            title: '写作创作',
             meta: '',
             category: 'personal',
             progress: 0,
@@ -94,7 +94,7 @@ export const GOAL_TEMPLATES = [
         icon: LucideUtils.createIcon('dollarSign', { size: 32, strokeWidth: 1.5 }),
         data: {
             icon: '',
-            title: '储蓄目标',
+            title: '储蓄理财',
             meta: '',
             category: 'finance',
             progress: 0,
@@ -177,8 +177,13 @@ export const GoalsEditor = {
                 GoalsRenderer.autoCalcGoalDateRange(goal);
                 const newGoal = await store.addGlobalGoal(goal);
                 GoalsRenderer._expandedGoals.add(newGoal.id);
-                if (typeof renderAll === 'function') renderAll();
-                else if (typeof window.renderAll === 'function') window.renderAll();
+                if (typeof markSectionDirty === 'function') {
+                    markSectionDirty('goals');
+                    markSectionDirty('todo');
+                } else if (typeof window.markSectionDirty === 'function') {
+                    window.markSectionDirty('goals');
+                    window.markSectionDirty('todo');
+                }
 
                 // 双帧等待确保 DOM 完全渲染
                 requestAnimationFrame(() => requestAnimationFrame(() => {
@@ -229,8 +234,13 @@ export const GoalsEditor = {
             goal.progress = GoalsRenderer.calcProgress(goal);
             await store.updateGlobalGoal(goalId, goal);
             GoalsRenderer._expandedGoals.add(goalId);
-            if (typeof renderAll === 'function') renderAll();
-            else if (typeof window.renderAll === 'function') window.renderAll();
+            if (typeof markSectionDirty === 'function') {
+                markSectionDirty('goals');
+                markSectionDirty('todo');
+            } else if (typeof window.markSectionDirty === 'function') {
+                window.markSectionDirty('goals');
+                window.markSectionDirty('todo');
+            }
 
             // 双帧等待确保 DOM 完全渲染
             requestAnimationFrame(() => requestAnimationFrame(() => {
@@ -265,8 +275,13 @@ export const GoalsEditor = {
             GoalsRenderer.autoCalcGoalDateRange(goal);
             goal.progress = GoalsRenderer.calcProgress(goal);
             await store.updateGlobalGoal(goalId, goal);
-            if (typeof renderAll === 'function') renderAll();
-            else if (typeof window.renderAll === 'function') window.renderAll();
+            if (typeof markSectionDirty === 'function') {
+                markSectionDirty('goals');
+                markSectionDirty('todo');
+            } else if (typeof window.markSectionDirty === 'function') {
+                window.markSectionDirty('goals');
+                window.markSectionDirty('todo');
+            }
         } catch (e) {
             console.error('Failed to remove sub-item:', e);
             Toast.showToast('删除子项目失败', 'error');
@@ -531,8 +546,13 @@ export const GoalsEditor = {
             const confirmed = await ConfirmDialog.confirmDelete('确定删除这个目标吗？此操作无法撤销。');
             if (!confirmed) return;
             await store.deleteGlobalGoal(goalId);
-            if (typeof renderAll === 'function') renderAll();
-            else if (typeof window.renderAll === 'function') window.renderAll();
+            if (typeof markSectionDirty === 'function') {
+                markSectionDirty('goals');
+                markSectionDirty('todo');
+            } else if (typeof window.markSectionDirty === 'function') {
+                window.markSectionDirty('goals');
+                window.markSectionDirty('todo');
+            }
             Toast.showToast('目标已删除', 'info');
         } catch (e) {
             console.error('Failed to delete goal:', e);

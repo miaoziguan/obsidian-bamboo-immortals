@@ -98,6 +98,16 @@ export const GoalHealthScore = {
         risk:      { label: '风险', min: 0,  color: '#dc3545' }
     },
 
+    _cacheVersion: 0,
+    _globalDataCache: null,
+    _globalDataCacheVersion: -1,
+    _goalResultCache: new Map(),
+
+    invalidateCache() {
+        this._cacheVersion++;
+        this._goalResultCache.clear();
+    },
+
     HOLIDAYS: (() => {
         const h = new Set();
         const addForYear = (year, m, d) => h.add(`${year}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`);
@@ -132,14 +142,38 @@ export const GoalHealthScore = {
     },
 
     _countWorkdays(from, to) {
+        const start = new Date(from); start.setHours(0,0,0,0);
+        const end = new Date(to); end.setHours(0,0,0,0);
+        if (end <= start) return 0;
+
+        const totalDays = Math.floor((end - start) / 86400000);
+        const fullWeeks = Math.floor(totalDays / 7);
+        let workdays = fullWeeks * 5;
+
+        const remainingDays = totalDays % 7;
+        const startDay = start.getDay();
+        for (let i = 0; i < remainingDays; i++) {
+            const day = (startDay + i) % 7;
+            if (day !== 0 && day !== 6) workdays++;
+        }
+
+        const holidayCount = this._countHolidaysInRange(start, end);
+        return workdays - holidayCount;
+    },
+
+    _countHolidaysInRange(start, end) {
         let count = 0;
-        const cur = new Date(from);
-        cur.setHours(0,0,0,0);
-        const end = new Date(to);
-        end.setHours(0,0,0,0);
-        while (cur < end) {
-            if (this._isWorkday(cur)) count++;
-            cur.setDate(cur.getDate() + 1);
+        const startMs = start.getTime();
+        const endMs = end.getTime();
+        for (const holiday of this.HOLIDAYS) {
+            const [y, m, d] = holiday.split('-').map(Number);
+            const holidayMs = new Date(y, m - 1, d).getTime();
+            if (holidayMs >= startMs && holidayMs < endMs) {
+                const day = new Date(y, m - 1, d).getDay();
+                if (day !== 0 && day !== 6) {
+                    count++;
+                }
+            }
         }
         return count;
     },
@@ -180,7 +214,6 @@ export const GoalHealthScore = {
         const byDateKey = {};
         const goalIds = (goals || []).map(g => g.id);
 
-        // 1) 先按天遍历一次，从 store 读原始数据
         const allData = (store && store.getState && store.getState() && store.getState().data) || {};
         for (let i = 0; i < days; i++) {
             const d = new Date(today);
@@ -214,7 +247,28 @@ export const GoalHealthScore = {
             }
         }
 
-        return { byDateKey: byDateKey, goalIds: goalIds, today: today };
+        return { byDateKey: byDateKey, goalIds: goalIds, today: today, version: this._cacheVersion };
+    },
+
+    _getGlobalDataCache(goals, days) {
+        days = days || TUNING.STAGNATION_WINDOW;
+        const goalIds = (goals || []).map(g => g.id).sort().join(',');
+
+        if (this._globalDataCache &&
+            this._globalDataCacheVersion === this._cacheVersion &&
+            this._globalDataCache.days === days &&
+            this._globalDataCache.goalIdsKey === goalIds) {
+            return this._globalDataCache.cache;
+        }
+
+        const cache = this._buildDataCache(goals, days);
+        this._globalDataCache = {
+            cache: cache,
+            days: days,
+            goalIdsKey: goalIds
+        };
+        this._globalDataCacheVersion = this._cacheVersion;
+        return cache;
     },
 
     /**
@@ -252,6 +306,11 @@ export const GoalHealthScore = {
 
     compute(goal, cache) {
         if (!goal) return this._empty();
+
+        const cacheKey = `${goal.id || 'unknown'}_${this._cacheVersion}_${goal.progress || 0}`;
+        const cached = this._goalResultCache.get(cacheKey);
+        if (cached) return cached;
+
         const items = Array.isArray(goal.items) ? goal.items : [];
         const progress = this._clamp(Number(goal.progress) || 0, 0, 100);
         const isComplete = progress >= 100;
@@ -267,13 +326,16 @@ export const GoalHealthScore = {
         ), 0, 100);
         const level = this._levelFor(score);
 
-        return {
+        const result = {
             score,
             level,
             label: this.LEVELS[level].label,
             color: this.LEVELS[level].color,
             L1, L2, L3
         };
+
+        this._goalResultCache.set(cacheKey, result);
+        return result;
     },
 
     /**
@@ -293,13 +355,11 @@ export const GoalHealthScore = {
 
         let results;
         if (Array.isArray(preComputedOrCache) && preComputedOrCache.length === goals.length && preComputedOrCache[0] && typeof preComputedOrCache[0].score === 'number') {
-            // Pre-computed results array — reuse directly, no recomputation needed.
             results = preComputedOrCache;
         } else {
-            // Cache or nothing — build and/or use the cache.
             const dataCache = (preComputedOrCache && !Array.isArray(preComputedOrCache))
                 ? preComputedOrCache
-                : this._buildDataCache(goals, TUNING.STAGNATION_WINDOW);
+                : this._getGlobalDataCache(goals, TUNING.STAGNATION_WINDOW);
             results = goals.map(g => this.compute(g, dataCache));
         }
 

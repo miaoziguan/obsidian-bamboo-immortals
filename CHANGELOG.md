@@ -1,5 +1,29 @@
 # Changelog
 
+## [2.8.0] — 2026-07-24
+
+### Added
+- **渲染调度器（RenderScheduler）**：脏标记 + 防抖 + 全量/局部渲染调度，日期切换带方向过渡动画（新增 `renderers/renderScheduler.js`）
+- **精细化分区骨架屏**：替代简单全局骨架占位
+
+### Changed
+- **渲染层重构**：`renderers.js` 接入 RenderScheduler 做局部渲染；各模块（goals/editor、inlineEditService、renderer、GoalService、TodoService、handler 层）改用 `markSectionDirty` 局部刷新
+- **日期切换过渡**：datePicker / navigation / gestures / handlers 统一走 `RenderScheduler.startDateTransition`（带方向滑入/滑出动画）
+- **时间线非焦点内容懒加载**：仅聚焦时段渲染条目，降低首屏与切换开销
+- **商店品牌化**：货币符号 ¥ →「竹」（竹币）；目标模板标题微调（健身计划→健身锻炼、写作计划→写作创作、储蓄目标→储蓄理财）
+- **样式增强**：`base.css` 新增 GPU 合成层提示（`will-change`/`contain`）、骨架屏、日期切换过渡动画
+
+### Fixed
+- **健康分工作日计算更精确**：重写为「整周×5 + 余数工作日 − 区间内节假日」
+- **首屏优化**：旧月数据归档延后到 `requestIdleCallback`、设置与 goals/stats 并行加载；缓存写入多档降级（60/30/14 字符）容错；数据变更联动失效健康分缓存与搜索索引
+
+### Performance
+- **搜索倒排索引**：token→dateKey 倒排索引 + 增量维护（`invalidateIndex`）+ 结果缓存，搜索更快更准（指标/时间线/目标更细匹配）
+- **健康分缓存**：结果缓存 + 全局数据缓存（按 goalIds+days+version）避免重复计算
+- **时间线 hover**：改用 CSS 变量（`--mouse-x/y`）驱动并 cleanup，避免泄漏
+
+---
+
 ## [2.7.0] — 2026-07-23
 
 ### Added

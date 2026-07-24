@@ -297,6 +297,185 @@ button:focus-visible, a:focus-visible {
     border: 1px solid rgba(var(--white-rgb), 0.3);
 }
 
+/* === 性能优化：动画元素 GPU 合成层提示 === */
+.bamboo-node,
+.goal-row,
+section[data-section-id] {
+    will-change: transform, opacity;
+    contain: layout style;
+}
+
+/* 动画结束后移除 will-change，避免长期占用 GPU 内存 */
+.bamboo-node:nth-child(n+6) {
+    will-change: auto;
+}
+
+/* === 精细化骨架屏 === */
+.skeleton-section {
+    background: var(--card-glass);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border-radius: var(--radius-2xl);
+    padding: var(--space-4);
+    margin-bottom: var(--space-4);
+    border: 1px solid var(--card-border);
+    opacity: 0;
+    transform: translateY(12px);
+    animation: skeletonFadeIn 0.5s ease forwards;
+}
+
+.skeleton-section:nth-child(1) { animation-delay: 0.05s; }
+.skeleton-section:nth-child(2) { animation-delay: 0.12s; }
+.skeleton-section:nth-child(3) { animation-delay: 0.19s; }
+.skeleton-section:nth-child(4) { animation-delay: 0.26s; }
+
+@keyframes skeletonFadeIn {
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.skeleton-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    margin-bottom: var(--space-3);
+}
+
+.skeleton-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-lg);
+    background: linear-gradient(90deg, var(--card-border) 25%, rgba(var(--primary-rgb), 0.1) 50%, var(--card-border) 75%);
+    background-size: 200% 100%;
+    animation: skeletonShimmer 1.5s infinite;
+}
+
+.skeleton-title-group {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.skeleton-line {
+    height: 14px;
+    border-radius: var(--radius-md);
+    background: linear-gradient(90deg, var(--card-border) 25%, rgba(var(--primary-rgb), 0.08) 50%, var(--card-border) 75%);
+    background-size: 200% 100%;
+    animation: skeletonShimmer 1.5s infinite;
+}
+
+.skeleton-line.short { width: 40%; }
+.skeleton-line.medium { width: 70%; }
+.skeleton-line.long { width: 100%; }
+
+.skeleton-body {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-top: var(--space-2);
+    border-top: 1px solid var(--card-border);
+}
+
+.skeleton-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+.skeleton-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--card-border);
+    flex-shrink: 0;
+}
+
+@keyframes skeletonShimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* === 日期切换过渡动画 === */
+#sectionsContainer {
+    position: relative;
+}
+
+#sectionsContainer.date-transitioning section[data-section-id] {
+    animation: sectionSlideOutLeft 0.22s ease forwards;
+    animation-delay: calc(var(--section-index, 0) * 0.03s);
+}
+
+#sectionsContainer.date-transitioning.next section[data-section-id] {
+    animation-name: sectionSlideOutLeft;
+}
+
+#sectionsContainer.date-transitioning.prev section[data-section-id] {
+    animation-name: sectionSlideOutRight;
+}
+
+@keyframes sectionSlideOutLeft {
+    to {
+        opacity: 0;
+        transform: translateX(-18px);
+    }
+}
+
+@keyframes sectionSlideOutRight {
+    to {
+        opacity: 0;
+        transform: translateX(18px);
+    }
+}
+
+#sectionsContainer.date-enter section[data-section-id] {
+    opacity: 0;
+    animation: sectionSlideInFromRight 0.32s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+    animation-delay: calc(var(--section-index, 0) * 0.05s);
+}
+
+#sectionsContainer.date-enter.next section[data-section-id] {
+    animation-name: sectionSlideInFromRight;
+}
+
+#sectionsContainer.date-enter.prev section[data-section-id] {
+    animation-name: sectionSlideInFromLeft;
+}
+
+@keyframes sectionSlideInFromRight {
+    from {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes sectionSlideInFromLeft {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+section[data-section-id] {
+    --section-index: 0;
+    will-change: transform, opacity;
+}
+
+section[data-section-id]:nth-child(1) { --section-index: 0; }
+section[data-section-id]:nth-child(2) { --section-index: 1; }
+section[data-section-id]:nth-child(3) { --section-index: 2; }
+section[data-section-id]:nth-child(4) { --section-index: 3; }
+section[data-section-id]:nth-child(5) { --section-index: 4; }
+section[data-section-id]:nth-child(6) { --section-index: 5; }
+section[data-section-id]:nth-child(7) { --section-index: 6; }
+
 .header {
     display: flex;
     justify-content: space-between;

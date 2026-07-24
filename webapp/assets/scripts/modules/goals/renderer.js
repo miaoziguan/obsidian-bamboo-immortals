@@ -214,7 +214,7 @@ export const GoalsRenderer = {
                         let rText = '';
                         if (remaining < 0) {
                             rClass += ' goal-item-overdue';
-                            rText = `超期${Math.abs(remaining)}天`;
+                            rText = `已超期${Math.abs(remaining)}天`;
                         } else if (remaining === 0) {
                             rClass += ' goal-item-remaining-urgent';
                             rText = '今天截止';
@@ -421,6 +421,18 @@ export const GoalsRenderer = {
         if (host) {
             const goals = store.getGlobalGoals().filter(g => !g.archived);
             host.innerHTML = GoalHealthScore.renderOverviewCard(goals, this._remoteHealth.health);
+        }
+    },
+
+    /** 刷新健康分概览卡片（局部更新，不重建目标列表） */
+    refreshHealthCard() {
+        const host = byId('goalHealthOverviewHost');
+        if (!host || !window.GoalHealthScore) return;
+        const goals = store.getGlobalGoals().filter(g => !g.archived);
+        if (this._remoteHealth && this._remoteHealth.health) {
+            host.innerHTML = GoalHealthScore.renderOverviewCard(goals, this._remoteHealth.health);
+        } else {
+            host.innerHTML = GoalHealthScore.renderOverviewCard(goals);
         }
     },
 
@@ -749,7 +761,13 @@ export const GoalsRenderer = {
         await store.archiveGoal(goalId);
         this.render();
         if (typeof TodoRenderer !== 'undefined') TodoRenderer._invalidateCache();
-        if (typeof renderAll === 'function') renderAll();
+        if (typeof markSectionDirty === 'function') {
+            markSectionDirty('goals');
+            markSectionDirty('todo');
+        } else if (typeof window.markSectionDirty === 'function') {
+            window.markSectionDirty('goals');
+            window.markSectionDirty('todo');
+        }
         Toast.showToast('目标已归档，可在目标归档中查看', 'success');
     },
 

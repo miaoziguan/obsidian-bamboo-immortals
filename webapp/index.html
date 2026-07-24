@@ -61,7 +61,7 @@
                 <span aria-hidden="true">◀</span>
             </button>
             <div class="date-display clickable" id="dateDisplay" role="button" tabindex="0" aria-label="点击回到今天">
-                <div class="date-display-main" id="currentDate" aria-label="当前日期">2026年4月27日</div>
+                <div class="date-display-main" id="currentDate" aria-label="当前日期"></div>
                 <div class="date-display-sub" id="currentWeekday">周一</div>
             </div>
             <button class="date-nav-btn" id="nextDay" title="后一天" aria-label="后一天">
@@ -191,6 +191,7 @@
 <script type="module" src="assets/scripts/utils/NoiseGenerator.js?__BUILD__"></script>
 <script type="module" src="assets/scripts/utils/NoisePanel.js?__BUILD__"></script>
 <script type="module" src="assets/scripts/utils/whiteNoiseManager.js?__BUILD__"></script>
+<script type="module" src="assets/scripts/renderers/renderScheduler.js?__BUILD__"></script>
 <script type="module" src="assets/scripts/renderers/renderers.js?__BUILD__"></script>
 <script type="module" src="assets/scripts/handlers/navigation.js?__BUILD__"></script>
 <script type="module" src="assets/scripts/handlers/gestures.js?__BUILD__"></script>
@@ -246,7 +247,7 @@ setTimeout(() => {
     const inits = [
         ['SectionManager', () => SectionManager.init()],
         ['Todo',            () => Todo.init()],
-        ['Render',          () => renderAll()],
+        ['Render',          () => RenderScheduler.firstPaintProgressive()],
         ['Handlers',        () => Handlers.init()],
         ['SettingsModal',   () => SettingsModal.init()],
         ['ActionDispatcher',() => ActionDispatcher.init()],

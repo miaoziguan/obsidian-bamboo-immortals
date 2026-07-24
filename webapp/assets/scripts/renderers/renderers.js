@@ -1,141 +1,131 @@
 import { byId, $, $$, modalMount, getDomRoot } from '../utils/domRef.js';
+import { RenderScheduler } from './renderScheduler.js';
+
 export const renderDate = () => {
     const { currentDate } = store.getState();
     const dateDisplay = byId('currentDate');
     const weekdayDisplay = byId('currentWeekday');
-    if (dateDisplay) dateDisplay.textContent = getChineseDateDisplay(currentDate);
+    const dateText = getChineseDateDisplay(currentDate);
+    if (dateDisplay) {
+        dateDisplay.textContent = dateText;
+        dateDisplay.setAttribute('aria-label', dateText);
+    }
     if (weekdayDisplay) weekdayDisplay.textContent = getChineseWeekday(currentDate);
 };
 
-let _renderDebounceTimer = null;
-let _isRendering = false;
-let _pendingRender = false;
 let _renderedSectionIds = new Set();
+
+const _renderSectionSkeleton = (rows = 3) => {
+    const rowHtml = Array(rows).fill(0).map(() => `
+        <div class="skeleton-row">
+            <div class="skeleton-dot"></div>
+            <div class="skeleton-line medium"></div>
+        </div>
+    `).join('');
+    return `
+        <div class="skeleton-section">
+            <div class="skeleton-header">
+                <div class="skeleton-icon"></div>
+                <div class="skeleton-title-group">
+                    <div class="skeleton-line short"></div>
+                    <div class="skeleton-line medium" style="height: 12px;"></div>
+                </div>
+            </div>
+            <div class="skeleton-body">
+                ${rowHtml}
+            </div>
+        </div>
+    `;
+};
 
 export const renderSkeleton = () => {
     const sectionsContainer = byId('sectionsContainer');
     if (!sectionsContainer) return;
 
-    sectionsContainer.innerHTML = `
-        <div class="skeleton-card">
-            <div class="skeleton-line short"></div>
-            <div class="skeleton-line medium"></div>
-        </div>
-        <div class="skeleton-card">
-            <div class="skeleton-line short"></div>
-            <div class="skeleton-line medium"></div>
-            <div class="skeleton-line short"></div>
-        </div>
-        <div class="skeleton-card">
-            <div class="skeleton-line short"></div>
-            <div class="skeleton-line medium"></div>
-        </div>
-    `;
+    sectionsContainer.innerHTML =
+        _renderSectionSkeleton(5) +
+        _renderSectionSkeleton(4) +
+        _renderSectionSkeleton(3) +
+        _renderSectionSkeleton(2);
+};
+
+export const _doFullRender = () => {
+    const data = store.getCurrentDayData();
+    renderDate();
+
+    const sectionsContainer = byId('sectionsContainer');
+    if (!sectionsContainer) {
+        console.error('sectionsContainer 不存在!');
+        return;
+    }
+
+    const scrollHost = getDomRoot();
+    const scrollTop = scrollHost ? scrollHost.scrollTop : 0;
+    const activeEl = document.activeElement;
+    const activeAction = activeEl ? activeEl.dataset?.action : null;
+    const activeTodoId = activeEl ? activeEl.dataset?.todoId : null;
+
+    if (_renderedSectionIds.size === 0) {
+        sectionsContainer.innerHTML = '';
+    }
+
+    const sections = SectionRegistry.getVisible();
+    const newSectionIds = new Set(sections.map(s => s.id));
+
+    _renderedSectionIds.forEach(id => {
+        if (!newSectionIds.has(id)) {
+            const el = sectionsContainer.querySelector(`[data-section-id="${id}"]`);
+            if (el) el.remove();
+        }
+    });
+
+    const savedThemeWrapper = byId('themeEffectSection');
+    const sectionElements = [];
+    sections.forEach((section, index) => {
+        if (section.id === 'themeEffect' && savedThemeWrapper) {
+            savedThemeWrapper.setAttribute('data-section-id', 'themeEffect');
+            savedThemeWrapper.style.animationDelay = `${index * 0.05}s`;
+            sectionElements.push(savedThemeWrapper);
+            return;
+        }
+        const sectionElement = createDefaultSection(section, data, index);
+        if (sectionElement) {
+            sectionElement.setAttribute('data-section-id', section.id);
+            sectionElement.style.animationDelay = `${index * 0.05}s`;
+            sectionElements.push(sectionElement);
+        }
+    });
+
+    sectionsContainer.innerHTML = '';
+    sectionElements.forEach(el => sectionsContainer.appendChild(el));
+
+    _renderedSectionIds = newSectionIds;
+
+    if (typeof Todo !== 'undefined') {
+        Todo._syncCollapsedState();
+    }
+
+    if (scrollHost) {
+        scrollHost.scrollTop = scrollTop;
+    }
+
+    if (activeAction) {
+        const restoredEl = activeTodoId
+            ? document.querySelector(`[data-action="${activeAction}"][data-todo-id="${activeTodoId}"]`)
+            : document.querySelector(`[data-action="${activeAction}"]`);
+        if (restoredEl) restoredEl.focus();
+    }
+
+    setupTimelineHoverEffects();
+    setupBambooTooltips();
 };
 
 export const renderAll = () => {
-    // 防抖动 - 150ms 内只执行一次（降低高频状态变更时的无效重渲染）
-    if (_renderDebounceTimer) {
-        clearTimeout(_renderDebounceTimer);
-    }
+    RenderScheduler.markAllDirty();
+};
 
-    _renderDebounceTimer = setTimeout(() => {
-        if (_isRendering) {
-            _pendingRender = true;
-            return;
-        }
-
-        _isRendering = true;
-
-        try {
-            const data = store.getCurrentDayData();
-            renderDate();
-
-            const sectionsContainer = byId('sectionsContainer');
-            if (!sectionsContainer) {
-                console.error('sectionsContainer 不存在!');
-                return;
-            }
-
-            // 保存滚动位置，避免 innerHTML 重建后丢失
-            const scrollHost = getDomRoot();
-            const scrollTop = scrollHost ? scrollHost.scrollTop : 0;
-            const activeEl = document.activeElement;
-            const activeAction = activeEl ? activeEl.dataset?.action : null;
-            const activeTodoId = activeEl ? activeEl.dataset?.todoId : null;
-
-            // 首次渲染时清空骨架屏占位
-            if (_renderedSectionIds.size === 0) {
-                sectionsContainer.innerHTML = '';
-            }
-
-            const sections = SectionRegistry.getVisible();
-            const newSectionIds = new Set(sections.map(s => s.id));
-
-            // 移除不再可见的 section
-            _renderedSectionIds.forEach(id => {
-                if (!newSectionIds.has(id)) {
-                    const el = sectionsContainer.querySelector(`[data-section-id="${id}"]`);
-                    if (el) el.remove();
-                }
-            });
-
-            // 收集所有需要渲染的 section 元素，按正确顺序排列
-            // 性能优化：themeEffect section 仅首次创建，后续渲染复用已存在的 DOM
-            const savedThemeWrapper = byId('themeEffectSection');
-            const sectionElements = [];
-            sections.forEach((section, index) => {
-                if (section.id === 'themeEffect' && savedThemeWrapper) {
-                    savedThemeWrapper.setAttribute('data-section-id', 'themeEffect');
-                    savedThemeWrapper.style.animationDelay = `${index * 0.05}s`;
-                    sectionElements.push(savedThemeWrapper);
-                    return;
-                }
-                const existingEl = sectionsContainer.querySelector(`[data-section-id="${section.id}"]`);
-                const sectionElement = createDefaultSection(section, data, index);
-                if (sectionElement) {
-                    sectionElement.setAttribute('data-section-id', section.id);
-                    sectionElement.style.animationDelay = `${index * 0.05}s`;
-                    sectionElements.push(sectionElement);
-                }
-            });
-
-            // 清空并重新按正确顺序插入所有 section（解决 DOM 顺序与 sections 顺序不一致的问题）
-            sectionsContainer.innerHTML = '';
-            sectionElements.forEach(el => sectionsContainer.appendChild(el));
-
-            _renderedSectionIds = newSectionIds;
-
-            // 恢复已完成组的折叠/展开状态
-            if (typeof Todo !== 'undefined') {
-                Todo._syncCollapsedState();
-            }
-
-            // 恢复滚动位置
-            if (scrollHost) {
-                scrollHost.scrollTop = scrollTop;
-            }
-
-            // 恢复焦点到之前的活跃元素
-            if (activeAction) {
-                const restoredEl = activeTodoId
-                    ? document.querySelector(`[data-action="${activeAction}"][data-todo-id="${activeTodoId}"]`)
-                    : document.querySelector(`[data-action="${activeAction}"]`);
-                if (restoredEl) restoredEl.focus();
-            }
-
-            setupTimelineHoverEffects();
-            setupBambooTooltips();
-        } catch (e) {
-            console.error('渲染出错:', e);
-        } finally {
-            _isRendering = false;
-            if (_pendingRender) {
-                _pendingRender = false;
-                renderAll();
-            }
-        }
-    }, 50);
+export const markSectionDirty = (sectionId) => {
+    RenderScheduler.markDirty(sectionId);
 };
 
 export const createDefaultSection = (section, data, index) => {
@@ -201,9 +191,9 @@ export const computeActiveDuration = (timeline) => {
     const diffMin = (last.hour * 60 + last.minute) - (first.hour * 60 + first.minute);
     const hours = Math.floor(diffMin / 60);
     const mins = diffMin % 60;
-    if (hours > 0 && mins > 0) return `${hours}h${mins}m`;
-    if (hours > 0) return `${hours}h`;
-    return `${mins}m`;
+    if (hours > 0 && mins > 0) return `${hours}时${mins}分`;
+    if (hours > 0) return `${hours}时`;
+    return `${mins}分`;
 };
 
 export const stubIconClock = '<svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>';
@@ -292,7 +282,7 @@ export const PERIOD_HOURS = { lateNight: [0,4], dawn: [4,5.5], earlyMorning: [5.
 
 export const PERIOD_ORDER = ['lateNight', 'dawn', 'earlyMorning', 'morning', 'midday', 'afternoon', 'dusk', 'evening', 'night'];
 
-export const PERIOD_LABELS = ['凌晨', '拂晓', '清晨', '上午', '午间', '下午', '傍晚', '晚间', '深夜'];
+export const PERIOD_LABELS = ['凌晨', '黎明', '清晨', '上午', '中午', '下午', '傍晚', '晚上', '深夜'];
 
 export const getPeriodDotStates = (timeline) => {
     const activeKeys = new Set((timeline || []).filter(p => p.items && p.items.length > 0).map(p => p.period));
@@ -568,56 +558,6 @@ export const renderTodoSection = () => {
     return section;
 };
 
-export const highlightText = (text, query) => {
-    if (!query || !text) return escapeHtml(text);
-    const escapedText = escapeHtml(text);
-    const escapedQuery = escapeHtml(query);
-    const regex = new RegExp(`(${escapeRegex(escapedQuery)})`, 'gi');
-    return escapedText.replace(regex, '<mark style="background: var(--bamboo-primary); color: white; padding: 0 4px; border-radius: 4px;">$1</mark>');
-};
-
-export const escapeRegex = (str) => {
-    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-};
-
-export const renderSearchResults = (results, query) => {
-    const container = byId('searchResults');
-    if (!container) return;
-    
-    if (results.length === 0) {
-        container.innerHTML = `
-            <div class="history-empty" style="padding: 32px 16px; text-align: center; color: var(--text-secondary);">
-                <div style="margin-bottom: 12px;">${_iconSvg.search}</div>
-                <div>没有找到相关记录</div>
-            </div>
-        `;
-        return;
-    }
-    
-    container.innerHTML = `
-        <div style="padding: 8px 0 16px 0; font-size: 12px; color: var(--text-secondary);">
-            找到 ${results.length} 条相关记录
-        </div>
-        ${results.map(result => {
-            const isCurrent = result.date === store.getDateKey();
-            return `
-                <div class="history-item ${isCurrent ? 'current' : ''}" data-action="select-history-date" data-date="${result.date}">
-                    <div class="history-date">
-                        <div class="history-date-main">${result.date}</div>
-                        <div class="history-date-weekday">${result.weekday || ''}</div>
-                    </div>
-                    <div class="history-info">
-                        ${result.matches.length > 0 ? `
-                            <div style="font-size: 12px; color: var(--text-secondary);">
-                                ${result.matches.map(m => `<div>${m.field}: ${highlightText(m.value, query)}</div>`).join('')}
-                            </div>
-                        ` : ''}
-                    </div>
-                </div>
-            `;
-        }).join('')}
-    `;
-};
 ActionDispatcher.registerMany({
     'white-noise-toggle': () => { if (typeof WhiteNoiseManager !== 'undefined') WhiteNoiseManager.toggle(); },
     'white-noise-prev': () => { if (typeof WhiteNoiseManager !== 'undefined') WhiteNoiseManager.prev(); },
@@ -735,6 +675,33 @@ window.getActivePeriod = getActivePeriod;
 window.renderTimelineSection = renderTimelineSection;
 window.renderGoalsSection = renderGoalsSection;
 window.renderTodoSection = renderTodoSection;
-window.highlightText = highlightText;
-window.escapeRegex = escapeRegex;
-window.renderSearchResults = renderSearchResults;
+window.escapeHtml = escapeHtml;
+
+RenderScheduler.config({
+    fullRenderFn: _doFullRender,
+    sectionRenderFns: {
+        timeline: (section, index) => renderTimelineSection(store.getCurrentDayData()),
+        goals: (section, index) => renderGoalsSection(),
+        todo: (section, index) => renderTodoSection(),
+        themeEffect: (section, index) => {
+            const themeHtml = window.ThemeEffects.render(section.theme || 'bamboo');
+            const tempThemeDiv = document.createElement('div');
+            tempThemeDiv.innerHTML = themeHtml;
+            const wrapper = document.createElement('div');
+            wrapper.id = 'themeEffectSection';
+            while (tempThemeDiv.firstChild) {
+                wrapper.appendChild(tempThemeDiv.firstChild);
+            }
+            setTimeout(() => {
+                window.ThemeEffects.init(section.theme || 'bamboo');
+            }, 100);
+            return wrapper;
+        }
+    },
+    hoverEffectFn: setupTimelineHoverEffects,
+    tooltipFn: setupBambooTooltips,
+    todoCollapseFn: () => { if (typeof Todo !== 'undefined') Todo._syncCollapsedState(); }
+});
+
+window.RenderScheduler = RenderScheduler;
+window.markSectionDirty = markSectionDirty;

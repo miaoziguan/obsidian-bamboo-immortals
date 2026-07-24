@@ -158,7 +158,7 @@ export const ShopManager = {
         const availableBalance = store.getAvailableBalance();
         const balanceEl = panel.querySelector('#shopBalanceValue');
         if (balanceEl) {
-            balanceEl.innerHTML = `<span class="shop-currency">¥</span>${availableBalance.toFixed(2)}`;
+            balanceEl.innerHTML = `<span class="shop-currency">竹</span>${availableBalance.toFixed(2)}`;
         }
     },
 
@@ -173,9 +173,9 @@ export const ShopManager = {
         const spentEl = panel.querySelector('#shop-today-spent-value');
         if (spentEl) {
             if (todaySpent > 0) {
-                spentEl.textContent = `-¥${todaySpent.toFixed(2)}`;
+                spentEl.textContent = `-竹${todaySpent.toFixed(2)}`;
             } else {
-                spentEl.textContent = '¥0.00';
+                spentEl.textContent = '竹0.00';
             }
         }
 
@@ -190,7 +190,7 @@ export const ShopManager = {
                 detailsEl.innerHTML = todayPurchases.map(p => `
                     <div class="shop-breakdown-row">
                         <span class="shop-breakdown-text">${p.icon || ''} ${p.name}</span>
-                        <span class="shop-breakdown-amount is-spent">-¥${p.price.toFixed(2)}</span>
+                        <span class="shop-breakdown-amount is-spent">-竹${p.price.toFixed(2)}</span>
                     </div>
                 `).join('');
             }
@@ -236,26 +236,26 @@ export const ShopManager = {
                     <div class="shop-balance-amount-block shop-balance-amount-block--centered">
                         <div class="shop-balance-label">可用竹币</div>
                         <div id="shopBalanceValue" class="shop-balance-value">
-                            <span class="shop-currency">¥</span>${availableBalance.toFixed(2)}
+                            <span class="shop-currency">竹</span>${availableBalance.toFixed(2)}
                         </div>
-                        ${frozenAmount > 0 ? `<div class="shop-balance-frozen">冻结 ¥${frozenAmount.toFixed(2)}（今日收入次日可用）</div>` : ''}
+                        ${frozenAmount > 0 ? `<div class="shop-balance-frozen">冻结 竹${frozenAmount.toFixed(2)}（今日收入次日可用）</div>` : ''}
                     </div>
                     <div class="shop-balance-metrics shop-balance-metrics--row">
                         <div class="shop-balance-metric shop-balance-metric--card">
-                            <div class="shop-metric-value is-income-today">${todayEarnings > 0 ? '+¥' + todayEarnings.toFixed(2) : '¥0.00'}</div>
+                            <div class="shop-metric-value is-income-today">${todayEarnings > 0 ? '+竹' + todayEarnings.toFixed(2) : '竹0.00'}</div>
                             <div class="shop-metric-label">今日收入</div>
                         </div>
                         <div class="shop-balance-metric shop-balance-metric--card">
-                            <div id="shop-today-spent-value" class="shop-metric-value is-spent-today">${todaySpent > 0 ? '-¥' + todaySpent.toFixed(2) : '¥0.00'}</div>
+                            <div id="shop-today-spent-value" class="shop-metric-value is-spent-today">${todaySpent > 0 ? '-竹' + todaySpent.toFixed(2) : '竹0.00'}</div>
                             <div class="shop-metric-label">今日消费</div>
                         </div>
                         <div class="shop-balance-metric shop-balance-metric--card">
-                            <div class="shop-metric-value is-income-total">+¥${totalEarnings.toFixed(2)}</div>
+                            <div class="shop-metric-value is-income-total">+竹${totalEarnings.toFixed(2)}</div>
                             <div class="shop-metric-label">历史总收入</div>
                         </div>
                         <div class="shop-balance-metric shop-balance-metric--card">
-                            <div class="shop-metric-value is-spent-total">¥${totalSpent.toFixed(2)}</div>
-                            <div class="shop-metric-label">总消费</div>
+                            <div class="shop-metric-value is-spent-total">竹${totalSpent.toFixed(2)}</div>
+                            <div class="shop-metric-label">历史总消费</div>
                         </div>
                     </div>
                     <div class="shop-rules-hint">
@@ -268,7 +268,7 @@ export const ShopManager = {
                         ${todayIncomes.map(inc => `
                             <div class="shop-breakdown-row">
                                 <span class="shop-breakdown-text">${inc.desc || inc.type}</span>
-                                <span class="shop-breakdown-amount is-income">+¥${inc.amount.toFixed(2)}</span>
+                                <span class="shop-breakdown-amount is-income">+竹${inc.amount.toFixed(2)}</span>
                             </div>
                         `).join('')}
                     </div>
@@ -278,7 +278,7 @@ export const ShopManager = {
                         ${todayPurchases.length > 0 ? todayPurchases.map(p => `
                             <div class="shop-breakdown-row">
                                 <span class="shop-breakdown-text">${p.icon || ''} ${p.name}</span>
-                                <span class="shop-breakdown-amount is-spent">-¥${p.price.toFixed(2)}</span>
+                                <span class="shop-breakdown-amount is-spent">-竹${p.price.toFixed(2)}</span>
                             </div>
                         `).join('') : ''}
                     </div>
@@ -435,7 +435,7 @@ export const ShopManager = {
                     <div class="shop-item-desc">${item.desc}</div>
                 </div>
                 <div class="shop-item-price-block">
-                    <div class="shop-item-price">¥${item.price}</div>
+                    <div class="shop-item-price">竹${item.price}</div>
                     <div class="shop-item-status ${statusClass}">${statusText}</div>
                 </div>
             </div>
@@ -493,7 +493,7 @@ export const ShopManager = {
 
                 const confirmed = await ConfirmDialog.confirm({
                     title: '确认兑换',
-                    message: `确定要花费 ¥${price} 兑换【${itemName}】吗？\n\n购买后余额：¥${(store.getState().balance - price).toFixed(2)}`,
+                    message: `确定要花费 竹${price} 兑换【${itemName}】吗？\n\n购买后余额：竹${(store.getState().balance - price).toFixed(2)}`,
                     confirmText: '确认兑换',
                     cancelText: '再想想'
                 });
@@ -620,20 +620,20 @@ export const ShopManager = {
             summaryHtml = `
                 <div class="shop-history-summary">
                     <span class="shop-history-summary-text">共 ${records.length} 笔消费</span>
-                    <span class="shop-history-summary-amount">¥${totalSpent}</span>
+                    <span class="shop-history-summary-amount">竹${totalSpent}</span>
                 </div>`;
         } else if (isArchived && archiveData) {
             summaryHtml = `
                 <div class="shop-history-summary">
                     <span class="shop-history-summary-text">归档汇总 · ${archiveData.totalCount} 笔</span>
-                    <span class="shop-history-summary-amount">¥${archiveData.totalSpent}</span>
+                    <span class="shop-history-summary-amount">竹${archiveData.totalSpent}</span>
                 </div>`;
         } else if (!month) {
             const totalAll = records.reduce((s, r) => s + r.price, 0);
             summaryHtml = `
                 <div class="shop-history-summary">
                     <span class="shop-history-summary-text">近期 ${records.length} 笔</span>
-                    <span class="shop-history-summary-amount">¥${totalAll}</span>
+                    <span class="shop-history-summary-amount">竹${totalAll}</span>
                 </div>`;
         }
 
@@ -649,7 +649,7 @@ export const ShopManager = {
                             <div class="shop-history-name">${item ? item.name : id}</div>
                             <div class="shop-history-meta">购买 ${info.count} 次</div>
                         </div>
-                        <div class="shop-history-price">-¥${info.totalPrice}</div>
+                        <div class="shop-history-price">-竹${info.totalPrice}</div>
                     </div>`;
             }).join('');
         } else if (records.length > 0) {
@@ -664,7 +664,7 @@ export const ShopManager = {
                             <div class="shop-history-name">${record.name}</div>
                             <div class="shop-history-meta">${day}日 ${time}</div>
                         </div>
-                        <div class="shop-history-price">-¥${record.price}</div>
+                        <div class="shop-history-price">-竹${record.price}</div>
                     </div>`;
             }).join('');
         } else {
@@ -688,7 +688,7 @@ export const ShopManager = {
                             const a = purchaseHistory.archive[k];
                             const [, mm] = k.split('-');
                             const active = month === k;
-                            return `<button class="shop-archive-month-btn ${active ? 'is-active' : ''}" data-history-action="month:${k}">${parseInt(mm)}月 · ¥${a.totalSpent}</button>`;
+                            return `<button class="shop-archive-month-btn ${active ? 'is-active' : ''}" data-history-action="month:${k}">${parseInt(mm)}月 · 竹${a.totalSpent}</button>`;
                         }).join('')}
                     </div>
                 </div>`;

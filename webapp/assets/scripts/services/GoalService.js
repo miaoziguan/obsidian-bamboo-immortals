@@ -46,8 +46,13 @@ export const GoalService = {
         }
         store.notify();
         // store.notify() 目前无 listener 注册，主动触发全局刷新以保证 AI 写入目标后立即可见
-        if (typeof renderAll === 'function') renderAll();
-        else if (typeof window.renderAll === 'function') window.renderAll();
+        if (typeof markSectionDirty === 'function') {
+            markSectionDirty('goals');
+            markSectionDirty('todo');
+        } else if (typeof window.markSectionDirty === 'function') {
+            window.markSectionDirty('goals');
+            window.markSectionDirty('todo');
+        }
     },
 
     async _migrateFromDayData() {
@@ -165,6 +170,11 @@ export const GoalService = {
      */
     _invalidateTasksCache() {
         this._todayTasksCache = { key: null, result: null, goalsRef: null, completionsHash: null };
+        if (typeof GoalHealthScore !== 'undefined' && GoalHealthScore.invalidateCache) {
+            GoalHealthScore.invalidateCache();
+        } else if (window.GoalHealthScore && window.GoalHealthScore.invalidateCache) {
+            window.GoalHealthScore.invalidateCache();
+        }
     },
 
     async loadCategories() {

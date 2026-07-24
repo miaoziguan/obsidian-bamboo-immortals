@@ -207,8 +207,15 @@ export const Handlers = {
     },
 
     selectHistoryDate(dateStr) {
-        store.goToDate(dateStr);
-        renderAll();
+        const newDate = dateStr instanceof Date ? dateStr : new Date(dateStr);
+        const { currentDate } = store.getState();
+        const direction = newDate >= currentDate ? 1 : -1;
+        RenderScheduler.startDateTransition(direction, () => {
+            store.goToDate(dateStr);
+            renderDate();
+            markSectionDirty('timeline');
+            markSectionDirty('todo');
+        });
         this.closeModal();
     },
 

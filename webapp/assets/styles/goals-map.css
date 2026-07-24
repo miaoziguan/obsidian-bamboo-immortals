@@ -1,6 +1,11 @@
 /* ========== 目标地图 ========== */
 .goal-map-container { position: relative; padding-bottom: calc(var(--space-4) * var(--section-gap-scale)); }
-.goal-list { display: flex; flex-direction: column; gap: calc(var(--space-5) * var(--section-gap-scale)); }
+.goal-list {
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--space-5) * var(--section-gap-scale));
+    contain: layout style;
+}
 .goal-row + .goal-row { margin-top: calc(var(--space-5) * var(--section-gap-scale)); }
 .goal-row {
     background: 
@@ -13,12 +18,12 @@
         radial-gradient(circle at 20% 30%, rgba(var(--white-rgb), 0.25) 0%, transparent 40%);
     backdrop-filter: blur(var(--glass-blur)) saturate(170%);
     -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(170%);
-    /* will-change 由 :hover 状态按需设置，节省 GPU 内存 */
     border-radius: var(--radius-xl);
-    box-shadow: 0 2px 8px rgba(var(--primary-rgb), 0.15); /* 简化阴影 */
+    box-shadow: 0 2px 8px rgba(var(--primary-rgb), 0.15);
     cursor: pointer;
     position: relative;
     transition: background 0.4s ease-out;
+    contain: layout style paint;
 }
 
 .goal-row:hover {

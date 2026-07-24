@@ -151,8 +151,15 @@ export class Store {
                 }
             }
 
-            // 自动归档旧月数据（依赖已加载的 purchaseHistory/incomeHistory）
-            await WalletService.archiveOldRecords();
+            // 自动归档旧月数据（延后到 idle 执行，不阻塞首屏初始化）
+            const runIdleArchive = () => {
+                if ('requestIdleCallback' in window) {
+                    requestIdleCallback(() => WalletService.archiveOldRecords().catch(e => console.warn('[Store] idle archive failed:', e)));
+                } else {
+                    setTimeout(() => WalletService.archiveOldRecords().catch(e => console.warn('[Store] idle archive failed:', e)), 1000);
+                }
+            };
+            runIdleArchive();
 
             // ── Phase 2: 加载日数据（此时 balance 已正确，saveToStorage 不会再覆盖） ──
             let dayKeys = [];
@@ -205,18 +212,34 @@ export class Store {
                 await this.saveToStorage();
             }
             
-            // ── Phase 3: Goals + Stats（依赖已加载的余额和历史） ──
-            try {
-                await this.loadGlobalGoals();
-            } catch (e) {
+            // ── Phase 3: Goals + Stats + 设置（并行加载，缩短首屏等待） ──
+            const settingsPromise = Promise.all([
+                storageManager.getSetting('theme'),
+                storageManager.getSetting('autoSyncTheme'),
+                storageManager.getSetting('weatherEnabled'),
+                storageManager.getSetting('weatherCity'),
+                storageManager.getSetting('weatherExpanded'),
+                storageManager.getSetting('quoteSource'),
+                storageManager.getSetting('quoteEnabled'),
+            ]).catch(e => {
+                console.error('[Store] Failed to load settings:', e);
+                return [null, null, null, null, null, null, null];
+            });
+
+            const goalsPromise = this.loadGlobalGoals().catch(e => {
                 console.error('[Store] loadGlobalGoals failed, continuing with rest of init:', e);
-            }
+            });
+
+            const [[theme, autoSyncThemeRaw, weatherEnabledRaw, weatherCityRaw, weatherExpandedRaw, quoteSourceRaw, quoteEnabledRaw]] = await Promise.all([
+                settingsPromise,
+                goalsPromise
+            ]);
 
             WalletService.recalibrateStats();
-            await storageManager.putSetting('shopStats', this.state.stats);
+            storageManager.putSetting('shopStats', this.state.stats).catch(e => console.warn('[Store] shopStats save failed:', e));
 
             // 天气字段异步拉取（不阻塞加载，失败静默）
-            if (this.state.ui.weatherEnabled && typeof WeatherService !== 'undefined') {
+            if (weatherEnabledRaw === 'true' && typeof WeatherService !== 'undefined') {
                 const self = this;
                 WeatherService.getWeather().then(function(w) {
                     if (!w) return;
@@ -242,16 +265,6 @@ export class Store {
                 }).catch(function() {});
             }
 
-            const [theme, autoSyncThemeRaw, weatherEnabledRaw, weatherCityRaw, weatherExpandedRaw, quoteSourceRaw, quoteEnabledRaw] = await Promise.all([
-                storageManager.getSetting('theme'),
-                storageManager.getSetting('autoSyncTheme'),
-                storageManager.getSetting('weatherEnabled'),
-                storageManager.getSetting('weatherCity'),
-                storageManager.getSetting('weatherExpanded'),
-                storageManager.getSetting('quoteSource'),
-                storageManager.getSetting('quoteEnabled'),
-            ]);
-
             this.state.ui.autoSyncTheme = autoSyncThemeRaw !== 'false';
             this.state.ui.weatherEnabled = weatherEnabledRaw === 'true';
             this.state.ui.weatherCity = (weatherCityRaw && weatherCityRaw.length > 0) ? weatherCityRaw : null;
@@ -275,8 +288,15 @@ export class Store {
             htmlEl.classList.add('theme-bamboo');
             this.state.ui.currentTheme = 'bamboo';
 
-            // Layer 3: Vault 是唯一事实源，同步到 localStorage 作为离线缓存
-            this._syncVaultToLocalCache();
+            // Layer 3: Vault 是唯一事实源，同步到 localStorage 作为离线缓存（延后到 idle）
+            const runIdleSync = () => {
+                if ('requestIdleCallback' in window) {
+                    requestIdleCallback(() => this._syncVaultToLocalCache());
+                } else {
+                    setTimeout(() => this._syncVaultToLocalCache(), 1000);
+                }
+            };
+            runIdleSync();
             
             // [诊断] 数据加载完成，记录状态
             console.log('[Store] init complete: balance=' + this.state.balance +
@@ -358,21 +378,28 @@ export class Store {
      * 缓存最近 60 天 + goals，避免 localStorage 配额溢出。
      */
     _syncVaultToLocalCache() {
-        try {
+        const trySet = (maxDays) => {
             const recent = {};
-            const keys = Object.keys(this.state.data).sort().reverse().slice(0, 60);
+            const keys = Object.keys(this.state.data).sort().reverse().slice(0, maxDays);
             for (const k of keys) {
                 if (this.state.data[k]) recent[k] = this.state.data[k];
             }
             StorageAdapter.set(StorageKeys.DAILY_REVIEW_DATA, JSON.stringify(recent));
             StorageAdapter.set('br_goals_cache', JSON.stringify(this.state.globalGoals));
-            // 商店数据缓存：桥接不可用时从 localStorage 恢复
             StorageAdapter.set('br_balance_cache', String(this.state.balance));
             StorageAdapter.set('br_purchase_history_cache', JSON.stringify(this.state.purchaseHistory));
             StorageAdapter.set('br_income_history_cache', JSON.stringify(this.state.incomeHistory));
             StorageAdapter.set('br_shop_stats_cache', JSON.stringify(this.state.stats));
+        };
+
+        try {
+            trySet(60);
         } catch (e) {
-            // 缓存是非关键路径，静默忽略
+            try { trySet(30); }
+            catch (e2) {
+                try { trySet(14); }
+                catch (e3) { /* 缓存非关键路径，静默忽略 */ }
+            }
         }
     }
 
@@ -568,6 +595,20 @@ export class Store {
             DataValidator.sanitizeDayData(this.state.data[key]);
         }
 
+        if (updates.goalTaskCompletions || updates.goalProgress) {
+            if (typeof GoalHealthScore !== 'undefined' && GoalHealthScore.invalidateCache) {
+                GoalHealthScore.invalidateCache();
+            } else if (window.GoalHealthScore && window.GoalHealthScore.invalidateCache) {
+                window.GoalHealthScore.invalidateCache();
+            }
+        }
+
+        if (typeof SearchService !== 'undefined' && SearchService.invalidateIndex) {
+            SearchService.invalidateIndex();
+        } else if (window.SearchService && window.SearchService.invalidateIndex) {
+            window.SearchService.invalidateIndex();
+        }
+
         this.markDayDirty(key);
         this.scheduleAutoSave();
     }
@@ -582,6 +623,20 @@ export class Store {
         if (errors.length > 0) {
             console.warn('数据验证警告:', errors);
             DataValidator.sanitizeDayData(this.state.data[dateStr]);
+        }
+
+        if (updates.goalTaskCompletions || updates.goalProgress) {
+            if (typeof GoalHealthScore !== 'undefined' && GoalHealthScore.invalidateCache) {
+                GoalHealthScore.invalidateCache();
+            } else if (window.GoalHealthScore && window.GoalHealthScore.invalidateCache) {
+                window.GoalHealthScore.invalidateCache();
+            }
+        }
+
+        if (typeof SearchService !== 'undefined' && SearchService.invalidateIndex) {
+            SearchService.invalidateIndex();
+        } else if (window.SearchService && window.SearchService.invalidateIndex) {
+            window.SearchService.invalidateIndex();
         }
 
         this.markDayDirty(dateStr);

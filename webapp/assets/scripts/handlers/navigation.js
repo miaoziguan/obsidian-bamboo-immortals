@@ -13,13 +13,23 @@ export const Navigation = {
 
     setupDateNavigation() {
         byId('prevDay')?.addEventListener('click', () => {
-            store.navigateDate(-1);
-            renderAll();
+            const direction = -1;
+            RenderScheduler.startDateTransition(direction, () => {
+                store.navigateDate(direction);
+                renderDate();
+                markSectionDirty('timeline');
+                markSectionDirty('todo');
+            });
         });
 
         byId('nextDay')?.addEventListener('click', () => {
-            store.navigateDate(1);
-            renderAll();
+            const direction = 1;
+            RenderScheduler.startDateTransition(direction, () => {
+                store.navigateDate(direction);
+                renderDate();
+                markSectionDirty('timeline');
+                markSectionDirty('todo');
+            });
         });
     },
 

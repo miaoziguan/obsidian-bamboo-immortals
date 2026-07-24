@@ -41,13 +41,13 @@ export const Gestures = {
             diffX = e.changedTouches[0].clientX - startX;
             if (Math.abs(diffX) > this.minSwipeDistance) {
                 e.preventDefault();
-                if (diffX > 0) {
-                    store.navigateDate(-1);
-                    renderAll();
-                } else {
-                    store.navigateDate(1);
-                    renderAll();
-                }
+                const direction = diffX > 0 ? -1 : 1;
+                RenderScheduler.startDateTransition(direction, () => {
+                    store.navigateDate(direction);
+                    renderDate();
+                    markSectionDirty('timeline');
+                    markSectionDirty('todo');
+                });
             }
         }, { passive: false });
     },

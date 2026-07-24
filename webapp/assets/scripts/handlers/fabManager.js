@@ -259,6 +259,7 @@ export const FABManager = {
         this.positionPanel();
         this.mainBtn.classList.add('open');
         this.mainBtn.setAttribute('aria-expanded', 'true');
+        this.mainBtn.setAttribute('aria-label', '收起快捷菜单');
         this.actions.classList.add('open');
         this.container.classList.add('fab-open');
 

@@ -518,14 +518,14 @@ export class VaultStorage {
   private static parseHistory(content: string): PurchaseHistory | IncomeHistory | null {
     let parsed: Record<string, unknown> | null = null;
     try {
-      parsed = JSON.parse(content);
+      parsed = JSON.parse(content) as Record<string, unknown>;
     } catch {
       return { records: [] };
     }
     if (!parsed || typeof parsed !== 'object' || !Array.isArray(parsed.records)) {
       return { records: [] };
     }
-    return parsed as PurchaseHistory | IncomeHistory;
+    return parsed;
   }
 
   // ---- 购买历史 (purchase-history.json) ----

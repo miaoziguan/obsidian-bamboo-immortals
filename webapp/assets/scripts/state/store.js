@@ -253,40 +253,6 @@ export class Store {
             await WalletService.recalibrateStats();
             storageManager.putSetting('shopStats', this.state.stats).catch(e => console.warn('[Store] shopStats save failed:', e));
 
-            // 天气字段异步拉取（不阻塞加载，失败静默）
-            if (weatherEnabledRaw === 'true' && typeof WeatherService !== 'undefined') {
-                const self = this;
-                WeatherService.getWeather().then(async function(w) {
-                    if (!w) return;
-                    const todayKey = self.getDateKey();
-                    // 内存里没有当天数据时，先尝试从磁盘补读，避免用空壳覆盖已有的时间线/待办
-                    if (!self.state.data[todayKey]) {
-                        try {
-                            const disk = await storageManager.getDay(todayKey);
-                            if (disk) self.state.data[todayKey] = disk;
-                        } catch (e) { /* 补读失败则继续，天气仍附加到新建对象 */ }
-                    }
-                    if (!self.state.data[todayKey]) {
-                        self.state.data[todayKey] = {
-                            date: todayKey,
-                            weekday: ['周日','周一','周二','周三','周四','周五','周六'][new Date().getDay()],
-                            metrics: {},
-                            timeline: []
-                        };
-                    }
-                    try {
-                        const detail = WeatherService.formatDetail(w);
-                        self.state.data[todayKey].weather = {
-                            temperature: w.temperature,
-                            weatherCode: w.weatherCode,
-                            label: detail ? detail.label : '',
-                            fetchedAt: w.fetchedAt
-                        };
-                        self.scheduleAutoSave();
-                    } catch (e) { /* 静默 */ }
-                }).catch(function() {});
-            }
-
             this.state.ui.autoSyncTheme = autoSyncThemeRaw !== 'false';
             this.state.ui.weatherEnabled = weatherEnabledRaw === 'true';
             this.state.ui.weatherCity = (weatherCityRaw && weatherCityRaw.length > 0) ? weatherCityRaw : null;

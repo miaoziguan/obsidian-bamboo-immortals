@@ -218,14 +218,9 @@ export class VaultStorage {
     const gp = asPlainObject(day.goalProgress);
     if (gp) score += Object.keys(gp).length;
 
-    // 指标：有实际值的字段
-    const metrics = asPlainObject(day.metrics);
-    if (metrics) {
-      for (const k of Object.keys(metrics)) {
-        const v = metrics[k];
-        if (v !== undefined && v !== null && v !== '') score += 1;
-      }
-    }
+    // 指标(metrics)是衍生/汇总值(时间线、待办完成等),不作为内容判断依据；
+    // 否则 createEmptyDayData 的默认占位值("--:--"/"0/0"/"0h"/"0")会使写守卫失效,
+    // 导致空壳覆盖磁盘真实数据(周末待办丢失根因)。
 
     // 备注
     const note = day.note;

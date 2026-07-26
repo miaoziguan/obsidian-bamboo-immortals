@@ -179,4 +179,58 @@ describe('VaultStorage putDay 写守卫：空壳不覆盖真实内容（时间�
     expect(back).not.toBeNull();
     expect(back!.date).toBe('2026-07-25');
   });
+
+  it('部分写入(磁盘子集) 合并而非覆盖：incoming 含磁盘没有的新条目，磁盘独有条目也被保留', async () => {
+    // 先写入磁盘：lateNight[a] + morning[b]
+    const onDisk = {
+      date: '2026-07-26', weekday: '周日', metrics: {},
+      timeline: [
+        { period: 'lateNight', items: [{ id: 'a', text: '字库岩茶体' }] },
+        { period: 'morning', items: [{ id: 'b', text: '阅读书籍' }] },
+      ],
+    } as unknown as DayData;
+    await storage.putDay(onDisk);
+    // 内存态退化：只拿到 lateNight[c]（与磁盘 a 不同），若整文件替换会丢 a 与 b
+    const partial = {
+      date: '2026-07-26', weekday: '周日', metrics: {},
+      timeline: [
+        { period: 'lateNight', items: [{ id: 'c', text: '字库轻风体' }] },
+      ],
+    } as unknown as DayData;
+    await storage.putDay(partial);
+    const back = await storage.getDay('2026-07-26');
+    const allItems = (back!.timeline as any[]).flatMap((p) => p.items ?? []);
+    // 并集：a、b（磁盘独有）保留，c（本次新）也写入，共 3 条，不丢不重
+    expect(allItems.length).toBe(3);
+    const texts = allItems.map((it: any) => it.text).sort();
+    expect(texts).toEqual(['字库岩茶体', '字库轻风体', '阅读书籍']);
+  });
+
+  it('部分写入合并目标勾选：incoming 仅含 g1 且取消 g1.1，磁盘含 g1+g2 → g1 改动生效且 g2 保留', async () => {
+    const onDisk = {
+      date: '2026-07-27', weekday: '周一', metrics: {}, timeline: [],
+      goalTaskCompletions: { g1: { '0': true, '1': true }, g2: { '0': true } },
+    } as unknown as DayData;
+    await storage.putDay(onDisk);
+    const partial = {
+      date: '2026-07-27', weekday: '周一', metrics: {}, timeline: [],
+      goalTaskCompletions: { g1: { '0': true, '1': false } }, // 取消 g1.1，且未提及 g2
+    } as unknown as DayData;
+    await storage.putDay(partial);
+    const gtc = (await storage.getDay('2026-07-27'))!.goalTaskCompletions as any;
+    expect(gtc.g1['1']).toBe(false); // 本次改动生效
+    expect(gtc.g2['0']).toBe(true);  // 磁盘独有 key 被合并保留
+  });
+
+  it('磁盘文件损坏时，本次有内容仍正常写入且不抛错（不丢本次、不冒险读损坏文件）', async () => {
+    // 手工写入损坏 JSON 到日文件路径
+    await (storage as any).vaultWrite((storage as any).dayPath('2026-07-28'), '{ bad json');
+    const incoming = {
+      date: '2026-07-28', weekday: '周二', metrics: {},
+      timeline: [{ period: 'morning', items: [{ id: 'x', text: '晨间打卡' }] }],
+    } as unknown as DayData;
+    await expect(storage.putDay(incoming)).resolves.toBeUndefined();
+    const back = await storage.getDay('2026-07-28');
+    expect((back!.timeline as any[]).length).toBe(1);
+  });
 });

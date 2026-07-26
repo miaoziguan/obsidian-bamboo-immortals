@@ -18,6 +18,24 @@ function asPlainObject(value: unknown): Record<string, unknown> | null {
   return null;
 }
 
+/** 合并日数据时的宽松视图类型（时间线条目字段不固定） */
+interface MergeItem {
+  id?: string;
+  time?: string;
+  task?: string;
+  text?: string;
+  eval?: string;
+  [k: string]: unknown;
+}
+interface MergePeriod {
+  period: string;
+  items?: MergeItem[];
+  [k: string]: unknown;
+}
+interface GoalCompMap {
+  [gid: string]: Record<string, boolean>;
+}
+
 /**
  * VaultStorage - 封装 Obsidian Vault adapter 的文件操作
  *
@@ -258,10 +276,116 @@ export class VaultStorage {
             return;
           }
         }
-      } catch { /* 文件损坏或不存在，继续正常写入 */ }
+      } catch {
+        // 文件存在但读取/解析失败(损坏)：空壳绝不覆盖，保留损坏文件供用户/备份修复，不冒险清空。
+        return;
+      }
     }
 
-    await this.vaultWrite(path, JSON.stringify(dayData, null, 2));
+    // 本次有内容时，若磁盘已有内容，则「合并」而非整文件替换——
+    // 防止 webapp 内存态变成磁盘的子集(部分丢失)时，把磁盘上多出的时间线/待办勾选静默抹掉。
+    let finalData: DayData = dayData;
+    try {
+      if (newScore > 0 && (await this.app.vault.adapter.exists(path))) {
+        const existing = JSON.parse(await this.app.vault.adapter.read(path)) as DayData;
+        if (this.dayContentScore(existing) > 0) {
+          finalData = this.mergeDayData(dayData, existing);
+        }
+      }
+    } catch {
+      // 读磁盘失败：不冒险读损坏文件，直接用本次数据落库（本次内容优先）。
+      finalData = dayData;
+    }
+
+    await this.vaultWrite(path, JSON.stringify(finalData, null, 2));
+  }
+
+  /**
+   * 合并两次日数据：以 incoming 为准，但保留磁盘(existing)中「incoming 未提及」的内容，
+   * 避免部分写入覆盖导致已存在的时间线/待办勾选被静默丢弃。
+   * - timeline：按 (period, time, task/text) 并集去重，incoming 已有条目以 incoming 为准
+   * - goalTaskCompletions / goalProgress：并集 key，incoming 提及的 key 以 incoming 为准
+   * - note：incoming 为空则沿用磁盘
+   * - 其余字段(metrics/weekday/weather/date)以 incoming 为准
+   */
+  private mergeDayData(incoming: DayData, existing: DayData): DayData {
+    const inv = incoming as unknown as {
+      timeline?: MergePeriod[];
+      goalTaskCompletions?: GoalCompMap;
+      goalProgress?: GoalCompMap;
+      note?: string;
+    };
+    const exv = existing as unknown as {
+      timeline?: MergePeriod[];
+      goalTaskCompletions?: GoalCompMap;
+      goalProgress?: GoalCompMap;
+      note?: string;
+    };
+
+    const result: DayData = { ...(incoming as object) } as DayData;
+
+    const inTimeline: MergePeriod[] = Array.isArray(inv.timeline) ? inv.timeline : [];
+    const exTimeline: MergePeriod[] = Array.isArray(exv.timeline) ? exv.timeline : [];
+    if (exTimeline.length > 0) {
+      const merged: MergePeriod[] = inTimeline.map((p) => ({ ...p, items: [...(p.items ?? [])] }));
+      const seen = new Set<string>();
+      const keyOf = (period: string, it: MergeItem): string =>
+        `${period}|${it?.time ?? ''}|${it?.task ?? it?.text ?? ''}`;
+      for (const p of merged) {
+        for (const it of (p.items ?? [])) seen.add(keyOf(p.period, it));
+      }
+      for (const p of exTimeline) {
+        let target: MergePeriod | undefined = merged.find((m) => m.period === p.period);
+        if (!target) {
+          // 新建时段 items 留空，由下方循环统一追加，避免与既有 items 重复
+          target = { ...p, items: [] };
+          merged.push(target);
+        }
+        for (const it of (p.items ?? [])) {
+          const k = keyOf(p.period, it);
+          if (!seen.has(k)) {
+            seen.add(k);
+            target.items = [...(target.items ?? []), it];
+          }
+        }
+      }
+      (result as unknown as { timeline?: MergePeriod[] }).timeline = merged;
+    }
+
+    (result as unknown as { goalTaskCompletions?: GoalCompMap }).goalTaskCompletions =
+      this.mergeGoalRecord(inv.goalTaskCompletions, exv.goalTaskCompletions);
+    (result as unknown as { goalProgress?: GoalCompMap }).goalProgress =
+      this.mergeGoalRecord(inv.goalProgress, exv.goalProgress);
+
+    const inNote = inv.note;
+    if ((!inNote || !`${inNote}`.trim()) && exv.note) {
+      (result as unknown as { note?: string }).note = exv.note;
+    }
+
+    return result;
+  }
+
+  /** 并集目标记录：incoming 提及的 key 以 incoming 为准，磁盘独有 key 保留 */
+  private mergeGoalRecord(
+    incoming: GoalCompMap | undefined,
+    existing: GoalCompMap | undefined,
+  ): GoalCompMap {
+    const i = asPlainObject(incoming) as GoalCompMap | null;
+    const e = asPlainObject(existing) as GoalCompMap | null;
+    const out: GoalCompMap = i ? { ...i } : {};
+    if (e) {
+      for (const gid of Object.keys(e)) {
+        const subE = asPlainObject(e[gid]) as Record<string, boolean> | null;
+        if (!subE) continue;
+        const subI = asPlainObject(out[gid]) as Record<string, boolean> | null;
+        const mergedSub: Record<string, boolean> = subI ? { ...subI } : {};
+        for (const k of Object.keys(subE)) {
+          if (!(k in mergedSub)) mergedSub[k] = subE[k];
+        }
+        out[gid] = mergedSub;
+      }
+    }
+    return out;
   }
 
   async deleteDay(dateKey: string): Promise<void> {

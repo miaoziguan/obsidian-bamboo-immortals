@@ -559,9 +559,13 @@ export class Store {
         if (!this.initPromise) return createEmptyDayData(this.getDateKey());
         const key = this.getDateKey();
         if (!this.state.data[key]) {
+            // 读路径：仅创建内存占位，供渲染与就地 mutation 引用。
+            // **不要**标记脏、**不要**触发自动保存 —— 否则在 loadFromStorage
+            // 完成前访问尚未加载进内存的日期，会把空壳写入 Vault，触发「空数据覆盖」
+            // 拦截（见 2026-07-27 案例）。真正的持久化由用户产生真实改动时的
+            // updateDayData / updateDayDataByDate 负责（putDay 还会与磁盘既有内容合并，
+            // 不会整片抹掉历史数据）。
             this.state.data[key] = createEmptyDayData(key);
-            this.markDayDirty(key);
-            this.scheduleAutoSave();
         }
         return this.state.data[key];
     }
@@ -569,8 +573,8 @@ export class Store {
     getDataByDate(dateStr) {
         if (!dateStr) return createEmptyDayData(this.getDateKey());
         if (!this.state.data[dateStr]) {
+            // 读路径：仅创建内存占位，**不**标记脏、**不**触发自动保存（理由同上）。
             this.state.data[dateStr] = createEmptyDayData(dateStr);
-            this.markDayDirty(dateStr);
         }
         DataValidator.cleanupTimeline(this.state.data[dateStr]);
         return this.state.data[dateStr];
@@ -613,7 +617,21 @@ export class Store {
     async updateDayData(updates) {
         const key = this.getDateKey();
         if (!this.state.data[key]) {
-            this.state.data[key] = createEmptyDayData(key);
+            // 若该日期已存在于磁盘（dayKeys 已登记）但内存尚未加载，先拉取真实数据，
+            // 再叠加用户改动。否则在空壳上写入、随后 loadFromStorage 的 Object.assign
+            // 又覆盖内存，会导致本次编辑在内存中丢失（磁盘侧由 putDay 合并保护，
+            // 但为彻底消除竞态仍在此预拉取）。
+            if (this.state.dayKeys && this.state.dayKeys.includes(key)) {
+                try {
+                    const existing = await storageManager.getDay(key);
+                    if (existing) this.state.data[key] = existing;
+                } catch (e) {
+                    console.warn('[Store] updateDayData 预拉取失败，基于空壳写入:', key, e.message);
+                }
+            }
+            if (!this.state.data[key]) {
+                this.state.data[key] = createEmptyDayData(key);
+            }
         }
         Object.assign(this.state.data[key], updates);
 
@@ -643,7 +661,18 @@ export class Store {
 
     async updateDayDataByDate(dateStr, updates) {
         if (!this.state.data[dateStr]) {
-            this.state.data[dateStr] = createEmptyDayData(dateStr);
+            // 同 updateDayData：若该日期已在磁盘登记但内存未加载，先预拉取真实数据再叠加改动。
+            if (this.state.dayKeys && this.state.dayKeys.includes(dateStr)) {
+                try {
+                    const existing = await storageManager.getDay(dateStr);
+                    if (existing) this.state.data[dateStr] = existing;
+                } catch (e) {
+                    console.warn('[Store] updateDayDataByDate 预拉取失败，基于空壳写入:', dateStr, e.message);
+                }
+            }
+            if (!this.state.data[dateStr]) {
+                this.state.data[dateStr] = createEmptyDayData(dateStr);
+            }
         }
         Object.assign(this.state.data[dateStr], updates);
 

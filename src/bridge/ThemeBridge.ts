@@ -360,6 +360,15 @@ export class ThemeBridge {
    * 计算 webapp 色相/明度 → Obsidian CSS 变量映射
    * 仅覆盖 3 类核心色（强调/背景/文字），其余由 Obsidian 当前主题推算。
    * 文字色会与背景色做 WCAG 对比度保护。
+   *
+   * 暗色模式饱和度/亮度策略（审计 4.7.1 复核结论：已覆盖，无逻辑缺口）：
+   * - 亮度差异：accentL（暗 50+lo / 亮 40+lo）、bgL（暗 12 / 亮 94）、
+   *   textNormalL（暗 88 / 亮 12）、textMutedL（暗 55 / 亮 45）均按 isDark 分支。
+   * - 饱和度差异：bgS 暗色 8 / 亮色 12（暗色背景降饱和避免泥浊）。
+   * - 强调色 accentS 固定 40：暗色下强调色需更高亮度（accentL 已提亮）而非降饱和，
+   *   且单测 ThemeBridge.test.ts 锁定暗色 `hsl(120, 40%, 50%)`，故不随模式变化。
+   * - webapp 自身的暗色降饱和（--ink-* / --text-* 在 variables.css 暗色段降低 S）
+   *   由 CSS 层负责，与本函数（Obsidian 原生变量注入）职责分离。
    */
   static computeObsidianVars(hue: number, lightnessOffset: number, isDark: boolean): Record<string, string> {
     const h = Math.round(hue);

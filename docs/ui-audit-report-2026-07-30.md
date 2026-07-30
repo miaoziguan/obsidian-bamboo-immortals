@@ -478,6 +478,15 @@ JS/HTML 旧类名迁移采用别名策略推迟到后续渐进替换，当前所
 2. 使用 `color-mix()` 或 HSL 函数根据明暗模式自动调整辅助色。
 3. 在 CI 中增加暗色/浅色双主题截图对比。
 
+**修复状态：** 已修复（2026-07-30）。逐项审查并补全暗色覆盖：
+
+- `.swipe-hint`（`modal-base.css`）：亮色为 `background: var(--text-primary); color: var(--white)` 的"深底白字"反色药丸，暗色下 `--text-primary` 翻转为亮色导致亮底白字不可见。`dark.css` 新增 `:host(.dark) .swipe-hint` 改为暗色表面 `rgba(var(--surface-dark-rgb-mid), 0.95)` + 亮色文字 `var(--text-primary)`。
+- `.fab-action-btn .tooltip` 及其 `::after` 三角箭头（`fab.css`）：同 `.swipe-hint` 的反色药丸问题，tooltip 文字暗色下不可见。`dark.css` 新增对应 `:host(.dark)` 覆盖，主体与箭头均改为暗色表面 + 亮色文字，避免接缝色差。
+- `.dynamic-hint-item:hover`（`goals-health.css`）：暗色基态已覆盖，但 hover 态仍回退到亮色 `rgba(var(--deep-rgb), 0.08)` 弱阴影，暗色下几乎不可见。`dark.css` 新增 `:host(.dark) .dynamic-hint-item:hover` 与暗色基态阴影对齐，保留悬停抬升层次。
+- `goals-health.css` 其余组件（圆环、健康分面板、health-layer/goal-item、score-trend、health-tips、health-section-title、health-layer-color、health-score-ring::before/::after、health-score-level、health-goal-improve、glow-pulse 动画等）经逐项交叉核对，`dark.css:1580–1825` 已有完整覆盖，无遗漏。
+- `ThemeBridge.ts` 复核结论：暗色饱和度/亮度差异**已覆盖、无逻辑缺口**。`computeObsidianVars` 已按 `isDark` 分支处理亮度（`accentL` 暗 50+lo / 亮 40+lo、`bgL` 暗 12 / 亮 94、`textNormalL` 暗 88 / 亮 12、`textMutedL` 暗 55 / 亮 45）与背景饱和度（`bgS` 暗 8 / 亮 12，暗色降饱和避免泥浊）。强调色 `accentS` 固定 40 由 `ThemeBridge.test.ts` 锁定（暗色 `hsl(120, 40%, 50%)`），暗色下以提亮 `accentL` 而非降饱和保证可见性；webapp 自身的暗色降饱和由 `variables.css` 暗色段负责，与本函数职责分离。仅补充文档注释说明该策略，未改动逻辑，15 项单测全绿。
+- 验证：`npm run build:webapp` / `npm run lint` / `npm run test:host`（345 项含 ThemeBridge 15 项）/ `npm test`（214 项）均通过；`browser-verify.py` 在默认（亮色）下绿。受影响元素（`.swipe-hint`、FAB tooltip）为交互触发的瞬态元素，`browser-verify.py` 暂不支持暗色切换，暗色可读性以静态 CSS 审查 + 构建内联成功确认。
+
 #### 4.7.2 玻璃拟态可读性依赖背景（P2）
 
 **现象：**
@@ -570,7 +579,7 @@ JS/HTML 旧类名迁移采用别名策略推迟到后续渐进替换，当前所
 | 9 | 行内编辑反馈不足 | 交互 | P1 | Goals 模块 | 低 | 已修复（保存成功绿色闪烁 + 失败保留编辑框/红框抖动 + 快捷键提示 + 即时范围校验 + targetValue 抛错单测） |
 | 10 | 按钮系统碎片化 | 组件一致性 | P1 | 全局组件 | 中 | 多套按钮类 |
 | 11 | 卡片/面板圆角阴影不统一 | 组件一致性 | P1 | 全局 CSS | 低 | 变量使用混乱 |
-| 12 | 暗色模式覆盖不完整 | 主题 | P1 | 全局 CSS | 中 | 部分组件未覆盖 |
+| 12 | 暗色模式覆盖不完整 | 主题 | P1 | 全局 CSS | 中 | 已修复（.swipe-hint / .fab tooltip / .dynamic-hint-item:hover 暗色覆盖补全 + ThemeBridge 暗色策略复核无缺口，见 4.7.1） |
 | 13 | 硬编码 tooltip 白色文字 | CSS 架构 | P2 | 4 个 CSS 文件 | 低 | 10 处，均带 lint-disable |
 | 14 | will-change 策略缺失 | 性能 | P2 | 动画相关 | 低 | 部分已使用 |
 | 15 | 日期切换边界测试不足 | 交互 | P2 | Timeline/Goals | 中 | 需压力测试 |

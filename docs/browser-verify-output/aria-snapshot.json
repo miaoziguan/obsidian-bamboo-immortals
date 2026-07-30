@@ -383,7 +383,7 @@
     "tag": "DIV",
     "id": "weatherWidget",
     "role": null,
-    "ariaLabel": "晴 30度",
+    "ariaLabel": "多云 34度",
     "ariaExpanded": null,
     "ariaHidden": null,
     "ariaLive": null,
@@ -617,7 +617,7 @@
     "ariaExpanded": null,
     "ariaHidden": "true",
     "ariaLive": null,
-    "className": "ticket-dot has-data current"
+    "className": "ticket-dot has-data"
   },
   {
     "tag": "SPAN",
@@ -657,7 +657,7 @@
     "ariaExpanded": null,
     "ariaHidden": "true",
     "ariaLive": null,
-    "className": "ticket-dot has-data"
+    "className": "ticket-dot has-data current"
   },
   {
     "tag": "SPAN",

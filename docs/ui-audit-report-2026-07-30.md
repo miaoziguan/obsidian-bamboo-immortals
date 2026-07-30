@@ -368,7 +368,7 @@
 
 ### 4.5 交互与用户体验
 
-#### 4.5.1 日期切换与首屏渲染（P2）
+#### 4.5.1 日期切换与首屏渲染（P2）✅ 已修复（2026-07-30）
 
 **现状：**
 
@@ -380,6 +380,16 @@
 1. 在极低性能设备或大量目标（>200）场景下验证动画掉帧。
 2. 日期切换过程中若用户连续快速点击，需要防抖/中断逻辑，避免动画队列堆积。
 3. 首屏渐进渲染需处理「timeline 已渲染但 goals 尚未渲染」期间的骨架屏/占位高度，避免布局抖动（CLS）。
+
+**修复状态：** 已修复（2026-07-30）。针对上述三项待补分别落地：
+
+1. **快速连点中断（待补 2）**：`startDateTransition` 原有中断逻辑仅清理类名与 `setTimeout`，未追踪 `requestAnimationFrame` 句柄 —— 当用户在「退场动画完成、进场 rAF 已调度但未执行」的窗口期再次点击时，旧 rAF 回调会向新过渡的容器注入 `date-enter` 类，与新退场动画串扰。修复：新增 `_dateTransitionRaf` 字段追踪 rAF，`_clearDateTransition` 统一清理类名 + timer + rAF + 标志位；`startDateTransition` 检测到 `_dateTransitioning` 时调用 `_clearDateTransition` 一次性中断，丢弃旧 `renderCallback`，仅最后一次点击的方向生效（防抖语义）。375px 实测：连续 5 次 nextDay + 3 次 prevDay（间隔 80ms，远小于 280ms 退场），动画类名最终复位为干净状态，无队列堆积。
+2. **首屏 CLS 占位（待补 3）**：`firstPaintProgressive` 第一帧渲染 timeline/todo 后，第二帧（rAF）才渲染 goals/themeEffect 等区块，期间未渲染区块的高度为零，第二帧补入时推动下方内容下移造成布局抖动。修复：第一帧 flush 后为所有 `deferredIds`（非优先区块，含 themeEffect）插入带 `data-section-id` 的 `.section-placeholder` 占位 div（`min-height: var(--bm-placeholder-min-h, 160px)` + shimmer），由 `_insertInOrder` 按区块顺序就位；第二帧 `_doPartialRender` 通过 `querySelector('[data-section-id=...]')` 命中占位并 `replaceWith` 真实 section，高度从占位平滑过渡到真实内容。375px 实测：渐进渲染完成后残留占位 0，真实 section 3 个全部就位。
+3. **大量目标掉帧（待补 1）**：`>200` 目标的掉帧压力不在本次实机压测范围（http.server 验证环境无 Vault 数据，无法注入超长目标列表），但相关缓解已就位且与本修复正交：`.goal-row { contain: layout style paint }`（goals-map.css，UX-4）隔离单行重排重绘、`will-change` 白名单策略（4.2.3）避免常驻合成层、`section[data-section-id] { contain: layout style }`（base.css）隔离区块级重排。占位逻辑不依赖目标数量，`_doPartialRender` 的 `replaceWith` 为 O(1) DOM 替换，不会随列表长度退化。
+
+新增令牌：`--bm-placeholder-min-h: 160px`（variables.css）。新增样式：`.section-placeholder` + `::before` shimmer + `prefers-reduced-motion` 降级（base.css）。验证：`npm run build:webapp` / `npm run lint` / `npm test`（214 通过）/ `node scripts/lint-css-tokens.mjs`（0 违规）/ `python3 scripts/browser-verify.py`（12/0）均通过。
+
+> 附注：375px 验证中发现 `store.js` 日期导航在 http.server 无 Vault 环境下抛 `dayKeys.includes is not a function`（store.js:707 缺少与 624/659 行一致的 `this.state.dayKeys &&` 守卫）。该问题为 store 数据层既有缺陷，与本次 renderScheduler 动画/CLS 修复无关，不在 Task 16 范围内。
 
 #### 4.5.2 行内编辑反馈不足（P1）✅ 已修复（2026-07-30）
 
@@ -598,7 +608,7 @@ JS/HTML 旧类名迁移采用别名策略推迟到后续渐进替换，当前所
 | 12 | 暗色模式覆盖不完整 | 主题 | P1 | 全局 CSS | 中 | 已修复（.swipe-hint / .fab tooltip / .dynamic-hint-item:hover 暗色覆盖补全 + ThemeBridge 暗色策略复核无缺口，见 4.7.1） |
 | 13 | 硬编码 tooltip 白色文字 | CSS 架构 | P2 | 4 个 CSS 文件 | 低 | 已修复（10 处统一为 `var(--text-on-accent)`，lint-disable 全部移除，R7 零违规，见 4.1.1） |
 | 14 | will-change 策略缺失 | 性能 | P2 | 动画相关 | 低 | 已修复（白名单策略：移除 4 处常驻 will-change，作用域化到 date-transitioning/date-enter 动画活跃态，见 4.2.3） |
-| 15 | 日期切换边界测试不足 | 交互 | P2 | Timeline/Goals | 中 | 需压力测试 |
+| 15 | 日期切换边界测试不足 | 交互 | P2 | Timeline/Goals | 中 | 已修复（rAF 句柄追踪 + _clearDateTransition 统一中断，防抖丢弃旧回调；firstPaintProgressive 占位 div 防 CLS；见 4.5.1） |
 | 16 | 主题同步延迟感 | 主题 | P2 | ThemeBridge | 中 | 一帧延迟 |
 | 17 | 图标系统不统一 | 组件一致性 | P2 | 全局组件 | 中 | 多源混用 |
 | 18 | 玻璃拟态可读性依赖背景 | 主题 | P2 | 全局 CSS | 低 | 已修复（--card-bg-fallback + @supports not backdrop-filter） |

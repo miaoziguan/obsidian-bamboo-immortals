@@ -649,6 +649,9 @@
     --bm-bp-md: 768px;     /* tablet / narrow Obsidian sidebar */
     --bm-bp-lg: 1024px;    /* desktop */
 
+    /* Progressive-render placeholder min-height — UI Audit 4.5.1 CLS mitigation */
+    --bm-placeholder-min-h: 160px;
+
     /* Fluid font scale — computed as clamp(min_px, fluid_vw, max_px)
        where min applies at 320px and max at 1200px viewport width.
        Use these instead of fixed --font-size-* for body-level text. */

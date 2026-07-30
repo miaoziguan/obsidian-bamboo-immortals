@@ -411,6 +411,38 @@ section[data-section-id] {
     100% { background-position: -200% 0; }
 }
 
+/* === 渐进渲染占位（UI Audit 4.5.1）===
+   firstPaintProgressive 第二帧才渲染的区块（goals 等）在第一帧插入占位元素，
+   预留 min-height 避免布局抖动（CLS）；第二帧 _doPartialRender 用真实 section 替换。
+   视觉沿用骨架屏 shimmer，保持加载态连贯。 */
+.section-placeholder {
+    min-height: var(--bm-placeholder-min-h, 160px);
+    margin-bottom: var(--space-4);
+    border-radius: var(--radius-2xl);
+    border: 1px solid var(--card-border);
+    background: var(--card-glass);
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    backdrop-filter: blur(var(--glass-blur));
+    position: relative;
+    overflow: hidden;
+}
+
+.section-placeholder::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent 25%, rgba(var(--bm-primary-rgb), 0.06) 50%, transparent 75%);
+    background-size: 200% 100%;
+    animation: skeletonShimmer 1.5s infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .section-placeholder::before {
+        animation: none;
+        display: none;
+    }
+}
+
 /* === 日期切换过渡动画 === */
 #sectionsContainer {
     position: relative;

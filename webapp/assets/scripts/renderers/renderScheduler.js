@@ -14,6 +14,7 @@ export const RenderScheduler = {
     _todoCollapseFn: null,
     _dateTransitioning: false,
     _dateTransitionTimer: null,
+    _dateTransitionRaf: null,
     _exitAnimationMs: 280,
     _enterAnimationMs: 420,
 
@@ -249,18 +250,27 @@ export const RenderScheduler = {
             : [];
 
         const priorityIds = ['timeline', 'todo'];
-        const restIds = allVisible
+        const deferredIds = allVisible
             .map(s => s.id)
-            .filter(id => !priorityIds.includes(id) && id !== 'themeEffect');
+            .filter(id => !priorityIds.includes(id));
 
         priorityIds.forEach(id => this.markDirty(id));
         this.flush();
 
+        // 为第二帧才渲染的区块插入占位元素，预留布局高度，
+        // 避免 timeline/todo 已渲染、goals 等区块迟到导致的布局抖动（CLS）。
+        // 占位 div 带 data-section-id，第二帧 _doPartialRender 会用真实 section 替换它。
+        deferredIds.forEach(id => {
+            if (sectionsContainer.querySelector(`[data-section-id="${id}"]`)) return;
+            const placeholder = document.createElement('div');
+            placeholder.setAttribute('data-section-id', id);
+            placeholder.className = 'section-placeholder';
+            placeholder.setAttribute('aria-hidden', 'true');
+            this._insertInOrder(sectionsContainer, placeholder, id, allVisible);
+        });
+
         requestAnimationFrame(() => {
-            restIds.forEach(id => this.markDirty(id));
-            if (allVisible.some(s => s.id === 'themeEffect')) {
-                this.markDirty('themeEffect');
-            }
+            deferredIds.forEach(id => this.markDirty(id));
             this.flush();
         });
     },
@@ -272,12 +282,10 @@ export const RenderScheduler = {
             return;
         }
 
+        // 中断进行中的过渡：清理类名 + 取消挂起的 timer 与 rAF，
+        // 避免快速连续点击导致动画队列堆积，以及旧 rAF 回调串扰新过渡（UI Audit 4.5.1）
         if (this._dateTransitioning) {
             this._clearDateTransition();
-            if (this._dateTransitionTimer) {
-                clearTimeout(this._dateTransitionTimer);
-                this._dateTransitionTimer = null;
-            }
         }
 
         this._dateTransitioning = true;
@@ -291,7 +299,8 @@ export const RenderScheduler = {
 
             this.flush();
 
-            requestAnimationFrame(() => {
+            this._dateTransitionRaf = requestAnimationFrame(() => {
+                this._dateTransitionRaf = null;
                 sectionsContainer.classList.remove('date-transitioning');
                 sectionsContainer.classList.add('date-enter', dir);
 
@@ -308,6 +317,14 @@ export const RenderScheduler = {
         const sectionsContainer = byId('sectionsContainer');
         if (sectionsContainer) {
             sectionsContainer.classList.remove('date-transitioning', 'date-enter', 'next', 'prev');
+        }
+        if (this._dateTransitionTimer) {
+            clearTimeout(this._dateTransitionTimer);
+            this._dateTransitionTimer = null;
+        }
+        if (this._dateTransitionRaf) {
+            cancelAnimationFrame(this._dateTransitionRaf);
+            this._dateTransitionRaf = null;
         }
         this._dateTransitioning = false;
     },

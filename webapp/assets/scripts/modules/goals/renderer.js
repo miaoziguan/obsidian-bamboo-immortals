@@ -980,18 +980,46 @@ export const GoalsRenderer = {
         let input;
         let hint = null;
         let closeHintFn = null;
+        let errorMsg = null;
+        // 显示行内错误（红框 + 错误文案），隐藏快捷键提示以免重叠
+        const showError = (msg) => {
+            input.classList.add('goal-inline-edit-input-error');
+            if (errorMsg) { errorMsg.textContent = msg; errorMsg.style.display = 'block'; }
+            if (hint) hint.style.display = 'none';
+        };
+        // 清除行内错误状态，恢复快捷键提示
+        const clearError = () => {
+            input.classList.remove('goal-inline-edit-input-error');
+            if (errorMsg) errorMsg.style.display = 'none';
+            if (hint) hint.style.display = '';
+        };
         const saveAndRender = () => {
             if (closeHintFn) { closeHintFn({ target: input }); closeHintFn = null; }
             const val = input.value.trim();
             if (val === '' && (editType === 'title' || editType === 'name')) { this.renderSingleGoal(goalId); return; }
+            // Step 4: 保存前即时范围校验（currentValue / targetValue）
+            const validation = this._validateInlineEdit(editType, val, goal, subIdx);
+            if (!validation.valid) {
+                showError(validation.message);
+                Toast.showToast(validation.message, 'error');
+                // 保留编辑框供用户修正，重新挂载 blur 监听以便重试
+                input.addEventListener('blur', saveAndRender, { once: true });
+                return;
+            }
             const doSave = () => {
                 return this._commitInlineEdit(goal, subIdx, editType, val).then(() => {
                     this._pendingEditPromise = null;
                     this.renderSingleGoal(goalId);
+                    // Step 1: 保存成功 — 绿色闪烁反馈
+                    this._flashEditedElement(goalId, subIdx);
                 }).catch(e => {
                     this._pendingEditPromise = null;
                     console.error('Save failed:', e);
-                    this.renderSingleGoal(goalId);
+                    // Step 2: 保存失败 — 保留编辑框并高亮错误，不调用 renderSingleGoal
+                    const msg = (e && e.message) ? e.message : '保存失败，请重试';
+                    showError(msg);
+                    Toast.showToast(msg, 'error');
+                    input.addEventListener('blur', saveAndRender, { once: true });
                 });
             };
             if (this._pendingEditPromise) {
@@ -1180,7 +1208,7 @@ export const GoalsRenderer = {
                     // 创建提示
                     const hint = document.createElement('div');
                     hint.className = 'goal-daily-hint';
-                    hint.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;"><span>💡 点击填入<br><strong>${suggestedVal}/天</strong></span><span style="cursor:pointer;opacity:0.7;font-size:14px;line-height:1;" class="hint-close">✕</span></div><span style="font-size:10px;opacity:0.8;">剩余 ${remainingVal.toFixed(1)} / ${remainingDays} 天</span>`;
+                    hint.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;"><span>💡 点击填入<br><strong>${suggestedVal}/天</strong></span><span style="cursor:pointer;opacity:0.7;font-size:14px;line-height:1;" class="hint-close">✕</span></div><span style="font-size:10px;opacity:0.8;">剩余 ${remainingVal.toFixed(1)} / ${remainingDays} 天</span><div style="font-size:10px;opacity:0.75;margin-top:3px;border-top:1px solid rgba(255,255,255,0.3);padding-top:3px;">Enter 保存 · Esc 取消</div>`;
                     hint.style.cssText = 'position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:8px;padding:10px 14px;background:var(--bamboo-primary);color:white;border-radius:10px;font-size:12px;white-space:nowrap;z-index:1000;box-shadow:0 4px 16px hsla(calc(var(--accent-hue) + 0), 26%, calc(48% + var(--accent-lightness-offset)), 0.3);line-height:1.4;cursor:pointer;transition:transform 0.2s,box-shadow 0.2s,opacity:0.2s;';
                     hint.addEventListener('mouseenter', () => {
                         hint.style.transform = 'translateX(-50%) scale(1.05)';
@@ -1243,6 +1271,48 @@ export const GoalsRenderer = {
             }
         }
 
+        // Step 3: 在编辑框下方显示「Enter 保存 · Esc 取消」提示
+        // dailyMin 已在建议提示中内嵌快捷键说明（closeHintFn 已设置），此处跳过避免重叠
+        if (!closeHintFn) {
+            hint = document.createElement('div');
+            hint.className = 'goal-inline-edit-hint';
+            hint.textContent = 'Enter 保存 · Esc 取消';
+
+            errorMsg = document.createElement('div');
+            errorMsg.className = 'goal-inline-edit-error-msg';
+            errorMsg.style.display = 'none';
+
+            // 确保输入框有相对定位的父级以承载绝对定位的提示
+            let hintAnchor = input.parentNode;
+            const anchorIsRelative = hintAnchor && hintAnchor.nodeType === 1 && getComputedStyle(hintAnchor).position === 'relative';
+            if (!anchorIsRelative) {
+                const anchor = document.createElement('span');
+                anchor.className = 'goal-inline-edit-anchor';
+                input.parentNode.replaceChild(anchor, input);
+                anchor.appendChild(input);
+                hintAnchor = anchor;
+            }
+            if (hintAnchor) {
+                hintAnchor.appendChild(hint);
+                hintAnchor.appendChild(errorMsg);
+            }
+            // 注意：此处不覆盖 closeHintFn。快捷键提示无 document 监听需要清理，
+            // 保存/取消时 renderSingleGoal 会整体替换 goal-row 自然回收；
+            // 保留 hint/errorMsg 在 DOM 中，以便保存失败时 showError 仍可显示错误文案。
+        }
+
+        // Step 4: currentValue / targetValue 即时范围校验（输入时反馈）
+        if (editType === 'currentValue' || editType === 'targetValue') {
+            input.addEventListener('input', () => {
+                const result = this._validateInlineEdit(editType, input.value.trim(), goal, subIdx);
+                if (result.valid) {
+                    clearError();
+                } else {
+                    showError(result.message);
+                }
+            });
+        }
+
         input.addEventListener('blur', saveAndRender, { once: true });
         input.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); input.blur(); }
@@ -1264,6 +1334,58 @@ export const GoalsRenderer = {
             autoCalcGoalDateRange:  (g) => this.autoCalcGoalDateRange(g),
             renderSingleGoal:       (id) => this.renderSingleGoal(id),
         });
+    },
+
+    /**
+     * 行内编辑即时范围校验（currentValue / targetValue）
+     * @returns {{valid: boolean, message?: string}}
+     */
+    _validateInlineEdit(editType, value, goal, subIdx) {
+        if (subIdx === null || !goal.items || !goal.items[subIdx]) return { valid: true };
+        const item = goal.items[subIdx];
+        if (editType === 'targetValue') {
+            const newTarget = parseFloat(value);
+            if (isNaN(newTarget)) return { valid: false, message: '目标值必须为数字' };
+            if (newTarget <= 0) return { valid: false, message: '目标值必须大于 0' };
+            const start = parseFloat(item.startValue) || 0;
+            if (newTarget === start) return { valid: false, message: '目标值不能等于起始值' };
+            return { valid: true };
+        }
+        if (editType === 'currentValue') {
+            const newVal = parseFloat(value);
+            if (isNaN(newVal)) return { valid: false, message: '当前值必须为数字' };
+            const start = parseFloat(item.startValue) || 0;
+            const target = parseFloat(item.targetValue) || 0;
+            // start === target 时无范围约束（服务层会原样写入）
+            if (start === target) return { valid: true };
+            const lo = Math.min(start, target);
+            const hi = Math.max(start, target);
+            if (newVal < lo || newVal > hi) {
+                return { valid: false, message: `当前值应在 ${lo} ~ ${hi} 范围内` };
+            }
+            return { valid: true };
+        }
+        return { valid: true };
+    },
+
+    /**
+     * 保存成功后对被编辑元素做短暂绿色闪烁反馈
+     */
+    _flashEditedElement(goalId, subIdx) {
+        const container = byId('goalList');
+        if (!container) return;
+        let target;
+        if (subIdx !== null) {
+            target = container.querySelector(
+                `.goal-item-entry[data-goal-id="${CSS.escape(goalId)}"][data-sub-idx="${subIdx}"]`
+            );
+        }
+        if (!target) {
+            target = container.querySelector(`.goal-row[data-goal-id="${CSS.escape(goalId)}"]`);
+        }
+        if (!target) return;
+        target.classList.add('goal-inline-edit-flash-success');
+        setTimeout(() => target.classList.remove('goal-inline-edit-flash-success'), 1200);
     },
 
     /**

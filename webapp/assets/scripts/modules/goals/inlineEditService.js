@@ -72,20 +72,24 @@ export const GoalInlineEditService = {
                 if (subIdx !== null && goal.items && goal.items[subIdx]) {
                     const item = goal.items[subIdx];
                     const newTarget = parseFloat(value);
-                    if (!isNaN(newTarget) && newTarget > 0) {
-                        const start = parseFloat(item.startValue) || 0;
-                        if (newTarget !== start) {
-                            item.targetValue = String(newTarget);
-                            const current = parseFloat(item.currentValue) || start;
-                            item.percent = Math.min(100, Math.max(0, Math.round((Math.abs(current - start) / Math.abs(newTarget - start)) * 100)));
-                            delete item.manuallySetDate;
-                            deps.autoCalcEndDate(item);
-                            deps.autoCalcGoalDateRange(goal);
-                            changed = true;
-                        } else {
-                            Toast.showToast('目标值不能等于起始值', 'error');
-                        }
+                    // 校验失败抛错，由调用方（renderer）负责向用户展示反馈
+                    if (isNaN(newTarget)) {
+                        throw new Error('目标值必须为数字');
                     }
+                    if (newTarget <= 0) {
+                        throw new Error('目标值必须大于 0');
+                    }
+                    const start = parseFloat(item.startValue) || 0;
+                    if (newTarget === start) {
+                        throw new Error('目标值不能等于起始值');
+                    }
+                    item.targetValue = String(newTarget);
+                    const current = parseFloat(item.currentValue) || start;
+                    item.percent = Math.min(100, Math.max(0, Math.round((Math.abs(current - start) / Math.abs(newTarget - start)) * 100)));
+                    delete item.manuallySetDate;
+                    deps.autoCalcEndDate(item);
+                    deps.autoCalcGoalDateRange(goal);
+                    changed = true;
                 }
                 break;
             case 'dailyMin':

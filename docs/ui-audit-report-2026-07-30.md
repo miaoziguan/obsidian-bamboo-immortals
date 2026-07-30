@@ -365,7 +365,7 @@
 2. 日期切换过程中若用户连续快速点击，需要防抖/中断逻辑，避免动画队列堆积。
 3. 首屏渐进渲染需处理「timeline 已渲染但 goals 尚未渲染」期间的骨架屏/占位高度，避免布局抖动（CLS）。
 
-#### 4.5.2 行内编辑反馈不足（P1）
+#### 4.5.2 行内编辑反馈不足（P1）✅ 已修复（2026-07-30）
 
 **现象：**
 
@@ -377,6 +377,14 @@
 1. 保存成功时显示短暂绿色闪烁或 Toast；失败时保留编辑框并高亮错误。
 2. 在编辑框下方显示操作提示：`Enter 保存 · Esc 取消`。
 3. 对 `currentValue`、`targetValue` 等数值输入增加范围校验即时反馈。
+
+**修复状态：** 已修复（2026-07-30，Task 10）。
+
+1. **保存成功绿色闪烁**：`renderer.js` `_startInlineEdit` 的 `saveAndRender().then()` 回调新增 `_flashEditedElement()`，对被编辑的 `goal-item-entry`/`goal-row` 添加 `goal-inline-edit-flash-success` 类，触发 1.2s 绿色（`--primary-rgb`）背景 + 边框闪烁动画（`@keyframes goal-inline-edit-flash-success`）。
+2. **保存失败保留编辑框 + 高亮错误**：`saveAndRender` 新增保存前即时校验（`_validateInlineEdit`），失败时不调用 commit，保留输入框并加 `goal-inline-edit-input-error`（红框 + 抖动 `@keyframes goal-inline-edit-shake`）+ Toast；`.catch()` 回调不再 `renderSingleGoal`，改为保留输入框、显示错误文案与 Toast，并重新挂载 blur 监听以便重试。服务层 `inlineEditService.js` 的 `targetValue` 校验由「静默/Toast」改为 `throw new Error`，校验失败不写入、不持久化（新增 4 个单测覆盖）。
+3. **快捷键提示**：输入框下方新增 `goal-inline-edit-hint` 元素显示「Enter 保存 · Esc 取消」；`dailyMin` 建议提示内嵌同一行快捷键说明，避免重叠；`prefers-reduced-motion` 下关闭闪烁/抖动。
+4. **即时范围校验**：`currentValue`/`targetValue` 输入框新增 `input` 事件监听，调用 `_validateInlineEdit` 实时切换红框与错误文案（targetValue：>0 且 ≠ 起始值；currentValue：落在 start~target 区间）。
+5. 验证：`npm run build:webapp && npm run lint && npm test` 全绿（24 suites / 214 passed）。
 
 #### 4.5.3 主题切换与 Obsidian 同步存在延迟感（P2）
 
@@ -539,7 +547,7 @@
 | 6 | 触控区域过小 | 响应式 | P1 | 移动端 | 低 | 多处 <44px |
 | 7 | CSS 变量命名不一致 | CSS 架构 | P1 | 全局 CSS | 中 | 已修复（--bm-* canonical + alias + lint R10） |
 | 8 | 选择器权重过大 | CSS 架构 | P1 | 全局 CSS | 中 | 已修复（裸标签选择器 :where() 降为 0 权重默认值） |
-| 9 | 行内编辑反馈不足 | 交互 | P1 | Goals 模块 | 低 | 无保存反馈 |
+| 9 | 行内编辑反馈不足 | 交互 | P1 | Goals 模块 | 低 | 已修复（保存成功绿色闪烁 + 失败保留编辑框/红框抖动 + 快捷键提示 + 即时范围校验 + targetValue 抛错单测） |
 | 10 | 按钮系统碎片化 | 组件一致性 | P1 | 全局组件 | 中 | 多套按钮类 |
 | 11 | 卡片/面板圆角阴影不统一 | 组件一致性 | P1 | 全局 CSS | 低 | 变量使用混乱 |
 | 12 | 暗色模式覆盖不完整 | 主题 | P1 | 全局 CSS | 中 | 部分组件未覆盖 |

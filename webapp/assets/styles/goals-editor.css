@@ -2031,3 +2031,83 @@
     min-height: var(--touch-target);
     z-index: 1;
 }
+
+/* ========== 行内编辑反馈增强 (UI Audit 4.5.2 / Task 10) ========== */
+
+/* Step 1: 保存成功 — 绿色闪烁（应用到被编辑的 goal-row / goal-item-entry） */
+.goal-inline-edit-flash-success {
+    animation: goal-inline-edit-flash-success 1.2s ease-out;
+}
+
+@keyframes goal-inline-edit-flash-success {
+    0%   { background-color: rgba(var(--primary-rgb), 0.28); box-shadow: 0 0 0 2px var(--bamboo-primary); }
+    60%  { background-color: rgba(var(--primary-rgb), 0.12); box-shadow: 0 0 0 1px var(--bamboo-primary); }
+    100% { background-color: transparent; box-shadow: none; }
+}
+
+/* Step 2: 保存失败 / 校验失败 — 红色边框 + 抖动 */
+.goal-inline-edit-input-error,
+.goal-inline-edit-input.goal-inline-edit-input-error {
+    border-color: var(--bamboo-error, #ef5350) !important;
+    animation: goal-inline-edit-shake 0.4s ease-in-out;
+}
+
+@keyframes goal-inline-edit-shake {
+    0%, 100% { transform: translateX(0); }
+    20%      { transform: translateX(-4px); }
+    40%      { transform: translateX(4px); }
+    60%      { transform: translateX(-3px); }
+    80%      { transform: translateX(3px); }
+}
+
+/* Step 3: 行内编辑锚点容器（承载绝对定位的提示） */
+.goal-inline-edit-anchor {
+    position: relative;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* 「Enter 保存 · Esc 取消」快捷键提示 */
+.goal-inline-edit-hint {
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-top: 4px;
+    padding: 2px 8px;
+    font-size: var(--font-size-xs, 11px);
+    line-height: 1.4;
+    color: var(--text-secondary);
+    background: var(--bamboo-surface, var(--bamboo-background, rgba(0,0,0,0.55)));
+    border: 1px solid var(--bamboo-border, rgba(255,255,255,0.12));
+    border-radius: var(--radius-sm, 4px);
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 20;
+    opacity: 0.9;
+}
+
+/* 行内错误消息（校验/保存失败时显示，与快捷键提示互斥） */
+.goal-inline-edit-error-msg {
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-top: 4px;
+    padding: 2px 8px;
+    font-size: var(--font-size-xs, 11px);
+    line-height: 1.4;
+    color: var(--white, #fff);
+    background: var(--bamboo-error, #ef5350);
+    border-radius: var(--radius-sm, 4px);
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 21;
+}
+
+/* 减弱动效偏好：关闭闪烁与抖动 */
+@media (prefers-reduced-motion: reduce) {
+    .goal-inline-edit-flash-success { animation: none; background-color: rgba(var(--primary-rgb), 0.12); }
+    .goal-inline-edit-input-error { animation: none; }
+}

@@ -143,6 +143,46 @@ describe('GoalInlineEditService', () => {
         expect(mocks.deps.renderSingleGoal).toHaveBeenCalledWith('g1');
     });
 
+    // ──────────────── targetValue 校验（新增：失败抛错，不再静默/Toast）───────────────
+
+    test('editType=targetValue：合法值应更新 targetValue 并重算 percent', async () => {
+        const stale = seedGoal([{ name: '子项', startValue: '0', targetValue: '100', currentValue: '20' }]);
+        await GoalInlineEditService.commit(stale, 0, 'targetValue', '200', mocks.deps);
+
+        expect(stale.items[0].targetValue).toBe('200');
+        expect(stale.items[0].percent).toBe(10); // 20/200
+        expect(mocks.updateGlobalGoal).toHaveBeenCalledWith('g1', stale);
+        expect(mocks.deps.autoCalcEndDate).toHaveBeenCalled();
+    });
+
+    test('editType=targetValue：<= 0 应抛错且不写入、不持久化', async () => {
+        const stale = seedGoal([{ name: '子项', startValue: '0', targetValue: '100', currentValue: '20' }]);
+        await expect(GoalInlineEditService.commit(stale, 0, 'targetValue', '0', mocks.deps))
+            .rejects.toThrow(/大于 0/);
+
+        expect(stale.items[0].targetValue).toBe('100'); // 未被改写
+        expect(mocks.updateGlobalGoal).not.toHaveBeenCalled();
+        expect(mocks.deps.autoCalcEndDate).not.toHaveBeenCalled();
+    });
+
+    test('editType=targetValue：等于起始值应抛错', async () => {
+        const stale = seedGoal([{ name: '子项', startValue: '5', targetValue: '100', currentValue: '20' }]);
+        await expect(GoalInlineEditService.commit(stale, 0, 'targetValue', '5', mocks.deps))
+            .rejects.toThrow(/起始值/);
+
+        expect(stale.items[0].targetValue).toBe('100');
+        expect(mocks.updateGlobalGoal).not.toHaveBeenCalled();
+    });
+
+    test('editType=targetValue：非数字应抛错', async () => {
+        const stale = seedGoal([{ name: '子项', startValue: '0', targetValue: '100', currentValue: '20' }]);
+        await expect(GoalInlineEditService.commit(stale, 0, 'targetValue', 'abc', mocks.deps))
+            .rejects.toThrow(/数字/);
+
+        expect(stale.items[0].targetValue).toBe('100');
+        expect(mocks.updateGlobalGoal).not.toHaveBeenCalled();
+    });
+
     // ──────────────── _invalidateCache 触发条件 ────────────────
 
     test('changed=false（值未变）时不应调 _invalidateCache', async () => {

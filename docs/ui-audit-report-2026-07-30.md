@@ -16,7 +16,7 @@
 |------|------|----------|------|
 | `transition: all` | **0 处**（已治理） | P0 | 24 个 CSS 文件已全部替换为具体属性；lint 已加 R9 门禁 |
 | `outline: none` | **49 处**（均已审查） | P1 | 全部与 `:focus-visible`、`:focus`+box-shadow 或 `:focus:not(:focus-visible)` 配套，无裸用 |
-| 硬编码 `white/black` | **10 处** | P2 | 均为 tooltip 白色文字，带 `lint-disable` 设计意图 |
+| 硬编码 `white/black` | **0 处**（已治理） | P2 | 10 处 tooltip 白色文字已统一为 `var(--text-on-accent)` 语义变量；lint-disable 已全部移除 |
 | `!important` | **2 处** | 低 | 控制良好 |
 | `prefers-reduced-motion` | **16 处** | 正面 | 动画可访问性已有基础 |
 | `focus-visible` | **17 处** | 正面 | 焦点管理体系已有基础 |
@@ -108,6 +108,14 @@
 1. 将 tooltip 白色文字统一为语义变量 `--text-inverse` 或 `--text-on-accent`，逐步移除 lint-disable。
 2. 在 `lint-css-tokens.mjs` 中保留硬编码色值检测，但允许带设计意图注释的场景走审批流程。
 3. 新增 `--surface-inverse` 等语义变量，为 tooltip 提供可主题化的背景色。
+
+**修复状态：** 已修复（2026-07-30）。逐项审查 10 处硬编码 `color: white`，确认全部为「强调色背景上的白字」场景（背景均为已令牌化的 `var(--bamboo-primary)` / `var(--bamboo-deep)` / `var(--bamboo-border)`，属同一语义族）：
+
+- 新增语义变量 `--text-on-accent: var(--white)`（`variables.css` 亮色段 + 暗色段各一处），归入既有 `--text-primary/secondary/tertiary` 文字语义族，为强调色背景上的文字提供可主题化入口。
+- 10 处 `color: white; /* lint-disable: R7 ... */` 全部替换为 `color: var(--text-on-accent)`，并移除 `lint-disable: R7` 注释 —— R7 门禁现已零违规，不再依赖行内豁免。
+- 暗色下 `--bamboo-primary` 仍为深绿强调色，白字保持高对比，故暗色段 `--text-on-accent` 同样取 `var(--white)`；未来若需「暗底浅字 / 亮底深字」反转变体，仅需覆盖该变量。
+- 背景色已为语义令牌，无需额外引入 `--surface-inverse`（避免死代码）。
+- 验证：`node scripts/lint-css-tokens.mjs`（0 违规）/ `npm run build:webapp` / `npm run lint` / `npm test`（214 项）均通过。
 
 #### 4.1.2 CSS 变量层级与命名不一致（P1）
 
@@ -580,7 +588,7 @@ JS/HTML 旧类名迁移采用别名策略推迟到后续渐进替换，当前所
 | 10 | 按钮系统碎片化 | 组件一致性 | P1 | 全局组件 | 中 | 多套按钮类 |
 | 11 | 卡片/面板圆角阴影不统一 | 组件一致性 | P1 | 全局 CSS | 低 | 变量使用混乱 |
 | 12 | 暗色模式覆盖不完整 | 主题 | P1 | 全局 CSS | 中 | 已修复（.swipe-hint / .fab tooltip / .dynamic-hint-item:hover 暗色覆盖补全 + ThemeBridge 暗色策略复核无缺口，见 4.7.1） |
-| 13 | 硬编码 tooltip 白色文字 | CSS 架构 | P2 | 4 个 CSS 文件 | 低 | 10 处，均带 lint-disable |
+| 13 | 硬编码 tooltip 白色文字 | CSS 架构 | P2 | 4 个 CSS 文件 | 低 | 已修复（10 处统一为 `var(--text-on-accent)`，lint-disable 全部移除，R7 零违规，见 4.1.1） |
 | 14 | will-change 策略缺失 | 性能 | P2 | 动画相关 | 低 | 部分已使用 |
 | 15 | 日期切换边界测试不足 | 交互 | P2 | Timeline/Goals | 中 | 需压力测试 |
 | 16 | 主题同步延迟感 | 主题 | P2 | ThemeBridge | 中 | 一帧延迟 |
@@ -614,7 +622,7 @@ JS/HTML 旧类名迁移采用别名策略推迟到后续渐进替换，当前所
 
 ### 第三阶段：体验打磨（P2，2 周）
 
-1. tooltip 硬编码色值语义化。
+1. ~~tooltip 硬编码色值语义化。~~（已完成，10 处统一为 `var(--text-on-accent)`，见 4.1.1）
 2. 主题同步性能优化。
 3. 图标系统统一。
 4. 日期切换压力测试与骨架屏。
@@ -626,11 +634,11 @@ JS/HTML 旧类名迁移采用别名策略推迟到后续渐进替换，当前所
 
 ### 7.1 高风险 CSS 规则（已量化）
 
-| 文件 | transition: all | outline: none | 硬编码白/黑 |
+| 文件 | transition: all | outline: none | 硬编码白/黑（已治理） |
 |------|-----------------|---------------|-------------|
-| `goals-editor.css` | 0 | 16 | 4 |
+| `goals-editor.css` | 0 | 16 | 0 |
 | `modal-panels.css` | 0 | 8 | 0 |
-| `goals-map.css` | 0 | 4 | 3 |
+| `goals-map.css` | 0 | 4 | 0 |
 | `display.css` | 0 | 4 | 0 |
 | `date-nav.css` | 0 | 4 | 0 |
 | `modal-settings.css` | 0 | 3 | 0 |
@@ -640,7 +648,9 @@ JS/HTML 旧类名迁移采用别名策略推迟到后续渐进替换，当前所
 | `modal-base.css` | 0 | 1 | 0 |
 | `goals-health.css` | 0 | 1 | 0 |
 | `fab.css` | 0 | 1 | 0 |
-| 其他 12 个文件 | 0 | 0 | ≤1 |
+| 其他 12 个文件 | 0 | 0 | 0 |
+
+> 「硬编码白/黑」原 10 处（goals-editor 4 / goals-map 3 / timeline 2 / components-interaction 1）已全部迁移至 `var(--text-on-accent)` 语义变量，lint-disable 注释同步移除。
 
 ### 7.2 需要补充 ARIA 的组件
 
@@ -653,9 +663,9 @@ JS/HTML 旧类名迁移采用别名策略推迟到后续渐进替换，当前所
 
 ```css
 /* 语义色板 */
---bm-text-on-accent: var(--white);
---bm-text-inverse: var(--white);
---bm-surface-inverse: var(--black);
+--text-on-accent: var(--white);   /* ✅ 已实现（variables.css 亮/暗段）—— 强调色背景上的文字 */
+--bm-text-inverse: var(--white);  /* 待定：反色文字，暂未需要 */
+--bm-surface-inverse: var(--black); /* 待定：tooltip 背景已令牌化，暂未需要 */
 --bm-focus-ring: 0 0 0 3px rgba(var(--primary-rgb), 0.25);
 
 /* 响应式断点 */

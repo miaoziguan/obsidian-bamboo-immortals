@@ -166,6 +166,7 @@
     --text-primary: var(--ink-dark);
     --text-secondary: var(--ink-light);
     --text-tertiary: var(--ink-pale);
+    --text-on-accent: var(--white); /* 强调色背景上的文字（tooltip / 选中按钮 / 状态徽标） */
 
     /* === 边框与阴影 === */
     --border-light: rgba(var(--primary-rgb), 0.25);
@@ -463,6 +464,7 @@
     --text-primary: hsl(var(--accent-hue), 18%, calc(91% + var(--accent-lightness-offset)));
     --text-secondary: hsl(var(--accent-hue), 15%, calc(74% + var(--accent-lightness-offset)));
     --text-tertiary: hsl(var(--accent-hue), 11%, calc(66% + var(--accent-lightness-offset)));
+    --text-on-accent: var(--white); /* 暗色下强调色仍为深底，白字保持高对比 */
     
     /* 边框：微妙的星光边框 */
     --border-light: rgba(var(--primary-rgb), 0.2);

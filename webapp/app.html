@@ -178,6 +178,7 @@
     --text-primary: var(--ink-dark);
     --text-secondary: var(--ink-light);
     --text-tertiary: var(--ink-pale);
+    --text-on-accent: var(--white); /* 强调色背景上的文字（tooltip / 选中按钮 / 状态徽标） */
 
     /* === 边框与阴影 === */
     --border-light: rgba(var(--primary-rgb), 0.25);
@@ -475,6 +476,7 @@
     --text-primary: hsl(var(--accent-hue), 18%, calc(91% + var(--accent-lightness-offset)));
     --text-secondary: hsl(var(--accent-hue), 15%, calc(74% + var(--accent-lightness-offset)));
     --text-tertiary: hsl(var(--accent-hue), 11%, calc(66% + var(--accent-lightness-offset)));
+    --text-on-accent: var(--white); /* 暗色下强调色仍为深底，白字保持高对比 */
     
     /* 边框：微妙的星光边框 */
     --border-light: rgba(var(--primary-rgb), 0.2);
@@ -1759,7 +1761,7 @@ textarea:focus-visible) {
     margin-left: 8px;
     padding: 6px 12px;
     background: var(--bamboo-deep);
-    color: white; /* lint-disable: R7 — tooltip 白色文字，设计意图 */
+    color: var(--text-on-accent);
     font-size: var(--type-sm);
     font-weight: 500;
     white-space: nowrap;
@@ -5060,7 +5062,7 @@ button, .btn, .date-nav-btn, .edit-btn, .view-toggle-btn, .history-close, .modal
 .bamboo-tooltip {
     position: fixed;
     background: var(--bamboo-primary);
-    color: white; /* lint-disable: R7 — tooltip 白色文字，设计意图 */
+    color: var(--text-on-accent);
     padding: 5px 10px;
     border-radius: var(--radius-2xs);
     font-size: var(--type-mini);
@@ -5086,7 +5088,7 @@ button, .btn, .date-nav-btn, .edit-btn, .view-toggle-btn, .history-close, .modal
 
 :host(.dark) .bamboo-tooltip {
     background: var(--bamboo-primary);
-    color: white; /* lint-disable: R7 — tooltip 白色文字，设计意图 */
+    color: var(--text-on-accent);
 }
 :host(.dark) .bamboo-tooltip::after {
     border-top-color: var(--bamboo-primary);
@@ -7501,7 +7503,7 @@ input[type="number"].goal-inline-edit-input {
     margin-bottom: 4px;
     padding: 5px 10px;
     background-color: var(--bamboo-primary);
-    color: white; /* lint-disable: R7 — tooltip 白色文字，设计意图 */
+    color: var(--text-on-accent);
     border-radius: var(--radius-2xs);
     font-size: var(--type-mini);
     white-space: nowrap;
@@ -7984,7 +7986,7 @@ input[type="number"].goal-inline-edit-input {
     padding: 8px 14px;
     border: none;
     background: var(--bamboo-primary);
-    color: white; /* lint-disable: R7 — tooltip 白色文字，设计意图 */
+    color: var(--text-on-accent);
     font-size: var(--type-sm);
     font-weight: 500;
     border-radius: var(--radius-xs);
@@ -8006,7 +8008,7 @@ input[type="number"].goal-inline-edit-input {
     padding: 8px 24px;
     border: none;
     background: var(--bamboo-primary);
-    color: white; /* lint-disable: R7 — tooltip 白色文字，设计意图 */
+    color: var(--text-on-accent);
     font-size: var(--type-base);
     font-weight: 500;
     border-radius: var(--radius-xs);
@@ -10524,7 +10526,7 @@ input[type="number"].goal-inline-edit-input {
     align-items: center;
     justify-content: center;
     font-size: var(--type-mini);
-    color: white; /* lint-disable: R7 — tooltip 白色文字，设计意图 */
+    color: var(--text-on-accent);
     flex-shrink: 0;
 }
 
@@ -10760,7 +10762,7 @@ input[type="number"].goal-inline-edit-input {
 .goal-day-btn.selected {
     background: var(--bamboo-primary);
     border-color: var(--bamboo-primary);
-    color: white; /* lint-disable: R7 — tooltip 白色文字，设计意图 */
+    color: var(--text-on-accent);
 }
 
 /* 内联依赖按钮 */
@@ -11356,7 +11358,7 @@ input[type="number"].goal-inline-edit-input {
 .goal-day-btn.selected {
     background: var(--bamboo-primary);
     border-color: var(--bamboo-primary);
-    color: white; /* lint-disable: R7 — tooltip 白色文字，设计意图 */
+    color: var(--text-on-accent);
 }
 
 /* 建议每日完成量说明 */
@@ -11492,7 +11494,7 @@ input[type="number"].goal-inline-edit-input {
     align-items: center;
     justify-content: center;
     font-size: var(--type-sm);
-    color: white; /* lint-disable: R7 — tooltip 白色文字，设计意图 */
+    color: var(--text-on-accent);
     flex-shrink: 0;
     transition: transform, opacity, box-shadow, border-color, background-color 0.3s ease;
 }

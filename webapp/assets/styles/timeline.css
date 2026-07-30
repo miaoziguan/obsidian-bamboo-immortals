@@ -1378,7 +1378,7 @@
 .bamboo-tooltip {
     position: fixed;
     background: var(--bamboo-primary);
-    color: white; /* lint-disable: R7 — tooltip 白色文字，设计意图 */
+    color: var(--text-on-accent);
     padding: 5px 10px;
     border-radius: var(--radius-2xs);
     font-size: var(--type-mini);
@@ -1404,7 +1404,7 @@
 
 :host(.dark) .bamboo-tooltip {
     background: var(--bamboo-primary);
-    color: white; /* lint-disable: R7 — tooltip 白色文字，设计意图 */
+    color: var(--text-on-accent);
 }
 :host(.dark) .bamboo-tooltip::after {
     border-top-color: var(--bamboo-primary);

@@ -798,7 +798,7 @@ input[type="number"].goal-inline-edit-input {
     margin-bottom: 4px;
     padding: 5px 10px;
     background-color: var(--bamboo-primary);
-    color: white; /* lint-disable: R7 — tooltip 白色文字，设计意图 */
+    color: var(--text-on-accent);
     border-radius: var(--radius-2xs);
     font-size: var(--type-mini);
     white-space: nowrap;
@@ -1281,7 +1281,7 @@ input[type="number"].goal-inline-edit-input {
     padding: 8px 14px;
     border: none;
     background: var(--bamboo-primary);
-    color: white; /* lint-disable: R7 — tooltip 白色文字，设计意图 */
+    color: var(--text-on-accent);
     font-size: var(--type-sm);
     font-weight: 500;
     border-radius: var(--radius-xs);
@@ -1303,7 +1303,7 @@ input[type="number"].goal-inline-edit-input {
     padding: 8px 24px;
     border: none;
     background: var(--bamboo-primary);
-    color: white; /* lint-disable: R7 — tooltip 白色文字，设计意图 */
+    color: var(--text-on-accent);
     font-size: var(--type-base);
     font-weight: 500;
     border-radius: var(--radius-xs);

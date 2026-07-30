@@ -1,0 +1,1002 @@
+[
+  {
+    "tag": "DIV",
+    "id": "",
+    "role": null,
+    "ariaLabel": "通知",
+    "ariaExpanded": null,
+    "ariaHidden": null,
+    "ariaLive": "polite",
+    "className": "toast-container"
+  },
+  {
+    "tag": "DIV",
+    "id": "",
+    "role": null,
+    "ariaLabel": "通知",
+    "ariaExpanded": null,
+    "ariaHidden": null,
+    "ariaLive": "polite",
+    "className": "toast-container"
+  },
+  {
+    "tag": "NAV",
+    "id": "",
+    "role": null,
+    "ariaLabel": "快速导航",
+    "ariaExpanded": null,
+    "ariaHidden": null,
+    "ariaLive": null,
+    "className": "quick-nav"
+  },
+  {
+    "tag": "svg",
+    "id": "",
+    "role": null,
+    "ariaLabel": null,
+    "ariaExpanded": null,
+    "ariaHidden": "true",
+    "ariaLive": null,
+    "className": {}
+  },
+  {
+    "tag": "svg",
+    "id": "",
+    "role": null,
+    "ariaLabel": null,
+    "ariaExpanded": null,
+    "ariaHidden": "true",
+    "ariaLive": null,
+    "className": {}
+  },
+  {
+    "tag": "svg",
+    "id": "",
+    "role": null,
+    "ariaLabel": null,
+    "ariaExpanded": null,
+    "ariaHidden": "true",
+    "ariaLive": null,
+    "className": {}
+  },
+  {
+    "tag": "svg",
+    "id": "",
+    "role": null,
+    "ariaLabel": null,
+    "ariaExpanded": null,
+    "ariaHidden": "true",
+    "ariaLive": null,
+    "className": {}
+  },
+  {
+    "tag": "DIV",
+    "id": "displayPanel",
+    "role": "dialog",
+    "ariaLabel": "显示设置",
+    "ariaExpanded": null,
+    "ariaHidden": null,
+    "ariaLive": null,
+    "className": "display-panel"
+  },
+  {
+    "tag": "BUTTON",
+    "id": "",
+    "role": null,
+    "ariaLabel": "关闭",
+    "ariaExpanded": null,
+    "ariaHidden": null,
+    "ariaLive": null,
+    "className": "display-panel-close"
+  },
+  {
+    "tag": "INPUT",
+    "id": "",
+    "role": null,
+    "ariaLabel": "内容宽度",
+    "ariaExpanded": null,
+    "ariaHidden": null,
+    "ariaLive": null,
+    "className": "display-slider"
+  },
+  {
+    "tag": "BUTTON",
+    "id": "",
+    "role": null,
+    "ariaLabel": "窄 (专注写作)",
+    "ariaExpanded": null,
+    "ariaHidden": null,
+    "ariaLive": null,
+    "className": "display-preset-btn"
+  },
+  {
+    "tag": "BUTTON",
+    "id": "",
+    "role": null,
+    "ariaLabel": "标准 (日常复盘)",
+    "ariaExpanded": null,
+    "ariaHidden": null,
+    "ariaLive": null,
+    "className": "display-preset-btn"
+  },
+  {
+    "tag": "BUTTON",
+    "id": "",
+    "role": null,
+    "ariaLabel": "宽 (数据视图)",
+    "ariaExpanded": null,
+    "ariaHidden": null,
+    "ariaLive": null,
+    "className": "display-preset-btn"
+  },
+  {
+    "tag": "INPUT",
+    "id": "",
+    "role": null,
+    "ariaLabel": "字号",
+    "ariaExpanded": null,
+    "ariaHidden": null,
+    "ariaLive": null,
+    "className": "display-slider"
+  },
+  {
+    "tag": "BUTTON",
+    "id": "",
+    "role": null,
+    "ariaLabel": "小 (紧凑阅读)",
+    "ariaExpanded": null,
+    "ariaHidden": null,
+    "ariaLive": null,
+    "className": "display-font-preset-btn"
+  },
+  {
+    "tag": "BUTTON",
+    "id": "",
+    "role": null,
+    "ariaLabel": "标准 (默认字号)",
+    "ariaExpanded": null,
+    "ariaHidden": null,
+    "ariaLive": null,
+    "className": "display-font-preset-btn"
+  },
+  {
+    "tag": "BUTTON",
+    "id": "",
+    "role": null,
+    "ariaLabel": "大 (舒适阅读)",
+    "ariaExpanded": null,
+    "ariaHidden": null,
+    "ariaLive": null,
+    "className": "display-font-preset-btn"
+  },
+  {
+    "tag": "BUTTON",
+    "id": "",
+    "role": null,
+    "ariaLabel": "特大 (无障碍)",
+    "ariaExpanded": null,
+    "ariaHidden": null,
+    "ariaLive": null,
+    "className": "display-font-preset-btn"
+  },
+  {
+    "tag": "INPUT",
+    "id": "",
+    "role": null,
+    "ariaLabel": "板块间距",
+    "ariaExpanded": null,
+    "ariaHidden": null,
+    "ariaLive": null,
+    "className": "display-slider"
+  },
+  {
+    "tag": "BUTTON",
+    "id": "",
+    "role": null,
+    "ariaLabel": "紧凑 (信息密集)",
+    "ariaExpanded": null,
+    "ariaHidden": null,
+    "ariaLive": null,
+    "className": "display-gap-preset-btn"
+  },
+  {
+    "tag": "BUTTON",
+    "id": "",
+    "role": null,
+    "ariaLabel": "标准 (默认间距)",
+    "ariaExpanded": null,
+    "ariaHidden": null,
+    "ariaLive": null,
+    "className": "display-gap-preset-btn"
+  },
+  {
+    "tag": "BUTTON",
+    "id": "",
+    "role": null,
+    "ariaLabel": "宽松 (呼吸感强)",
+    "ariaExpanded": null,
+    "ariaHidden": null,
+    "ariaLive": null,
+    "className": "display-gap-preset-btn"
+  },
+  {
+    "tag": "BUTTON",
+    "id": "",
+    "role": null,
+    "ariaLabel": "开阔 (极宽松)",
+    "ariaExpanded": null,
+    "ariaHidden": null,
+    "ariaLive": null,
+    "className": "display-gap-preset-btn"
+  },
+  {
+    "tag": "INPUT",
+    "id": "",
+    "role": null,
+    "ariaLabel": "主题色相",
+    "ariaExpanded": null,
+    "ariaHidden": null,
+    "ariaLive": null,
+    "className": "display-slider display-hue-slider"
+  },
+  {
+    "tag": "BUTTON",
+    "id": "",
+    "role": null,
+    "ariaLabel": "嫩绿 (春芽嫩绿)",
+    "ariaExpanded": null,
+    "ariaHidden": null,
+    "ariaLive": null,
+    "className": "display-hue-preset-btn"
+  },
+  {
+    "tag": "BUTTON",
+    "id": "",
+    "role": null,
+    "ariaLabel": "竹青 (竹林清韵（默认）)",
+    "ariaExpanded": null,
+    "ariaHidden": null,
+    "ariaLive": null,
+    "className": "display-hue-preset-btn"
+  },
+  {
+    "tag": "BUTTON",
+    "id": "",
+    "role": null,
+    "ariaLabel": "松花 (松花绿)",
+    "ariaExpanded": null,
+    "ariaHidden": null,
+    "ariaLive": null,
+    "className": "display-hue-preset-btn"
+  },
+  {
+    "tag": "BUTTON",
+    "id": "",
+    "role": null,
+    "ariaLabel": "碧色 (碧色如玉)",
+    "ariaExpanded": null,
+    "ariaHidden": null,
+    "ariaLive": null,
+    "className": "display-hue-preset-btn"
+  },
+  {
+    "tag": "BUTTON",
+    "id": "",
+    "role": null,
+    "ariaLabel": "青碧 (青碧天光)",
+    "ariaExpanded": null,
+    "ariaHidden": null,
+    "ariaLive": null,
+    "className": "display-hue-preset-btn"
+  },
+  {
+    "tag": "BUTTON",
+    "id": "",
+    "role": null,
+    "ariaLabel": "恢复默认主题色相",
+    "ariaExpanded": null,
+    "ariaHidden": null,
+    "ariaLive": null,
+    "className": "display-hue-reset-btn"
+  },
+  {
+    "tag": "INPUT",
+    "id": "",
+    "role": null,
+    "ariaLabel": "明度",
+    "ariaExpanded": null,
+    "ariaHidden": null,
+    "ariaLive": null,
+    "className": "display-slider"
+  },
+  {
+    "tag": "BUTTON",
+    "id": "",
+    "role": null,
+    "ariaLabel": "深色质感",
+    "ariaExpanded": null,
+    "ariaHidden": null,
+    "ariaLive": null,
+    "className": "display-lightness-preset-btn"
+  },
+  {
+    "tag": "BUTTON",
+    "id": "",
+    "role": null,
+    "ariaLabel": "柔光氛围",
+    "ariaExpanded": null,
+    "ariaHidden": null,
+    "ariaLive": null,
+    "className": "display-lightness-preset-btn"
+  },
+  {
+    "tag": "BUTTON",
+    "id": "",
+    "role": null,
+    "ariaLabel": "标准明度",
+    "ariaExpanded": null,
+    "ariaHidden": null,
+    "ariaLive": null,
+    "className": "display-lightness-preset-btn"
+  },
+  {
+    "tag": "BUTTON",
+    "id": "",
+    "role": null,
+    "ariaLabel": "清新亮丽",
+    "ariaExpanded": null,
+    "ariaHidden": null,
+    "ariaLive": null,
+    "className": "display-lightness-preset-btn"
+  },
+  {
+    "tag": "DIV",
+    "id": "sr-announcements",
+    "role": null,
+    "ariaLabel": null,
+    "ariaExpanded": null,
+    "ariaHidden": null,
+    "ariaLive": "polite",
+    "className": "sr-only"
+  },
+  {
+    "tag": "DIV",
+    "id": "reviewContainer",
+    "role": "main",
+    "ariaLabel": "每日复盘内容",
+    "ariaExpanded": null,
+    "ariaHidden": null,
+    "ariaLive": null,
+    "className": "container"
+  },
+  {
+    "tag": "DIV",
+    "id": "",
+    "role": "banner",
+    "ariaLabel": null,
+    "ariaExpanded": null,
+    "ariaHidden": null,
+    "ariaLive": null,
+    "className": "header"
+  },
+  {
+    "tag": "DIV",
+    "id": "weatherWidget",
+    "role": null,
+    "ariaLabel": "晴 30度",
+    "ariaExpanded": null,
+    "ariaHidden": null,
+    "ariaLive": null,
+    "className": "weather-widget weather-open"
+  },
+  {
+    "tag": "SPAN",
+    "id": "",
+    "role": null,
+    "ariaLabel": null,
+    "ariaExpanded": null,
+    "ariaHidden": "true",
+    "ariaLive": null,
+    "className": "weather-icon"
+  },
+  {
+    "tag": "DIV",
+    "id": "quoteWidget",
+    "role": null,
+    "ariaLabel": "语录",
+    "ariaExpanded": null,
+    "ariaHidden": null,
+    "ariaLive": null,
+    "className": "quote-widget"
+  },
+  {
+    "tag": "NAV",
+    "id": "",
+    "role": "navigation",
+    "ariaLabel": "日期导航",
+    "ariaExpanded": null,
+    "ariaHidden": null,
+    "ariaLive": null,
+    "className": "date-nav"
+  },
+  {
+    "tag": "BUTTON",
+    "id": "prevDay",
+    "role": null,
+    "ariaLabel": "前一天",
+    "ariaExpanded": null,
+    "ariaHidden": null,
+    "ariaLive": null,
+    "className": "date-nav-btn"
+  },
+  {
+    "tag": "SPAN",
+    "id": "",
+    "role": null,
+    "ariaLabel": null,
+    "ariaExpanded": null,
+    "ariaHidden": "true",
+    "ariaLive": null,
+    "className": ""
+  },
+  {
+    "tag": "DIV",
+    "id": "dateDisplay",
+    "role": "button",
+    "ariaLabel": "点击回到今天",
+    "ariaExpanded": null,
+    "ariaHidden": null,
+    "ariaLive": null,
+    "className": "date-display clickable"
+  },
+  {
+    "tag": "DIV",
+    "id": "currentDate",
+    "role": null,
+    "ariaLabel": "当前日期",
+    "ariaExpanded": null,
+    "ariaHidden": null,
+    "ariaLive": null,
+    "className": "date-display-main"
+  },
+  {
+    "tag": "BUTTON",
+    "id": "nextDay",
+    "role": null,
+    "ariaLabel": "后一天",
+    "ariaExpanded": null,
+    "ariaHidden": null,
+    "ariaLive": null,
+    "className": "date-nav-btn"
+  },
+  {
+    "tag": "SPAN",
+    "id": "",
+    "role": null,
+    "ariaLabel": null,
+    "ariaExpanded": null,
+    "ariaHidden": "true",
+    "ariaLive": null,
+    "className": ""
+  },
+  {
+    "tag": "BUTTON",
+    "id": "gotoDateBtn",
+    "role": null,
+    "ariaLabel": "跳转到指定日期",
+    "ariaExpanded": null,
+    "ariaHidden": null,
+    "ariaLive": null,
+    "className": "view-toggle-btn"
+  },
+  {
+    "tag": "svg",
+    "id": "",
+    "role": null,
+    "ariaLabel": null,
+    "ariaExpanded": null,
+    "ariaHidden": "true",
+    "ariaLive": null,
+    "className": {}
+  },
+  {
+    "tag": "DIV",
+    "id": "sectionsContainer",
+    "role": "region",
+    "ariaLabel": "内容板块",
+    "ariaExpanded": null,
+    "ariaHidden": null,
+    "ariaLive": null,
+    "className": "sections-container"
+  },
+  {
+    "tag": "SECTION",
+    "id": "bambooGardenSection",
+    "role": "region",
+    "ariaLabel": null,
+    "ariaExpanded": null,
+    "ariaHidden": null,
+    "ariaLive": null,
+    "className": "bamboo-garden-section"
+  },
+  {
+    "tag": "SECTION",
+    "id": "",
+    "role": "region",
+    "ariaLabel": null,
+    "ariaExpanded": null,
+    "ariaHidden": null,
+    "ariaLive": null,
+    "className": "todo-section"
+  },
+  {
+    "tag": "DIV",
+    "id": "todoContent",
+    "role": "article",
+    "ariaLabel": "待办任务",
+    "ariaExpanded": null,
+    "ariaHidden": null,
+    "ariaLive": null,
+    "className": ""
+  },
+  {
+    "tag": "svg",
+    "id": "",
+    "role": null,
+    "ariaLabel": null,
+    "ariaExpanded": null,
+    "ariaHidden": "true",
+    "ariaLive": null,
+    "className": {}
+  },
+  {
+    "tag": "SECTION",
+    "id": "",
+    "role": "region",
+    "ariaLabel": null,
+    "ariaExpanded": null,
+    "ariaHidden": null,
+    "ariaLive": null,
+    "className": "timeline-section"
+  },
+  {
+    "tag": "DIV",
+    "id": "",
+    "role": "list",
+    "ariaLabel": "活动统计",
+    "ariaExpanded": null,
+    "ariaHidden": null,
+    "ariaLive": null,
+    "className": "designer-ticket"
+  },
+  {
+    "tag": "DIV",
+    "id": "",
+    "role": "img",
+    "ariaLabel": "时段活跃度",
+    "ariaExpanded": null,
+    "ariaHidden": null,
+    "ariaLive": null,
+    "className": "ticket-period-dots"
+  },
+  {
+    "tag": "SPAN",
+    "id": "",
+    "role": null,
+    "ariaLabel": null,
+    "ariaExpanded": null,
+    "ariaHidden": "true",
+    "ariaLive": null,
+    "className": "ticket-dot"
+  },
+  {
+    "tag": "SPAN",
+    "id": "",
+    "role": null,
+    "ariaLabel": null,
+    "ariaExpanded": null,
+    "ariaHidden": "true",
+    "ariaLive": null,
+    "className": "ticket-dot"
+  },
+  {
+    "tag": "SPAN",
+    "id": "",
+    "role": null,
+    "ariaLabel": null,
+    "ariaExpanded": null,
+    "ariaHidden": "true",
+    "ariaLive": null,
+    "className": "ticket-dot has-data"
+  },
+  {
+    "tag": "SPAN",
+    "id": "",
+    "role": null,
+    "ariaLabel": null,
+    "ariaExpanded": null,
+    "ariaHidden": "true",
+    "ariaLive": null,
+    "className": "ticket-dot has-data current"
+  },
+  {
+    "tag": "SPAN",
+    "id": "",
+    "role": null,
+    "ariaLabel": null,
+    "ariaExpanded": null,
+    "ariaHidden": "true",
+    "ariaLive": null,
+    "className": "ticket-dot has-data"
+  },
+  {
+    "tag": "SPAN",
+    "id": "",
+    "role": null,
+    "ariaLabel": null,
+    "ariaExpanded": null,
+    "ariaHidden": "true",
+    "ariaLive": null,
+    "className": "ticket-dot has-data"
+  },
+  {
+    "tag": "SPAN",
+    "id": "",
+    "role": null,
+    "ariaLabel": null,
+    "ariaExpanded": null,
+    "ariaHidden": "true",
+    "ariaLive": null,
+    "className": "ticket-dot"
+  },
+  {
+    "tag": "SPAN",
+    "id": "",
+    "role": null,
+    "ariaLabel": null,
+    "ariaExpanded": null,
+    "ariaHidden": "true",
+    "ariaLive": null,
+    "className": "ticket-dot has-data"
+  },
+  {
+    "tag": "SPAN",
+    "id": "",
+    "role": null,
+    "ariaLabel": null,
+    "ariaExpanded": null,
+    "ariaHidden": "true",
+    "ariaLive": null,
+    "className": "ticket-dot"
+  },
+  {
+    "tag": "DIV",
+    "id": "",
+    "role": null,
+    "ariaLabel": "翻到背面",
+    "ariaExpanded": null,
+    "ariaHidden": null,
+    "ariaLive": null,
+    "className": "flip-stub-btn"
+  },
+  {
+    "tag": "DIV",
+    "id": "timelinePath",
+    "role": "list",
+    "ariaLabel": "活动时间线",
+    "ariaExpanded": null,
+    "ariaHidden": null,
+    "ariaLive": null,
+    "className": "timeline-bamboo-path"
+  },
+  {
+    "tag": "svg",
+    "id": "",
+    "role": null,
+    "ariaLabel": null,
+    "ariaExpanded": null,
+    "ariaHidden": "true",
+    "ariaLive": null,
+    "className": {}
+  },
+  {
+    "tag": "svg",
+    "id": "",
+    "role": null,
+    "ariaLabel": null,
+    "ariaExpanded": null,
+    "ariaHidden": "true",
+    "ariaLive": null,
+    "className": {}
+  },
+  {
+    "tag": "svg",
+    "id": "",
+    "role": null,
+    "ariaLabel": null,
+    "ariaExpanded": null,
+    "ariaHidden": "true",
+    "ariaLive": null,
+    "className": {}
+  },
+  {
+    "tag": "svg",
+    "id": "",
+    "role": null,
+    "ariaLabel": null,
+    "ariaExpanded": null,
+    "ariaHidden": "true",
+    "ariaLive": null,
+    "className": {}
+  },
+  {
+    "tag": "svg",
+    "id": "",
+    "role": null,
+    "ariaLabel": null,
+    "ariaExpanded": null,
+    "ariaHidden": "true",
+    "ariaLive": null,
+    "className": {}
+  },
+  {
+    "tag": "svg",
+    "id": "",
+    "role": null,
+    "ariaLabel": null,
+    "ariaExpanded": null,
+    "ariaHidden": "true",
+    "ariaLive": null,
+    "className": {}
+  },
+  {
+    "tag": "svg",
+    "id": "",
+    "role": null,
+    "ariaLabel": null,
+    "ariaExpanded": null,
+    "ariaHidden": "true",
+    "ariaLive": null,
+    "className": {}
+  },
+  {
+    "tag": "svg",
+    "id": "",
+    "role": null,
+    "ariaLabel": null,
+    "ariaExpanded": null,
+    "ariaHidden": "true",
+    "ariaLive": null,
+    "className": {}
+  },
+  {
+    "tag": "svg",
+    "id": "",
+    "role": null,
+    "ariaLabel": null,
+    "ariaExpanded": null,
+    "ariaHidden": "true",
+    "ariaLive": null,
+    "className": {}
+  },
+  {
+    "tag": "SECTION",
+    "id": "",
+    "role": "region",
+    "ariaLabel": null,
+    "ariaExpanded": null,
+    "ariaHidden": null,
+    "ariaLive": null,
+    "className": "goal-section"
+  },
+  {
+    "tag": "DIV",
+    "id": "goalList",
+    "role": "list",
+    "ariaLabel": "目标列表",
+    "ariaExpanded": null,
+    "ariaHidden": null,
+    "ariaLive": null,
+    "className": "goal-list"
+  },
+  {
+    "tag": "svg",
+    "id": "",
+    "role": null,
+    "ariaLabel": null,
+    "ariaExpanded": null,
+    "ariaHidden": "true",
+    "ariaLive": null,
+    "className": {}
+  },
+  {
+    "tag": "NAV",
+    "id": "",
+    "role": "navigation",
+    "ariaLabel": "快捷操作",
+    "ariaExpanded": null,
+    "ariaHidden": null,
+    "ariaLive": null,
+    "className": "fab-container"
+  },
+  {
+    "tag": "DIV",
+    "id": "fabActions",
+    "role": "menu",
+    "ariaLabel": null,
+    "ariaExpanded": null,
+    "ariaHidden": null,
+    "ariaLive": null,
+    "className": "fab-actions"
+  },
+  {
+    "tag": "BUTTON",
+    "id": "",
+    "role": "menuitem",
+    "ariaLabel": "战略复盘",
+    "ariaExpanded": null,
+    "ariaHidden": null,
+    "ariaLive": null,
+    "className": "fab-action-btn fab-primary"
+  },
+  {
+    "tag": "svg",
+    "id": "",
+    "role": null,
+    "ariaLabel": null,
+    "ariaExpanded": null,
+    "ariaHidden": "true",
+    "ariaLive": null,
+    "className": {}
+  },
+  {
+    "tag": "BUTTON",
+    "id": "",
+    "role": "menuitem",
+    "ariaLabel": "竹林商店",
+    "ariaExpanded": null,
+    "ariaHidden": null,
+    "ariaLive": null,
+    "className": "fab-action-btn fab-warning"
+  },
+  {
+    "tag": "svg",
+    "id": "",
+    "role": null,
+    "ariaLabel": null,
+    "ariaExpanded": null,
+    "ariaHidden": "true",
+    "ariaLive": null,
+    "className": {}
+  },
+  {
+    "tag": "BUTTON",
+    "id": "",
+    "role": "menuitem",
+    "ariaLabel": "目标归档",
+    "ariaExpanded": null,
+    "ariaHidden": null,
+    "ariaLive": null,
+    "className": "fab-action-btn fab-primary"
+  },
+  {
+    "tag": "svg",
+    "id": "",
+    "role": null,
+    "ariaLabel": null,
+    "ariaExpanded": null,
+    "ariaHidden": "true",
+    "ariaLive": null,
+    "className": {}
+  },
+  {
+    "tag": "BUTTON",
+    "id": "",
+    "role": "menuitem",
+    "ariaLabel": "管理板块",
+    "ariaExpanded": null,
+    "ariaHidden": null,
+    "ariaLive": null,
+    "className": "fab-action-btn"
+  },
+  {
+    "tag": "svg",
+    "id": "",
+    "role": null,
+    "ariaLabel": null,
+    "ariaExpanded": null,
+    "ariaHidden": "true",
+    "ariaLive": null,
+    "className": {}
+  },
+  {
+    "tag": "BUTTON",
+    "id": "",
+    "role": "menuitem",
+    "ariaLabel": "竹林修仙",
+    "ariaExpanded": null,
+    "ariaHidden": null,
+    "ariaLive": null,
+    "className": "fab-action-btn fab-primary"
+  },
+  {
+    "tag": "svg",
+    "id": "",
+    "role": null,
+    "ariaLabel": null,
+    "ariaExpanded": null,
+    "ariaHidden": "true",
+    "ariaLive": null,
+    "className": {}
+  },
+  {
+    "tag": "BUTTON",
+    "id": "",
+    "role": "menuitem",
+    "ariaLabel": "主题动效",
+    "ariaExpanded": null,
+    "ariaHidden": null,
+    "ariaLive": null,
+    "className": "fab-action-btn fab-primary"
+  },
+  {
+    "tag": "svg",
+    "id": "",
+    "role": null,
+    "ariaLabel": null,
+    "ariaExpanded": null,
+    "ariaHidden": "true",
+    "ariaLive": null,
+    "className": {}
+  },
+  {
+    "tag": "BUTTON",
+    "id": "",
+    "role": "menuitem",
+    "ariaLabel": "显示设置",
+    "ariaExpanded": null,
+    "ariaHidden": null,
+    "ariaLive": null,
+    "className": "fab-action-btn"
+  },
+  {
+    "tag": "svg",
+    "id": "",
+    "role": null,
+    "ariaLabel": null,
+    "ariaExpanded": null,
+    "ariaHidden": "true",
+    "ariaLive": null,
+    "className": {}
+  },
+  {
+    "tag": "BUTTON",
+    "id": "",
+    "role": "menuitem",
+    "ariaLabel": "明暗切换",
+    "ariaExpanded": null,
+    "ariaHidden": null,
+    "ariaLive": null,
+    "className": "fab-action-btn fab-primary"
+  },
+  {
+    "tag": "svg",
+    "id": "",
+    "role": null,
+    "ariaLabel": null,
+    "ariaExpanded": null,
+    "ariaHidden": "true",
+    "ariaLive": null,
+    "className": {}
+  },
+  {
+    "tag": "BUTTON",
+    "id": "",
+    "role": "menuitem",
+    "ariaLabel": "白噪音",
+    "ariaExpanded": null,
+    "ariaHidden": null,
+    "ariaLive": null,
+    "className": "fab-action-btn fab-primary"
+  }
+]

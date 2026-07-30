@@ -3,7 +3,8 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -45%) scale(0.95);
-    width: min(600px, 92vw);
+    /* Responsive width: keep design width but leave 1rem margin on each side */
+    width: min(100% - 2rem, 600px);
     max-height: 80vh;
     height: auto;
     background: var(--card-glass);
@@ -15,7 +16,7 @@
     z-index: var(--z-layer-modal);
     opacity: 0;
     visibility: hidden;
-    transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition: transform, opacity, box-shadow, border-color, background-color 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -80,11 +81,25 @@
         height: auto;
     }
 }
+
+@media (max-width: 768px) {
+    .fab-panel {
+        width: min(100% - 2rem, 600px);
+        max-width: 100%;
+    }
+
+    .wn-panel {
+        width: min(300px, calc(100vw - 2rem));
+        right: 1rem;
+    }
+}
+
 .fab-panel-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     padding: 12px 16px;
+    min-height: var(--touch-target);
     border-bottom: 1px solid var(--border-light);
     flex-shrink: 0;
     background: rgba(var(--white-rgb), 0.05);
@@ -108,11 +123,13 @@
     color: var(--text-secondary);
     cursor: pointer;
     padding: 6px;
+    min-width: var(--touch-target);
+    min-height: var(--touch-target);
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.2s;
 }
 .fab-panel-close:hover {
     background: rgba(var(--black-rgb), 0.06);
@@ -172,12 +189,13 @@
 }
 .fab-panel-tab {
     padding: 10px 0;
+    min-height: var(--touch-target);
     font-size: var(--type-sm);
     font-weight: 600;
     color: var(--text-tertiary);
     cursor: pointer;
     position: relative;
-    transition: all 0.2s;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.2s;
 }
 .fab-panel-tab:hover {
     color: var(--text-secondary);
@@ -234,7 +252,7 @@
     opacity: 0;
     visibility: hidden;
     transform: translateY(12px) scale(0.97);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: transform, opacity, box-shadow, border-color, background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -269,11 +287,13 @@
     color: var(--text-secondary);
     cursor: pointer;
     padding: var(--space-1);
+    min-width: var(--touch-target);
+    min-height: var(--touch-target);
     border-radius: var(--radius-sm);
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.2s;
 }
 .wn-close-btn:hover {
     background: rgba(var(--black-rgb), 0.06);
@@ -319,6 +339,8 @@
     align-items: center;
     justify-content: center;
     padding: 6px 4px 4px;
+    min-width: var(--touch-target);
+    min-height: var(--touch-target);
     background: transparent;
     border: 1px solid transparent;
     border-radius: var(--radius-sm);
@@ -354,11 +376,13 @@
     color: var(--bamboo-primary);
     cursor: pointer;
     padding: 2px;
+    min-width: var(--touch-target);
+    min-height: var(--touch-target);
     display: flex;
     align-items: center;
     justify-content: center;
     border-radius: 50%;
-    transition: all 0.2s;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.2s;
 }
 .wn-add-custom-btn:hover {
     background: rgba(var(--primary-rgb), 0.1);
@@ -382,8 +406,10 @@
     justify-content: center;
     cursor: pointer;
     padding: 2px;
+    min-width: var(--touch-target);
+    min-height: var(--touch-target);
     border-radius: var(--radius-4);
-    transition: all 0.15s;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.15s;
     color: var(--text-faint);
 }
 .wn-rename-btn:hover {
@@ -416,19 +442,30 @@
     appearance: none;
     background: var(--border-light);
     border-radius: var(--radius-3xs);
-    outline: none;
     cursor: pointer;
+}
+
+.wn-volume-slider:focus {
+    outline: none;
+}
+
+.wn-volume-slider:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
 }
 
 .wn-volume-slider::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
-    width: 14px;
-    height: 14px;
+    width: var(--touch-target);
+    height: var(--touch-target);
     border-radius: 50%;
     background: var(--bamboo-primary);
     cursor: pointer;
     transition: transform 0.15s;
+    border: 15px solid transparent;
+    background-clip: padding-box;
+    box-sizing: border-box;
 }
 
 .wn-volume-slider::-webkit-slider-thumb:hover {
@@ -436,12 +473,14 @@
 }
 
 .wn-volume-slider::-moz-range-thumb {
-    width: 14px;
-    height: 14px;
+    width: var(--touch-target);
+    height: var(--touch-target);
     border-radius: 50%;
     background: var(--bamboo-primary);
     cursor: pointer;
-    border: none;
+    border: 15px solid transparent;
+    background-clip: padding-box;
+    box-sizing: border-box;
 }
 
 .wn-volume-label {
@@ -467,6 +506,7 @@
 .wn-timer-btn {
     flex: 1;
     padding: 5px 8px;
+    min-height: var(--touch-target);
     font-size: var(--type-sm);
     font-family: 'SF Mono', 'Menlo', 'Courier New', monospace;
     font-weight: 500;
@@ -475,7 +515,7 @@
     border: 1px solid var(--border-light);
     border-radius: var(--radius-5);
     cursor: pointer;
-    transition: all 0.15s;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.15s;
     text-align: center;
 }
 
@@ -493,6 +533,7 @@
 }
 
 .wn-timer-change-btn {
+    position: relative;
     width: 24px;
     height: 28px;
     padding: 0;
@@ -504,7 +545,7 @@
     border: 1px solid var(--border-light);
     border-radius: var(--radius-5);
     cursor: pointer;
-    transition: all 0.15s;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.15s;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -514,6 +555,17 @@
     border-color: var(--bamboo-primary);
     color: var(--bamboo-primary);
     background: rgba(var(--bamboo-primary-rgb, 62, 179, 112), 0.06);
+}
+.wn-timer-change-btn::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: var(--touch-target);
+    height: var(--touch-target);
+    min-width: var(--touch-target);
+    min-height: var(--touch-target);
 }
 
 /* 暗色模式 */
@@ -566,8 +618,10 @@
     color: var(--text-secondary);
     cursor: pointer;
     padding: 6px;
+    min-width: var(--touch-target);
+    min-height: var(--touch-target);
     border-radius: var(--radius-sm);
-    transition: all 0.2s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -621,9 +675,23 @@
     font-size: var(--type-sm);
     cursor: pointer;
     border-radius: var(--radius-sm);
-    transition: all 0.15s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.15s ease;
     color: var(--text-primary);
     position: relative;
+}
+.wn-date-day::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: var(--touch-target);
+    height: var(--touch-target);
+    min-width: var(--touch-target);
+    min-height: var(--touch-target);
+}
+.wn-date-empty::before {
+    display: none;
 }
 
 .wn-date-day:hover:not(.wn-date-empty):not(.wn-date-today) {
@@ -709,13 +777,14 @@
     justify-content: center;
     gap: var(--space-1);
     padding: 10px 8px;
+    min-height: var(--touch-target);
     font-size: var(--type-sm);
     border-radius: var(--radius-sm);
     background: transparent;
     border: none;
     color: var(--text-secondary);
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
 }
 
 #panel-date-picker .wn-type-btn:hover {
@@ -774,8 +843,8 @@
     background: var(--btn-secondary-bg);
     border-radius: var(--radius-md);
     cursor: pointer;
-    transition: all 0.2s ease;
-    min-height: 32px;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
+    min-height: var(--touch-target);
     position: relative;
 }
 
@@ -829,7 +898,8 @@
     border-radius: var(--radius-xs);
     cursor: pointer;
     padding: 2px 8px;
-    transition: all var(--transition-fast);
+    min-height: var(--touch-target);
+    transition: transform, opacity, box-shadow, border-color, background-color var(--transition-fast);
 }
 
 .theme-tune-reset-all-btn:hover {
@@ -873,9 +943,17 @@
     height: 4px;
     border-radius: var(--radius-3xs);
     background: var(--border-light);
-    outline: none;
     cursor: pointer;
     min-width: 0;
+}
+
+.theme-tune-slider:focus {
+    outline: none;
+}
+
+.theme-tune-slider:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
 }
 
 .theme-tune-slider::-webkit-slider-thumb {
@@ -903,8 +981,10 @@
     border: none;
     cursor: pointer;
     padding: 2px 4px;
+    min-width: var(--touch-target);
+    min-height: var(--touch-target);
     border-radius: var(--radius-xs);
-    transition: all var(--transition-fast);
+    transition: transform, opacity, box-shadow, border-color, background-color var(--transition-fast);
 }
 
 .theme-tune-reset:hover {
@@ -930,13 +1010,14 @@
     justify-content: center;
     width: 100%;
     padding: 8px 0;
+    min-height: var(--touch-target);
     border: none;
     background: transparent;
     color: var(--text-tertiary);
     font-size: var(--type-xs);
     cursor: pointer;
     border-radius: var(--radius-sm);
-    transition: all var(--transition-fast);
+    transition: transform, opacity, box-shadow, border-color, background-color var(--transition-fast);
 }
 
 .theme-panel-help-btn:hover {
@@ -1131,14 +1212,21 @@
     color: var(--text-primary);
     font-size: var(--type-sm);
     font-family: inherit;
-    outline: none;
     transition: border-color var(--transition-fast);
     box-sizing: border-box;
 }
 
 .ai-wizard-input:focus,
 .ai-wizard-textarea:focus {
+    outline: none;
     border-color: var(--bamboo-primary, hsl(var(--accent-hue), 35%, 45%));
+}
+
+.ai-wizard-input:focus-visible,
+.ai-wizard-textarea:focus-visible {
+    outline: none;
+    border-color: var(--bamboo-primary, hsl(var(--accent-hue), 35%, 45%));
+    box-shadow: var(--focus-ring);
 }
 
 .ai-wizard-textarea {
@@ -1174,13 +1262,14 @@
 .ai-wizard-opt {
     flex: 1;
     padding: 5px 8px;
+    min-height: var(--touch-target);
     border: 1px solid var(--border-light);
     border-radius: var(--radius-sm);
     background: var(--bg-secondary);
     color: var(--text-tertiary);
     font-size: var(--type-xs);
     cursor: pointer;
-    transition: all var(--transition-fast);
+    transition: transform, opacity, box-shadow, border-color, background-color var(--transition-fast);
     text-align: center;
     white-space: nowrap;
 }
@@ -1201,6 +1290,7 @@
 .ai-wizard-adv-toggle {
     width: 100%;
     padding: 7px 0;
+    min-height: var(--touch-target);
     margin: 6px 0 8px;
     border: 1px solid var(--border-light);
     border-radius: var(--radius-sm);
@@ -1208,7 +1298,7 @@
     color: var(--text-tertiary);
     font-size: var(--type-xs);
     cursor: pointer;
-    transition: all var(--transition-fast);
+    transition: transform, opacity, box-shadow, border-color, background-color var(--transition-fast);
 }
 
 .ai-wizard-adv-toggle:hover {
@@ -1319,13 +1409,14 @@
 
 .ai-wizard-tag {
     padding: 3px 7px;
+    min-height: var(--touch-target);
     border: 1px solid var(--border-light);
     border-radius: var(--radius-sm);
     background: var(--bg-secondary);
     color: var(--text-tertiary);
     font-size: var(--type-xs);
     cursor: pointer;
-    transition: all var(--transition-fast);
+    transition: transform, opacity, box-shadow, border-color, background-color var(--transition-fast);
     white-space: nowrap;
 }
 
@@ -1357,6 +1448,7 @@
 .ai-wizard-btn {
     flex: 1;
     padding: 10px 0;
+    min-height: var(--touch-target);
     border: none;
     border-radius: var(--radius-sm);
     font-size: var(--type-sm);
@@ -1502,6 +1594,8 @@
     cursor: pointer;
     line-height: 1;
     transition: color 0.15s;
+    min-width: var(--touch-target);
+    min-height: var(--touch-target);
 }
 
 .wn-file-picker-close:hover {
@@ -1534,12 +1628,18 @@
     font-size: var(--type-base);
     background: var(--input-bg, var(--white));
     color: var(--text-primary);
-    outline: none;
     transition: border-color 0.2s;
 }
 
 .wnfp-field input:focus {
+    outline: none;
     border-color: var(--bamboo-primary);
+}
+
+.wnfp-field input:focus-visible {
+    outline: none;
+    border-color: var(--bamboo-primary);
+    box-shadow: var(--focus-ring);
 }
 
 /* 音源类型 Tab */
@@ -1555,13 +1655,14 @@
 .wnfp-tab {
     flex: 1;
     padding: 7px 0;
+    min-height: var(--touch-target);
     border: none;
     background: transparent;
     color: var(--text-tertiary);
     font-size: var(--type-sm);
     font-weight: 500;
     cursor: pointer;
-    transition: all 0.15s;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.15s;
 }
 
 .wnfp-tab:first-child {
@@ -1589,6 +1690,7 @@
 .wnfp-browse-btn {
     flex-shrink: 0;
     padding: 7px 14px;
+    min-height: var(--touch-target);
     border: 1px solid var(--bamboo-primary);
     border-radius: var(--radius-2xs);
     background: transparent;
@@ -1596,7 +1698,7 @@
     font-size: var(--type-sm);
     font-weight: 500;
     cursor: pointer;
-    transition: all 0.15s;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.15s;
 }
 
 .wnfp-browse-btn:hover {
@@ -1643,6 +1745,7 @@
 
 .wnfp-btn {
     padding: 7px 18px;
+    min-height: var(--touch-target);
     border-radius: var(--radius-2xs);
     font-size: var(--type-base);
     font-weight: 500;
@@ -1701,6 +1804,8 @@
     cursor: pointer;
     line-height: 1;
     transition: color 0.15s;
+    min-width: var(--touch-target);
+    min-height: var(--touch-target);
 }
 
 .wnfp-vf-close:hover {
@@ -1725,6 +1830,7 @@
     align-items: center;
     gap: var(--space-2);
     padding: 8px 10px;
+    min-height: var(--touch-target);
     border-radius: var(--radius-2xs);
     cursor: pointer;
     transition: background 0.15s;
@@ -1759,98 +1865,6 @@
 
 .wnfp-vf-path {
     display: none;
-}
-
-/* ========== 搜索面板 ========== */
-.search-panel {
-    position: fixed;
-    top: 12%;
-    left: 50%;
-    transform: translateX(-50%);
-    width: min(480px, 92vw);
-    background: var(--card-bg);
-    backdrop-filter: blur(var(--glass-blur));
-    border: 1px solid var(--border-light);
-    border-radius: var(--radius-xl);
-    box-shadow: var(--shadow-floating);
-    z-index: var(--z-layer-keyboard-hint);
-    display: flex;
-    flex-direction: column;
-    max-height: 60vh;
-    overflow: clip;
-}
-.search-panel-header {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    padding: var(--space-3) var(--space-4);
-    border-bottom: 1px solid rgba(var(--primary-rgb), 0.08);
-}
-.search-panel-input {
-    flex: 1;
-    border: none;
-    background: transparent;
-    font-size: var(--type-base);
-    color: var(--text-primary);
-    outline: none;
-    padding: var(--space-1) 0;
-}
-.search-panel-input::placeholder {
-    color: var(--text-tertiary);
-}
-.search-panel-close {
-    background: none;
-    border: none;
-    font-size: var(--type-lg);
-    cursor: pointer;
-    color: var(--text-secondary);
-    padding: 0 var(--space-1);
-    line-height: 1;
-}
-.search-panel-close:hover {
-    color: var(--bamboo-error);
-}
-.search-panel-results {
-    overflow-y: auto;
-    flex: 1;
-    padding: var(--space-2);
-}
-.search-panel-empty {
-    padding: var(--space-6);
-    text-align: center;
-    color: var(--text-tertiary);
-    font-size: var(--type-sm);
-}
-.search-result-item {
-    padding: var(--space-2) var(--space-3);
-    border-radius: var(--radius-sm);
-    cursor: pointer;
-    transition: background-color var(--transition-fast);
-}
-.search-result-item:hover,
-.search-result-item:focus {
-    background: rgba(var(--primary-rgb), 0.06);
-    outline: none;
-}
-.search-result-date {
-    font-size: var(--type-xs);
-    color: var(--text-tertiary);
-    margin-bottom: var(--space-1);
-}
-.search-result-matches {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-}
-.search-match {
-    font-size: var(--type-sm);
-    color: var(--text-secondary);
-}
-.search-match mark {
-    background: rgba(var(--warning-orange-rgb), 0.3);
-    color: var(--text-primary);
-    border-radius: var(--radius-2xs);
-    padding: 0 2px;
 }
 
 /* ========== 暗色模式 ========== */

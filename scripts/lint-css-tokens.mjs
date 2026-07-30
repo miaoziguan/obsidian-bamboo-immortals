@@ -12,6 +12,7 @@
  *                              —— 注意：box-shadow 的裸 px 偏移/模糊不拦截（阴影无对应 --radius-* 令牌，强拦 ROI 低）
  *   R7  no-bare-white-kw      color/background 等属性出现裸 white 关键字（必须用 var(--white)）
  *   R8  no-bare-black-kw      color/background 等属性出现裸 black 关键字（必须用 var(--black)）
+ *   R9  no-transition-all      transition 使用 all（必须声明具体属性，如 transform, opacity）
  *
  * 设计：只校验「使用处」，令牌的「定义处」(variables.css) 整体豁免；
  *       装饰渐变色（如 #fff9e6）因含非 f/F 字符不会被误伤；
@@ -87,7 +88,7 @@ const BLACK_KW_RE = /(?:color|background|background-color|border-color|outline-c
 // 需要检查裸色关键字的 CSS 属性列表（扩展版）
 const COLOR_PROPS_RE = /(?:color|background|background-color|border-color|outline-color|fill|stroke)\s*:\s*(white|black)\b(?!\s*-)/i;
 
-const RULE_ORDER = { R1: 1, R2: 2, R3: 3, R4: 4, R5: 5, R6: 6, R7: 7, R8: 8 };
+const RULE_ORDER = { R1: 1, R2: 2, R3: 3, R4: 4, R5: 5, R6: 6, R7: 7, R8: 8, R9: 9 };
 
 for (const file of files) {
   if (EXEMPT_FILES.has(file)) continue;
@@ -142,11 +143,17 @@ for (const file of files) {
       const rule = kw === 'white' ? 'R7 no-bare-white-kw' : 'R8 no-bare-black-kw';
       violations.push({ file, lineNo, rule, text: line });
     }
+
+    // R9 transition: all（必须声明具体属性）
+    const tVal = propValue(stripped, 'transition');
+    if (tVal !== null && /\ball\b/.test(tVal) && !isRuleDisabled('R9')) {
+      violations.push({ file, lineNo, rule: 'R9 no-transition-all', text: line });
+    }
   });
 }
 
 if (violations.length === 0) {
-  console.log('✅ CSS 令牌守门员：未发现裸写硬编码（圆角/字号/白黑/阴影色/关键字）。规范保持统一。');
+  console.log('✅ CSS 令牌守门员：未发现裸写硬编码（圆角/字号/白黑/阴影色/关键字/transition: all）。规范保持统一。');
   process.exit(0);
 }
 

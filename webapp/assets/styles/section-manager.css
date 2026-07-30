@@ -2,6 +2,7 @@
     width: 24px;
     height: 24px;
     font-size: var(--type-mini);
+    position: relative;
 }
 
 .habit-actions {
@@ -13,7 +14,8 @@
 
 .habit-actions .habit-btn {
     flex: 1;
-    min-width: 0;
+    min-width: var(--touch-target);
+    min-height: var(--touch-target);
     padding: var(--space-2) var(--space-3);
     border-radius: var(--radius-3xl);
     border: 1px solid var(--border-light);
@@ -22,7 +24,7 @@
     font-size: var(--type-sm);
     font-weight: 500;
     cursor: pointer;
-    transition: all 0.25s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.25s ease;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -84,7 +86,7 @@
     border-radius: var(--radius-lg);
     padding: var(--space-4);
     border: 1px solid var(--border-light);
-    transition: all var(--transition-fast);
+    transition: transform, opacity, box-shadow, border-color, background-color var(--transition-fast);
 }
 :host(.dark) .sm-section {
     background: rgba(var(--primary-rgb), 0.12);
@@ -144,7 +146,8 @@
     border-radius: var(--radius-md);
     border: 1px solid var(--border-light);
     cursor: grab;
-    transition: all 0.2s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
+    min-height: var(--touch-target);
 }
 :host(.dark) .sm-item {
     background: rgba(var(--primary-rgb), 0.06);
@@ -197,6 +200,8 @@
     opacity: 0.6;
     padding: 2px 4px;
     flex-shrink: 0;
+    min-height: var(--touch-target);
+    min-width: var(--touch-target);
 }
 
 .sm-item:hover .sm-drag-handle {
@@ -231,6 +236,8 @@
 .sm-btn {
     width: min(28px, 7vw);
     height: 28px;
+    min-width: var(--touch-target);
+    min-height: var(--touch-target);
     border-radius: var(--radius-2xs);
     border: none;
     background: transparent;
@@ -239,8 +246,9 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.2s;
     opacity: 0.6;
+    position: relative;
 }
 
 .sm-btn:hover {
@@ -287,7 +295,9 @@
     display: inline-flex;
     align-items: center;
     gap: var(--space-1);
-    transition: all 0.2s;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.2s;
+    min-height: var(--touch-target);
+    min-width: var(--touch-target);
 }
 
 .sm-batch-show-btn:hover {
@@ -326,8 +336,10 @@
     font-size: var(--type-micro);
     font-weight: 500;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.2s;
     white-space: nowrap;
+    min-height: var(--touch-target);
+    min-width: var(--touch-target);
 }
 
 .sm-apply-btn:hover {
@@ -363,6 +375,8 @@
 .icon-option-sm {
     width: min(36px, 10vw);
     height: 36px;
+    min-width: var(--touch-target);
+    min-height: var(--touch-target);
     border-radius: var(--radius-xs);
     border: 1px solid var(--border-light);
     background: rgba(var(--primary-rgb), 0.1);
@@ -371,7 +385,7 @@
     align-items: center;
     justify-content: center;
     font-size: var(--type-heading);
-    transition: all 0.2s;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.2s;
 }
 
 .icon-option-sm:hover {
@@ -401,18 +415,24 @@ nav .date-nav-btn {
     width: min(36px, 10vw);
     height: 36px;
     font-size: var(--type-sm);
+    min-width: var(--touch-target);
+    min-height: var(--touch-target);
 }
 
 nav .view-toggle-btn {
     width: min(36px, 10vw);
     height: 36px;
     font-size: var(--type-md);
+    min-width: var(--touch-target);
+    min-height: var(--touch-target);
 }
 
 nav .view-toggle-btn-sm {
     width: min(36px, 10vw);
     height: 36px;
     font-size: var(--type-md);
+    min-width: var(--touch-target);
+    min-height: var(--touch-target);
 }
 
 nav .date-display {
@@ -449,6 +469,8 @@ nav .date-display-sub {
 .section-settings-trigger {
     width: auto;
     height: auto;
+    min-width: var(--touch-target);
+    min-height: var(--touch-target);
     border-radius: 0;
     border: none;
     background: transparent;
@@ -481,6 +503,8 @@ nav .date-display-sub {
 .section-action-trigger {
     width: auto;
     height: auto;
+    min-width: var(--touch-target);
+    min-height: var(--touch-target);
     border-radius: var(--radius-2xs);
     border: 1px solid rgba(var(--primary-rgb), 0.3);
     background: rgba(var(--primary-rgb), 0.08);
@@ -495,7 +519,7 @@ nav .date-display-sub {
     flex-shrink: 0;
     margin-left: 8px;
     padding: 4px 8px;
-    transition: all 0.2s;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.2s;
 }
 
 .section-action-trigger:hover {
@@ -562,8 +586,10 @@ nav .date-display-sub {
     display: flex;
     align-items: center;
     gap: var(--space-3);
-    transition: all 0.2s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
     font-family: inherit;
+    min-height: var(--touch-target);
+    min-width: var(--touch-target);
 }
 
 .section-settings-btn:hover {

@@ -123,9 +123,11 @@
 >
 > `displayManager._applyHue()` 通过 `root.style.setProperty()` 写入内联样式，优先级高于 `:host(.dark)` CSS 变量声明。在 `_applyHue` 中添加 `isDark` 检测逻辑，暗色下所有前景色变量 +10% 明度提升；新增 `reapplyHueForDarkMode()` 方法由 `store.setDarkMode()` 在 class 切换后调用。
 >
-> ### SearchUI `_ensurePanel` null 引用
+> ### ~~SearchUI `_ensurePanel` null 引用~~
 >
-> shadow 模式下 `byId('searchResults')` 走到 `host.shadowRoot` 而非 `document`，返回 null。改用 `panel.querySelector()` 直接查找。
+> ~~shadow 模式下 `byId('searchResults')` 走到 `host.shadowRoot` 而非 `document`，返回 null。改用 `panel.querySelector()` 直接查找。~~
+>
+> **2026-07-30 更新：** SearchUI 模块不在产品计划内，已整体移除（见 `docs/ui-audit-report-2026-07-30.md` 4.8.1）。
 >
 > ### 暗色卡片背景补充覆盖
 >

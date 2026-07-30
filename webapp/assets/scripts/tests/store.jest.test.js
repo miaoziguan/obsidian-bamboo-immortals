@@ -132,7 +132,6 @@ function setupGlobals() {
     // 加载从 store.js 抽出的独立模块（依赖 formatDate/getChineseWeekday，已在上面 mock）
     loadModule('state/dataValidator.js', []);
     loadModule('state/defaultData.js', []);
-    loadModule('services/searchService.js', []);
 
     global.DEFAULT_DATA = {};
     global.createEmptyDayData = (date) => ({ date, weekday: '周一', metrics: {}, timeline: [] });
@@ -164,7 +163,6 @@ function cleanupGlobals() {
     delete global.GoalService;
     delete global.DataIO;
     delete window.DataValidator;
-    delete window.SearchService;
     delete window.DEFAULT_DATA;
     delete window.createEmptyDayData;
     delete window.store;
@@ -445,61 +443,6 @@ describe.skip('Store 核心功能', () => {
             expect(state.ui).toBeDefined();
             expect(state.data).toBeDefined();
             expect(state.currentDate).toBeDefined();
-        });
-    });
-
-    describe('搜索功能边界条件', () => {
-        test('searchData 搜索目标时无匹配不应崩溃', () => {
-            const key = store.getDateKey();
-            store.state.data[key] = {
-                date: key,
-                goals: [{ title: '学习计划', items: [] }, { items: [] }],
-                timeline: []
-            };
-
-            expect(() => store.searchData('不存在的关键词')).not.toThrow();
-            const results = store.searchData('不存在的关键词');
-            expect(results).toEqual([]);
-        });
-
-        test('searchData 搜索目标时应返回匹配的目标', () => {
-            const key = store.getDateKey();
-            store.state.data[key] = {
-                date: key,
-                goals: [{ title: '项目推进', items: [] }],
-                timeline: []
-            };
-
-            const results = store.searchData('项目');
-            expect(results.length).toBeGreaterThan(0);
-            expect(results[0].matches.some(m => m.field === '目标' && m.value === '项目推进')).toBe(true);
-        });
-
-        test('searchData 搜索时间线时应返回匹配的活动', () => {
-            const key = store.getDateKey();
-            store.state.data[key] = {
-                date: key,
-                timeline: [{
-                    period: 'morning',
-                    name: '早晨',
-                    items: [{ task: '代码review', time: '09:00', eval: 'good' }]
-                }]
-            };
-
-            const results = store.searchData('代码');
-            expect(results.length).toBeGreaterThan(0);
-            expect(results[0].matches.some(m => m.field === '活动')).toBe(true);
-        });
-
-        test('searchData 空数据不应崩溃', () => {
-            store.state.data = {};
-            expect(() => store.searchData('任何关键词')).not.toThrow();
-        });
-
-        test('searchData goals 为 undefined 时不应崩溃', () => {
-            const key = store.getDateKey();
-            store.state.data[key] = { date: key };
-            expect(() => store.searchData('测试')).not.toThrow();
         });
     });
 

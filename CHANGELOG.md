@@ -1,5 +1,12 @@
 # Changelog
 
+## [Unreleased]
+
+### Removed
+- **移除未计划的 SearchUI 搜索模块**：该功能仅通过 `Ctrl+K` / `/` 快捷键唤起，无可见 UI 入口，确认不在当前产品计划内。删除 `modules/search-ui.js`、`services/searchService.js`、相关测试与样式，并从 `handlers.js`、`store.js`、`index.html` 中清理引用。同步更新 `app.html`、375px 浏览器验证脚本与审计文档。
+
+---
+
 ## [2.8.5] — 2026-07-24
 
 ### Added

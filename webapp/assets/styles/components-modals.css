@@ -9,7 +9,7 @@
     margin: var(--space-4) 0;
     position: relative;
     overflow: hidden;
-    transition: all 0.3s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.3s ease;
 }
 .empty-state::before {
     content: '';
@@ -64,8 +64,8 @@
     cursor: pointer;
     font-weight: 600;
     font-size: var(--type-base);
-    transition: all var(--transition-normal);
-    min-height: 44px;
+    transition: transform, opacity, box-shadow, border-color, background-color var(--transition-normal);
+    min-height: var(--touch-target);
     box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.3);
     position: relative;
     z-index: 1;

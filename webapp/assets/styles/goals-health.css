@@ -259,7 +259,7 @@
     font-size: var(--type-sm);
     font-weight: 500;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.2s;
     white-space: nowrap;
     min-width: 0;
 }
@@ -709,7 +709,7 @@
     box-shadow: 
         0 1px 0 rgba(var(--white-rgb), 0.8) inset,
         0 2px 8px rgba(var(--deep-rgb), 0.04);
-    transition: all 0.2s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
 }
 
 .health-layer-item:hover {
@@ -786,7 +786,7 @@
     box-shadow: 
         0 1px 0 rgba(var(--white-rgb), 0.8) inset,
         0 2px 8px rgba(var(--deep-rgb), 0.04);
-    transition: all 0.2s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
 }
 
 .health-goal-item:hover {
@@ -849,7 +849,7 @@
     background: rgba(var(--primary-rgb), 0.08);
     border: 1px solid rgba(var(--primary-rgb), 0.22);
     border-radius: var(--radius-pill);
-    transition: all 0.18s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.18s ease;
 }
 
 .health-goal-improve:hover {
@@ -898,7 +898,7 @@
     backdrop-filter: blur(var(--glass-blur));
     border-radius: var(--radius-md);
     border: 1px solid rgba(var(--primary-rgb), 0.1);
-    transition: all 0.2s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
     box-shadow: 0 2px 8px rgba(var(--deep-rgb), 0.04);
 }
 
@@ -957,4 +957,13 @@
 
 .shake-element {
     animation: shake 0.4s ease-in-out;
+}
+
+/* ==========================================================
+   触控目标扩展：保证所有交互元素热区 ≥ 44×44px
+   ========================================================== */
+.goal-health-overview,
+.gho-review-btn,
+.health-goal-improve {
+    min-height: var(--touch-target);
 }

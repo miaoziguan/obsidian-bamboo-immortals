@@ -533,7 +533,7 @@
     color: hsla(calc(var(--accent-hue) + 0), 23%, calc(30% + var(--accent-lightness-offset)), 0.6);
     font-size: var(--type-sm);
     cursor: pointer;
-    transition: all 0.25s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.25s ease;
     font-weight: 400;
     letter-spacing: 0.5px;
 }

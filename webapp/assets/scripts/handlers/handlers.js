@@ -1,4 +1,5 @@
 import { byId, $, getHost, getDomRoot } from '../utils/domRef.js';
+import { FocusTrap } from '../utils/focusTrap.js';
 export const Handlers = {
     modalFocusStack: [],
     lastFocusedElement: null,
@@ -63,13 +64,7 @@ export const Handlers = {
             const modalContainer = byId('modalContainer');
             if (modalContainer && !modalContainer.classList.contains('no-keybind')) return;
 
-            const modKey = e.metaKey || e.ctrlKey;
-
-            // Ctrl+K 或 / 搜索
-            if ((modKey && e.key === 'k') || (!modKey && e.key === '/' && !e.shiftKey)) {
-                e.preventDefault();
-                ActionDispatcher.dispatch('open-search', null, null, e);
-            }
+            // 全局快捷键槽位：当前未启用任何快捷键
         });
     },
 
@@ -111,9 +106,11 @@ export const Handlers = {
         const _scrollHost = getHost() || document.body;
         _scrollHost.style.overflow = 'hidden';
 
-        // 绑定焦点陷阱和 Escape 关闭
-        this._modalKeyHandler = (e) => this.setupModalFocusTrap(e);
-        getDomRoot().addEventListener('keydown', this._modalKeyHandler);
+        // 激活焦点陷阱与 Escape 关闭（传入打开前的焦点元素，关闭时归还）
+        FocusTrap.activate(modal, {
+            onEscape: () => Handlers.closeModal(),
+            previouslyFocused: this.lastFocusedElement
+        });
     },
 
     closeModal(event) {
@@ -127,11 +124,8 @@ export const Handlers = {
             this._modalObserver = null;
         }
 
-        // 移除焦点陷阱监听器
-        if (this._modalKeyHandler) {
-            getDomRoot().removeEventListener('keydown', this._modalKeyHandler);
-            this._modalKeyHandler = null;
-        }
+        // 关闭焦点陷阱
+        FocusTrap.deactivate();
 
         const container = byId('modalContainer');
         if (container) container.innerHTML = '';
@@ -297,9 +291,6 @@ ActionDispatcher.registerMany({
     'fab-theme': () => {
         if (typeof window.ThemeEffects !== 'undefined') window.ThemeEffects.showThemePanel();
         if (typeof FABManager !== 'undefined') FABManager.close();
-    },
-    'open-search': () => {
-        if (typeof SearchUI !== 'undefined') SearchUI.toggle();
     }
 });
 

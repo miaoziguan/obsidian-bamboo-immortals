@@ -649,12 +649,6 @@ export class Store {
             }
         }
 
-        if (typeof SearchService !== 'undefined' && SearchService.invalidateIndex) {
-            SearchService.invalidateIndex();
-        } else if (window.SearchService && window.SearchService.invalidateIndex) {
-            window.SearchService.invalidateIndex();
-        }
-
         this.markDayDirty(key);
         this.scheduleAutoSave();
     }
@@ -690,17 +684,9 @@ export class Store {
             }
         }
 
-        if (typeof SearchService !== 'undefined' && SearchService.invalidateIndex) {
-            SearchService.invalidateIndex();
-        } else if (window.SearchService && window.SearchService.invalidateIndex) {
-            window.SearchService.invalidateIndex();
-        }
-
         this.markDayDirty(dateStr);
         this.scheduleAutoSave();
     }
-    
-
 
     setCurrentDate(date) {
         this.setState({ currentDate: new Date(date) });
@@ -892,10 +878,6 @@ export class Store {
 
     async exportData() { return DataIO.exportData(); }
     async importData(data, opts) { return DataIO.importData(data, opts); }
-
-    searchData(query) {
-        return SearchService.search(this.state.data, this.state.globalGoals, query);
-    }
 }
 
 export const store = new Store();

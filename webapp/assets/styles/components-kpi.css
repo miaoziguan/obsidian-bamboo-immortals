@@ -9,7 +9,7 @@
     border-radius: var(--radius-xs);
     white-space: nowrap;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
     height: 28px;
     line-height: 1;
 }
@@ -111,7 +111,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
 }
 
 .prio-close-btn:hover {
@@ -130,7 +130,7 @@
     padding: 10px 12px;
     border-radius: var(--radius-xs);
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
 }
 
 .prio-item:hover {

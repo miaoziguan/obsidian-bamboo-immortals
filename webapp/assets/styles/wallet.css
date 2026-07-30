@@ -254,12 +254,12 @@
     background: transparent;
     color: var(--ink-light);
     cursor: pointer;
-    transition: all 0.2s;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.2s;
     display: inline-flex;
     align-items: center;
     gap: var(--space-1);
-    min-height: 28px;
-    min-width: 44px;
+    min-height: var(--touch-target);
+    min-width: var(--touch-target);
     justify-content: center;
 }
 .shop-sort-btn:hover {
@@ -301,7 +301,8 @@
     color: var(--ink-light);
     cursor: pointer;
     text-align: right;
-    transition: all 0.15s;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.15s;
+    min-height: var(--touch-target);
 }
 .shop-sort-option:hover {
     background: rgba(var(--primary-rgb), 0.08);
@@ -329,7 +330,7 @@
     border: none;
     border-radius: 50%;
     cursor: pointer;
-    transition: all 0.15s;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.15s;
     line-height: 1;
     background: transparent;
     color: var(--ink-light);
@@ -361,9 +362,11 @@
     background: transparent;
     color: var(--ink-light);
     cursor: pointer;
-    transition: all 0.15s;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.15s;
     font-weight: 500;
     flex-shrink: 0;
+    min-height: var(--touch-target);
+    min-width: var(--touch-target);
 }
 .shop-history-all-btn:hover {
     background: rgba(var(--primary-rgb), 0.08);
@@ -492,7 +495,9 @@
     background: transparent;
     color: var(--ink-light);
     font-weight: 400;
-    transition: all 0.15s;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.15s;
+    min-height: var(--touch-target);
+    min-width: var(--touch-target);
 }
 .shop-archive-month-btn:hover {
     background: rgba(var(--primary-rgb), 0.06);

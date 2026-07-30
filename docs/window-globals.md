@@ -29,7 +29,6 @@
 | `services/TodoService.js` | `window.TodoService` | 待办任务管理 |
 | `services/WalletService.js` | `window.WalletService` | 竹币经济/商店/收入/消费 |
 | `services/CustomTemplateManager.js` | `window.CustomTemplateManager` | 自定义模板管理 |
-| `services/searchService.js` | `window.SearchService` | 跨日/目标搜索 |
 
 ---
 

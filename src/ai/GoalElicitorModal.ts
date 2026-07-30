@@ -78,7 +78,9 @@ export class GoalElicitorModal extends Modal {
     contentEl.empty();
     contentEl.addClass('bamboo-elicit-modal');
 
-    contentEl.createEl('h2', { text: 'AI 目标澄清' });
+    const titleId = 'bamboo-elicit-title';
+    contentEl.createEl('h2', { text: 'AI 目标澄清', attr: { id: titleId } });
+    contentEl.setAttr('aria-labelledby', titleId);
     contentEl.createEl('p', {
       text: '在拆解之前，先确认这个目标是否具体、自属、有承诺。AI 会做压力测试并追问缺口——这比直接拆解更重要。',
       cls: 'bamboo-elicit-desc',
@@ -179,20 +181,40 @@ export class GoalElicitorModal extends Modal {
     }
 
     // 问题列表（记录输入框引用，提交时读取）
-    const inputs: { q: BriefQuestion; el: HTMLTextAreaElement }[] = [];
+    const inputs: { q: BriefQuestion; el: HTMLTextAreaElement; errorId: string; errorEl: HTMLElement }[] = [];
     const list = body.createDiv({ cls: 'bamboo-elicit-questions' });
-    for (const q of result.questions) {
+    for (const [idx, q] of result.questions.entries()) {
       const item = list.createDiv({ cls: 'bamboo-elicit-q' });
       item.createSpan({
         text: DISEASE_LABEL[q.disease],
         cls: 'bamboo-elicit-q-disease',
       });
-      item.createEl('label', { text: q.question, cls: 'bamboo-elicit-q-text' });
+      const inputId = `bamboo-elicit-q-${this.round}-${idx}`;
+      const errorId = `${inputId}-error`;
+      item.createEl('label', {
+        text: q.question,
+        cls: 'bamboo-elicit-q-text',
+        attr: { for: inputId },
+      });
       const ta = item.createEl('textarea', {
         cls: 'bamboo-elicit-q-input',
-        attr: { rows: '2', placeholder: '写下你的回答…' },
+        attr: { id: inputId, rows: '2', placeholder: '写下你的回答…' },
       });
-      inputs.push({ q, el: ta });
+      const errorEl = item.createDiv({
+        cls: 'bamboo-elicit-q-error',
+        attr: {
+          id: errorId,
+          role: 'alert',
+          style: 'display: none; color: var(--text-error); font-size: 12px; margin-top: 4px;',
+        },
+        text: '请回答此问题，或选择「跳过并强制提交」。',
+      });
+      ta.addEventListener('input', () => {
+        ta.removeAttribute('aria-invalid');
+        ta.removeAttribute('aria-describedby');
+        errorEl.style.display = 'none';
+      });
+      inputs.push({ q, el: ta, errorId, errorEl });
     }
 
     // 底部操作
@@ -226,6 +248,11 @@ export class GoalElicitorModal extends Modal {
       const answered = inputs.filter(({ el }) => el.value.trim());
       if (answered.length === 0) {
         new Notice('请至少回答一个问题，或选择「跳过并强制提交」');
+        for (const { el, errorId, errorEl } of inputs) {
+          el.setAttribute('aria-invalid', 'true');
+          el.setAttribute('aria-describedby', errorId);
+          errorEl.style.display = '';
+        }
         return;
       }
       for (const { q, el } of answered) {

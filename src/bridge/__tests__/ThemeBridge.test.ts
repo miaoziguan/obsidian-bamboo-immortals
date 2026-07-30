@@ -71,4 +71,59 @@ describe('ThemeBridge.computeObsidianVars', () => {
     expect(vars['--text-normal']).toBe('hsl(120, 6%, 12%)');
     expect(vars['--background-primary']).toContain('hsl(120,');
   });
+
+  it('textNormal 与 bgPrimary 不满足 4.5:1 时自动调整', () => {
+    // 亮色模式下用一个接近背景色的低对比前景
+    const vars = ThemeBridge.computeObsidianVars(120, 0, false);
+    const bgRgb = ThemeBridge.parseColorToRgb(vars['--background-primary'])!;
+    const textNormalRgb = ThemeBridge.parseColorToRgb(vars['--text-normal'])!;
+    expect(ThemeBridge.contrastRatio(textNormalRgb, bgRgb)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it('textMuted 与 bgPrimary 不满足 3:1 时自动调整', () => {
+    const vars = ThemeBridge.computeObsidianVars(120, 0, false);
+    const bgRgb = ThemeBridge.parseColorToRgb(vars['--background-primary'])!;
+    const textMutedRgb = ThemeBridge.parseColorToRgb(vars['--text-muted'])!;
+    expect(ThemeBridge.contrastRatio(textMutedRgb, bgRgb)).toBeGreaterThanOrEqual(3);
+  });
+});
+
+describe('ThemeBridge WCAG helpers', () => {
+  it('相同灰度对比度为 1:1', () => {
+    const gray: [number, number, number] = [128, 128, 128];
+    expect(ThemeBridge.contrastRatio(gray, gray)).toBe(1);
+  });
+
+  it('黑白对比度约为 21:1', () => {
+    const black: [number, number, number] = [0, 0, 0];
+    const white: [number, number, number] = [255, 255, 255];
+    expect(ThemeBridge.contrastRatio(black, white)).toBeCloseTo(21, 0);
+  });
+
+  it('ensureContrast 自动调整后的颜色满足 4.5:1', () => {
+    const adjusted = ThemeBridge.ensureContrast('#777777', '#ffffff', 4.5);
+    const adjustedRgb = ThemeBridge.parseColorToRgb(adjusted);
+    expect(adjustedRgb).not.toBeNull();
+    expect(ThemeBridge.contrastRatio(adjustedRgb!, [255, 255, 255])).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it('ensureContrast 保持 hex 格式', () => {
+    const adjusted = ThemeBridge.ensureContrast('#777777', '#ffffff', 4.5);
+    expect(adjusted).toMatch(/^#[0-9a-f]{6}$/i);
+  });
+
+  it('ensureContrast 保持 rgb 格式', () => {
+    const adjusted = ThemeBridge.ensureContrast('rgb(119, 119, 119)', 'rgb(255, 255, 255)', 4.5);
+    expect(adjusted).toMatch(/^rgb\(/);
+  });
+
+  it('ensureContrast 保持 hsl 格式', () => {
+    const adjusted = ThemeBridge.ensureContrast('hsl(0, 0%, 47%)', 'hsl(0, 0%, 100%)', 4.5);
+    expect(adjusted).toMatch(/^hsl\(/);
+  });
+
+  it('ensureContrast 对已满足对比度的颜色原样返回', () => {
+    const adjusted = ThemeBridge.ensureContrast('#000000', '#ffffff', 4.5);
+    expect(adjusted).toBe('#000000');
+  });
 });

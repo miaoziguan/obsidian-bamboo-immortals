@@ -15,7 +15,7 @@
     border-radius: var(--radius-xl);
     box-shadow: 0 24px 80px rgba(var(--black-rgb), 0.25), 0 0 0 1px var(--border-light);
     overflow: hidden;
-    width: 480px;
+    width: min(480px, 90vw);
     max-width: 90vw;
     max-height: 80vh;
     display: flex;
@@ -47,7 +47,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.2s;
     line-height: 1;
 }
 .tmpl-close-btn:hover {
@@ -74,7 +74,7 @@
     border-radius: var(--radius-lg);
     background: var(--bamboo-background);
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
     text-align: center;
 }
 .tmpl-card:hover {
@@ -236,7 +236,7 @@
     border-radius: var(--radius-2xl);
     box-shadow: var(--shadow-floating);
     overflow: hidden;
-    width: 420px;
+    width: min(420px, 92vw);
     max-width: 92vw;
     display: flex;
     flex-direction: column;
@@ -371,7 +371,6 @@
     color: var(--text-primary);
     font-size: var(--type-md);
     line-height: var(--line-height-base);
-    outline: none;
     box-sizing: border-box;
     transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
@@ -383,6 +382,12 @@
     border-color: var(--bamboo-light);
 }
 .tstd-input:focus {
+    outline: none;
+    border-color: var(--bamboo-primary);
+    box-shadow: var(--focus-ring), var(--focus-ring-offset);
+}
+.tstd-input:focus-visible {
+    outline: none;
     border-color: var(--bamboo-primary);
     box-shadow: var(--focus-ring), var(--focus-ring-offset);
 }
@@ -497,7 +502,7 @@
     font-size: var(--type-md);
     cursor: pointer;
     border: 1px solid transparent;
-    transition: all var(--transition-fast);
+    transition: transform, opacity, box-shadow, border-color, background-color var(--transition-fast);
 }
 .tstd-cancel {
     background: transparent;
@@ -518,4 +523,42 @@
 .tstd-save svg {
     width: 15px;
     height: 15px;
+}
+
+/* ==========================================================
+   触控目标扩展：保证所有交互元素热区 ≥ 44×44px
+   ========================================================== */
+.tmpl-card,
+.tmpl-tab,
+.tstd-icon-btn,
+.tstd-cancel,
+.tstd-save,
+.tstd-input {
+    min-height: var(--touch-target);
+}
+
+.tstd-icon-btn {
+    min-width: var(--touch-target);
+}
+
+/* 小尺寸关闭/删除按钮使用伪元素扩展热区，保持视觉尺寸不变 */
+.tmpl-close-btn,
+.tmpl-card-delete,
+.tstd-close-btn {
+    position: relative;
+}
+
+.tmpl-close-btn::before,
+.tmpl-card-delete::before,
+.tstd-close-btn::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: var(--touch-target);
+    height: var(--touch-target);
+    min-width: var(--touch-target);
+    min-height: var(--touch-target);
+    z-index: 1;
 }

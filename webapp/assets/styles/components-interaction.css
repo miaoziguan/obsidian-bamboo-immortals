@@ -35,7 +35,9 @@
     cursor: pointer;
     font-weight: 600;
     font-family: inherit;
-    transition: all 0.2s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
+    min-height: var(--touch-target);
+    min-width: var(--touch-target);
 }
 .edit-mode-bar-close:hover {
     background: rgba(var(--white-rgb), 0.3);
@@ -45,7 +47,7 @@
 .edit-mode-active .editable-section {
     border: 2px dashed rgba(var(--primary-rgb), 0.3);
     border-radius: var(--radius-lg);
-    transition: all 0.2s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
     position: relative;
     padding: var(--space-2);
     margin: calc(var(--space-2) * -1);
@@ -72,7 +74,7 @@
 .edit-mode-active .editable-title {
     border: 2px dashed rgba(var(--primary-rgb), 0.3);
     border-radius: var(--radius-md);
-    transition: all 0.2s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
 }
 
 .edit-mode-active .editable-title:hover {
@@ -121,6 +123,8 @@
     color: var(--text-secondary);
     padding: var(--space-1);
     transition: color 0.2s;
+    min-height: var(--touch-target);
+    min-width: var(--touch-target);
 }
 .keyboard-hint-close:hover { color: var(--cinnabar); }
 
@@ -159,7 +163,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.2s;
     border: 1px solid var(--border-light);
     margin-bottom: var(--space-2);
 }
@@ -189,7 +193,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.2s;
     border: 1px solid var(--border-light);
     position: relative;
 }
@@ -396,8 +400,8 @@ button, .btn, .date-nav-btn, .edit-btn, .view-toggle-btn, .history-close, .modal
 }
 
 .fab-action-btn {
-    min-height: 40px;
-    min-width: auto;
+    min-height: var(--touch-target);
+    min-width: var(--touch-target);
 }
 
 /* 归档管理 - 顶部突出入口 */
@@ -438,7 +442,7 @@ button, .btn, .date-nav-btn, .edit-btn, .view-toggle-btn, .history-close, .modal
     border-radius: var(--radius-lg);
     border: 1px solid var(--border-light);
     background: var(--card-bg);
-    transition: all 0.3s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.3s ease;
     box-shadow: var(--shadow-surface);
 }
 .verify-item:hover {
@@ -497,7 +501,7 @@ button, .btn, .date-nav-btn, .edit-btn, .view-toggle-btn, .history-close, .modal
     line-height: 1.6;
     color: var(--diagnosis-text);
     font-size: var(--type-base);
-    transition: all 0.3s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.3s ease;
     box-shadow: var(--shadow-surface);
 }
 .diagnosis-card:hover { transform: translateX(4px); }
@@ -520,7 +524,7 @@ button, .btn, .date-nav-btn, .edit-btn, .view-toggle-btn, .history-close, .modal
     margin: var(--space-4) 0;
     overflow: clip; /* 允许 tooltip/focus ring 溢出 */
     border: 1px solid var(--border-light);
-    transition: all 0.3s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.3s ease;
 }
 .action-card:hover { box-shadow: 0 4px 20px rgba(var(--primary-rgb), 0.1); }
 .action-header-bar {
@@ -621,7 +625,7 @@ button, .btn, .date-nav-btn, .edit-btn, .view-toggle-btn, .history-close, .modal
     border: 2px dashed rgba(var(--primary-rgb), 0.2);
     border-radius: var(--radius-xl);
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.3s ease;
     text-align: center;
 }
 .empty-state-card:hover {
@@ -666,7 +670,7 @@ button, .btn, .date-nav-btn, .edit-btn, .view-toggle-btn, .history-close, .modal
     display: flex;
     align-items: center;
     gap: var(--space-1);
-    transition: all 0.2s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
 }
 .empty-state-card:hover .empty-state-action {
     gap: var(--space-2);
@@ -725,7 +729,7 @@ button, .btn, .date-nav-btn, .edit-btn, .view-toggle-btn, .history-close, .modal
     color: var(--text-secondary);
     cursor: pointer;
     font-size: var(--type-heading);
-    transition: all 0.2s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -738,7 +742,7 @@ button, .btn, .date-nav-btn, .edit-btn, .view-toggle-btn, .history-close, .modal
     border-radius: var(--radius-md);
     border: 1px solid var(--border-light);
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
     display: flex;
     align-items: center;
     justify-content: space-between;

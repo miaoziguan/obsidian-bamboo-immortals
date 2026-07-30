@@ -2,7 +2,8 @@
 .display-panel {
     position: fixed;
     z-index: calc(var(--z-layer-tooltip) - 1);
-    width: 280px;
+    /* Responsive width: keep 280px design width but never exceed viewport minus safe margins */
+    width: min(280px, 100% - 2rem);
     background: var(--card-glass);
     backdrop-filter: blur(var(--glass-blur));
     -webkit-backdrop-filter: blur(var(--glass-blur));
@@ -50,7 +51,7 @@
     color: var(--text-tertiary);
     border-radius: var(--radius-sm);
     cursor: pointer;
-    transition: all var(--transition-fast);
+    transition: transform, opacity, box-shadow, border-color, background-color var(--transition-fast);
     min-height: 28px;
     min-width: 28px;
     padding: 0;
@@ -110,12 +111,23 @@
     flex: 1;
     -webkit-appearance: none;
     appearance: none;
-    height: 4px;
+    height: var(--touch-target);
+    padding: calc((var(--touch-target) - 4px) / 2) 0;
+    box-sizing: border-box;
     border-radius: var(--radius-3xs);
     background: var(--border-light);
-    outline: none;
+    background-clip: content-box;
     cursor: pointer;
     margin: 0;
+}
+
+.display-slider:focus {
+    outline: none;
+}
+
+.display-slider:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
 }
 
 .display-slider::-webkit-slider-thumb {
@@ -167,7 +179,7 @@
 .display-font-preset-btn,
 .display-gap-preset-btn {
     flex: 1;
-    height: 30px;
+    height: auto;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -178,9 +190,9 @@
     font-size: var(--type-xs);
     font-weight: 600;
     cursor: pointer;
-    transition: all var(--transition-fast);
-    min-height: 30px;
-    min-width: 0;
+    transition: transform, opacity, box-shadow, border-color, background-color var(--transition-fast);
+    min-height: var(--touch-target);
+    min-width: var(--touch-target);
     padding: 0;
 }
 
@@ -206,7 +218,9 @@
     flex: 1;
     -webkit-appearance: none;
     appearance: none;
-    height: 6px;
+    height: var(--touch-target);
+    padding: calc((var(--touch-target) - 6px) / 2) 0;
+    box-sizing: border-box;
     border-radius: var(--radius-3);
     background: linear-gradient(to right,
         hsl(0, 70%, 50%),
@@ -217,9 +231,18 @@
         hsl(300, 70%, 50%),
         hsl(360, 70%, 50%)
     );
-    outline: none;
+    background-clip: content-box;
     cursor: pointer;
     margin: 0;
+}
+
+.display-hue-slider:focus {
+    outline: none;
+}
+
+.display-hue-slider:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
 }
 
 .display-hue-slider::-webkit-slider-thumb {
@@ -271,7 +294,7 @@
 .display-hue-preset-btn,
 .display-lightness-preset-btn {
     flex: 1;
-    height: 30px;
+    height: auto;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -282,9 +305,9 @@
     font-size: var(--type-xs);
     font-weight: 600;
     cursor: pointer;
-    transition: all var(--transition-fast);
-    min-height: 30px;
-    min-width: 0;
+    transition: transform, opacity, box-shadow, border-color, background-color var(--transition-fast);
+    min-height: var(--touch-target);
+    min-width: var(--touch-target);
     padding: 0;
 }
 
@@ -306,7 +329,7 @@
 /* 恢复默认按钮 */
 .display-hue-reset-btn {
     width: 100%;
-    height: 32px;
+    height: auto;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -317,9 +340,10 @@
     font-size: var(--type-xs);
     font-weight: 600;
     cursor: pointer;
-    transition: all var(--transition-fast);
+    transition: transform, opacity, box-shadow, border-color, background-color var(--transition-fast);
     margin-top: var(--space-2);
-    min-height: 32px;
+    min-height: var(--touch-target);
+    min-width: var(--touch-target);
     padding: 0;
 }
 
@@ -353,8 +377,8 @@
 /* ===== 响应式 ===== */
 @media (max-width: 480px) {
     .display-panel {
-        width: calc(100vw - 32px);
-        max-width: 320px;
+        /* Same min() formula; at 375px this gives 1rem margin on each side */
+        width: min(280px, 100% - 2rem);
     }
 
     .display-preset-btn,
@@ -362,7 +386,6 @@
     .display-gap-preset-btn,
     .display-hue-preset-btn,
     .display-lightness-preset-btn {
-        height: 34px;
-        min-height: 34px;
+        min-height: var(--touch-target);
     }
 }

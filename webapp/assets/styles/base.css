@@ -119,7 +119,7 @@ button:focus-visible, a:focus-visible {
 .fab-action-btn,
 .fab-main,
 .fab-main-icon {
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: transform, opacity, box-shadow, border-color, background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* === 性能优化：全局动画控制 === */
@@ -281,7 +281,7 @@ button:focus-visible, a:focus-visible {
 
 .container {
     width: 95%;
-    max-width: var(--content-max-width);
+    max-width: min(100% - 2rem, var(--content-max));
     margin: 0 auto;
     background: var(--card-glass);
     backdrop-filter: blur(var(--glass-blur));
@@ -331,6 +331,19 @@ section[data-section-id] {
 
 @keyframes skeletonFadeIn {
     to { opacity: 1; transform: translateY(0); }
+}
+
+/* === 玻璃拟态 fallback：backdrop-filter 不被支持或背景过透时使用不透明底色 ===
+   保持玻璃效果在受支持浏览器下不变；仅在 @supports not 时切换，避免文字透底导致对比度不足。 */
+@supports not (backdrop-filter: blur(1px)) {
+    .container,
+    .bamboo-card,
+    .modal-content,
+    .skeleton-section {
+        background: var(--card-bg-fallback);
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
+    }
 }
 
 .skeleton-header {
@@ -530,22 +543,62 @@ h1 {
    Mobile rule below bumps to comfortable 48px on small screens. */
 button,
 [role="button"],
+a,
+input,
+select,
+textarea,
 .fab-action-btn,
 .quick-nav-btn,
 .goal-row-main,
+.goal-row,
 .bamboo-card,
+.bamboo-card-header,
 .todo-item-action,
 .section-title,
+.section-toggle,
 .date-nav-btn,
 .edit-btn,
 .view-toggle-btn,
+.wallet-action,
 .history-close,
 .modal-close,
-.tooltip-close {
+.tooltip-close,
+.kpi-card,
+.history-item,
+.empty-state-card,
+.expand-btn {
     min-height: var(--touch-target);
     min-width: var(--touch-target);
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
+}
+
+/* 伪元素扩展热区：固定小尺寸且布局敏感的交互元素保持视觉尺寸不变 */
+.touch-target-sm,
+.flip-stub-btn,
+.drp-close-btn,
+.drp-nav-btn,
+.display-panel-close,
+.sm-btn,
+.view-toggle-btn-sm,
+.shop-history-arrow {
+    position: relative;
+}
+.touch-target-sm::before,
+.flip-stub-btn::before,
+.drp-close-btn::before,
+.drp-nav-btn::before,
+.display-panel-close::before,
+.sm-btn::before,
+.view-toggle-btn-sm::before,
+.shop-history-arrow::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: var(--touch-target);
+    height: var(--touch-target);
+    transform: translate(-50%, -50%);
 }
 
 /* === MOBILE (≤480px): phone in portrait, tiny Obsidian sidebar === */
@@ -565,6 +618,10 @@ button,
 
     /* Body & container: tighter padding, smaller radii */
     :host {
+        padding: var(--space-4) var(--space-3);
+    }
+
+    #main-container {
         padding: var(--space-4) var(--space-3);
     }
 
@@ -602,6 +659,10 @@ button,
 /* === TABLET / NARROW SIDEBAR (≤768px)
    Rules here ALSO apply to ≤480px due to cascade. */
 @media (max-width: 768px) {
+    #main-container {
+        padding: 24px var(--space-4);
+    }
+
     .bamboo-card-header {
         padding: var(--space-4) var(--space-5);
     }
@@ -619,7 +680,7 @@ button,
 /* === WIDE DESKTOP (≥1025px): ensure comfortable reading width === */
 @media (min-width: 1025px) {
     .container {
-        max-width: var(--content-max-width-wide);
+        max-width: min(100% - 2rem, var(--content-max-wide));
     }
 }
 

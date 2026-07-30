@@ -146,6 +146,8 @@
     --bg-gradient-end: hsl(var(--accent-hue), 20%, calc(95% + var(--accent-lightness-offset)));
     --card-bg: rgba(var(--white-rgb), 0.60);
     --card-glass: rgba(var(--white-rgb), 0.55);
+    /* 玻璃拟态 fallback：当 backdrop-filter 不被支持或背景过透时，切回不透明表面色 */
+    --card-bg-fallback: var(--surface-solid);
 
     /* === 文字语义变量 === */
     --text-primary: var(--ink-dark);
@@ -323,8 +325,10 @@
     --ease-cn: cubic-bezier(0.22, 0.61, 0.36, 1);
 
     /* === 内容宽度系统（用户可调） === */
-    --content-max-width: 800px;
-    --content-max-width-wide: 880px;  /* 宽屏默认，用户设置后此值同步更新 */
+    --content-max: 1200px;            /* 标准内容最大宽度（响应式容器基准） */
+    --content-max-wide: 1100px;       /* 宽屏内容最大宽度 */
+    --content-max-width: var(--content-max);
+    --content-max-width-wide: var(--content-max-wide);  /* 宽屏默认，用户设置后此值同步更新 */
 
     /* === 动效时长系统 === */
     --duration-instant: 100ms;
@@ -426,7 +430,9 @@
        的理由已不存在；此处保留一定透明度，让整页页面级渐变能透过卡片显现 */
     --card-bg: hsla(var(--accent-hue), 18%, calc(10% + var(--accent-lightness-offset)), 0.60);
     --card-glass: hsla(var(--accent-hue), 18%, calc(10% + var(--accent-lightness-offset)), 0.84);
-    
+    /* 玻璃拟态 fallback：当 backdrop-filter 不被支持或背景过透时，切回不透明表面色 */
+    --card-bg-fallback: var(--surface-solid);
+
     /* 文字语义 — 亮度提升至 WCAG AA 4.5:1+ */
     --text-primary: hsl(var(--accent-hue), 18%, calc(91% + var(--accent-lightness-offset)));
     --text-secondary: hsl(var(--accent-hue), 15%, calc(74% + var(--accent-lightness-offset)));
@@ -611,7 +617,13 @@
     --bp-sm: 480px;        /* PRIMARY mobile breakpoint */
     --bp-md-narrow: 600px; /* wallet/shop modal only — do NOT use for general layout */
     --bp-md: 768px;        /* PRIMARY tablet breakpoint */
+    --bp-lg: 1024px;       /* standard desktop breakpoint */
     --bp-xl-min: 1025px;   /* min for wide desktop */
+
+    /* Canonical breakpoint aliases — Task 6 responsive breakpoint system */
+    --bm-bp-sm: 480px;     /* mobile */
+    --bm-bp-md: 768px;     /* tablet / narrow Obsidian sidebar */
+    --bm-bp-lg: 1024px;    /* desktop */
 
     /* Fluid font scale — computed as clamp(min_px, fluid_vw, max_px)
        where min applies at 320px and max at 1200px viewport width.

@@ -6,11 +6,13 @@
     cursor: pointer;
     font-size: var(--type-base);
     font-weight: 600;
-    transition: all var(--transition-normal);
+    transition: transform, opacity, box-shadow, border-color, background-color var(--transition-normal);
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: var(--space-1);
+    min-height: var(--touch-target);
+    min-width: var(--touch-target);
 }
 .btn:disabled,
 .btn.disabled {
@@ -74,8 +76,8 @@
 .btn-sm {
     padding: var(--space-2) var(--space-3);
     font-size: var(--type-sm);
-    min-height: 36px;
-    min-width: 36px;
+    min-height: var(--touch-target);
+    min-width: var(--touch-target);
 }
 
 .btn-success {
@@ -92,7 +94,7 @@
     cursor: pointer;
     font-size: var(--type-sm);
     color: var(--bamboo-primary);
-    transition: all var(--transition-normal);
+    transition: transform, opacity, box-shadow, border-color, background-color var(--transition-normal);
     display: inline-flex;
     align-items: center;
     gap: var(--space-1);
@@ -104,8 +106,8 @@
 .edit-btn.small {
     padding: var(--space-1) var(--space-2);
     font-size: var(--type-xs);
-    min-height: 36px;
-    min-width: 36px;
+    min-height: var(--touch-target);
+    min-width: var(--touch-target);
 }
 
 /* ========== 触摸友好的通用类 ========== */
@@ -126,7 +128,7 @@
     background: var(--card-bg);
     color: var(--bamboo-primary);
     cursor: pointer;
-    transition: all var(--transition-smooth);
+    transition: transform, opacity, box-shadow, border-color, background-color var(--transition-smooth);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -263,10 +265,10 @@
 
 @media (max-width: 480px) {
     .header-right .header-quick-btn {
-        width: 40px;
-        height: 40px;
-        min-width: 40px;
-        min-height: 40px;
+        width: var(--touch-target);
+        height: var(--touch-target);
+        min-width: var(--touch-target);
+        min-height: var(--touch-target);
     }
 }
 

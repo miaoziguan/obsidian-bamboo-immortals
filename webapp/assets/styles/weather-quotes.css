@@ -146,14 +146,19 @@
     font-size: var(--type-xs);
     color: var(--bamboo-primary);
     background: transparent;
-    outline: none;
     transition: border-color 0.15s ease;
     font-family: inherit;
     height: 20px;
     box-sizing: border-box;
 }
 .weather-city-inline:focus {
+    outline: none;
     border-color: var(--bamboo-primary);
+}
+.weather-city-inline:focus-visible {
+    outline: none;
+    border-color: var(--bamboo-primary);
+    box-shadow: var(--focus-ring);
 }
 
 /* 加载/失败状态 */

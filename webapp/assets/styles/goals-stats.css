@@ -12,7 +12,7 @@
     padding: var(--space-4);
     text-align: center;
     box-shadow: 0 1px 0 rgba(var(--white-rgb), 0.8) inset, 0 4px 12px rgba(var(--deep-rgb),0.06);
-    transition: all 0.2s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
 }
 
 .stat-card:hover {
@@ -69,7 +69,7 @@
     background: rgba(var(--white-rgb), 0.8);
     border: 1px solid rgba(var(--primary-rgb),0.1);
     border-radius: var(--radius-md);
-    transition: all 0.2s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
 }
 
 .time-alert:hover {
@@ -169,7 +169,7 @@
     background: rgba(var(--white-rgb), 0.8);
     border-radius: var(--radius-sm);
     border: 1px solid rgba(var(--primary-rgb),0.08);
-    transition: all 0.2s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
 }
 
 .legend-item:hover {
@@ -387,7 +387,7 @@
     justify-content: center;
     font-size: var(--type-micro);
     color: var(--text-tertiary);
-    transition: all 0.2s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
 }
 
 .heatmap-day:hover {
@@ -437,7 +437,7 @@
     background: linear-gradient(135deg, rgba(var(--health-success-rgb), 0.08), rgba(var(--mint-rgb), 0.05));
     border: 1px solid rgba(var(--health-success-rgb), 0.15);
     border-radius: var(--radius-md);
-    transition: all 0.2s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
 }
 
 .completed-item:hover {
@@ -539,7 +539,7 @@
     background: rgba(var(--white-rgb), 0.95);
     border-radius: var(--radius-lg);
     border: 1px solid rgba(var(--primary-rgb),0.08);
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: transform, opacity, box-shadow, border-color, background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
     min-width: 100px;
     position: relative;
@@ -669,7 +669,7 @@
     border: 1px solid rgba(var(--warning-orange-rgb), 0.2);
     border-radius: var(--radius-lg);
     text-align: center;
-    transition: all 0.2s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
 }
 
 .achievement-card-horizontal {
@@ -680,7 +680,7 @@
     background: linear-gradient(135deg, rgba(var(--gold-bright-rgb), 0.1), rgba(255,250,205,0.08));
     border: 1px solid rgba(var(--warning-orange-rgb), 0.2);
     border-radius: var(--radius-md);
-    transition: all 0.2s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
 }
 
 .achievement-card:hover {
@@ -844,7 +844,7 @@
     backdrop-filter: blur(var(--glass-blur));
     border-radius: var(--radius-md);
     border: 1px solid rgba(var(--primary-rgb), 0.1);
-    transition: all 0.2s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
     align-items: flex-start;
 }
 
@@ -904,7 +904,7 @@
     background: rgba(var(--white-rgb), 0.8);
     border-radius: var(--radius-md);
     border: 1px solid rgba(var(--primary-rgb), 0.06);
-    transition: all 0.2s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
 }
 
 .rating-tier:last-child {
@@ -977,7 +977,7 @@
     background: rgba(var(--white-rgb), 0.8);
     border-radius: var(--radius-md);
     border: 1px solid rgba(var(--primary-rgb), 0.06);
-    transition: all 0.2s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
 }
 
 .layer-detail-item:last-child {

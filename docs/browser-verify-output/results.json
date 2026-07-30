@@ -1,0 +1,108 @@
+{
+  "viewport": {
+    "width": 375,
+    "height": 812
+  },
+  "shadow_host": "#bamboo-shadow-host",
+  "tests": [
+    {
+      "name": "Shadow host mounted",
+      "status": "OK",
+      "details": {
+        "exists": true
+      }
+    },
+    {
+      "name": "Initial 375px screenshot",
+      "status": "OK",
+      "details": {
+        "file": "01-initial-375px.png"
+      }
+    },
+    {
+      "name": "FAB main button exists",
+      "status": "OK",
+      "details": {
+        "aria-expanded": "false",
+        "aria-label": "展开快捷菜单",
+        "aria-controls": "fabActions"
+      }
+    },
+    {
+      "name": "FAB menu open",
+      "status": "OK",
+      "details": {
+        "aria-expanded": "true",
+        "menu_visible": true
+      }
+    },
+    {
+      "name": "FAB menu items",
+      "status": "OK",
+      "details": {
+        "count": 10
+      }
+    },
+    {
+      "name": "FAB menu close (click main button)",
+      "status": "OK",
+      "details": {
+        "aria-expanded": "false",
+        "menu_visible": true
+      }
+    },
+    {
+      "name": "FAB menu close (Escape)",
+      "status": "OK",
+      "details": {
+        "aria-expanded": "false",
+        "actions_class": "fab-actions",
+        "menu_visible": true
+      }
+    },
+    {
+      "name": "Settings modal open",
+      "status": "OK",
+      "details": {
+        "fab_panel": 1,
+        "modal_overlay": 0
+      }
+    },
+    {
+      "name": "Settings modal close",
+      "status": "OK",
+      "details": {
+        "visible": false
+      }
+    },
+    {
+      "name": "Goal rows rendered",
+      "status": "INFO",
+      "details": {
+        "count": 0,
+        "note": "独立浏览器缺少 Obsidian Vault 数据时目标列表为空"
+      }
+    },
+    {
+      "name": "Goal inline edit",
+      "status": "INFO",
+      "details": {
+        "reason": "No goal rows rendered in standalone browser without vault data"
+      }
+    },
+    {
+      "name": "ARIA snapshot",
+      "status": "OK",
+      "details": {
+        "file": "aria-snapshot.json",
+        "count": 100,
+        "skip_link": false,
+        "live_region": true
+      }
+    }
+  ],
+  "console_logs": [
+    "error: Failed to load from storage: TypeError: Cannot convert undefined or null to object\n    at Object.keys (<anonymous>)\n    at Store.loadFromStorage (http://localhost:8001/assets/scripts/state/store.js?__BUILD__:203:24)\n    at async Store.initialize (http://localhost:8001/assets/scripts/state/store.js?__BUILD__:51:13)\n    at async http://localhost:8001/:237:5",
+    "warning: [Store] idle archive failed: TypeError: ph.records is not iterable\n    at Object.archiveOldRecords (http://localhost:8001/assets/scripts/services/WalletService.js?__BUILD__:117:33)\n    at http://localhost:8001/assets/scripts/state/store.js?__BUILD__:165:61"
+  ]
+}

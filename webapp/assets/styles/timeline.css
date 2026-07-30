@@ -13,7 +13,7 @@
     padding: var(--space-4) var(--space-3);
     text-align: center;
     border: 1px solid var(--border-light);
-    transition: all 0.3s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.3s ease;
     position: relative;
     overflow: hidden;
     box-shadow: var(--shadow-surface);
@@ -998,7 +998,7 @@
     backdrop-filter: blur(var(--glass-blur));
     border-radius: var(--radius-lg);
     overflow: clip; /* 允许 tooltip/focus ring 溢出，仅裁切子元素几何溢出 */
-    transition: all 0.3s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.3s ease;
     box-shadow: var(--shadow-surface);
 }
 .bamboo-card:hover { transform: translateX(8px); box-shadow: var(--shadow-card); }
@@ -1009,6 +1009,7 @@
     justify-content: space-between;
     cursor: pointer;
     position: relative;
+    min-height: var(--touch-target);
     /* backdrop-filter 由父 .bamboo-card 提供 */
     border-bottom: 1px solid rgba(var(--white-rgb), 0.28);
     overflow: hidden;
@@ -2204,5 +2205,22 @@
     right: 6px;
     width: 18px;
     height: 18px;
+}
+
+/* =============================================
+   响应式 — 时间线统计网格
+   Canonical breakpoints: 480px / 768px
+   ============================================= */
+
+@media (max-width: 768px) {
+    .timeline-stats-row {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 480px) {
+    .timeline-stats-row {
+        grid-template-columns: 1fr;
+    }
 }
 

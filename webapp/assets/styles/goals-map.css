@@ -353,7 +353,7 @@
     padding: 0 var(--space-4) var(--space-3);
     max-height: 1000px;
     overflow: hidden;
-    transition: all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    transition: max-height, opacity, transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     opacity: 1;
     position: relative;
     z-index: 5;
@@ -401,7 +401,7 @@
 /* 子项目条目容器（两行布局） */
 .goal-item-entry {
     padding: 6px 0;
-    transition: all 0.2s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
     border-radius: var(--radius-xs);
 }
 .goal-item-entry:hover {
@@ -479,7 +479,7 @@ input[type="number"].goal-inline-edit-input {
     font-size: var(--type-sm);
     color: var(--bamboo-primary);
     flex-shrink: 0;
-    transition: all 0.2s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
     cursor: pointer;
 }
 .goal-item-status:hover {
@@ -516,7 +516,7 @@ input[type="number"].goal-inline-edit-input {
     font-size: var(--type-sm);
     padding: 2px 6px;
     border-radius: var(--radius-4);
-    transition: all 0.2s;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.2s;
     flex-shrink: 0;
 }
 .goal-item-edit-btn:hover {
@@ -541,7 +541,7 @@ input[type="number"].goal-inline-edit-input {
     overflow: hidden;
     text-overflow: ellipsis;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
     padding: 2px 6px;
     border-radius: var(--radius-2xs);
     border: 1px solid transparent;
@@ -708,7 +708,7 @@ input[type="number"].goal-inline-edit-input {
     gap: 6px;
     height: 36px;
     opacity: 0.6;
-    transition: all 0.2s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
     flex-shrink: 0;
 }
 .goal-row:hover .goal-row-actions,
@@ -723,7 +723,7 @@ input[type="number"].goal-inline-edit-input {
     width: 28px;
     padding: 0;
     border-radius: var(--radius-xs);
-    transition: all 0.2s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
     color: var(--bamboo-primary);
     display: inline-flex;
     align-items: center;
@@ -759,7 +759,7 @@ input[type="number"].goal-inline-edit-input {
     font-size: var(--type-sm);
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.3s ease;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -783,7 +783,7 @@ input[type="number"].goal-inline-edit-input {
     white-space: nowrap;
     flex-shrink: 0;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
     font-weight: 500;
     position: relative;
 }
@@ -876,7 +876,7 @@ input[type="number"].goal-inline-edit-input {
     white-space: nowrap;
     flex-shrink: 0;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
 }
 .goal-item-date:hover {
     opacity: 0.8;
@@ -899,7 +899,7 @@ input[type="number"].goal-inline-edit-input {
     font-size: var(--type-sm);
     color: var(--text-primary);
     cursor: pointer;
-    transition: all 0.2s;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.2s;
     min-height: 28px;
     gap: var(--space-1);
 }
@@ -930,7 +930,7 @@ input[type="number"].goal-inline-edit-input {
     margin: 0 4px;
     white-space: nowrap;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
 }
 .goal-editor-v2 .goal-item-value:hover {
     opacity: 0.8;
@@ -940,7 +940,7 @@ input[type="number"].goal-inline-edit-input {
     color: var(--bamboo-warning);
     white-space: nowrap;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
     font-weight: 600;
     flex-shrink: 0;
 }
@@ -1003,7 +1003,7 @@ input[type="number"].goal-inline-edit-input {
     color: rgb(var(--info-blue-rgb));
     white-space: nowrap;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.2s;
     user-select: none;
 }
 .goal-inline-suggested:hover {
@@ -1057,7 +1057,7 @@ input[type="number"].goal-inline-edit-input {
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.2s;
     line-height: 1;
 }
 .catp-close-btn:hover {
@@ -1079,7 +1079,7 @@ input[type="number"].goal-inline-edit-input {
     padding: 8px 10px;
     border-radius: var(--radius-xs);
     cursor: pointer;
-    transition: all 0.15s;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.15s;
 }
 .catp-item:hover {
     background: rgba(var(--teal-rgb), 0.08);
@@ -1109,7 +1109,7 @@ input[type="number"].goal-inline-edit-input {
     font-size: var(--type-sm);
     border-radius: var(--radius-xs);
     cursor: pointer;
-    transition: all 0.2s;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.2s;
 }
 .catp-manage-btn:hover {
     border-color: var(--bamboo-primary);
@@ -1165,7 +1165,7 @@ input[type="number"].goal-inline-edit-input {
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.2s;
     line-height: 1;
 }
 .catm-close-btn:hover {
@@ -1190,7 +1190,7 @@ input[type="number"].goal-inline-edit-input {
     padding: 10px 12px;
     border-radius: var(--radius-sm);
     background: var(--bamboo-background);
-    transition: all 0.15s;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.15s;
 }
 .catm-item:hover {
     background: rgba(var(--teal-rgb), 0.06);
@@ -1220,7 +1220,7 @@ input[type="number"].goal-inline-edit-input {
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.2s;
 }
 .catm-item-actions button:hover {
     background: var(--border-light);
@@ -1230,8 +1230,16 @@ input[type="number"].goal-inline-edit-input {
     border: 1px solid var(--bamboo-primary);
     border-radius: var(--radius-2xs);
     font-size: var(--type-base);
-    outline: none;
     background: var(--bamboo-background);
+}
+
+.catm-inline-input:focus {
+    outline: none;
+}
+
+.catm-inline-input:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
 }
 .catm-add-section {
     padding-top: 12px;
@@ -1247,13 +1255,20 @@ input[type="number"].goal-inline-edit-input {
     border: 1px solid var(--border-light);
     border-radius: var(--radius-xs);
     font-size: var(--type-base);
-    outline: none;
     background: var(--bamboo-background);
     color: var(--text-primary);
     transition: border-color 0.2s;
 }
+
 .catm-input:focus {
+    outline: none;
     border-color: var(--bamboo-primary);
+}
+
+.catm-input:focus-visible {
+    outline: none;
+    border-color: var(--bamboo-primary);
+    box-shadow: var(--focus-ring);
 }
 .catm-icon-input {
     width: 60px;
@@ -1271,7 +1286,7 @@ input[type="number"].goal-inline-edit-input {
     font-weight: 500;
     border-radius: var(--radius-xs);
     cursor: pointer;
-    transition: all 0.2s;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.2s;
     white-space: nowrap;
 }
 .catm-add-btn:hover {
@@ -1293,7 +1308,7 @@ input[type="number"].goal-inline-edit-input {
     font-weight: 500;
     border-radius: var(--radius-xs);
     cursor: pointer;
-    transition: all 0.2s;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.2s;
 }
 .catm-done-btn:hover {
     filter: brightness(1.1);
@@ -1335,7 +1350,7 @@ input[type="number"].goal-inline-edit-input {
     background: rgba(var(--primary-rgb), 0.03);
     border-radius: var(--radius-sm);
     border: 1px solid transparent;
-    transition: all 0.2s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
 }
 
 .goal-inline-subitem-mini:hover {
@@ -1361,7 +1376,7 @@ input[type="number"].goal-inline-edit-input {
     color: var(--bamboo-warning);
     white-space: nowrap;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
     font-weight: 600;
     flex-shrink: 0;
     margin-right: var(--space-2);
@@ -1402,4 +1417,133 @@ input[type="number"].goal-inline-edit-input {
     color: var(--text-muted);
     min-width: 30px;
     text-align: right;
+}
+
+/* ============================================================
+   响应式 — 目标地图子项目/内联编辑
+   Canonical breakpoints: 480px / 768px
+   ============================================================ */
+
+@media (max-width: 768px) {
+    /* 子项目紧凑卡片：窄屏下允许换行，避免固定宽度撑出滚动条 */
+    .goal-inline-subitem-mini {
+        flex-wrap: wrap;
+        gap: var(--space-2);
+    }
+
+    .goal-item-name-mini {
+        min-width: 0;
+    }
+
+    .goal-item-progress-mini {
+        width: 100%;
+        margin-top: var(--space-1);
+    }
+
+    /* 行内编辑固定宽度字段：改为弹性收缩，配合 flex-wrap */
+    .goal-inline-sub-date,
+    .goal-inline-sub-start-value,
+    .goal-inline-sub-target-value,
+    .goal-inline-sub-current-value,
+    .goal-inline-sub-daily-min {
+        flex: 1 1 auto;
+        width: auto;
+        min-width: 0;
+    }
+
+    /* 子项目元数据行：允许换行 */
+    .goal-item-meta {
+        flex-wrap: wrap;
+    }
+
+    .goal-item-row .goal-item-progress {
+        min-width: 0;
+    }
+
+    .goal-item-name {
+        min-width: 0;
+    }
+}
+
+@media (max-width: 480px) {
+    .goal-inline-subitem-mini {
+        padding: var(--space-2);
+    }
+
+    .goal-item-progress-mini {
+        gap: var(--space-1);
+    }
+}
+
+/* ==========================================================
+   触控目标扩展：保证所有交互元素热区 ≥ 44×44px
+   ========================================================== */
+.goal-row {
+    min-height: var(--touch-target);
+}
+
+.goal-row-header,
+.goal-item-edit-btn,
+.goal-item-name,
+.completed-items-toggle,
+.goal-row-edit-btn,
+.goal-inline-add-btn,
+.goal-inline-date-display,
+.goal-inline-suggested,
+.goal-item-daily-mini,
+.catp-item,
+.catp-manage-btn,
+.catm-inline-input,
+.catm-input,
+.catm-icon-input,
+.catm-add-btn,
+.catm-done-btn,
+.goal-item-date,
+.goal-item-daily,
+.goal-date-range {
+    min-height: var(--touch-target);
+}
+
+.goal-date-range,
+.goal-item-date,
+.goal-item-daily {
+    display: inline-flex;
+    align-items: center;
+}
+
+[data-inline-edit] {
+    display: inline-block;
+    min-height: var(--touch-target);
+}
+
+/* 小尺寸可点击元素使用伪元素扩展热区，保持视觉尺寸不变 */
+.goal-row-toggle,
+.goal-row-category,
+.goal-row-title,
+.goal-item-status,
+.goal-row-action-btn,
+.catp-close-btn,
+.catm-close-btn,
+.catm-item-actions button {
+    position: relative;
+}
+
+.goal-row-toggle::before,
+.goal-row-category::before,
+.goal-row-title::before,
+.goal-item-status::before,
+.goal-row-action-btn::before,
+.catp-close-btn::before,
+.catm-close-btn::before,
+.catm-item-actions button::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: var(--touch-target);
+    height: var(--touch-target);
+    min-width: var(--touch-target);
+    min-height: var(--touch-target);
+    z-index: 1;
 }

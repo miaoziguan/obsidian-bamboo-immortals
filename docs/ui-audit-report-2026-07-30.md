@@ -158,6 +158,12 @@
 2. 组件类名统一前缀，如 `.bm-btn`、`.bm-input`。
 3. 禁止对裸标签设置 `margin`、`font-size`、`color` 等不可继承属性。
 
+**修复状态：** 已修复（2026-07-30）。`webapp/assets/styles/base.css` 中所有裸标签选择器（`button`/`a`/`select`/`input`/`textarea`）已用 `:where()` 包裹，降为 **0,0,0 零权重默认值**，覆盖以下 6 处规则：统一可点击元素交互（`cursor`/`transition`）、`:active` 按压反馈、`button/a` 的 `:focus-visible` 焦点环、全局触控最小尺寸（`min-height`/`min-width`/`touch-action`）、移动端 `≤480px` 触控舒适尺寸、表单元素 `:focus-visible` 焦点环。
+
+采取 `:where()` 而非 `:host` 前缀的依据：插件渲染于 Shadow DOM（`shadowBootstrap.js` 创建 `#bamboo-shadow-host` 开放影子根，CSS 注入影子根内），裸标签选择器本就只作用于影子根内部、不会泄漏到 Obsidian 宿主，故「泄漏风险」为理论性；真正的治理目标是审计报告所述「权重竞赛」。`:host` 前缀会把权重提升至 0,1,1，反而让组件类更难覆写；`:where()` 将默认重置降至 0 权重，任一组件类（0,1,0）即可无竞赛覆写，从根上消除权重竞赛。
+
+保留不变的全局合理重置：`* { margin:0; padding:0; box-sizing:border-box; }` 与 `* { -webkit-tap-highlight-color: transparent; }`（通用选择器最佳实践，按计划保持）；`:focus-visible` 通用伪类规则（非裸标签，作用于任意聚焦元素）亦保留。`forms.css` 经复核无顶层裸标签选择器（已使用 `.form-input`/`.form-textarea`/`.form-select` 类选择器），无需改动。`npm run lint:css`、`npm run build:webapp && npm run lint && npm test`（24 套件 / 210 通过 / 0 失败）全部通过。
+
 ---
 
 ### 4.2 性能
@@ -532,7 +538,7 @@
 | 5 | 固定宽度与断点缺失 | 响应式 | P1 | 布局系统 | 中 | 已修复（--bm-bp-* 断点变量 + min() 容器 + 375px 无水平滚动条） |
 | 6 | 触控区域过小 | 响应式 | P1 | 移动端 | 低 | 多处 <44px |
 | 7 | CSS 变量命名不一致 | CSS 架构 | P1 | 全局 CSS | 中 | 已修复（--bm-* canonical + alias + lint R10） |
-| 8 | 选择器权重过大 | CSS 架构 | P1 | 全局 CSS | 中 | 全局标签选择器 |
+| 8 | 选择器权重过大 | CSS 架构 | P1 | 全局 CSS | 中 | 已修复（裸标签选择器 :where() 降为 0 权重默认值） |
 | 9 | 行内编辑反馈不足 | 交互 | P1 | Goals 模块 | 低 | 无保存反馈 |
 | 10 | 按钮系统碎片化 | 组件一致性 | P1 | 全局组件 | 中 | 多套按钮类 |
 | 11 | 卡片/面板圆角阴影不统一 | 组件一致性 | P1 | 全局 CSS | 低 | 变量使用混乱 |

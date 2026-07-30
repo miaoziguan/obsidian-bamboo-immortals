@@ -301,17 +301,16 @@ a:active) {
     border: 1px solid rgba(var(--white-rgb), 0.3);
 }
 
-/* === 性能优化：动画元素 GPU 合成层提示 === */
+/* === 性能优化：动画元素 GPU 合成层提示 ===
+ * will-change 白名单策略（UI Audit 4.2.3）：禁止在静态组件上常驻 will-change。
+ * 仅在动画活跃态声明 —— :hover / .expanded（components-interaction.css、goals-map.css）
+ * 或 date-transitioning / date-enter（本文件日期切换动画，类名由 renderScheduler
+ * 在动画前后添加/移除）。动画结束 → 类名移除 → will-change 随之失效，合成层释放。
+ * contain: layout style 为廉价 containment，常驻安全，予以保留。 */
 .bamboo-node,
 .goal-row,
 section[data-section-id] {
-    will-change: transform, opacity;
     contain: layout style;
-}
-
-/* 动画结束后移除 will-change，避免长期占用 GPU 内存 */
-.bamboo-node:nth-child(n+6) {
-    will-change: auto;
 }
 
 /* === 精细化骨架屏 === */
@@ -418,6 +417,7 @@ section[data-section-id] {
 }
 
 #sectionsContainer.date-transitioning section[data-section-id] {
+    will-change: transform, opacity;
     animation: sectionSlideOutLeft 0.22s ease forwards;
     animation-delay: calc(var(--section-index, 0) * 0.03s);
 }
@@ -445,6 +445,7 @@ section[data-section-id] {
 }
 
 #sectionsContainer.date-enter section[data-section-id] {
+    will-change: transform, opacity;
     opacity: 0;
     animation: sectionSlideInFromRight 0.32s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
     animation-delay: calc(var(--section-index, 0) * 0.05s);
@@ -482,7 +483,6 @@ section[data-section-id] {
 
 section[data-section-id] {
     --section-index: 0;
-    will-change: transform, opacity;
 }
 
 section[data-section-id]:nth-child(1) { --section-index: 0; }

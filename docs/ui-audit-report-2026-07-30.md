@@ -258,6 +258,14 @@
 2. 建立 `will-change` 白名单，禁止在静态组件上常驻。
 3. 推广 `contain: layout style paint` 到更多滚动容器。
 
+**修复状态：** 已修复（2026-07-30）。建立 will-change 白名单策略 ——「禁止在静态组件上常驻 will-change，仅在动画活跃态声明」：
+
+- **移除常驻 will-change**：`.bamboo-node / .goal-row / section[data-section-id]`（base.css 原常驻 `will-change: transform, opacity`）改为仅保留廉价的 `contain: layout style`；`section[data-section-id]` 重复常驻声明同步移除；`.modal-content` 常驻 will-change 移除（一次性 0.4s slideUp 开场动画由浏览器自动提升合成层，常驻反而在弹窗开启期间长期占用 GPU）。`.bamboo-node:nth-child(n+6) { will-change: auto }` 旧缓解规则随之删除。
+- **作用域化到动画活跃态**：`will-change: transform, opacity` 改为仅声明于 `#sectionsContainer.date-transitioning section`（0.22s 退场）与 `#sectionsContainer.date-enter section`（0.32s 进场）。这两个类名由 `renderScheduler.startDateTransition` 在动画开始前添加、结束后移除（setTimeout + requestAnimationFrame），实现「动画前提升合成层 → 动画后释放」的动态策略，零额外 JS 事件监听。
+- **保留既有条件声明**：`.goal-row:hover`、`.quick-nav:hover/.expanded` 的 will-change 维持不变（已按状态作用域化，符合白名单）。
+- **清理死代码**：移除未被引用的 `--will-change-transform` / `--will-change-opacity` 令牌。
+- 验证：`lint-css-tokens`（0 违规）/ `build:webapp` / `eslint` / `npm test`（214 项）/ `browser-verify.py`（375px 全绿）均通过。
+
 #### 4.2.4 宽泛选择器与重排风险（P2）
 
 **现象：**
@@ -589,7 +597,7 @@ JS/HTML 旧类名迁移采用别名策略推迟到后续渐进替换，当前所
 | 11 | 卡片/面板圆角阴影不统一 | 组件一致性 | P1 | 全局 CSS | 低 | 变量使用混乱 |
 | 12 | 暗色模式覆盖不完整 | 主题 | P1 | 全局 CSS | 中 | 已修复（.swipe-hint / .fab tooltip / .dynamic-hint-item:hover 暗色覆盖补全 + ThemeBridge 暗色策略复核无缺口，见 4.7.1） |
 | 13 | 硬编码 tooltip 白色文字 | CSS 架构 | P2 | 4 个 CSS 文件 | 低 | 已修复（10 处统一为 `var(--text-on-accent)`，lint-disable 全部移除，R7 零违规，见 4.1.1） |
-| 14 | will-change 策略缺失 | 性能 | P2 | 动画相关 | 低 | 部分已使用 |
+| 14 | will-change 策略缺失 | 性能 | P2 | 动画相关 | 低 | 已修复（白名单策略：移除 4 处常驻 will-change，作用域化到 date-transitioning/date-enter 动画活跃态，见 4.2.3） |
 | 15 | 日期切换边界测试不足 | 交互 | P2 | Timeline/Goals | 中 | 需压力测试 |
 | 16 | 主题同步延迟感 | 主题 | P2 | ThemeBridge | 中 | 一帧延迟 |
 | 17 | 图标系统不统一 | 组件一致性 | P2 | 全局组件 | 中 | 多源混用 |

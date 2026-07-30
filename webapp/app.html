@@ -195,10 +195,6 @@
     --scale-tiny: scale(0.98);
     --scale-small: scale(0.95);
     
-    /* === 动画性能优化 === */
-    --will-change-transform: transform;
-    --will-change-opacity: opacity;
-    
     /* === 阴影深度系统 === */
     --shadow-surface: 0 2px 8px rgba(var(--deep-rgb), 0.06), 0 1px 2px rgba(var(--deep-rgb), 0.04);    /* 表层 — 卡片内元素/微小投影 */
     --shadow-card: 0 4px 16px rgba(var(--deep-rgb), 0.08), 0 2px 4px rgba(var(--deep-rgb), 0.04);      /* 中层 — 可悬停卡片/基础面板 */
@@ -1041,17 +1037,16 @@ a:active) {
     border: 1px solid rgba(var(--white-rgb), 0.3);
 }
 
-/* === 性能优化：动画元素 GPU 合成层提示 === */
+/* === 性能优化：动画元素 GPU 合成层提示 ===
+ * will-change 白名单策略（UI Audit 4.2.3）：禁止在静态组件上常驻 will-change。
+ * 仅在动画活跃态声明 —— :hover / .expanded（components-interaction.css、goals-map.css）
+ * 或 date-transitioning / date-enter（本文件日期切换动画，类名由 renderScheduler
+ * 在动画前后添加/移除）。动画结束 → 类名移除 → will-change 随之失效，合成层释放。
+ * contain: layout style 为廉价 containment，常驻安全，予以保留。 */
 .bamboo-node,
 .goal-row,
 section[data-section-id] {
-    will-change: transform, opacity;
     contain: layout style;
-}
-
-/* 动画结束后移除 will-change，避免长期占用 GPU 内存 */
-.bamboo-node:nth-child(n+6) {
-    will-change: auto;
 }
 
 /* === 精细化骨架屏 === */
@@ -1158,6 +1153,7 @@ section[data-section-id] {
 }
 
 #sectionsContainer.date-transitioning section[data-section-id] {
+    will-change: transform, opacity;
     animation: sectionSlideOutLeft 0.22s ease forwards;
     animation-delay: calc(var(--section-index, 0) * 0.03s);
 }
@@ -1185,6 +1181,7 @@ section[data-section-id] {
 }
 
 #sectionsContainer.date-enter section[data-section-id] {
+    will-change: transform, opacity;
     opacity: 0;
     animation: sectionSlideInFromRight 0.32s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
     animation-delay: calc(var(--section-index, 0) * 0.05s);
@@ -1222,7 +1219,6 @@ section[data-section-id] {
 
 section[data-section-id] {
     --section-index: 0;
-    will-change: transform, opacity;
 }
 
 section[data-section-id]:nth-child(1) { --section-index: 0; }
@@ -13684,7 +13680,9 @@ input[type="number"].goal-inline-edit-input {
     /* ARIA 声明由 HTML 模板提供：role="dialog" aria-modal="true" aria-labelledby="{titleId}" */
     background: var(--card-bg);
     /* backdrop-filter 由父 .modal-overlay 提供 */
-    will-change: transform; /* 模态框打开/关闭的瞬时关键动画 */
+    /* will-change 白名单（UI Audit 4.2.3）：不再常驻；slideUp 开场动画为一次性 0.4s，
+       浏览器会为活动动画自动提升合成层，常驻 will-change 反而会在弹窗开启期间
+       （可达数分钟）长期占用 GPU 合成层。 */
     border-radius: var(--radius-modal);
     border: 1px solid rgba(var(--white-rgb), 0.3);
     box-shadow: var(--shadow-floating);

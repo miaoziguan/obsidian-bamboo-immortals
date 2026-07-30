@@ -24,7 +24,9 @@
     /* ARIA 声明由 HTML 模板提供：role="dialog" aria-modal="true" aria-labelledby="{titleId}" */
     background: var(--card-bg);
     /* backdrop-filter 由父 .modal-overlay 提供 */
-    will-change: transform; /* 模态框打开/关闭的瞬时关键动画 */
+    /* will-change 白名单（UI Audit 4.2.3）：不再常驻；slideUp 开场动画为一次性 0.4s，
+       浏览器会为活动动画自动提升合成层，常驻 will-change 反而会在弹窗开启期间
+       （可达数分钟）长期占用 GPU 合成层。 */
     border-radius: var(--radius-modal);
     border: 1px solid rgba(var(--white-rgb), 0.3);
     box-shadow: var(--shadow-floating);

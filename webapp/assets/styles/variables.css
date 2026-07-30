@@ -183,10 +183,6 @@
     --scale-tiny: scale(0.98);
     --scale-small: scale(0.95);
     
-    /* === 动画性能优化 === */
-    --will-change-transform: transform;
-    --will-change-opacity: opacity;
-    
     /* === 阴影深度系统 === */
     --shadow-surface: 0 2px 8px rgba(var(--deep-rgb), 0.06), 0 1px 2px rgba(var(--deep-rgb), 0.04);    /* 表层 — 卡片内元素/微小投影 */
     --shadow-card: 0 4px 16px rgba(var(--deep-rgb), 0.08), 0 2px 4px rgba(var(--deep-rgb), 0.04);      /* 中层 — 可悬停卡片/基础面板 */

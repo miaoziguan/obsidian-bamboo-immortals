@@ -79,7 +79,8 @@ export const FABManager = {
             startY = y;
             startRight = parseInt(this.container.style.right) || 16;
             startBottom = parseInt(this.container.style.bottom) || 20;
-            if (this.isOpen) this.close();
+            // 拖拽开始时不再直接 close；关闭逻辑统一在 click 中根据 isOpen 判断，
+            // 避免 mousedown 关闭后 click 又触发 open() 导致菜单关不上。
             this.container.classList.add('dragging');
         };
 
@@ -133,7 +134,9 @@ export const FABManager = {
 
         this.mainBtn.addEventListener('click', () => {
             if (hasMoved) { hasMoved = false; return; }
-            this.toggle();
+            // 打开状态下点击主按钮关闭；关闭状态下点击打开。
+            // 避免 toggle() 在 mousedown/click 之间状态被修改后产生误判。
+            if (this.isOpen) this.close(); else this.open();
         });
 
     },

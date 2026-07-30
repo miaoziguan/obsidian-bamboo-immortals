@@ -8,7 +8,7 @@
 /* ---------- 通用容器 ---------- */
 .shop-balance-card {
     background: rgba(var(--primary-rgb), 0.15);
-    border-radius: var(--radius-lg, 12px);
+    border-radius: var(--radius-card);
     padding: clamp(12px, 3vw, 16px);
     margin-bottom: clamp(12px, 3vw, 20px);
     border: 1px solid var(--bamboo-primary-light, rgba(var(--primary-rgb), 0.2));
@@ -60,7 +60,7 @@
     align-items: center;
     justify-content: center;
     background: rgba(var(--white-rgb), 0.45);
-    border-radius: var(--radius-md, 10px);
+    border-radius: var(--radius-control);
     padding: clamp(8px, 2vw, 12px) clamp(4px, 1vw, 8px);
     border: 1px solid rgba(var(--primary-rgb), 0.15);
     min-width: 0;
@@ -515,7 +515,7 @@
     margin-bottom: clamp(16px, 4vw, 20px);
     padding: clamp(16px, 4vw, 20px) clamp(12px, 3vw, 16px);
     background: rgba(var(--primary-rgb), 0.08);
-    border-radius: var(--radius-lg, 12px);
+    border-radius: var(--radius-card);
     border: 1px solid rgba(var(--primary-rgb), 0.15);
 }
 .shop-philosophy-icon {

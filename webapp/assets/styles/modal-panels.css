@@ -10,7 +10,7 @@
     background: var(--card-glass);
     backdrop-filter: blur(var(--glass-blur));
     -webkit-backdrop-filter: blur(var(--glass-blur));
-    border-radius: var(--radius-xl);
+    border-radius: var(--radius-panel);
     border: 1px solid rgba(var(--white-rgb), 0.3);
     box-shadow: var(--shadow-floating);
     z-index: var(--z-layer-modal);
@@ -245,7 +245,7 @@
     background: var(--card-glass);
     backdrop-filter: blur(var(--glass-blur));
     -webkit-backdrop-filter: blur(var(--glass-blur));
-    border-radius: var(--radius-xl);
+    border-radius: var(--radius-panel);
     border: 1px solid rgba(var(--white-rgb), 0.3);
     box-shadow: var(--shadow-floating);
     z-index: var(--z-layer-modal);
@@ -1568,7 +1568,7 @@
     width: min(420px, 90vw);
     max-height: 70vh;
     background: var(--card-bg, var(--white));
-    border-radius: var(--radius-lg, 12px);
+    border-radius: var(--radius-card);
     box-shadow: var(--shadow-floating);
     display: flex;
     flex-direction: column;
@@ -1624,7 +1624,7 @@
 .wnfp-field input {
     padding: 8px 10px;
     border: 1px solid var(--border-medium, #d1d5db);
-    border-radius: var(--radius-md, 8px);
+    border-radius: var(--radius-control);
     font-size: var(--type-base);
     background: var(--input-bg, var(--white));
     color: var(--text-primary);
@@ -1778,7 +1778,7 @@
     width: min(420px, 90vw);
     max-height: 60vh;
     background: var(--card-bg, var(--white));
-    border-radius: var(--radius-lg, 12px);
+    border-radius: var(--radius-card);
     box-shadow: var(--shadow-floating);
     display: flex;
     flex-direction: column;

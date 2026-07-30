@@ -623,7 +623,7 @@ button, .btn, .date-nav-btn, .edit-btn, .view-toggle-btn, .history-close, .modal
     margin-bottom: calc(var(--space-6) * var(--section-gap-scale));
     background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.06) 0%, rgba(var(--primary-rgb), 0.02) 100%);
     border: 2px dashed rgba(var(--primary-rgb), 0.2);
-    border-radius: var(--radius-xl);
+    border-radius: var(--radius-card);
     cursor: pointer;
     transition: transform, opacity, box-shadow, border-color, background-color 0.3s ease;
     text-align: center;

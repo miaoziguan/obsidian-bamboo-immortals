@@ -286,6 +286,15 @@
     --radius-38: 38px;
     --radius-pill: 9999px;
 
+    /* === 圆角语义层（组件级映射，代码应优先使用语义层而非裸 --radius-* 数值） ===
+       数值层 --radius-* 定义于上方，语义层在此映射；暗色 :host(.dark) 继承同名变量，
+       无需重复定义（数值层未在暗色覆写，语义层同样不需要）。 */
+    --radius-card: var(--radius-lg);      /* 14px — 标准卡片圆角 (.bamboo-card / .item-card / .empty-state-card) */
+    --radius-panel: var(--radius-xl);     /* 16px — 面板/区块圆角 (.fab-panel / section panel) */
+    --radius-modal: var(--radius-2xl);    /* 18px — 模态框圆角 (.modal-content) */
+    --radius-control: var(--radius-sm);   /* 10px — 表单控件圆角 (input / select / textarea) */
+    --radius-tooltip: var(--radius-xs);   /* 8px — tooltip / 徽标圆角 */
+
     /* === 间距系统（统一为 8px 网格） === */
     --space-1: 4px;
     --space-2: 8px;
@@ -2147,7 +2156,7 @@ button, .btn, .date-nav-btn, .edit-btn, .view-toggle-btn, .history-close, .modal
     margin-bottom: calc(var(--space-6) * var(--section-gap-scale));
     background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.06) 0%, rgba(var(--primary-rgb), 0.02) 100%);
     border: 2px dashed rgba(var(--primary-rgb), 0.2);
-    border-radius: var(--radius-xl);
+    border-radius: var(--radius-card);
     cursor: pointer;
     transition: transform, opacity, box-shadow, border-color, background-color 0.3s ease;
     text-align: center;
@@ -3682,7 +3691,7 @@ button, .btn, .date-nav-btn, .edit-btn, .view-toggle-btn, .history-close, .modal
 .timeline-stat {
     background: var(--card-bg);
     backdrop-filter: blur(var(--glass-blur));
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-card);
     padding: var(--space-4) var(--space-3);
     text-align: center;
     border: 1px solid var(--border-light);
@@ -4669,7 +4678,7 @@ button, .btn, .date-nav-btn, .edit-btn, .view-toggle-btn, .history-close, .modal
 .bamboo-card {
     background: var(--card-bg);
     backdrop-filter: blur(var(--glass-blur));
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-card);
     overflow: clip; /* 允许 tooltip/focus ring 溢出，仅裁切子元素几何溢出 */
     transition: transform, opacity, box-shadow, border-color, background-color 0.3s ease;
     box-shadow: var(--shadow-surface);
@@ -8950,7 +8959,7 @@ input[type="number"].goal-inline-edit-input {
 .health-layer-item {
     padding: var(--space-4);
     background: rgba(var(--white-rgb), 0.7);
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-card);
     border: 1px solid rgba(var(--primary-rgb), 0.06);
     box-shadow: 
         0 1px 0 rgba(var(--white-rgb), 0.8) inset,
@@ -9026,7 +9035,7 @@ input[type="number"].goal-inline-edit-input {
 .health-goal-item {
     padding: var(--space-4);
     background: rgba(var(--white-rgb), 0.7);
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-card);
     margin-bottom: 10px;
     border: 1px solid rgba(var(--primary-rgb), 0.06);
     box-shadow: 
@@ -9124,7 +9133,7 @@ input[type="number"].goal-inline-edit-input {
 .health-tips {
     padding: var(--space-4);
     background: rgba(var(--primary-rgb), 0.05);
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-card);
     border: 1px solid rgba(var(--primary-rgb), 0.08);
     box-shadow: inset 0 1px 0 rgba(var(--white-rgb), 0.5);
 }
@@ -10888,7 +10897,7 @@ input[type="number"].goal-inline-edit-input {
     padding: var(--space-3);
     background: var(--bamboo-card);
     border: 1px solid var(--bamboo-border);
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-card);
     box-shadow: var(--shadow-elevated);
     z-index: 10;
 }
@@ -11372,7 +11381,7 @@ input[type="number"].goal-inline-edit-input {
 .goal-editor-items {
     padding: var(--space-4);
     background: var(--bamboo-background);
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-card);
     border: 1px solid var(--bamboo-border);
 }
 
@@ -12362,7 +12371,7 @@ input[type="number"].goal-inline-edit-input {
     color: var(--text-secondary);
     background: var(--bamboo-surface, var(--bamboo-background, rgba(0,0,0,0.55)));
     border: 1px solid var(--bamboo-border, rgba(255,255,255,0.12));
-    border-radius: var(--radius-sm, 4px);
+    border-radius: var(--radius-tooltip);
     white-space: nowrap;
     pointer-events: none;
     z-index: 20;
@@ -12381,7 +12390,7 @@ input[type="number"].goal-inline-edit-input {
     line-height: 1.4;
     color: var(--white, #fff);
     background: var(--bamboo-error, #ef5350);
-    border-radius: var(--radius-sm, 4px);
+    border-radius: var(--radius-tooltip);
     white-space: nowrap;
     pointer-events: none;
     z-index: 21;
@@ -13674,7 +13683,7 @@ input[type="number"].goal-inline-edit-input {
     background: var(--card-bg);
     /* backdrop-filter 由父 .modal-overlay 提供 */
     will-change: transform; /* 模态框打开/关闭的瞬时关键动画 */
-    border-radius: var(--radius-3xl);
+    border-radius: var(--radius-modal);
     border: 1px solid rgba(var(--white-rgb), 0.3);
     box-shadow: var(--shadow-floating);
     max-width: 90vw;
@@ -13904,7 +13913,7 @@ input[type="number"].goal-inline-edit-input {
     padding: var(--space-6);
     min-height: var(--touch-target);
     border: 2px dashed rgba(var(--primary-rgb), 0.2);
-    border-radius: var(--radius-xl);
+    border-radius: var(--radius-card);
     background: var(--card-bg);
     backdrop-filter: blur(var(--glass-blur));
     -webkit-backdrop-filter: blur(var(--glass-blur));
@@ -13953,7 +13962,7 @@ input[type="number"].goal-inline-edit-input {
     background: var(--card-bg);
     backdrop-filter: blur(var(--glass-blur));
     -webkit-backdrop-filter: blur(var(--glass-blur));
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-card);
     border: 1px solid var(--border-light);
     box-shadow: var(--shadow-surface);
     transition: transform, opacity, box-shadow, border-color, background-color 0.3s ease;
@@ -14048,7 +14057,7 @@ input[type="number"].goal-inline-edit-input {
     background: var(--card-glass);
     backdrop-filter: blur(var(--glass-blur));
     -webkit-backdrop-filter: blur(var(--glass-blur));
-    border-radius: var(--radius-xl);
+    border-radius: var(--radius-panel);
     border: 1px solid rgba(var(--white-rgb), 0.3);
     box-shadow: var(--shadow-floating);
     z-index: var(--z-layer-modal);
@@ -14283,7 +14292,7 @@ input[type="number"].goal-inline-edit-input {
     background: var(--card-glass);
     backdrop-filter: blur(var(--glass-blur));
     -webkit-backdrop-filter: blur(var(--glass-blur));
-    border-radius: var(--radius-xl);
+    border-radius: var(--radius-panel);
     border: 1px solid rgba(var(--white-rgb), 0.3);
     box-shadow: var(--shadow-floating);
     z-index: var(--z-layer-modal);
@@ -15606,7 +15615,7 @@ input[type="number"].goal-inline-edit-input {
     width: min(420px, 90vw);
     max-height: 70vh;
     background: var(--card-bg, var(--white));
-    border-radius: var(--radius-lg, 12px);
+    border-radius: var(--radius-card);
     box-shadow: var(--shadow-floating);
     display: flex;
     flex-direction: column;
@@ -15662,7 +15671,7 @@ input[type="number"].goal-inline-edit-input {
 .wnfp-field input {
     padding: 8px 10px;
     border: 1px solid var(--border-medium, #d1d5db);
-    border-radius: var(--radius-md, 8px);
+    border-radius: var(--radius-control);
     font-size: var(--type-base);
     background: var(--input-bg, var(--white));
     color: var(--text-primary);
@@ -15816,7 +15825,7 @@ input[type="number"].goal-inline-edit-input {
     width: min(420px, 90vw);
     max-height: 60vh;
     background: var(--card-bg, var(--white));
-    border-radius: var(--radius-lg, 12px);
+    border-radius: var(--radius-card);
     box-shadow: var(--shadow-floating);
     display: flex;
     flex-direction: column;
@@ -16950,7 +16959,7 @@ input[type="number"].goal-inline-edit-input {
 /* ---------- 通用容器 ---------- */
 .shop-balance-card {
     background: rgba(var(--primary-rgb), 0.15);
-    border-radius: var(--radius-lg, 12px);
+    border-radius: var(--radius-card);
     padding: clamp(12px, 3vw, 16px);
     margin-bottom: clamp(12px, 3vw, 20px);
     border: 1px solid var(--bamboo-primary-light, rgba(var(--primary-rgb), 0.2));
@@ -17002,7 +17011,7 @@ input[type="number"].goal-inline-edit-input {
     align-items: center;
     justify-content: center;
     background: rgba(var(--white-rgb), 0.45);
-    border-radius: var(--radius-md, 10px);
+    border-radius: var(--radius-control);
     padding: clamp(8px, 2vw, 12px) clamp(4px, 1vw, 8px);
     border: 1px solid rgba(var(--primary-rgb), 0.15);
     min-width: 0;
@@ -17457,7 +17466,7 @@ input[type="number"].goal-inline-edit-input {
     margin-bottom: clamp(16px, 4vw, 20px);
     padding: clamp(16px, 4vw, 20px) clamp(12px, 3vw, 16px);
     background: rgba(var(--primary-rgb), 0.08);
-    border-radius: var(--radius-lg, 12px);
+    border-radius: var(--radius-card);
     border: 1px solid rgba(var(--primary-rgb), 0.15);
 }
 .shop-philosophy-icon {

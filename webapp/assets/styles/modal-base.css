@@ -25,7 +25,7 @@
     background: var(--card-bg);
     /* backdrop-filter 由父 .modal-overlay 提供 */
     will-change: transform; /* 模态框打开/关闭的瞬时关键动画 */
-    border-radius: var(--radius-3xl);
+    border-radius: var(--radius-modal);
     border: 1px solid rgba(var(--white-rgb), 0.3);
     box-shadow: var(--shadow-floating);
     max-width: 90vw;
@@ -255,7 +255,7 @@
     padding: var(--space-6);
     min-height: var(--touch-target);
     border: 2px dashed rgba(var(--primary-rgb), 0.2);
-    border-radius: var(--radius-xl);
+    border-radius: var(--radius-card);
     background: var(--card-bg);
     backdrop-filter: blur(var(--glass-blur));
     -webkit-backdrop-filter: blur(var(--glass-blur));
@@ -304,7 +304,7 @@
     background: var(--card-bg);
     backdrop-filter: blur(var(--glass-blur));
     -webkit-backdrop-filter: blur(var(--glass-blur));
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-card);
     border: 1px solid var(--border-light);
     box-shadow: var(--shadow-surface);
     transition: transform, opacity, box-shadow, border-color, background-color 0.3s ease;

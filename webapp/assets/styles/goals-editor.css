@@ -607,7 +607,7 @@
     padding: var(--space-3);
     background: var(--bamboo-card);
     border: 1px solid var(--bamboo-border);
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-card);
     box-shadow: var(--shadow-elevated);
     z-index: 10;
 }
@@ -1091,7 +1091,7 @@
 .goal-editor-items {
     padding: var(--space-4);
     background: var(--bamboo-background);
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-card);
     border: 1px solid var(--bamboo-border);
 }
 
@@ -2081,7 +2081,7 @@
     color: var(--text-secondary);
     background: var(--bamboo-surface, var(--bamboo-background, rgba(0,0,0,0.55)));
     border: 1px solid var(--bamboo-border, rgba(255,255,255,0.12));
-    border-radius: var(--radius-sm, 4px);
+    border-radius: var(--radius-tooltip);
     white-space: nowrap;
     pointer-events: none;
     z-index: 20;
@@ -2100,7 +2100,7 @@
     line-height: 1.4;
     color: var(--white, #fff);
     background: var(--bamboo-error, #ef5350);
-    border-radius: var(--radius-sm, 4px);
+    border-radius: var(--radius-tooltip);
     white-space: nowrap;
     pointer-events: none;
     z-index: 21;

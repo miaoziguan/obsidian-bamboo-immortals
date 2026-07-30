@@ -9,7 +9,7 @@
 .timeline-stat {
     background: var(--card-bg);
     backdrop-filter: blur(var(--glass-blur));
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-card);
     padding: var(--space-4) var(--space-3);
     text-align: center;
     border: 1px solid var(--border-light);
@@ -996,7 +996,7 @@
 .bamboo-card {
     background: var(--card-bg);
     backdrop-filter: blur(var(--glass-blur));
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-card);
     overflow: clip; /* 允许 tooltip/focus ring 溢出，仅裁切子元素几何溢出 */
     transition: transform, opacity, box-shadow, border-color, background-color 0.3s ease;
     box-shadow: var(--shadow-surface);

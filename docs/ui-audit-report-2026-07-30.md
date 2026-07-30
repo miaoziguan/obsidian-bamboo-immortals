@@ -438,6 +438,16 @@ JS/HTML 旧类名迁移采用别名策略推迟到后续渐进替换，当前所
 1. 定义卡片层级规范：基础卡片、可悬停卡片、浮动面板、高强调操作分别对应不同圆角与阴影。
 2. 在 `variables.css` 注释中明确每个阴影的使用场景。
 
+**修复状态：** 已修复（2026-07-30）。在 `variables.css` 新增圆角语义层变量，将数值层 `--radius-*` 映射为组件语义：
+
+- `--radius-card`（14px）→ `.bamboo-card` / `.item-card` / `.empty-state-card` / `.shop-balance-card` / `.timeline-stat` / `.goal-editor-section` / `.health-layer-item` 等
+- `--radius-panel`（16px）→ `.fab-panel` / 浮动面板
+- `--radius-modal`（18px）→ `.modal-content`
+- `--radius-control`（10px）→ 表单 input / 控件
+- `--radius-tooltip`（8px）→ tooltip / 徽标
+
+阴影令牌 `--shadow-surface` / `--shadow-card` / `--shadow-elevated` / `--shadow-floating` 此前已定义并在 76+ 处使用，本次无需新增。清除全部 8 处 `var(--radius-*, <px 兜底>)` 硬编码（兜底值与令牌实际值不符），统一改为语义层引用。CSS 令牌守门员 R1 规则零违规。
+
 #### 4.6.3 图标系统依赖不统一（P2）
 
 **现象：**

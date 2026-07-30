@@ -704,7 +704,7 @@
 .health-layer-item {
     padding: var(--space-4);
     background: rgba(var(--white-rgb), 0.7);
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-card);
     border: 1px solid rgba(var(--primary-rgb), 0.06);
     box-shadow: 
         0 1px 0 rgba(var(--white-rgb), 0.8) inset,
@@ -780,7 +780,7 @@
 .health-goal-item {
     padding: var(--space-4);
     background: rgba(var(--white-rgb), 0.7);
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-card);
     margin-bottom: 10px;
     border: 1px solid rgba(var(--primary-rgb), 0.06);
     box-shadow: 
@@ -878,7 +878,7 @@
 .health-tips {
     padding: var(--space-4);
     background: rgba(var(--primary-rgb), 0.05);
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-card);
     border: 1px solid rgba(var(--primary-rgb), 0.08);
     box-shadow: inset 0 1px 0 rgba(var(--white-rgb), 0.5);
 }

@@ -274,6 +274,15 @@
     --radius-38: 38px;
     --radius-pill: 9999px;
 
+    /* === 圆角语义层（组件级映射，代码应优先使用语义层而非裸 --radius-* 数值） ===
+       数值层 --radius-* 定义于上方，语义层在此映射；暗色 :host(.dark) 继承同名变量，
+       无需重复定义（数值层未在暗色覆写，语义层同样不需要）。 */
+    --radius-card: var(--radius-lg);      /* 14px — 标准卡片圆角 (.bamboo-card / .item-card / .empty-state-card) */
+    --radius-panel: var(--radius-xl);     /* 16px — 面板/区块圆角 (.fab-panel / section panel) */
+    --radius-modal: var(--radius-2xl);    /* 18px — 模态框圆角 (.modal-content) */
+    --radius-control: var(--radius-sm);   /* 10px — 表单控件圆角 (input / select / textarea) */
+    --radius-tooltip: var(--radius-xs);   /* 8px — tooltip / 徽标圆角 */
+
     /* === 间距系统（统一为 8px 网格） === */
     --space-1: 4px;
     --space-2: 8px;

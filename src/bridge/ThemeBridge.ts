@@ -6,6 +6,11 @@
 export class ThemeBridge {
     private iframe: HTMLIFrameElement | null = null;
     private _paletteSyncTimer: number | null = null;
+    /** Leading-edge 标记：防抖窗口内首次调用已立即应用，后续 trailing 合并（UI Audit 4.5.3）*/
+    private _paletteLeading = false;
+    /** 主题解析缓存签名：相同签名复用已解析 payload，跳过重复 getComputedStyle 解析（UI Audit 4.5.3）*/
+    private _themeCacheKey: string | null = null;
+    private _themeCachePayload: { isDark: boolean; hue?: number; bg?: string; textNormal?: string; textMuted?: string } | null = null;
 
     /** 存储注入的 CSS 变量键名，用于 restoreDefaults 清理 */
     private static readonly INJECTED_VARS = [
@@ -27,6 +32,9 @@ export class ThemeBridge {
 
   detachIframe(): void {
     this.iframe = null;
+    // iframe 解绑 → 新上下文需重新推送主题，清除解析缓存
+    this._themeCacheKey = null;
+    this._themeCachePayload = null;
   }
 
   /** 获取当前 Obsidian 明暗状态（仅内部使用） */
@@ -288,48 +296,51 @@ export class ThemeBridge {
   pushTheme(followObsidianTheme = false): void {
     if (!this.iframe?.contentWindow) return;
 
-    const payload: { isDark: boolean; hue?: number; bg?: string; textNormal?: string; textMuted?: string } = {
-      isDark: this.isDarkMode(),
-    };
+    type ThemePayload = { isDark: boolean; hue?: number; bg?: string; textNormal?: string; textMuted?: string };
 
-    if (followObsidianTheme) {
-      const accent = getComputedStyle(activeDocument.body)
-        .getPropertyValue('--interactive-accent')
-        .trim();
-      const hue = ThemeBridge.rgbToHue(accent);
-      if (hue !== null) payload.hue = hue;
+    // 一次性读取 getComputedStyle，复用同一对象读取全部变量（原实现重复调用 4 次）
+    const cs = getComputedStyle(activeDocument.body);
+    const isDark = this.isDarkMode();
+    const accent = cs.getPropertyValue('--interactive-accent').trim();
+    const sidebar = cs.getPropertyValue('--background-secondary').trim();
+    const textNormalRaw = cs.getPropertyValue('--text-normal').trim();
+    const textMutedRaw = cs.getPropertyValue('--text-muted').trim();
 
-      // 侧边栏背景色：驱动插件卡片底色贴近 Obsidian 色温
-      const sidebar = getComputedStyle(activeDocument.body)
-        .getPropertyValue('--background-secondary')
-        .trim();
-      const bg = ThemeBridge.rgbToRgbString(sidebar);
-      if (bg !== null) payload.bg = bg;
+    // 签名缓存：主题未变时跳过 rgbToHue / contrastRatio / ensureContrastRgb 等重解析（UI Audit 4.5.3）
+    const signature = `${isDark}|${followObsidianTheme}|${accent}|${sidebar}|${textNormalRaw}|${textMutedRaw}`;
 
-      // 文字色：驱动插件文字色温贴近 Obsidian
-      const textNormal = getComputedStyle(activeDocument.body)
-        .getPropertyValue('--text-normal')
-        .trim();
-      const textNormalRgb = ThemeBridge.rgbToRgbString(textNormal);
-      if (textNormalRgb !== null) payload.textNormal = textNormalRgb;
+    let payload: ThemePayload;
+    if (signature === this._themeCacheKey && this._themeCachePayload) {
+      payload = this._themeCachePayload;
+    } else {
+      payload = { isDark };
+      if (followObsidianTheme) {
+        const hue = ThemeBridge.rgbToHue(accent);
+        if (hue !== null) payload.hue = hue;
 
-      const textMuted = getComputedStyle(activeDocument.body)
-        .getPropertyValue('--text-muted')
-        .trim();
-      const textMutedRgb = ThemeBridge.parseColorToRgb(textMuted);
-      if (textMutedRgb !== null) {
-        // 与 Obsidian 背景色做对比度保护；优先用侧边栏背景，其次主背景
-        const bgRgb =
-          ThemeBridge.parseColorToRgb(sidebar) ??
-          ThemeBridge.parseColorToRgb(
-            getComputedStyle(activeDocument.body).getPropertyValue('--background-primary').trim()
-          );
-        if (bgRgb && ThemeBridge.contrastRatio(textMutedRgb, bgRgb) < 4.5) {
-          payload.textMuted = ThemeBridge.ensureContrastRgb(textMutedRgb, bgRgb, 4.5).join(', ');
-        } else {
-          payload.textMuted = textMutedRgb.join(', ');
+        // 侧边栏背景色：驱动插件卡片底色贴近 Obsidian 色温
+        const bg = ThemeBridge.rgbToRgbString(sidebar);
+        if (bg !== null) payload.bg = bg;
+
+        // 文字色：驱动插件文字色温贴近 Obsidian
+        const textNormalRgb = ThemeBridge.rgbToRgbString(textNormalRaw);
+        if (textNormalRgb !== null) payload.textNormal = textNormalRgb;
+
+        const textMutedRgb = ThemeBridge.parseColorToRgb(textMutedRaw);
+        if (textMutedRgb !== null) {
+          // 与 Obsidian 背景色做对比度保护；优先用侧边栏背景，其次主背景
+          const bgRgb =
+            ThemeBridge.parseColorToRgb(sidebar) ??
+            ThemeBridge.parseColorToRgb(cs.getPropertyValue('--background-primary').trim());
+          if (bgRgb && ThemeBridge.contrastRatio(textMutedRgb, bgRgb) < 4.5) {
+            payload.textMuted = ThemeBridge.ensureContrastRgb(textMutedRgb, bgRgb, 4.5).join(', ');
+          } else {
+            payload.textMuted = textMutedRgb.join(', ');
+          }
         }
       }
+      this._themeCacheKey = signature;
+      this._themeCachePayload = payload;
     }
 
     this.iframe.contentWindow.postMessage(
@@ -426,23 +437,45 @@ export class ThemeBridge {
 
   /**
    * 应用调色到 Obsidian 原生界面
-   * 50ms debounce，防止色相/明度滑块快速拖拽产生高频 DOM 写入
+   * Leading-edge + trailing 防抖：首次调用立即应用（消除滑块拖拽首帧延迟），
+   * 后续高频调用 50ms 合并，避免 DOM 抖动（UI Audit 4.5.3）
    */
   applyPalette(hue: number, lightnessOffset: number, isDark: boolean): void {
     if (this._paletteSyncTimer) window.clearTimeout(this._paletteSyncTimer);
     this._suppressed = false; // 新调色请求到来 → 解除抑制
+
+    // Leading edge：窗口内首次调用立即应用
+    if (!this._paletteLeading) {
+      this._paletteLeading = true;
+      this._applyPaletteNow(hue, lightnessOffset, isDark);
+    }
+
+    // Trailing edge：窗口结束后应用最后一次的值，并复位 leading 标记
     this._paletteSyncTimer = window.setTimeout(() => {
-      if (this._suppressed) return; // restoreDefaults 在防抖窗口内被调用
-      const vars = ThemeBridge.computeObsidianVars(hue, lightnessOffset, isDark);
-      for (const [key, value] of Object.entries(vars)) {
-        activeDocument.body.style.setProperty(key, value);
-      }
+      this._paletteLeading = false;
+      this._paletteSyncTimer = null;
+      this._applyPaletteNow(hue, lightnessOffset, isDark);
     }, 50);
+  }
+
+  /** 立即写入调色变量到 Obsidian body（受 _suppressed 抑制）*/
+  private _applyPaletteNow(hue: number, lightnessOffset: number, isDark: boolean): void {
+    if (this._suppressed) return; // restoreDefaults 在防抖窗口内被调用
+    const vars = ThemeBridge.computeObsidianVars(hue, lightnessOffset, isDark);
+    for (const [key, value] of Object.entries(vars)) {
+      activeDocument.body.style.setProperty(key, value);
+    }
   }
 
   /** 清除注入的 CSS 变量，恢复 Obsidian 主题默认值 */
   restoreDefaults(): void {
     this._suppressed = true;
+    // 清除挂起的 trailing 定时器并复位 leading 标记，确保下次 applyPalette 首帧立即生效
+    if (this._paletteSyncTimer) {
+      window.clearTimeout(this._paletteSyncTimer);
+      this._paletteSyncTimer = null;
+    }
+    this._paletteLeading = false;
     for (const key of ThemeBridge.INJECTED_VARS) {
       activeDocument.body.style.removeProperty(key);
     }

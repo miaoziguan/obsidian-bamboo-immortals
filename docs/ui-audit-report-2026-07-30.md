@@ -412,7 +412,7 @@
 4. **即时范围校验**：`currentValue`/`targetValue` 输入框新增 `input` 事件监听，调用 `_validateInlineEdit` 实时切换红框与错误文案（targetValue：>0 且 ≠ 起始值；currentValue：落在 start~target 区间）。
 5. 验证：`npm run build:webapp && npm run lint && npm test` 全绿（24 suites / 214 passed）。
 
-#### 4.5.3 主题切换与 Obsidian 同步存在延迟感（P2）
+#### 4.5.3 主题切换与 Obsidian 同步存在延迟感（P2）✅ 已修复（2026-07-30）
 
 **现象：**
 
@@ -424,6 +424,14 @@
 1. 缓存上一次解析结果，避免重复计算。
 2. 在 iframe 加载时立即推送一次主题，减少首次渲染空白。
 3. 使用 CSS 自定义属性级联切换，而非 JS 逐变量注入。
+
+**修复状态：** 已修复（2026-07-30）。针对三条建议分别处置：
+
+1. **缓存解析结果（建议 1）**：`pushTheme` 新增签名缓存 `_themeCacheKey` / `_themeCachePayload`。将原实现中 4 次独立 `getComputedStyle(activeDocument.body)` 调用收敛为 1 次（复用同一 `CSSStyleDeclaration` 对象读取 `--interactive-accent` / `--background-secondary` / `--text-normal` / `--text-muted` / `--background-primary`），并据原始色值字符串构造签名 `isDark|follow|accent|sidebar|textNormal|textMuted`。签名命中缓存时直接复用已解析 payload，跳过 `rgbToHue` / `contrastRatio` / `ensureContrastRgb`（后者含最多 100 次迭代）等重解析。`detachIframe` 时清除缓存（新 iframe 上下文需重新推送）。注意：postMessage 始终发送（不跳过），确保 webapp 重载后仍能收到主题 —— 缓存仅优化解析，不影响投递。
+2. **iframe 加载即推送（建议 2）**：经核查，`AppAPI` 的 `app:ready` handler 已在 webapp 信号就绪的第一时间调用 `pushTheme`（`AppAPI.ts:211`），这是 webapp 监听器注册后最早可投递主题的时机；iframe 创建时刻 webapp JS 尚未加载、监听器不存在，提前 postMessage 会被静默丢弃且徒增一次 `getComputedStyle` 强制回流。故当前 `app:ready` 触发的即时推送已是该架构下的最优解，无需改动。签名缓存使 `app:ready` 与 `app:theme:sync` 等多次 `pushTheme` 调用的重复解析归零。
+3. **CSS 自定义属性级联（建议 3）**：`applyPalette` 向 Obsidian 原生界面注入 7 个变量（`--interactive-accent` 等），其值由 `computeObsidianVars` 经 WCAG 对比度保护算法（`ensureContrast` 最多 100 次明度迭代）计算得出。该过程为过程式计算，无法用纯 CSS `calc()` / `color-mix()` 表达，故「完全级联化」不可行。当前实现已为单元素（`body`）批量 `setProperty`，浏览器自动合并为单次样式重算，无逐变量回流。已做的改进：`applyPalette` 改为 **leading-edge + trailing 防抖** —— 首次调用立即应用（消除滑块拖拽首帧 50ms 延迟），后续高频调用 50ms 合并；`restoreDefaults` 同步清除挂起定时器并复位 leading 标记，确保下次调色首帧立即生效。
+
+验证：`npx tsc --noEmit`（0 错误）/ `npm run lint` / `npx vitest run`（345 通过，含 `ThemeBridge.test.ts` 15 项 + `themeSync.test.ts` 4 项）/ `npm run build:webapp` / `npm test`（214 通过）/ `npm run build`（main.js 190.9kb）/ `python3 scripts/browser-verify.py`（12/0）均通过。
 
 ---
 
@@ -609,7 +617,7 @@ JS/HTML 旧类名迁移采用别名策略推迟到后续渐进替换，当前所
 | 13 | 硬编码 tooltip 白色文字 | CSS 架构 | P2 | 4 个 CSS 文件 | 低 | 已修复（10 处统一为 `var(--text-on-accent)`，lint-disable 全部移除，R7 零违规，见 4.1.1） |
 | 14 | will-change 策略缺失 | 性能 | P2 | 动画相关 | 低 | 已修复（白名单策略：移除 4 处常驻 will-change，作用域化到 date-transitioning/date-enter 动画活跃态，见 4.2.3） |
 | 15 | 日期切换边界测试不足 | 交互 | P2 | Timeline/Goals | 中 | 已修复（rAF 句柄追踪 + _clearDateTransition 统一中断，防抖丢弃旧回调；firstPaintProgressive 占位 div 防 CLS；见 4.5.1） |
-| 16 | 主题同步延迟感 | 主题 | P2 | ThemeBridge | 中 | 一帧延迟 |
+| 16 | 主题同步延迟感 | 主题 | P2 | ThemeBridge | 中 | 已修复（pushTheme 签名缓存复用解析+收敛 getComputedStyle；applyPalette leading-edge 防抖消除首帧延迟；app:ready 即时推送为架构最优；见 4.5.3） |
 | 17 | 图标系统不统一 | 组件一致性 | P2 | 全局组件 | 中 | 多源混用 |
 | 18 | 玻璃拟态可读性依赖背景 | 主题 | P2 | 全局 CSS | 低 | 已修复（--card-bg-fallback + @supports not backdrop-filter） |
 | 19 | 全局选择器重排风险 | 性能 | P2 | 布局系统 | 中 | 需逐步优化 |

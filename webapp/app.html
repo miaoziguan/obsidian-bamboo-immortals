@@ -13,11 +13,20 @@
 /* ========== 全局变量（竹林中国风 - 亮色模式） ==========
  *
  * 命名规范（三层架构）：
- *   基础色板层  --{palette}-{shade}       例：--bamboo-deep, --bamboo-primary
+ *   基础色板层  --{palette}-{shade}       例：--bamboo-deep, --bm-primary
  *   语义层      --{semantic}-{variant}     例：--text-primary, --status-danger
  *   组件层      --{component}-{property}   例：--tag-execute-bg, --kpi-up-bg
- *   RGB 通道    --{name}-rgb                例：--primary-rgb, --danger-rgb
+ *   RGB 通道    --{name}-rgb                例：--bm-primary-rgb, --danger-rgb
  *   动效/间距/圆角/字体  --{category}-{step}  例：--space-3, --radius-md, --type-sm
+ *
+ * 规范前缀（Task 8 统一命名空间）：
+ *   新增自定义属性必须使用 --bm-* 或 --bamboo-* 前缀（lint R10 强制）。
+ *   以下旧名保留为兼容别名（定义见下方，新代码禁止使用）：
+ *     --primary-rgb          → 用 --bm-primary-rgb
+ *     --primary-alt-rgb      → 用 --bm-primary-alt-rgb
+ *     --bamboo-primary       → 用 --bm-primary
+ *     --bamboo-primary-light → 用 --bm-primary-light
+ *     --bamboo-primary-dark  → 用 --bamboo-dark（已废弃）
  *
  * 禁止：裸写 #fff / #000 / white / black / rgb(255,255,255) — 必须走令牌
  * 禁止：裸写 px 圆角 / px 字号 — 必须走 --radius-* / --type-*
@@ -56,11 +65,14 @@
     --bamboo-deep: hsl(calc(var(--accent-hue) - 7), 40%, calc(25% + var(--accent-lightness-offset)));
     --bamboo-deep-rgb: 45, 90, 39;
     --bamboo-dark: hsl(calc(var(--accent-hue) - 8), 39%, calc(34% + var(--accent-lightness-offset)));
-    --bamboo-primary: hsl(var(--accent-hue), 27%, calc(48% + var(--accent-lightness-offset)));
+    --bm-primary: hsl(var(--accent-hue), 27%, calc(48% + var(--accent-lightness-offset)));
+    --bamboo-primary: var(--bm-primary); /* alias — 新代码请用 --bm-primary */
     --bamboo-light: hsl(var(--accent-hue), 33%, calc(61% + var(--accent-lightness-offset)));
     --bamboo-pale: hsl(var(--accent-hue), 35%, calc(75% + var(--accent-lightness-offset)));
-    --bamboo-primary-light: hsl(var(--accent-hue), 39%, calc(80% + var(--accent-lightness-offset)));
-    --primary-rgb: 90, 154, 90;
+    --bm-primary-light: hsl(var(--accent-hue), 39%, calc(80% + var(--accent-lightness-offset)));
+    --bamboo-primary-light: var(--bm-primary-light); /* alias — 新代码请用 --bm-primary-light */
+    --bm-primary-rgb: 90, 154, 90;
+    --primary-rgb: var(--bm-primary-rgb); /* alias — 新代码请用 --bm-primary-rgb */
     --deep-rgb: 45, 90, 39;
     --danger-rgb: 201, 72, 59;
     --gold-rgb: 212, 175, 55;
@@ -95,7 +107,8 @@
     --pale-green-alt-rgb: 248, 252, 248;
     --surface-deep-rgb: 20, 35, 20;
     --surface-deep-alt-rgb: 25, 40, 25;
-    --primary-alt-rgb: 107, 174, 107;
+    --bm-primary-alt-rgb: 107, 174, 107;
+    --primary-alt-rgb: var(--bm-primary-alt-rgb); /* alias — 新代码请用 --bm-primary-alt-rgb */
     --danger-soft-rgb: 220, 100, 100;
     --red-pale-rgb: 255, 240, 240;
     --amber-brown-rgb: 180, 140, 100;
@@ -353,7 +366,8 @@
 /* ========== 暗色模式（竹林星光暗色，完整覆盖所有变量） ========== */
 :host(.dark) {
     /* 竹林星光 — 深邃、高级、有层次感的暗色背景 */
-    --primary-rgb: 130, 195, 130;
+    --bm-primary-rgb: 130, 195, 130;
+    --primary-rgb: var(--bm-primary-rgb); /* alias */
     --deep-rgb: 45, 90, 53;
     --bamboo-deep-rgb: 45, 90, 53;
     --danger-rgb: 255, 107, 107;
@@ -383,7 +397,8 @@
     --surface-dark-rgb: 20, 38, 22;
     --surface-dark-rgb-mid: 25, 48, 28;
     --surface-dark-rgb-end: 30, 55, 32;
-    --primary-alt-rgb: 130, 195, 130;
+    --bm-primary-alt-rgb: 130, 195, 130;
+    --primary-alt-rgb: var(--bm-primary-alt-rgb); /* alias */
     --danger-soft-rgb: 255, 120, 120;
     --red-pale-rgb: 40, 20, 20;
     --gray-mid-rgb: 120, 120, 120;
@@ -418,10 +433,12 @@
     /* 竹林色调：降低饱和度，增添银灰质感（跟随 --accent-hue） */
     --bamboo-deep: hsl(calc(var(--accent-hue) + 5), 34%, calc(26% + var(--accent-lightness-offset)));
     --bamboo-dark: hsl(calc(var(--accent-hue) + 6), 35%, calc(25% + var(--accent-lightness-offset)));
-    --bamboo-primary: hsl(calc(var(--accent-hue) + 2), 25%, calc(47% + var(--accent-lightness-offset)));
+    --bm-primary: hsl(calc(var(--accent-hue) + 2), 25%, calc(47% + var(--accent-lightness-offset)));
+    --bamboo-primary: var(--bm-primary); /* alias */
     --bamboo-light: hsl(var(--accent-hue), 39%, calc(65% + var(--accent-lightness-offset)));
     --bamboo-pale: hsl(var(--accent-hue), 30%, calc(78% + var(--accent-lightness-offset)));
-    --bamboo-primary-light: rgba(var(--primary-rgb), 0.6);
+    --bm-primary-light: rgba(var(--bm-primary-rgb), 0.6);
+    --bamboo-primary-light: var(--bm-primary-light); /* alias */
     --bamboo-warning: #ffe082;
     --bamboo-warning-pale: #fffde7;
     --bamboo-error: #ef5350;
@@ -1255,22 +1272,62 @@ h1 {
    Mobile rule below bumps to comfortable 48px on small screens. */
 button,
 [role="button"],
+a,
+input,
+select,
+textarea,
 .fab-action-btn,
 .quick-nav-btn,
 .goal-row-main,
+.goal-row,
 .bamboo-card,
+.bamboo-card-header,
 .todo-item-action,
 .section-title,
+.section-toggle,
 .date-nav-btn,
 .edit-btn,
 .view-toggle-btn,
+.wallet-action,
 .history-close,
 .modal-close,
-.tooltip-close {
+.tooltip-close,
+.kpi-card,
+.history-item,
+.empty-state-card,
+.expand-btn {
     min-height: var(--touch-target);
     min-width: var(--touch-target);
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
+}
+
+/* 伪元素扩展热区：固定小尺寸且布局敏感的交互元素保持视觉尺寸不变 */
+.touch-target-sm,
+.flip-stub-btn,
+.drp-close-btn,
+.drp-nav-btn,
+.display-panel-close,
+.sm-btn,
+.view-toggle-btn-sm,
+.shop-history-arrow {
+    position: relative;
+}
+.touch-target-sm::before,
+.flip-stub-btn::before,
+.drp-close-btn::before,
+.drp-nav-btn::before,
+.display-panel-close::before,
+.sm-btn::before,
+.view-toggle-btn-sm::before,
+.shop-history-arrow::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: var(--touch-target);
+    height: var(--touch-target);
+    transform: translate(-50%, -50%);
 }
 
 /* === MOBILE (≤480px): phone in portrait, tiny Obsidian sidebar === */
@@ -1496,6 +1553,8 @@ textarea:focus-visible {
     font-weight: 600;
     font-family: inherit;
     transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
+    min-height: var(--touch-target);
+    min-width: var(--touch-target);
 }
 .edit-mode-bar-close:hover {
     background: rgba(var(--white-rgb), 0.3);
@@ -1581,6 +1640,8 @@ textarea:focus-visible {
     color: var(--text-secondary);
     padding: var(--space-1);
     transition: color 0.2s;
+    min-height: var(--touch-target);
+    min-width: var(--touch-target);
 }
 .keyboard-hint-close:hover { color: var(--cinnabar); }
 
@@ -1856,8 +1917,8 @@ button, .btn, .date-nav-btn, .edit-btn, .view-toggle-btn, .history-close, .modal
 }
 
 .fab-action-btn {
-    min-height: 40px;
-    min-width: auto;
+    min-height: var(--touch-target);
+    min-width: var(--touch-target);
 }
 
 /* 归档管理 - 顶部突出入口 */
@@ -2341,6 +2402,11 @@ button, .btn, .date-nav-btn, .edit-btn, .view-toggle-btn, .history-close, .modal
     padding: 6px var(--space-3);
     border-radius: var(--radius-md);
     transition: transform, opacity, box-shadow, border-color, background-color var(--transition-smooth);
+    min-height: var(--touch-target);
+    min-width: var(--touch-target);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .date-display.clickable:hover {
@@ -2381,8 +2447,8 @@ button, .btn, .date-nav-btn, .edit-btn, .view-toggle-btn, .history-close, .modal
 .date-nav .view-toggle-btn {
     width: auto;
     height: auto;
-    min-width: auto;
-    min-height: auto;
+    min-width: var(--touch-target);
+    min-height: var(--touch-target);
     border: none;
     background: transparent;
     color: var(--bamboo-primary);
@@ -2509,6 +2575,7 @@ button, .btn, .date-nav-btn, .edit-btn, .view-toggle-btn, .history-close, .modal
     border-bottom: 2px solid transparent;
     transition: transform, opacity, box-shadow, border-color, background-color 0.15s;
     white-space: nowrap;
+    min-height: var(--touch-target);
 }
 .drp-tab:hover {
     color: var(--bamboo-primary);
@@ -2541,6 +2608,7 @@ button, .btn, .date-nav-btn, .edit-btn, .view-toggle-btn, .history-close, .modal
     cursor: pointer;
     transition: transform, opacity, box-shadow, border-color, background-color 0.15s;
     white-space: nowrap;
+    min-height: var(--touch-target);
 }
 .drp-quick-btn:hover {
     border-color: var(--bamboo-primary);
@@ -2605,6 +2673,7 @@ button, .btn, .date-nav-btn, .edit-btn, .view-toggle-btn, .history-close, .modal
 }
 .drp-day {
     height: 30px;
+    min-height: var(--touch-target);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -2676,6 +2745,7 @@ button, .btn, .date-nav-btn, .edit-btn, .view-toggle-btn, .history-close, .modal
     width: 90px;
     text-align: center;
     transition: transform, opacity, box-shadow, border-color, background-color 0.2s;
+    min-height: var(--touch-target);
 }
 .drp-input-start:hover,
 .drp-input-end:hover {
@@ -2713,6 +2783,7 @@ button, .btn, .date-nav-btn, .edit-btn, .view-toggle-btn, .history-close, .modal
     font-weight: 500;
     cursor: pointer;
     transition: transform, opacity, box-shadow, border-color, background-color 0.2s;
+    min-height: var(--touch-target);
 }
 .drp-cancel-btn {
     border: 1px solid var(--border-light);
@@ -2759,8 +2830,8 @@ button, .btn, .date-nav-btn, .edit-btn, .view-toggle-btn, .history-close, .modal
     gap: var(--space-3);
 }
 .week-nav-btn {
-    width: 36px;
-    height: 36px;
+    width: var(--touch-target);
+    height: var(--touch-target);
     border-radius: var(--radius-sm);
     border: 1px solid var(--border-light);
     background: rgba(var(--primary-rgb), 0.12);
@@ -2796,6 +2867,7 @@ button, .btn, .date-nav-btn, .edit-btn, .view-toggle-btn, .history-close, .modal
     font-weight: 500;
     cursor: pointer;
     transition: transform, opacity, box-shadow, border-color, background-color var(--transition-normal);
+    min-height: var(--touch-target);
 }
 .week-today-btn:hover {
     background: var(--bamboo-primary);
@@ -3038,7 +3110,7 @@ button, .btn, .date-nav-btn, .edit-btn, .view-toggle-btn, .history-close, .modal
     font-weight: 600;
     font-size: var(--type-base);
     transition: transform, opacity, box-shadow, border-color, background-color var(--transition-normal);
-    min-height: 44px;
+    min-height: var(--touch-target);
     box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.3);
     position: relative;
     z-index: 1;
@@ -4603,6 +4675,7 @@ button, .btn, .date-nav-btn, .edit-btn, .view-toggle-btn, .history-close, .modal
     justify-content: space-between;
     cursor: pointer;
     position: relative;
+    min-height: var(--touch-target);
     /* backdrop-filter 由父 .bamboo-card 提供 */
     border-bottom: 1px solid rgba(var(--white-rgb), 0.28);
     overflow: hidden;
@@ -8089,6 +8162,79 @@ input[type="number"].goal-inline-edit-input {
     }
 }
 
+/* ==========================================================
+   触控目标扩展：保证所有交互元素热区 ≥ 44×44px
+   ========================================================== */
+.goal-row {
+    min-height: var(--touch-target);
+}
+
+.goal-row-header,
+.goal-item-edit-btn,
+.goal-item-name,
+.completed-items-toggle,
+.goal-row-edit-btn,
+.goal-inline-add-btn,
+.goal-inline-date-display,
+.goal-inline-suggested,
+.goal-item-daily-mini,
+.catp-item,
+.catp-manage-btn,
+.catm-inline-input,
+.catm-input,
+.catm-icon-input,
+.catm-add-btn,
+.catm-done-btn,
+.goal-item-date,
+.goal-item-daily,
+.goal-date-range {
+    min-height: var(--touch-target);
+}
+
+.goal-date-range,
+.goal-item-date,
+.goal-item-daily {
+    display: inline-flex;
+    align-items: center;
+}
+
+[data-inline-edit] {
+    display: inline-block;
+    min-height: var(--touch-target);
+}
+
+/* 小尺寸可点击元素使用伪元素扩展热区，保持视觉尺寸不变 */
+.goal-row-toggle,
+.goal-row-category,
+.goal-row-title,
+.goal-item-status,
+.goal-row-action-btn,
+.catp-close-btn,
+.catm-close-btn,
+.catm-item-actions button {
+    position: relative;
+}
+
+.goal-row-toggle::before,
+.goal-row-category::before,
+.goal-row-title::before,
+.goal-item-status::before,
+.goal-row-action-btn::before,
+.catp-close-btn::before,
+.catm-close-btn::before,
+.catm-item-actions button::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: var(--touch-target);
+    height: var(--touch-target);
+    min-width: var(--touch-target);
+    min-height: var(--touch-target);
+    z-index: 1;
+}
+
 </style>
 <style data-src="assets/styles/goals-health.css">
 /* ========== 健康分卡片 - 紧凑多栏布局 ========== */
@@ -9050,6 +9196,15 @@ input[type="number"].goal-inline-edit-input {
 
 .shake-element {
     animation: shake 0.4s ease-in-out;
+}
+
+/* ==========================================================
+   触控目标扩展：保证所有交互元素热区 ≥ 44×44px
+   ========================================================== */
+.goal-health-overview,
+.gho-review-btn,
+.health-goal-improve {
+    min-height: var(--touch-target);
 }
 
 </style>
@@ -12074,6 +12229,83 @@ input[type="number"].goal-inline-edit-input {
     border-color: var(--bamboo-error, #e74c3c);
 }
 
+/* ==========================================================
+   触控目标扩展：保证所有交互元素热区 ≥ 44×44px
+   视觉尺寸尽量保持不变，小尺寸图标/复选框使用 ::before 伪元素扩展
+   ========================================================== */
+.goal-icon-picker-compact,
+.goal-icon-option {
+    min-width: var(--touch-target);
+    min-height: var(--touch-target);
+}
+
+.goal-field-title-compact,
+.goal-field-select-compact,
+.goal-field-date-compact,
+.goal-add-item-btn-compact,
+.goal-item-name-input,
+.goal-item-status-select,
+.goal-item-input,
+.goal-item-percent,
+.goal-editor-v2 .goal-item-date,
+.goal-item-value,
+.goal-item-daily-min,
+.goal-item-taskday-select,
+.goal-dep-inline-btn,
+.goal-icon-picker,
+.goal-field-input,
+.goal-field-select,
+.goal-progress-btn,
+.goal-add-item-btn,
+.goal-item-add-btn,
+.arch-select,
+.arch-reset-btn,
+.arch-card,
+.arch-act-btn,
+.arch-bar-btn,
+.arch-sel-all,
+.arch-date-input {
+    min-height: var(--touch-target);
+}
+
+.goal-progress-slider {
+    min-height: var(--touch-target);
+}
+
+.goal-item-header {
+    min-height: var(--touch-target);
+}
+
+/* 小尺寸按钮/图标使用伪元素扩展热区，保持视觉尺寸不变 */
+.goal-item-status,
+.goal-item-delete-btn,
+.goal-item-expand-btn,
+.goal-day-btn,
+.arch-icon-btn,
+.arch-check,
+.arch-toggle-icon {
+    position: relative;
+}
+
+.goal-item-status::before,
+.goal-item-delete-btn::before,
+.goal-item-expand-btn::before,
+.goal-day-btn::before,
+.arch-icon-btn::before,
+.arch-check::before,
+.arch-toggle-icon::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: var(--touch-target);
+    height: var(--touch-target);
+    min-width: var(--touch-target);
+    min-height: var(--touch-target);
+    z-index: 1;
+}
+
 </style>
 <style data-src="assets/styles/goals-widgets.css">
 /* ========== 模板选择器 ==========*/
@@ -12603,6 +12835,44 @@ input[type="number"].goal-inline-edit-input {
     height: 15px;
 }
 
+/* ==========================================================
+   触控目标扩展：保证所有交互元素热区 ≥ 44×44px
+   ========================================================== */
+.tmpl-card,
+.tmpl-tab,
+.tstd-icon-btn,
+.tstd-cancel,
+.tstd-save,
+.tstd-input {
+    min-height: var(--touch-target);
+}
+
+.tstd-icon-btn {
+    min-width: var(--touch-target);
+}
+
+/* 小尺寸关闭/删除按钮使用伪元素扩展热区，保持视觉尺寸不变 */
+.tmpl-close-btn,
+.tmpl-card-delete,
+.tstd-close-btn {
+    position: relative;
+}
+
+.tmpl-close-btn::before,
+.tmpl-card-delete::before,
+.tstd-close-btn::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: var(--touch-target);
+    height: var(--touch-target);
+    min-width: var(--touch-target);
+    min-height: var(--touch-target);
+    z-index: 1;
+}
+
 </style>
 <style data-src="assets/styles/goals-responsive.css">
 /* ================================================================
@@ -12665,8 +12935,8 @@ input[type="number"].goal-inline-edit-input {
 .rw-460 .goal-row-action-btn {
     padding: var(--space-2);
     border-radius: var(--radius-xs);
-    min-width: 36px;
-    min-height: 36px;
+    min-width: var(--touch-target);
+    min-height: var(--touch-target);
 }
 .rw-460 .goal-row-meta-row {
     gap: var(--space-1);
@@ -12741,8 +13011,8 @@ input[type="number"].goal-inline-edit-input {
 }
 .rw-460 .goal-item-delete-btn {
     padding: var(--space-1);
-    min-width: 28px;
-    min-height: 28px;
+    min-width: var(--touch-target);
+    min-height: var(--touch-target);
     opacity: 0.7;
     flex-shrink: 0;
 }
@@ -12791,8 +13061,8 @@ input[type="number"].goal-inline-edit-input {
     }
     .goal-item-delete-btn {
         opacity: 0.7;
-        min-width: 32px;
-        min-height: 32px;
+        min-width: var(--touch-min);
+        min-height: var(--touch-min);
     }
 
     /* 增大可点击区域 */
@@ -12805,7 +13075,7 @@ input[type="number"].goal-inline-edit-input {
     }
     [data-inline-edit] {
         padding: 4px 6px;
-        min-height: 24px;
+        min-height: var(--touch-min);
     }
     .goal-row-toggle {
         min-width: var(--touch-min);
@@ -12814,7 +13084,7 @@ input[type="number"].goal-inline-edit-input {
 
     /* 已完成切换按钮 */
     .completed-items-toggle {
-        min-height: 36px;
+        min-height: var(--touch-min);
         padding: 6px 10px;
     }
 }
@@ -12833,6 +13103,25 @@ input[type="number"].goal-inline-edit-input {
     }
 }
 
+/* ==========================================================
+   触控目标扩展：响应式断点补充，保证窄屏交互元素热区 ≥ 44px
+   ========================================================== */
+.rw-460 .goal-inline-add-btn,
+.rw-460 .goal-view-archived-btn,
+.rw-460 .completed-items-toggle,
+.rw-460 .goal-inline-edit-input,
+.rw-460 .goal-row-title,
+.rw-460 .goal-row-category,
+.rw-460 .goal-row-toggle,
+.rw-460 .goal-item-name {
+    min-height: var(--touch-target);
+}
+
+.rw-460 .goal-row-actions {
+    height: auto;
+    min-height: var(--touch-target);
+}
+
 </style>
 <style data-src="assets/styles/forms.css">
 /* ========== 按钮状态完善 ========== */
@@ -12848,6 +13137,8 @@ input[type="number"].goal-inline-edit-input {
     align-items: center;
     justify-content: center;
     gap: var(--space-1);
+    min-height: var(--touch-target);
+    min-width: var(--touch-target);
 }
 .btn:disabled,
 .btn.disabled {
@@ -12911,8 +13202,8 @@ input[type="number"].goal-inline-edit-input {
 .btn-sm {
     padding: var(--space-2) var(--space-3);
     font-size: var(--type-sm);
-    min-height: 36px;
-    min-width: 36px;
+    min-height: var(--touch-target);
+    min-width: var(--touch-target);
 }
 
 .btn-success {
@@ -12941,8 +13232,8 @@ input[type="number"].goal-inline-edit-input {
 .edit-btn.small {
     padding: var(--space-1) var(--space-2);
     font-size: var(--type-xs);
-    min-height: 36px;
-    min-width: 36px;
+    min-height: var(--touch-target);
+    min-width: var(--touch-target);
 }
 
 /* ========== 触摸友好的通用类 ========== */
@@ -13100,10 +13391,10 @@ input[type="number"].goal-inline-edit-input {
 
 @media (max-width: 480px) {
     .header-right .header-quick-btn {
-        width: 40px;
-        height: 40px;
-        min-width: 40px;
-        min-height: 40px;
+        width: var(--touch-target);
+        height: var(--touch-target);
+        min-width: var(--touch-target);
+        min-height: var(--touch-target);
     }
 }
 
@@ -13195,8 +13486,8 @@ input[type="number"].goal-inline-edit-input {
     flex-shrink: 0;
 }
 .modal-close {
-    width: 36px;
-    height: 36px;
+    min-width: var(--touch-target);
+    min-height: var(--touch-target);
     border-radius: 50%;
     border: none;
     background: rgba(var(--white-rgb), 0.2);
@@ -13263,6 +13554,7 @@ input[type="number"].goal-inline-edit-input {
 .form-select {
     width: 100%;
     padding: var(--space-3) var(--space-4);
+    min-height: var(--touch-target);
     border: 1px solid var(--border-light);
     border-radius: var(--radius-md);
     background: var(--card-bg);
@@ -13294,6 +13586,7 @@ input[type="number"].goal-inline-edit-input {
 /* ========== 按钮样式 - 匹配主题按钮系统 ========== */
 .btn {
     padding: var(--space-2) var(--space-5);
+    min-height: var(--touch-target);
     border: none;
     border-radius: var(--radius-sm);
     font-size: var(--type-sm);
@@ -13344,6 +13637,8 @@ input[type="number"].goal-inline-edit-input {
 }
 .btn-sm {
     padding: var(--space-2) var(--space-4);
+    min-height: var(--touch-target);
+    min-width: var(--touch-target);
     font-size: var(--type-xs);
     border-radius: var(--radius-sm);
 }
@@ -13361,6 +13656,7 @@ input[type="number"].goal-inline-edit-input {
 .empty-state-card {
     text-align: center;
     padding: var(--space-6);
+    min-height: var(--touch-target);
     border: 2px dashed rgba(var(--primary-rgb), 0.2);
     border-radius: var(--radius-xl);
     background: var(--card-bg);
@@ -13440,8 +13736,8 @@ input[type="number"].goal-inline-edit-input {
     gap: var(--space-2);
 }
 .item-action-btn {
-    width: 36px;
-    height: 36px;
+    min-width: var(--touch-target);
+    min-height: var(--touch-target);
     border: none;
     border-radius: var(--radius-md);
     background: transparent;
@@ -13595,6 +13891,7 @@ input[type="number"].goal-inline-edit-input {
     justify-content: space-between;
     align-items: center;
     padding: 12px 16px;
+    min-height: var(--touch-target);
     border-bottom: 1px solid var(--border-light);
     flex-shrink: 0;
     background: rgba(var(--white-rgb), 0.05);
@@ -13618,6 +13915,8 @@ input[type="number"].goal-inline-edit-input {
     color: var(--text-secondary);
     cursor: pointer;
     padding: 6px;
+    min-width: var(--touch-target);
+    min-height: var(--touch-target);
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -13682,6 +13981,7 @@ input[type="number"].goal-inline-edit-input {
 }
 .fab-panel-tab {
     padding: 10px 0;
+    min-height: var(--touch-target);
     font-size: var(--type-sm);
     font-weight: 600;
     color: var(--text-tertiary);
@@ -13779,6 +14079,8 @@ input[type="number"].goal-inline-edit-input {
     color: var(--text-secondary);
     cursor: pointer;
     padding: var(--space-1);
+    min-width: var(--touch-target);
+    min-height: var(--touch-target);
     border-radius: var(--radius-sm);
     display: flex;
     align-items: center;
@@ -13829,6 +14131,8 @@ input[type="number"].goal-inline-edit-input {
     align-items: center;
     justify-content: center;
     padding: 6px 4px 4px;
+    min-width: var(--touch-target);
+    min-height: var(--touch-target);
     background: transparent;
     border: 1px solid transparent;
     border-radius: var(--radius-sm);
@@ -13864,6 +14168,8 @@ input[type="number"].goal-inline-edit-input {
     color: var(--bamboo-primary);
     cursor: pointer;
     padding: 2px;
+    min-width: var(--touch-target);
+    min-height: var(--touch-target);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -13892,6 +14198,8 @@ input[type="number"].goal-inline-edit-input {
     justify-content: center;
     cursor: pointer;
     padding: 2px;
+    min-width: var(--touch-target);
+    min-height: var(--touch-target);
     border-radius: var(--radius-4);
     transition: transform, opacity, box-shadow, border-color, background-color 0.15s;
     color: var(--text-faint);
@@ -13941,12 +14249,15 @@ input[type="number"].goal-inline-edit-input {
 .wn-volume-slider::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
-    width: 14px;
-    height: 14px;
+    width: var(--touch-target);
+    height: var(--touch-target);
     border-radius: 50%;
     background: var(--bamboo-primary);
     cursor: pointer;
     transition: transform 0.15s;
+    border: 15px solid transparent;
+    background-clip: padding-box;
+    box-sizing: border-box;
 }
 
 .wn-volume-slider::-webkit-slider-thumb:hover {
@@ -13954,12 +14265,14 @@ input[type="number"].goal-inline-edit-input {
 }
 
 .wn-volume-slider::-moz-range-thumb {
-    width: 14px;
-    height: 14px;
+    width: var(--touch-target);
+    height: var(--touch-target);
     border-radius: 50%;
     background: var(--bamboo-primary);
     cursor: pointer;
-    border: none;
+    border: 15px solid transparent;
+    background-clip: padding-box;
+    box-sizing: border-box;
 }
 
 .wn-volume-label {
@@ -13985,6 +14298,7 @@ input[type="number"].goal-inline-edit-input {
 .wn-timer-btn {
     flex: 1;
     padding: 5px 8px;
+    min-height: var(--touch-target);
     font-size: var(--type-sm);
     font-family: 'SF Mono', 'Menlo', 'Courier New', monospace;
     font-weight: 500;
@@ -14011,6 +14325,7 @@ input[type="number"].goal-inline-edit-input {
 }
 
 .wn-timer-change-btn {
+    position: relative;
     width: 24px;
     height: 28px;
     padding: 0;
@@ -14032,6 +14347,17 @@ input[type="number"].goal-inline-edit-input {
     border-color: var(--bamboo-primary);
     color: var(--bamboo-primary);
     background: rgba(var(--bamboo-primary-rgb, 62, 179, 112), 0.06);
+}
+.wn-timer-change-btn::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: var(--touch-target);
+    height: var(--touch-target);
+    min-width: var(--touch-target);
+    min-height: var(--touch-target);
 }
 
 /* 暗色模式 */
@@ -14084,6 +14410,8 @@ input[type="number"].goal-inline-edit-input {
     color: var(--text-secondary);
     cursor: pointer;
     padding: 6px;
+    min-width: var(--touch-target);
+    min-height: var(--touch-target);
     border-radius: var(--radius-sm);
     transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
     display: flex;
@@ -14142,6 +14470,20 @@ input[type="number"].goal-inline-edit-input {
     transition: transform, opacity, box-shadow, border-color, background-color 0.15s ease;
     color: var(--text-primary);
     position: relative;
+}
+.wn-date-day::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: var(--touch-target);
+    height: var(--touch-target);
+    min-width: var(--touch-target);
+    min-height: var(--touch-target);
+}
+.wn-date-empty::before {
+    display: none;
 }
 
 .wn-date-day:hover:not(.wn-date-empty):not(.wn-date-today) {
@@ -14227,6 +14569,7 @@ input[type="number"].goal-inline-edit-input {
     justify-content: center;
     gap: var(--space-1);
     padding: 10px 8px;
+    min-height: var(--touch-target);
     font-size: var(--type-sm);
     border-radius: var(--radius-sm);
     background: transparent;
@@ -14293,7 +14636,7 @@ input[type="number"].goal-inline-edit-input {
     border-radius: var(--radius-md);
     cursor: pointer;
     transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
-    min-height: 32px;
+    min-height: var(--touch-target);
     position: relative;
 }
 
@@ -14347,6 +14690,7 @@ input[type="number"].goal-inline-edit-input {
     border-radius: var(--radius-xs);
     cursor: pointer;
     padding: 2px 8px;
+    min-height: var(--touch-target);
     transition: transform, opacity, box-shadow, border-color, background-color var(--transition-fast);
 }
 
@@ -14429,6 +14773,8 @@ input[type="number"].goal-inline-edit-input {
     border: none;
     cursor: pointer;
     padding: 2px 4px;
+    min-width: var(--touch-target);
+    min-height: var(--touch-target);
     border-radius: var(--radius-xs);
     transition: transform, opacity, box-shadow, border-color, background-color var(--transition-fast);
 }
@@ -14456,6 +14802,7 @@ input[type="number"].goal-inline-edit-input {
     justify-content: center;
     width: 100%;
     padding: 8px 0;
+    min-height: var(--touch-target);
     border: none;
     background: transparent;
     color: var(--text-tertiary);
@@ -14707,6 +15054,7 @@ input[type="number"].goal-inline-edit-input {
 .ai-wizard-opt {
     flex: 1;
     padding: 5px 8px;
+    min-height: var(--touch-target);
     border: 1px solid var(--border-light);
     border-radius: var(--radius-sm);
     background: var(--bg-secondary);
@@ -14734,6 +15082,7 @@ input[type="number"].goal-inline-edit-input {
 .ai-wizard-adv-toggle {
     width: 100%;
     padding: 7px 0;
+    min-height: var(--touch-target);
     margin: 6px 0 8px;
     border: 1px solid var(--border-light);
     border-radius: var(--radius-sm);
@@ -14852,6 +15201,7 @@ input[type="number"].goal-inline-edit-input {
 
 .ai-wizard-tag {
     padding: 3px 7px;
+    min-height: var(--touch-target);
     border: 1px solid var(--border-light);
     border-radius: var(--radius-sm);
     background: var(--bg-secondary);
@@ -14890,6 +15240,7 @@ input[type="number"].goal-inline-edit-input {
 .ai-wizard-btn {
     flex: 1;
     padding: 10px 0;
+    min-height: var(--touch-target);
     border: none;
     border-radius: var(--radius-sm);
     font-size: var(--type-sm);
@@ -15035,6 +15386,8 @@ input[type="number"].goal-inline-edit-input {
     cursor: pointer;
     line-height: 1;
     transition: color 0.15s;
+    min-width: var(--touch-target);
+    min-height: var(--touch-target);
 }
 
 .wn-file-picker-close:hover {
@@ -15094,6 +15447,7 @@ input[type="number"].goal-inline-edit-input {
 .wnfp-tab {
     flex: 1;
     padding: 7px 0;
+    min-height: var(--touch-target);
     border: none;
     background: transparent;
     color: var(--text-tertiary);
@@ -15128,6 +15482,7 @@ input[type="number"].goal-inline-edit-input {
 .wnfp-browse-btn {
     flex-shrink: 0;
     padding: 7px 14px;
+    min-height: var(--touch-target);
     border: 1px solid var(--bamboo-primary);
     border-radius: var(--radius-2xs);
     background: transparent;
@@ -15182,6 +15537,7 @@ input[type="number"].goal-inline-edit-input {
 
 .wnfp-btn {
     padding: 7px 18px;
+    min-height: var(--touch-target);
     border-radius: var(--radius-2xs);
     font-size: var(--type-base);
     font-weight: 500;
@@ -15240,6 +15596,8 @@ input[type="number"].goal-inline-edit-input {
     cursor: pointer;
     line-height: 1;
     transition: color 0.15s;
+    min-width: var(--touch-target);
+    min-height: var(--touch-target);
 }
 
 .wnfp-vf-close:hover {
@@ -15264,6 +15622,7 @@ input[type="number"].goal-inline-edit-input {
     align-items: center;
     gap: var(--space-2);
     padding: 8px 10px;
+    min-height: var(--touch-target);
     border-radius: var(--radius-2xs);
     cursor: pointer;
     transition: background 0.15s;
@@ -15336,8 +15695,8 @@ input[type="number"].goal-inline-edit-input {
     flex-wrap: wrap;
 }
 .color-option {
-    width: 32px;
-    height: 32px;
+    min-width: var(--touch-target);
+    min-height: var(--touch-target);
     border-radius: 50%;
     cursor: pointer;
     border: 2px solid transparent;
@@ -15418,6 +15777,7 @@ input[type="number"].goal-inline-edit-input {
 .settings-date-input {
     flex: 1;
     padding: 8px 12px;
+    min-height: var(--touch-target);
     font-size: var(--type-base);
     background: var(--card-bg);
     border: 1px solid var(--border-light);
@@ -15439,8 +15799,11 @@ input[type="number"].goal-inline-edit-input {
 /* ========== Toggle Switch ========== */
 .toggle-switch {
     position: relative;
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
     cursor: pointer;
+    min-width: 48px;
+    min-height: var(--touch-target);
 }
 .toggle-switch input {
     opacity: 0;
@@ -15484,6 +15847,7 @@ input[type="number"].goal-inline-edit-input {
     max-width: 100px;
     padding: 4px 8px;
     font-size: var(--type-micro);
+    min-height: var(--touch-target);
 }
 .settings-backup-status {
     display: flex;
@@ -15683,6 +16047,7 @@ input[type="number"].goal-inline-edit-input {
 .time-input,
 .settings-time-input {
     padding: var(--space-2) var(--space-3);
+    min-height: var(--touch-target);
     border: 1px solid var(--border-light);
     border-radius: var(--radius-sm);
     background: var(--card-bg);
@@ -15748,6 +16113,7 @@ input[type="number"].goal-inline-edit-input {
 .btn-primary-action {
     width: 100%;
     background: var(--btn-primary-bg);
+    min-height: var(--touch-target);
     color: var(--white);
     border: none;
     border-radius: var(--radius-md);
@@ -15950,6 +16316,7 @@ input[type="number"].goal-inline-edit-input {
 }
 .stats-period-btn {
     padding: var(--space-2) var(--space-4);
+    min-height: var(--touch-target);
     border: 1px solid var(--border-light);
     border-radius: var(--radius-md);
     background: var(--card-bg);
@@ -15975,6 +16342,7 @@ input[type="number"].goal-inline-edit-input {
 .stats-card {
     padding: var(--space-4);
     background: var(--card-bg);
+    min-height: var(--touch-target);
     /* backdrop-filter 由 .modal-overlay 提供 */
     border-radius: var(--radius-xl);
     text-align: center;
@@ -16022,6 +16390,7 @@ input[type="number"].goal-inline-edit-input {
 }
 .template-tab {
     padding: var(--space-2) var(--space-4);
+    min-height: var(--touch-target);
     border: none;
     border-radius: var(--radius-md);
     background: transparent;
@@ -16053,6 +16422,7 @@ input[type="number"].goal-inline-edit-input {
     align-items: center;
     gap: var(--space-4);
     padding: var(--space-4);
+    min-height: var(--touch-target);
     background: var(--card-bg);
     /* backdrop-filter 由 .modal-overlay 提供 */
     border-radius: var(--radius-lg);
@@ -16113,6 +16483,7 @@ input[type="number"].goal-inline-edit-input {
     align-items: center;
     gap: var(--space-2);
     padding: var(--space-3);
+    min-height: var(--touch-target);
     background: var(--card-bg);
     /* backdrop-filter 由 .modal-overlay 提供 */
     border-radius: var(--radius-md);
@@ -16128,8 +16499,8 @@ input[type="number"].goal-inline-edit-input {
 }
 .template-section-item input[type="checkbox"] {
     accent-color: var(--bamboo-primary);
-    width: 16px;
-    height: 16px;
+    width: 20px;
+    height: 20px;
 }
 
 .icon-picker {
@@ -16228,6 +16599,7 @@ input[type="number"].goal-inline-edit-input {
     gap: var(--space-2);
     align-items: flex-start;
     cursor: pointer;
+    min-height: var(--touch-target);
 }
 .import-strategy-option input[type="radio"] {
     margin-top: 6px;
@@ -16582,8 +16954,8 @@ input[type="number"].goal-inline-edit-input {
     display: inline-flex;
     align-items: center;
     gap: var(--space-1);
-    min-height: 28px;
-    min-width: 44px;
+    min-height: var(--touch-target);
+    min-width: var(--touch-target);
     justify-content: center;
 }
 .shop-sort-btn:hover {
@@ -16626,6 +16998,7 @@ input[type="number"].goal-inline-edit-input {
     cursor: pointer;
     text-align: right;
     transition: transform, opacity, box-shadow, border-color, background-color 0.15s;
+    min-height: var(--touch-target);
 }
 .shop-sort-option:hover {
     background: rgba(var(--primary-rgb), 0.08);
@@ -16688,6 +17061,8 @@ input[type="number"].goal-inline-edit-input {
     transition: transform, opacity, box-shadow, border-color, background-color 0.15s;
     font-weight: 500;
     flex-shrink: 0;
+    min-height: var(--touch-target);
+    min-width: var(--touch-target);
 }
 .shop-history-all-btn:hover {
     background: rgba(var(--primary-rgb), 0.08);
@@ -16817,6 +17192,8 @@ input[type="number"].goal-inline-edit-input {
     color: var(--ink-light);
     font-weight: 400;
     transition: transform, opacity, box-shadow, border-color, background-color 0.15s;
+    min-height: var(--touch-target);
+    min-width: var(--touch-target);
 }
 .shop-archive-month-btn:hover {
     background: rgba(var(--primary-rgb), 0.06);
@@ -20017,6 +20394,7 @@ input[type="number"].goal-inline-edit-input {
     width: 24px;
     height: 24px;
     font-size: var(--type-mini);
+    position: relative;
 }
 
 .habit-actions {
@@ -20028,7 +20406,8 @@ input[type="number"].goal-inline-edit-input {
 
 .habit-actions .habit-btn {
     flex: 1;
-    min-width: 0;
+    min-width: var(--touch-target);
+    min-height: var(--touch-target);
     padding: var(--space-2) var(--space-3);
     border-radius: var(--radius-3xl);
     border: 1px solid var(--border-light);
@@ -20160,6 +20539,7 @@ input[type="number"].goal-inline-edit-input {
     border: 1px solid var(--border-light);
     cursor: grab;
     transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
+    min-height: var(--touch-target);
 }
 :host(.dark) .sm-item {
     background: rgba(var(--primary-rgb), 0.06);
@@ -20212,6 +20592,8 @@ input[type="number"].goal-inline-edit-input {
     opacity: 0.6;
     padding: 2px 4px;
     flex-shrink: 0;
+    min-height: var(--touch-target);
+    min-width: var(--touch-target);
 }
 
 .sm-item:hover .sm-drag-handle {
@@ -20246,6 +20628,8 @@ input[type="number"].goal-inline-edit-input {
 .sm-btn {
     width: min(28px, 7vw);
     height: 28px;
+    min-width: var(--touch-target);
+    min-height: var(--touch-target);
     border-radius: var(--radius-2xs);
     border: none;
     background: transparent;
@@ -20256,6 +20640,7 @@ input[type="number"].goal-inline-edit-input {
     justify-content: center;
     transition: transform, opacity, box-shadow, border-color, background-color 0.2s;
     opacity: 0.6;
+    position: relative;
 }
 
 .sm-btn:hover {
@@ -20303,6 +20688,8 @@ input[type="number"].goal-inline-edit-input {
     align-items: center;
     gap: var(--space-1);
     transition: transform, opacity, box-shadow, border-color, background-color 0.2s;
+    min-height: var(--touch-target);
+    min-width: var(--touch-target);
 }
 
 .sm-batch-show-btn:hover {
@@ -20343,6 +20730,8 @@ input[type="number"].goal-inline-edit-input {
     cursor: pointer;
     transition: transform, opacity, box-shadow, border-color, background-color 0.2s;
     white-space: nowrap;
+    min-height: var(--touch-target);
+    min-width: var(--touch-target);
 }
 
 .sm-apply-btn:hover {
@@ -20378,6 +20767,8 @@ input[type="number"].goal-inline-edit-input {
 .icon-option-sm {
     width: min(36px, 10vw);
     height: 36px;
+    min-width: var(--touch-target);
+    min-height: var(--touch-target);
     border-radius: var(--radius-xs);
     border: 1px solid var(--border-light);
     background: rgba(var(--primary-rgb), 0.1);
@@ -20416,18 +20807,24 @@ nav .date-nav-btn {
     width: min(36px, 10vw);
     height: 36px;
     font-size: var(--type-sm);
+    min-width: var(--touch-target);
+    min-height: var(--touch-target);
 }
 
 nav .view-toggle-btn {
     width: min(36px, 10vw);
     height: 36px;
     font-size: var(--type-md);
+    min-width: var(--touch-target);
+    min-height: var(--touch-target);
 }
 
 nav .view-toggle-btn-sm {
     width: min(36px, 10vw);
     height: 36px;
     font-size: var(--type-md);
+    min-width: var(--touch-target);
+    min-height: var(--touch-target);
 }
 
 nav .date-display {
@@ -20464,6 +20861,8 @@ nav .date-display-sub {
 .section-settings-trigger {
     width: auto;
     height: auto;
+    min-width: var(--touch-target);
+    min-height: var(--touch-target);
     border-radius: 0;
     border: none;
     background: transparent;
@@ -20496,6 +20895,8 @@ nav .date-display-sub {
 .section-action-trigger {
     width: auto;
     height: auto;
+    min-width: var(--touch-target);
+    min-height: var(--touch-target);
     border-radius: var(--radius-2xs);
     border: 1px solid rgba(var(--primary-rgb), 0.3);
     background: rgba(var(--primary-rgb), 0.08);
@@ -20579,6 +20980,8 @@ nav .date-display-sub {
     gap: var(--space-3);
     transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
     font-family: inherit;
+    min-height: var(--touch-target);
+    min-width: var(--touch-target);
 }
 
 .section-settings-btn:hover {
@@ -21873,9 +22276,12 @@ nav .date-display-sub {
     flex: 1;
     -webkit-appearance: none;
     appearance: none;
-    height: 4px;
+    height: var(--touch-target);
+    padding: calc((var(--touch-target) - 4px) / 2) 0;
+    box-sizing: border-box;
     border-radius: var(--radius-3xs);
     background: var(--border-light);
+    background-clip: content-box;
     cursor: pointer;
     margin: 0;
 }
@@ -21938,7 +22344,7 @@ nav .date-display-sub {
 .display-font-preset-btn,
 .display-gap-preset-btn {
     flex: 1;
-    height: 30px;
+    height: auto;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -21950,8 +22356,8 @@ nav .date-display-sub {
     font-weight: 600;
     cursor: pointer;
     transition: transform, opacity, box-shadow, border-color, background-color var(--transition-fast);
-    min-height: 30px;
-    min-width: 0;
+    min-height: var(--touch-target);
+    min-width: var(--touch-target);
     padding: 0;
 }
 
@@ -21977,7 +22383,9 @@ nav .date-display-sub {
     flex: 1;
     -webkit-appearance: none;
     appearance: none;
-    height: 6px;
+    height: var(--touch-target);
+    padding: calc((var(--touch-target) - 6px) / 2) 0;
+    box-sizing: border-box;
     border-radius: var(--radius-3);
     background: linear-gradient(to right,
         hsl(0, 70%, 50%),
@@ -21988,6 +22396,7 @@ nav .date-display-sub {
         hsl(300, 70%, 50%),
         hsl(360, 70%, 50%)
     );
+    background-clip: content-box;
     cursor: pointer;
     margin: 0;
 }
@@ -22050,7 +22459,7 @@ nav .date-display-sub {
 .display-hue-preset-btn,
 .display-lightness-preset-btn {
     flex: 1;
-    height: 30px;
+    height: auto;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -22062,8 +22471,8 @@ nav .date-display-sub {
     font-weight: 600;
     cursor: pointer;
     transition: transform, opacity, box-shadow, border-color, background-color var(--transition-fast);
-    min-height: 30px;
-    min-width: 0;
+    min-height: var(--touch-target);
+    min-width: var(--touch-target);
     padding: 0;
 }
 
@@ -22085,7 +22494,7 @@ nav .date-display-sub {
 /* 恢复默认按钮 */
 .display-hue-reset-btn {
     width: 100%;
-    height: 32px;
+    height: auto;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -22098,7 +22507,8 @@ nav .date-display-sub {
     cursor: pointer;
     transition: transform, opacity, box-shadow, border-color, background-color var(--transition-fast);
     margin-top: var(--space-2);
-    min-height: 32px;
+    min-height: var(--touch-target);
+    min-width: var(--touch-target);
     padding: 0;
 }
 
@@ -22141,8 +22551,7 @@ nav .date-display-sub {
     .display-gap-preset-btn,
     .display-hue-preset-btn,
     .display-lightness-preset-btn {
-        height: 34px;
-        min-height: 34px;
+        min-height: var(--touch-target);
     }
 }
 

@@ -1,11 +1,20 @@
 /* ========== 全局变量（竹林中国风 - 亮色模式） ==========
  *
  * 命名规范（三层架构）：
- *   基础色板层  --{palette}-{shade}       例：--bamboo-deep, --bamboo-primary
+ *   基础色板层  --{palette}-{shade}       例：--bamboo-deep, --bm-primary
  *   语义层      --{semantic}-{variant}     例：--text-primary, --status-danger
  *   组件层      --{component}-{property}   例：--tag-execute-bg, --kpi-up-bg
- *   RGB 通道    --{name}-rgb                例：--primary-rgb, --danger-rgb
+ *   RGB 通道    --{name}-rgb                例：--bm-primary-rgb, --danger-rgb
  *   动效/间距/圆角/字体  --{category}-{step}  例：--space-3, --radius-md, --type-sm
+ *
+ * 规范前缀（Task 8 统一命名空间）：
+ *   新增自定义属性必须使用 --bm-* 或 --bamboo-* 前缀（lint R10 强制）。
+ *   以下旧名保留为兼容别名（定义见下方，新代码禁止使用）：
+ *     --primary-rgb          → 用 --bm-primary-rgb
+ *     --primary-alt-rgb      → 用 --bm-primary-alt-rgb
+ *     --bamboo-primary       → 用 --bm-primary
+ *     --bamboo-primary-light → 用 --bm-primary-light
+ *     --bamboo-primary-dark  → 用 --bamboo-dark（已废弃）
  *
  * 禁止：裸写 #fff / #000 / white / black / rgb(255,255,255) — 必须走令牌
  * 禁止：裸写 px 圆角 / px 字号 — 必须走 --radius-* / --type-*
@@ -44,11 +53,14 @@
     --bamboo-deep: hsl(calc(var(--accent-hue) - 7), 40%, calc(25% + var(--accent-lightness-offset)));
     --bamboo-deep-rgb: 45, 90, 39;
     --bamboo-dark: hsl(calc(var(--accent-hue) - 8), 39%, calc(34% + var(--accent-lightness-offset)));
-    --bamboo-primary: hsl(var(--accent-hue), 27%, calc(48% + var(--accent-lightness-offset)));
+    --bm-primary: hsl(var(--accent-hue), 27%, calc(48% + var(--accent-lightness-offset)));
+    --bamboo-primary: var(--bm-primary); /* alias — 新代码请用 --bm-primary */
     --bamboo-light: hsl(var(--accent-hue), 33%, calc(61% + var(--accent-lightness-offset)));
     --bamboo-pale: hsl(var(--accent-hue), 35%, calc(75% + var(--accent-lightness-offset)));
-    --bamboo-primary-light: hsl(var(--accent-hue), 39%, calc(80% + var(--accent-lightness-offset)));
-    --primary-rgb: 90, 154, 90;
+    --bm-primary-light: hsl(var(--accent-hue), 39%, calc(80% + var(--accent-lightness-offset)));
+    --bamboo-primary-light: var(--bm-primary-light); /* alias — 新代码请用 --bm-primary-light */
+    --bm-primary-rgb: 90, 154, 90;
+    --primary-rgb: var(--bm-primary-rgb); /* alias — 新代码请用 --bm-primary-rgb */
     --deep-rgb: 45, 90, 39;
     --danger-rgb: 201, 72, 59;
     --gold-rgb: 212, 175, 55;
@@ -83,7 +95,8 @@
     --pale-green-alt-rgb: 248, 252, 248;
     --surface-deep-rgb: 20, 35, 20;
     --surface-deep-alt-rgb: 25, 40, 25;
-    --primary-alt-rgb: 107, 174, 107;
+    --bm-primary-alt-rgb: 107, 174, 107;
+    --primary-alt-rgb: var(--bm-primary-alt-rgb); /* alias — 新代码请用 --bm-primary-alt-rgb */
     --danger-soft-rgb: 220, 100, 100;
     --red-pale-rgb: 255, 240, 240;
     --amber-brown-rgb: 180, 140, 100;
@@ -341,7 +354,8 @@
 /* ========== 暗色模式（竹林星光暗色，完整覆盖所有变量） ========== */
 :host(.dark) {
     /* 竹林星光 — 深邃、高级、有层次感的暗色背景 */
-    --primary-rgb: 130, 195, 130;
+    --bm-primary-rgb: 130, 195, 130;
+    --primary-rgb: var(--bm-primary-rgb); /* alias */
     --deep-rgb: 45, 90, 53;
     --bamboo-deep-rgb: 45, 90, 53;
     --danger-rgb: 255, 107, 107;
@@ -371,7 +385,8 @@
     --surface-dark-rgb: 20, 38, 22;
     --surface-dark-rgb-mid: 25, 48, 28;
     --surface-dark-rgb-end: 30, 55, 32;
-    --primary-alt-rgb: 130, 195, 130;
+    --bm-primary-alt-rgb: 130, 195, 130;
+    --primary-alt-rgb: var(--bm-primary-alt-rgb); /* alias */
     --danger-soft-rgb: 255, 120, 120;
     --red-pale-rgb: 40, 20, 20;
     --gray-mid-rgb: 120, 120, 120;
@@ -406,10 +421,12 @@
     /* 竹林色调：降低饱和度，增添银灰质感（跟随 --accent-hue） */
     --bamboo-deep: hsl(calc(var(--accent-hue) + 5), 34%, calc(26% + var(--accent-lightness-offset)));
     --bamboo-dark: hsl(calc(var(--accent-hue) + 6), 35%, calc(25% + var(--accent-lightness-offset)));
-    --bamboo-primary: hsl(calc(var(--accent-hue) + 2), 25%, calc(47% + var(--accent-lightness-offset)));
+    --bm-primary: hsl(calc(var(--accent-hue) + 2), 25%, calc(47% + var(--accent-lightness-offset)));
+    --bamboo-primary: var(--bm-primary); /* alias */
     --bamboo-light: hsl(var(--accent-hue), 39%, calc(65% + var(--accent-lightness-offset)));
     --bamboo-pale: hsl(var(--accent-hue), 30%, calc(78% + var(--accent-lightness-offset)));
-    --bamboo-primary-light: rgba(var(--primary-rgb), 0.6);
+    --bm-primary-light: rgba(var(--bm-primary-rgb), 0.6);
+    --bamboo-primary-light: var(--bm-primary-light); /* alias */
     --bamboo-warning: #ffe082;
     --bamboo-warning-pale: #fffde7;
     --bamboo-error: #ef5350;

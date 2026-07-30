@@ -13,6 +13,8 @@
  *   R7  no-bare-white-kw      color/background 等属性出现裸 white 关键字（必须用 var(--white)）
  *   R8  no-bare-black-kw      color/background 等属性出现裸 black 关键字（必须用 var(--black)）
  *   R9  no-transition-all      transition 使用 all（必须声明具体属性，如 transform, opacity）
+ *   R10 no-unprefixed-var      新增自定义属性定义未使用 --bm-* / --bamboo-* 前缀
+ *                              （variables.css 整体豁免；已存在的旧名见 R10_ALLOWLIST 白名单）
  *
  * 设计：只校验「使用处」，令牌的「定义处」(variables.css) 整体豁免；
  *       装饰渐变色（如 #fff9e6）因含非 f/F 字符不会被误伤；
@@ -88,7 +90,30 @@ const BLACK_KW_RE = /(?:color|background|background-color|border-color|outline-c
 // 需要检查裸色关键字的 CSS 属性列表（扩展版）
 const COLOR_PROPS_RE = /(?:color|background|background-color|border-color|outline-color|fill|stroke)\s*:\s*(white|black)\b(?!\s*-)/i;
 
-const RULE_ORDER = { R1: 1, R2: 2, R3: 3, R4: 4, R5: 5, R6: 6, R7: 7, R8: 8, R9: 9 };
+const RULE_ORDER = { R1: 1, R2: 2, R3: 3, R4: 4, R5: 5, R6: 6, R7: 7, R8: 8, R9: 9, R10: 10 };
+
+// R10 白名单 — 已存在的无前缀自定义属性，予以 grandfather 放行。
+// 新增自定义属性必须使用 --bm-* 或 --bamboo-* 前缀，否则被 R10 拦截。
+const R10_ALLOWLIST = new Set([
+  // Obsidian 宿主变量（从宿主环境读取，非插件定义，不可改名）
+  '--interactive-accent',
+  '--interactive-accent-hover',
+  // 兼容别名（定义在 variables.css 内，新代码禁止使用）
+  '--primary-rgb',
+  '--primary-alt-rgb',
+  '--bamboo-primary',
+  '--bamboo-primary-light',
+  '--bamboo-primary-dark',
+  // 已有组件级局部变量（grandfather 放行）
+  '--ring-pct',
+  '--section-index',
+  '--mist-1', '--mist-2', '--mist-3',
+  '--mountain-mist',
+  '--foreground-haze',
+  '--theme-inner-radius',
+  '--glow-width', '--glow-opacity', '--glow-duration',
+  '--kpi-value-color', '--kpi-accent-bg',
+]);
 
 for (const file of files) {
   if (EXEMPT_FILES.has(file)) continue;
@@ -149,11 +174,22 @@ for (const file of files) {
     if (tVal !== null && /\ball\b/.test(tVal) && !isRuleDisabled('R9')) {
       violations.push({ file, lineNo, rule: 'R9 no-transition-all', text: line });
     }
+
+    // R10 新增自定义属性必须使用 --bm-* / --bamboo-* 前缀
+    // 仅校验「定义处」（行首 --name: 模式），不校验 var() 引用；
+    // variables.css 整体豁免（已在本文件 EXEMPT_FILES 中跳过）。
+    const propDef = rawLine.match(/^\s*(--[a-zA-Z][\w-]*)\s*:/);
+    if (propDef && !isRuleDisabled('R10')) {
+      const propName = propDef[1];
+      if (!propName.startsWith('--bm-') && !propName.startsWith('--bamboo-') && !R10_ALLOWLIST.has(propName)) {
+        violations.push({ file, lineNo, rule: 'R10 no-unprefixed-var', text: line });
+      }
+    }
   });
 }
 
 if (violations.length === 0) {
-  console.log('✅ CSS 令牌守门员：未发现裸写硬编码（圆角/字号/白黑/阴影色/关键字/transition: all）。规范保持统一。');
+  console.log('✅ CSS 令牌守门员：未发现裸写硬编码（圆角/字号/白黑/阴影色/关键字/transition: all/无前缀变量）。规范保持统一。');
   process.exit(0);
 }
 

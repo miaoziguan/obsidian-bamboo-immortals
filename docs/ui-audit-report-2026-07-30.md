@@ -123,6 +123,23 @@
 2. 将颜色变量收敛为「基础色板 + 语义色板 + 组件令牌」三层结构。
 3. 引入 `stylelint` 规则禁止新增无命名空间变量。
 
+**修复状态：** 已修复（2026-07-30）。采用「权威名称 + 兼容别名」策略，在 `variables.css` 亮色 `:host` 与暗色 `:host(.dark)` 两个段落中分别引入规范前缀的 canonical 变量，并将旧名转为 alias：
+
+| 旧名（alias，向后兼容） | 规范名（canonical，新代码使用） |
+|---|---|
+| `--primary-rgb` | `--bm-primary-rgb` |
+| `--primary-alt-rgb` | `--bm-primary-alt-rgb` |
+| `--bamboo-primary` | `--bm-primary` |
+| `--bamboo-primary-light` | `--bm-primary-light` |
+
+- 亮色：`--bm-primary`（HSL 动态）、`--bm-primary-rgb: 90, 154, 90`、`--bm-primary-alt-rgb: 107, 174, 107`、`--bm-primary-light`（HSL 动态）；旧名改写为 `var(--bm-*)`。
+- 暗色：`--bm-primary-rgb: 130, 195, 130`、`--bm-primary-alt-rgb: 130, 195, 130`、`--bm-primary`（HSL 动态）、`--bm-primary-light: rgba(var(--bm-primary-rgb), 0.6)`；旧名改写为 `var(--bm-*)`。
+- `--interactive-accent` 为 Obsidian 宿主变量（`ThemeBridge.ts` 读取），**未改名**，不属于插件命名空间。
+- `--bamboo-primary-dark` 保留为 `--bamboo-dark` 的废弃别名，未新增 canonical。
+- 现有 27 个 CSS 文件共 1294 处 `--(bamboo-)?primary` 引用无需改动 —— alias 透明转发，视觉零回归。
+
+`scripts/lint-css-tokens.mjs` 新增 **R10 `no-unprefixed-var`** 规则：非 `variables.css` 文件中新增自定义属性定义必须以 `--bm-*` 或 `--bamboo-*` 开头，否则被拦截；已存在的旧名（`--primary-rgb` 等兼容别名、`--ring-pct`/`--mist-1` 等组件级局部变量）列入 `R10_ALLOWLIST` 白名单 grandfather 放行；`variables.css` 作为定义源整体豁免。`npm run lint:css` 当前 0 违规；`npm run build:webapp && npm run lint && npm test` 全部通过。
+
 #### 4.1.3 选择器权重与范围过大（P1）
 
 **现象：**
@@ -514,7 +531,7 @@
 | 4 | 颜色对比度风险 | 可访问性 | P1 | 主题/玻璃拟态 | 中 | 已修复（ThemeBridge 4.5:1/3:1 自动校验 + 单测） |
 | 5 | 固定宽度与断点缺失 | 响应式 | P1 | 布局系统 | 中 | 已修复（--bm-bp-* 断点变量 + min() 容器 + 375px 无水平滚动条） |
 | 6 | 触控区域过小 | 响应式 | P1 | 移动端 | 低 | 多处 <44px |
-| 7 | CSS 变量命名不一致 | CSS 架构 | P1 | 全局 CSS | 中 | 多命名空间混用 |
+| 7 | CSS 变量命名不一致 | CSS 架构 | P1 | 全局 CSS | 中 | 已修复（--bm-* canonical + alias + lint R10） |
 | 8 | 选择器权重过大 | CSS 架构 | P1 | 全局 CSS | 中 | 全局标签选择器 |
 | 9 | 行内编辑反馈不足 | 交互 | P1 | Goals 模块 | 低 | 无保存反馈 |
 | 10 | 按钮系统碎片化 | 组件一致性 | P1 | 全局组件 | 中 | 多套按钮类 |

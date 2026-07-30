@@ -416,6 +416,16 @@
 2. 所有弹窗、表单、卡片中的按钮继承基础类，仅覆写布局属性。
 3. 添加 `.bm-btn--loading` 状态。
 
+**修复状态：** 已修复（2026-07-30）。在 `forms.css` 落地 BEM 规范的 `.bm-btn` 体系，采用「权威类 + 兼容别名」策略——通过选择器分组（`.bm-btn, .btn { … }`）将旧类名 `.btn` / `.btn-primary` / `.btn-secondary` / `.btn-outline` / `.btn-danger` / `.btn-success` / `.btn-sm` 全部作为别名保留，现有 HTML/JS 无需改动即可继续工作。新增内容：
+
+- 尺寸变体：`.bm-btn--sm` / `.bm-btn--md` / `.bm-btn--lg`（`--lg` 引入 `--touch-comfortable` 48px 触控目标与 `--radius-md` 圆角）。
+- 样式变体：`.bm-btn--primary` / `--secondary` / `--outline` / `--ghost`（新）/ `--danger` / `--success`，统一 hover 位移与阴影令牌（`--shadow-surface` / `--shadow-elevated` / `--shadow-card`）。
+- 加载状态：`.bm-btn--loading` 通过 `::after` 伪元素渲染 spinner（`bm-btn-spin` 关键帧），子节点 `visibility:hidden` 保留布局宽度避免塌缩；浅色背景变体（secondary/ghost/outline）自动切换为主色 spinner 保证对比度；`prefers-reduced-motion` 下降速至 1.4s。
+- 顺带补齐 `base.css` reduced-motion 块引用但缺失定义的 `.loading-spinner` 基础类。
+- 暗色模式 `:host(.dark) .btn-primary:hover` 星光悬停效果同步覆盖 `.bm-btn--primary`。
+
+JS/HTML 旧类名迁移采用别名策略推迟到后续渐进替换，当前所有 `class="btn btn-primary"` 用法（含 `confirmDialog.js`、`timeline/editor.js`、`settingsModal.js`、`dataIO.js`）行为不变。`npm run lint:css` 0 违规，`npm test` 214 passed。
+
 #### 4.6.2 卡片/面板圆角与阴影不统一（P1）
 
 **现象：**

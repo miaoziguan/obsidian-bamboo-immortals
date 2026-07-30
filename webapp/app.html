@@ -13211,7 +13211,30 @@ input[type="number"].goal-inline-edit-input {
 
 </style>
 <style data-src="assets/styles/forms.css">
-/* ========== 按钮状态完善 ========== */
+/* ========== 按钮系统统一（BEM 规范） ==========
+ * 统一基础类 .bm-btn + 尺寸/样式/状态变体（Task 11）。
+ * 旧类名（.btn, .btn-primary 等）通过选择器分组作为别名保留，
+ * 现有 HTML/JS 无需改动即可继续工作；新代码请使用 .bm-btn 体系。
+ *
+ * 命名约定（BEM）：
+ *   .bm-btn                    基础类（尺寸/布局/过渡/触控目标）
+ *   .bm-btn--{sm|md|lg}        尺寸变体
+ *   .bm-btn--{primary|secondary|ghost|outline|danger|success}  样式变体
+ *   .bm-btn--loading           加载状态（spinner，需配合 aria-busy）
+ *   .bm-btn:disabled / .bm-btn.disabled  禁用状态
+ *
+ * 别名映射（向后兼容，新代码禁止使用）：
+ *   .btn              → .bm-btn
+ *   .btn-primary      → .bm-btn--primary
+ *   .btn-secondary    → .bm-btn--secondary
+ *   .btn-outline      → .bm-btn--outline
+ *   .btn-danger       → .bm-btn--danger
+ *   .btn-success      → .bm-btn--success
+ *   .btn-sm           → .bm-btn--sm
+ * ======================================================== */
+
+/* === 基础类 === */
+.bm-btn,
 .btn {
     padding: var(--space-2) var(--space-5);
     border-radius: var(--radius-sm);
@@ -13219,6 +13242,7 @@ input[type="number"].goal-inline-edit-input {
     cursor: pointer;
     font-size: var(--type-base);
     font-weight: 600;
+    font-family: inherit;
     transition: transform, opacity, box-shadow, border-color, background-color var(--transition-normal);
     display: inline-flex;
     align-items: center;
@@ -13226,66 +13250,28 @@ input[type="number"].goal-inline-edit-input {
     gap: var(--space-1);
     min-height: var(--touch-target);
     min-width: var(--touch-target);
+    position: relative;
+    overflow: hidden;
 }
+
+/* === 禁用状态 === */
+.bm-btn:disabled,
+.bm-btn.disabled,
 .btn:disabled,
 .btn.disabled {
     opacity: 0.5;
     cursor: not-allowed;
     pointer-events: none;
 }
+
+/* === 点击反馈 === */
+.bm-btn:active:not(:disabled),
 .btn:active:not(:disabled) {
     transform: var(--scale-click);
 }
 
-.btn-primary {
-    background: var(--btn-primary-bg);
-    color: var(--white);
-    box-shadow: var(--shadow-surface);
-}
-.btn-primary:hover:not(:disabled) {
-    background: var(--btn-primary-hover);
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-elevated);
-}
-.btn-primary:active:not(:disabled) {
-    transform: translateY(-1px) var(--scale-tiny);
-    box-shadow: var(--shadow-card);
-}
-
-.btn-secondary {
-    background: var(--btn-secondary-bg);
-    color: var(--text-primary);
-    border: 1px solid var(--border-light);
-    box-shadow: none;
-}
-.btn-secondary:hover:not(:disabled) {
-    background: var(--btn-secondary-hover);
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-surface);
-}
-
-.btn-outline {
-    background: transparent;
-    color: var(--bamboo-primary);
-    border: var(--btn-outline-border);
-}
-.btn-outline:hover:not(:disabled) {
-    background: var(--btn-outline-hover);
-    transform: translateY(-1px);
-}
-.btn-outline:active:not(:disabled) {
-    transform: var(--scale-click);
-}
-
-.btn-danger {
-    background: linear-gradient(135deg, var(--cinnabar), #e57368);
-    color: var(--white);
-}
-.btn-danger:hover:not(:disabled) {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(var(--danger-rgb), 0.3);
-}
-
+/* === 尺寸变体 === */
+.bm-btn--sm,
 .btn-sm {
     padding: var(--space-2) var(--space-3);
     font-size: var(--type-sm);
@@ -13293,9 +13279,171 @@ input[type="number"].goal-inline-edit-input {
     min-width: var(--touch-target);
 }
 
+.bm-btn--md {
+    /* 中等尺寸 = 基础类默认值，显式占位以便语义化使用 */
+    padding: var(--space-2) var(--space-5);
+    font-size: var(--type-base);
+    min-height: var(--touch-target);
+    min-width: var(--touch-target);
+}
+
+.bm-btn--lg {
+    padding: var(--space-3) var(--space-6);
+    font-size: var(--type-md);
+    min-height: var(--touch-comfortable);
+    min-width: var(--touch-comfortable);
+    border-radius: var(--radius-md);
+}
+
+/* === 样式变体：primary === */
+.bm-btn--primary,
+.btn-primary {
+    background: var(--btn-primary-bg);
+    color: var(--white);
+    box-shadow: var(--shadow-surface);
+}
+.bm-btn--primary:hover:not(:disabled),
+.btn-primary:hover:not(:disabled) {
+    background: var(--btn-primary-hover);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-elevated);
+}
+.bm-btn--primary:active:not(:disabled),
+.btn-primary:active:not(:disabled) {
+    transform: translateY(-1px) var(--scale-tiny);
+    box-shadow: var(--shadow-card);
+}
+
+/* === 样式变体：secondary === */
+.bm-btn--secondary,
+.btn-secondary {
+    background: var(--btn-secondary-bg);
+    color: var(--text-primary);
+    border: 1px solid var(--border-light);
+    box-shadow: none;
+}
+.bm-btn--secondary:hover:not(:disabled),
+.btn-secondary:hover:not(:disabled) {
+    background: var(--btn-secondary-hover);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-surface);
+}
+
+/* === 样式变体：outline === */
+.bm-btn--outline,
+.btn-outline {
+    background: transparent;
+    color: var(--bamboo-primary);
+    border: var(--btn-outline-border);
+}
+.bm-btn--outline:hover:not(:disabled),
+.btn-outline:hover:not(:disabled) {
+    background: var(--btn-outline-hover);
+    transform: translateY(-1px);
+}
+.bm-btn--outline:active:not(:disabled),
+.btn-outline:active:not(:disabled) {
+    transform: var(--scale-click);
+}
+
+/* === 样式变体：ghost（新，透明背景悬停高亮） === */
+.bm-btn--ghost {
+    background: transparent;
+    color: var(--text-secondary);
+    border: none;
+    box-shadow: none;
+}
+.bm-btn--ghost:hover:not(:disabled) {
+    background: rgba(var(--primary-rgb), 0.08);
+    color: var(--bamboo-primary);
+}
+.bm-btn--ghost:active:not(:disabled) {
+    background: rgba(var(--primary-rgb), 0.15);
+    transform: var(--scale-click);
+}
+
+/* === 样式变体：danger === */
+.bm-btn--danger,
+.btn-danger {
+    background: linear-gradient(135deg, var(--cinnabar), #e57368);
+    color: var(--white);
+}
+.bm-btn--danger:hover:not(:disabled),
+.btn-danger:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(var(--danger-rgb), 0.3);
+}
+
+/* === 样式变体：success === */
+.bm-btn--success,
 .btn-success {
     background: linear-gradient(135deg, var(--bamboo-primary), var(--bamboo-deep));
     color: var(--white);
+}
+.bm-btn--success:hover:not(:disabled),
+.btn-success:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.3);
+}
+
+/* === 加载状态（新功能：spinner） ===
+ * 用法：<button class="bm-btn bm-btn--primary bm-btn--loading" aria-busy="true">保存</button>
+ * spinner 通过 ::after 伪元素实现，不污染按钮文本节点；
+ * 子节点 visibility:hidden 隐藏但保留布局宽度，避免按钮塌缩。
+ * 建议配合 JS 在异步操作前后切换 .bm-btn--loading 与 aria-busy。 */
+.bm-btn--loading,
+.bm-btn--loading:hover:not(:disabled) {
+    pointer-events: none;
+    cursor: progress;
+    transform: none;
+}
+.bm-btn--loading > * {
+    visibility: hidden;
+}
+.bm-btn--loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 1.2em;
+    height: 1.2em;
+    margin: -0.6em 0 0 -0.6em;
+    border: 2px solid rgba(var(--white-rgb), 0.4);
+    border-top-color: var(--white);
+    border-radius: 50%;
+    animation: bm-btn-spin 0.6s linear infinite;
+    box-sizing: border-box;
+}
+/* 浅色背景变体用主色 spinner，保证对比度 */
+.bm-btn--secondary.bm-btn--loading::after,
+.bm-btn--ghost.bm-btn--loading::after,
+.bm-btn--outline.bm-btn--loading::after {
+    border-color: rgba(var(--primary-rgb), 0.3);
+    border-top-color: var(--bamboo-primary);
+}
+@keyframes bm-btn-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .bm-btn--loading::after {
+        animation-duration: 1.4s;
+    }
+}
+
+/* === 兼容：补齐 .loading-spinner 基础定义 ===
+ * base.css reduced-motion 块引用了 .loading-spinner::before 但缺基础定义；
+ * 此处补齐，复用 bm-btn-spin 动画，供独立 spinner 元素使用。 */
+.loading-spinner {
+    display: inline-block;
+    width: 1.2em;
+    height: 1.2em;
+    border: 2px solid rgba(var(--primary-rgb), 0.2);
+    border-top-color: var(--bamboo-primary);
+    border-radius: 50%;
+    animation: bm-btn-spin 0.6s linear infinite;
+    box-sizing: border-box;
+    vertical-align: middle;
 }
 
 /* ========== 通用编辑按钮 ========== */
@@ -13444,7 +13592,8 @@ input[type="number"].goal-inline-edit-input {
 }
 
 /* 竹林暗色模式：按钮星光悬停 */
-:host(.dark) .btn-primary:hover {
+:host(.dark) .btn-primary:hover,
+:host(.dark) .bm-btn--primary:hover {
     box-shadow: 0 0 20px rgba(var(--primary-rgb), 0.3);
 }
 

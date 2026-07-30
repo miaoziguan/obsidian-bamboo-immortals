@@ -816,8 +816,8 @@ export const WhiteNoiseManager = {
                 '<div class="confirm-header"><h3 class="confirm-title">' + HTMLUtils.escapeHtml(title) + '</h3></div>' +
                 '<div class="confirm-body" style="padding-top:4px;">' + fieldsHtml + '</div>' +
                 '<div class="confirm-footer">' +
-                    '<button class="btn btn-secondary confirm-cancel-btn">' + HTMLUtils.escapeHtml(cancelText) + '</button>' +
-                    '<button class="btn btn-primary confirm-confirm-btn">' + HTMLUtils.escapeHtml(confirmText) + '</button>' +
+                    '<button class="bm-btn bm-btn--secondary confirm-cancel-btn">' + HTMLUtils.escapeHtml(cancelText) + '</button>' +
+                    '<button class="bm-btn bm-btn--primary confirm-confirm-btn">' + HTMLUtils.escapeHtml(confirmText) + '</button>' +
                 '</div>';
 
             overlay.appendChild(dialog);

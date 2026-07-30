@@ -19,15 +19,15 @@ export const TimelineEditor = {
                             <div class="item-card-subtitle">${escapeHtml(item.time)} - ${item.items ? item.items.length : 0}个活动</div>
                         </div>
                         <div class="item-card-actions">
-                            <button class="btn btn-secondary btn-sm" data-action="timeline-editor-edit-item" data-index="${index}">编辑</button>
-                            <button class="btn btn-danger btn-sm" data-action="timeline-editor-delete-item" data-index="${index}">删除</button>
+                            <button class="bm-btn bm-btn--secondary bm-btn--sm" data-action="timeline-editor-edit-item" data-index="${index}">编辑</button>
+                            <button class="bm-btn bm-btn--danger bm-btn--sm" data-action="timeline-editor-delete-item" data-index="${index}">删除</button>
                         </div>
                     </div>
                 `).join('')}
             </div>
             <button class="add-btn" data-action="timeline-editor-add-item">+ 添加时段</button>
             <div class="modal-footer">
-                <button class="btn btn-secondary" data-action="close-modal">关闭</button>
+                <button class="bm-btn bm-btn--secondary" data-action="close-modal">关闭</button>
             </div>
         `;
         Handlers.openModal(content, '编辑活动时间线');
@@ -106,8 +106,8 @@ export const TimelineEditor = {
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary" data-action="timeline-editor-render-list">返回</button>
-                <button class="btn btn-primary" data-action="timeline-editor-save">保存</button>
+                <button class="bm-btn bm-btn--secondary" data-action="timeline-editor-render-list">返回</button>
+                <button class="bm-btn bm-btn--primary" data-action="timeline-editor-save">保存</button>
             </div>
         `;
         byId('modalBody').innerHTML = content;
@@ -122,7 +122,7 @@ export const TimelineEditor = {
                         <input type="text" class="form-input" style="width: 60px;" value="${escapeHtml(act.time)}" placeholder="时间" data-activity-time="${idx}">
                         <input type="text" class="form-input" style="flex: 1;" value="${escapeHtml(act.task)}" placeholder="任务内容" data-activity-task="${idx}">
                         <input type="text" class="form-input" style="flex: 1;" value="${escapeHtml(act.eval || '')}" placeholder="评价(可选)" data-activity-eval="${idx}">
-                        <button class="btn btn-danger btn-sm" data-action="remove-period-item" data-item-idx="${idx}">✕</button>
+                        <button class="bm-btn bm-btn--danger bm-btn--sm" data-action="remove-period-item" data-item-idx="${idx}">✕</button>
                     </div>
                 `).join('')}
             </div>

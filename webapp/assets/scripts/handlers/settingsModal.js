@@ -219,7 +219,7 @@ export const SettingsModal = {
                         </div>
                         <div class="settings-clear-row">
                             <input type="date" class="form-input settings-date-input" id="clearBeforeDate" max="${today}" placeholder="选择截止日期">
-                            <button class="btn btn-sm btn-danger" data-action="settings-confirm-clear-data">
+                            <button class="bm-btn bm-btn--sm bm-btn--danger" data-action="settings-confirm-clear-data">
                                 ${LucideUtils.createIcon('trash', { size: 12 })} 清理
                             </button>
                         </div>
@@ -232,7 +232,7 @@ export const SettingsModal = {
                         <div class="settings-item-label">清空全部数据并恢复初始状态</div>
                         <div class="settings-item-desc">包括每日记录、目标、余额、消费历史等所有数据</div>
                     </div>
-                    <button class="btn btn-sm btn-danger btn-block" data-action="settings-show-reset-modal">
+                    <button class="bm-btn bm-btn--sm bm-btn--danger btn-block" data-action="settings-show-reset-modal">
                         ${LucideUtils.createIcon('alertTriangle', { size: 12 })} 重置所有数据
                     </button>
                 </div>
@@ -589,8 +589,8 @@ export const SettingsModal = {
             </div>
 
             <div class="modal-footer">
-                <button class="btn btn-secondary" data-action="close-modal">取消</button>
-                <button class="btn btn-primary" data-action="settings-confirm-import">确认导入</button>
+                <button class="bm-btn bm-btn--secondary" data-action="close-modal">取消</button>
+                <button class="bm-btn bm-btn--primary" data-action="settings-confirm-import">确认导入</button>
             </div>
         `;
         Handlers.openModal(content, '导入数据预览');
@@ -663,8 +663,8 @@ export const SettingsModal = {
                 <input type="text" class="form-input" id="resetConfirmInput" placeholder="确认重置">
             </div>
             <div style="display: flex; gap: 8px; justify-content: flex-end;">
-                <button class="btn btn-sm btn-secondary" data-action="settings-cancel-reset">取消</button>
-                <button class="btn btn-sm btn-danger" data-action="settings-confirm-reset">确认重置</button>
+                <button class="bm-btn bm-btn--sm bm-btn--secondary" data-action="settings-cancel-reset">取消</button>
+                <button class="bm-btn bm-btn--sm bm-btn--danger" data-action="settings-confirm-reset">确认重置</button>
             </div>
         `;
         PanelManager.open('settings-reset', LucideUtils.createIcon('alertTriangle', { size: 16 }) + '确认重置', content);

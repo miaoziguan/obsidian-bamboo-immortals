@@ -35,7 +35,7 @@ export const SectionSettings = {
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary" data-action="close-modal">关闭</button>
+                <button class="bm-btn bm-btn--secondary" data-action="close-modal">关闭</button>
             </div>
         `;
     },

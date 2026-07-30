@@ -443,12 +443,12 @@ window.DataIO = {
         const content = `
             <div class="form-group">
                 <label class="form-label">导出数据</label>
-                <button class="btn btn-block btn-primary" data-action="export-data">
+                <button class="bm-btn bm-btn--primary btn-block" data-action="export-data">
                     导出为 JSON 文件
                 </button>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary" data-action="close-modal">关闭</button>
+                <button class="bm-btn bm-btn--secondary" data-action="close-modal">关闭</button>
             </div>
         `;
         Handlers.openModal(content, '导出分享');
@@ -465,8 +465,8 @@ window.DataIO = {
                 <textarea class="form-textarea" id="importTextarea" rows="6" placeholder="粘贴JSON数据..."></textarea>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary" data-action="close-modal">取消</button>
-                <button class="btn btn-primary" data-action="import-from-textarea">从文本框导入</button>
+                <button class="bm-btn bm-btn--secondary" data-action="close-modal">取消</button>
+                <button class="bm-btn bm-btn--primary" data-action="import-from-textarea">从文本框导入</button>
             </div>
         `;
         Handlers.openModal(content, '导入数据');

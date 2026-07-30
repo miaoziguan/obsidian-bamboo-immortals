@@ -312,7 +312,7 @@ export const StatsModal = {
                 `}
 
                 <div style="margin-top:8px; display:flex; gap:8px;">
-                    <button class="btn btn-secondary btn-block" data-action="stats-export-report-md" style="font-size:11px;">
+                    <button class="bm-btn bm-btn--secondary btn-block" data-action="stats-export-report-md" style="font-size:11px;">
                         ${LucideUtils.createIcon('download', { size: 12, strokeWidth: 1.8 })} 导出统计报告
                     </button>
                 </div>

@@ -6,8 +6,8 @@ export class ConfirmDialog {
             message: '确定要执行此操作吗？',
             confirmText: '确定',
             cancelText: '取消',
-            confirmClass: 'btn-primary',
-            cancelClass: 'btn-secondary',
+            confirmClass: 'bm-btn--primary',
+            cancelClass: 'bm-btn--secondary',
             danger: false,
             modal: true,
             closeOnConfirm: true,
@@ -47,10 +47,10 @@ export class ConfirmDialog {
                     ${this._renderExtraOptions(config.extraOptions)}
                 </div>
                 <div class="confirm-footer">
-                    <button class="btn ${HTMLUtils.escapeHtmlAttr(config.cancelClass)} confirm-cancel-btn">
+                    <button class="bm-btn ${HTMLUtils.escapeHtmlAttr(config.cancelClass)} confirm-cancel-btn">
                         ${HTMLUtils.escapeHtml(config.cancelText)}
                     </button>
-                    <button class="btn ${HTMLUtils.escapeHtmlAttr(config.confirmClass)} confirm-confirm-btn ${config.danger ? 'btn-danger' : ''}">
+                    <button class="bm-btn ${HTMLUtils.escapeHtmlAttr(config.confirmClass)} confirm-confirm-btn ${config.danger ? 'bm-btn--danger' : ''}">
                         ${HTMLUtils.escapeHtml(config.confirmText)}
                     </button>
                 </div>
@@ -231,7 +231,7 @@ export class ConfirmDialog {
         return this.show({
             ...options,
             danger: true,
-            confirmClass: 'btn-danger'
+            confirmClass: 'bm-btn--danger'
         });
     }
 

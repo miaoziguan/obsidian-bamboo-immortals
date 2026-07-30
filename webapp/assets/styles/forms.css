@@ -178,11 +178,13 @@
  * spinner 通过 ::after 伪元素实现，不污染按钮文本节点；
  * 子节点 visibility:hidden 隐藏但保留布局宽度，避免按钮塌缩。
  * 建议配合 JS 在异步操作前后切换 .bm-btn--loading 与 aria-busy。 */
-.bm-btn--loading,
-.bm-btn--loading:hover:not(:disabled) {
+.bm-btn--loading {
     pointer-events: none;
     cursor: progress;
     transform: none;
+    /* color: transparent 隐藏纯文本按钮的文字节点（visibility:hidden 仅作用于元素子节点，
+       无法隐藏直接文本节点），避免文字与 spinner 重叠 */
+    color: transparent;
 }
 .bm-btn--loading > * {
     visibility: hidden;
@@ -220,17 +222,25 @@
 
 /* === 兼容：补齐 .loading-spinner 基础定义 ===
  * base.css reduced-motion 块引用了 .loading-spinner::before 但缺基础定义；
- * 此处补齐，复用 bm-btn-spin 动画，供独立 spinner 元素使用。 */
+ * 此处将 border/animation 放到 ::before 伪元素上，与 base.css 的 reduced-motion
+ * 覆写（.loading-spinner::before { animation: none; ... }）对齐，使其不再是死代码。
+ * 复用 bm-btn-spin 动画，供独立 spinner 元素使用。 */
 .loading-spinner {
     display: inline-block;
     width: 1.2em;
     height: 1.2em;
+    position: relative;
+    vertical-align: middle;
+}
+.loading-spinner::before {
+    content: '';
+    position: absolute;
+    inset: 0;
     border: 2px solid rgba(var(--primary-rgb), 0.2);
     border-top-color: var(--bamboo-primary);
     border-radius: 50%;
     animation: bm-btn-spin 0.6s linear infinite;
     box-sizing: border-box;
-    vertical-align: middle;
 }
 
 /* ========== 通用编辑按钮 ========== */

@@ -103,6 +103,9 @@ export const LucideUtils = {
         flame: (s, sw) => LucideUtils._svg('flame', '<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-1.12-2.5-2.5-2.5S6 10.62 6 12a2.5 2.5 0 0 0 2.5 2.5z"/><path d="M12 2c0 4-4 6-4 10a4 4 0 1 0 8 0c0-4-4-6-4-10z"/>', s, sw),
         filePlus: (s, sw) => LucideUtils._svg('file-plus', '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/>', s, sw),
         dice5: (s, sw) => LucideUtils._svg('dice-5', '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><path d="M8 8h.01"/><path d="M16 8h.01"/><path d="M8 16h.01"/><path d="M16 16h.01"/><path d="M12 12h.01"/>', s, sw),
+        utensils: (s, sw) => LucideUtils._svg('utensils', '<path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>', s, sw),
+        sunrise: (s, sw) => LucideUtils._svg('sunrise', '<path d="M12 2v6"/><path d="m5.636 5.636 4.243 4.243"/><path d="M17.657 5.657l-4.243 4.242"/><path d="M22 12H16"/><path d="M8 12H2"/><path d="m19.071 19.071-4.243-4.243"/><path d="m9.172 17.172 4.243 4.243"/><circle cx="12" cy="12" r="4"/>', s, sw),
+        sunset: (s, sw) => LucideUtils._svg('sunset', '<path d="M12 10V2"/><path d="m4.93 10.93 1.41 1.41"/><path d="M2 18h2"/><path d="M20 18h2"/><path d="m19.07 10.93-1.41 1.41"/><path d="M22 22H2"/><path d="m8 6 4-4 4 4"/><circle cx="12" cy="12" r="4"/>', s, sw),
     },
 
     emojiMap: {

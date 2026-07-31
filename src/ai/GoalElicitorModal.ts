@@ -205,14 +205,14 @@ export class GoalElicitorModal extends Modal {
         attr: {
           id: errorId,
           role: 'alert',
-          style: 'display: none; color: var(--text-error); font-size: 12px; margin-top: 4px;',
+          cls: 'bamboo-elicit-error',
         },
         text: '请回答此问题，或选择「跳过并强制提交」。',
       });
       ta.addEventListener('input', () => {
         ta.removeAttribute('aria-invalid');
         ta.removeAttribute('aria-describedby');
-        errorEl.style.display = 'none';
+        errorEl.removeClass('is-visible');
       });
       inputs.push({ q, el: ta, errorId, errorEl });
     }
@@ -251,7 +251,7 @@ export class GoalElicitorModal extends Modal {
         for (const { el, errorId, errorEl } of inputs) {
           el.setAttribute('aria-invalid', 'true');
           el.setAttribute('aria-describedby', errorId);
-          errorEl.style.display = '';
+          errorEl.addClass('is-visible');
         }
         return;
       }

@@ -2078,7 +2078,7 @@
 /* Step 2: 保存失败 / 校验失败 — 红色边框 + 抖动 */
 .goal-inline-edit-input-error,
 .goal-inline-edit-input.goal-inline-edit-input-error {
-    border-color: var(--bamboo-error, #ef5350) !important;
+    border-color: var(--bamboo-error, #ef5350);
     animation: goal-inline-edit-shake 0.4s ease-in-out;
 }
 

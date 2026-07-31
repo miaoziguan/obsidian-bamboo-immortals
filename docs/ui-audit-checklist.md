@@ -138,9 +138,9 @@
 
 ### 6.3 图标（必查）
 
-- [ ] **统一图标入口**：优先使用 `Icon.render(name, options)` 或 `LucideUtils.createIcon`。
-- [ ] **图标通过 `currentColor` 继承文字色**。
-- [ ] **禁止在 CSS 中直接对 `svg` 标签设置尺寸**。
+- [x] **统一图标入口**：优先使用 `Icon.render(name, options)` 或 `LucideUtils.createIcon`。
+- [x] **图标通过 `currentColor` 继承文字色**。
+- [x] **禁止在 CSS 中直接对 `svg` 标签设置尺寸**（已验证：19 处裸 px 尺寸全部迁移为 `var(--bm-icon-*)`）。
 
 ---
 

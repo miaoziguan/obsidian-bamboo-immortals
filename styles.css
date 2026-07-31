@@ -1347,6 +1347,15 @@ html body .workspace-leaf-content[data-type="bamboo-immortals"] .view-header-tit
   line-height: 1.5;
   font-family: var(--font-text);
 }
+.bamboo-elicit-error {
+  display: none;
+  color: var(--text-error);
+  font-size: 12px;
+  margin-top: 4px;
+}
+.bamboo-elicit-error.is-visible {
+  display: block;
+}
 .bamboo-elicit-footer {
   display: flex;
   justify-content: flex-end;

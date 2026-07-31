@@ -3385,12 +3385,12 @@ button, .btn, .date-nav-btn, .edit-btn, .view-toggle-btn, .history-close, .modal
 .cultivation-summary-value { display: block; font-size: var(--type-large); font-weight: 800; color: var(--bamboo-primary); margin-bottom: 4px; }
 .cultivation-summary-label { font-size: var(--type-xs); color: var(--text-tertiary); }
 .cultivation-roadmap { display: flex; flex-direction: column; gap: 10px; }
- transition: transform, opacity, box-shadow, border-color, background-color .2s;
+.cultivation-realm-row { transition: transform, opacity, box-shadow, border-color, background-color .2s; }
 .cultivation-realm-row.is-past { background: rgba(var(--primary-rgb), .06); border-color: rgba(var(--primary-rgb), .2); }
 .cultivation-realm-row.is-current { background: rgba(var(--primary-rgb), .1); border-color: rgba(var(--primary-rgb), .3); box-shadow: 0 0 12px rgba(var(--primary-rgb), .1); }
 .cultivation-realm-label { display: flex; align-items: center; gap: 6px; min-width: 50px; font-size: var(--type-sm); font-weight: 700; color: var(--text-primary); }
 .cultivation-realm-layers { flex: 1; display: flex; gap: 3px; flex-wrap: wrap; }
- transition: transform, opacity, box-shadow, border-color, background-color .2s;
+.cultivation-layer-dot { transition: transform, opacity, box-shadow, border-color, background-color .2s; }
 .cultivation-layer-dot.unlocked { background: var(--bamboo-primary); opacity: 1; }
 .cultivation-layer-dot.active { background: var(--bamboo-light); opacity: 1; box-shadow: 0 0 8px rgba(var(--primary-rgb), .5); }
 .cultivation-realm-goal { font-size: var(--type-mini); color: var(--text-tertiary); white-space: nowrap; min-width: 30px; text-align: right; }
@@ -12446,7 +12446,7 @@ input[type="number"].goal-inline-edit-input {
 /* Step 2: 保存失败 / 校验失败 — 红色边框 + 抖动 */
 .goal-inline-edit-input-error,
 .goal-inline-edit-input.goal-inline-edit-input-error {
-    border-color: var(--bamboo-error, #ef5350) !important;
+    border-color: var(--bamboo-error, #ef5350);
     animation: goal-inline-edit-shake 0.4s ease-in-out;
 }
 

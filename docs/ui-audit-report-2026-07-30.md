@@ -495,6 +495,14 @@ JS/HTML 旧类名迁移采用别名策略推迟到后续渐进替换，当前所
 2. 所有 SVG 图标通过 `currentColor` 继承文字色。
 3. 禁止在 CSS 中直接对 `svg` 标签设置尺寸。
 
+**修复状态：** 已修复（2026-07-30）。
+
+- 图标入口已统一为 `LucideUtils.createIcon(name, {size})`，所有 SVG 经 `stroke="currentColor"` 继承文字色（建议 2 早已满足）。
+- 在 `variables.css` 新增 `--bm-icon-xs/sm/md/lg/xl/xxl`（12/14/16/18/20/24）图标尺寸令牌，镜像 `LucideUtils.SPEC.SIZES`，作为图标尺寸唯一来源。
+- 全量清理 CSS 中对 `svg` 标签的裸 px 尺寸：跨 7 个文件（modal-base/fab/goals-health/goals-widgets/modal-settings/weather-quotes）共 19 处 `width/height: Npx` 全部迁移为 `var(--bm-icon-*)`；3 个非标尺寸（13/15/22）就近归并到标准档位（14/16/24），FAB 主图标容器同步对齐。
+- 保留 `.gho-svg`（进度环 `width/height:100%`，非图标）与 `base.css` 背景图 data-URI，二者不属于图标尺寸治理范围。
+- 验证：build:webapp / lint / lint:css(R10 通过) / jest(214) / tsc / vitest(345) / browser-verify(12 OK) 全通过。
+
 ---
 
 ### 4.7 暗色模式与主题
@@ -618,7 +626,7 @@ JS/HTML 旧类名迁移采用别名策略推迟到后续渐进替换，当前所
 | 14 | will-change 策略缺失 | 性能 | P2 | 动画相关 | 低 | 已修复（白名单策略：移除 4 处常驻 will-change，作用域化到 date-transitioning/date-enter 动画活跃态，见 4.2.3） |
 | 15 | 日期切换边界测试不足 | 交互 | P2 | Timeline/Goals | 中 | 已修复（rAF 句柄追踪 + _clearDateTransition 统一中断，防抖丢弃旧回调；firstPaintProgressive 占位 div 防 CLS；见 4.5.1） |
 | 16 | 主题同步延迟感 | 主题 | P2 | ThemeBridge | 中 | 已修复（pushTheme 签名缓存复用解析+收敛 getComputedStyle；applyPalette leading-edge 防抖消除首帧延迟；app:ready 即时推送为架构最优；见 4.5.3） |
-| 17 | 图标系统不统一 | 组件一致性 | P2 | 全局组件 | 中 | 多源混用 |
+| 17 | 图标系统不统一 | 组件一致性 | P2 | 全局组件 | 中 | 已修复（新增 --bm-icon-* 尺寸令牌；19 处 svg 裸 px 全部令牌化；3 个非标尺寸归并标准档位；见 4.6.3） |
 | 18 | 玻璃拟态可读性依赖背景 | 主题 | P2 | 全局 CSS | 低 | 已修复（--card-bg-fallback + @supports not backdrop-filter） |
 | 19 | 全局选择器重排风险 | 性能 | P2 | 布局系统 | 中 | 需逐步优化 |
 
@@ -649,9 +657,9 @@ JS/HTML 旧类名迁移采用别名策略推迟到后续渐进替换，当前所
 ### 第三阶段：体验打磨（P2，2 周）
 
 1. ~~tooltip 硬编码色值语义化。~~（已完成，10 处统一为 `var(--text-on-accent)`，见 4.1.1）
-2. 主题同步性能优化。
-3. 图标系统统一。
-4. 日期切换压力测试与骨架屏。
+2. ~~主题同步性能优化。~~（已修复，见 4.5.3）
+3. ~~图标系统统一。~~（已修复，见 4.6.3）
+4. ~~日期切换压力测试与骨架屏。~~（已修复，见 4.5.1）
 5. 暗色模式与高对比度模式完善。
 
 ---
@@ -730,4 +738,6 @@ JS/HTML 旧类名迁移采用别名策略推迟到后续渐进替换，当前所
 
 竹林修仙传在视觉风格上已具备鲜明特色，且在 z-index 管理、Reduced Motion、FAB 边界检测等方面已有扎实基础。本次 375px 浏览器验证额外暴露出两个需要立即关注的问题：**未计划的 SearchUI 模块在 Shadow DOM 下挂载异常**（已按产品决策移除），以及 **FAB 主按钮点击关闭逻辑冲突**。
 
-全局 **178 处 `transition: all` 已治理为 0**；**49 处 `outline: none` 已逐行审查，均无裸用风险**。当前剩余工作集中在模态框 ARIA 补齐、CSS 变量命名空间与组件一致性重构。建议按三阶段路线图推进，并在修复后通过屏幕阅读器与 375px 视口实测验证，对照 `docs/ui-audit-checklist.md` 逐项过检。
+全局 **178 处 `transition: all` 已治理为 0**；**49 处 `outline: none` 已逐行审查，均无裸用风险**；**图标系统已实现统一**：新增 `--bm-icon-*` 尺寸令牌，19 处 SVG 裸 px 尺寸全部令牌化，`LucideUtils.createIcon` 成为唯一入口，`currentColor` 继承文字色。全部 18 项 UI 审计修复计划（P0–P2）已完成，构建、lint、CSS 令牌门禁、tsc、Jest(214)、Vitest(345)、375px 浏览器验证均通过。
+
+剩余唯一未处理项为 **19 号「全局选择器重排风险」**，建议作为后续迭代渐进优化。

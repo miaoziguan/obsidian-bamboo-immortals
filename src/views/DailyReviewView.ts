@@ -86,7 +86,7 @@ export class DailyReviewView extends ItemView {
     // 目标归档入口：webapp 目标地图 → 插件打开归档独立页
     this.appAPI.onOpenArchive = () => {
       const plugin = this.plugin as { openArchive?: () => Promise<void> } | undefined;
-      plugin?.openArchive?.();
+      void plugin?.openArchive?.();
     };
 
     // 健康分单一数据源：webapp 通过 app:getHealthOverview 向插件请求权威健康快照，

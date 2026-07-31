@@ -176,8 +176,8 @@ export const SectionRegistry = {
                 });
             }
         } else {
-            // 首次使用：全部可见，默认排序
-            const defaultSectionIds = ['themeEffect', 'todo', 'timeline', 'goals'];
+            // 首次使用：除 goals 外全部可见（goals 仅通过悬浮菜单访问）
+            const defaultSectionIds = ['themeEffect', 'todo', 'timeline'];
             defaultSectionIds.forEach(id => {
                 if (this.sections[id]) {
                     this.sections[id].visible = true;

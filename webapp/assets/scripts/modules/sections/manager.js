@@ -37,7 +37,8 @@ export const SectionManager = {
             className: 'goal-section',
             renderer: GoalsRenderer,
             editor: GoalsEditor,
-            dataKey: 'goals'
+            dataKey: 'goals',
+            visible: false
         });
 
         SectionRegistry.register('todo', {

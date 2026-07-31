@@ -37,6 +37,7 @@ export const ALL_MESSAGE_TYPES = [
   'app:readLocalFile',
   'app:proxyAudioUrl',
   'app:aiImproveGoal',
+  'app:openArchive',
   'app:getHealthOverview',
   'app:getCultivationRealm',
   'app:getBambooCoinBalance',

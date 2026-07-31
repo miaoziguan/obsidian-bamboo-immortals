@@ -250,6 +250,9 @@ ActionDispatcher.registerMany({
         Handlers.updateDarkModeButton();
     },
     'open-date-picker': () => Handlers.openDatePicker(),
+    'open-archive-page': () => {
+        if (typeof openArchivePage === 'function') openArchivePage();
+    },
     'fab-strategy': () => { 
         if (typeof GoalsRenderer !== 'undefined') GoalsRenderer.openHealthScoreDetail(); 
         if (typeof FABManager !== 'undefined') FABManager.close();
@@ -259,7 +262,7 @@ ActionDispatcher.registerMany({
         if (typeof FABManager !== 'undefined') FABManager.close();
     },
     'fab-archive': () => { 
-        if (typeof GoalsRenderer !== 'undefined') GoalsRenderer.openArchiveManager(); 
+        if (typeof openArchivePage === 'function') openArchivePage();
         if (typeof FABManager !== 'undefined') FABManager.close();
     },
     'fab-sections': () => { 

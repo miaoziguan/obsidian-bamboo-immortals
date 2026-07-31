@@ -227,6 +227,19 @@ window.addEventListener('error', function(e) {
 // 模块入口：所有模块脚本按 DOM 顺序执行，此时 DOM 已就绪
 document.body.classList.add('loading');
 
+/**
+ * 打开目标归档独立页。
+ * 通过 app:openArchive 通知 Obsidian 插件打开 ArchiveView。
+ */
+window.openArchivePage = function() {
+    const id = 'req_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+    try {
+        window.parent.postMessage({ type: 'app:openArchive', id, payload: {} }, window.parent.origin || '*');
+    } catch {
+        window.parent.postMessage({ type: 'app:openArchive', id, payload: {} }, '*');
+    }
+};
+
 try {
     renderSkeleton();
 } catch (e) {

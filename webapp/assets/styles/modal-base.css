@@ -80,8 +80,6 @@
     gap: var(--space-2);
 }
 .modal-title svg {
-    width: 18px;
-    height: 18px;
     flex-shrink: 0;
 }
 .modal-close {
@@ -104,8 +102,8 @@
     transform: rotate(90deg);
 }
 .modal-close svg {
-    width: 18px;
-    height: 18px;
+    width: var(--bm-icon-lg);
+    height: var(--bm-icon-lg);
 }
 
 /* ========== 模态框内容区 - 匹配 .container ========== */

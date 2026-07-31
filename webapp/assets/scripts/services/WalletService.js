@@ -101,6 +101,7 @@ export const WalletService = {
     /** 自动归档：将非近月（当月+上月）的 records 移入 archive */
     async archiveOldRecords() {
         const s = store.state;
+        if (!s) return;
         const now = new Date();
         const curMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
         const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
@@ -111,9 +112,10 @@ export const WalletService = {
         let ihChanged = false;
 
         // 购买历史归档
-        const ph = s.purchaseHistory;
+        const ph = s.purchaseHistory || { records: [], archive: {} };
         const phToArchive = [];
         const phToKeep = [];
+        if (!Array.isArray(ph.records)) ph.records = [];
         for (const record of ph.records) {
             const m = record.month || record.date.slice(0, 7);
             if (recentMonths.has(m)) {
@@ -140,9 +142,10 @@ export const WalletService = {
         }
 
         // 收入历史归档
-        const ih = s.incomeHistory;
+        const ih = s.incomeHistory || { records: [], archive: {} };
         const ihToArchive = [];
         const ihToKeep = [];
+        if (!Array.isArray(ih.records)) ih.records = [];
         for (const record of ih.records) {
             const m = record.month || record.date.slice(0, 7);
             if (recentMonths.has(m)) {

@@ -694,6 +694,16 @@
        Enforced globally in base.css on button, [role=button], etc. */
     --touch-target: 44px;
     --touch-comfortable: 48px;
+
+    /* Icon size scale — single source of truth for inline SVG icon dimensions.
+       Mirrors LucideUtils.SPEC.SIZES; CSS must reference these tokens instead
+       of bare px on `svg` selectors (UI Audit 4.6.3). */
+    --bm-icon-xs: 12px;
+    --bm-icon-sm: 14px;
+    --bm-icon-md: 16px;
+    --bm-icon-lg: 18px;
+    --bm-icon-xl: 20px;
+    --bm-icon-xxl: 24px;
 }
 
 /* Dynamic viewport height — progressive enhancement.

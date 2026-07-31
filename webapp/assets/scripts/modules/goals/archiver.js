@@ -1,4 +1,5 @@
 import { $, modalMount } from '../../utils/domRef.js';
+import { DateRangePicker } from './dateRangePicker.js';
 /**
  * GoalsArchiver — 目标归档管理面板
  *
@@ -9,8 +10,14 @@ export const GoalsArchiver = {
     /** 回引 GoalsRenderer，用于调用 render() / calcProgress() */
     _renderer: null,
 
+    /** 独立页根容器 */
+    _standaloneRoot: null,
+
+    /** 是否为独立页模式 */
+    _isStandalone: false,
+
     _state: {
-        filter: { progress: 'all', category: 'all', keyword: '', dateStart: '', dateEnd: '' },
+        filter: { category: 'all', keyword: '', dateStart: '', dateEnd: '' },
         availableCategories: [],
         selection: new Set(),
         selectAll: false
@@ -24,6 +31,20 @@ export const GoalsArchiver = {
     // ========== 入口 ==========
 
     openArchiveManager() {
+        this._isStandalone = false;
+        this._standaloneRoot = null;
+        this._loadArchiveFilter();
+        this._renderArchivePanel();
+    },
+
+    /**
+     * 独立页入口：直接渲染归档管理器到指定根容器。
+     * 不依赖 PanelManager，操作完成后通过 postMessage 通知宿主目标库已变更。
+     */
+    openStandalone(root) {
+        if (!root) return;
+        this._isStandalone = true;
+        this._standaloneRoot = root;
         this._loadArchiveFilter();
         this._renderArchivePanel();
     },
@@ -36,14 +57,15 @@ export const GoalsArchiver = {
             if (saved) {
                 const parsed = JSON.parse(saved);
                 delete parsed.date;
+                delete parsed.progress;
                 this._state.filter = {
-                    progress: 'all', category: 'all', keyword: '',
+                    category: 'all', keyword: '',
                     dateStart: '', dateEnd: '', ...parsed
                 };
                 return;
             }
         } catch (e) { /* ignore */ }
-        this._state.filter = { progress: 'all', category: 'all', keyword: '', dateStart: '', dateEnd: '' };
+        this._state.filter = { category: 'all', keyword: '', dateStart: '', dateEnd: '' };
     },
 
     _saveArchiveFilter() {
@@ -63,27 +85,25 @@ export const GoalsArchiver = {
 
         return `
             <div class="arch-filter-bar">
-                <div class="arch-filter-row arch-filter-search-row">
+                <div class="arch-filter-toolbar">
                     <div class="arch-filter-search">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        ${LucideUtils.createIcon('search', { size: 14 })}
                         <input type="text" class="arch-filter-input" data-filter-key="keyword" placeholder="搜索目标..." value="${escapeHtml(filter.keyword)}">
                         ${filter.keyword ? `<button class="arch-icon-btn" data-action="arch-clear-keyword" title="清除">${LucideUtils.createIcon('x', { size: 12 })}</button>` : ''}
                     </div>
-                    ${filter.progress !== 'all' || filter.category !== 'all' || filter.dateStart || filter.dateEnd ? `<button class="arch-reset-btn" data-action="arch-reset-filter">重置</button>` : ''}
-                </div>
-                <div class="arch-filter-row arch-filter-ctrls-row">
-                    <select class="arch-select" data-filter-key="progress">
-                        <option value="all" ${filter.progress === 'all' ? 'selected' : ''}>全部进度</option>
-                        <option value="complete" ${filter.progress === 'complete' ? 'selected' : ''}>已完成</option>
-                        <option value="incomplete" ${filter.progress === 'incomplete' ? 'selected' : ''}>进行中</option>
-                    </select>
-                    <select class="arch-select" data-filter-key="category">
-                        <option value="all" ${filter.category === 'all' ? 'selected' : ''}>全部分类</option>
-                        ${categories.map(c => `<option value="${escapeHtml(c.name)}" ${filter.category === c.name ? 'selected' : ''}>${escapeHtml(c.name)}</option>`).join('')}
-                    </select>
-                    <input type="text" class="arch-date-input" data-filter-key="dateStart" value="${escapeHtml(filter.dateStart)}" placeholder="起始 YYYY-MM-DD">
-                    <span class="arch-sep">~</span>
-                    <input type="text" class="arch-date-input" data-filter-key="dateEnd" value="${escapeHtml(filter.dateEnd)}" placeholder="截止 YYYY-MM-DD">
+                    <div class="arch-filter-field arch-filter-field-select">
+                        ${LucideUtils.createIcon('folderOpen', { size: 14 })}
+                        <select class="arch-select arch-select-category" data-filter-key="category">
+                            <option value="all" ${filter.category === 'all' ? 'selected' : ''}>全部分类</option>
+                            ${categories.map(c => `<option value="${escapeHtml(c.name)}" ${filter.category === c.name ? 'selected' : ''}>${escapeHtml(c.name)}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div class="arch-filter-field arch-filter-field-date arch-date-trigger" data-action="arch-open-date-picker" title="选择归档日期范围">
+                        ${LucideUtils.createIcon('calendar', { size: 14 })}
+                        <span class="arch-date-label">${filter.dateStart || filter.dateEnd ? `${escapeHtml(filter.dateStart || '开始')} ~ ${escapeHtml(filter.dateEnd || '结束')}` : '选择日期范围'}</span>
+                        ${filter.dateStart || filter.dateEnd ? `<button class="arch-icon-btn" data-action="arch-clear-date" title="清除日期">${LucideUtils.createIcon('x', { size: 12 })}</button>` : ''}
+                    </div>
+                    ${filter.category !== 'all' || filter.dateStart || filter.dateEnd ? `<button class="arch-reset-btn" data-action="arch-reset-filter">重置</button>` : ''}
                 </div>
             </div>
         `;
@@ -127,14 +147,6 @@ export const GoalsArchiver = {
             if (filter.category !== 'all') {
                 const cat = GoalService.getCategories().find(c => c.id === g.category);
                 if (!cat || cat.name !== filter.category) return false;
-            }
-            if (filter.progress === 'complete') {
-                const p = this._renderer ? this._renderer.calcProgress(g) : 0;
-                if (p < 100) return false;
-            }
-            if (filter.progress === 'incomplete') {
-                const p = this._renderer ? this._renderer.calcProgress(g) : 0;
-                if (p >= 100) return false;
             }
             if (filter.dateStart) {
                 const d = new Date(g.archivedAt || g.startDate);
@@ -244,6 +256,17 @@ export const GoalsArchiver = {
         const archived = store.getArchivedGoals();
         this._validateArchivedGoals(archived);
 
+        if (this._isStandalone && this._standaloneRoot) {
+            // 独立页模式：直接渲染到根容器
+            if (archived.length === 0) {
+                this._standaloneRoot.innerHTML = this._renderArchiveStandaloneHeader() + this._renderArchiveEmptyState();
+            } else {
+                this._standaloneRoot.innerHTML = this._renderArchiveStandaloneHeader() + this._buildArchiveContentHTML(archived);
+            }
+            this._bindEvents(this._standaloneRoot);
+            return;
+        }
+
         if (archived.length === 0) {
             PanelManager.open('archive', LucideUtils.createIcon('archive', { size: 16 }) + '目标归档', this._renderArchiveEmptyState());
             return;
@@ -253,6 +276,18 @@ export const GoalsArchiver = {
         PanelManager.open('archive', LucideUtils.createIcon('archive', { size: 16 }) + '目标归档', content, {
             onOpen: (panel) => this._bindEvents(panel)
         });
+    },
+
+    _renderArchiveStandaloneHeader() {
+        return `
+            <div class="archive-standalone-header">
+                <div class="archive-standalone-title">
+                    ${LucideUtils.createIcon('archive', { size: 20 })}
+                    <span>目标归档</span>
+                </div>
+                <div class="archive-standalone-sub">完成或删除的目标会汇集在这里，可随时恢复或清理</div>
+            </div>
+        `;
     },
 
     _renderArchiveEmptyState() {
@@ -267,8 +302,9 @@ export const GoalsArchiver = {
 
     // ========== 事件绑定 ==========
 
-    _bindEvents(panel) {
-        const body = panel.querySelector('.fab-panel-body');
+    _bindEvents(root) {
+        // 面板模式下取面板内容区；独立页模式下直接操作根容器
+        const body = root.querySelector('.fab-panel-body') || root;
         if (!body) return;
 
         // 搜索输入 — 防抖
@@ -293,7 +329,12 @@ export const GoalsArchiver = {
                 this._saveArchiveFilter();
                 this._refreshContent();
             } else if (t.matches('[data-action="arch-reset-filter"]')) {
-                this._state.filter = { progress: 'all', category: 'all', keyword: '', dateStart: '', dateEnd: '' };
+                this._state.filter = { category: 'all', keyword: '', dateStart: '', dateEnd: '' };
+                this._saveArchiveFilter();
+                this._refreshContent();
+            } else if (t.matches('[data-action="arch-clear-date"]')) {
+                this._state.filter.dateStart = '';
+                this._state.filter.dateEnd = '';
                 this._saveArchiveFilter();
                 this._refreshContent();
             } else if (t.matches('[data-action="arch-toggle-items"]')) {
@@ -314,30 +355,25 @@ export const GoalsArchiver = {
             });
         });
 
-        // 日期输入 — 实时校验格式 + 改变后触发筛选
-        body.querySelectorAll('.arch-date-input').forEach(inp => {
-            // 实时校验：红框提示格式错误
-            inp.addEventListener('input', () => {
-                const v = inp.value.trim();
-                if (v === '' || /^\d{4}-\d{2}-\d{2}$/.test(v)) {
-                    inp.classList.remove('arch-date-err');
-                } else {
-                    inp.classList.add('arch-date-err');
-                }
+        // 日期范围选择器
+        const dateTrigger = body.querySelector('.arch-date-trigger');
+        if (dateTrigger) {
+            dateTrigger.addEventListener('click', (e) => {
+                if (e.target.closest('[data-action="arch-clear-date"]')) return;
+                DateRangePicker.show({
+                    el: dateTrigger,
+                    currentStart: this._state.filter.dateStart,
+                    currentEnd: this._state.filter.dateEnd,
+                    onSelect: (start, end) => {
+                        this._state.filter.dateStart = start;
+                        this._state.filter.dateEnd = end;
+                        this._saveArchiveFilter();
+                        this._refreshContent();
+                    },
+                    onCancel: () => {}
+                });
             });
-            // 失焦或回车触发筛选
-            inp.addEventListener('change', () => {
-                inp.classList.remove('arch-date-err');
-                this._state.filter[inp.dataset.filterKey] = inp.value.trim();
-                this._saveArchiveFilter();
-                this._refreshContent();
-            });
-            inp.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') {
-                    inp.blur(); // 触发 change
-                }
-            });
-        });
+        }
 
         // 卡片复选框
         body.querySelectorAll('.arch-cb').forEach(cb => {
@@ -412,6 +448,21 @@ export const GoalsArchiver = {
     _refreshContent() {
         this._saveArchiveFilter();
 
+        // 独立页模式：直接刷新根容器
+        if (this._isStandalone && this._standaloneRoot) {
+            this._state.selection.clear();
+            this._state.selectAll = false;
+
+            const archived = store.getArchivedGoals();
+            if (archived.length === 0) {
+                this._standaloneRoot.innerHTML = this._renderArchiveStandaloneHeader() + this._renderArchiveEmptyState();
+            } else {
+                this._standaloneRoot.innerHTML = this._renderArchiveStandaloneHeader() + this._buildArchiveContentHTML(archived);
+            }
+            this._bindEvents(this._standaloneRoot);
+            return;
+        }
+
         let panel = PanelManager.activePanel;
         if (!panel || !panel.id.includes('archive')) {
             this.openArchiveManager();
@@ -449,6 +500,7 @@ export const GoalsArchiver = {
         this._state.selection.clear();
         this._refreshContent();
         if (this._renderer) this._renderer.render();
+        this._notifyGoalsChanged();
         Toast.showToast(`已恢复 ${successCount} 个目标`, 'success');
     },
 
@@ -472,6 +524,7 @@ export const GoalsArchiver = {
         this._state.selection.clear();
         this._refreshContent();
         if (typeof TodoRenderer !== 'undefined') TodoRenderer._invalidateCache();
+        this._notifyGoalsChanged();
         this._showUndoToast(`已删除 ${deletedCount} 个目标`, deletedGoals);
     },
 
@@ -481,6 +534,7 @@ export const GoalsArchiver = {
         await store.unarchiveGoal(goalId);
         this._refreshContent();
         if (this._renderer) this._renderer.render();
+        this._notifyGoalsChanged();
         Toast.showToast('目标已恢复到活跃列表', 'success');
     },
 
@@ -495,7 +549,21 @@ export const GoalsArchiver = {
         this._state.selection.clear();
         this._refreshContent();
         if (typeof TodoRenderer !== 'undefined') TodoRenderer._invalidateCache();
+        this._notifyGoalsChanged();
         this._showUndoToast('目标已永久删除', deletedGoal ? [deletedGoal] : []);
+    },
+
+    /**
+     * 通知宿主插件目标库已变更。
+     * 面板模式下由 GoalsRenderer.render() 局部刷新；独立页模式下需显式 postMessage。
+     */
+    _notifyGoalsChanged() {
+        if (!this._isStandalone) return;
+        try {
+            window.parent.postMessage({ type: 'goals:changed', id: 'notify_' + Date.now() }, '*');
+        } catch (e) {
+            console.warn('[Archive] 通知宿主目标变更失败:', e);
+        }
     },
 
     // ========== 撤销 Toast ==========
@@ -548,6 +616,7 @@ export const GoalsArchiver = {
             self._refreshContent();
             if (typeof TodoRenderer !== 'undefined') TodoRenderer._invalidateCache();
             if (self._renderer) self._renderer.render();
+            self._notifyGoalsChanged();
             dismiss();
             Toast.showToast(`已撤销删除，恢复了 ${deletedGoals.length} 个归档目标`, 'success');
         });

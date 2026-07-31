@@ -413,8 +413,8 @@
     padding-left: var(--space-1);
 }
 .data-section-header svg {
-    width: 18px;
-    height: 18px;
+    width: var(--bm-icon-lg);
+    height: var(--bm-icon-lg);
     color: var(--bamboo-primary);
     flex-shrink: 0;
 }
@@ -459,8 +459,8 @@
     box-shadow: var(--shadow-surface);
 }
 .btn-primary-action svg {
-    width: 16px;
-    height: 16px;
+    width: var(--bm-icon-md);
+    height: var(--bm-icon-md);
 }
 
 /* 次要分组标签：小号大写、强提示 */
@@ -475,8 +475,8 @@
     letter-spacing: 0.02em;
 }
 .data-subgroup-label svg {
-    width: 12px;
-    height: 12px;
+    width: var(--bm-icon-xs);
+    height: var(--bm-icon-xs);
     color: var(--text-secondary);
 }
 
@@ -516,8 +516,8 @@
     transform: scale(0.96);
 }
 .data-file-tile svg {
-    width: 18px;
-    height: 18px;
+    width: var(--bm-icon-lg);
+    height: var(--bm-icon-lg);
     color: var(--bamboo-primary);
     flex-shrink: 0;
 }
@@ -541,7 +541,6 @@
     padding: var(--space-2) var(--space-3);
     background: rgba(var(--primary-rgb), 0.06);
     border: 1px solid rgba(var(--primary-rgb), 0.12);
-    border-left: 3px solid var(--bamboo-primary);
     border-radius: var(--radius-sm);
     margin: var(--space-3) 0;
     font-size: var(--type-xs);
@@ -549,8 +548,8 @@
     line-height: 1.5;
 }
 .data-hint-card svg {
-    width: 14px;
-    height: 14px;
+    width: var(--bm-icon-sm);
+    height: var(--bm-icon-sm);
     color: var(--bamboo-primary);
     flex-shrink: 0;
     margin-top: 1px;
@@ -575,8 +574,8 @@
     color: var(--text-secondary);
 }
 .data-last-export svg {
-    width: 12px;
-    height: 12px;
+    width: var(--bm-icon-xs);
+    height: var(--bm-icon-xs);
     color: var(--bamboo-primary);
 }
 .data-last-export code {
@@ -606,8 +605,8 @@
     margin-bottom: var(--space-3);
 }
 .danger-zone-header svg {
-    width: 16px;
-    height: 16px;
+    width: var(--bm-icon-md);
+    height: var(--bm-icon-md);
 }
 .danger-zone .settings-item-label {
     color: var(--text-primary);

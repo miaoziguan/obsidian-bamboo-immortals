@@ -3,6 +3,7 @@
 
 import { MigrationService } from './migrationService.js';
 import { ConsistencyService } from '../services/ConsistencyService.js';
+import { WalletService } from '../services/WalletService.js';
 
 export class Store {
     constructor() {
@@ -133,10 +134,10 @@ export class Store {
             if (balance !== null) {
                 this.state.balance = parseFloat(balance) || 0;
             }
-            if (phData) {
+            if (phData && Array.isArray(phData.records)) {
                 this.state.purchaseHistory = phData;
             }
-            if (ihData) {
+            if (ihData && Array.isArray(ihData.records)) {
                 const seen = new Set();
                 const deduped = [];
                 for (const inc of (ihData.records || [])) {
@@ -175,8 +176,13 @@ export class Store {
                 dayKeys = await storageManager.getDayKeys();
             } catch (e) {
                 console.warn('[Store] getDayKeys failed, falling back to getAllDays:', e.message);
-                const all = await storageManager.getAllDays();
-                dayKeys = Object.keys(all).sort().reverse();
+                try {
+                    const all = await storageManager.getAllDays();
+                    dayKeys = Object.keys(all || {}).sort().reverse();
+                } catch (fallbackErr) {
+                    console.warn('[Store] getAllDays fallback also failed:', fallbackErr.message);
+                    dayKeys = [];
+                }
             }
             this.state.dayKeys = dayKeys;
 
@@ -186,8 +192,14 @@ export class Store {
                 paginated = await storageManager.getDaysPaginated(0, PAGE_SIZE);
             } catch (e) {
                 console.warn('[Store] getDaysPaginated failed, falling back to getAllDays:', e.message);
+                let fallbackDays = {};
+                try {
+                    fallbackDays = await storageManager.getAllDays();
+                } catch (fallbackErr) {
+                    console.warn('[Store] getAllDays fallback also failed:', fallbackErr.message);
+                }
                 paginated = {
-                    days: await storageManager.getAllDays(),
+                    days: fallbackDays || {},
                     keys: dayKeys.slice(0, PAGE_SIZE),
                     total: dayKeys.length,
                     page: 0,
@@ -302,12 +314,12 @@ export class Store {
             const saved = StorageAdapter.get(StorageKeys.DAILY_REVIEW_DATA);
             if (saved) {
                 const parsed = JSON.parse(saved);
-                if (Object.keys(parsed).length > 0) {
-                Object.assign(this.state.data, parsed);
-            } else {
-                Object.assign(this.state.data, DEFAULT_DATA);
-                this.saveToStorageLegacy();
-            }
+                if (parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0) {
+                    Object.assign(this.state.data, parsed);
+                } else {
+                    Object.assign(this.state.data, DEFAULT_DATA);
+                    this.saveToStorageLegacy();
+                }
             } else {
                 Object.assign(this.state.data, DEFAULT_DATA);
                 this.saveToStorageLegacy();

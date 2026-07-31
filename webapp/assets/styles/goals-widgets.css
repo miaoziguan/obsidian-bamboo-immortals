@@ -94,8 +94,8 @@
     color: var(--bamboo-primary);
 }
 .tmpl-card-icon svg {
-    width: 24px;
-    height: 24px;
+    width: var(--bm-icon-xxl);
+    height: var(--bm-icon-xxl);
 }
 .tmpl-card-info {
     display: flex;
@@ -281,8 +281,8 @@
     color: var(--bamboo-primary);
 }
 .tstd-title-icon svg {
-    width: 18px;
-    height: 18px;
+    width: var(--bm-icon-lg);
+    height: var(--bm-icon-lg);
 }
 .tstd-title {
     font-weight: 600;
@@ -316,8 +316,8 @@
     color: var(--text-primary);
 }
 .tstd-close-btn svg {
-    width: 16px;
-    height: 16px;
+    width: var(--bm-icon-md);
+    height: var(--bm-icon-md);
 }
 
 /* body */
@@ -430,8 +430,8 @@
     box-shadow: var(--shadow-card), 0 0 0 2px rgba(var(--teal-rgb), 0.4);
 }
 .tstd-icon-btn svg {
-    width: 18px;
-    height: 18px;
+    width: var(--bm-icon-lg);
+    height: var(--bm-icon-lg);
 }
 
 /* preview card */
@@ -456,8 +456,8 @@
     color: var(--bamboo-primary);
 }
 .tstd-preview-icon svg {
-    width: 20px;
-    height: 20px;
+    width: var(--bm-icon-xl);
+    height: var(--bm-icon-xl);
 }
 .tstd-preview-text {
     display: flex;
@@ -521,8 +521,8 @@
     filter: brightness(0.95);
 }
 .tstd-save svg {
-    width: 15px;
-    height: 15px;
+    width: var(--bm-icon-md);
+    height: var(--bm-icon-md);
 }
 
 /* ==========================================================

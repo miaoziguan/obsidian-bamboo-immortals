@@ -57,6 +57,12 @@ export class AppAPI {
   onAiImproveGoal?: (payload: { goalId: string; title?: string; hints?: string }) => void;
 
   /**
+   * 「目标归档」入口回调（由 DailyReviewView 注入，转发到插件 openArchive）。
+   * webapp 目标地图中点击「查看归档」时触发，打开归档独立页。
+   */
+  onOpenArchive?: () => void;
+
+  /**
    * 健康分权威快照数据源（由 DailyReviewView 注入，转发到插件的 getStrategyOverview()）。
    * webapp 通过 app:getHealthOverview 向插件请求单一数据源的健康分套件，
    * 避免插件与前端各算一遍导致的分数漂移。
@@ -298,6 +304,13 @@ export class AppAPI {
         title: typeof p.title === 'string' ? p.title : undefined,
         hints: typeof p.hints === 'string' ? p.hints : undefined,
       });
+      this.respond(id, { ok: true });
+      return;
+    }
+
+    // ---- 目标归档：打开独立归档页 ----
+    if (type === 'app:openArchive') {
+      this.onOpenArchive?.();
       this.respond(id, { ok: true });
       return;
     }

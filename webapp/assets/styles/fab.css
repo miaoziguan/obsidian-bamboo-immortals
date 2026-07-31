@@ -229,16 +229,16 @@
     box-shadow: 0 6px 24px rgba(var(--deep-rgb), 0.4);
 }
 .fab-main-icon {
-    width: 22px;
-    height: 22px;
+    width: var(--bm-icon-xxl);
+    height: var(--bm-icon-xxl);
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     display: flex;
     align-items: center;
     justify-content: center;
 }
 .fab-main-icon svg {
-    width: 22px;
-    height: 22px;
+    width: var(--bm-icon-xxl);
+    height: var(--bm-icon-xxl);
 }
 @media (prefers-reduced-motion: no-preference) {
     .fab-main:not(.open) {
@@ -345,8 +345,8 @@
     opacity: 1;
 }
 .fab-btn-icon svg {
-    width: 18px;
-    height: 18px;
+    width: var(--bm-icon-lg);
+    height: var(--bm-icon-lg);
 }
 .fab-btn-text {
     display: block;

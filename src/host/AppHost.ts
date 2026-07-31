@@ -56,18 +56,18 @@ export class AppHost {
     return p;
   }
 
-  async buildBlobUrl(): Promise<string> {
+  async buildBlobUrl(entryFile: string = 'app.html'): Promise<string> {
     const adapter = this.app.vault.adapter;
 
     // 自愈：webapp/ 缺失时从对应版本 Release 自举下载并解压
     await this.ensureWebapp(adapter);
 
-    const appHtmlPath = normalizePath(`${this.webappDir}/app.html`);
+    const appHtmlPath = normalizePath(`${this.webappDir}/${entryFile}`);
     let html: string;
     try {
       html = await adapter.read(appHtmlPath);
     } catch {
-      throw new Error('无法读取 webapp/app.html，且自动下载失败。请尝试在 Obsidian 中重新安装本插件，或手动放置 webapp/ 目录');
+      throw new Error(`无法读取 webapp/${entryFile}，且自动下载失败。请尝试在 Obsidian 中重新安装本插件，或手动放置 webapp/ 目录`);
     }
 
     // 整页 HTML 已自包含（CSS 内联 + bundle 内联为静态 <script>），直接 blob 交给 iframe。

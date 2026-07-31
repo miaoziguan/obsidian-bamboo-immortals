@@ -24,6 +24,7 @@ import type { PlanTarget } from './src/ai/MarkdownPlanner';
 import type { GoalBrief } from './src/types/data';
 import type { AgenticPlanOptions } from './src/ai/AgenticPlanController';
 import { PlanEditorView, VIEW_TYPE_PLAN_EDITOR } from './src/views/PlanEditorView';
+import { ArchiveView, VIEW_TYPE_ARCHIVE } from './src/views/ArchiveView';
 import { SuggestionApplyModal } from './src/ai/SuggestionApplyModal';
 import { diagnose } from './src/ai/GoalDiagnoser';
 import { runDiagnosis } from './src/ai/runDiagnosis';
@@ -78,6 +79,11 @@ export default class BambooReviewPlugin extends Plugin {
       return new PlanEditorView(leaf, this.pendingPlanOpts);
     });
 
+    // 注册「目标归档」独立页视图
+    this.registerView(VIEW_TYPE_ARCHIVE, (leaf: WorkspaceLeaf) => {
+      return new ArchiveView(leaf, pluginDir, this, this.settings, () => this.saveSettings());
+    });
+
     // 宿主 → webapp 直连接口（Phase3 门面，内部仍走 sendCommand 线协议）
     this.webapp = new WebappController(() => {
       const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_DAILY_REVIEW);
@@ -114,6 +120,12 @@ export default class BambooReviewPlugin extends Plugin {
       id: 'open-stats',
       name: '打开统计分析',
       callback: () => this.webapp.openStats(),
+    });
+
+    this.addCommand({
+      id: 'open-archive',
+      name: '打开目标归档',
+      callback: () => void this.openArchive(),
     });
 
     this.addCommand({
@@ -738,6 +750,28 @@ export default class BambooReviewPlugin extends Plugin {
       leaf = workspace.getLeaf(false);
       await leaf.setViewState({
         type: VIEW_TYPE_DAILY_REVIEW,
+        active: true,
+      });
+    }
+
+    if (leaf) {
+      await workspace.revealLeaf(leaf);
+    }
+  }
+
+  /** 激活或创建目标归档独立页 */
+  async openArchive(): Promise<void> {
+    const { workspace } = this.app;
+
+    let leaf: WorkspaceLeaf | null = null;
+    const leaves = workspace.getLeavesOfType(VIEW_TYPE_ARCHIVE);
+
+    if (leaves.length > 0) {
+      leaf = leaves[0];
+    } else {
+      leaf = workspace.getLeaf(false);
+      await leaf.setViewState({
+        type: VIEW_TYPE_ARCHIVE,
         active: true,
       });
     }

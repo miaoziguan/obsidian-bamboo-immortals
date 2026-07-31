@@ -273,8 +273,8 @@
 }
 
 .gho-review-btn svg {
-    width: 13px;
-    height: 13px;
+    width: var(--bm-icon-sm);
+    height: var(--bm-icon-sm);
 }
 
 /* 空状态 */
@@ -291,8 +291,8 @@
 }
 
 .gho-empty-icon svg {
-    width: 14px;
-    height: 14px;
+    width: var(--bm-icon-sm);
+    height: var(--bm-icon-sm);
 }
 
 .gho-empty-text {

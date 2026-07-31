@@ -231,7 +231,7 @@
 .date-range-picker {
     position: fixed;
     inset: 0;
-    z-index: var(--z-layer-overlay);
+    z-index: var(--z-layer-max);
 }
 .drp-overlay {
     position: fixed;

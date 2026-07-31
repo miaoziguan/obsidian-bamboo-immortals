@@ -2,20 +2,21 @@ import { ItemView, WorkspaceLeaf, EventRef } from 'obsidian';
 import type { BambooReviewSettings } from '../settings/PluginSettings';
 import { AppHost } from '../host/AppHost';
 import { AppAPI } from '../host/AppAPI';
-import type { StrategyOverview } from '../ai/strategyOverview';
-import type { CultivationRealm } from '../cultivation';
 
-export const VIEW_TYPE_DAILY_REVIEW = 'bamboo-immortals';
+export const VIEW_TYPE_ARCHIVE = 'bamboo-archive';
 
 /**
- * DailyReviewView - 主视图
+ * ArchiveView - 目标归档独立页
  *
  * 职责：
- * 1. 创建 iframe（blob URL）承载 webapp
- * 2. 管理 AppHost / AppAPI 生命周期
+ * 1. 创建 iframe（blob URL）承载 webapp/archive.html
+ * 2. 管理 AppHost / AppAPI 生命周期（仅存储 + 主题同步）
  * 3. 监听 Obsidian 主题变化并同步
+ *
+ * 与 DailyReviewView 相比，去除了日期导航、健康分、修行境界等 provider，
+ * 因为归档页只消费 goals.json，不依赖每日数据。
  */
-export class DailyReviewView extends ItemView {
+export class ArchiveView extends ItemView {
   private pluginDir: string;
   private plugin: unknown;
   private settings: BambooReviewSettings;
@@ -41,21 +42,21 @@ export class DailyReviewView extends ItemView {
   }
 
   getViewType(): string {
-    return VIEW_TYPE_DAILY_REVIEW;
+    return VIEW_TYPE_ARCHIVE;
   }
 
   getDisplayText(): string {
-    return '竹林修仙传';
+    return '目标归档';
   }
 
   getIcon(): string {
-    return 'leaf';
+    return 'archive';
   }
 
   async onOpen(): Promise<void> {
     const container: HTMLElement = this.containerEl.children[1] as HTMLElement;
     container.empty();
-    container.addClass('bamboo-review-container');
+    container.addClass('bamboo-archive-container');
 
     if (!this.pluginDir) {
       container.createDiv({
@@ -75,65 +76,22 @@ export class DailyReviewView extends ItemView {
     );
     await this.appAPI.ensureStructure();
 
-    // 战略复盘面板「用 AI 改进」入口：webapp 健康分详情 → 插件 Agentic 编辑链路
-    this.appAPI.onAiImproveGoal = (payload) => {
-      const plugin = this.plugin as
-        | { requestAiImprove?: (p: typeof payload) => void }
-        | undefined;
-      plugin?.requestAiImprove?.(payload);
-    };
-
-    // 目标归档入口：webapp 目标地图 → 插件打开归档独立页
-    this.appAPI.onOpenArchive = () => {
-      const plugin = this.plugin as { openArchive?: () => Promise<void> } | undefined;
-      plugin?.openArchive?.();
-    };
-
-    // 健康分单一数据源：webapp 通过 app:getHealthOverview 向插件请求权威健康快照，
-    // 彻底消除插件(竹杖芒鞋)与前端(竹林修仙 webapp)各自计算导致的分数漂移。
-    this.appAPI.setStrategyOverviewProvider(async () => {
-      const plugin = this.plugin as
-        | { getStrategyOverview?: () => Promise<StrategyOverview | null> }
-        | undefined;
-      return plugin?.getStrategyOverview ? plugin.getStrategyOverview() : null;
-    });
-
-    // 修行境界 / 竹币余额 / 可用竹币余额：同样以插件方法为单一数据源，经 AppAPI 暴露给 webapp 侧栏
-    this.appAPI.setCultivationRealmProvider(async () => {
-      const plugin = this.plugin as
-        | { getCultivationRealm?: () => Promise<CultivationRealm | null> }
-        | undefined;
-      return plugin?.getCultivationRealm ? plugin.getCultivationRealm() : null;
-    });
-    this.appAPI.setBambooCoinBalanceProvider(async () => {
-      const plugin = this.plugin as
-        | { getBambooCoinBalance?: () => Promise<number | null> }
-        | undefined;
-      return plugin?.getBambooCoinBalance ? plugin.getBambooCoinBalance() : null;
-    });
-    this.appAPI.setBambooCoinAvailableBalanceProvider(async () => {
-      const plugin = this.plugin as
-        | { getBambooCoinAvailableBalance?: () => Promise<number | null> }
-        | undefined;
-      return plugin?.getBambooCoinAvailableBalance ? plugin.getBambooCoinAvailableBalance() : null;
-    });
-
     // 扫描自定义主题
     const customThemes = await this.scanCustomThemes();
     this.appAPI.setCustomThemes(customThemes);
 
-    // 创建 AppHost 并构建 blob URL
+    // 创建 AppHost 并构建 blob URL（加载 archive.html）
     const version = (this.plugin as { manifest?: { version?: string } } | undefined)?.manifest?.version ?? '';
     this.appHost = new AppHost(this.app, this.pluginDir, version);
 
     const loadingEl = container.createDiv({
-      text: '竹林修仙传加载中…',
+      text: '目标归档加载中…',
       cls: 'bamboo-review-loading',
     });
 
     try {
       this.appAPI.startListening();
-      const blobUrl = await this.appHost.buildBlobUrl();
+      const blobUrl = await this.appHost.buildBlobUrl('archive.html');
 
       this.iframe = container.createEl('iframe', {
         cls: 'bamboo-review-frame',
@@ -152,24 +110,21 @@ export class DailyReviewView extends ItemView {
     } catch (e) {
       loadingEl.remove();
       container.createDiv({
-        text: `竹林修仙传加载失败: ${e instanceof Error ? e.message : '未知错误'}`,
+        text: `目标归档加载失败: ${e instanceof Error ? e.message : '未知错误'}`,
         cls: 'bamboo-review-error',
       });
     }
   }
 
   async onClose(): Promise<void> {
-    // 清理主题监听
     if (this.cssChangeRef) {
       this.app.workspace.offref(this.cssChangeRef);
       this.cssChangeRef = null;
     }
 
-    // 清理通信层
     this.appAPI?.detach();
     this.appAPI = null;
 
-    // 清理 blob URL
     this.appHost?.destroy();
     this.appHost = null;
 

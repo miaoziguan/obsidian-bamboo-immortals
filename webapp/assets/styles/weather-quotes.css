@@ -127,8 +127,8 @@
 }
 .weather-btn svg {
     display: block;
-    width: 12px;
-    height: 12px;
+    width: var(--bm-icon-xs);
+    height: var(--bm-icon-xs);
 }
 .weather-btn:hover {
     background: var(--hover-bg, rgba(var(--black-rgb), 0.05));

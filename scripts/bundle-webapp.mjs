@@ -85,6 +85,8 @@ async function buildSelfContainedHtml(htmlFile, outFile) {
   let appHtml = html;
 
   // 5a. 内联 CSS：<link rel="stylesheet" href="x.css"> → <style>...</style>
+  //     同时将 CSS 中的相对图片引用（url('../images/xxx')）转为 base64 data URI，
+  //     因为最终 HTML 以 blob URL 加载，相对路径在 blob 上下文中无法解析。
   appHtml = appHtml.replace(/<link\b[^>]*?rel=["']stylesheet["'][^>]*?>/gi, (tag) => {
     const hrefMatch = tag.match(/href=["']([^"']+)["']/i);
     if (!hrefMatch) return tag;
@@ -92,7 +94,22 @@ async function buildSelfContainedHtml(htmlFile, outFile) {
     const clean = href.split("?")[0].replace(/^\.\//, "");
     const cssPath = path.join(webappDir, clean);
     try {
-      const css = fs.readFileSync(cssPath, "utf-8");
+      let css = fs.readFileSync(cssPath, "utf-8");
+      // 将 url('../images/xxx') 转为 base64 data URI
+      css = css.replace(/url\(['"]\.\.\/images\/([^'")]+)['"]\)/g, (_match, imgFile) => {
+        const imgFullPath = path.join(webappDir, 'assets', 'images', imgFile);
+        try {
+          const imgBuf = fs.readFileSync(imgFullPath);
+          const ext = path.extname(imgFile).slice(1).toLowerCase();
+          const mimeMap = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', svg: 'image/svg+xml', gif: 'image/gif', webp: 'image/webp' };
+          const mime = mimeMap[ext] || 'application/octet-stream';
+          const b64 = imgBuf.toString('base64');
+          return `url("data:${mime};base64,${b64}")`;
+        } catch (e) {
+          console.warn(`[bundle] 无法内联图片: ${imgFullPath} (${e.message})`);
+          return _match; // 保留原路径作为降级
+        }
+      });
       return `<style data-src="${clean}">\n${css}\n</style>`;
     } catch (e) {
       console.warn(`[bundle] 无法内联 CSS: ${cssPath} (${e.message})`);

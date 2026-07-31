@@ -417,20 +417,10 @@ export const renderGoalsSection = () => {
     const section = document.createElement('section');
     section.className = 'goal-section';
     section.setAttribute('role', 'region');
-    section.setAttribute('aria-labelledby', 'goals-title');
+    section.setAttribute('aria-label', '目标地图');
 
     section.innerHTML = `
         <div class="goal-map-container">
-            <div class="goal-section-header">
-                <div class="goal-section-title">
-                    ${LucideUtils.createIcon('map', { size: 18 })}
-                    <span id="goals-title">目标地图</span>
-                </div>
-                <button class="goal-section-action" data-action="open-archive-page" aria-label="打开目标归档">
-                    ${LucideUtils.createIcon('archive', { size: 14 })}
-                    <span>查看归档</span>
-                </button>
-            </div>
             <div class="goal-list" id="goalList" role="list" aria-label="目标列表"></div>
         </div>
     `;

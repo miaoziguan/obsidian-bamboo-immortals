@@ -2,6 +2,22 @@ import { store } from '../../state/store.js';
 import { GoalsArchiver } from './archiver.js';
 
 /**
+ * 解析归档根容器 #archiveRoot。
+ * shadowBootstrap 会把应用 markup 搬进 shadow root（window.__bambooShadowRoot），
+ * 而 document.getElementById 不跨越 shadow 边界，因此优先在 shadow root 内查找，
+ * 找不到再回退到 light DOM。
+ */
+function findArchiveRoot() {
+  const sr = window.__bambooShadowRoot;
+  if (sr && sr.getElementById) {
+    const inShadow = sr.getElementById('archiveRoot');
+    if (inShadow) return inShadow;
+  }
+  return document.getElementById('archiveRoot');
+}
+
+
+/**
  * 归档独立页引导。
  *
  * 关键约束：
@@ -30,7 +46,14 @@ async function bootArchive() {
     // 不阻断页面渲染：store 已降级到离线模式，继续初始化归档组件
   }
 
-  const root = document.getElementById('archiveRoot');
+  // 解析归档根容器。shadowBootstrap 会把 #archiveRoot 从 light DOM 搬进
+  // shadow root（window.__bambooShadowRoot），而 getElementById 不会跨越 shadow
+  // 边界，故需优先在 shadow root 内查找，再回退 light DOM，最后做一次 0ms 重试兜底。
+  let root = findArchiveRoot();
+  if (!root) {
+    await new Promise((r) => setTimeout(r, 0));
+    root = findArchiveRoot();
+  }
   if (!root) {
     console.error('[Archive] archiveRoot container not found');
     document.body.classList.remove('loading');

@@ -17,6 +17,12 @@ export const ThemeEffects = {
             },
             init() {
                 BambooGarden.init();
+            },
+            // 明暗切换钩子：由 ThemeEffects 统一观察者驱动，替代各主题自行挂 MutationObserver
+            updateTheme() {
+                if (typeof BambooGarden !== 'undefined' && BambooGarden.updateTheme) {
+                    BambooGarden.updateTheme();
+                }
             }
         }
     },
@@ -182,6 +188,19 @@ export const ThemeEffects = {
             var lr = panel.querySelector('#tuneLightReset');
             if (hr) hr.style.display = cur.hue !== null ? '' : 'none';
             if (lr) lr.style.display = cur.lightness !== null ? '' : 'none';
+        }
+
+        // 统一通知当前主题刷新（合并 observer：明暗切换只需这一个观察者驱动）
+        this._notifyThemeUpdate();
+    },
+
+    /** 通知当前主题的 updateTheme 钩子（明暗切换后刷新背景等） */
+    _notifyThemeUpdate() {
+        var theme = this.themes[this.currentTheme];
+        if (theme && typeof theme.updateTheme === 'function') {
+            try { theme.updateTheme(); } catch (e) {
+                console.warn('[ThemeEffects] 主题 updateTheme 失败:', e && e.message);
+            }
         }
     },
 

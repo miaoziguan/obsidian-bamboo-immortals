@@ -5,11 +5,11 @@ export const BambooGarden = {
     _leafCount: 0,
     _MAX_LEAVES: 15,
     _isPageVisible: true,
-    _observer: null,
     _visibilityHandler: null,
     // 飘落竹叶对象池：复用固定数量的 DOM 节点，避免反复创建/销毁导致的重排与 GC
     _leafPool: [],
     _leafPoolInit: false,
+    _initialized: false,
 
     render() {
         return `
@@ -44,18 +44,15 @@ export const BambooGarden = {
 
     init() {
         // 防止重复初始化（主题切换时会先 destroy 再 init）
-        if (this._observer) this.destroy();
+        if (this._initialized) this.destroy();
+        this._initialized = true;
 
         this.createBambooForest();
         this.startLeafAnimation();
         this._setupVisibilityGuard();
         // 初始即按当前明暗模式应用大背景（避免依赖 CSS :host(.dark) 在个别 webview 下未命中）
         this.updateTheme();
-
-        this._observer = new MutationObserver(() => {
-            this.updateTheme();
-        });
-        this._observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+        // 明暗切换由 ThemeEffects 统一观察者驱动（合并 observer，避免重复监听 documentElement.class）
     },
 
     _setupVisibilityGuard() {
@@ -86,16 +83,11 @@ export const BambooGarden = {
         const container = byId('leafContainer');
         if (container) container.innerHTML = '';
         this._leafCount = 0;
+        this._initialized = false;
 
         // 清空对象池（DOM 已随 innerHTML 清空，同步重置池状态以便重建）
         this._leafPool = [];
         this._leafPoolInit = false;
-
-        // 断开 MutationObserver
-        if (this._observer) {
-            this._observer.disconnect();
-            this._observer = null;
-        }
 
         // 移除 visibilitychange 监听器
         if (this._visibilityHandler) {

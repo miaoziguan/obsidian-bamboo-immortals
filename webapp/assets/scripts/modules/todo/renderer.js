@@ -7,9 +7,15 @@ export const TodoRenderer = {
         if (typeof GoalsRenderer !== 'undefined') {
             goalTasks = GoalsRenderer.getTodayGoalTasks(store.getDateKey());
         }
-        return JSON.stringify({
-            g: goalTasks.map(g => ({ i: g.id, ti: g.title, de: g.description, c: g.completed, dm: g.dailyMin, inc: g.incrementValue, cv: g.currentValue, tv: g.targetValue, hv: g.hasValues, ar: g.isArchived }))
-        });
+        // 轻量指纹替代全量 JSON.stringify：拼接影响渲染输出的关键字段，
+        // 减少每次 render 的序列化开销。goalTasks 本身有缓存（引用稳定），
+        // 仅当 goals/completions 变化时内容才会变，指纹随之变化触发重渲染。
+        let hash = goalTasks.length + '|';
+        for (let i = 0; i < goalTasks.length; i++) {
+            const g = goalTasks[i];
+            hash += g.id + ':' + (g.completed ? '1' : '0') + ':' + g.currentValue + ':' + g.dailyMin + ';';
+        }
+        return hash;
     },
 
     _shouldSkipRender(data) {

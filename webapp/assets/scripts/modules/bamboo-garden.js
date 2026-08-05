@@ -7,6 +7,9 @@ export const BambooGarden = {
     _isPageVisible: true,
     _observer: null,
     _visibilityHandler: null,
+    // 飘落竹叶对象池：复用固定数量的 DOM 节点，避免反复创建/销毁导致的重排与 GC
+    _leafPool: [],
+    _leafPoolInit: false,
 
     render() {
         return `
@@ -83,6 +86,10 @@ export const BambooGarden = {
         const container = byId('leafContainer');
         if (container) container.innerHTML = '';
         this._leafCount = 0;
+
+        // 清空对象池（DOM 已随 innerHTML 清空，同步重置池状态以便重建）
+        this._leafPool = [];
+        this._leafPoolInit = false;
 
         // 断开 MutationObserver
         if (this._observer) {
@@ -229,95 +236,124 @@ export const BambooGarden = {
         // 避免重复创建 interval
         if (this._leafIntervalId) return;
 
+        // 初始化对象池（仅首次；主题切换 destroy 后池已清理，会重新建立）
+        this._initLeafPool();
+
+        // 确保飘落 keyframes 已注入
+        this._ensureLeafKeyframes();
+
         // 初始几片叶子
         for (let i = 0; i < 3; i++) {
-            setTimeout(() => this.createLeaf(), i * 300);
+            setTimeout(() => this._spawnLeaf(), i * 300);
         }
 
         this._leafIntervalId = setInterval(() => {
             if (!this._isPageVisible) return;
-            this.createLeaf();
+            this._spawnLeaf();
             if (Math.random() > 0.6) {
-                setTimeout(() => this.createLeaf(), 200);
+                setTimeout(() => this._spawnLeaf(), 200);
             }
         }, 750);
     },
 
-    createLeaf() {
+    /**
+     * 预创建固定数量的叶子 DOM 到对象池（display:none 占位）。
+     * 复用节点代替反复 createElement/removeChild，消除重排与 GC 抖动，
+     * 视觉效果与重建版一致（每片叶子仍独立随机起点/速度/缩放）。
+     */
+    _initLeafPool() {
         const container = byId('leafContainer');
-        if (!container) return;
+        if (!container || this._leafPoolInit) return;
+        this._leafPoolInit = true;
+        // 确保 keyframes 先注入，池节点首次激活即可引用
+        this._ensureLeafKeyframes();
+        for (let i = 0; i < this._MAX_LEAVES; i++) {
+            const leaf = document.createElement('div');
+            leaf.className = 'drifting-leaf';
+            leaf.style.display = 'none';
+            container.appendChild(leaf);
+            this._leafPool.push(leaf);
+        }
+    },
 
-        // 限制最大同时存在的叶子数量
-        if (this._leafCount >= this._MAX_LEAVES) return;
+    /** 注入飘落叶子的 keyframes（仅在首次生成时） */
+    _ensureLeafKeyframes() {
+        if (byId('windLeafStyles')) return;
+        const s = document.createElement('style');
+        s.id = 'windLeafStyles';
+        s.textContent = `
+            @keyframes leafDrift0 {
+                0% { transform: translate(0, -70px) rotate(0deg); opacity: 0; }
+                12% { opacity: 0.45; }
+                40% { transform: translate(45px, 90px) rotate(150deg); }
+                70% { transform: translate(90px, 210px) rotate(300deg); }
+                88% { opacity: 0.3; }
+                100% { transform: translate(135px, 360px) rotate(480deg); opacity: 0; }
+            }
+            @keyframes leafDrift1 {
+                0% { transform: translate(0, -70px) rotate(0deg); opacity: 0; }
+                15% { opacity: 0.45; }
+                35% { transform: translate(30px, 70px) rotate(100deg); }
+                55% { transform: translate(75px, 150px) rotate(220deg); }
+                80% { transform: translate(110px, 270px) rotate(360deg); }
+                85% { opacity: 0.3; }
+                100% { transform: translate(140px, 360px) rotate(500deg); opacity: 0; }
+            }
+            @keyframes leafDrift2 {
+                0% { transform: translate(0, -70px) rotate(0deg); opacity: 0; }
+                10% { opacity: 0.45; }
+                25% { transform: translate(55px, 50px) rotate(180deg); }
+                45% { transform: translate(95px, 130px) rotate(320deg); }
+                65% { transform: translate(125px, 230px) rotate(460deg); }
+                85% { opacity: 0.28; }
+                100% { transform: translate(150px, 360px) rotate(600deg); opacity: 0; }
+            }
+            @keyframes leafDrift3 {
+                0% { transform: translate(0, -70px) rotate(0deg); opacity: 0; }
+                15% { opacity: 0.45; }
+                30% { transform: translate(20px, 60px) rotate(80deg); }
+                50% { transform: translate(60px, 150px) rotate(180deg); }
+                70% { transform: translate(100px, 240px) rotate(290deg); }
+                85% { opacity: 0.28; }
+                100% { transform: translate(130px, 360px) rotate(400deg); opacity: 0; }
+            }
+        `;
+        getStyleMount().appendChild(s);
+    },
 
-        const leaf = document.createElement('div');
-        leaf.className = 'drifting-leaf';
+    /**
+     * 从对象池取一片空闲叶子并播放一次随机飘落。
+     * 池满则跳过（同屏最多 _MAX_LEAVES 片，与原逻辑一致）。
+     */
+    _spawnLeaf() {
+        const leaf = this._leafPool.find(l => l.style.display === 'none');
+        if (!leaf) return; // 池满，视觉上与重建版"达到上限"等价
 
+        // 随机参数（与原 createLeaf 一致，保证视觉效果不变）
         const startX = -5 + Math.random() * 40;
         const duration = 4.5 + Math.random() * 3.5;
         const delay = Math.random() * 1;
+        const scale = 0.55 + Math.random() * 0.65;
+        const animationIndex = Math.floor(Math.random() * 4);
 
+        // 先移除动画，再强制 reflow，最后重新设置参数并激活（CSS 动画重启技巧）
+        leaf.style.animationName = 'none';
         leaf.style.left = startX + '%';
         leaf.style.animationDuration = duration + 's';
         leaf.style.animationDelay = delay + 's';
-
-        const scale = 0.55 + Math.random() * 0.65;
         leaf.style.transform = `scale(${scale})`;
-
-        const animationIndex = Math.floor(Math.random() * 4);
+        // 强制同步 reflow，确保上面的 animation:none 已生效，动画可从头重播
+        void leaf.offsetWidth;
         leaf.style.animationName = `leafDrift${animationIndex}`;
+        leaf.style.display = '';
 
-        if (!byId('windLeafStyles')) {
-            const s = document.createElement('style');
-            s.id = 'windLeafStyles';
-            s.textContent = `
-                @keyframes leafDrift0 {
-                    0% { transform: translate(0, -70px) rotate(0deg); opacity: 0; }
-                    12% { opacity: 0.45; }
-                    40% { transform: translate(45px, 90px) rotate(150deg); }
-                    70% { transform: translate(90px, 210px) rotate(300deg); }
-                    88% { opacity: 0.3; }
-                    100% { transform: translate(135px, 360px) rotate(480deg); opacity: 0; }
-                }
-                @keyframes leafDrift1 {
-                    0% { transform: translate(0, -70px) rotate(0deg); opacity: 0; }
-                    15% { opacity: 0.45; }
-                    35% { transform: translate(30px, 70px) rotate(100deg); }
-                    55% { transform: translate(75px, 150px) rotate(220deg); }
-                    80% { transform: translate(110px, 270px) rotate(360deg); }
-                    85% { opacity: 0.3; }
-                    100% { transform: translate(140px, 360px) rotate(500deg); opacity: 0; }
-                }
-                @keyframes leafDrift2 {
-                    0% { transform: translate(0, -70px) rotate(0deg); opacity: 0; }
-                    10% { opacity: 0.45; }
-                    25% { transform: translate(55px, 50px) rotate(180deg); }
-                    45% { transform: translate(95px, 130px) rotate(320deg); }
-                    65% { transform: translate(125px, 230px) rotate(460deg); }
-                    85% { opacity: 0.28; }
-                    100% { transform: translate(150px, 360px) rotate(600deg); opacity: 0; }
-                }
-                @keyframes leafDrift3 {
-                    0% { transform: translate(0, -70px) rotate(0deg); opacity: 0; }
-                    15% { opacity: 0.45; }
-                    30% { transform: translate(20px, 60px) rotate(80deg); }
-                    50% { transform: translate(60px, 150px) rotate(180deg); }
-                    70% { transform: translate(100px, 240px) rotate(290deg); }
-                    85% { opacity: 0.28; }
-                    100% { transform: translate(130px, 360px) rotate(400deg); opacity: 0; }
-                }
-            `;
-            getStyleMount().appendChild(s);
-        }
-
-        this._leafCount++;
-        container.appendChild(leaf);
-
+        // 本次飘落结束后回收复用（保留原有时间节奏，动画为 infinite，不能依赖 animationend）
+        const self = this;
         setTimeout(() => {
-            if (leaf.parentNode === container) {
-                container.removeChild(leaf);
+            if (leaf.style.display !== 'none') {
+                leaf.style.animationName = 'none';
+                leaf.style.display = 'none';
             }
-            this._leafCount = Math.max(0, this._leafCount - 1);
         }, (duration + delay) * 1000 + 700);
     },
 

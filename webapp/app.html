@@ -6492,6 +6492,19 @@ button, .btn, .date-nav-btn, .edit-btn, .view-toggle-btn, .history-close, .modal
     z-index: 1;
 }
 
+/* 触控热区扩展：视觉 24px，点击热区放大到 --touch-target(44px)，不改变布局尺寸 */
+.todo-lottery-btn::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: var(--touch-target);
+    height: var(--touch-target);
+    min-width: var(--touch-target);
+    min-height: var(--touch-target);
+}
+
 .todo-lottery-btn svg {
     stroke: var(--bamboo-primary);
     transition: transform 0.3s ease, stroke 0.2s ease;

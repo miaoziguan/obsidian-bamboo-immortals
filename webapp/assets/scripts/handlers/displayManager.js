@@ -26,6 +26,8 @@ export const DisplayManager = {
     _lightnessValueLabelEl: null,
     _saveTimer: null,
     _transitionTimer: null,
+    _currentWidth: null,
+    _resizeObserver: null,
 
     /* ===== 预设档位 ===== */
     PRESETS: [
@@ -112,6 +114,9 @@ export const DisplayManager = {
 
         // 绑定事件
         this._bindEvents();
+
+        // 监听容器尺寸变化（移动端旋转/侧栏缩放时重算 rw-* 断点）
+        this._observeContainerResize();
     },
 
     /* ===== 加载并应用设置 ===== */
@@ -201,29 +206,72 @@ export const DisplayManager = {
             value = this.DEFAULT_WIDTH;
         }
 
+        this._currentWidth = value;
+
         // 具体像素值
         root.style.setProperty('--content-max-width', value + 'px');
         root.style.setProperty('--content-max-width-wide', value + 'px');
         container.classList.remove('display-fullscreen');
         if (mainContainer) mainContainer.classList.remove('display-fullscreen');
 
-        // 紧凑模式：容器变窄时触发票/票根的堆叠布局
-        const effectiveWidth = value;
-        container.classList.toggle('display-compact', effectiveWidth <= 600);
-        container.classList.toggle('display-ultra-compact', effectiveWidth <= 480);
-
-        // ===== 基于内容宽度的响应式类 =====
-        container.classList.remove(
-            'rw-620', 'rw-520', 'rw-460', 'rw-420', 'rw-360'
-        );
-        if (value <= 620) container.classList.add('rw-620');
-        if (value <= 520) container.classList.add('rw-520');
-        if (value <= 460) container.classList.add('rw-460');
-        if (value <= 420) container.classList.add('rw-420');
-        if (value <= 360) container.classList.add('rw-360');
+        // 基于「内容区实际渲染宽度」应用响应式类。
+        // 实际宽度 = min(用户设置宽度, iframe/容器可用宽度)，
+        // 移动端 iframe 很窄时即使 displayWidth=800，容器实际也只有 ~390px，
+        // 必须按实际宽度触发窄屏布局，否则 goals-responsive.css 整套窄屏修正不生效。
+        this._applyResponsiveClasses();
 
         // 同步滑块和标签
         this._syncUI(value);
+    },
+
+    /**
+     * 基于容器「实际渲染宽度」应用 display-compact / rw-* 响应式类。
+     * 分离出来以便 ResizeObserver 在旋转/面板缩放时复用（不重置 --content-max-width）。
+     */
+    _applyResponsiveClasses() {
+        const container = byId('reviewContainer');
+        if (!container) return;
+
+        // 读取容器实际渲染宽度（受 --content-max-width 约束），失败则回退到用户设置宽度
+        let actualWidth = 0;
+        try {
+            const rect = container.getBoundingClientRect();
+            if (rect && rect.width > 0) actualWidth = rect.width;
+        } catch (e) {
+            actualWidth = 0;
+        }
+        const effective = actualWidth > 0 ? actualWidth : (this._currentWidth || this.DEFAULT_WIDTH);
+
+        // 紧凑模式：容器变窄时触发票/票根的堆叠布局
+        container.classList.toggle('display-compact', effective <= 600);
+        container.classList.toggle('display-ultra-compact', effective <= 480);
+
+        // ===== 基于实际内容宽度的响应式类 =====
+        container.classList.remove(
+            'rw-620', 'rw-520', 'rw-460', 'rw-420', 'rw-360'
+        );
+        if (effective <= 620) container.classList.add('rw-620');
+        if (effective <= 520) container.classList.add('rw-520');
+        if (effective <= 460) container.classList.add('rw-460');
+        if (effective <= 420) container.classList.add('rw-420');
+        if (effective <= 360) container.classList.add('rw-360');
+    },
+
+    /**
+     * 监听容器尺寸变化（移动端旋转、Obsidian 侧栏宽度变化等），
+     * 重新应用响应式类，保证 rw-* 断点始终基于真实宽度。
+     */
+    _observeContainerResize() {
+        const container = byId('reviewContainer');
+        if (!container || typeof ResizeObserver === 'undefined') return;
+        if (this._resizeObserver) return;
+
+        this._resizeObserver = new ResizeObserver(() => {
+            if (typeof this._currentWidth !== 'number') return;
+            // 仅重算响应式类，避免 reset 用户设置的 --content-max-width
+            this._applyResponsiveClasses();
+        });
+        this._resizeObserver.observe(container);
     },
 
     /* ===== 同步面板 UI 状态 ===== */

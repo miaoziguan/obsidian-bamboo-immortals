@@ -348,8 +348,22 @@ export const GoalService = {
         // 缓存键：日期 + goals 数组引用 + 当天 completions 的快速 hash
         const dayData = store.peekDataByDate(todayKey);
         const completions = dayData?.goalTaskCompletions || {};
-        // 轻量 hash：把 key 拼接起来。规模：≤ 目标数×子项数，正常使用 100 字符内。
-        const completionsHash = JSON.stringify(completions);
+        // 轻量指纹：仅拼接「已完成的 (goalId:itemIdx)」，替代 JSON.stringify 全量序列化嵌套对象。
+        // 任一完成的组合变化（新增/取消）都会使 hash 变化 → 缓存正确失效。
+        let completionsHash = '';
+        if (completions) {
+            const cKeys = Object.keys(completions);
+            for (let ci = 0; ci < cKeys.length; ci++) {
+                const goalC = completions[cKeys[ci]];
+                if (!goalC) continue;
+                const iKeys = Object.keys(goalC);
+                for (let ii = 0; ii < iKeys.length; ii++) {
+                    if (goalC[iKeys[ii]]) {
+                        completionsHash += cKeys[ci] + ':' + iKeys[ii] + ';';
+                    }
+                }
+            }
+        }
 
         const cache = this._todayTasksCache;
         if (cache.key === todayKey

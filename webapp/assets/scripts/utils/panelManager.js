@@ -108,29 +108,53 @@ export const PanelManager = {
 
     /**
      * 初始化拖拽功能
+     * 使用 Pointer Events 统一支持鼠标 / 触摸 / 触控笔，并限制边界防止面板被拖出屏幕无法找回。
      */
     _initDraggable(panel) {
         const header = panel.querySelector('.fab-panel-header');
+        if (!header || typeof window.PointerEvent === 'undefined') return;
+
         let isDragging = false;
         let startX, startY, initialLeft, initialTop;
 
-        const onMouseMove = (e) => {
-            if (!isDragging) return;
-            panel.style.left = (initialLeft + (e.clientX - startX)) + 'px';
-            panel.style.top = (initialTop + (e.clientY - startY)) + 'px';
-        };
-        const onMouseUp = () => {
-            isDragging = false;
-            header.style.cursor = 'grab';
-            document.removeEventListener('mousemove', onMouseMove);
-            document.removeEventListener('mouseup', onMouseUp);
+        // 允许拖动的最小可见区域（面板不会完全拖出屏幕，至少保留这部分便于找回）
+        const MIN_VISIBLE = 64;
+
+        const clampToViewport = (left, top, rect) => {
+            const maxLeft = window.innerWidth - MIN_VISIBLE;
+            const maxTop = window.innerHeight - MIN_VISIBLE;
+            return {
+                left: Math.min(Math.max(left, MIN_VISIBLE - rect.width), maxLeft),
+                top: Math.min(Math.max(top, MIN_VISIBLE), maxTop),
+            };
         };
 
-        header.addEventListener('mousedown', (e) => {
+        const onPointerMove = (e) => {
+            if (!isDragging) return;
+            e.preventDefault();
+            const left = initialLeft + (e.clientX - startX);
+            const top = initialTop + (e.clientY - startY);
+            const clamped = clampToViewport(left, top, panel.getBoundingClientRect());
+            panel.style.left = clamped.left + 'px';
+            panel.style.top = clamped.top + 'px';
+        };
+        const onPointerUp = () => {
+            if (!isDragging) return;
+            isDragging = false;
+            header.style.cursor = 'grab';
+            header.style.touchAction = 'auto';
+            document.removeEventListener('pointermove', onPointerMove);
+            document.removeEventListener('pointerup', onPointerUp);
+            document.removeEventListener('pointercancel', onPointerUp);
+        };
+
+        header.addEventListener('pointerdown', (e) => {
             if (e.target.closest('.fab-panel-close')) return;
 
             isDragging = true;
             header.style.cursor = 'grabbing';
+            // 拖拽期间禁止浏览器原生手势（触摸滚动/缩放），避免与面板拖动冲突
+            header.style.touchAction = 'none';
 
             const rect = panel.getBoundingClientRect();
             initialLeft = rect.left;
@@ -144,8 +168,9 @@ export const PanelManager = {
             startX = e.clientX;
             startY = e.clientY;
 
-            document.addEventListener('mousemove', onMouseMove);
-            document.addEventListener('mouseup', onMouseUp);
+            document.addEventListener('pointermove', onPointerMove);
+            document.addEventListener('pointerup', onPointerUp);
+            document.addEventListener('pointercancel', onPointerUp);
         });
     },
 

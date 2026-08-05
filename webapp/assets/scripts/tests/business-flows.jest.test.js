@@ -382,4 +382,14 @@ describe('核心业务流', () => {
             lastCheckIn: '10:15'
         });
     });
+
+    test('TodoService._patchGoals 在 goalList 未渲染时回退全量（返回 false）', () => {
+        const store = makeStoreMock({});
+        installBrowserGlobals(store);
+        installServices();
+        loadModule('services/TodoService.js', []);
+
+        // 不构造 #goalList DOM，模拟 goals 未渲染
+        expect(window.TodoService._patchGoals('goal_1')).toBe(false);
+    });
 });

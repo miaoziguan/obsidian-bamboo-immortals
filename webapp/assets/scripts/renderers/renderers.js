@@ -542,7 +542,7 @@ export const renderTodoSection = () => {
                             <div class="todo-group-header">
                                 <div class="todo-group-label" data-action="todo-toggle-completed-group">
                                     <span class="todo-group-chevron">${LucideUtils.createIcon('chevronDown', { size: 14 })}</span>
-                                    已完成 (${completed.length})
+                                    已完成 (<span class="todo-completed-count">${completed.length}</span>)
                                 </div>
                             </div>
                             <div class="todo-group-items">

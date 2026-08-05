@@ -72,6 +72,11 @@ export const TodoRenderer = {
             }
             const fill = container.querySelector('.todo-progress-fill');
             if (fill) fill.style.width = `${progressPercent}%`;
+            // 各分组标题里的数字：pending 组 badge / completed 组 (N)
+            const pendingBadge = container.querySelector('.todo-group-goal .todo-group-badge');
+            if (pendingBadge) pendingBadge.textContent = String(pending.length);
+            const completedCountEl = container.querySelector('.todo-group-completed .todo-completed-count');
+            if (completedCountEl) completedCountEl.textContent = String(completed.length);
 
             // ── 2. 判断是否需要跨组移动 ──
             // 目标组：勾选→completed 组；取消→pending 组
@@ -191,7 +196,7 @@ export const TodoRenderer = {
                         <div class="todo-group-label" data-action="todo-toggle-completed-group">
                             <span class="todo-group-chevron">${LucideUtils.createIcon('chevronDown', { size: 14 })}</span>
                             <span class="completed-label">${LucideUtils.createIcon('checkCircle', { size: 14 })}</span>
-                            已完成 (${completed.length})
+                            已完成 (<span class="todo-completed-count">${completed.length}</span>)
                         </div>
                     </div>
                     <div class="todo-group-items">

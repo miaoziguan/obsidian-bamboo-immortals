@@ -484,7 +484,9 @@ export const GoalService = {
                 }
             }
 
-            TimelineService.removeEvent(dayData, `${goal.title} - ${item.name}`);
+            // 取消完成：在时间线追加一条「取消完成」记录（保留原「完成」记录），
+            // 让时间线忠实反映用户的完整操作序列（完成 → 取消）。
+            TimelineService.addEvent(dayData, `${goal.title} - ${item.name}`, '取消完成');
             TimelineService.updateMetrics(dayData);
 
             // 重算目标总进度和日期范围，确保进度条和境界突破检测使用最新数据

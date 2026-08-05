@@ -1467,6 +1467,12 @@
     color: var(--bamboo-primary);
 }
 
+/* 取消完成：警告色，区别于「完成」的绿色 */
+.bamboo-item-eval.cancel {
+    color: var(--bamboo-error, #ef5350);
+    font-weight: 600;
+}
+
 .bamboo-leaf {
     position: absolute;
     right: 60px;

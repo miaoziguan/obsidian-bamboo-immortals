@@ -354,7 +354,7 @@ export const buildBambooNodeHTML = (period, index) => {
                                 <div class="bamboo-item-time">${escapeHtml(item.time)}</div>
                                 <div class="bamboo-item-content">
                                     <div class="bamboo-item-task">${escapeHtml(item.task)}</div>
-                                    ${item.eval ? `<div class="bamboo-item-eval ${item.eval === 'warn' ? 'warn' : ''}">${escapeHtml(item.eval)}</div>` : ''}
+                                    ${item.eval ? `<div class="bamboo-item-eval ${item.eval === 'warn' ? 'warn' : (item.eval === '取消完成' ? 'cancel' : '')}">${escapeHtml(item.eval)}</div>` : ''}
                                 </div>
                             </div>
                         `).join('')}

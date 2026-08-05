@@ -314,7 +314,7 @@ describe('核心业务流', () => {
         expect(store.updateGlobalGoal).toHaveBeenCalledWith('goal_1', goal);
     });
 
-    test('取消完成目标任务应回退进度并移除对应时间线记录', () => {
+    test('取消完成目标任务应回退进度并在时间线追加「取消完成」记录', () => {
         const dayData = {
             date: '2026-05-17',
             metrics: {},
@@ -354,6 +354,9 @@ describe('核心业务流', () => {
         });
         installBrowserGlobals(store);
         installServices();
+        // 固定时间相关方法，使断言与运行机器时区解耦（与完成场景一致）
+        jest.spyOn(window.TimelineService, 'getCurrentPeriod').mockReturnValue('morning');
+        jest.spyOn(window.TimelineService, 'getCurrentTime').mockReturnValue('10:15');
         loadModule('modules/goals/renderer.js', []);
 
         window.GoalsRenderer.completeGoalTask('goal_1', 0, '2026-05-17', true);
@@ -361,10 +364,22 @@ describe('核心业务流', () => {
         expect(dayData.goalTaskCompletions.goal_1[0]).toBe(false);
         expect(goal.items[0].currentValue).toBe('4');
         expect(goal.items[0].percent).toBe(40);
-        expect(dayData.timeline).toHaveLength(0);
+        // 新行为：取消完成后保留原「完成」记录，并追加一条「取消完成」记录
+        expect(dayData.timeline[0]).toMatchObject({ period: 'morning', name: '上午' });
+        expect(dayData.timeline[0].items).toHaveLength(2);
+        expect(dayData.timeline[0].items[0]).toMatchObject({
+            time: '10:15',
+            task: '项目推进 - 开发实现',
+            eval: '完成'
+        });
+        expect(dayData.timeline[0].items[1]).toMatchObject({
+            time: '10:15',
+            task: '项目推进 - 开发实现',
+            eval: '取消完成'
+        });
         expect(dayData.metrics).toMatchObject({
-            firstCheckIn: '--:--',
-            lastCheckIn: '--:--'
+            firstCheckIn: '10:15',
+            lastCheckIn: '10:15'
         });
     });
 });

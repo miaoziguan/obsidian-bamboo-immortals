@@ -21913,6 +21913,9 @@ nav .date-display-sub {
     inset: 0;
     background: var(--mist-1);
     animation: mistDrift1 28s ease-in-out infinite;
+    /* 大面积纯 transform/opacity 无限动画：提前提升到合成层，避免每帧图层提升开销。
+       仅限数量少的迷雾层（3 层），克制使用，符合"仅动画活跃态"策略。 */
+    will-change: transform, opacity;
 }
 
 .mist-layer-2 {
@@ -21920,6 +21923,7 @@ nav .date-display-sub {
     inset: 0;
     background: var(--mist-2);
     animation: mistDrift2 35s ease-in-out infinite;
+    will-change: transform, opacity;
 }
 
 .mist-layer-3 {
@@ -21927,6 +21931,7 @@ nav .date-display-sub {
     inset: 0;
     background: var(--mist-3);
     animation: mistDrift3 42s ease-in-out infinite;
+    will-change: transform, opacity;
 }
 
 @keyframes mistDrift1 {

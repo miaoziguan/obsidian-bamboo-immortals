@@ -114,8 +114,11 @@ export const BambooGarden = {
         nearLayer.innerHTML = this.createBambooStalks(14, 380, 480, 6, 0.72, false);
     },
 
-    createBambooStalks(count, minH, maxH, width, opacity, leftFade) {
+    createBambooStalks(count, minH, maxH, width, opacity, leftFade, staticRatio = 0.5) {
         let html = '';
+        // 随机均匀：恰好 staticRatio 比例的竹子为静态（洗牌保证位置随机均匀），
+        // 静态竹子不做 sway，竹叶也不 tremble —— 动画负载减半，竹林密度不变。
+        const isStatic = this._buildStaticMask(count, staticRatio);
         for (let i = 0; i < count; i++) {
             let left;
             if (i < count * 0.7) {
@@ -150,12 +153,13 @@ export const BambooGarden = {
             
             const layerMultiplier = width <= 2 ? 1.3 : (width <= 4 ? 1 : 0.8);
             const swaySpeed = (6 + Math.random() * 4) * layerMultiplier;
+            const static = isStatic[i];
             
             html += `
                 <div class="bamboo-stalk" style="left: ${left}%; height: ${height}px; width: ${width}px; opacity: ${stalkOpacity}; transform: rotate(${lean}deg);">
-                    <div class="bamboo-inner" style="animation-name: bambooSway${i % 6}; animation-duration: ${swaySpeed}s;">
+                    <div class="bamboo-inner" ${static ? '' : `style="animation-name: bambooSway${i % 6}; animation-duration: ${swaySpeed}s;"`}>
                         ${this.createBambooNodes(nodeCount, height)}
-                        ${this.createLeafCluster(height)}
+                        ${this.createLeafCluster(height, static)}
                     </div>
                 </div>
             `;
@@ -188,6 +192,18 @@ export const BambooGarden = {
         return html;
     },
 
+    /** 构建恰好 staticRatio 比例的静态掩码（Fisher-Yates 洗牌，位置随机且均匀） */
+    _buildStaticMask(count, staticRatio) {
+        const staticCount = Math.max(0, Math.floor(count * staticRatio));
+        const mask = [];
+        for (let i = 0; i < count; i++) mask.push(i < staticCount);
+        for (let i = count - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            const tmp = mask[i]; mask[i] = mask[j]; mask[j] = tmp;
+        }
+        return mask;
+    },
+
     createBambooNodes(count, height) {
         let html = '';
         const spacing = height / (count + 1);
@@ -197,7 +213,7 @@ export const BambooGarden = {
         return html;
     },
 
-    createLeafCluster(height) {
+    createLeafCluster(height, isStatic = false) {
         const count = 6 + Math.floor(Math.random() * 7);
         let html = '';
         
@@ -216,7 +232,7 @@ export const BambooGarden = {
                     height: ${h}px;
                     --r: ${angle}deg;
                     opacity: ${0.38 + Math.random() * 0.32};
-                    animation: leafTremble ${dur}s ease-in-out infinite ${delay}s;
+                    ${isStatic ? '' : `animation: leafTremble ${dur}s ease-in-out infinite ${delay}s;`}
                 "></div>
             `;
         }

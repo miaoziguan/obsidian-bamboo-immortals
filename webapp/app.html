@@ -24644,32 +24644,32 @@ nav .date-display-sub {
                     <div id="leafContainer"></div>
                 </div>
             </section>
-        `},init(){this._initialized&&this.destroy(),this._initialized=!0,this.createBambooForest(),this.startLeafAnimation(),this._setupVisibilityGuard(),this.updateTheme()},_setupVisibilityGuard(){this._visibilityHandler&&document.removeEventListener("visibilitychange",this._visibilityHandler),this._visibilityHandler=()=>{this._isPageVisible=!document.hidden,this._isPageVisible?this.startLeafAnimation():this.stopLeafAnimation()},document.addEventListener("visibilitychange",this._visibilityHandler)},stopLeafAnimation(){this._leafIntervalId&&(clearInterval(this._leafIntervalId),this._leafIntervalId=null)},destroy(){this.stopLeafAnimation();let e=y("leafContainer");e&&(e.innerHTML=""),this._leafCount=0,this._initialized=!1,this._leafPool=[],this._leafPoolInit=!1,this._visibilityHandler&&(document.removeEventListener("visibilitychange",this._visibilityHandler),this._visibilityHandler=null),["bambooSwayStyles","windLeafStyles"].forEach(t=>{let a=y(t);a&&a.remove()})},createBambooForest(){let e=y("farBamboo"),t=y("midBamboo"),a=y("nearBamboo");!e||!t||!a||(e.innerHTML=this.createBambooStalks(30,280,380,2,.28,!0),t.innerHTML=this.createBambooStalks(22,320,420,4,.5,!0),a.innerHTML=this.createBambooStalks(14,380,480,6,.72,!1))},createBambooStalks(e,t,a,s,i,n){let o="";for(let r=0;r<e;r++){let l;r<e*.7?l=35+r/(e*.7)*60+Math.random()*(30/e):l=(r-e*.7)/(e*.3)*35+Math.random()*(20/e);let c=t+Math.random()*(a-t),d=i;n?l<25?d=i*(.25+l/25*.4):l<45?d=i*(.65+(l-25)/20*.25):d=i*(.9+(l-45)/55*.15):l<35?d=i*(.4+l/35*.45):l<55?d=i*(.85+(l-35)/20*.15):d=i*1;let u=(Math.random()-.5)*2,h=Math.floor(c/50),f=s<=2?1.3:s<=4?1:.8,p=(6+Math.random()*4)*f;o+=`
-                <div class="bamboo-stalk" style="left: ${l}%; height: ${c}px; width: ${s}px; opacity: ${d}; transform: rotate(${u}deg);">
-                    <div class="bamboo-inner" style="animation-name: bambooSway${r%6}; animation-duration: ${p}s;">
-                        ${this.createBambooNodes(h,c)}
-                        ${this.createLeafCluster(c)}
+        `},init(){this._initialized&&this.destroy(),this._initialized=!0,this.createBambooForest(),this.startLeafAnimation(),this._setupVisibilityGuard(),this.updateTheme()},_setupVisibilityGuard(){this._visibilityHandler&&document.removeEventListener("visibilitychange",this._visibilityHandler),this._visibilityHandler=()=>{this._isPageVisible=!document.hidden,this._isPageVisible?this.startLeafAnimation():this.stopLeafAnimation()},document.addEventListener("visibilitychange",this._visibilityHandler)},stopLeafAnimation(){this._leafIntervalId&&(clearInterval(this._leafIntervalId),this._leafIntervalId=null)},destroy(){this.stopLeafAnimation();let e=y("leafContainer");e&&(e.innerHTML=""),this._leafCount=0,this._initialized=!1,this._leafPool=[],this._leafPoolInit=!1,this._visibilityHandler&&(document.removeEventListener("visibilitychange",this._visibilityHandler),this._visibilityHandler=null),["bambooSwayStyles","windLeafStyles"].forEach(t=>{let a=y(t);a&&a.remove()})},createBambooForest(){let e=y("farBamboo"),t=y("midBamboo"),a=y("nearBamboo");!e||!t||!a||(e.innerHTML=this.createBambooStalks(30,280,380,2,.28,!0),t.innerHTML=this.createBambooStalks(22,320,420,4,.5,!0),a.innerHTML=this.createBambooStalks(14,380,480,6,.72,!1))},createBambooStalks(e,t,a,s,i,n,o=.5){let r="",l=this._buildStaticMask(e,o);for(let c=0;c<e;c++){let d;c<e*.7?d=35+c/(e*.7)*60+Math.random()*(30/e):d=(c-e*.7)/(e*.3)*35+Math.random()*(20/e);let u=t+Math.random()*(a-t),h=i;n?d<25?h=i*(.25+d/25*.4):d<45?h=i*(.65+(d-25)/20*.25):h=i*(.9+(d-45)/55*.15):d<35?h=i*(.4+d/35*.45):d<55?h=i*(.85+(d-35)/20*.15):h=i*1;let f=(Math.random()-.5)*2,p=Math.floor(u/50),m=s<=2?1.3:s<=4?1:.8,v=(6+Math.random()*4)*m,g=l[c];r+=`
+                <div class="bamboo-stalk" style="left: ${d}%; height: ${u}px; width: ${s}px; opacity: ${h}; transform: rotate(${f}deg);">
+                    <div class="bamboo-inner" ${g?"":`style="animation-name: bambooSway${c%6}; animation-duration: ${v}s;"`}>
+                        ${this.createBambooNodes(p,u)}
+                        ${this.createLeafCluster(u,g)}
                     </div>
                 </div>
-            `}if(!y("bambooSwayStyles")){let r=document.createElement("style");r.id="bambooSwayStyles";let l="";for(let c=0;c<6;c++){let d=.2+Math.random()*.3,u=.3+Math.random()*.35,h=.15+Math.random()*.2,f=.25+Math.random()*.25;l+=`
-                    @keyframes bambooSway${c} {
+            `}if(!y("bambooSwayStyles")){let c=document.createElement("style");c.id="bambooSwayStyles";let d="";for(let u=0;u<6;u++){let h=.2+Math.random()*.3,f=.3+Math.random()*.35,p=.15+Math.random()*.2,m=.25+Math.random()*.25;d+=`
+                    @keyframes bambooSway${u} {
                         0% { transform: rotate(0deg); }
-                        18% { transform: rotate(${-d}deg); }
-                        38% { transform: rotate(${u}deg); }
-                        58% { transform: rotate(${-h}deg); }
-                        78% { transform: rotate(${f}deg); }
+                        18% { transform: rotate(${-h}deg); }
+                        38% { transform: rotate(${f}deg); }
+                        58% { transform: rotate(${-p}deg); }
+                        78% { transform: rotate(${m}deg); }
                         100% { transform: rotate(0deg); }
                     }
-                `}r.textContent=l,Pe().appendChild(r)}return o},createBambooNodes(e,t){let a="",s=t/(e+1);for(let i=1;i<=e;i++)a+=`<div style="position: absolute; left: -1px; right: -1px; top: ${i*s}px; height: 3px; background: hsla(calc(var(--accent-hue) + -9), 26%, 26%, 0.2); border-radius: 2px;"></div>`;return a},createLeafCluster(e){let t=6+Math.floor(Math.random()*7),a="";for(let s=0;s<t;s++){let i=11+Math.random()*13,n=-75+s*26+(Math.random()-.5)*28,o=-48-Math.random()*22,r=-12+s*3.5+(Math.random()-.5)*11,l=Math.random()*1.2,c=1.6+Math.random()*1.2;a+=`
+                `}c.textContent=d,Pe().appendChild(c)}return r},_buildStaticMask(e,t){let a=Math.max(0,Math.floor(e*t)),s=[];for(let i=0;i<e;i++)s.push(i<a);for(let i=e-1;i>0;i--){let n=Math.floor(Math.random()*(i+1)),o=s[i];s[i]=s[n],s[n]=o}return s},createBambooNodes(e,t){let a="",s=t/(e+1);for(let i=1;i<=e;i++)a+=`<div style="position: absolute; left: -1px; right: -1px; top: ${i*s}px; height: 3px; background: hsla(calc(var(--accent-hue) + -9), 26%, 26%, 0.2); border-radius: 2px;"></div>`;return a},createLeafCluster(e,t=!1){let a=6+Math.floor(Math.random()*7),s="";for(let i=0;i<a;i++){let n=11+Math.random()*13,o=-75+i*26+(Math.random()-.5)*28,r=-48-Math.random()*22,l=-12+i*3.5+(Math.random()-.5)*11,c=Math.random()*1.2,d=1.6+Math.random()*1.2;s+=`
                 <div class="bamboo-leaf-tip" style="
-                    top: ${o}px;
-                    left: ${r}px;
-                    height: ${i}px;
-                    --r: ${n}deg;
+                    top: ${r}px;
+                    left: ${l}px;
+                    height: ${n}px;
+                    --r: ${o}deg;
                     opacity: ${.38+Math.random()*.32};
-                    animation: leafTremble ${c}s ease-in-out infinite ${l}s;
+                    ${t?"":`animation: leafTremble ${d}s ease-in-out infinite ${c}s;`}
                 "></div>
-            `}return a},startLeafAnimation(){if(!this._leafIntervalId){this._initLeafPool(),this._ensureLeafKeyframes();for(let e=0;e<3;e++)setTimeout(()=>this._spawnLeaf(),e*300);this._leafIntervalId=setInterval(()=>{this._isPageVisible&&(this._spawnLeaf(),Math.random()>.6&&setTimeout(()=>this._spawnLeaf(),200))},750)}},_initLeafPool(){let e=y("leafContainer");if(!(!e||this._leafPoolInit)){this._leafPoolInit=!0,this._ensureLeafKeyframes();for(let t=0;t<this._MAX_LEAVES;t++){let a=document.createElement("div");a.className="drifting-leaf",a.style.display="none",e.appendChild(a),this._leafPool.push(a)}}},_ensureLeafKeyframes(){if(y("windLeafStyles"))return;let e=document.createElement("style");e.id="windLeafStyles",e.textContent=`
+            `}return s},startLeafAnimation(){if(!this._leafIntervalId){this._initLeafPool(),this._ensureLeafKeyframes();for(let e=0;e<3;e++)setTimeout(()=>this._spawnLeaf(),e*300);this._leafIntervalId=setInterval(()=>{this._isPageVisible&&(this._spawnLeaf(),Math.random()>.6&&setTimeout(()=>this._spawnLeaf(),200))},750)}},_initLeafPool(){let e=y("leafContainer");if(!(!e||this._leafPoolInit)){this._leafPoolInit=!0,this._ensureLeafKeyframes();for(let t=0;t<this._MAX_LEAVES;t++){let a=document.createElement("div");a.className="drifting-leaf",a.style.display="none",e.appendChild(a),this._leafPool.push(a)}}},_ensureLeafKeyframes(){if(y("windLeafStyles"))return;let e=document.createElement("style");e.id="windLeafStyles",e.textContent=`
             @keyframes leafDrift0 {
                 0% { transform: translate(0, -70px) rotate(0deg); opacity: 0; }
                 12% { opacity: 0.45; }

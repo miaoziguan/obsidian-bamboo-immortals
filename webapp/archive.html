@@ -899,6 +899,8 @@ a:active) {
     padding: 0;
     margin: 0;
     overflow-x: hidden;
+    /* 隔离滚动边界：滚动到主容器顶部/底部时不把滚动传递给 Obsidian 宿主页面（scroll chaining） */
+    overscroll-behavior-y: contain;
     /* 隐藏滚动条 — 保留滚动功能，仅视觉隐藏 */
     -ms-overflow-style: none;
     scrollbar-width: none;

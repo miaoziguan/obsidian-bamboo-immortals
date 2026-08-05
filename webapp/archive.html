@@ -895,7 +895,7 @@ a:active) {
     font-size: var(--type-base);
     line-height: var(--line-height-base);
     color: var(--text-primary);
-    min-height: 100vh;
+    min-height: var(--viewport-height);
     padding: 0;
     margin: 0;
     overflow-x: hidden;
@@ -926,7 +926,7 @@ a:active) {
 
 #main-container {
     width: 100%;
-    min-height: 100vh;
+    min-height: var(--viewport-height);
     display: flex;
     justify-content: center;
     align-items: flex-start;
@@ -12570,7 +12570,7 @@ input[type="number"].goal-inline-edit-input {
    ========================================================================== */
 
 .archive-standalone-page {
-    min-height: 100vh;
+    min-height: var(--viewport-height);
     display: flex;
     flex-direction: column;
 }

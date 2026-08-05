@@ -2202,7 +2202,7 @@
    ========================================================================== */
 
 .archive-standalone-page {
-    min-height: 100vh;
+    min-height: var(--viewport-height);
     display: flex;
     flex-direction: column;
 }

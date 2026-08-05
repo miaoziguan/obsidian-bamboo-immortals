@@ -29,6 +29,91 @@ export const TodoRenderer = {
         this._lastSnapshot = null;
     },
 
+    /**
+     * 勾选/取消单个待办后的局部差异更新。
+     * 只更新统计数字、进度条、单行状态并移动到正确分组，
+     * 避免整块 #todoContent 的 innerHTML 重建。
+     * 任何无法可靠局部化的结构性变化（组新建/移除、DOM 缺失）→ 返回 false，
+     * 由调用方回退到全量重建，保证 UI 一致性。
+     * @returns {boolean} true=局部更新成功，false=需回退全量
+     */
+    patchToggle(todoId) {
+        try {
+            const container = byId('todoContent');
+            if (!container) return false;
+
+            let goalTasks = [];
+            if (typeof GoalsRenderer !== 'undefined') {
+                goalTasks = GoalsRenderer.getTodayGoalTasks(store.getDateKey());
+            }
+            if (goalTasks.length === 0) return false; // 空态结构简单，直接回退全量
+
+            const todo = goalTasks.find(g => g.id === todoId);
+            if (!todo) return false;
+
+            const row = container.querySelector(`.todo-item[data-todo-id="${todoId}"]`);
+            if (!row) return false;
+
+            const isCompleted = !!todo.completed;
+            const pending = goalTasks.filter(t => !t.completed);
+            const completed = goalTasks.filter(t => t.completed);
+            const completedCount = completed.length;
+            const totalCount = goalTasks.length;
+            const progressPercent = totalCount > 0 ? Math.round(completedCount / totalCount * 100) : 0;
+
+            // ── 1. 统计数字 + 进度条（纯文本/宽度，零结构风险）──
+            const countEl = byId('todoCount');
+            if (countEl) countEl.textContent = `${completedCount}/${totalCount}`;
+            const statNums = container.querySelectorAll('.todo-stat-num');
+            if (statNums.length >= 3) {
+                statNums[0].textContent = String(pending.length);
+                statNums[1].textContent = String(completed.length);
+                statNums[2].textContent = progressPercent + '%';
+            }
+            const fill = container.querySelector('.todo-progress-fill');
+            if (fill) fill.style.width = `${progressPercent}%`;
+
+            // ── 2. 判断是否需要跨组移动 ──
+            // 目标组：勾选→completed 组；取消→pending 组
+            const targetGroupSel = isCompleted ? '.todo-group-completed' : '.todo-group-goal';
+            const srcGroupSel = isCompleted ? '.todo-group-goal' : '.todo-group-completed';
+            const targetGroup = container.querySelector(targetGroupSel);
+            const targetItems = targetGroup ? targetGroup.querySelector('.todo-group-items') : null;
+            const srcItems = container.querySelector(`${srcGroupSel} .todo-group-items`);
+
+            // 目标组不存在（completed 0→1 或 pending 0→1）→ 结构性变化，回退全量
+            if (!targetGroup || !targetItems) return false;
+            // 源组不存在（源组只剩这一项时移动后组应移除）→ 结构性变化，回退全量
+            if (!srcItems || srcItems.children.length <= 1) return false;
+
+            // ── 3. 更新行状态 ──
+            row.classList.toggle('todo-item-completed', isCompleted);
+            const cb = row.querySelector('.todo-checkbox');
+            if (cb) {
+                cb.classList.toggle('checked', isCompleted);
+                cb.setAttribute('data-is-completed', String(isCompleted));
+                cb.setAttribute('aria-label', isCompleted ? '标记为未完成' : '标记为已完成');
+                cb.innerHTML = isCompleted ? LucideUtils.createIcon('check', { size: 9 }) : '';
+            }
+
+            // ── 4. 跨组移动行 ──
+            srcItems.removeChild(row);
+            targetItems.appendChild(row);
+
+            // ── 5. 同步折叠/聚焦状态 ──
+            if (typeof Todo !== 'undefined' && typeof Todo._syncCollapsedState === 'function') {
+                Todo._syncCollapsedState();
+            }
+
+            // ── 6. 更新快照，避免后续 render 误判为「未变化」跳过 ──
+            this._lastSnapshot = this._snapshot();
+            return true;
+        } catch (e) {
+            // 任何异常都回退全量，绝不留下不一致的 UI
+            return false;
+        }
+    },
+
     render(data) {
         const container = byId('todoContent');
         if (!container) return;

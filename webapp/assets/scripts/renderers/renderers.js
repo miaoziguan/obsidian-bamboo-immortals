@@ -620,46 +620,62 @@ export const setupBambooTooltips = (container = getDomRoot()) => {
         modalMount().appendChild(tooltip);
     }
 
-    const counts = $$('.bamboo-count');
-    counts.forEach(count => {
-        count.addEventListener('mouseenter', () => {
-            const hint = count.dataset.hint;
-            if (!hint) return;
+    /** 定位 tooltip 到指定元素上方 */
+    const positionTooltip = (count) => {
+        const rect = count.getBoundingClientRect();
+        const tooltipRect = tooltip.getBoundingClientRect();
+        let left = rect.left + rect.width / 2 - tooltipRect.width / 2;
+        let top = rect.top - tooltipRect.height - 8;
+        left = Math.max(8, Math.min(left, window.innerWidth - tooltipRect.width - 8));
+        top = Math.max(8, top);
+        tooltip.style.left = `${left}px`;
+        tooltip.style.top = `${top}px`;
+    };
 
+    // 容器级事件委托：动态匹配 .bamboo-count，timeline 重建后仍有效
+    const onMouseEnter = (e) => {
+        const count = e.target.closest('.bamboo-count');
+        if (!count) return;
+        const hint = count.dataset.hint;
+        if (!hint) return;
+        tooltip.textContent = hint;
+        tooltip.style.opacity = '1';
+        positionTooltip(count);
+    };
+    const onMouseLeave = (e) => {
+        if (!e.target.closest('.bamboo-count')) return;
+        tooltip.style.opacity = '0';
+    };
+    const onMouseMove = (e) => {
+        const count = e.target.closest('.bamboo-count');
+        if (!count || tooltip.style.opacity !== '1') return;
+        positionTooltip(count);
+    };
+    // 移动端（无 hover）：tap 显示/隐藏提示，并阻止冒泡避免触发 header 折叠
+    const onTouchClick = (e) => {
+        const count = e.target.closest('.bamboo-count');
+        if (!count) return;
+        e.stopPropagation();
+        const hint = count.dataset.hint;
+        if (!hint) { tooltip.style.opacity = '0'; return; }
+        if (tooltip.style.opacity === '1' && tooltip._count === count) {
+            tooltip.style.opacity = '0';
+            tooltip._count = null;
+        } else {
             tooltip.textContent = hint;
             tooltip.style.opacity = '1';
+            positionTooltip(count);
+            tooltip._count = count;
+        }
+    };
 
-            const rect = count.getBoundingClientRect();
-            const tooltipRect = tooltip.getBoundingClientRect();
-            
-            let left = rect.left + rect.width / 2 - tooltipRect.width / 2;
-            let top = rect.top - tooltipRect.height - 8;
-
-            left = Math.max(8, Math.min(left, window.innerWidth - tooltipRect.width - 8));
-            top = Math.max(8, top);
-
-            tooltip.style.left = `${left}px`;
-            tooltip.style.top = `${top}px`;
-        });
-
-        count.addEventListener('mouseleave', () => {
-            tooltip.style.opacity = '0';
-        });
-
-        count.addEventListener('mousemove', () => {
-            const rect = count.getBoundingClientRect();
-            const tooltipRect = tooltip.getBoundingClientRect();
-            
-            let left = rect.left + rect.width / 2 - tooltipRect.width / 2;
-            let top = rect.top - tooltipRect.height - 8;
-
-            left = Math.max(8, Math.min(left, window.innerWidth - tooltipRect.width - 8));
-            top = Math.max(8, top);
-
-            tooltip.style.left = `${left}px`;
-            tooltip.style.top = `${top}px`;
-        });
-    });
+    container.addEventListener('mouseover', onMouseEnter);
+    container.addEventListener('mouseout', onMouseLeave);
+    container.addEventListener('mousemove', onMouseMove);
+    // 移动端/触摸设备（无 hover）才加 tap 触达
+    if (typeof window.matchMedia === 'function' && window.matchMedia('(hover: none)').matches) {
+        container.addEventListener('click', onTouchClick);
+    }
 };
 window.setupBambooTooltips = setupBambooTooltips;
 window.renderDate = renderDate;

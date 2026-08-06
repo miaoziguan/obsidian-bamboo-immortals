@@ -1,6 +1,8 @@
 .toast-container {
     position: fixed;
-    top: var(--space-5);
+    /* 顶部安全区避让（iPhone 刘海），constant() 兼容旧 iOS */
+    top: calc(var(--space-5) + constant(safe-area-inset-top, 0px));
+    top: calc(var(--space-5) + env(safe-area-inset-top, 0px));
     right: var(--space-5);
     z-index: var(--z-layer-tooltip);
     display: flex;

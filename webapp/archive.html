@@ -1589,7 +1589,12 @@ textarea:focus-visible) {
     z-index: var(--z-layer-tooltip);
     background: linear-gradient(135deg, var(--bamboo-deep), var(--bamboo-primary));
     color: var(--white);
-    padding: var(--space-3) var(--space-6);
+    /* 顶部安全区避让（iPhone 刘海屏），constant() 兼容旧 iOS */
+    padding-top: calc(var(--space-3) + constant(safe-area-inset-top, 0px));
+    padding-top: calc(var(--space-3) + env(safe-area-inset-top, 0px));
+    padding-right: var(--space-6);
+    padding-bottom: var(--space-3);
+    padding-left: var(--space-6);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1664,7 +1669,9 @@ textarea:focus-visible) {
 /* ========== Keyboard Hint ========== */
 .keyboard-hint {
     position: fixed;
-    bottom: var(--space-5);
+    /* 底部安全区避让（iPhone Home 条），constant() 兼容旧 iOS */
+    bottom: calc(var(--space-5) + constant(safe-area-inset-bottom, 0px));
+    bottom: calc(var(--space-5) + env(safe-area-inset-bottom, 0px));
     right: var(--space-5);
     background: var(--card-bg);
     backdrop-filter: blur(var(--glass-blur));
@@ -12271,7 +12278,12 @@ input[type="number"].goal-inline-edit-input {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 6px 8px;
+    /* 底部安全区避让（iPhone Home 条），constant() 兼容旧 iOS */
+    padding-top: 6px;
+    padding-right: 8px;
+    padding-bottom: calc(6px + constant(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px));
+    padding-left: 8px;
     border-top: 1px solid var(--border-light);
     position: sticky;
     bottom: 0;
@@ -22377,7 +22389,9 @@ nav .date-display-sub {
 <style data-src="assets/styles/toast.css">
 .toast-container {
     position: fixed;
-    top: var(--space-5);
+    /* 顶部安全区避让（iPhone 刘海），constant() 兼容旧 iOS */
+    top: calc(var(--space-5) + constant(safe-area-inset-top, 0px));
+    top: calc(var(--space-5) + env(safe-area-inset-top, 0px));
     right: var(--space-5);
     z-index: var(--z-layer-tooltip);
     display: flex;

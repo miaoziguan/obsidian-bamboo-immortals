@@ -1882,7 +1882,12 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 6px 8px;
+    /* 底部安全区避让（iPhone Home 条），constant() 兼容旧 iOS */
+    padding-top: 6px;
+    padding-right: 8px;
+    padding-bottom: calc(6px + constant(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px));
+    padding-left: 8px;
     border-top: 1px solid var(--border-light);
     position: sticky;
     bottom: 0;

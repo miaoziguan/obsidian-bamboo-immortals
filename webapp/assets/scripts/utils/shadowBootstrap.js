@@ -139,8 +139,8 @@ function initShadow() {
       }
       .bamboo-license-gate .blg-pricing {
         display: inline-flex;
-        align-items: center;
-        gap: 18px;
+        align-items: stretch;
+        gap: 0;
         padding: 10px 22px;
         background: rgba(var(--bm-primary-rgb, 45,90,39), 0.06);
         border: 1px solid rgba(var(--bm-primary-rgb, 45,90,39), 0.10);
@@ -148,11 +148,28 @@ function initShadow() {
         margin: 0 auto 14px;
       }
       .bamboo-license-gate .blg-price-main,
-      .bamboo-license-gate .blg-price-secondary { display: flex; flex-direction: column; align-items: center; gap: 1px; }
+      .bamboo-license-gate .blg-price-secondary {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-width: 76px;
+        gap: 2px;
+      }
       .bamboo-license-gate .blg-price-label { font-size: 11px; color: var(--text-tertiary, #8a9684); letter-spacing: 0.04em; }
-      .bamboo-license-gate .blg-price-main .blg-price-value { font-size: 22px; font-weight: 800; color: var(--bm-primary, #2D5A27); }
-      .bamboo-license-gate .blg-price-secondary .blg-price-value { font-size: 15px; font-weight: 600; color: var(--text-secondary, #5a6b54); }
-      .bamboo-license-gate .blg-price-divider { width: 1px; height: 32px; background: rgba(var(--bm-primary-rgb, 45,90,39), 0.14); }
+      .bamboo-license-gate .blg-price-main .blg-price-value,
+      .bamboo-license-gate .blg-price-secondary .blg-price-value {
+        font-size: 20px;
+        font-weight: 700;
+        color: var(--bm-primary, #2D5A27);
+        line-height: 1.2;
+      }
+      .bamboo-license-gate .blg-price-divider {
+        width: 1px;
+        align-self: stretch;
+        margin: 4px 16px;
+        background: rgba(var(--bm-primary-rgb, 45,90,39), 0.14);
+      }
       .bamboo-license-gate .blg-tags {
         display: flex;
         flex-wrap: wrap;

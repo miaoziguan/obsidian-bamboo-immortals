@@ -761,16 +761,22 @@ export default class BambooReviewPlugin extends Plugin {
         type: VIEW_TYPE_DAILY_REVIEW,
         active: true,
       });
-      // 展开右栏并给面板一个舒适宽度
+      // 展开右栏并给面板一个舒适宽度。
+      // 注意：setViewState 异步，视图真正挂载完成后右栏布局才稳定，
+      // 必须等下一帧再读/写宽度，否则读到 0 或被框架 CSS 覆盖。
       const rightSplit = workspace.rightSplit as unknown as {
         containerEl: HTMLElement;
         expand(): void;
       };
       rightSplit.expand();
-      const currentWidth = rightSplit.containerEl.offsetWidth;
-      if (currentWidth < 380) {
-        rightSplit.containerEl.style.width = '380px';
-      }
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          const el = rightSplit.containerEl;
+          if (el.offsetWidth < 420) {
+            el.style.width = '420px';
+          }
+        });
+      });
     }
 
     if (leaf) {

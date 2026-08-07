@@ -97,13 +97,45 @@ function initShadow() {
         font-size: 13px;
         color: var(--text-tertiary, #8a9684);
       }
-      .bamboo-license-gate .blg-intro {
-        margin: 12px auto 0;
-        max-width: 320px;
-        font-size: 12px;
-        line-height: 1.6;
-        color: var(--text-secondary, #5a6b54);
+      .bamboo-license-gate .blg-hook {
+        margin: 10px auto 0;
+        max-width: 300px;
+        font-size: 13px;
+        line-height: 1.5;
+        color: var(--bm-primary, #4f7a4f);
         text-align: center;
+        font-weight: 600;
+        letter-spacing: 0.2px;
+      }
+      .bamboo-license-gate .blg-more {
+        display: inline-block;
+        margin: 8px auto 0;
+        padding: 2px 6px;
+        border: none;
+        background: none;
+        color: var(--text-tertiary, #8a9684);
+        font-size: 11px;
+        cursor: pointer;
+        transition: color 0.15s ease;
+      }
+      .bamboo-license-gate .blg-more:hover {
+        color: var(--bm-primary, #4f7a4f);
+      }
+      .bamboo-license-gate .blg-intro {
+        margin: 10px auto 0;
+        max-width: 280px;
+        font-size: 11.5px;
+        line-height: 1.8;
+        color: var(--text-secondary, #5a6b54);
+        text-align: left;
+        text-align: justify;
+      }
+      .bamboo-license-gate .blg-divider-top {
+        width: 80%;
+        max-width: 260px;
+        height: 1px;
+        margin: 16px auto 14px;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.45), transparent);
       }
       .bamboo-license-gate .blg-pricing {
         display: inline-flex;

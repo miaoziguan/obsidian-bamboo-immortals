@@ -9,6 +9,7 @@
  * 用法：在 index.html 中，在 storageManager.js 之前加载此文件，
  * 或者用此文件替换 storageManager.js。
  */
+import { bootstrapLicenseGate } from '../utils/licenseGate.js';
 
 export class BridgeStorage {
   constructor() {
@@ -55,6 +56,16 @@ export class BridgeStorage {
       // 是否将调色同步到 Obsidian
       if (readyResp && typeof readyResp.syncPaletteToObsidian === 'boolean') {
         this.syncPaletteToObsidian = readyResp.syncPaletteToObsidian;
+      }
+
+      // 激活门控：未激活时挂全屏激活遮罩（密钥在宿主侧，本模块仅转发激活码）
+      if (readyResp && readyResp.licenseActive === false) {
+        try {
+          const root = (typeof window !== 'undefined' && window.__bambooShadowRoot) || document;
+          bootstrapLicenseGate(false, root, (code) => this.activateLicense(code), (backup) => this.importBackup(backup));
+        } catch (e) {
+          console.warn('[Bridge] 激活遮罩挂载失败:', e && e.message);
+        }
       }
     } catch (e) {
       console.warn('[Bridge] Failed to get sectionConfig from plugin:', e.message);
@@ -275,6 +286,24 @@ export class BridgeStorage {
   async importData(data, options = {}) {
     await this.ensureReady();
     return this._send('storage:importAll', { data, options });
+  }
+
+  /** 激活码校验：转发给宿主（宿主持密钥，用 Web Crypto 异步校验并写盘） */
+  async activateLicense(code) {
+    await this.ensureReady();
+    return this._send('app:activateLicense', { code });
+  }
+
+  /** 备份码导出：转发给宿主（仅已激活设备可导出，返回 BRIBACK- 前缀的封装串） */
+  async exportBackup() {
+    await this.ensureReady();
+    return this._send('app:exportBackup', {});
+  }
+
+  /** 备份码导入：转发给宿主（解包备份码后走标准激活流程，换设备/换仓库用） */
+  async importBackup(backup) {
+    await this.ensureReady();
+    return this._send('app:importBackup', { backup });
   }
 
   async clearAll() {

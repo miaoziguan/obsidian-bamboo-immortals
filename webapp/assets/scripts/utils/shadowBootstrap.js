@@ -57,6 +57,48 @@ function initShadow() {
     const sr = host.attachShadow({ mode: 'open' });
     window.__bambooShadowRoot = sr;
 
+    // 激活遮罩样式（licenseGate.js 依赖，注入 shadow 使其随主题隔离生效）
+    const gateStyle = document.createElement('style');
+    gateStyle.id = 'bamboo-license-gate-style';
+    gateStyle.textContent = `
+      .bamboo-license-gate {
+        position: fixed; inset: 0; z-index: var(--z-layer-modal, 10001);
+        display: flex; align-items: center; justify-content: center;
+        background: rgba(var(--white-rgb, 255,255,255), 0.06);
+        backdrop-filter: blur(2px);
+        -webkit-backdrop-filter: blur(2px);
+        color: var(--text-primary, #1f2a1c);
+        font-family: var(--font-sans, system-ui, sans-serif);
+        padding: 24px;
+      }
+      .bamboo-license-gate .blg-card {
+        width: min(420px, 92vw); background: var(--bm-surface-2, #fff);
+        border: 1px solid var(--bm-border, #d8e3d4); border-radius: var(--radius-lg, 16px);
+        box-shadow: 0 12px 40px rgba(0,0,0,.12); padding: 28px 24px; text-align: center;
+      }
+      .bamboo-license-gate .blg-emblem { font-size: 40px; line-height: 1; }
+      .bamboo-license-gate .blg-title { margin: 12px 0 6px; font-size: 20px; font-weight: 700; }
+      .bamboo-license-gate .blg-sub { margin: 0 0 18px; font-size: 13px; color: var(--text-secondary, #5a6b54); }
+      .bamboo-license-gate .blg-input {
+        width: 100%; box-sizing: border-box; padding: 11px 12px; font-size: 14px;
+        border: 1px solid var(--bm-border, #d8e3d4); border-radius: var(--radius-md, 10px);
+        background: var(--bm-surface-1, #f4f7f2); color: var(--text-primary, #1f2a1c);
+        outline: none; letter-spacing: .5px;
+      }
+      .bamboo-license-gate .blg-input:focus { border-color: var(--bm-primary, #2D5A27); }
+      .bamboo-license-gate .blg-btn {
+        margin-top: 14px; width: 100%; padding: 11px 12px; font-size: 15px; font-weight: 600;
+        border: none; border-radius: var(--radius-md, 10px); cursor: pointer;
+        background: var(--bm-primary, #2D5A27); color: #fff;
+      }
+      .bamboo-license-gate .blg-btn:disabled { opacity: .6; cursor: default; }
+      .bamboo-license-gate .blg-msg { min-height: 18px; margin-top: 12px; font-size: 13px; }
+      .bamboo-license-gate .blg-msg-error { color: var(--status-danger, #c0392b); }
+      .bamboo-license-gate .blg-msg-ok { color: var(--bm-primary, #2D5A27); }
+      .bamboo-license-gate .blg-hint { margin-top: 14px; font-size: 11px; color: var(--text-tertiary, #8a9684); }
+    `;
+    sr.appendChild(gateStyle);
+
     // 1) 复制 <head> 中的样式表到 shadow，并移除 head 原 link（light DOM 仅剩 host，避免重复样式作用）
     // 1a) 复制 <link rel="stylesheet"> 到 shadow（AppHost 可能使用 blob URL，href 不限于 assets/styles/）
     const links = Array.from(

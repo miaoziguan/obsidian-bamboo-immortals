@@ -1,8 +1,5 @@
 #!/bin/bash
 # 竹林修仙传 · 构建并部署到测试 vault
-# 说明：A+B 组合的改动全部落在「主机侧」（main.ts 新增 getStrategyOverview +
-#       src/ai/goalStats.ts、src/ai/strategyOverview.ts），不涉及 webapp / 样式，
-#       因此只需重新打包 main.js 并同步到 vault 插件目录即可。
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -22,10 +19,15 @@ else
   node esbuild.config.mjs production
 fi
 
+echo "🍃 构建 webapp ..."
+npm run build:webapp
+
 echo "📦 同步到 vault (bamboo-immortals)..."
 mkdir -p "$VAULT_DIR"
 cp main.js "$VAULT_DIR/"
+rm -rf "$VAULT_DIR/webapp"
+cp -R webapp "$VAULT_DIR/webapp"
 
 echo "✅ 同步完成 → $VAULT_DIR"
 echo "   main.js: $(wc -c < main.js | tr -d ' ') bytes"
-echo "   若改动了 webapp（本次没改），请额外跑 npm run build:webapp 并同步 webapp/ 目录"
+echo "   webapp/: $(find webapp -type f | wc -l) files"

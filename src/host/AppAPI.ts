@@ -8,6 +8,9 @@ import type { DayData, CustomTemplate } from '../types/data';
 import type { StrategyOverview } from '../ai/strategyOverview';
 import type { CultivationRealm } from '../cultivation';
 import { INBOUND_PREFIXES } from './protocol';
+import { LicenseStore } from '../license/licenseStore';
+import { verifyLicenseKey } from '../license/licenseKey';
+import { encodeBackup, decodeBackup } from '../license/backupCode';
 
 /** Obsidian 插件运行时注入的主窗口 document（非插件沙箱内的 document） */
 declare const activeDocument: Document;
@@ -95,6 +98,10 @@ export class AppAPI {
   private vaultAdapter: DataAdapter;
   private noisePath: string;
   private configDir: string;
+  /** 激活状态持有（门控单一数据源） */
+  private licenseStore: LicenseStore;
+  /** 激活成功后回调（由 DailyReviewView 注入），用于通知宿主层刷新 UI */
+  onLicenseActivated?: () => void;
   /** 视图已 detach 后置 true，扫描等异步任务据此提前终止（#L14） */
   private disposed = false;
 
@@ -103,7 +110,8 @@ export class AppAPI {
     settings: BambooReviewSettings,
     saveSettings: () => Promise<void>,
     noisePath: string,
-    configDir: string
+    configDir: string,
+    licenseStore: LicenseStore
   ) {
     this.settings = settings;
     this.saveSettings = saveSettings;
@@ -114,6 +122,12 @@ export class AppAPI {
     this.vaultAdapter = app.vault.adapter;
     this.noisePath = noisePath;
     this.configDir = configDir;
+    this.licenseStore = licenseStore;
+  }
+
+  /** 当前是否激活（供宿主层/视图查询，避免重复读取 settings） */
+  isLicenseActive(): boolean {
+    return this.licenseStore.isActive();
   }
 
   /** 确保存储结构存在 */
@@ -217,11 +231,89 @@ export class AppAPI {
       this.themeBridge.pushTheme(this.settings.followObsidianTheme);
       this.respond(id, {
         ok: true,
+        // 门控：webapp 启动即知激活状态，未激活时显示全屏激活遮罩
+        licenseActive: this.licenseStore.isActive(),
         sectionConfig: this.settings.sectionConfig || null,
         customThemes: this.customThemes,
         customNoises: this.settings.noiseItems || [],
         syncPaletteToObsidian: this.settings.syncPaletteToObsidian || false,
       });
+      return;
+    }
+
+    // ---- 备份码导出：仅已激活设备可导出（本质是已存激活码的便携封装）----
+    if (type === 'app:exportBackup') {
+      if (!this.licenseStore.isActive()) {
+        this.respond(id, { ok: false, error: '未激活，无法导出备份码' });
+        return;
+      }
+      const savedKey = this.licenseStore.getSavedKey();
+      if (!savedKey) {
+        this.respond(id, { ok: false, error: '未找到已保存的激活码' });
+        return;
+      }
+      // 用 Base64 包裹 + 前缀，避免与正式激活码混淆；不含任何密钥
+      let backup: string;
+      try {
+        backup = encodeBackup(savedKey);
+      } catch (e) {
+        this.respondError(id, e instanceof Error ? e.message : '备份码生成失败');
+        return;
+      }
+      this.respond(id, { ok: true, backup });
+      return;
+    }
+
+    // ---- 备份码导入：解包得到激活码后走标准激活流程（换设备/换仓库用）----
+    if (type === 'app:importBackup') {
+      const p = payload as { backup?: string };
+      const raw = typeof p.backup === 'string' ? p.backup.trim() : '';
+      if (!raw) {
+        this.respond(id, { ok: false, error: '请输入备份码' });
+        return;
+      }
+      let code: string;
+      try {
+        code = decodeBackup(raw);
+      } catch (e) {
+        this.respond(id, { ok: false, error: e instanceof Error ? e.message : '备份码无效' });
+        return;
+      }
+      try {
+        const verified = await verifyLicenseKey(code);
+        if (!verified) {
+          this.respond(id, { ok: false, error: '备份码无效或已失效' });
+          return;
+        }
+        await this.licenseStore.activate(code);
+        this.onLicenseActivated?.();
+        this.respond(id, { ok: true });
+      } catch (e) {
+        this.respondError(id, e instanceof Error ? e.message : '备份码导入失败');
+      }
+      return;
+    }
+
+    // ---- 激活码校验（宿主侧持密钥，Web Crypto 异步校验）----
+    if (type === 'app:activateLicense') {
+      const p = payload as { code?: string };
+      const code = typeof p.code === 'string' ? p.code.trim() : '';
+      if (!code) {
+        this.respond(id, { ok: false, error: '请输入激活码' });
+        return;
+      }
+      try {
+        const verified = await verifyLicenseKey(code);
+        if (!verified) {
+          this.respond(id, { ok: false, error: '激活码无效或格式错误' });
+          return;
+        }
+        await this.licenseStore.activate(code);
+        this.onLicenseActivated?.();
+        this.respond(id, { ok: true });
+      } catch (e) {
+        this.respondError(id, e instanceof Error ? e.message : '激活校验失败');
+      }
       return;
     }
 

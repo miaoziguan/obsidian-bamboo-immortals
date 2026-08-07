@@ -1,7 +1,8 @@
-import { App, PluginSettingTab, Setting, type SettingDefinitionItem } from 'obsidian';
+import { App, PluginSettingTab, Setting, Notice, type SettingDefinitionItem } from 'obsidian';
 import type BambooReviewPlugin from '../../main';
 import { ThemeBridge } from '../bridge/ThemeBridge';
 import { arrayBufferToBase64 } from '../utils/base64';
+import { encodeBackup, decodeBackup } from '../license/backupCode';
 
 /** Obsidian 插件运行时注入的主窗口 document（非 iframe 内的 document） */
 declare const activeDocument: Document;
@@ -44,6 +45,12 @@ export interface BambooReviewSettings {
   aiModel: string;
   /** 默认拆解粒度：粗(2-3) / 中(3-6) / 细(5-8) 子项 */
   aiDecomposeDepth: '粗' | '中' | '细';
+  /** 已激活的激活码原文（脱敏显示用，不要明文展示全部） */
+  licenseKey: string;
+  /** 是否已激活（门控开关，onload 读取） */
+  licenseActive: boolean;
+  /** 已激活码的归属 TAG（用户码才有，格式 BRI-<TAG4>-<SIG20>） */
+  licenseTag: string;
 }
 
 export const DEFAULT_SETTINGS: BambooReviewSettings = {
@@ -60,6 +67,9 @@ export const DEFAULT_SETTINGS: BambooReviewSettings = {
   aiBaseUrl: 'https://api.deepseek.com/v1',
   aiModel: 'deepseek-chat',
   aiDecomposeDepth: '中',
+  licenseKey: '',
+  licenseActive: false,
+  licenseTag: '',
 };
 
 /**
@@ -79,6 +89,10 @@ export class PluginSettings extends PluginSettingTab {
     containerEl.addClass('bamboo-review-settings');
 
     new Setting(containerEl).setName('竹林修仙传 - 设置').setHeading();
+
+    // === 激活（License Gate） ===
+    new Setting(containerEl).setName('激活').setHeading();
+    this.renderLicenseSection(containerEl);
 
     // === 数据存储 ===
     new Setting(containerEl).setName('数据存储').setHeading();
@@ -357,6 +371,132 @@ export class PluginSettings extends PluginSettingTab {
     contactBox.createEl('p', { text: '联系方式', cls: 'bamboo-about-label' });
     contactBox.createEl('p', { text: '邮箱：yanyulin2100@qq.com', cls: 'bamboo-about-desc' });
     contactBox.createEl('p', { text: '微信：yanhu94', cls: 'bamboo-about-desc' });
+  }
+
+  /** 激活区：输入激活码 / 显示状态（原生设置页作为激活的补充入口，主入口在 webapp 内遮罩） */
+  private renderLicenseSection(containerEl: HTMLElement): void {
+    // 使用插件级 LicenseStore 单例（与 webapp 门控同源）
+    const store = this.plugin.license;
+    const active = store.isActive();
+
+    // 状态行
+    const savedTag = store.getSavedTag();
+    const tagDesc = active
+      ? savedTag
+        ? `已激活（用户码，归属 TAG ${savedTag}），全部功能已解锁。`
+        : '已激活，全部功能已解锁。'
+      : '未激活，复盘视图将显示激活遮罩。';
+    new Setting(containerEl)
+      .setName('激活状态')
+      .setDesc(tagDesc)
+      .addText((text) => {
+        text.setDisabled(true).setValue(active ? '✅ 已激活' : '🔒 未激活');
+      });
+
+    // 已激活：提供「解除激活」便于调试 / 退款，以及备份码导出 / 导入
+    if (active) {
+      // —— 方案 1：备份码（换设备 / 换仓库用）——
+      new Setting(containerEl)
+        .setName('备份码')
+        .setDesc(
+          '备份码 = 当前激活码的便携封装（BRIBACK- 开头），可在另一台设备 / 另一个仓库的激活页「导入备份码」一键激活，免去手抄长串激活码。不含任何密钥，请妥善保管。'
+        )
+        .addButton((btn) =>
+          btn.setButtonText('导出备份码').onClick(async () => {
+            const savedKey = store.getSavedKey();
+            if (!savedKey) {
+              new Notice('未找到已保存的激活码，无法导出备份码');
+              return;
+            }
+            try {
+              const backup = encodeBackup(savedKey);
+              await navigator.clipboard.writeText(backup);
+              new Notice('备份码已复制到剪贴板，请妥善保存 🔑', 8000);
+            } catch {
+              new Notice('复制失败，请检查浏览器剪贴板权限');
+            }
+          })
+        );
+
+      new Setting(containerEl)
+        .setName('导入备份码')
+        .setDesc('若当前设备尚未激活，可粘贴另一台设备导出的备份码完成激活。')
+        .addText((text) =>
+          text.setPlaceholder('BRIBACK-...').onChange((v) => {
+            (this as unknown as { _pendingBackup?: string })._pendingBackup = v;
+          })
+        )
+        .addButton((btn) =>
+          btn.setButtonText('导入并激活').onClick(async () => {
+            const raw = ((this as unknown as { _pendingBackup?: string })._pendingBackup ?? '').trim();
+            if (!raw) {
+              new Notice('请先粘贴备份码');
+              return;
+            }
+            let code: string;
+            try {
+              code = decodeBackup(raw);
+            } catch (e) {
+              new Notice(`导入失败：${e instanceof Error ? e.message : '备份码无效'}`);
+              return;
+            }
+            const res = await store.activate(code);
+            if (res.ok) {
+              this.display();
+              new Notice('备份码导入成功，已激活 🎋', 6000);
+            } else {
+              new Notice(`导入失败：${res.reason ?? '未知错误'}`);
+            }
+          })
+        );
+
+      // —— 方案 3：vault 同步说明 ——
+      new Setting(containerEl)
+        .setName('多设备 / 多仓库同步')
+        .setDesc(
+          '激活状态保存在本 vault 的 data.json 中。若你用 Obsidian Sync、git 或网盘同步该 vault，激活态会随 vault 一起迁移，换电脑后无需重新激活；仅当在"全新 vault"或"全新仓库"首次使用时，才需要重新输入激活码或导入备份码。'
+        );
+
+      new Setting(containerEl)
+        .setName('解除激活')
+        .setDesc('清除本机激活状态（调试 / 退款用）。之后需重新输入激活码。')
+        .addButton((btn) =>
+          btn.setButtonText('解除激活').onClick(async () => {
+            await store.deactivate();
+            this.display();
+            new Notice('已解除激活。重新打开复盘视图将再次显示激活遮罩。');
+          })
+        );
+      return;
+    }
+
+    // 未激活：输入 + 激活按钮
+    let inputKey = '';
+    new Setting(containerEl)
+      .setName('激活码')
+      .setDesc('付款后获得的激活码，格式 BRI-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX。激活码离线校验，无需联网。')
+      .addText((text) =>
+        text
+          .setPlaceholder('BRI-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX')
+          .setValue(inputKey)
+          .onChange((v) => {
+            inputKey = v;
+          })
+      )
+      .addButton((btn) =>
+        btn
+          .setButtonText('激活')
+          .setCta()
+          .onClick(async () => {
+            const res = await store.activate(inputKey.trim());
+            if (res.ok) {
+              this.display();
+              new Notice('激活成功！重新打开复盘视图即可解锁全部功能 🎋', 6000);
+            } else {
+              new Notice(`激活失败：${res.reason ?? '未知错误'}`);
+            }
+          })
+      );
   }
 
   getControlValue(key: string): unknown {

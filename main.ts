@@ -3,6 +3,7 @@ import { DailyReviewView, VIEW_TYPE_DAILY_REVIEW } from './src/views/DailyReview
 import { AppHost } from './src/host/AppHost';
 import { WebappController } from './src/host/WebappController';
 import { ThemeBridge } from './src/bridge/ThemeBridge';
+import { LicenseStore } from './src/license/licenseStore';
 import {
   PluginSettings,
   DEFAULT_SETTINGS,
@@ -55,10 +56,18 @@ function hashContent(s: string): string {
 export default class BambooReviewPlugin extends Plugin {
   settings: BambooReviewSettings = DEFAULT_SETTINGS;
   private webapp!: WebappController;
+  /** 激活门控单一数据源（全插件共享，未激活时 webapp 内显示激活遮罩） */
+  license!: LicenseStore;
 
   async onload(): Promise<void> {
     // 加载设置
     await this.loadSettings();
+
+    // ───── 激活门控（License Gate）─────
+    // 设计：插件始终正常注册（视图/命令/Ribbon 全在），门控落在 webapp 内部。
+    // 未激活时，复盘视图加载 webapp 后显示全屏「激活」遮罩（含激活码输入），
+    // 用户输入激活码 → 宿主侧校验 → 写盘 → 移除遮罩即时解锁。无需重启插件。
+    this.license = new LicenseStore(this);
 
     const pluginDir = this.manifest.dir || '';
     const version = this.manifest.version || '';

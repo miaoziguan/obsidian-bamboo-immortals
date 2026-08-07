@@ -64,7 +64,6 @@ export function mountLicenseGate(opts) {
 
       <div class="blg-tags">
         <span class="blg-tag">一次性买断</span>
-        <span class="blg-tag">无订阅</span>
         <span class="blg-tag">永久可用</span>
       </div>
 

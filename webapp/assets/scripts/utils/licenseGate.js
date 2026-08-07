@@ -43,8 +43,7 @@ export function mountLicenseGate(opts) {
         <h1 class="blg-title">竹林修仙传</h1>
         <p class="blg-subtitle">激活以解锁全部修仙功能</p>
         <p class="blg-hook">一套魏晋风度的个人目标管理系统</p>
-        <button type="button" class="blg-more" id="blg-more-toggle">了解更多 ▾</button>
-        <div class="blg-intro" id="blg-intro" hidden>
+        <div class="blg-intro">
           基于「OGAS」理念，专为个人打造的中国风目标自动化分配管理系统：以目标管理为引擎，串联起待办与时间线记录、深度复盘、竹林商店与修仙成长体系，于魏晋风度之中，探索中国风的国际化路线。
         </div>
       </div>
@@ -204,17 +203,6 @@ export function mountLicenseGate(opts) {
     });
   }
 
-  // —— 产品说明「了解更多」展开 / 收起 ——
-  const moreToggle = wrap.querySelector('#blg-more-toggle');
-  const introBox = wrap.querySelector('#blg-intro');
-  if (moreToggle && introBox) {
-    moreToggle.addEventListener('click', () => {
-      const expanded = !introBox.hidden;
-      introBox.hidden = expanded;
-      moreToggle.textContent = expanded ? '了解更多 ▾' : '收起 ▴';
-      moreToggle.setAttribute('aria-expanded', String(!expanded));
-    });
-  }
 }
 
 /**

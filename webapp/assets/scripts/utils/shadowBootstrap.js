@@ -107,22 +107,8 @@ function initShadow() {
         font-weight: 600;
         letter-spacing: 0.2px;
       }
-      .bamboo-license-gate .blg-more {
-        display: inline-block;
-        margin: 8px auto 0;
-        padding: 2px 6px;
-        border: none;
-        background: none;
-        color: var(--text-tertiary, #8a9684);
-        font-size: 11px;
-        cursor: pointer;
-        transition: color 0.15s ease;
-      }
-      .bamboo-license-gate .blg-more:hover {
-        color: var(--bm-primary, #4f7a4f);
-      }
       .bamboo-license-gate .blg-intro {
-        margin: 10px auto 0;
+        margin: 14px auto 0;
         max-width: 280px;
         font-size: 11.5px;
         line-height: 1.8;

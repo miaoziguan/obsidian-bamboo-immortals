@@ -35,13 +35,13 @@ export function isBeingDebugged(): boolean {
   try {
     // 方法1：debugger 时间差（devtools 打开时 debugger 会真的暂停，耗时明显）
     const start = Date.now();
-    // eslint-disable-next-line no-debugger
+    // eslint-disable-next-line no-debugger -- 故意保留 debugger 用于反调试检测：devtools 打开时此处会真实暂停，形成可测量的时间差
     debugger;
     const elapsed = Date.now() - start;
     if (elapsed > 100) return true;
 
     // 方法2：常见 devtools 全局特征
-    const w = (typeof window !== 'undefined' ? window : ({} as Record<string, unknown>)) as Record<string, unknown>;
+    const w = (typeof window !== 'undefined' ? window : ({} as Record<string, unknown>));
     if (
       (w as { devtools?: unknown }).devtools ||
       (typeof (w as { __REACT_DEVTOOLS_GLOBAL_HOOK__?: unknown }).__REACT_DEVTOOLS_GLOBAL_HOOK__ === 'object')

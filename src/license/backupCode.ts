@@ -13,8 +13,10 @@ const BACKUP_PREFIX = 'BRIBACK-';
 
 /** 由激活码生成备份码（UTF-8 安全 Base64） */
 export function encodeBackup(licenseKey: string): string {
-  // btoa 仅支持 Latin1，先用 encodeURIComponent 转义非 ASCII
-  const b64 = btoa(unescape(encodeURIComponent(licenseKey)));
+  const bytes = new TextEncoder().encode(licenseKey);
+  let binary = '';
+  for (const b of bytes) binary += String.fromCharCode(b);
+  const b64 = btoa(binary);
   return BACKUP_PREFIX + b64;
 }
 
@@ -25,7 +27,9 @@ export function decodeBackup(backup: string): string {
     throw new Error('备份码格式不正确（应以 BRIBACK- 开头）');
   }
   try {
-    return decodeURIComponent(escape(atob(raw.slice(BACKUP_PREFIX.length))));
+    const binary = atob(raw.slice(BACKUP_PREFIX.length));
+    const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
+    return new TextDecoder().decode(bytes);
   } catch {
     throw new Error('备份码损坏，无法解析');
   }

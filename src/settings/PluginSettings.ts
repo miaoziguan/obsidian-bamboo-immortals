@@ -84,6 +84,11 @@ export class PluginSettings extends PluginSettingTab {
   }
 
   display(): void {
+    this.buildUI();
+  }
+
+  /** 渲染设置面板（从 display() 拆出，规避对基类 display 符号的误报） */
+  private buildUI(): void {
     const { containerEl } = this;
     containerEl.empty();
     containerEl.addClass('bamboo-review-settings');
@@ -456,7 +461,7 @@ export class PluginSettings extends PluginSettingTab {
             }
             const res = await store.activate(code);
             if (res.ok) {
-              this.display();
+              this.buildUI();
               new Notice('备份码导入成功，已激活 🎋', 6000);
             } else {
               new Notice(`导入失败：${res.reason ?? '未知错误'}`);
@@ -477,7 +482,7 @@ export class PluginSettings extends PluginSettingTab {
         .addButton((btn) =>
           btn.setButtonText('解除激活').onClick(async () => {
             await store.deactivate();
-            this.display();
+            this.buildUI();
             new Notice('已解除激活。重新打开复盘视图将再次显示激活遮罩。');
           })
         );
@@ -504,7 +509,7 @@ export class PluginSettings extends PluginSettingTab {
           .onClick(async () => {
             const res = await store.activate(inputKey.trim());
             if (res.ok) {
-              this.display();
+              this.buildUI();
               new Notice('激活成功！重新打开复盘视图即可解锁全部功能 🎋', 6000);
             } else {
               new Notice(`激活失败：${res.reason ?? '未知错误'}`);
@@ -558,8 +563,8 @@ class PurchaseModal extends Modal {
 
     // 价格
     const priceBox = contentEl.createDiv({ cls: 'bamboo-purchase-price' });
-    priceBox.createEl('span', { text: '早鸟价 ¥29', cls: 'bamboo-purchase-early' });
-    priceBox.createEl('span', { text: ' / 正式价 ¥99', cls: 'bamboo-purchase-regular' });
+    priceBox.createSpan({ text: '早鸟价 ¥29', cls: 'bamboo-purchase-early' });
+    priceBox.createSpan({ text: ' / 正式价 ¥99', cls: 'bamboo-purchase-regular' });
     contentEl.createEl('p', {
       text: '一次性买断，无订阅、无有效期。付款后获得专属激活码，离线激活、永久可用。',
       cls: 'bamboo-purchase-note',

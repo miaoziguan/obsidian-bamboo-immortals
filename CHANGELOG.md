@@ -1,9 +1,9 @@
 # Changelog
 
-## [Unreleased]
+## [3.3.15] — 2026-08-08
 
 ### Docs
-- **重写 README 营销定位**：核心卖点从「目标管理」升级为「AI 目标教练」，补全被埋没的 `src/ai/` 能力（Goal Elicitor 澄清分诊 / Frameworks 7 类框架拆解 / Goal Diagnoser 数据驱动诊断 / Agentic Plan Controller 对话式规划 / Deviation & Health 硬指标 + 健康分 / 修仙成长体系）；明确「AI 走用户自建 API Key，作者不收推理费、不碰数据」以消除成交顾虑；中英文同步更新，使用方法新增「开启 AI」步骤。
+- **重定位 README 营销核心**：核心卖点从「AI 目标教练」调整为**独创「目标自动化流转」机制**（意图→目标卡片→每日待办自动生成→竹币联动时间线→修仙境界升级→复盘反哺），并明确 AI 仅为可选增强（默认纯本地、无需联网）。新增「专属中国风美学」与「付费用户福利」两节，中英文同步。
 
 ### Removed
 - **移除未计划的 SearchUI 搜索模块**：该功能仅通过 `Ctrl+K` / `/` 快捷键唤起，无可见 UI 入口，确认不在当前产品计划内。删除 `modules/search-ui.js`、`services/searchService.js`、相关测试与样式，并从 `handlers.js`、`store.js`、`index.html` 中清理引用。同步更新 `app.html`、375px 浏览器验证脚本与审计文档。

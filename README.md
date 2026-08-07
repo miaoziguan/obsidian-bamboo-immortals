@@ -42,6 +42,9 @@
 - 🗓 **完整目标自动化流转**：每日待办自动生成、竹币联动、修仙境界升级、复盘诊断全开
 - 🍃 **完整修仙体系**：10 境界 100 层全部解锁，专属层称号与"飞升"终点可见
 - 🛒 **竹林商店全功能**：竹币兑换与奖励体系完整可用
+- 🧑‍🏫 **专家团队人脉**：作者依托个人人脉组建了各领域的专家团队，付费用户可直接对接咨询
+- 💬 **独家高质量社群**：仅付费用户可加入的私密社群，同行修仙、互通资源
+- 🎍 **主题动效持续更新**：不定期推出全新中国风主题动效（如「绯梦飞行」「荷塘鱼影」「混沌星系」「时间的鱼」「雪原木屋」等竹林玉案系列），付费用户免费领用
 - 🔄 **换机无忧**：激活码 + 备份码机制，换设备 / 重装可便携迁移，一次购买长期可用
 
 > 未激活时插件以全屏遮罩展示产品介绍与定价，输入激活码即解锁全部功能。
@@ -116,6 +119,9 @@ One-time purchase. After activation, **all features unlock** — no subscription
 - 🗓 **Full goal automation pipeline**: auto daily tasks, coin linkage, realm leveling, and review diagnosis — all enabled
 - 🍃 **Full cultivation system**: all 10 realms / 100 layers unlocked, with exclusive titles and the "Ascension" endpoint visible
 - 🛒 **Full Bamboo Shop**: complete coin redemption and reward system
+- 🧑‍🏫 **Expert network**: The author has assembled domain experts through personal connections; paid users get direct access to consult them
+- 💬 **Exclusive high-quality community**: A private community open only to paid users — cultivate together and exchange resources
+- 🎍 **Ongoing theme drops**: New Chinese-style theme animations released from time to time (e.g. the "Bamboo Jade" series: *Dreamflight*, *Lotus Pond*, *Chaos Galaxy*, *Fish of Time*, *Snowy Cabin*) — free for paid users
 - 🔄 **Device-portable**: activation code + backup code let you migrate across devices/reinstalls — one purchase, long-term use
 
 > Before activation, the plugin shows a full-screen gate with product intro and pricing; entering the activation code unlocks everything.

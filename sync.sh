@@ -25,6 +25,8 @@ npm run build:webapp
 echo "📦 同步到 vault (bamboo-immortals)..."
 mkdir -p "$VAULT_DIR"
 cp main.js "$VAULT_DIR/"
+cp manifest.json "$VAULT_DIR/"
+cp versions.json "$VAULT_DIR/"
 rm -rf "$VAULT_DIR/webapp"
 cp -R webapp "$VAULT_DIR/webapp"
 

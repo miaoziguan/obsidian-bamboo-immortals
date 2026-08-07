@@ -42,6 +42,7 @@ export function mountLicenseGate(opts) {
       <div class="blg-header">
         <h1 class="blg-title">竹林修仙传</h1>
         <p class="blg-subtitle">激活以解锁全部修仙功能</p>
+        <p class="blg-intro">基于「OGAS」理念，专为个人打造的中国风目标自动化分配管理系统：以目标管理为引擎，串联起待办与时间线记录、深度复盘、竹林商店与修仙成长体系，于魏晋风度之中，探索中国风的国际化路线。</p>
       </div>
 
       <div class="blg-pricing">
@@ -60,7 +61,6 @@ export function mountLicenseGate(opts) {
         <span class="blg-tag">一次性买断</span>
         <span class="blg-tag">无订阅</span>
         <span class="blg-tag">永久可用</span>
-        <span class="blg-tag">离线激活</span>
       </div>
 
       <div class="blg-form">

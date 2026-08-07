@@ -97,6 +97,14 @@ function initShadow() {
         font-size: 13px;
         color: var(--text-tertiary, #8a9684);
       }
+      .bamboo-license-gate .blg-intro {
+        margin: 12px auto 0;
+        max-width: 320px;
+        font-size: 12px;
+        line-height: 1.6;
+        color: var(--text-secondary, #5a6b54);
+        text-align: center;
+      }
       .bamboo-license-gate .blg-pricing {
         display: inline-flex;
         align-items: center;

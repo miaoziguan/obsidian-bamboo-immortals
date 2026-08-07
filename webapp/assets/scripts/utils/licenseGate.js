@@ -98,8 +98,8 @@ export function mountLicenseGate(opts) {
       <div class="blg-help">
         <div class="blg-help-icon">💬</div>
         <div class="blg-help-text">
-          <strong>需要购买？</strong>
-          添加作者微信 <strong>yanhu94</strong>，付款后发送截图即可获取专属激活码。
+          <strong>需要购买：</strong>
+          添加作者微信 <strong>yanhu94</strong>，付款后即可获取专属激活码以及加入核心社群的资格。我将全力为你服务。
         </div>
       </div>
     </div>

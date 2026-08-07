@@ -77,7 +77,7 @@
 
    ![微信收款码](docs/payment-wechat.jpg)
 
-2. 将**付款截图**私聊发给作者（羽鳞君）。
+2. 将**付款截图**私聊发给作者羽鳞君（微信：yanhu94）。
 3. 作者确认后，会发给你一个专属激活码，格式形如 `BRI-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX`。
 4. 打开 Obsidian → 社区插件「竹林修仙传」设置页 → 粘贴激活码 → 点击激活即可。
 
@@ -295,7 +295,7 @@ This plugin is a **one-time buyout** — no subscription, no expiry. Pay once, g
 
    ![WeChat Payment QR Code](docs/payment-wechat.jpg)
 
-2. Send the **payment screenshot** to the author (羽鳞君) via private message.
+2. Send the **payment screenshot** to the author 羽鳞君 via WeChat (ID: yanhu94).
 3. Upon confirmation, the author sends you a personal activation code, formatted like `BRI-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX`.
 4. Open Obsidian → Community plugin "Bamboo Immortals" settings → paste the code → click activate.
 

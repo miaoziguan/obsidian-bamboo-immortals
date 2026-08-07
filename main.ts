@@ -756,16 +756,20 @@ export default class BambooReviewPlugin extends Plugin {
       leaf = leaves[0];
     } else {
       // 创建新视图（默认落在右侧栏）
-      leaf = workspace.getRightLeaf(false);
+      leaf = workspace.getRightLeaf(false) as WorkspaceLeaf;
       await leaf.setViewState({
         type: VIEW_TYPE_DAILY_REVIEW,
         active: true,
       });
       // 展开右栏并给面板一个舒适宽度
-      workspace.rightSplit.expand();
-      const currentWidth = workspace.rightSplit.containerEl.offsetWidth;
+      const rightSplit = workspace.rightSplit as unknown as {
+        containerEl: HTMLElement;
+        expand(): void;
+      };
+      rightSplit.expand();
+      const currentWidth = rightSplit.containerEl.offsetWidth;
       if (currentWidth < 380) {
-        workspace.rightSplit.containerEl.style.width = '380px';
+        rightSplit.containerEl.style.width = '380px';
       }
     }
 

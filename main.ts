@@ -756,7 +756,9 @@ export default class BambooReviewPlugin extends Plugin {
       leaf = leaves[0];
     } else {
       // 创建新视图（默认落在右侧栏）
-      leaf = workspace.getRightLeaf(false) as WorkspaceLeaf;
+      const rightLeaf = workspace.getRightLeaf(false);
+      if (!rightLeaf) return;
+      leaf = rightLeaf;
       await leaf.setViewState({
         type: VIEW_TYPE_DAILY_REVIEW,
         active: true,
@@ -769,11 +771,11 @@ export default class BambooReviewPlugin extends Plugin {
         expand(): void;
       };
       rightSplit.expand();
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => {
           const el = rightSplit.containerEl;
           if (el.offsetWidth < 420) {
-            el.style.width = '420px';
+            el.setCssStyles({ width: '420px' });
           }
         });
       });

@@ -36,6 +36,23 @@
 - **白噪音**：配置音源文件夹
 - **调色联动**：色相/明度调整同步到 Obsidian 原生 UI
 
+### 购买与激活（一次性买断）
+
+本插件为**一次性买断**，无订阅、无有效期，付款后获得专属激活码，离线激活、永久可用。
+
+- **早鸟价**：¥29（前期限量，恢复正式价后不再有）
+- **正式价**：¥99
+
+**购买流程**
+
+1. 扫码下方微信收款码完成付款：
+   - 微信收款码：`docs/payment-wechat.png`
+2. 将**付款截图**私聊发给作者（羽鳞君）。
+3. 作者确认后，会发给你一个专属激活码，格式形如 `BRI-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX`。
+4. 打开 Obsidian → 社区插件「竹林修仙传」设置页 → 粘贴激活码 → 点击激活即可。
+
+> 激活码与你的用户标识绑定，一人一码，请妥善保管。如更换设备，可凭原码在原设置中重新激活。
+
 ---
 
 ## English
@@ -67,6 +84,23 @@
 - **Theme effects**: Custom visual effects folder
 - **Ambient sounds**: Configure audio source folders
 - **Palette sync**: Sync hue/lightness adjustments to Obsidian's native UI
+
+### Purchase & Activation (One-time Buyout)
+
+This plugin is a **one-time buyout** — no subscription, no expiry. Pay once, get a personal activation code, activate offline, use forever.
+
+- **Early-bird price**: ¥29 (limited, before the regular price takes effect)
+- **Regular price**: ¥99
+
+**How to buy**
+
+1. Scan the WeChat payment QR code below to complete payment:
+   - WeChat: `docs/payment-wechat.png`
+2. Send the **payment screenshot** to the author (羽鳞君) via private message.
+3. Upon confirmation, the author sends you a personal activation code, formatted like `BRI-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX`.
+4. Open Obsidian → Community plugin "Bamboo Immortals" settings → paste the code → click activate.
+
+> Each code is bound to your user identity (one code per user). Keep it safe. To switch devices, reactivate with the same code in the settings.
 
 ---
 

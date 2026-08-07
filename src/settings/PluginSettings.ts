@@ -1,4 +1,4 @@
-import { App, PluginSettingTab, Setting, Notice, type SettingDefinitionItem } from 'obsidian';
+import { App, PluginSettingTab, Setting, Notice, Modal, type SettingDefinitionItem } from 'obsidian';
 import type BambooReviewPlugin from '../../main';
 import { ThemeBridge } from '../bridge/ThemeBridge';
 import { arrayBufferToBase64 } from '../utils/base64';
@@ -92,6 +92,20 @@ export class PluginSettings extends PluginSettingTab {
 
     // === 激活（License Gate） ===
     new Setting(containerEl).setName('激活').setHeading();
+
+    // 购买激活入口（轻量模式：付款后私聊作者拿码）
+    new Setting(containerEl)
+      .setName('购买激活')
+      .setDesc('一次性买断，无订阅、无有效期。点击查看价格与付款方式，付款后私聊作者获取激活码。')
+      .addButton((btn) =>
+        btn
+          .setButtonText('查看购买说明')
+          .setCta()
+          .onClick(() => {
+            new PurchaseModal(this.app, this.plugin).open();
+          })
+      );
+
     this.renderLicenseSection(containerEl);
 
     // === 数据存储 ===
@@ -523,5 +537,60 @@ export class PluginSettings extends PluginSettingTab {
       { name: '模型', desc: '模型名，如 deepseek-chat', control: { key: 'aiModel', type: 'text', defaultValue: s.aiModel, placeholder: 'deepseek-chat' } },
       { name: '默认拆解粒度', desc: 'AI 拆解子项的细粒度：粗 / 中 / 细', control: { key: 'aiDecomposeDepth', type: 'dropdown', defaultValue: s.aiDecomposeDepth, options: { '粗': '粗（2-3 子项）', '中': '中（3-6 子项）', '细': '细（5-8 子项）' } } },
     ];
+  }
+}
+
+/** 购买说明弹窗：展示价格、收款码与拿码流程（轻量买断模式） */
+class PurchaseModal extends Modal {
+  private plugin: BambooReviewPlugin;
+
+  constructor(app: App, plugin: BambooReviewPlugin) {
+    super(app);
+    this.plugin = plugin;
+  }
+
+  async onOpen(): Promise<void> {
+    const { contentEl } = this;
+    contentEl.empty();
+    contentEl.addClass('bamboo-purchase-modal');
+
+    contentEl.createEl('h2', { text: '购买与激活 · 竹林修仙传' });
+
+    // 价格
+    const priceBox = contentEl.createDiv({ cls: 'bamboo-purchase-price' });
+    priceBox.createEl('span', { text: '早鸟价 ¥29', cls: 'bamboo-purchase-early' });
+    priceBox.createEl('span', { text: ' / 正式价 ¥99', cls: 'bamboo-purchase-regular' });
+    contentEl.createEl('p', {
+      text: '一次性买断，无订阅、无有效期。付款后获得专属激活码，离线激活、永久可用。',
+      cls: 'bamboo-purchase-note',
+    });
+
+    // 收款码
+    contentEl.createEl('p', { text: '① 扫码付款（微信）', cls: 'bamboo-purchase-step' });
+    const qrBox = contentEl.createDiv({ cls: 'bamboo-purchase-qr' });
+    const qrImg = qrBox.createEl('img', { cls: 'bamboo-purchase-qr-img' });
+    qrImg.setAttribute('alt', '微信收款码');
+    // fire-and-forget：从插件目录读取收款码图片
+    void (async () => {
+      try {
+        const pluginDir = this.plugin.manifest.dir ?? '';
+        const qrPath = `${pluginDir}/webapp/assets/images/payment-wechat.png`;
+        if (!(await this.app.vault.adapter.exists(qrPath))) return;
+        const data = await this.app.vault.adapter.readBinary(qrPath);
+        const b64 = arrayBufferToBase64(data);
+        qrImg.setAttribute('src', `data:image/png;base64,${b64}`);
+      } catch {
+        qrBox.createEl('p', { text: '收款码加载失败，请查看 README 或私聊作者。', cls: 'bamboo-purchase-qr-fallback' });
+      }
+    })();
+
+    // 流程
+    contentEl.createEl('p', { text: '② 将付款截图私聊发给作者（微信：yanhu94）', cls: 'bamboo-purchase-step' });
+    contentEl.createEl('p', { text: '③ 作者确认后发你激活码，回到本设置页「激活码」处粘贴激活', cls: 'bamboo-purchase-step' });
+  }
+
+  onClose(): void {
+    const { contentEl } = this;
+    contentEl.empty();
   }
 }

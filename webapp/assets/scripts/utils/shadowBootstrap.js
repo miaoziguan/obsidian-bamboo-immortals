@@ -95,7 +95,10 @@ function initShadow() {
       .bamboo-license-gate .blg-msg { min-height: 18px; margin-top: 12px; font-size: 13px; }
       .bamboo-license-gate .blg-msg-error { color: var(--status-danger, #c0392b); }
       .bamboo-license-gate .blg-msg-ok { color: var(--bm-primary, #2D5A27); }
-      .bamboo-license-gate .blg-hint { margin-top: 14px; font-size: 11px; color: var(--text-tertiary, #8a9684); }
+      .bamboo-license-gate .blg-hint { margin-top: 14px; font-size: 12px; line-height: 1.6; color: var(--text-secondary, #5a6b54); }
+      .bamboo-license-gate .blg-price { display: flex; align-items: baseline; justify-content: center; gap: 8px; margin: 0 0 8px; }
+      .bamboo-license-gate .blg-price-early { font-size: 18px; font-weight: 700; color: var(--bm-primary, #2D5A27); }
+      .bamboo-license-gate .blg-price-regular { font-size: 13px; color: var(--text-tertiary, #8a9684); }
     `;
     sr.appendChild(gateStyle);
 

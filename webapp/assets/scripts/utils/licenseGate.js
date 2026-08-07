@@ -41,11 +41,15 @@ export function mountLicenseGate(opts) {
     <div class="blg-card">
       <div class="blg-emblem">🎋</div>
       <h1 class="blg-title">竹林修仙传 · 未激活</h1>
-      <p class="blg-sub">请输入购买后获得的激活码以解锁全部功能</p>
+      <div class="blg-price">
+        <span class="blg-price-early">早鸟价 ¥29</span>
+        <span class="blg-price-regular">正式价 ¥99</span>
+      </div>
+      <p class="blg-sub">一次性买断 · 无订阅 · 无有效期 · 离线激活 · 永久可用</p>
       <input
         class="blg-input"
         type="text"
-        placeholder="激活码（例如 BRI-1-XXXX-XXXX-XXXX）"
+        placeholder="激活码（例如 BRI-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX）"
         autocomplete="off"
         spellcheck="false"
       />
@@ -63,7 +67,7 @@ export function mountLicenseGate(opts) {
         <button class="blg-backup-btn" type="button">导入备份码</button>
         <div class="blg-backup-msg" role="status"></div>
       </details>
-      <div class="blg-hint">请联系作者羽鳞君获取激活码</div>
+      <div class="blg-hint">还未购买？添加作者微信 <strong>yanhu94</strong> 获取激活码<br/>付款后发送截图，作者会回复你的专属激活码</div>
     </div>
   `;
 

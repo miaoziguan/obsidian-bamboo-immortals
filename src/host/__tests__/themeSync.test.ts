@@ -26,7 +26,7 @@ describe('AppAPI app:theme:sync 处理', () => {
         captured = msg;
       },
     };
-    api = new AppAPI(mock.app as any, {} as any, async () => {}, 'noise', '.obsidian');
+    api = new AppAPI(mock.app as any, {} as any, async () => {}, 'noise', '.obsidian', { isActive: () => false } as any);
     (api as any).iframe = { contentWindow: iframeContentWindow };
     // 替换 themeBridge 以便断言 pushTheme 的调用参数
     pushThemeSpy = vi.fn();

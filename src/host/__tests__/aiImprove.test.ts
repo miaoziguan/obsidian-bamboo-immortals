@@ -24,7 +24,7 @@ describe('AppAPI · app:aiImproveGoal 路由', () => {
       },
     };
     onAiImproveGoal = vi.fn();
-    api = new AppAPI(mock.app as any, {} as any, async () => {}, 'noise', '.obsidian');
+    api = new AppAPI(mock.app as any, {} as any, async () => {}, 'noise', '.obsidian', { isActive: () => false } as any);
     (api as any).iframe = { contentWindow: iframeContentWindow };
     (api as any).onAiImproveGoal = onAiImproveGoal;
   });

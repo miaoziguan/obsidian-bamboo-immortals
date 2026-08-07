@@ -21,7 +21,7 @@ describe('AppAPI 消息路由与来源校验', () => {
         captured = msg;
       },
     };
-    api = new AppAPI(mock.app as any, {} as any, async () => {}, 'noise', '.obsidian');
+    api = new AppAPI(mock.app as any, {} as any, async () => {}, 'noise', '.obsidian', { isActive: () => false } as any);
     (api as any).iframe = { contentWindow: iframeContentWindow };
   });
 

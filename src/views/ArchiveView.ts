@@ -2,6 +2,8 @@ import { ItemView, WorkspaceLeaf, EventRef } from 'obsidian';
 import type { BambooReviewSettings } from '../settings/PluginSettings';
 import { AppHost } from '../host/AppHost';
 import { AppAPI } from '../host/AppAPI';
+import type BambooReviewPlugin from '../../main';
+import { LicenseStore } from '../license/licenseStore';
 
 export const VIEW_TYPE_ARCHIVE = 'bamboo-archive';
 
@@ -72,7 +74,9 @@ export class ArchiveView extends ItemView {
       this.settings,
       this.saveSettings,
       this.settings.noisePath || '',
-      this.app.vault.configDir
+      this.app.vault.configDir,
+      (this.plugin as BambooReviewPlugin).license ??
+        new LicenseStore(this.plugin as BambooReviewPlugin)
     );
     await this.appAPI.ensureStructure();
 

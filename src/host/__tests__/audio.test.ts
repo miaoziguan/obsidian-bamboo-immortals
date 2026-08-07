@@ -28,7 +28,7 @@ describe('AppAPI 音频读取', () => {
   beforeEach(() => {
     const mock = createMockApp();
     adapter = mock.adapter;
-    api = new AppAPI(mock.app as any, {} as any, async () => {}, 'noise', '.obsidian');
+    api = new AppAPI(mock.app as any, {} as any, async () => {}, 'noise', '.obsidian', { isActive: () => false } as any);
     // 伪 iframe：捕获 respond/respondError 通过 postMessage 发出的数据
     (api as any).iframe = {
       contentWindow: {

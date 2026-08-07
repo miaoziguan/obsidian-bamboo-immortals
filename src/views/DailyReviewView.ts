@@ -1,9 +1,11 @@
-import { ItemView, WorkspaceLeaf, EventRef } from 'obsidian';
+import { ItemView, WorkspaceLeaf, EventRef, Notice } from 'obsidian';
 import type { BambooReviewSettings } from '../settings/PluginSettings';
 import { AppHost } from '../host/AppHost';
 import { AppAPI } from '../host/AppAPI';
 import type { StrategyOverview } from '../ai/strategyOverview';
 import type { CultivationRealm } from '../cultivation';
+import type BambooReviewPlugin from '../../main';
+import { LicenseStore } from '../license/licenseStore';
 
 export const VIEW_TYPE_DAILY_REVIEW = 'bamboo-immortals';
 
@@ -71,9 +73,16 @@ export class DailyReviewView extends ItemView {
       this.settings,
       this.saveSettings,
       this.settings.noisePath || '',
-      this.app.vault.configDir
+      this.app.vault.configDir,
+      (this.plugin as BambooReviewPlugin).license ??
+        new LicenseStore(this.plugin as BambooReviewPlugin)
     );
     await this.appAPI.ensureStructure();
+
+    // 激活成功（webapp 遮罩内输入激活码并经宿主校验通过）→ webapp 侧 licenseGate.js 会自行移除遮罩并解锁
+    this.appAPI.onLicenseActivated = () => {
+      new Notice('竹林修仙传：激活成功，全部功能已解锁 🎋', 4000);
+    };
 
     // 战略复盘面板「用 AI 改进」入口：webapp 健康分详情 → 插件 Agentic 编辑链路
     this.appAPI.onAiImproveGoal = (payload) => {

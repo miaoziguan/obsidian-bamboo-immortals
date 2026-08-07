@@ -39,7 +39,6 @@ export function mountLicenseGate(opts) {
   wrap.className = 'bamboo-license-gate';
   wrap.innerHTML = `
     <div class="blg-card">
-      <div class="blg-emblem">🎋</div>
       <h1 class="blg-title">竹林修仙传 · 未激活</h1>
       <div class="blg-price">
         <span class="blg-price-early">早鸟价 ¥29</span>

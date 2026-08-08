@@ -28,6 +28,8 @@ import { PlanEditorView, VIEW_TYPE_PLAN_EDITOR } from './src/views/PlanEditorVie
 import { ArchiveView, VIEW_TYPE_ARCHIVE } from './src/views/ArchiveView';
 import { SuggestionApplyModal } from './src/ai/SuggestionApplyModal';
 import { diagnose } from './src/ai/GoalDiagnoser';
+import { ConsultModal, type ConsultOptions } from './src/consult/ConsultModal';
+import { isSmtpAvailable } from './src/consult/smtpSender';
 import { runDiagnosis } from './src/ai/runDiagnosis';
 import { DiagnosisProgressModal } from './src/ai/DiagnosisProgressModal';
 import type { GoalItem } from './src/types/data';
@@ -179,6 +181,12 @@ export default class BambooReviewPlugin extends Plugin {
       callback: () => void this.openPlanEditorForGoals(),
     });
 
+    this.addCommand({
+      id: 'bamboo-consult',
+      name: '竹林咨询：发送选中内容给羽鳞君',
+      callback: () => void this.openConsult(),
+    });
+
     // 编辑器右键菜单：选中文本后右键直接出现「转为目标卡片」
     this.registerEvent(
       this.app.workspace.on('editor-menu', (menu, editor) => {
@@ -200,6 +208,14 @@ export default class BambooReviewPlugin extends Plugin {
               void this.elicitFromSelection(text);
             })
         );
+        menu.addItem((item) =>
+          item
+            .setTitle('竹林咨询：发送选中内容给羽鳞君')
+            .setIcon('send')
+            .onClick(() => {
+              void this.openConsult(text);
+            })
+        );
       })
     );
 
@@ -214,6 +230,50 @@ export default class BambooReviewPlugin extends Plugin {
 
   onunload(): void {
     ThemeBridge.default.restoreDefaults();
+  }
+
+  /** 竹林咨询：打开确认弹窗，将选中文字发送到羽鳞君邮箱 */
+  async openConsult(selectionArg?: string): Promise<void> {
+    const s = this.settings;
+
+    if (!isSmtpAvailable()) {
+      new Notice('竹林咨询仅支持桌面端（移动端无法直连 SMTP）');
+      return;
+    }
+
+    if (!s.smtpUser || !s.smtpPass) {
+      new Notice('竹林咨询未配置：请先在插件设置中填写发件人邮箱和 SMTP 授权码');
+      return;
+    }
+
+    const editor = this.app.workspace.activeEditor?.editor;
+    const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+    if (!editor || !view || !view.file) {
+      new Notice('竹林咨询：请先打开一篇笔记并选中要咨询的文字');
+      return;
+    }
+
+    const text = (selectionArg ?? editor.getSelection()).trim();
+    if (!text) {
+      new Notice('竹林咨询：请先选中一段文字');
+      return;
+    }
+
+    const noteTitle = view.file.basename;
+
+    const options: ConsultOptions = {
+      selectedText: text,
+      noteTitle,
+      smtpConfig: {
+        host: s.smtpHost || 'smtp.qq.com',
+        port: s.smtpPort || 465,
+        secure: s.smtpSecure,
+        user: s.smtpUser,
+        pass: s.smtpPass,
+      },
+    };
+
+    new ConsultModal(this.app, options).open();
   }
 
   /** AI 规划主流程：取当前笔记 → 调大模型 → 校验 → 审阅弹窗 → 写入目标库 */

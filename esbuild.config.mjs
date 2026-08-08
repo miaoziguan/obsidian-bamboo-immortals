@@ -9,6 +9,8 @@ esbuild
     bundle: true,
     external: [
       "obsidian",
+      "tls",
+      "net",
     ],
     format: "cjs",
     target: "es2020",

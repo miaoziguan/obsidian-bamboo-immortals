@@ -108,6 +108,20 @@ export class PluginSettings extends PluginSettingTab {
     containerEl.empty();
     containerEl.addClass('bamboo-review-settings');
 
+    try {
+      this.renderAllSections(containerEl);
+    } catch (err) {
+      // 兜底：任何分区渲染抛错都不应让整页白屏
+      console.error('[竹林修仙传] 设置页渲染异常：', err);
+      containerEl.createEl('p', {
+        text: '⚠️ 设置页部分内容渲染失败，请查看开发者控制台（Ctrl/Cmd+Shift+I）的报错。',
+        cls: 'bamboo-settings-error',
+      });
+    }
+  }
+
+  /** 各分区顺序渲染（竹林咨询独立隔离，确保即使别处抛错也能显示） */
+  private renderAllSections(containerEl: HTMLElement): void {
     new Setting(containerEl).setName('竹林修仙传 - 设置').setHeading();
 
     // === 激活（License Gate） ===
@@ -127,6 +141,95 @@ export class PluginSettings extends PluginSettingTab {
       );
 
     this.renderLicenseSection(containerEl);
+
+    // === 竹林咨询（独立隔离：即使后续分区渲染抛错，邮箱配置也必现） ===
+    try {
+      new Setting(containerEl).setName('竹林咨询').setHeading();
+
+      // 引导卡片：QQ 邮箱 SMTP 授权码获取步骤
+      const guideBox = containerEl.createDiv({ cls: 'bamboo-about-card bamboo-consult-guide' });
+      guideBox.createEl('p', { text: '📮 发送邮件需要配置 SMTP。推荐使用 QQ 邮箱：', cls: 'bamboo-about-label' });
+      const steps = guideBox.createEl('ol', { cls: 'bamboo-consult-steps' });
+      steps.createEl('li', { text: '登录 QQ 邮箱网页版 → 点击顶部「设置」→「账户」' });
+      steps.createEl('li', { text: '找到「POP3/SMTP 服务」一栏 → 点击「开启」' });
+      steps.createEl('li', { text: '按提示发送短信验证后会得到一个授权码（16 位），复制它粘贴到下方「SMTP 授权码」输入框' });
+      guideBox.createEl('p', {
+        text: '⚠️ 授权码不是你的 QQ 密码，是 QQ 邮箱专门为第三方客户端生成的独立凭证，仅保存在本地 data.json。',
+        cls: 'bamboo-consult-note',
+      });
+
+      new Setting(containerEl)
+        .setName('SMTP 服务器')
+        .setDesc('发件服务器地址。QQ 邮箱用 smtp.qq.com，163 邮箱用 smtp.163.com')
+        .addText((text) =>
+          text
+            .setPlaceholder('smtp.qq.com')
+            .setValue(this.plugin.settings.smtpHost)
+            .onChange(async (value) => {
+              this.plugin.settings.smtpHost = value.trim() || 'smtp.qq.com';
+              await this.plugin.saveSettings();
+            })
+        );
+
+      new Setting(containerEl)
+        .setName('SMTP 端口')
+        .setDesc('SSL 直连用 465，STARTTLS 用 587。QQ 邮箱推荐 465')
+        .addText((text) => {
+          text.inputEl.type = 'number';
+          text
+            .setPlaceholder('465')
+            .setValue(String(this.plugin.settings.smtpPort))
+            .onChange(async (value) => {
+              const n = parseInt(value, 10);
+              this.plugin.settings.smtpPort = Number.isFinite(n) && n > 0 ? n : 465;
+              await this.plugin.saveSettings();
+            });
+        });
+
+      new Setting(containerEl)
+        .setName('SSL 直连')
+        .setDesc('端口 465 开启，端口 587 关闭')
+        .addToggle((toggle) =>
+          toggle
+            .setValue(this.plugin.settings.smtpSecure)
+            .onChange(async (value) => {
+              this.plugin.settings.smtpSecure = value;
+              await this.plugin.saveSettings();
+            })
+        );
+
+      new Setting(containerEl)
+        .setName('发件人邮箱')
+        .setDesc('填写你的完整 QQ 邮箱地址，如 123456789@qq.com')
+        .addText((text) =>
+          text
+            .setPlaceholder('你的QQ号@qq.com')
+            .setValue(this.plugin.settings.smtpUser)
+            .onChange(async (value) => {
+              this.plugin.settings.smtpUser = value.trim();
+              await this.plugin.saveSettings();
+            })
+        );
+
+      new Setting(containerEl)
+        .setName('SMTP 授权码')
+        .setDesc('QQ 邮箱生成的 16 位授权码（非 QQ 密码），仅保存在本地 data.json')
+        .addText((text) =>
+          text
+            .setPlaceholder('16 位授权码')
+            .setValue(this.plugin.settings.smtpPass)
+            .onChange(async (value) => {
+              this.plugin.settings.smtpPass = value.trim();
+              await this.plugin.saveSettings();
+            })
+        )
+        .then((setting) => {
+          const input = setting.controlEl.querySelector('input');
+          if (input) input.type = 'password';
+        });
+    } catch (err) {
+      console.error('[竹林修仙传] 竹林咨询分区渲染异常：', err);
+    }
 
     // === 数据存储 ===
     new Setting(containerEl).setName('数据存储').setHeading();
@@ -341,91 +444,6 @@ export class PluginSettings extends PluginSettingTab {
             await this.plugin.saveSettings();
           })
       );
-
-    // === 竹林咨询 ===
-    new Setting(containerEl).setName('竹林咨询').setHeading();
-
-    // 引导卡片：QQ 邮箱 SMTP 授权码获取步骤
-    const guideBox = containerEl.createDiv({ cls: 'bamboo-about-card bamboo-consult-guide' });
-    guideBox.createEl('p', { text: '📮 发送邮件需要配置 SMTP。推荐使用 QQ 邮箱：', cls: 'bamboo-about-label' });
-    const steps = guideBox.createEl('ol', { cls: 'bamboo-consult-steps' });
-    steps.createEl('li', { text: '登录 QQ 邮箱网页版 → 点击顶部「设置」→「账户」' });
-    steps.createEl('li', { text: '找到「POP3/SMTP 服务」一栏 → 点击「开启」' });
-    steps.createEl('li', { text: '按提示发送短信验证后会得到一个授权码（16 位），复制它粘贴到下方「SMTP 授权码」输入框' });
-    guideBox.createEl('p', {
-      text: '⚠️ 授权码不是你的 QQ 密码，是 QQ 邮箱专门为第三方客户端生成的独立凭证，仅保存在本地 data.json。',
-      cls: 'bamboo-consult-note',
-    });
-
-    new Setting(containerEl)
-      .setName('SMTP 服务器')
-      .setDesc('发件服务器地址。QQ 邮箱用 smtp.qq.com，163 邮箱用 smtp.163.com')
-      .addText((text) =>
-        text
-          .setPlaceholder('smtp.qq.com')
-          .setValue(this.plugin.settings.smtpHost)
-          .onChange(async (value) => {
-            this.plugin.settings.smtpHost = value.trim() || 'smtp.qq.com';
-            await this.plugin.saveSettings();
-          })
-      );
-
-    new Setting(containerEl)
-      .setName('SMTP 端口')
-      .setDesc('SSL 直连用 465，STARTTLS 用 587。QQ 邮箱推荐 465')
-      .addText((text) => {
-        text.inputEl.type = 'number';
-        text
-          .setPlaceholder('465')
-          .setValue(String(this.plugin.settings.smtpPort))
-          .onChange(async (value) => {
-            const n = parseInt(value, 10);
-            this.plugin.settings.smtpPort = Number.isFinite(n) && n > 0 ? n : 465;
-            await this.plugin.saveSettings();
-          });
-      });
-
-    new Setting(containerEl)
-      .setName('SSL 直连')
-      .setDesc('端口 465 开启，端口 587 关闭')
-      .addToggle((toggle) =>
-        toggle
-          .setValue(this.plugin.settings.smtpSecure)
-          .onChange(async (value) => {
-            this.plugin.settings.smtpSecure = value;
-            await this.plugin.saveSettings();
-          })
-      );
-
-    new Setting(containerEl)
-      .setName('发件人邮箱')
-      .setDesc('填写你的完整 QQ 邮箱地址，如 123456789@qq.com')
-      .addText((text) =>
-        text
-          .setPlaceholder('你的QQ号@qq.com')
-          .setValue(this.plugin.settings.smtpUser)
-          .onChange(async (value) => {
-            this.plugin.settings.smtpUser = value.trim();
-            await this.plugin.saveSettings();
-          })
-      );
-
-    new Setting(containerEl)
-      .setName('SMTP 授权码')
-      .setDesc('QQ 邮箱生成的 16 位授权码（非 QQ 密码），仅保存在本地 data.json')
-      .addText((text) =>
-        text
-          .setPlaceholder('16 位授权码')
-          .setValue(this.plugin.settings.smtpPass)
-          .onChange(async (value) => {
-            this.plugin.settings.smtpPass = value.trim();
-            await this.plugin.saveSettings();
-          })
-      )
-      .then((setting) => {
-        const input = setting.controlEl.querySelector('input');
-        if (input) input.type = 'password';
-      });
 
     // 关于
     new Setting(containerEl).setName('关于').setHeading();

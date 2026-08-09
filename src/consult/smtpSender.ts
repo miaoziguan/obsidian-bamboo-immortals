@@ -3,36 +3,43 @@
  *
  * 直接从 Obsidian 桌面端（Electron）发邮件到羽鳞君的收件箱。
  * 用户自配 SMTP 凭证，凭证仅保存在本地 data.json，无后端/无中转。
- * 移植自 bamboo-license-gen/src/license/smtpSender.ts
  *
- * SMTP 配置由调用方传入，本模块不依赖 Obsidian API。
+ * 实现参考 bamboo-license-gen/src/license/smtpSender.ts 的成熟写法：
+ *   - 事件驱动状态机（避免 readLine 里 Buffer/string 混用导致的超时）
+ *   - tls.connect 后显式 setEncoding('utf-8')（关键：否则中文分包会错位 → 一直读到超时）
+ *   - socket 级 setTimeout 兜底，不再逐条 readLine 单独计时
  */
 
 // 不顶层 import 'net'/'tls'：官方 lint 禁止直接引入 Node 内置模块（移动端无运行时）。
-// 仅用本地最小接口描述 socket 形状，运行时模块经 nodeRequire() 通过桌面端 Electron 的
-// 全局 window.require 惰性加载，并由 isSmtpAvailable() 守卫（仅桌面端触发）。
+// 运行时模块经 nodeRequire() 通过桌面端 Electron 的全局 window.require 惰性加载，
+// 并由 isSmtpAvailable() 守卫（仅桌面端触发）。
 
 /** SMTP 底层 socket 的最小形状（net.Socket / tls.TLSSocket 共有） */
 interface SmtpSocket {
   write(chunk: string | Uint8Array): boolean;
   destroy(): void;
+  end(): void;
   destroyed: boolean;
-  on(event: 'data', listener: (chunk: Buffer) => void): void;
+  setEncoding(enc: string): void;
+  setTimeout(ms: number, cb?: () => void): void;
+  setNoDelay?(v: boolean): void;
+  on(event: 'data', listener: (chunk: string | Buffer) => void): void;
   on(event: 'error', listener: (err: Error) => void): void;
   on(event: 'close', listener: () => void): void;
-  off(event: 'data', listener: (chunk: Buffer) => void): void;
+  off(event: 'data', listener: (chunk: string | Buffer) => void): void;
   off(event: 'error', listener: (err: Error) => void): void;
   off(event: 'close', listener: () => void): void;
 }
 
 /** 经 window.require 惰性加载的 net 模块形状 */
 interface NetModule {
-  connect(opts: { host: string; port: number }, cb?: () => void): SmtpSocket;
+  connect(opts: { host: string; port: number }): SmtpSocket;
 }
 
 /** 经 window.require 惰性加载的 tls 模块形状 */
 interface TlsModule {
-  connect(opts: { socket: SmtpSocket; rejectUnauthorized: boolean }, cb?: () => void): SmtpSocket;
+  connect(opts: { host: string; port: number; rejectUnauthorized?: boolean }): SmtpSocket;
+  connect(opts: { socket: SmtpSocket; host?: string; port?: number; rejectUnauthorized?: boolean }): SmtpSocket;
 }
 
 /**
@@ -58,276 +65,215 @@ export interface SmtpConfig {
   host: string;     // SMTP 服务器地址，如 smtp.qq.com
   port: number;     // 通常 465（SSL）或 587（STARTTLS）
   secure: boolean;  // true = SSL 直连(465)，false = STARTTLS(587)
-  user: string;     // 邮箱账号（发件人）
+  user: string;     // 邮箱账号（发件人，需完整邮箱如 xxx@qq.com）
   pass: string;     // SMTP 授权码
+  fromName?: string; // 发件人显示名（可选）
 }
 
 export interface SendResult {
   ok: boolean;
   error?: string;
+  trace?: string[]; // 调试追踪：每条发送/接收的命令（密码已脱敏）
 }
 
-/** 简单的 Base64 编码（仅支持 ASCII，足够 SMTP AUTH 用） */
-function toBase64(str: string): string {
-  return Buffer.from(str).toString('base64');
-}
-
-/** 从 SMTP 响应行中提取状态码 */
-function parseCode(line: string): number {
-  return parseInt(line.slice(0, 3), 10) || 0;
-}
-
-/** 从 socket 读取一行（SMTP 每行以 \r\n 结尾） */
-function readLine(sock: SmtpSocket, timeoutMs = 10000): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const timer = window.setTimeout(() => {
-      cleanup();
-      reject(new Error(`SMTP 读取响应超时（${timeoutMs}ms）`));
-    }, timeoutMs);
-
-    let buf = '';
-
-    function onData(chunk: Buffer) {
-      buf += chunk.toString('utf-8');
-      if (buf.includes('\r\n')) {
-        const idx = buf.indexOf('\r\n');
-        const line = buf.slice(0, idx);
-        buf = buf.slice(idx + 2);
-        cleanup();
-        resolve(line);
-      }
-    }
-
-    function onError(err: Error) {
-      cleanup();
-      reject(err);
-    }
-
-    function onClose() {
-      cleanup();
-      reject(new Error('SMTP 连接被对方关闭'));
-    }
-
-    function cleanup() {
-      window.clearTimeout(timer);
-      sock.off('data', onData);
-      sock.off('error', onError);
-      sock.off('close', onClose);
-    }
-
-    sock.on('data', onData);
-    sock.on('error', onError);
-    sock.on('close', onClose);
-  });
-}
-
-/** 发送命令 → 读一行响应 → 返回 { code, line } */
-async function sendCmd(
-  sock: SmtpSocket,
-  cmd: string,
-): Promise<{ code: number; line: string }> {
-  sock.write(cmd + '\r\n');
-  const line = await readLine(sock);
-  return { code: parseCode(line), line };
-}
-
-/** 发送 EHLO → 读取多行响应（250- 开头表示后续还有行，250 空格表示结束） */
-async function sendEhlo(
-  sock: SmtpSocket,
-  hostname: string,
-): Promise<string[]> {
-  sock.write(`EHLO ${hostname}\r\n`);
-  const lines: string[] = [];
-  // EHLO 响应为多行：每行以 250- 续接，直到 250<空格> 表示结束
-  let reading = true;
-  while (reading) {
-    const line = await readLine(sock);
-    lines.push(line);
-    const code = parseCode(line);
-    // 不是 250 开头或第四个字符是空格 → 响应结束
-    if (code !== 250 || (line.length >= 4 && line[3] === ' ')) {
-      reading = false;
-    }
-  }
-  return lines;
+function b64(s: string): string {
+  return Buffer.from(s, 'utf-8').toString('base64');
 }
 
 /**
- * 发送一封邮件
+ * 发送一封邮件（事件驱动状态机版，对齐 license-gen 成熟实现）
  *
- * 流程：TCP 连接 → (可选 STARTTLS 升级) → EHLO → AUTH LOGIN → MAIL FROM → RCPT TO → DATA → QUIT
+ * secure=true 走 465 SSL；secure=false 走 587 STARTTLS（明文 EHLO → STARTTLS → TLS 升级 → 再 EHLO）。
  */
-export async function sendEmail(
-  config: SmtpConfig,
+export function sendEmail(
+  cfg: SmtpConfig,
   to: string,
   subject: string,
   bodyHtml: string,
 ): Promise<SendResult> {
-  if (!config.user || !config.pass) {
-    return { ok: false, error: 'SMTP 未配置：请先在插件设置中填写发件邮箱和 SMTP 授权码' };
-  }
-
-  let rawSock: SmtpSocket | null = null;
-  let sock: SmtpSocket;
-
-  if (!isSmtpAvailable()) {
-    return { ok: false, error: '竹林咨询仅支持桌面端（移动端无法直连 SMTP）' };
-  }
-
-  const net = nodeRequire('net');
-  const tls = nodeRequire('tls');
-
-  // 配置自检：secure 与 port 必须匹配，否则服务器不回话 → 表现就是「读取响应超时」
-  if (config.secure && config.port !== 465) {
-    return { ok: false, error: `配置有误：已开启 SSL 直连，端口应为 465，当前为 ${config.port}。请改端口为 465，或关闭 SSL 直连改用 587 + STARTTLS。` };
-  }
-  if (!config.secure && config.port !== 587) {
-    return { ok: false, error: `配置有误：未开启 SSL 直连（STARTTLS 模式），端口应为 587，当前为 ${config.port}。请改端口为 587，或开启 SSL 直连改用 465。` };
-  }
-
-  try {
-    // 1. TCP 连接（带连接超时，避免 host/端口不通时无限 pending）
-    rawSock = await new Promise<SmtpSocket>((resolve, reject) => {
-      const connTimer = window.setTimeout(() => {
-        s.destroy();
-        reject(new Error(`连接超时（5s）：无法在 ${config.host}:${config.port} 建立 TCP 连接，请检查服务器地址/端口或网络`));
-      }, 5000);
-      const s = net.connect({ host: config.host, port: config.port }, () => {
-        window.clearTimeout(connTimer);
-        resolve(s);
-      });
-      s.on('error', (err) => {
-        window.clearTimeout(connTimer);
-        reject(err);
-      });
-    });
-
-    // 2. 读欢迎消息
-    const welcome = await readLine(rawSock);
-    const welcomeCode = parseCode(welcome);
-    if (welcomeCode !== 220) {
-      rawSock.destroy();
-      return { ok: false, error: `SMTP 连接异常：${welcome}` };
+  return new Promise((resolve) => {
+    if (!cfg.user || !cfg.pass) {
+      resolve({ ok: false, error: 'SMTP 未配置：请先在插件设置中填写发件邮箱和 SMTP 授权码' });
+      return;
+    }
+    if (!to || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to)) {
+      resolve({ ok: false, error: '收件人邮箱格式不合法' });
+      return;
+    }
+    // QQ/腾讯企业邮要求 MAIL FROM 必须完整邮箱，纯 QQ 号码会被反垃圾网关拒
+    if (!/^[^@\s]+@[^@\s]+$/.test(cfg.user)) {
+      resolve({ ok: false, error: '发件邮箱格式不合法：需填写完整邮箱（如 xxx@qq.com），不能是纯 QQ 号码' });
+      return;
+    }
+    if (!isSmtpAvailable()) {
+      resolve({ ok: false, error: '竹林咨询仅支持桌面端（移动端无法直连 SMTP）' });
+      return;
     }
 
-    // 3. 决定是否 SSL / STARTTLS
-    const tlsHandshake = (raw: SmtpSocket): Promise<SmtpSocket> =>
-      new Promise<SmtpSocket>((resolve, reject) => {
-        const hsTimer = window.setTimeout(() => {
-          ts.destroy();
-          reject(new Error('TLS 握手超时（5s）：服务器未响应加密握手，请检查端口/SSL 配置或网络'));
-        }, 5000);
-        const ts = tls.connect({
-          socket: raw,
-          rejectUnauthorized: false, // QQ 邮箱证书有时 tricky
-        }, () => {
-          window.clearTimeout(hsTimer);
-          resolve(ts);
-        });
-        ts.on('error', (err) => {
-          window.clearTimeout(hsTimer);
-          reject(err);
-        });
-      });
+    const host = cfg.host || 'smtp.qq.com';
+    const port = cfg.port || (cfg.secure ? 465 : 587);
 
-    if (config.secure) {
-      // 465 端口：直接 TLS 握手
-      sock = await tlsHandshake(rawSock);
-    } else {
-      // 587 端口：先 EHLO 再 STARTTLS
-      sock = rawSock;
-
-      let r = await sendCmd(sock, `EHLO localhost`);
-      if (r.code !== 250) {
-        sock.destroy();
-        return { ok: false, error: `EHLO 失败：${r.line}` };
-      }
-
-      r = await sendCmd(sock, 'STARTTLS');
-      if (r.code !== 220) {
-        sock.destroy();
-        return { ok: false, error: `STARTTLS 失败：${r.line}` };
-      }
-
-      // TLS 升级
-      sock = await tlsHandshake(rawSock);
+    // 配置自检：secure 与 port 必须匹配，否则服务器不回话 → 表现就是「读取响应超时」
+    if (cfg.secure && port !== 465) {
+      resolve({ ok: false, error: `配置有误：已开启 SSL 直连，端口应为 465，当前为 ${port}。请改端口为 465，或关闭 SSL 直连改用 587 + STARTTLS。` });
+      return;
+    }
+    if (!cfg.secure && port !== 587) {
+      resolve({ ok: false, error: `配置有误：未开启 SSL 直连（STARTTLS 模式），端口应为 587，当前为 ${port}。请改端口为 587，或开启 SSL 直连改用 465。` });
+      return;
     }
 
-    // 4. EHLO
-    await sendEhlo(sock, 'localhost');
+    const net = nodeRequire('net');
+    const tls = nodeRequire('tls');
 
-    // 5. AUTH LOGIN
-    let r = await sendCmd(sock, 'AUTH LOGIN');
-    if (r.code !== 334) {
-      sock.destroy();
-      return { ok: false, error: `AUTH LOGIN 不支持：${r.line}` };
-    }
+    const conn: SmtpSocket = cfg.secure
+      ? tls.connect({ host, port, rejectUnauthorized: false })
+      : net.connect({ host, port });
 
-    r = await sendCmd(sock, toBase64(config.user));
-    if (r.code !== 334) {
-      sock.destroy();
-      return { ok: false, error: `SMTP 用户名被拒：${r.line}` };
-    }
+    const trace: string[] = [];
 
-    r = await sendCmd(sock, toBase64(config.pass));
-    if (r.code !== 235) {
-      sock.destroy();
-      return { ok: false, error: `SMTP 授权码验证失败。请检查授权码是否正确，是否开启了 SMTP 服务？` };
-    }
+    // 状态机步骤
+    //   0=等待 banner / 发 EHLO
+    //   1=AUTH LOGIN（或 STARTTLS，待 STARTTLS 升级后重置为 0）
+    //   2=AUTH 用户名 b64
+    //   3=AUTH 密码 b64
+    //   4=MAIL FROM
+    //   5=RCPT TO
+    //   6=DATA
+    //   7=邮件头+正文（等 354 后写 body，250 后结束）
+    //   8=QUIT
+    //   9=结束（resolve）
+    let step = 0;
+    let buffer = '';
+    let answered = false;
+    let secureUpgraded = cfg.secure; // STARTTLS 升级后置 true
 
-    // 6. MAIL FROM
-    r = await sendCmd(sock, `MAIL FROM:<${config.user}>`);
-    if (r.code !== 250) {
-      sock.destroy();
-      return { ok: false, error: `MAIL FROM 失败：${r.line}` };
-    }
-
-    // 7. RCPT TO
-    r = await sendCmd(sock, `RCPT TO:<${to}>`);
-    if (r.code !== 250) {
-      sock.destroy();
-      return { ok: false, error: `收件人地址无效：${r.line}` };
-    }
-
-    // 8. DATA
-    r = await sendCmd(sock, 'DATA');
-    if (r.code !== 354) {
-      sock.destroy();
-      return { ok: false, error: `DATA 指令失败：${r.line}` };
-    }
-
-    // 拼装邮件内容
-    const subjectEncoded = `=?UTF-8?B?${Buffer.from(subject).toString('base64')}?=`;
-    const mail = [
-      `From: ${config.user}`,
-      `To: ${to}`,
-      `Subject: ${subjectEncoded}`,
-      'MIME-Version: 1.0',
-      'Content-Type: text/html; charset=UTF-8',
-      '',
-      bodyHtml,
-    ].join('\r\n');
-
-    // 正文以 \r\n.\r\n 结束
-    sock.write(mail.replace(/\n\./g, '\n..') + '\r\n.\r\n');
-
-    const dataLine = await readLine(sock);
-    const dataCode = parseCode(dataLine);
-    if (dataCode !== 250) {
-      sock.destroy();
-      return { ok: false, error: `发送失败：${dataLine}` };
-    }
-
-    // 9. QUIT
-    await sendCmd(sock, 'QUIT');
-    sock.destroy();
-
-    return { ok: true };
-  } catch (e) {
-    if (rawSock && !rawSock.destroyed) rawSock.destroy();
-    return {
-      ok: false,
-      error: `SMTP 连接错误：${e instanceof Error ? e.message : '未知错误'}`,
+    const fail = (msg: string) => {
+      if (answered) return;
+      answered = true;
+      try { conn.destroy(); } catch { /* noop */ }
+      resolve({ ok: false, error: msg, trace });
     };
-  }
+
+    const sendNext = () => {
+      let raw = '';
+      switch (step) {
+        case 0:
+          raw = `EHLO ${host}\r\n`;
+          break;
+        case 1:
+          raw = cfg.secure ? 'AUTH LOGIN\r\n' : 'STARTTLS\r\n';
+          break;
+        case 2:
+          raw = b64(cfg.user) + '\r\n'; // AUTH 用户名（收到 334 后发）
+          break;
+        case 3:
+          raw = b64(cfg.pass) + '\r\n'; // AUTH 密码（收到 334 后发）
+          break;
+        case 4:
+          raw = `MAIL FROM:<${cfg.user}>\r\n`;
+          break;
+        case 5:
+          raw = `RCPT TO:<${to}>\r\n`;
+          break;
+        case 6:
+          raw = 'DATA\r\n';
+          break;
+        case 7: {
+          const fromName = cfg.fromName || '竹林修仙传';
+          const subjectEncoded = `=?UTF-8?B?${Buffer.from(subject).toString('base64')}?=`;
+          const head =
+            `From: "${fromName}" <${cfg.user}>\r\n` +
+            `To: <${to}>\r\n` +
+            `Subject: ${subjectEncoded}\r\n` +
+            'MIME-Version: 1.0\r\n' +
+            'Content-Type: text/html; charset=UTF-8\r\n' +
+            '\r\n';
+          const body = bodyHtml.replace(/^\./gm, '..') + '\r\n.\r\n';
+          raw = head + body;
+          break;
+        }
+        case 8:
+          raw = 'QUIT\r\n';
+          break;
+      }
+      // 调试日志：写出/读入的行（密码 b64 已脱敏为 ***）
+      const masked = raw.replace(b64(cfg.pass), '***');
+      trace.push(`>>> ${masked.replace(/\r\n/g, '\\r\\n')}`);
+      conn.write(raw);
+    };
+
+    const handleData = (chunk: string | Buffer) => {
+      buffer += chunk.toString();
+      let idx: number;
+      while ((idx = buffer.indexOf('\r\n')) !== -1) {
+        const line = buffer.slice(0, idx);
+        buffer = buffer.slice(idx + 2);
+        const code = parseInt(line.slice(0, 3), 10);
+        const cont = line[3] === '-'; // 多行续接（如 EHLO 多条）
+        trace.push(`<<< ${line}`);
+        if (cont) continue; // 多行响应续接，不处理
+
+        if (code >= 400) {
+          fail(`SMTP 错误 ${code}：${line}`);
+          return;
+        }
+
+        // STARTTLS 升级：明文收到 220 后把 socket 升级为 TLS，再重新发 EHLO
+        if (!secureUpgraded && code === 220) {
+          secureUpgraded = true;
+          const tlsSock = tls.connect({ socket: conn as SmtpSocket, host, rejectUnauthorized: false });
+          tlsSock.setEncoding('utf-8');
+          tlsSock.on('data', handleData);
+          tlsSock.on('error', (err: Error) => fail(`连接/发送失败：${err.message}`));
+          tlsSock.on('close', () => { if (!answered) fail('连接意外关闭，邮件可能未发送'); });
+          step = 0;
+          tlsSock.write(`EHLO ${host}\r\n`);
+          trace.push('>>> (STARTTLS 升级为 TLS 后重发 EHLO)');
+          return;
+        }
+
+        // 连接 banner（连接刚建立时的 220）不是命令响应，不推进 step
+        if (step === 0 && code === 220) return;
+
+        // AUTH LOGIN 的中间应答 334：直接发下一步（用户名/密码），不 step++
+        if (code === 334) {
+          // step=1 刚发完 AUTH LOGIN → 发用户名(step=2)
+          // step=2 刚发完用户名 → 发密码(step=3)
+          if (step === 1 || step === 2) {
+            step++;
+            sendNext();
+          } else {
+            fail(`SMTP 协议错误：意外收到 334（step=${step}）`);
+          }
+          continue;
+        }
+
+        // 正常命令完成（250/235 等）：推进 step，发下一条
+        step++;
+        if (step >= 9) {
+          answered = true;
+          try { conn.end(); } catch { /* noop */ }
+          resolve({ ok: true, trace });
+          return;
+        }
+        sendNext();
+      }
+    };
+
+    conn.setEncoding('utf-8');
+    conn.on('data', handleData);
+    conn.on('error', (err: Error) => fail(`连接/发送失败：${err.message}`));
+    conn.on('close', () => { if (!answered) fail('连接意外关闭，邮件可能未发送'); });
+    // 整体兜底超时（socket 级，比逐条 readLine 计时更稳）
+    conn.setTimeout(15000, () => fail('SMTP 超时（15s）：服务器未在规定时间内响应，请检查网络/代理或端口配置'));
+
+    // 连接建立后立即触发首次 EHLO（banner 是被动接收，不阻塞）
+    const onReady = () => sendNext();
+    if (cfg.secure) {
+      (conn as unknown as { once(ev: string, cb: () => void): void }).once('secureConnect', onReady);
+    } else {
+      (conn as unknown as { once(ev: string, cb: () => void): void }).once('connect', onReady);
+    }
+  });
 }

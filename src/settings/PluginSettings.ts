@@ -1,4 +1,4 @@
-import { App, PluginSettingTab, Setting, Notice, Modal } from 'obsidian';
+import { App, PluginSettingTab, Setting, Notice, Modal, SettingPage, SettingDefinitionItem } from 'obsidian';
 import type BambooReviewPlugin from '../../main';
 import { ThemeBridge } from '../bridge/ThemeBridge';
 import { arrayBufferToBase64 } from '../utils/base64';
@@ -6,9 +6,6 @@ import { encodeBackup, decodeBackup } from '../license/backupCode';
 
 /** Obsidian 插件运行时注入的主窗口 document（非 iframe 内的 document） */
 declare const activeDocument: Document;
-
-/** 设置页 tab 键（顺序即 tab 头从左到右） */
-const TAB_KEYS = ['overview', 'license', 'ai', 'appearance', 'consult'] as const;
 
 /** 自定义白噪音音源 */
 export interface NoiseItem {
@@ -91,183 +88,45 @@ export const DEFAULT_SETTINGS: BambooReviewSettings = {
 };
 
 /**
- * PluginSettings - Obsidian 原生设置面板
+ * PluginSettings - Obsidian 原生设置面板（1.13.0+ 声明式 + 命令式子页）
  *
- * 注意：刻意不实现 1.13.0+ 的声明式 getSettingDefinitions() API。
- * 本插件使用完全命令式、动态生成的自定义 UI（buildUI/renderAllSections），
- * 若实现声明式定义会令 Obsidian 走声明式渲染路径并跳过 display()，
- * 导致所有自定义区块无法渲染。这是有意的取舍：牺牲设置搜索索引能力，
- * 换取复杂动态 UI 的正常工作。minAppVersion 为 1.8.0，无需声明式兼容。
- * 因此 Obsidian 官方 lint 会提示 "PluginSettingTab does not implement
- * getSettingDefinitions()"，此为预期现象，非缺陷。
+ * 采用 Obsidian 1.13 推荐架构：
+ * - 顶层 getSettingDefinitions() 返回 5 个 SettingDefinitionPage，
+ *   每个 page 的 name/desc 进入设置搜索索引，消除官方 lint 提示；
+ * - 每个 page 通过 `page: () => new XxxPage()` 工厂返回一个命令式 SettingPage
+ *   子类，在子类的 display() 里沿用原 renderXxxTab 的命令式逻辑（含页内
+ *   重绘、iframe 联动、动态卡片），因此复杂动态 UI 完全保留。
+ * 这样既获得设置搜索能力，又不必把全部自定义 UI 硬塞进声明式控制数组。
  */
 export class PluginSettings extends PluginSettingTab {
   plugin: BambooReviewPlugin;
-
-  /** 当前选中的 tab 键，reload 后默认停在第一个 */
-  private currentTab: string = TAB_KEYS[0];
 
   constructor(app: App, plugin: BambooReviewPlugin) {
     super(app, plugin);
     this.plugin = plugin;
   }
 
-  display(): void {
-    this.buildUI();
-  }
-
-  /** 渲染设置面板：tab 头 + 内容区，按功能分类分页 */
-  private buildUI(): void {
-    const { containerEl } = this;
-    containerEl.empty();
-    containerEl.addClass('bamboo-review-settings');
-
-    // tab 头容器（始终显示，不随内容清空而消失）
-    const tabBar = containerEl.createDiv({ cls: 'bamboo-settings-tabs' });
-    const contentEl = containerEl.createDiv({ cls: 'bamboo-settings-tab-content' });
-
-    const tabs: { key: string; label: string; render: (el: HTMLElement) => void }[] = [
-      { key: TAB_KEYS[0], label: '概览', render: (el) => this.renderAboutTab(el) },
-      { key: TAB_KEYS[1], label: '激活', render: (el) => this.renderLicenseTab(el) },
-      { key: TAB_KEYS[2], label: 'AI 规划', render: (el) => this.renderAITab(el) },
-      { key: TAB_KEYS[3], label: '外观', render: (el) => this.renderAppearanceTab(el) },
-      // 竹林咨询：独立隔离渲染，单独成 tab，确保即便别的 tab 抛错也有入口
-      { key: TAB_KEYS[4], label: '竹林咨询', render: (el) => this.renderConsultTab(el) },
+  /** 声明式定义：5 个可搜索的页面，内部仍命令式渲染 */
+  getSettingDefinitions(): SettingDefinitionItem[] {
+    return [
+      { type: 'page', name: '概览', desc: '关于竹林修仙传与作者信息', page: () => new OverviewPage(this.plugin) },
+      { type: 'page', name: '激活', desc: '购买激活、备份码与多设备同步', page: () => new LicensePage(this.plugin) },
+      { type: 'page', name: 'AI 规划', desc: '自然语言转目标卡片的 AI 配置', page: () => new AIPage(this.plugin) },
+      { type: 'page', name: '外观', desc: '主题动效、白噪音与调色联动', page: () => new AppearancePage(this.plugin) },
+      { type: 'page', name: '竹林咨询', desc: '邮箱 SMTP 发件配置', page: () => new ConsultPage(this.plugin) },
     ];
+  }
+}
 
-    // 渲染 tab 头按钮
-    const tabButtons = new Map<string, HTMLElement>();
-    tabs.forEach((tab) => {
-      const btn = tabBar.createEl('button', {
-        text: tab.label,
-        cls: 'bamboo-settings-tab-btn',
-      });
-      btn.addEventListener('click', () => {
-        this.currentTab = tab.key;
-        this.activateTab(tabButtons, contentEl, tabs);
-      });
-      tabButtons.set(tab.key, btn);
-    });
-
-    this.activateTab(tabButtons, contentEl, tabs);
+/** 概览页：关于卡片 + 插件简介 */
+class OverviewPage extends SettingPage {
+  constructor(private plugin: BambooReviewPlugin) {
+    super();
+    this.title = '概览';
   }
 
-  /** 切换/重绘当前 tab：高亮按钮 + 清空内容区并渲染对应区块 */
-  private activateTab(
-    tabButtons: Map<string, HTMLElement>,
-    contentEl: HTMLElement,
-    tabs: { key: string; label: string; render: (el: HTMLElement) => void }[]
-  ): void {
-    tabButtons.forEach((btn, key) => {
-      btn.toggleClass('is-active', key === this.currentTab);
-    });
-    contentEl.empty();
-    const active = tabs.find((t) => t.key === this.currentTab) ?? tabs[0];
-    try {
-      active.render(contentEl);
-    } catch (err) {
-      // 兜底：任何分区渲染抛错都不应让整页白屏
-      console.error('[竹林修仙传] 设置页渲染异常：', err);
-      contentEl.createEl('p', {
-        text: '⚠️ 设置页部分内容渲染失败，请查看开发者控制台（Ctrl/Cmd+Shift+I）的报错。',
-        cls: 'bamboo-settings-error',
-      });
-    }
-  }
-
-  /** 竹林咨询 tab（零依赖、独立隔离渲染） */
-  private renderConsultTab(containerEl: HTMLElement): void {
-    try {
-      new Setting(containerEl).setName('竹林咨询（邮箱 SMTP 配置）').setHeading();
-
-      // 引导卡片：QQ 邮箱 SMTP 授权码获取步骤
-      const guideBox = containerEl.createDiv({ cls: 'bamboo-about-card bamboo-consult-guide' });
-      guideBox.createEl('p', { text: '📮 发送邮件需要配置 SMTP。推荐使用 QQ 邮箱：', cls: 'bamboo-about-label' });
-      const steps = guideBox.createEl('ol', { cls: 'bamboo-consult-steps' });
-      steps.createEl('li', { text: '登录 QQ 邮箱网页版 → 点击顶部「设置」→「账户」' });
-      steps.createEl('li', { text: '找到「POP3/SMTP 服务」一栏 → 点击「开启」' });
-      steps.createEl('li', { text: '按提示发送短信验证后会得到一个授权码（16 位），复制它粘贴到下方「SMTP 授权码」输入框' });
-      guideBox.createEl('p', {
-        text: '⚠️ 授权码不是你的 QQ 密码，是 QQ 邮箱专门为第三方客户端生成的独立凭证，仅保存在本地 data.json。',
-        cls: 'bamboo-consult-note',
-      });
-
-      new Setting(containerEl)
-        .setName('SMTP 服务器')
-        .setDesc('发件服务器地址。QQ 邮箱用 smtp.qq.com，163 邮箱用 smtp.163.com')
-        .addText((text) =>
-          text
-            .setPlaceholder('smtp.qq.com')
-            .setValue(this.plugin.settings.smtpHost)
-            .onChange(async (value) => {
-              this.plugin.settings.smtpHost = value.trim() || 'smtp.qq.com';
-              await this.plugin.saveSettings();
-            })
-        );
-
-      new Setting(containerEl)
-        .setName('SMTP 端口')
-        .setDesc('SSL 直连用 465，STARTTLS 用 587。QQ 邮箱推荐 465')
-        .addText((text) => {
-          text.inputEl.type = 'number';
-          text
-            .setPlaceholder('465')
-            .setValue(String(this.plugin.settings.smtpPort))
-            .onChange(async (value) => {
-              const n = parseInt(value, 10);
-              this.plugin.settings.smtpPort = Number.isFinite(n) && n > 0 ? n : 465;
-              await this.plugin.saveSettings();
-            });
-        });
-
-      new Setting(containerEl)
-        .setName('SSL 直连')
-        .setDesc('端口 465 开启，端口 587 关闭')
-        .addToggle((toggle) =>
-          toggle
-            .setValue(this.plugin.settings.smtpSecure)
-            .onChange(async (value) => {
-              this.plugin.settings.smtpSecure = value;
-              await this.plugin.saveSettings();
-            })
-        );
-
-      new Setting(containerEl)
-        .setName('发件人邮箱')
-        .setDesc('填写你的完整 QQ 邮箱地址，如 123456789@qq.com')
-        .addText((text) =>
-          text
-            .setPlaceholder('你的QQ号@qq.com')
-            .setValue(this.plugin.settings.smtpUser)
-            .onChange(async (value) => {
-              this.plugin.settings.smtpUser = value.trim();
-              await this.plugin.saveSettings();
-            })
-        );
-
-      new Setting(containerEl)
-        .setName('SMTP 授权码')
-        .setDesc('QQ 邮箱生成的 16 位授权码（非 QQ 密码），仅保存在本地 data.json')
-        .addText((text) =>
-          text
-            .setPlaceholder('16 位授权码')
-            .setValue(this.plugin.settings.smtpPass)
-            .onChange(async (value) => {
-              this.plugin.settings.smtpPass = value.trim();
-              await this.plugin.saveSettings();
-            })
-        )
-        .then((setting) => {
-          const input = setting.controlEl.querySelector('input');
-          if (input) input.type = 'password';
-        });
-    } catch (err) {
-      console.error('[竹林修仙传] 竹林咨询分区渲染异常：', err);
-    }
-  }
-
-  /** 概览 tab：关于卡片 + 插件简介 */
-  private renderAboutTab(containerEl: HTMLElement): void {
+  display(): void {
+    const containerEl = this.containerEl;
     new Setting(containerEl).setName('关于').setHeading();
 
     // ───── 卡片 1：插件简介 ─────
@@ -287,7 +146,7 @@ export class PluginSettings extends PluginSettingTab {
     void (async () => {
       try {
         const pluginDir = this.plugin.manifest.dir ?? '';
-        const adapter = this.app.vault.adapter;
+        const adapter = this.plugin.app.vault.adapter;
         const candidates = [
           `${pluginDir}/author-avatar.jpg`,
           `${pluginDir}/webapp/assets/images/author-avatar.jpg`,
@@ -304,7 +163,6 @@ export class PluginSettings extends PluginSettingTab {
         }
       } catch { /* silently skip — show default empty avatar */ }
     })();
-
 
     const authorInfo = authorRow.createDiv({ cls: 'bamboo-about-author-info' });
     authorInfo.createEl('p', { text: '羽鳞君', cls: 'bamboo-about-author-name' });
@@ -331,9 +189,18 @@ export class PluginSettings extends PluginSettingTab {
     contactBox.createEl('p', { text: '邮箱：yanyulin2100@qq.com', cls: 'bamboo-about-desc' });
     contactBox.createEl('p', { text: '微信：yanhu94', cls: 'bamboo-about-desc' });
   }
+}
 
-  /** 激活 tab：购买入口 + License 区块（含数据存储路径/Markdown 同步合并到此更合理，但保持原分组） */
-  private renderLicenseTab(containerEl: HTMLElement): void {
+/** 激活页：购买入口 + License 区块 + 数据存储 */
+class LicensePage extends SettingPage {
+  constructor(private plugin: BambooReviewPlugin) {
+    super();
+    this.title = '激活';
+  }
+
+  display(): void {
+    const containerEl = this.containerEl;
+    containerEl.empty();
     new Setting(containerEl).setName('激活').setHeading();
 
     // 购买激活入口（轻量模式：付款后私聊作者拿码）
@@ -345,7 +212,7 @@ export class PluginSettings extends PluginSettingTab {
           .setButtonText('查看购买说明')
           .setCta()
           .onClick(() => {
-            new PurchaseModal(this.app, this.plugin).open();
+            new PurchaseModal(this.plugin.app, this.plugin).open();
           })
       );
 
@@ -380,8 +247,151 @@ export class PluginSettings extends PluginSettingTab {
       );
   }
 
-  /** AI 规划 tab */
-  private renderAITab(containerEl: HTMLElement): void {
+  /** 激活区：输入激活码 / 显示状态（原生设置页作为激活的补充入口，主入口在 webapp 内遮罩） */
+  private renderLicenseSection(containerEl: HTMLElement): void {
+    // 使用插件级 LicenseStore 单例（与 webapp 门控同源）
+    const store = this.plugin.license;
+    if (!store) {
+      // 防御：设置页打开时 license 尚未初始化（极端时序），
+      // 不应让异常吞掉后续所有分区（激活/竹林咨询等）
+      new Setting(containerEl)
+        .setName('激活')
+        .setHeading()
+        .setDesc('激活信息加载中，请稍后重新打开本设置页。');
+      return;
+    }
+    const active = store.isActive();
+
+    // 状态行
+    const savedTag = store.getSavedTag();
+    const tagDesc = active
+      ? savedTag
+        ? `已激活（用户码，归属 TAG ${savedTag}），全部功能已解锁。`
+        : '已激活，全部功能已解锁。'
+      : '未激活，复盘视图将显示激活遮罩。';
+    new Setting(containerEl)
+      .setName('激活状态')
+      .setDesc(tagDesc)
+      .addText((text) => {
+        text.setDisabled(true).setValue(active ? '✅ 已激活' : '🔒 未激活');
+      });
+
+    // 已激活：提供「解除激活」便于调试 / 退款，以及备份码导出 / 导入
+    if (active) {
+      // —— 方案 1：备份码（换设备 / 换仓库用）——
+      new Setting(containerEl)
+        .setName('备份码')
+        .setDesc(
+          '备份码 = 当前激活码的便携封装（BRIBACK- 开头），可在另一台设备 / 另一个仓库的激活页「导入备份码」一键激活，免去手抄长串激活码。不含任何密钥，请妥善保管。'
+        )
+        .addButton((btn) =>
+          btn.setButtonText('导出备份码').onClick(async () => {
+            const savedKey = store.getSavedKey();
+            if (!savedKey) {
+              new Notice('未找到已保存的激活码，无法导出备份码');
+              return;
+            }
+            try {
+              const backup = encodeBackup(savedKey);
+              await navigator.clipboard.writeText(backup);
+              new Notice('备份码已复制到剪贴板，请妥善保存 🔑', 8000);
+            } catch {
+              new Notice('复制失败，请检查浏览器剪贴板权限');
+            }
+          })
+        );
+
+      new Setting(containerEl)
+        .setName('导入备份码')
+        .setDesc('若当前设备尚未激活，可粘贴另一台设备导出的备份码完成激活。')
+        .addText((text) =>
+          text.setPlaceholder('BRIBACK-...').onChange((v) => {
+            (this as unknown as { _pendingBackup?: string })._pendingBackup = v;
+          })
+        )
+        .addButton((btn) =>
+          btn.setButtonText('导入并激活').onClick(async () => {
+            const raw = ((this as unknown as { _pendingBackup?: string })._pendingBackup ?? '').trim();
+            if (!raw) {
+              new Notice('请先粘贴备份码');
+              return;
+            }
+            let code: string;
+            try {
+              code = decodeBackup(raw);
+            } catch (e) {
+              new Notice(`导入失败：${e instanceof Error ? e.message : '备份码无效'}`);
+              return;
+            }
+            const res = await store.activate(code);
+            if (res.ok) {
+              this.display();
+              new Notice('备份码导入成功，已激活 🎋', 6000);
+            } else {
+              new Notice(`导入失败：${res.reason ?? '未知错误'}`);
+            }
+          })
+        );
+
+      // —— 方案 3：vault 同步说明 ——
+      new Setting(containerEl)
+        .setName('多设备 / 多仓库同步')
+        .setDesc(
+          '激活状态保存在本 vault 的 data.json 中。若你用 Obsidian Sync、git 或网盘同步该 vault，激活态会随 vault 一起迁移，换电脑后无需重新激活；仅当在"全新 vault"或"全新仓库"首次使用时，才需要重新输入激活码或导入备份码。'
+        );
+
+      new Setting(containerEl)
+        .setName('解除激活')
+        .setDesc('清除本机激活状态（调试 / 退款用）。之后需重新输入激活码。')
+        .addButton((btn) =>
+          btn.setButtonText('解除激活').onClick(async () => {
+            await store.deactivate();
+            this.display();
+            new Notice('已解除激活。重新打开复盘视图将再次显示激活遮罩。');
+          })
+        );
+      return;
+    }
+
+    // 未激活：输入 + 激活按钮
+    let inputKey = '';
+    new Setting(containerEl)
+      .setName('激活码')
+      .setDesc('付款后获得的激活码，格式 BRI-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX。激活码离线校验，无需联网。')
+      .addText((text) =>
+        text
+          .setPlaceholder('BRI-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX')
+          .setValue(inputKey)
+          .onChange((v) => {
+            inputKey = v;
+          })
+      )
+      .addButton((btn) =>
+        btn
+          .setButtonText('激活')
+          .setCta()
+          .onClick(async () => {
+            const res = await store.activate(inputKey.trim());
+            if (res.ok) {
+              this.display();
+              new Notice('激活成功！重新打开复盘视图即可解锁全部功能 🎋', 6000);
+            } else {
+              new Notice(`激活失败：${res.reason ?? '未知错误'}`);
+            }
+          })
+      );
+  }
+}
+
+/** AI 规划页 */
+class AIPage extends SettingPage {
+  constructor(private plugin: BambooReviewPlugin) {
+    super();
+    this.title = 'AI 规划';
+  }
+
+  display(): void {
+    const containerEl = this.containerEl;
     new Setting(containerEl).setName('AI 规划（自然语言 → 目标卡片）').setHeading();
 
     new Setting(containerEl)
@@ -455,9 +465,17 @@ export class PluginSettings extends PluginSettingTab {
           })
       );
   }
+}
 
-  /** 外观 tab：主题动效 + 白噪音 + 调色联动 */
-  private renderAppearanceTab(containerEl: HTMLElement): void {
+/** 外观页：主题动效 + 白噪音 + 调色联动 */
+class AppearancePage extends SettingPage {
+  constructor(private plugin: BambooReviewPlugin) {
+    super();
+    this.title = '外观';
+  }
+
+  display(): void {
+    const containerEl = this.containerEl;
     // === 主题动效 ===
     new Setting(containerEl).setName('主题动效').setHeading();
 
@@ -568,142 +586,105 @@ export class PluginSettings extends PluginSettingTab {
           })
       );
   }
+}
 
-  /** 激活区：输入激活码 / 显示状态（原生设置页作为激活的补充入口，主入口在 webapp 内遮罩） */
-  private renderLicenseSection(containerEl: HTMLElement): void {
-    // 使用插件级 LicenseStore 单例（与 webapp 门控同源）
-    const store = this.plugin.license;
-    if (!store) {
-      // 防御：设置页打开时 license 尚未初始化（极端时序），
-      // 不应让异常吞掉后续所有分区（激活/竹林咨询等）
-      new Setting(containerEl)
-        .setName('激活')
-        .setHeading()
-        .setDesc('激活信息加载中，请稍后重新打开本设置页。');
-      return;
-    }
-    const active = store.isActive();
-
-    // 状态行
-    const savedTag = store.getSavedTag();
-    const tagDesc = active
-      ? savedTag
-        ? `已激活（用户码，归属 TAG ${savedTag}），全部功能已解锁。`
-        : '已激活，全部功能已解锁。'
-      : '未激活，复盘视图将显示激活遮罩。';
-    new Setting(containerEl)
-      .setName('激活状态')
-      .setDesc(tagDesc)
-      .addText((text) => {
-        text.setDisabled(true).setValue(active ? '✅ 已激活' : '🔒 未激活');
-      });
-
-    // 已激活：提供「解除激活」便于调试 / 退款，以及备份码导出 / 导入
-    if (active) {
-      // —— 方案 1：备份码（换设备 / 换仓库用）——
-      new Setting(containerEl)
-        .setName('备份码')
-        .setDesc(
-          '备份码 = 当前激活码的便携封装（BRIBACK- 开头），可在另一台设备 / 另一个仓库的激活页「导入备份码」一键激活，免去手抄长串激活码。不含任何密钥，请妥善保管。'
-        )
-        .addButton((btn) =>
-          btn.setButtonText('导出备份码').onClick(async () => {
-            const savedKey = store.getSavedKey();
-            if (!savedKey) {
-              new Notice('未找到已保存的激活码，无法导出备份码');
-              return;
-            }
-            try {
-              const backup = encodeBackup(savedKey);
-              await navigator.clipboard.writeText(backup);
-              new Notice('备份码已复制到剪贴板，请妥善保存 🔑', 8000);
-            } catch {
-              new Notice('复制失败，请检查浏览器剪贴板权限');
-            }
-          })
-        );
-
-      new Setting(containerEl)
-        .setName('导入备份码')
-        .setDesc('若当前设备尚未激活，可粘贴另一台设备导出的备份码完成激活。')
-        .addText((text) =>
-          text.setPlaceholder('BRIBACK-...').onChange((v) => {
-            (this as unknown as { _pendingBackup?: string })._pendingBackup = v;
-          })
-        )
-        .addButton((btn) =>
-          btn.setButtonText('导入并激活').onClick(async () => {
-            const raw = ((this as unknown as { _pendingBackup?: string })._pendingBackup ?? '').trim();
-            if (!raw) {
-              new Notice('请先粘贴备份码');
-              return;
-            }
-            let code: string;
-            try {
-              code = decodeBackup(raw);
-            } catch (e) {
-              new Notice(`导入失败：${e instanceof Error ? e.message : '备份码无效'}`);
-              return;
-            }
-            const res = await store.activate(code);
-            if (res.ok) {
-              this.buildUI();
-              new Notice('备份码导入成功，已激活 🎋', 6000);
-            } else {
-              new Notice(`导入失败：${res.reason ?? '未知错误'}`);
-            }
-          })
-        );
-
-      // —— 方案 3：vault 同步说明 ——
-      new Setting(containerEl)
-        .setName('多设备 / 多仓库同步')
-        .setDesc(
-          '激活状态保存在本 vault 的 data.json 中。若你用 Obsidian Sync、git 或网盘同步该 vault，激活态会随 vault 一起迁移，换电脑后无需重新激活；仅当在"全新 vault"或"全新仓库"首次使用时，才需要重新输入激活码或导入备份码。'
-        );
-
-      new Setting(containerEl)
-        .setName('解除激活')
-        .setDesc('清除本机激活状态（调试 / 退款用）。之后需重新输入激活码。')
-        .addButton((btn) =>
-          btn.setButtonText('解除激活').onClick(async () => {
-            await store.deactivate();
-            this.buildUI();
-            new Notice('已解除激活。重新打开复盘视图将再次显示激活遮罩。');
-          })
-        );
-      return;
-    }
-
-    // 未激活：输入 + 激活按钮
-    let inputKey = '';
-    new Setting(containerEl)
-      .setName('激活码')
-      .setDesc('付款后获得的激活码，格式 BRI-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX。激活码离线校验，无需联网。')
-      .addText((text) =>
-        text
-          .setPlaceholder('BRI-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX')
-          .setValue(inputKey)
-          .onChange((v) => {
-            inputKey = v;
-          })
-      )
-      .addButton((btn) =>
-        btn
-          .setButtonText('激活')
-          .setCta()
-          .onClick(async () => {
-            const res = await store.activate(inputKey.trim());
-            if (res.ok) {
-              this.buildUI();
-              new Notice('激活成功！重新打开复盘视图即可解锁全部功能 🎋', 6000);
-            } else {
-              new Notice(`激活失败：${res.reason ?? '未知错误'}`);
-            }
-          })
-      );
+/** 竹林咨询页（零依赖、独立隔离渲染） */
+class ConsultPage extends SettingPage {
+  constructor(private plugin: BambooReviewPlugin) {
+    super();
+    this.title = '竹林咨询';
   }
 
+  display(): void {
+    const containerEl = this.containerEl;
+    try {
+      new Setting(containerEl).setName('竹林咨询（邮箱 SMTP 配置）').setHeading();
+
+      // 引导卡片：QQ 邮箱 SMTP 授权码获取步骤
+      const guideBox = containerEl.createDiv({ cls: 'bamboo-about-card bamboo-consult-guide' });
+      guideBox.createEl('p', { text: '📮 发送邮件需要配置 SMTP。推荐使用 QQ 邮箱：', cls: 'bamboo-about-label' });
+      const steps = guideBox.createEl('ol', { cls: 'bamboo-consult-steps' });
+      steps.createEl('li', { text: '登录 QQ 邮箱网页版 → 点击顶部「设置」→「账户」' });
+      steps.createEl('li', { text: '找到「POP3/SMTP 服务」一栏 → 点击「开启」' });
+      steps.createEl('li', { text: '按提示发送短信验证后会得到一个授权码（16 位），复制它粘贴到下方「SMTP 授权码」输入框' });
+      guideBox.createEl('p', {
+        text: '⚠️ 授权码不是你的 QQ 密码，是 QQ 邮箱专门为第三方客户端生成的独立凭证，仅保存在本地 data.json。',
+        cls: 'bamboo-consult-note',
+      });
+
+      new Setting(containerEl)
+        .setName('SMTP 服务器')
+        .setDesc('发件服务器地址。QQ 邮箱用 smtp.qq.com，163 邮箱用 smtp.163.com')
+        .addText((text) =>
+          text
+            .setPlaceholder('smtp.qq.com')
+            .setValue(this.plugin.settings.smtpHost)
+            .onChange(async (value) => {
+              this.plugin.settings.smtpHost = value.trim() || 'smtp.qq.com';
+              await this.plugin.saveSettings();
+            })
+        );
+
+      new Setting(containerEl)
+        .setName('SMTP 端口')
+        .setDesc('SSL 直连用 465，STARTTLS 用 587。QQ 邮箱推荐 465')
+        .addText((text) => {
+          text.inputEl.type = 'number';
+          text
+            .setPlaceholder('465')
+            .setValue(String(this.plugin.settings.smtpPort))
+            .onChange(async (value) => {
+              const n = parseInt(value, 10);
+              this.plugin.settings.smtpPort = Number.isFinite(n) && n > 0 ? n : 465;
+              await this.plugin.saveSettings();
+            });
+        });
+
+      new Setting(containerEl)
+        .setName('SSL 直连')
+        .setDesc('端口 465 开启，端口 587 关闭')
+        .addToggle((toggle) =>
+          toggle
+            .setValue(this.plugin.settings.smtpSecure)
+            .onChange(async (value) => {
+              this.plugin.settings.smtpSecure = value;
+              await this.plugin.saveSettings();
+            })
+        );
+
+      new Setting(containerEl)
+        .setName('发件人邮箱')
+        .setDesc('填写你的完整 QQ 邮箱地址，如 123456789@qq.com')
+        .addText((text) =>
+          text
+            .setPlaceholder('你的QQ号@qq.com')
+            .setValue(this.plugin.settings.smtpUser)
+            .onChange(async (value) => {
+              this.plugin.settings.smtpUser = value.trim();
+              await this.plugin.saveSettings();
+            })
+        );
+
+      new Setting(containerEl)
+        .setName('SMTP 授权码')
+        .setDesc('QQ 邮箱生成的 16 位授权码（非 QQ 密码），仅保存在本地 data.json')
+        .addText((text) =>
+          text
+            .setPlaceholder('16 位授权码')
+            .setValue(this.plugin.settings.smtpPass)
+            .onChange(async (value) => {
+              this.plugin.settings.smtpPass = value.trim();
+              await this.plugin.saveSettings();
+            })
+        )
+        .then((setting) => {
+          const input = setting.controlEl.querySelector('input');
+          if (input) input.type = 'password';
+        });
+    } catch (err) {
+      console.error('[竹林修仙传] 竹林咨询分区渲染异常：', err);
+    }
+  }
 }
 
 /** 购买说明弹窗：展示价格、收款码与拿码流程（轻量买断模式） */

@@ -222,7 +222,7 @@ export function sendEmail(
         // STARTTLS 升级：明文收到 220 后把 socket 升级为 TLS，再重新发 EHLO
         if (!secureUpgraded && code === 220) {
           secureUpgraded = true;
-          const tlsSock = tls.connect({ socket: conn as SmtpSocket, host, rejectUnauthorized: false });
+          const tlsSock = tls.connect({ socket: conn, host, rejectUnauthorized: false });
           tlsSock.setEncoding('utf-8');
           tlsSock.on('data', handleData);
           tlsSock.on('error', (err: Error) => fail(`连接/发送失败：${err.message}`));

@@ -243,8 +243,19 @@ export default class BambooReviewPlugin extends Plugin {
     ThemeBridge.default.restoreDefaults();
   }
 
-  /** 竹林咨询：打开确认弹窗，将选中文字发送到羽鳞君邮箱 */
-  async openConsult(selectionArg?: string): Promise<void> {
+  /**
+   * 竹林咨询：打开确认弹窗，将选中文字发送到羽鳞君邮箱。
+   *
+   * 同时服务三种调用场景：
+   * 1. 命令面板调用（无参）：自动从当前 Markdown 编辑器取选区；
+   * 2. 编辑器右键菜单（单字符串）：传入笔记中选中的文字；
+   * 3. 外部插件联动（字符串 + opts.sourceLabel）：如竹杖芒鞋阅读器选中文章文字，
+   *    此时不再要求当前处于 MarkdownView，直接使用外部传入的选区与来源标签。
+   */
+  async openConsult(
+    selectionArg?: string,
+    opts?: { sourceLabel?: string }
+  ): Promise<void> {
     const s = this.settings;
 
     if (!isSmtpAvailable()) {
@@ -257,24 +268,33 @@ export default class BambooReviewPlugin extends Plugin {
       return;
     }
 
-    const editor = this.app.workspace.activeEditor?.editor;
-    const view = this.app.workspace.getActiveViewOfType(MarkdownView);
-    if (!editor || !view || !view.file) {
-      new Notice('竹林咨询：请先打开一篇笔记并选中要咨询的文字');
-      return;
-    }
+    const externalLabel = opts?.sourceLabel?.trim();
+    let text: string;
+    let sourceLabel: string;
 
-    const text = (selectionArg ?? editor.getSelection()).trim();
-    if (!text) {
-      new Notice('竹林咨询：请先选中一段文字');
-      return;
+    if (externalLabel || (selectionArg !== undefined && selectionArg !== '')) {
+      // 外部插件联动 或 编辑器右键直接传入选区：跳过 MarkdownView 强校验
+      text = (selectionArg ?? '').trim();
+      sourceLabel = externalLabel || '笔记选中';
+    } else {
+      // 命令面板调用：兼容原生笔记场景，从当前 Markdown 编辑器取选区
+      const editor = this.app.workspace.activeEditor?.editor;
+      const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+      if (!editor || !view || !view.file) {
+        new Notice('竹林咨询：请先打开一篇笔记并选中要咨询的文字');
+        return;
+      }
+      text = editor.getSelection().trim();
+      if (!text) {
+        new Notice('竹林咨询：请先选中一段文字');
+        return;
+      }
+      sourceLabel = `笔记《${view.file.basename}》`;
     }
-
-    const noteTitle = view.file.basename;
 
     const options: ConsultOptions = {
       selectedText: text,
-      noteTitle,
+      sourceLabel,
       smtpConfig: {
         host: s.smtpHost || 'smtp.qq.com',
         port: s.smtpPort || 465,

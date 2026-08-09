@@ -13,8 +13,10 @@ const RECIPIENT = 'yanyulin2100@qq.com';
 export interface ConsultOptions {
   /** 选中的文字内容 */
   selectedText: string;
-  /** 来源笔记标题 */
-  noteTitle: string;
+  /** 来源笔记标题（旧字段，兼容原生笔记场景） */
+  noteTitle?: string;
+  /** 来源展示名（新字段，供外部插件联动时使用，如「竹杖芒鞋·《标题》」） */
+  sourceLabel?: string;
   /** SMTP 配置 */
   smtpConfig: SmtpConfig;
 }
@@ -32,6 +34,9 @@ export class ConsultModal extends Modal {
     contentEl.empty();
     contentEl.addClass('bamboo-consult-modal');
 
+    const displayLabel =
+      this.options.sourceLabel ?? this.options.noteTitle ?? '未知来源';
+
     // 标题
     contentEl.createEl('h2', { text: '竹林咨询' });
 
@@ -44,7 +49,7 @@ export class ConsultModal extends Modal {
     // 选中内容展示（只读 textarea）
     new Setting(contentEl)
       .setName('选中的内容')
-      .setDesc('来自笔记：' + this.options.noteTitle)
+      .setDesc('来自：' + displayLabel)
       .addTextArea((ta) => {
         ta.setValue(this.options.selectedText).setDisabled(true);
         ta.inputEl.rows = 5;
@@ -94,12 +99,12 @@ export class ConsultModal extends Modal {
       sendBtn.textContent = '发送中...';
       void (async () => {
 
-      const subject = `[竹林咨询] 来自《${this.options.noteTitle}》的一段文字`;
+      const subject = `[竹林咨询] 来自《${displayLabel}》的一段文字`;
 
       // 拼装正文 HTML
       const note = noteText.trim();
       let body =
-        `<p>以下内容来自 Obsidian 笔记 <strong>《${this.options.noteTitle}》</strong>：</p>` +
+        `<p>以下内容来自 <strong>《${displayLabel}》</strong>：</p>` +
         `<blockquote style="margin:10px 0;padding:8px 16px;border-left:3px solid #4a9;background:rgba(74,153,136,0.08);white-space:pre-wrap;font-family:inherit;">
 ${escapeHtml(this.options.selectedText)}
 </blockquote>`;

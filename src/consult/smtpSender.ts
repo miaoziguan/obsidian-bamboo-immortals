@@ -8,17 +8,39 @@
  * SMTP 配置由调用方传入，本模块不依赖 Obsidian API。
  */
 
-// 使用 `import type` 仅引入类型，不会在运行时加载 Node 模块（移动端安全）。
-// 运行时模块通过 nodeRequire() 经桌面端 Electron 的全局 window.require 惰性加载。
-import type { Socket } from 'net';
-import type { TLSSocket } from 'tls';
+// 不顶层 import 'net'/'tls'：官方 lint 禁止直接引入 Node 内置模块（移动端无运行时）。
+// 仅用本地最小接口描述 socket 形状，运行时模块经 nodeRequire() 通过桌面端 Electron 的
+// 全局 window.require 惰性加载，并由 isSmtpAvailable() 守卫（仅桌面端触发）。
+
+/** SMTP 底层 socket 的最小形状（net.Socket / tls.TLSSocket 共有） */
+interface SmtpSocket {
+  write(chunk: string | Uint8Array): boolean;
+  destroy(): void;
+  destroyed: boolean;
+  on(event: 'data', listener: (chunk: Buffer) => void): void;
+  on(event: 'error', listener: (err: Error) => void): void;
+  on(event: 'close', listener: () => void): void;
+  off(event: 'data', listener: (chunk: Buffer) => void): void;
+  off(event: 'error', listener: (err: Error) => void): void;
+  off(event: 'close', listener: () => void): void;
+}
+
+/** 经 window.require 惰性加载的 net 模块形状 */
+interface NetModule {
+  connect(opts: { host: string; port: number }, cb?: () => void): SmtpSocket;
+}
+
+/** 经 window.require 惰性加载的 tls 模块形状 */
+interface TlsModule {
+  connect(opts: { socket: SmtpSocket; rejectUnauthorized: boolean }, cb?: () => void): SmtpSocket;
+}
 
 /**
  * 惰性加载 Node.js 内置模块。
  * 仅在桌面端 Electron 可用（window.require 存在），调用方需先经 isSmtpAvailable() 守卫。
  */
-function nodeRequire(id: 'net'): typeof import('net');
-function nodeRequire(id: 'tls'): typeof import('tls');
+function nodeRequire(id: 'net'): NetModule;
+function nodeRequire(id: 'tls'): TlsModule;
 function nodeRequire(id: string): unknown {
   const req = (window as unknown as { require?: (id: string) => unknown }).require;
   if (typeof req !== 'function') {
@@ -56,7 +78,7 @@ function parseCode(line: string): number {
 }
 
 /** 从 socket 读取一行（SMTP 每行以 \r\n 结尾） */
-function readLine(sock: Socket | TLSSocket, timeoutMs = 10000): Promise<string> {
+function readLine(sock: SmtpSocket, timeoutMs = 10000): Promise<string> {
   return new Promise((resolve, reject) => {
     const timer = window.setTimeout(() => {
       cleanup();
@@ -101,7 +123,7 @@ function readLine(sock: Socket | TLSSocket, timeoutMs = 10000): Promise<string> 
 
 /** 发送命令 → 读一行响应 → 返回 { code, line } */
 async function sendCmd(
-  sock: Socket | TLSSocket,
+  sock: SmtpSocket,
   cmd: string,
 ): Promise<{ code: number; line: string }> {
   sock.write(cmd + '\r\n');
@@ -111,7 +133,7 @@ async function sendCmd(
 
 /** 发送 EHLO → 读取多行响应（250- 开头表示后续还有行，250 空格表示结束） */
 async function sendEhlo(
-  sock: Socket | TLSSocket,
+  sock: SmtpSocket,
   hostname: string,
 ): Promise<string[]> {
   sock.write(`EHLO ${hostname}\r\n`);
@@ -145,8 +167,8 @@ export async function sendEmail(
     return { ok: false, error: 'SMTP 未配置：请先在插件设置中填写发件邮箱和 SMTP 授权码' };
   }
 
-  let rawSock: Socket | TLSSocket | null = null;
-  let sock: Socket | TLSSocket;
+  let rawSock: SmtpSocket | null = null;
+  let sock: SmtpSocket;
 
   if (!isSmtpAvailable()) {
     return { ok: false, error: '竹林咨询仅支持桌面端（移动端无法直连 SMTP）' };
@@ -157,7 +179,7 @@ export async function sendEmail(
 
   try {
     // 1. TCP 连接
-    rawSock = await new Promise<Socket | TLSSocket>((resolve, reject) => {
+    rawSock = await new Promise<SmtpSocket>((resolve, reject) => {
       const s = net.connect({ host: config.host, port: config.port }, () => resolve(s));
       s.on('error', reject);
     });
@@ -173,8 +195,8 @@ export async function sendEmail(
     // 3. 决定是否 SSL / STARTTLS
     if (config.secure) {
       // 465 端口：直接 TLS 握手
-      sock = await new Promise<Socket | TLSSocket>((resolve, reject) => {
-        const raw = rawSock as Socket | TLSSocket;
+      sock = await new Promise<SmtpSocket>((resolve, reject) => {
+        const raw = rawSock as SmtpSocket;
         const ts = tls.connect({
           socket: raw,
           rejectUnauthorized: false, // QQ 邮箱证书有时 tricky
@@ -198,8 +220,8 @@ export async function sendEmail(
       }
 
       // TLS 升级
-      sock = await new Promise<Socket | TLSSocket>((resolve, reject) => {
-        const raw = rawSock as Socket | TLSSocket;
+      sock = await new Promise<SmtpSocket>((resolve, reject) => {
+        const raw = rawSock as SmtpSocket;
         const ts = tls.connect({
           socket: raw,
           rejectUnauthorized: false,

@@ -89,6 +89,12 @@ export const DEFAULT_SETTINGS: BambooReviewSettings = {
 
 /**
  * PluginSettings - Obsidian 原生设置面板
+ *
+ * 注意：刻意不实现 1.13.0+ 的声明式 getSettingDefinitions() API。
+ * 本插件使用完全命令式、动态生成的自定义 UI（buildUI/renderAllSections），
+ * 若实现声明式定义会令 Obsidian 走声明式渲染路径并跳过 display()，
+ * 导致所有自定义区块无法渲染。这是有意的取舍：牺牲设置搜索索引能力，
+ * 换取复杂动态 UI 的正常工作。minAppVersion 为 1.8.0，无需声明式兼容。
  */
 export class PluginSettings extends PluginSettingTab {
   plugin: BambooReviewPlugin;

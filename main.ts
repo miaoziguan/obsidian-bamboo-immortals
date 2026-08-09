@@ -104,12 +104,6 @@ export default class BambooReviewPlugin extends Plugin {
 
     // 注册命令
     this.addCommand({
-      id: 'open-daily-review',
-      name: '打开今日复盘',
-      callback: () => this.activateView(),
-    });
-
-    this.addCommand({
       id: 'navigate-prev-day',
       name: '前一天',
       callback: () => this.webapp.navPrevDay(),

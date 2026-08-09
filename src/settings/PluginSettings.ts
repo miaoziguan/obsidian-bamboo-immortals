@@ -7,6 +7,9 @@ import { encodeBackup, decodeBackup } from '../license/backupCode';
 /** Obsidian 插件运行时注入的主窗口 document（非 iframe 内的 document） */
 declare const activeDocument: Document;
 
+/** 设置页 tab 键（顺序即 tab 头从左到右） */
+const TAB_KEYS = ['overview', 'license', 'ai', 'appearance', 'consult'] as const;
+
 /** 自定义白噪音音源 */
 export interface NoiseItem {
   id: string;
@@ -101,6 +104,9 @@ export const DEFAULT_SETTINGS: BambooReviewSettings = {
 export class PluginSettings extends PluginSettingTab {
   plugin: BambooReviewPlugin;
 
+  /** 当前选中的 tab 键，reload 后默认停在第一个 */
+  private currentTab: string = TAB_KEYS[0];
+
   constructor(app: App, plugin: BambooReviewPlugin) {
     super(app, plugin);
     this.plugin = plugin;
@@ -110,30 +116,67 @@ export class PluginSettings extends PluginSettingTab {
     this.buildUI();
   }
 
-  /** 渲染设置面板 */
+  /** 渲染设置面板：tab 头 + 内容区，按功能分类分页 */
   private buildUI(): void {
     const { containerEl } = this;
     containerEl.empty();
     containerEl.addClass('bamboo-review-settings');
 
-    // 竹林咨询：最先、完全独立渲染，不依赖任何其他分区，
-    // 确保即便激活/License/AI/调色等分区渲染抛错，邮箱配置入口也必然出现。
-    this.renderConsultSection(containerEl);
+    // tab 头容器（始终显示，不随内容清空而消失）
+    const tabBar = containerEl.createDiv({ cls: 'bamboo-settings-tabs' });
+    const contentEl = containerEl.createDiv({ cls: 'bamboo-settings-tab-content' });
 
+    const tabs: { key: string; label: string; render: (el: HTMLElement) => void }[] = [
+      { key: TAB_KEYS[0], label: '概览', render: (el) => this.renderAboutTab(el) },
+      { key: TAB_KEYS[1], label: '激活', render: (el) => this.renderLicenseTab(el) },
+      { key: TAB_KEYS[2], label: 'AI 规划', render: (el) => this.renderAITab(el) },
+      { key: TAB_KEYS[3], label: '外观', render: (el) => this.renderAppearanceTab(el) },
+      // 竹林咨询：独立隔离渲染，单独成 tab，确保即便别的 tab 抛错也有入口
+      { key: TAB_KEYS[4], label: '竹林咨询', render: (el) => this.renderConsultTab(el) },
+    ];
+
+    // 渲染 tab 头按钮
+    const tabButtons = new Map<string, HTMLElement>();
+    tabs.forEach((tab) => {
+      const btn = tabBar.createEl('button', {
+        text: tab.label,
+        cls: 'bamboo-settings-tab-btn',
+      });
+      btn.addEventListener('click', () => {
+        this.currentTab = tab.key;
+        this.activateTab(tabButtons, contentEl, tabs);
+      });
+      tabButtons.set(tab.key, btn);
+    });
+
+    this.activateTab(tabButtons, contentEl, tabs);
+  }
+
+  /** 切换/重绘当前 tab：高亮按钮 + 清空内容区并渲染对应区块 */
+  private activateTab(
+    tabButtons: Map<string, HTMLElement>,
+    contentEl: HTMLElement,
+    tabs: { key: string; label: string; render: (el: HTMLElement) => void }[]
+  ): void {
+    tabButtons.forEach((btn, key) => {
+      btn.toggleClass('is-active', key === this.currentTab);
+    });
+    contentEl.empty();
+    const active = tabs.find((t) => t.key === this.currentTab) ?? tabs[0];
     try {
-      this.renderAllSections(containerEl);
+      active.render(contentEl);
     } catch (err) {
       // 兜底：任何分区渲染抛错都不应让整页白屏
       console.error('[竹林修仙传] 设置页渲染异常：', err);
-      containerEl.createEl('p', {
+      contentEl.createEl('p', {
         text: '⚠️ 设置页部分内容渲染失败，请查看开发者控制台（Ctrl/Cmd+Shift+I）的报错。',
         cls: 'bamboo-settings-error',
       });
     }
   }
 
-  /** 竹林咨询配置区（零依赖、独立隔离渲染） */
-  private renderConsultSection(containerEl: HTMLElement): void {
+  /** 竹林咨询 tab（零依赖、独立隔离渲染） */
+  private renderConsultTab(containerEl: HTMLElement): void {
     try {
       new Setting(containerEl).setName('竹林咨询（邮箱 SMTP 配置）').setHeading();
 
@@ -223,11 +266,74 @@ export class PluginSettings extends PluginSettingTab {
     }
   }
 
-  /** 各分区顺序渲染（竹林咨询独立隔离，确保即使别处抛错也能显示） */
-  private renderAllSections(containerEl: HTMLElement): void {
-    new Setting(containerEl).setName('竹林修仙传 - 设置').setHeading();
+  /** 概览 tab：关于卡片 + 插件简介 */
+  private renderAboutTab(containerEl: HTMLElement): void {
+    new Setting(containerEl).setName('关于').setHeading();
 
-    // === 激活（License Gate） ===
+    // ───── 卡片 1：插件简介 ─────
+    const pluginBox = containerEl.createDiv({ cls: 'bamboo-about-card' });
+    pluginBox.createEl('p', { text: '插件简介', cls: 'bamboo-about-label' });
+    pluginBox.createEl('p', {
+      text: 'Bamboo Immortals（竹林修仙传）是一款基于苏联控制论之父维克托·格卢什科夫提出的"OGAS"理念，专为个人打造的中国风目标自动化分配管理系统。',
+      cls: 'bamboo-about-desc'
+    });
+
+    // ───── 卡片 2：作者 + 作品 ─────
+    const authorBox = containerEl.createDiv({ cls: 'bamboo-about-card bamboo-about-author' });
+    const authorRow = authorBox.createDiv({ cls: 'bamboo-about-author-row' });
+    const avatar = authorRow.createDiv({ cls: 'bamboo-about-avatar' });
+    // 从插件目录读取头像（通过 Vault API 读取 .obsidian/plugins/ 下的自有资源）
+    // fire-and-forget：头像非关键，加载失败静默显示默认空头像
+    void (async () => {
+      try {
+        const pluginDir = this.plugin.manifest.dir ?? '';
+        const adapter = this.app.vault.adapter;
+        const candidates = [
+          `${pluginDir}/author-avatar.jpg`,
+          `${pluginDir}/webapp/assets/images/author-avatar.jpg`,
+        ];
+        for (const avatarPath of candidates) {
+          const exists = await adapter.exists(avatarPath);
+          if (!exists) continue;
+          const avatarData = await adapter.readBinary(avatarPath);
+          const b64 = arrayBufferToBase64(avatarData);
+          avatar.setCssStyles({
+            backgroundImage: `url(data:image/jpeg;base64,${b64})`,
+          });
+          break;
+        }
+      } catch { /* silently skip — show default empty avatar */ }
+    })();
+
+
+    const authorInfo = authorRow.createDiv({ cls: 'bamboo-about-author-info' });
+    authorInfo.createEl('p', { text: '羽鳞君', cls: 'bamboo-about-author-name' });
+    authorInfo.createEl('p', { text: '喵字馆创始人', cls: 'bamboo-about-author-role' });
+
+    // 作品区
+    authorBox.createEl('p', { text: 'Obsidian 插件作品', cls: 'bamboo-about-works-label' });
+    const worksRow = authorBox.createDiv({ cls: 'bamboo-about-works-row' });
+
+    [{ name: '竹叶飞刃', url: 'https://github.com/miaoziguan/obsidian-Bamboo-Darts' },
+     { name: '竹林修仙传', url: 'https://github.com/miaoziguan/obsidian-bamboo-immortals' }].forEach(work => {
+      const tag = worksRow.createSpan({ text: work.name, cls: 'bamboo-about-tag' });
+      if (work.url) {
+        tag.setCssStyles({ cursor: 'pointer' });
+        tag.addEventListener('click', () => {
+          window.open(work.url, '_blank');
+        });
+      }
+    });
+
+    // 联系方式
+    const contactBox = containerEl.createDiv({ cls: 'bamboo-about-card' });
+    contactBox.createEl('p', { text: '联系方式', cls: 'bamboo-about-label' });
+    contactBox.createEl('p', { text: '邮箱：yanyulin2100@qq.com', cls: 'bamboo-about-desc' });
+    contactBox.createEl('p', { text: '微信：yanhu94', cls: 'bamboo-about-desc' });
+  }
+
+  /** 激活 tab：购买入口 + License 区块（含数据存储路径/Markdown 同步合并到此更合理，但保持原分组） */
+  private renderLicenseTab(containerEl: HTMLElement): void {
     new Setting(containerEl).setName('激活').setHeading();
 
     // 购买激活入口（轻量模式：付款后私聊作者拿码）
@@ -245,10 +351,9 @@ export class PluginSettings extends PluginSettingTab {
 
     this.renderLicenseSection(containerEl);
 
-    // === 数据存储 ===
+    // === 数据存储（归入激活 tab 下，作为基础配置） ===
     new Setting(containerEl).setName('数据存储').setHeading();
 
-    // 数据存储路径
     new Setting(containerEl)
       .setName('数据存储路径')
       .setDesc('复盘数据在 Vault 中的存储目录（修改后需重启插件）')
@@ -262,7 +367,6 @@ export class PluginSettings extends PluginSettingTab {
           })
       );
 
-    // Markdown 摘要同步
     new Setting(containerEl)
       .setName('自动生成 Markdown 摘要')
       .setDesc('每次保存复盘数据时，自动在 reviews/ 目录下生成可读的 .md 文件')
@@ -274,7 +378,86 @@ export class PluginSettings extends PluginSettingTab {
             await this.plugin.saveSettings();
           })
       );
+  }
 
+  /** AI 规划 tab */
+  private renderAITab(containerEl: HTMLElement): void {
+    new Setting(containerEl).setName('AI 规划（自然语言 → 目标卡片）').setHeading();
+
+    new Setting(containerEl)
+      .setName('启用 AI 规划')
+      .setDesc('开启后，可在笔记中运行「AI 规划：将当前笔记转为目标卡片」命令，由大模型拆解目标并写入复盘。')
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.aiEnabled)
+          .onChange(async (value) => {
+            this.plugin.settings.aiEnabled = value;
+            await this.plugin.saveSettings();
+          })
+      );
+
+    new Setting(containerEl)
+      .setName('API Key')
+      .setDesc('大模型服务鉴权密钥（Bearer Token）。仅保存在本库 settings.json，不上传。')
+      .addText((text) =>
+        text
+          .setPlaceholder('sk-...')
+          .setValue(this.plugin.settings.aiApiKey)
+          .onChange(async (value) => {
+            this.plugin.settings.aiApiKey = value.trim();
+            await this.plugin.saveSettings();
+          })
+      )
+      .then((setting) => {
+        // 密码框样式：输入隐藏
+        const input = setting.controlEl.querySelector('input');
+        if (input) input.type = 'password';
+      });
+
+    new Setting(containerEl)
+      .setName('Base URL')
+      .setDesc('API 基地址（不含 /chat/completions 后缀）。默认 DeepSeek v1。')
+      .addText((text) =>
+        text
+          .setPlaceholder('https://api.deepseek.com/v1')
+          .setValue(this.plugin.settings.aiBaseUrl)
+          .onChange(async (value) => {
+            this.plugin.settings.aiBaseUrl = value.trim() || 'https://api.deepseek.com/v1';
+            await this.plugin.saveSettings();
+          })
+      );
+
+    new Setting(containerEl)
+      .setName('模型')
+      .setDesc('模型名，如 deepseek-chat / gpt-4o-mini。需兼容 OpenAI Chat Completions JSON 模式。')
+      .addText((text) =>
+        text
+          .setPlaceholder('deepseek-chat')
+          .setValue(this.plugin.settings.aiModel)
+          .onChange(async (value) => {
+            this.plugin.settings.aiModel = value.trim() || 'deepseek-chat';
+            await this.plugin.saveSettings();
+          })
+      );
+
+    new Setting(containerEl)
+      .setName('默认拆解粒度')
+      .setDesc('AI 把目标拆成子项的细粒度：粗(2-3) / 中(3-6) / 细(5-8)。可在审阅弹窗里再逐条删改。')
+      .addDropdown((dropdown) =>
+        dropdown
+          .addOption('粗', '粗（2-3 子项）')
+          .addOption('中', '中（3-6 子项）')
+          .addOption('细', '细（5-8 子项）')
+          .setValue(this.plugin.settings.aiDecomposeDepth)
+          .onChange(async (value) => {
+            this.plugin.settings.aiDecomposeDepth = value as '粗' | '中' | '细';
+            await this.plugin.saveSettings();
+          })
+      );
+  }
+
+  /** 外观 tab：主题动效 + 白噪音 + 调色联动 */
+  private renderAppearanceTab(containerEl: HTMLElement): void {
     // === 主题动效 ===
     new Setting(containerEl).setName('主题动效').setHeading();
 
@@ -384,144 +567,6 @@ export class PluginSettings extends PluginSettingTab {
             }
           })
       );
-
-    // === AI 规划 ===
-    new Setting(containerEl).setName('AI 规划（自然语言 → 目标卡片）').setHeading();
-
-    new Setting(containerEl)
-      .setName('启用 AI 规划')
-      .setDesc('开启后，可在笔记中运行「AI 规划：将当前笔记转为目标卡片」命令，由大模型拆解目标并写入复盘。')
-      .addToggle((toggle) =>
-        toggle
-          .setValue(this.plugin.settings.aiEnabled)
-          .onChange(async (value) => {
-            this.plugin.settings.aiEnabled = value;
-            await this.plugin.saveSettings();
-          })
-      );
-
-    new Setting(containerEl)
-      .setName('API Key')
-      .setDesc('大模型服务鉴权密钥（Bearer Token）。仅保存在本库 settings.json，不上传。')
-      .addText((text) =>
-        text
-          .setPlaceholder('sk-...')
-          .setValue(this.plugin.settings.aiApiKey)
-          .onChange(async (value) => {
-            this.plugin.settings.aiApiKey = value.trim();
-            await this.plugin.saveSettings();
-          })
-      )
-      .then((setting) => {
-        // 密码框样式：输入隐藏
-        const input = setting.controlEl.querySelector('input');
-        if (input) input.type = 'password';
-      });
-
-    new Setting(containerEl)
-      .setName('Base URL')
-      .setDesc('API 基地址（不含 /chat/completions 后缀）。默认 DeepSeek v1。')
-      .addText((text) =>
-        text
-          .setPlaceholder('https://api.deepseek.com/v1')
-          .setValue(this.plugin.settings.aiBaseUrl)
-          .onChange(async (value) => {
-            this.plugin.settings.aiBaseUrl = value.trim() || 'https://api.deepseek.com/v1';
-            await this.plugin.saveSettings();
-          })
-      );
-
-    new Setting(containerEl)
-      .setName('模型')
-      .setDesc('模型名，如 deepseek-chat / gpt-4o-mini。需兼容 OpenAI Chat Completions JSON 模式。')
-      .addText((text) =>
-        text
-          .setPlaceholder('deepseek-chat')
-          .setValue(this.plugin.settings.aiModel)
-          .onChange(async (value) => {
-            this.plugin.settings.aiModel = value.trim() || 'deepseek-chat';
-            await this.plugin.saveSettings();
-          })
-      );
-
-    new Setting(containerEl)
-      .setName('默认拆解粒度')
-      .setDesc('AI 把目标拆成子项的细粒度：粗(2-3) / 中(3-6) / 细(5-8)。可在审阅弹窗里再逐条删改。')
-      .addDropdown((dropdown) =>
-        dropdown
-          .addOption('粗', '粗（2-3 子项）')
-          .addOption('中', '中（3-6 子项）')
-          .addOption('细', '细（5-8 子项）')
-          .setValue(this.plugin.settings.aiDecomposeDepth)
-          .onChange(async (value) => {
-            this.plugin.settings.aiDecomposeDepth = value as '粗' | '中' | '细';
-            await this.plugin.saveSettings();
-          })
-      );
-
-    // 关于
-    new Setting(containerEl).setName('关于').setHeading();
-
-    // ───── 卡片 1：插件简介 ─────
-    const pluginBox = containerEl.createDiv({ cls: 'bamboo-about-card' });
-    pluginBox.createEl('p', { text: '插件简介', cls: 'bamboo-about-label' });
-    pluginBox.createEl('p', {
-      text: 'Bamboo Immortals（竹林修仙传）是一款基于苏联控制论之父维克托·格卢什科夫提出的"OGAS"理念，专为个人打造的中国风目标自动化分配管理系统。',
-      cls: 'bamboo-about-desc'
-    });
-
-    // ───── 卡片 2：作者 + 作品 ─────
-    const authorBox = containerEl.createDiv({ cls: 'bamboo-about-card bamboo-about-author' });
-    const authorRow = authorBox.createDiv({ cls: 'bamboo-about-author-row' });
-    const avatar = authorRow.createDiv({ cls: 'bamboo-about-avatar' });
-    // 从插件目录读取头像（通过 Vault API 读取 .obsidian/plugins/ 下的自有资源）
-    // fire-and-forget：头像非关键，加载失败静默显示默认空头像
-    void (async () => {
-      try {
-        const pluginDir = this.plugin.manifest.dir ?? '';
-        const adapter = this.app.vault.adapter;
-        const candidates = [
-          `${pluginDir}/author-avatar.jpg`,
-          `${pluginDir}/webapp/assets/images/author-avatar.jpg`,
-        ];
-        for (const avatarPath of candidates) {
-          const exists = await adapter.exists(avatarPath);
-          if (!exists) continue;
-          const avatarData = await adapter.readBinary(avatarPath);
-          const b64 = arrayBufferToBase64(avatarData);
-          avatar.setCssStyles({
-            backgroundImage: `url(data:image/jpeg;base64,${b64})`,
-          });
-          break;
-        }
-      } catch { /* silently skip — show default empty avatar */ }
-    })();
-
-
-    const authorInfo = authorRow.createDiv({ cls: 'bamboo-about-author-info' });
-    authorInfo.createEl('p', { text: '羽鳞君', cls: 'bamboo-about-author-name' });
-    authorInfo.createEl('p', { text: '喵字馆创始人', cls: 'bamboo-about-author-role' });
-
-    // 作品区
-    authorBox.createEl('p', { text: 'Obsidian 插件作品', cls: 'bamboo-about-works-label' });
-    const worksRow = authorBox.createDiv({ cls: 'bamboo-about-works-row' });
-
-    [{ name: '竹叶飞刃', url: 'https://github.com/miaoziguan/obsidian-Bamboo-Darts' },
-     { name: '竹林修仙传', url: 'https://github.com/miaoziguan/obsidian-bamboo-immortals' }].forEach(work => {
-      const tag = worksRow.createSpan({ text: work.name, cls: 'bamboo-about-tag' });
-      if (work.url) {
-        tag.setCssStyles({ cursor: 'pointer' });
-        tag.addEventListener('click', () => {
-          window.open(work.url, '_blank');
-        });
-      }
-    });
-
-    // 联系方式
-    const contactBox = containerEl.createDiv({ cls: 'bamboo-about-card' });
-    contactBox.createEl('p', { text: '联系方式', cls: 'bamboo-about-label' });
-    contactBox.createEl('p', { text: '邮箱：yanyulin2100@qq.com', cls: 'bamboo-about-desc' });
-    contactBox.createEl('p', { text: '微信：yanhu94', cls: 'bamboo-about-desc' });
   }
 
   /** 激活区：输入激活码 / 显示状态（原生设置页作为激活的补充入口，主入口在 webapp 内遮罩） */

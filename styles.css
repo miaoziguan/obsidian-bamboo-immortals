@@ -38,6 +38,38 @@ html body .workspace-leaf-content[data-type="bamboo-immortals"] .view-header-tit
   color: var(--text-muted);
 }
 
+/* 设置页 tab 分页 */
+.bamboo-settings-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 4px 0 12px 0;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+.bamboo-settings-tab-btn {
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary);
+  color: var(--text-muted);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.bamboo-settings-tab-btn:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+.bamboo-settings-tab-btn.is-active {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-color: var(--interactive-accent);
+}
+.bamboo-settings-tab-content {
+  margin-top: 4px;
+}
+
 /* 竹林咨询弹窗 */
 .bamboo-consult-modal .bamboo-consult-desc {
   color: var(--text-muted);

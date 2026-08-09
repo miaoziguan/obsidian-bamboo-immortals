@@ -177,11 +177,29 @@ export async function sendEmail(
   const net = nodeRequire('net');
   const tls = nodeRequire('tls');
 
+  // 配置自检：secure 与 port 必须匹配，否则服务器不回话 → 表现就是「读取响应超时」
+  if (config.secure && config.port !== 465) {
+    return { ok: false, error: `配置有误：已开启 SSL 直连，端口应为 465，当前为 ${config.port}。请改端口为 465，或关闭 SSL 直连改用 587 + STARTTLS。` };
+  }
+  if (!config.secure && config.port !== 587) {
+    return { ok: false, error: `配置有误：未开启 SSL 直连（STARTTLS 模式），端口应为 587，当前为 ${config.port}。请改端口为 587，或开启 SSL 直连改用 465。` };
+  }
+
   try {
-    // 1. TCP 连接
+    // 1. TCP 连接（带连接超时，避免 host/端口不通时无限 pending）
     rawSock = await new Promise<SmtpSocket>((resolve, reject) => {
-      const s = net.connect({ host: config.host, port: config.port }, () => resolve(s));
-      s.on('error', reject);
+      const connTimer = window.setTimeout(() => {
+        s.destroy();
+        reject(new Error(`连接超时（5s）：无法在 ${config.host}:${config.port} 建立 TCP 连接，请检查服务器地址/端口或网络`));
+      }, 5000);
+      const s = net.connect({ host: config.host, port: config.port }, () => {
+        window.clearTimeout(connTimer);
+        resolve(s);
+      });
+      s.on('error', (err) => {
+        window.clearTimeout(connTimer);
+        reject(err);
+      });
     });
 
     // 2. 读欢迎消息
@@ -193,16 +211,28 @@ export async function sendEmail(
     }
 
     // 3. 决定是否 SSL / STARTTLS
-    if (config.secure) {
-      // 465 端口：直接 TLS 握手
-      sock = await new Promise<SmtpSocket>((resolve, reject) => {
-        const raw = rawSock as SmtpSocket;
+    const tlsHandshake = (raw: SmtpSocket): Promise<SmtpSocket> =>
+      new Promise<SmtpSocket>((resolve, reject) => {
+        const hsTimer = window.setTimeout(() => {
+          ts.destroy();
+          reject(new Error('TLS 握手超时（5s）：服务器未响应加密握手，请检查端口/SSL 配置或网络'));
+        }, 5000);
         const ts = tls.connect({
           socket: raw,
           rejectUnauthorized: false, // QQ 邮箱证书有时 tricky
-        }, () => resolve(ts));
-        ts.on('error', reject);
+        }, () => {
+          window.clearTimeout(hsTimer);
+          resolve(ts);
+        });
+        ts.on('error', (err) => {
+          window.clearTimeout(hsTimer);
+          reject(err);
+        });
       });
+
+    if (config.secure) {
+      // 465 端口：直接 TLS 握手
+      sock = await tlsHandshake(rawSock);
     } else {
       // 587 端口：先 EHLO 再 STARTTLS
       sock = rawSock;
@@ -220,14 +250,7 @@ export async function sendEmail(
       }
 
       // TLS 升级
-      sock = await new Promise<SmtpSocket>((resolve, reject) => {
-        const raw = rawSock as SmtpSocket;
-        const ts = tls.connect({
-          socket: raw,
-          rejectUnauthorized: false,
-        }, () => resolve(ts));
-        ts.on('error', reject);
-      });
+      sock = await tlsHandshake(rawSock);
     }
 
     // 4. EHLO

@@ -24,11 +24,11 @@ npm run build:webapp
 
 echo "📦 同步到 vault (bamboo-immortals)..."
 mkdir -p "$VAULT_DIR"
+mkdir -p "$VAULT_DIR/webapp"
 cp main.js "$VAULT_DIR/"
 cp manifest.json "$VAULT_DIR/"
 cp versions.json "$VAULT_DIR/"
-rm -rf "$VAULT_DIR/webapp"
-cp -R webapp "$VAULT_DIR/webapp"
+cp -Rf webapp/. "$VAULT_DIR/webapp/"
 
 echo "✅ 同步完成 → $VAULT_DIR"
 echo "   main.js: $(wc -c < main.js | tr -d ' ') bytes"

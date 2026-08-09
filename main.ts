@@ -220,7 +220,26 @@ export default class BambooReviewPlugin extends Plugin {
     );
 
     // 注册设置面板
-    this.addSettingTab(new PluginSettings(this.app, this));
+    const settingsTab = new PluginSettings(this.app, this);
+    this.addSettingTab(settingsTab);
+
+    // 设置面板已通过上方 addSettingTab(settingsTab) 注册。
+    // 注意（Obsidian 1.13.0+ 行为）：若 SettingTab 实现了 getSettingDefinitions() 并返回非空数组，
+    // Obsidian 会走声明式渲染并跳过 display()。本插件使用命令式 display() 自定义 UI，
+    // 故不得实现 getSettingDefinitions()（已在 PluginSettings 中移除）。
+    // 保留一个无害的手动兜底命令，方便用户在极端情况下重新渲染。
+    this.addCommand({
+      id: 'render-bamboo-settings',
+      name: '竹林修仙传：重新渲染设置面板',
+      callback: () => {
+        try {
+          settingsTab.display();
+          new Notice('已重新渲染「竹林修仙传」设置面板');
+        } catch (e) {
+          console.error('[竹林修仙传] 手动 display 抛错', e);
+        }
+      },
+    });
 
     // 添加左侧 Ribbon 图标
     this.addRibbonIcon('leaf', '竹林修仙传', () => {

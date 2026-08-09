@@ -1,4 +1,4 @@
-import { App, PluginSettingTab, Setting, Notice, Modal, type SettingDefinitionItem } from 'obsidian';
+import { App, PluginSettingTab, Setting, Notice, Modal } from 'obsidian';
 import type BambooReviewPlugin from '../../main';
 import { ThemeBridge } from '../bridge/ThemeBridge';
 import { arrayBufferToBase64 } from '../utils/base64';
@@ -102,11 +102,15 @@ export class PluginSettings extends PluginSettingTab {
     this.buildUI();
   }
 
-  /** 渲染设置面板（从 display() 拆出，规避对基类 display 符号的误报） */
+  /** 渲染设置面板 */
   private buildUI(): void {
     const { containerEl } = this;
     containerEl.empty();
     containerEl.addClass('bamboo-review-settings');
+
+    // 竹林咨询：最先、完全独立渲染，不依赖任何其他分区，
+    // 确保即便激活/License/AI/调色等分区渲染抛错，邮箱配置入口也必然出现。
+    this.renderConsultSection(containerEl);
 
     try {
       this.renderAllSections(containerEl);
@@ -120,31 +124,10 @@ export class PluginSettings extends PluginSettingTab {
     }
   }
 
-  /** 各分区顺序渲染（竹林咨询独立隔离，确保即使别处抛错也能显示） */
-  private renderAllSections(containerEl: HTMLElement): void {
-    new Setting(containerEl).setName('竹林修仙传 - 设置').setHeading();
-
-    // === 激活（License Gate） ===
-    new Setting(containerEl).setName('激活').setHeading();
-
-    // 购买激活入口（轻量模式：付款后私聊作者拿码）
-    new Setting(containerEl)
-      .setName('购买激活')
-      .setDesc('一次性买断，无订阅、无有效期。点击查看价格与付款方式，付款后私聊作者获取激活码。')
-      .addButton((btn) =>
-        btn
-          .setButtonText('查看购买说明')
-          .setCta()
-          .onClick(() => {
-            new PurchaseModal(this.app, this.plugin).open();
-          })
-      );
-
-    this.renderLicenseSection(containerEl);
-
-    // === 竹林咨询（独立隔离：即使后续分区渲染抛错，邮箱配置也必现） ===
+  /** 竹林咨询配置区（零依赖、独立隔离渲染） */
+  private renderConsultSection(containerEl: HTMLElement): void {
     try {
-      new Setting(containerEl).setName('竹林咨询').setHeading();
+      new Setting(containerEl).setName('竹林咨询（邮箱 SMTP 配置）').setHeading();
 
       // 引导卡片：QQ 邮箱 SMTP 授权码获取步骤
       const guideBox = containerEl.createDiv({ cls: 'bamboo-about-card bamboo-consult-guide' });
@@ -230,6 +213,30 @@ export class PluginSettings extends PluginSettingTab {
     } catch (err) {
       console.error('[竹林修仙传] 竹林咨询分区渲染异常：', err);
     }
+    console.log('[竹林修仙传] ◀ 竹林咨询区渲染结束');
+  }
+
+  /** 各分区顺序渲染（竹林咨询独立隔离，确保即使别处抛错也能显示） */
+  private renderAllSections(containerEl: HTMLElement): void {
+    new Setting(containerEl).setName('竹林修仙传 - 设置').setHeading();
+
+    // === 激活（License Gate） ===
+    new Setting(containerEl).setName('激活').setHeading();
+
+    // 购买激活入口（轻量模式：付款后私聊作者拿码）
+    new Setting(containerEl)
+      .setName('购买激活')
+      .setDesc('一次性买断，无订阅、无有效期。点击查看价格与付款方式，付款后私聊作者获取激活码。')
+      .addButton((btn) =>
+        btn
+          .setButtonText('查看购买说明')
+          .setCta()
+          .onClick(() => {
+            new PurchaseModal(this.app, this.plugin).open();
+          })
+      );
+
+    this.renderLicenseSection(containerEl);
 
     // === 数据存储 ===
     new Setting(containerEl).setName('数据存储').setHeading();
@@ -514,6 +521,15 @@ export class PluginSettings extends PluginSettingTab {
   private renderLicenseSection(containerEl: HTMLElement): void {
     // 使用插件级 LicenseStore 单例（与 webapp 门控同源）
     const store = this.plugin.license;
+    if (!store) {
+      // 防御：设置页打开时 license 尚未初始化（极端时序），
+      // 不应让异常吞掉后续所有分区（激活/竹林咨询等）
+      new Setting(containerEl)
+        .setName('激活')
+        .setHeading()
+        .setDesc('激活信息加载中，请稍后重新打开本设置页。');
+      return;
+    }
     const active = store.isActive();
 
     // 状态行
@@ -636,31 +652,6 @@ export class PluginSettings extends PluginSettingTab {
       );
   }
 
-  getControlValue(key: string): unknown {
-    return (this.plugin.settings as unknown as Record<string, unknown>)[key];
-  }
-
-  setControlValue(key: string, value: unknown): void {
-    (this.plugin.settings as unknown as Record<string, unknown>)[key] = value;
-    void this.plugin.saveSettings();
-  }
-
-  getSettingDefinitions(): SettingDefinitionItem[] {
-    const s = this.plugin.settings;
-    return [
-      { name: '数据存储路径', desc: '复盘数据在 Vault 中的存储目录', control: { key: 'dataPath', type: 'text', defaultValue: s.dataPath, placeholder: 'bamboo-review' } },
-      { name: '自动生成 Markdown 摘要', desc: '每次保存复盘数据时自动生成可读 .md 文件', control: { key: 'enableMarkdownSync', type: 'toggle', defaultValue: s.enableMarkdownSync } },
-      { name: '自定义主题路径', desc: '存放自定义主题 .js 文件的文件夹', control: { key: 'themePath', type: 'text', defaultValue: s.themePath, placeholder: '竹林复盘主题' } },
-      { name: '白噪音文件夹', desc: '扫描音频文件的文件夹（留空扫描全库）', control: { key: 'noisePath', type: 'text', defaultValue: s.noisePath, placeholder: '留空扫描全库' } },
-      { name: '跟随 Obsidian 主题配色', desc: '插件配色跟随当前 Obsidian 主题强调色', control: { key: 'followObsidianTheme', type: 'toggle', defaultValue: s.followObsidianTheme } },
-      { name: '将调色同步到 Obsidian', desc: 'webapp 调色实时同步到原生界面', control: { key: 'syncPaletteToObsidian', type: 'toggle', defaultValue: s.syncPaletteToObsidian } },
-      { name: '启用 AI 规划', desc: '运行「AI 规划」命令由大模型拆解目标', control: { key: 'aiEnabled', type: 'toggle', defaultValue: s.aiEnabled } },
-      { name: 'API Key', desc: '大模型服务鉴权密钥', control: { key: 'aiApiKey', type: 'text', defaultValue: s.aiApiKey, placeholder: 'sk-...' } },
-      { name: 'Base URL', desc: 'API 基地址（不含 /chat/completions 后缀）', control: { key: 'aiBaseUrl', type: 'text', defaultValue: s.aiBaseUrl, placeholder: 'https://api.deepseek.com/v1' } },
-      { name: '模型', desc: '模型名，如 deepseek-chat', control: { key: 'aiModel', type: 'text', defaultValue: s.aiModel, placeholder: 'deepseek-chat' } },
-      { name: '默认拆解粒度', desc: 'AI 拆解子项的细粒度：粗 / 中 / 细', control: { key: 'aiDecomposeDepth', type: 'dropdown', defaultValue: s.aiDecomposeDepth, options: { '粗': '粗（2-3 子项）', '中': '中（3-6 子项）', '细': '细（5-8 子项）' } } },
-    ];
-  }
 }
 
 /** 购买说明弹窗：展示价格、收款码与拿码流程（轻量买断模式） */

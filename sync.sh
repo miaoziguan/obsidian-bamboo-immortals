@@ -28,6 +28,7 @@ mkdir -p "$VAULT_DIR/webapp"
 cp main.js "$VAULT_DIR/"
 cp manifest.json "$VAULT_DIR/"
 cp versions.json "$VAULT_DIR/"
+cp styles.css "$VAULT_DIR/"
 cp -Rf webapp/. "$VAULT_DIR/webapp/"
 
 echo "✅ 同步完成 → $VAULT_DIR"

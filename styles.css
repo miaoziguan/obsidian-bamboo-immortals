@@ -36,24 +36,31 @@ html body .workspace-leaf-content[data-type="bamboo-immortals"] .view-header-tit
 
 .bamboo-review-settings .setting-item-description {
   color: var(--text-muted);
+  line-height: 1.6;
 }
 
-/* 设置页 tab 分页 */
+/* 设置页 tab 分页：分段控件风格 */
 .bamboo-settings-tabs {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  padding: 4px 0 12px 0;
-  margin-bottom: 8px;
-  border-bottom: 1px solid var(--background-modifier-border);
+  gap: 4px;
+  padding: 4px;
+  margin-bottom: 16px;
+  border-radius: 10px;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
 }
 .bamboo-settings-tab-btn {
-  padding: 6px 14px;
-  border-radius: 8px;
-  border: 1px solid var(--background-modifier-border);
-  background: var(--background-secondary);
+  flex: 1 1 auto;
+  min-width: 64px;
+  padding: 7px 14px;
+  border-radius: 7px;
+  border: 1px solid transparent;
+  background: transparent;
   color: var(--text-muted);
   font-size: 13px;
+  font-weight: 500;
+  text-align: center;
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
@@ -65,9 +72,40 @@ html body .workspace-leaf-content[data-type="bamboo-immortals"] .view-header-tit
   background: var(--interactive-accent);
   color: var(--text-on-accent);
   border-color: var(--interactive-accent);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
 }
 .bamboo-settings-tab-content {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+/* 分区标题：左侧 accent 色条 + 上方留白，强化层次 */
+.bamboo-settings-tab-content .setting-item-heading {
+  margin-top: 22px;
+  padding-top: 14px;
+  padding-left: 12px;
+  border-top: 1px solid var(--background-modifier-border);
+  border-left: 3px solid var(--interactive-accent);
+  border-radius: 0 4px 4px 0;
+}
+.bamboo-settings-tab-content .setting-item-heading:first-child {
   margin-top: 4px;
+  padding-top: 0;
+  border-top: none;
+}
+.bamboo-settings-tab-content .setting-item-heading .setting-item-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-normal);
+}
+
+/* 表单项统一节奏 */
+.bamboo-settings-tab-content .setting-item {
+  padding: 12px 0;
+  border-top: 1px solid var(--background-modifier-border);
+}
+.bamboo-settings-tab-content .setting-item:first-child {
+  border-top: none;
 }
 
 /* 竹林咨询弹窗 */
@@ -77,6 +115,41 @@ html body .workspace-leaf-content[data-type="bamboo-immortals"] .view-header-tit
 }
 .bamboo-consult-textarea {
   max-height: 180px;
+}
+/* 竹林咨询：引导卡片 */
+.bamboo-consult-guide {
+  padding: 14px 18px;
+  border-radius: 12px;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  margin: 12px 0 4px 0;
+}
+.bamboo-consult-guide .bamboo-about-label {
+  border-bottom: none;
+  padding-bottom: 0;
+  margin-bottom: 10px;
+}
+.bamboo-consult-steps {
+  margin: 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.bamboo-consult-steps li {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+.bamboo-consult-note {
+  margin: 10px 0 0 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-faint);
+  background: var(--background-primary);
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--background-modifier-border);
 }
 .bamboo-consult-info {
   margin-top: 12px;
@@ -99,17 +172,18 @@ html body .workspace-leaf-content[data-type="bamboo-immortals"] .view-header-tit
 
 /* 关于卡片 */
 .bamboo-about-card {
-  padding: 14px 16px;
-  border-radius: 10px;
+  padding: 16px 18px;
+  border-radius: 12px;
   background: var(--background-secondary);
   border: 1px solid var(--background-modifier-border);
-  margin-top: 8px;
+  margin-top: 12px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 .bamboo-about-card.bamboo-about-author {
-  margin-top: 10px;
+  margin-top: 12px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
 }
 .bamboo-about-label {
   font-size: 11px;
@@ -118,10 +192,12 @@ html body .workspace-leaf-content[data-type="bamboo-immortals"] .view-header-tit
   letter-spacing: 0.6px;
   font-weight: 600;
   margin: 0 0 8px 0;
+  padding-bottom: 6px;
+  border-bottom: 1px dashed var(--background-modifier-border);
 }
 .bamboo-about-desc {
-  font-size: 12.5px;
-  line-height: 1.7;
+  font-size: 13px;
+  line-height: 1.75;
   color: var(--text-muted);
   margin: 0;
 }

@@ -95,6 +95,8 @@ export const DEFAULT_SETTINGS: BambooReviewSettings = {
  * 若实现声明式定义会令 Obsidian 走声明式渲染路径并跳过 display()，
  * 导致所有自定义区块无法渲染。这是有意的取舍：牺牲设置搜索索引能力，
  * 换取复杂动态 UI 的正常工作。minAppVersion 为 1.8.0，无需声明式兼容。
+ * 因此 Obsidian 官方 lint 会提示 "PluginSettingTab does not implement
+ * getSettingDefinitions()"，此为预期现象，非缺陷。
  */
 export class PluginSettings extends PluginSettingTab {
   plugin: BambooReviewPlugin;

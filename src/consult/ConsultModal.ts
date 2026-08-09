@@ -48,7 +48,7 @@ export class ConsultModal extends Modal {
       .addTextArea((ta) => {
         ta.setValue(this.options.selectedText).setDisabled(true);
         ta.inputEl.rows = 5;
-        ta.inputEl.style.maxHeight = '180px';
+        ta.inputEl.addClass('bamboo-consult-textarea');
       });
 
     // 补充说明（选填）
@@ -87,11 +87,12 @@ export class ConsultModal extends Modal {
 
     cancelBtn.addEventListener('click', () => this.close());
 
-    sendBtn.addEventListener('click', async () => {
+    sendBtn.addEventListener('click', () => {
       if (sending) return;
       sending = true;
       sendBtn.disabled = true;
       sendBtn.textContent = '发送中...';
+      void (async () => {
 
       const subject = `[竹林咨询] 来自《${this.options.noteTitle}》的一段文字`;
 
@@ -122,6 +123,7 @@ ${escapeHtml(this.options.selectedText)}
         sendBtn.textContent = '发送咨询';
         new Notice(result.error ?? '发送失败，请检查 SMTP 配置后重试', 8000);
       }
+      })();
     });
 
     // Esc 关闭

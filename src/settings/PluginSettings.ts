@@ -213,7 +213,6 @@ export class PluginSettings extends PluginSettingTab {
     } catch (err) {
       console.error('[竹林修仙传] 竹林咨询分区渲染异常：', err);
     }
-    console.log('[竹林修仙传] ◀ 竹林咨询区渲染结束');
   }
 
   /** 各分区顺序渲染（竹林咨询独立隔离，确保即使别处抛错也能显示） */

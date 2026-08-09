@@ -233,6 +233,8 @@ export default class BambooReviewPlugin extends Plugin {
       name: '竹林修仙传：重新渲染设置面板',
       callback: () => {
         try {
+          // display() 在 1.13.0+ 被标记弃用，但本插件使用命令式自定义 UI（未实现 getSettingDefinitions），
+          // 故仍走 display()；此兜底命令仅在极端情况下手动重渲染。
           settingsTab.display();
           new Notice('已重新渲染「竹林修仙传」设置面板');
         } catch (e) {

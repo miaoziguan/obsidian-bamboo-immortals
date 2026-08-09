@@ -38,6 +38,33 @@ html body .workspace-leaf-content[data-type="bamboo-immortals"] .view-header-tit
   color: var(--text-muted);
 }
 
+/* 竹林咨询弹窗 */
+.bamboo-consult-modal .bamboo-consult-desc {
+  color: var(--text-muted);
+  margin: 4px 0 16px 0;
+}
+.bamboo-consult-textarea {
+  max-height: 180px;
+}
+.bamboo-consult-info {
+  margin-top: 12px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+}
+.bamboo-consult-info p {
+  margin: 2px 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.bamboo-consult-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 18px;
+}
+
 /* 关于卡片 */
 .bamboo-about-card {
   padding: 14px 16px;

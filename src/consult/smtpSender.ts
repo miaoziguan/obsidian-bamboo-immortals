@@ -8,29 +8,28 @@
  * SMTP 配置由调用方传入，本模块不依赖 Obsidian API。
  */
 
+// 使用 `import type` 仅引入类型，不会在运行时加载 Node 模块（移动端安全）。
+// 运行时模块通过 nodeRequire() 经桌面端 Electron 的全局 window.require 惰性加载。
 import type { Socket } from 'net';
 import type { TLSSocket } from 'tls';
 
 /**
  * 惰性加载 Node.js 内置模块。
- * 顶层 import 会让插件在移动端（无 Node.js runtime）加载即崩溃，
- * 因此改为调用时才 require，并由调用方保证仅在桌面端触发。
+ * 仅在桌面端 Electron 可用（window.require 存在），调用方需先经 isSmtpAvailable() 守卫。
  */
 function nodeRequire(id: 'net'): typeof import('net');
 function nodeRequire(id: 'tls'): typeof import('tls');
 function nodeRequire(id: string): unknown {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const req = (globalThis as any).require;
+  const req = (window as unknown as { require?: (id: string) => unknown }).require;
   if (typeof req !== 'function') {
     throw new Error('当前环境不支持 Node.js 网络模块（竹林咨询仅支持桌面端）');
   }
   return req(id);
 }
 
-/** 当前环境是否可用 SMTP 发信（桌面端 Electron 才有 Node.js runtime） */
+/** 当前环境是否可用 SMTP 发信（桌面端 Electron 才有全局 require） */
 export function isSmtpAvailable(): boolean {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return typeof (globalThis as any).require === 'function';
+  return typeof (window as unknown as { require?: unknown }).require === 'function';
 }
 
 export interface SmtpConfig {
@@ -59,7 +58,7 @@ function parseCode(line: string): number {
 /** 从 socket 读取一行（SMTP 每行以 \r\n 结尾） */
 function readLine(sock: Socket | TLSSocket, timeoutMs = 10000): Promise<string> {
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => {
+    const timer = window.setTimeout(() => {
       cleanup();
       reject(new Error(`SMTP 读取响应超时（${timeoutMs}ms）`));
     }, timeoutMs);
@@ -88,7 +87,7 @@ function readLine(sock: Socket | TLSSocket, timeoutMs = 10000): Promise<string> 
     }
 
     function cleanup() {
-      clearTimeout(timer);
+      window.clearTimeout(timer);
       sock.off('data', onData);
       sock.off('error', onError);
       sock.off('close', onClose);
@@ -117,16 +116,18 @@ async function sendEhlo(
 ): Promise<string[]> {
   sock.write(`EHLO ${hostname}\r\n`);
   const lines: string[] = [];
-  // eslint-disable-next-line no-constant-condition
-  while (true) {
+  // EHLO 响应为多行：每行以 250- 续接，直到 250<空格> 表示结束
+  let reading = true;
+  while (reading) {
     const line = await readLine(sock);
     lines.push(line);
     const code = parseCode(line);
-    // 不是 250 开头或第四个字符是空格 → 结束
+    // 不是 250 开头或第四个字符是空格 → 响应结束
     if (code !== 250 || (line.length >= 4 && line[3] === ' ')) {
-      return lines;
+      reading = false;
     }
   }
+  return lines;
 }
 
 /**
@@ -144,7 +145,7 @@ export async function sendEmail(
     return { ok: false, error: 'SMTP 未配置：请先在插件设置中填写发件邮箱和 SMTP 授权码' };
   }
 
-  let rawSock: Socket | null = null;
+  let rawSock: Socket | TLSSocket | null = null;
   let sock: Socket | TLSSocket;
 
   if (!isSmtpAvailable()) {
@@ -156,7 +157,7 @@ export async function sendEmail(
 
   try {
     // 1. TCP 连接
-    rawSock = await new Promise<Socket>((resolve, reject) => {
+    rawSock = await new Promise<Socket | TLSSocket>((resolve, reject) => {
       const s = net.connect({ host: config.host, port: config.port }, () => resolve(s));
       s.on('error', reject);
     });
@@ -172,8 +173,8 @@ export async function sendEmail(
     // 3. 决定是否 SSL / STARTTLS
     if (config.secure) {
       // 465 端口：直接 TLS 握手
-      sock = await new Promise<TLSSocket>((resolve, reject) => {
-        const raw = rawSock as Socket;
+      sock = await new Promise<Socket | TLSSocket>((resolve, reject) => {
+        const raw = rawSock as Socket | TLSSocket;
         const ts = tls.connect({
           socket: raw,
           rejectUnauthorized: false, // QQ 邮箱证书有时 tricky
@@ -197,8 +198,8 @@ export async function sendEmail(
       }
 
       // TLS 升级
-      sock = await new Promise<TLSSocket>((resolve, reject) => {
-        const raw = rawSock as Socket;
+      sock = await new Promise<Socket | TLSSocket>((resolve, reject) => {
+        const raw = rawSock as Socket | TLSSocket;
         const ts = tls.connect({
           socket: raw,
           rejectUnauthorized: false,

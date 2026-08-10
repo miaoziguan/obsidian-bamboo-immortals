@@ -215,13 +215,7 @@ export class AppAPI {
     if (!msg || !msg.type || !msg.id) return;
 
     // 来源校验
-    if (this.iframe && event.source !== this.iframe.contentWindow) {
-      // 诊断：丢弃非本 iframe 来源的消息（热更新残留旧 iframe 时会出现）
-      if (msg.type === 'app:ready') {
-        console.warn('[竹林修仙传·AppAPI] 丢弃来自非当前 iframe 的 app:ready（可能为旧实例残留）');
-      }
-      return;
-    }
+    if (this.iframe && event.source !== this.iframe.contentWindow) return;
 
     // 消息类型白名单（阶段3 · 契约化：从 protocol.ts 集中定义）
     const type = msg.type;
@@ -240,7 +234,6 @@ export class AppAPI {
   private async handleMessage(type: string, id: string, payload: unknown): Promise<void> {
     // ---- 生命周期 ----
     if (type === 'app:ready') {
-      console.log('[竹林修仙传·AppAPI] 收到 app:ready，iframe 已绑定=', !!this.iframe, '回包 licenseActive=', this.licenseStore.isActive());
       // 阶段3 · 契约化：版本协商 — 插件升级但 webapp 缓存旧版时，用户重新加载视图即可获取最新 webapp
       this.themeBridge.pushTheme(this.settings.followObsidianTheme);
       this.respond(id, {

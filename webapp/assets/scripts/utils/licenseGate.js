@@ -58,7 +58,7 @@ export function mountLicenseGate(opts) {
         <div class="blg-price-divider"></div>
         <div class="blg-price-secondary">
           <span class="blg-price-label">正式价</span>
-          <span class="blg-price-value">¥99</span>
+          <span class="blg-price-value">¥9999</span>
         </div>
       </div>
 

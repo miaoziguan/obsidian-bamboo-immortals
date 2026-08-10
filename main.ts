@@ -60,6 +60,13 @@ export default class BambooReviewPlugin extends Plugin {
   private webapp!: WebappController;
   /** 激活门控单一数据源（全插件共享，未激活时 webapp 内显示激活遮罩） */
   license!: LicenseStore;
+  /**
+   * 插件卸载中标记（禁用/热更新）。onunload 先于核心 detach 视图执行，
+   * 视图 onClose 据此判断本次关闭来自卸载而非用户操作，不清除 reviewViewOpen 标记。
+   */
+  pluginUnloading = false;
+  /** 重载后的面板恢复只执行一次（onLayoutReady 可能多次触发） */
+  private reviewViewRecovered = false;
 
   async onload(): Promise<void> {
     // 加载设置
@@ -238,24 +245,56 @@ export default class BambooReviewPlugin extends Plugin {
       void this.activateView();
     });
 
-    // 插件更新/重载后，常驻右侧栏的复盘视图持有的是旧版 DailyReviewView 实例，
-    // 旧实例的 onClose() 已在 unload 时被调过，iframe/appAPI/appHost 全空，
-    // 在旧实例上调任何方法均为徒劳。
-    // 最可靠的方式：直接 detach 旧 leaf（Obsidian 删除旧视图），再重建新叶。
-    const existingLeaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_DAILY_REVIEW);
-    for (const leaf of existingLeaves) {
-      leaf.detach();
-    }
-    if (existingLeaves.length > 0) {
-      // detach 后需等一帧让 Obsidian 内部清理完成，再创建新 leaf
-      window.requestAnimationFrame(() => {
-        void this.activateView();
-      });
-    }
+    // 插件更新/重载后面板恢复：
+    // 禁用插件时 Obsidian 核心会自动 detach 本插件所有视图 leaf（个别场景也可能残留
+    // 旧实例），重新启用时核心不会自动恢复 —— 此前用户只能重启 Obsidian 靠布局恢复找回。
+    // 等布局就绪后统一处理（冷启动时布局恢复已带回面板，各分支会自动跳过）。
+    this.app.workspace.onLayoutReady(() => {
+      void this.recoverReviewViewAfterReload();
+    });
   }
 
   onunload(): void {
+    // 先于核心 detach 视图执行：让视图 onClose 知道本次关闭来自插件卸载，
+    // 不清除「面板开着」标记，供重载后自动恢复。
+    this.pluginUnloading = true;
     ThemeBridge.default.restoreDefaults();
+  }
+
+  /**
+   * 热更新/重载后的复盘面板恢复。
+   *
+   * 判定：
+   * - 布局中已有本类型 leaf 且视图由本次会话创建（instanceof 命中本 bundle 的类）
+   *   → 冷启动布局恢复，健康，不动；
+   * - 布局中已有 leaf 但视图是旧插件实例（持有 pluginDir 但 instanceof 不命中）
+   *   → detach 旧叶并重建；
+   * - 布局中无 leaf，但 reviewViewOpen 标记记录面板此前开着（典型：热更新被核心
+   *   detach；onunload 先于核心 detach 执行，标记得以保留）→ 自动重建面板。
+   */
+  private async recoverReviewViewAfterReload(): Promise<void> {
+    if (this.reviewViewRecovered) return;
+    this.reviewViewRecovered = true;
+
+    const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_DAILY_REVIEW);
+    if (leaves.length > 0) {
+      const stale = leaves.filter((l) => {
+        if (l.view instanceof DailyReviewView) return false;
+        // 仅把「真正的旧版视图实例」视为残留；核心布局恢复产生的占位视图不动
+        const v = l.view as unknown as Record<string, unknown> | null;
+        return !!v && 'pluginDir' in v;
+      });
+      if (stale.length === 0) return;
+      console.log(`[竹林修仙传] 检测到 ${stale.length} 个旧版复盘视图残留，正在重建`);
+      for (const leaf of stale) leaf.detach();
+      await this.activateView();
+      return;
+    }
+
+    if (this.settings.reviewViewOpen) {
+      console.log('[竹林修仙传] 面板在插件更新前处于打开状态，自动恢复');
+      await this.activateView();
+    }
   }
 
   /**

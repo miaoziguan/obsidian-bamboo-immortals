@@ -61,6 +61,12 @@ export interface BambooReviewSettings {
   smtpUser: string;
   /** 竹林咨询：SMTP 授权码 */
   smtpPass: string;
+  /**
+   * 复盘面板当前是否处于打开状态（内部运行时标记，不在设置 UI 暴露）。
+   * 视图 onOpen 置 true、用户主动关闭置 false；插件卸载（禁用/热更新）触发的
+   * 关闭不清除，供重载后 onload 判断「更新前面板是否开着」并自动恢复。
+   */
+  reviewViewOpen: boolean;
 }
 
 export const DEFAULT_SETTINGS: BambooReviewSettings = {
@@ -85,6 +91,7 @@ export const DEFAULT_SETTINGS: BambooReviewSettings = {
   smtpSecure: true,
   smtpUser: '',
   smtpPass: '',
+  reviewViewOpen: false,
 };
 
 /**

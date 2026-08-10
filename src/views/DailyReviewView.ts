@@ -55,6 +55,10 @@ export class DailyReviewView extends ItemView {
   }
 
   async onOpen(): Promise<void> {
+    // 持久化「面板开着」标记：插件热更新被核心 detach 后，新实例据此自动恢复面板
+    this.settings.reviewViewOpen = true;
+    void this.saveSettings();
+
     const container: HTMLElement = this.containerEl.children[1] as HTMLElement;
     container.empty();
     container.addClass('bamboo-review-container');
@@ -168,6 +172,14 @@ export class DailyReviewView extends ItemView {
   }
 
   async onClose(): Promise<void> {
+    // 仅用户主动关闭时清除「面板开着」标记；插件卸载（禁用/热更新）触发的关闭保留标记，
+    // 否则热更新后新实例无法判断面板原本开着，自动恢复会失效
+    const unloading = (this.plugin as { pluginUnloading?: boolean } | null)?.pluginUnloading;
+    if (!unloading) {
+      this.settings.reviewViewOpen = false;
+      void this.saveSettings();
+    }
+
     // 清理主题监听
     if (this.cssChangeRef) {
       this.app.workspace.offref(this.cssChangeRef);

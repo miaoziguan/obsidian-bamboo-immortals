@@ -150,9 +150,13 @@ export class AppAPI {
     this.messageHandler = (event: MessageEvent) => {
       void this.onMessage(event);
     };
-    // bridge.js 的 postMessage 目标是 window.parent（主 Obsidian 窗口），
-    // 必须在该窗口上监听才能收到消息（插件沙箱的 window 不是同一对象）。
-    (activeDocument.defaultView || window).addEventListener('message', this.messageHandler);
+    // bridge.js 的 postMessage 目标是 window.parent（主 Obsidian 窗口）。
+    // Obsidian 多窗口/右侧栏 dock 下 window.parent 可能与 activeDocument.defaultView
+    // 不是同一对象，故同时在两者上监听，确保 app:ready 等消息一定被收到。
+    const targets = new Set<Window | null>([activeDocument.defaultView, window]);
+    for (const t of targets) {
+      if (t) t.addEventListener('message', this.messageHandler);
+    }
     this.disposed = false; // 重新 attach 后恢复可扫描状态（detach 已置 true）
   }
 
@@ -175,7 +179,10 @@ export class AppAPI {
   detach(): void {
     this.disposed = true;
     if (this.messageHandler) {
-      (activeDocument.defaultView || window).removeEventListener('message', this.messageHandler);
+      const targets = new Set<Window | null>([activeDocument.defaultView, window]);
+      for (const t of targets) {
+        if (t) t.removeEventListener('message', this.messageHandler);
+      }
       this.messageHandler = null;
     }
     this.themeBridge.detachIframe();

@@ -252,11 +252,28 @@ export default class BambooReviewPlugin extends Plugin {
     this.app.workspace.onLayoutReady(() => {
       void this.recoverReviewViewAfterReload();
     });
+
+    // 用户主动关闭面板的检测：onClose 不再清除 reviewViewOpen（避免热更新误清），
+    // 改由布局变化判断。热更新时核心会瞬时 detach 再重建，故延迟一帧二次确认：
+    // 若届时面板 leaf 仍未恢复且非插件卸载中，才清除标记。
+    this.registerEvent(
+      this.app.workspace.on('layout-change', () => {
+        if (this.pluginUnloading) return;
+        window.requestAnimationFrame(() => {
+          if (this.pluginUnloading) return;
+          const stillOpen = this.app.workspace.getLeavesOfType(VIEW_TYPE_DAILY_REVIEW).length > 0;
+          if (!stillOpen && this.settings.reviewViewOpen) {
+            this.settings.reviewViewOpen = false;
+            void this.saveSettings();
+          }
+        });
+      })
+    );
   }
 
   onunload(): void {
-    // 先于核心 detach 视图执行：让视图 onClose 知道本次关闭来自插件卸载，
-    // 不清除「面板开着」标记，供重载后自动恢复。
+    // 先于核心 detach 视图执行：标记本次为插件卸载（禁用/热更新），
+    // 让 layout-change 检测跳过清除 reviewViewOpen，供重载后自动恢复面板。
     this.pluginUnloading = true;
     ThemeBridge.default.restoreDefaults();
   }

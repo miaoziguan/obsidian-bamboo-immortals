@@ -175,13 +175,10 @@ export class DailyReviewView extends ItemView {
   }
 
   async onClose(): Promise<void> {
-    // 仅用户主动关闭时清除「面板开着」标记；插件卸载（禁用/热更新）触发的关闭保留标记，
-    // 否则热更新后新实例无法判断面板原本开着，自动恢复会失效
-    const unloading = (this.plugin as { pluginUnloading?: boolean } | null)?.pluginUnloading;
-    if (!unloading) {
-      this.settings.reviewViewOpen = false;
-      void this.saveSettings();
-    }
+    // 注意：热更新（Obsidian 先调 onClose 后调插件 onunload）时，若在此清除
+    // reviewViewOpen 标记，重载后会误判「面板没开过」而不恢复面板。
+    // 因此 onClose 一律不清除标记；用户主动关闭由 main.ts 的 layout-change
+    // 检测（延迟一帧避开热更新瞬时 detach）负责清除。
 
     // 清理主题监听
     if (this.cssChangeRef) {

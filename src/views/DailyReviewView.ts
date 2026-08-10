@@ -188,35 +188,6 @@ export class DailyReviewView extends ItemView {
     }
   }
 
-  /**
-   * 强制重建 webapp（iframe + blob URL）。
-   * 用于插件更新/重载场景：Obsidian 重载插件后，常驻右侧栏的视图
-   * 不会被彻底重建，旧 iframe 不会重新发 app:ready、不会重新拉取数据，
-   * 导致界面空白或停留在旧数据，必须重启 Obsidian 才恢复。
-   * 主动 reload 可让 webapp 重新握手并一次性拉全数据，免去重启。
-   */
-  async reloadWebapp(): Promise<void> {
-    const container: HTMLElement = this.containerEl.children[1] as HTMLElement;
-    if (!container || !this.pluginDir) return;
-
-    // 清理旧通信层与旧 blob
-    this.appAPI?.detach();
-    this.appAPI = null;
-    this.appHost?.destroy();
-    this.appHost = null;
-    if (this.iframe) {
-      this.iframe.remove();
-      this.iframe = null;
-    }
-    if (this.cssChangeRef) {
-      this.app.workspace.offref(this.cssChangeRef);
-      this.cssChangeRef = null;
-    }
-
-    // 重新走 onOpen 的核心挂载逻辑
-    await this.onOpen();
-  }
-
   /** 接收来自插件的导航/操作指令 */
   sendCommand(type: string): void {
     if (!this.iframe?.contentWindow) return;

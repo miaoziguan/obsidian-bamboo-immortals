@@ -238,15 +238,19 @@ export default class BambooReviewPlugin extends Plugin {
       void this.activateView();
     });
 
-    // 插件更新/重载后，常驻右侧栏的复盘视图不会被 Obsidian 彻底重建，
-    // 旧 iframe 不会重新发 app:ready、也不会重新拉取数据，导致界面空白/停留旧数据，
-    // 必须重启 Obsidian 才恢复。此处主动对已有视图触发 webapp 重建，更新后即可直接加载数据。
+    // 插件更新/重载后，常驻右侧栏的复盘视图持有的是旧版 DailyReviewView 实例，
+    // 旧实例的 onClose() 已在 unload 时被调过，iframe/appAPI/appHost 全空，
+    // 在旧实例上调任何方法均为徒劳。
+    // 最可靠的方式：直接 detach 旧 leaf（Obsidian 删除旧视图），再重建新叶。
     const existingLeaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_DAILY_REVIEW);
     for (const leaf of existingLeaves) {
-      const view = leaf.view as DailyReviewView | null;
-      if (view && typeof (view as { reloadWebapp?: () => Promise<void> }).reloadWebapp === 'function') {
-        void (view as { reloadWebapp: () => Promise<void> }).reloadWebapp();
-      }
+      leaf.detach();
+    }
+    if (existingLeaves.length > 0) {
+      // detach 后需等一帧让 Obsidian 内部清理完成，再创建新 leaf
+      window.requestAnimationFrame(() => {
+        void this.activateView();
+      });
     }
   }
 

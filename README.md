@@ -68,7 +68,7 @@
 
 本插件为**一次性买断**，无订阅、无有效期，付款后获得专属激活码，离线激活、永久可用。
 
-- **早鸟价**：¥29（前期限量，恢复正式价后不再有）
+- **限时早鸟价**：¥29（前期限量，恢复正式价后不再有）
 - **正式价**：¥9999
 
 **购买流程**
@@ -286,7 +286,7 @@ One-time purchase. After activation, **all features unlock** — no subscription
 
 This plugin is a **one-time buyout** — no subscription, no expiry. Pay once, get a personal activation code, activate offline, use forever.
 
-- **Early-bird price**: ¥29 (limited, before the regular price takes effect)
+- **Limited-time early-bird price**: ¥29 (limited, before the regular price takes effect)
 - **Regular price**: ¥9999
 
 **How to buy**

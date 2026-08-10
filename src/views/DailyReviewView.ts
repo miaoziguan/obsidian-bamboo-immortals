@@ -148,16 +148,19 @@ export class DailyReviewView extends ItemView {
       this.appAPI.startListening();
       const blobUrl = await this.appHost.buildBlobUrl();
 
+      // 先创建 iframe 并绑定通信层，再赋予 src —— 确保 webapp 启动发来的
+      // app:ready 到达时 this.iframe 已就绪，避免 onMessage 因 source 校验不通过
+      // 而丢弃握手（握手失败时 store 首屏会退化为空/离线数据，需重启才恢复）。
       this.iframe = container.createEl('iframe', {
         cls: 'bamboo-review-frame',
         attr: {
-          src: blobUrl,
           allow: 'camera; microphone; clipboard-read; clipboard-write',
         },
       });
-
-      loadingEl.remove();
       this.appAPI.bindIframe(this.iframe);
+      loadingEl.remove();
+
+      this.iframe.src = blobUrl;
 
       this.cssChangeRef = this.app.workspace.on('css-change', () => {
         this.appAPI?.onThemeChanged(this.settings.followObsidianTheme);

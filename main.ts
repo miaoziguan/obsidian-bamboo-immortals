@@ -277,6 +277,7 @@ export default class BambooReviewPlugin extends Plugin {
     this.reviewViewRecovered = true;
 
     const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_DAILY_REVIEW);
+    console.log(`[竹林修仙传] recoverReviewViewAfterReload: 现有 leaf=${leaves.length}, reviewViewOpen=${this.settings.reviewViewOpen}`);
     if (leaves.length > 0) {
       const stale = leaves.filter((l) => {
         if (l.view instanceof DailyReviewView) return false;
@@ -284,7 +285,10 @@ export default class BambooReviewPlugin extends Plugin {
         const v = l.view as unknown as Record<string, unknown> | null;
         return !!v && 'pluginDir' in v;
       });
-      if (stale.length === 0) return;
+      if (stale.length === 0) {
+        console.log('[竹林修仙传] 现有 leaf 均为健康视图（冷启动布局恢复），不干预');
+        return;
+      }
       console.log(`[竹林修仙传] 检测到 ${stale.length} 个旧版复盘视图残留，正在重建`);
       for (const leaf of stale) leaf.detach();
       await this.activateView();
@@ -294,6 +298,8 @@ export default class BambooReviewPlugin extends Plugin {
     if (this.settings.reviewViewOpen) {
       console.log('[竹林修仙传] 面板在插件更新前处于打开状态，自动恢复');
       await this.activateView();
+    } else {
+      console.log('[竹林修仙传] 无 leaf 且 reviewViewOpen=false，不自动恢复面板');
     }
   }
 

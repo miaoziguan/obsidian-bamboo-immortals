@@ -420,6 +420,17 @@ export class BridgeStorage {
     }
   }
 
+  /** 生成年度修为报告：聚合本地数据 + 落盘 Markdown，返回结构化摘要 */
+  async requestAnnualReport(year) {
+    await this.ensureReady();
+    try {
+      return await this._send('app:generateAnnualReport', { year });
+    } catch (e) {
+      console.warn('[Bridge] app:generateAnnualReport 失败:', e && e.message);
+      throw e;
+    }
+  }
+
   /** 当前竹币余额（竹杖芒鞋侧栏常驻展示，单一数据源来自插件） */
   async getBambooCoinBalance() {
     await this.ensureReady();
@@ -578,6 +589,9 @@ window.addEventListener('message', (event) => {
       break;
     case 'action:openSettings':
       if (typeof SettingsModal !== 'undefined') Handlers.openSettingsModal();
+      break;
+    case 'action:openAnnualReport':
+      if (typeof AnnualReportPage !== 'undefined') AnnualReportPage.open();
       break;
   }
 });

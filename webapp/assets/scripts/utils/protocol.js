@@ -64,6 +64,7 @@ export const APP_MESSAGE_TYPES = [
   'nav:today',
   'action:openStats',
   'action:openSettings',
+  'action:openAnnualReport',
 ];
 
 const KNOWN = new Set(APP_MESSAGE_TYPES);

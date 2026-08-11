@@ -11,6 +11,7 @@ import { INBOUND_PREFIXES } from './protocol';
 import { LicenseStore } from '../license/licenseStore';
 import { verifyLicenseKey } from '../license/licenseKey';
 import { encodeBackup, decodeBackup } from '../license/backupCode';
+import { generateAnnualReport } from '../annualReport';
 
 /** Obsidian 插件运行时注入的主窗口 document（非插件沙箱内的 document） */
 declare const activeDocument: Document;
@@ -480,6 +481,19 @@ export class AppAPI {
         this.respond(id, await provider());
       } catch (e) {
         this.respondError(id, `app:getBambooCoinAvailableBalance 计算失败: ${(e as Error)?.message ?? String(e)}`);
+      }
+      return;
+    }
+
+    // ---- 年度修为报告：纯本地聚合 + 落盘 Markdown，返回摘要供 webapp 全屏页 ----
+    if (type === 'app:generateAnnualReport') {
+      const p = payload as { year?: number };
+      const year = typeof p.year === 'number' ? p.year : new Date().getFullYear();
+      try {
+        const { report, markdownPath } = await generateAnnualReport(this.storage, year);
+        this.respond(id, { ok: true, report, markdownPath });
+      } catch (e) {
+        this.respondError(id, `年度报告生成失败: ${(e as Error)?.message ?? String(e)}`);
       }
       return;
     }

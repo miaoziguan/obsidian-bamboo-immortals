@@ -135,6 +135,12 @@ export default class BambooReviewPlugin extends Plugin {
     });
 
     this.addCommand({
+      id: 'open-annual-report',
+      name: '生成年度修为报告',
+      callback: () => this.webapp.openAnnualReport(),
+    });
+
+    this.addCommand({
       id: 'open-archive',
       name: '打开目标归档',
       callback: () => void this.openArchive(),

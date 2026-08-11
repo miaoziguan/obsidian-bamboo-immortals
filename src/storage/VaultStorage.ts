@@ -787,4 +787,12 @@ export class VaultStorage {
       await this.app.vault.adapter.remove(path);
     }
   }
+
+  /** 写入年度修为报告 Markdown（落 reviews/ 目录） */
+  async putAnnualReport(year: number, markdown: string): Promise<string> {
+    await this.ensureDir('reviews');
+    const path = normalizePath(`${this.basePath}/reviews/年度修为报告-${year}.md`);
+    await this.vaultWrite(path, markdown);
+    return path;
+  }
 }

@@ -145,6 +145,20 @@ export interface IncomeHistory {
   [key: string]: unknown;
 }
 
+/** 年度修为报告的人生事件埋点（落 settings.json 的 lifeEvents） */
+export interface LifeEvent {
+  id: string;
+  type: 'completed' | 'abandoned';
+  goalId: string;
+  title: string;
+  category: string;
+  date: string; // YYYY-MM-DD
+  progressAtEvent: number; // 0-100
+  layerDelta?: number; // 仅 completed：本次突破的层增量
+  realmBefore?: { realm: string; layer: number };
+  realmAfter?: { realm: string; layer: number };
+}
+
 /** 导出 / 导入的完整数据结构 */
 export interface ExportShape {
   version: string;

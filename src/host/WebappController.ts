@@ -54,6 +54,11 @@ export class WebappController {
     this.send('action:openSettings');
   }
 
+  /** 打开年度修为报告 */
+  openAnnualReport(): void {
+    this.send('action:openAnnualReport');
+  }
+
   /**
    * 通知 webapp 目标库已变更（host→webapp）。
    * webapp 收到后调用 GoalService.load() 重读 goals.json 并 store.notify() 局部刷新，

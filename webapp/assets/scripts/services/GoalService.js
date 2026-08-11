@@ -146,10 +146,15 @@ export const GoalService = {
     async archive(goalId) {
         const index = store.state.globalGoals.findIndex(g => g.id === goalId);
         if (index >= 0) {
-            store.state.globalGoals[index].archived = true;
-            store.state.globalGoals[index].archivedAt = new Date().toISOString();
+            const goal = store.state.globalGoals[index];
+            goal.archived = true;
+            goal.archivedAt = new Date().toISOString();
             await this._save();
             this._invalidateTasksCache();
+            // 年度修为报告：在放弃时埋点（带放弃时刻完成度快照）
+            if (typeof LifeEventService !== 'undefined') {
+                void LifeEventService.recordAbandoned(goal);
+            }
             store.notify();
         }
     },
@@ -545,10 +550,16 @@ export const GoalService = {
             TimelineService.updateMetrics(dayData);
 
             // 重算目标总进度和日期范围，确保进度条和境界突破检测使用最新数据
+            const oldCompletedGoals = store.getGlobalGoals().filter(g => (g.progress || 0) >= 100).length;
             goal.progress = this.calcProgress(goal);
             if (typeof GoalsRenderer !== 'undefined') {
                 GoalsRenderer._autoCalcEndDate(item);
                 GoalsRenderer.autoCalcGoalDateRange(goal);
+            }
+            // 年度修为报告：目标跨过 100% 时记录「达成」事件（带境界层变化）
+            if (goal.progress >= 100 && typeof LifeEventService !== 'undefined') {
+                const newCompletedGoals = store.getGlobalGoals().filter(g => (g.progress || 0) >= 100).length;
+                void LifeEventService.recordCompleted(goal, oldCompletedGoals, newCompletedGoals);
             }
 
             store.updateDayDataByDate(todayKey, dayData);

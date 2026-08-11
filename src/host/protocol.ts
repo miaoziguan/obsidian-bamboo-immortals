@@ -38,6 +38,7 @@ export const ALL_MESSAGE_TYPES = [
   'app:proxyAudioUrl',
   'app:aiImproveGoal',
   'app:openArchive',
+  'app:generateAnnualReport',
   'app:getHealthOverview',
   'app:getCultivationRealm',
   'app:getBambooCoinBalance',
@@ -72,6 +73,7 @@ export const ALL_MESSAGE_TYPES = [
   'nav:today',
   'action:openStats',
   'action:openSettings',
+  'action:openAnnualReport',
 ] as const;
 
 export type AppMessageType = (typeof ALL_MESSAGE_TYPES)[number];

@@ -2216,6 +2216,8 @@
 /* =============================================
    响应式 — 时间线统计网格
    Canonical breakpoints: 480px / 768px
+   （@media 度量 iframe 视口；display-compact 度量容器实际宽度，
+    用户手动调窄"内容宽度"时两者互补，防止统计行残留 4 列挤压）
    ============================================= */
 
 @media (max-width: 768px) {
@@ -2228,5 +2230,13 @@
     .timeline-stats-row {
         grid-template-columns: 1fr;
     }
+}
+
+/* 容器紧凑模式：用户把"内容宽度"调窄到 ≤600px / ≤480px 时，统计行同步降级 */
+.display-compact .timeline-stats-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.display-ultra-compact .timeline-stats-row {
+    grid-template-columns: 1fr;
 }
 

@@ -1,7 +1,7 @@
 /* ============== 统计概览样式 ============== */
 .stats-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: var(--space-3);
 }
 
@@ -541,7 +541,7 @@
     border: 1px solid rgba(var(--primary-rgb),0.08);
     transition: transform, opacity, box-shadow, border-color, background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
-    min-width: 100px;
+    min-width: 0;
     position: relative;
     overflow: clip; /* 允许 tooltip/focus ring 溢出 */
 }
@@ -618,6 +618,14 @@
     font-size: var(--type-micro);
     color: var(--text-secondary);
     font-weight: 500;
+}
+
+/* 响应式布局 - 统计网格窄屏降级 */
+.rw-460 .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.rw-360 .stats-grid {
+    grid-template-columns: 1fr;
 }
 
 /* 响应式布局 - rw-460 */

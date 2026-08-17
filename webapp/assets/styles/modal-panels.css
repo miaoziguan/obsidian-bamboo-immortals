@@ -586,6 +586,27 @@
         width: calc(100vw - 24px);
         right: 12px;
     }
+
+    /* 主题动效选择面板：6 列 → 4 列，避免窄屏畸形窄条 */
+    .theme-panel-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 360px) {
+    .theme-panel-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    /* 白噪音类型：4 列 → 3 列，文字加省略号防溢出 */
+    .wn-type-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    .wn-type-btn span {
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
 }
 
 /* ========== 日期选择器样式 (适配 fab-panel) ========== */
@@ -807,7 +828,7 @@
 /* 小屏幕适配 */
 @media (max-width: 360px) {
     #panel-date-picker {
-        width: 280px;
+        width: min(280px, 92vw);
     }
     
     .wn-date-day {

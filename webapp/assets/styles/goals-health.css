@@ -302,10 +302,14 @@
 
 /* ==========================================================================
    响应式 - 基于内容宽度（container-aware）的渐进式分层
-   关键：Obsidian 插件在 iframe 中运行，@media 查询的是 iframe 宽度（可能很大），
-   而用户设置的"内容宽度"仅限制内部容器。因此使用 JS 根据内容宽度设置的
-   rw-620 / rw-520 / rw-460 / rw-420 / rw-360 类来响应实际显示宽度。
-   参考：displayManager.js _applyWidth 方法
+   架构：webapp 运行在 Obsidian 视图的 blob-URL iframe 内，并 attachShadow 到
+   该 iframe 的 document.body。因此 @media 查询的是 iframe 视口宽度：
+   - 移动端：iframe 宽度 = 屏幕宽度，@media (max-width: 480px) 可靠；
+   - 桌面端窄侧边栏：iframe 宽度 = 面板宽度，@media 同样随面板缩放；
+   - 但用户手动把"内容宽度"调窄（小于 iframe/视口宽度）时，@media 无法感知，
+     需要 JS 按容器实际渲染宽度设置 rw-620 / rw-520 / rw-460 / rw-420 / rw-360
+     类来响应真实显示宽度。
+   参考：displayManager.js _applyWidth / _applyResponsiveClasses 方法
    ========================================================================== */
 
 /* --- rw-620：容器宽度 ≤ 620px，隐藏右侧统计，保持单行 --- */

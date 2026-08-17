@@ -50,7 +50,9 @@ export const FABManager = {
 
     setupResponsive() {
         const update = () => {
-            const w = window.innerWidth;
+            // 统一用 visualViewport 口径（与 positionPanel 的 getViewport 一致），
+            // 避免软键盘弹出时 innerWidth 与 visualViewport 不一致导致定位偏差。
+            const w = this.getViewport().width;
             let bs = 52, bt = 20, rt = 16;
             if (w >= 1024) { bs = 56; bt = 24; rt = 20; }
             if (!StorageAdapter.get(StorageKeys.FAB_POSITION)) {

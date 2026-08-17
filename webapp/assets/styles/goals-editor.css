@@ -1488,6 +1488,10 @@
     user-select: none;
     min-width: 140px;
 }
+@media (max-width: 360px) {
+    .arch-date-trigger { min-width: 100px; }
+    .arch-filter-search { min-width: 100px; }
+}
 .arch-date-trigger:hover {
     background: rgba(var(--white-rgb), 0.85);
     border-color: var(--bamboo-primary);

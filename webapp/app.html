@@ -3274,6 +3274,7 @@ button, .btn, .date-nav-btn, .edit-btn, .view-toggle-btn, .history-close, .modal
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-floating);
     min-width: 220px;
+    max-width: calc(100vw - 2rem); /* 窄屏钳制，避免弹出层边缘被裁 */
     overflow: clip; /* 允许内部内容滚动，同时裁切圆角 */
 }
 
@@ -3479,7 +3480,7 @@ button, .btn, .date-nav-btn, .edit-btn, .view-toggle-btn, .history-close, .modal
     pointer-events: none;
 }
 .weather-widget.weather-open .weather-expand {
-    max-width: 520px;
+    max-width: min(520px, 60%);
     opacity: 1;
     pointer-events: auto;
 }
@@ -5948,6 +5949,8 @@ button, .btn, .date-nav-btn, .edit-btn, .view-toggle-btn, .history-close, .modal
 /* =============================================
    响应式 — 时间线统计网格
    Canonical breakpoints: 480px / 768px
+   （@media 度量 iframe 视口；display-compact 度量容器实际宽度，
+    用户手动调窄"内容宽度"时两者互补，防止统计行残留 4 列挤压）
    ============================================= */
 
 @media (max-width: 768px) {
@@ -5960,6 +5963,14 @@ button, .btn, .date-nav-btn, .edit-btn, .view-toggle-btn, .history-close, .modal
     .timeline-stats-row {
         grid-template-columns: 1fr;
     }
+}
+
+/* 容器紧凑模式：用户把"内容宽度"调窄到 ≤600px / ≤480px 时，统计行同步降级 */
+.display-compact .timeline-stats-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.display-ultra-compact .timeline-stats-row {
+    grid-template-columns: 1fr;
 }
 
 
@@ -8661,10 +8672,14 @@ input[type="number"].goal-inline-edit-input {
 
 /* ==========================================================================
    响应式 - 基于内容宽度（container-aware）的渐进式分层
-   关键：Obsidian 插件在 iframe 中运行，@media 查询的是 iframe 宽度（可能很大），
-   而用户设置的"内容宽度"仅限制内部容器。因此使用 JS 根据内容宽度设置的
-   rw-620 / rw-520 / rw-460 / rw-420 / rw-360 类来响应实际显示宽度。
-   参考：displayManager.js _applyWidth 方法
+   架构：webapp 运行在 Obsidian 视图的 blob-URL iframe 内，并 attachShadow 到
+   该 iframe 的 document.body。因此 @media 查询的是 iframe 视口宽度：
+   - 移动端：iframe 宽度 = 屏幕宽度，@media (max-width: 480px) 可靠；
+   - 桌面端窄侧边栏：iframe 宽度 = 面板宽度，@media 同样随面板缩放；
+   - 但用户手动把"内容宽度"调窄（小于 iframe/视口宽度）时，@media 无法感知，
+     需要 JS 按容器实际渲染宽度设置 rw-620 / rw-520 / rw-460 / rw-420 / rw-360
+     类来响应真实显示宽度。
+   参考：displayManager.js _applyWidth / _applyResponsiveClasses 方法
    ========================================================================== */
 
 /* --- rw-620：容器宽度 ≤ 620px，隐藏右侧统计，保持单行 --- */
@@ -9332,7 +9347,7 @@ input[type="number"].goal-inline-edit-input {
 /* ============== 统计概览样式 ============== */
 .stats-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: var(--space-3);
 }
 
@@ -9872,7 +9887,7 @@ input[type="number"].goal-inline-edit-input {
     border: 1px solid rgba(var(--primary-rgb),0.08);
     transition: transform, opacity, box-shadow, border-color, background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
-    min-width: 100px;
+    min-width: 0;
     position: relative;
     overflow: clip; /* 允许 tooltip/focus ring 溢出 */
 }
@@ -9949,6 +9964,14 @@ input[type="number"].goal-inline-edit-input {
     font-size: var(--type-micro);
     color: var(--text-secondary);
     font-weight: 500;
+}
+
+/* 响应式布局 - 统计网格窄屏降级 */
+.rw-460 .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.rw-360 .stats-grid {
+    grid-template-columns: 1fr;
 }
 
 /* 响应式布局 - rw-460 */
@@ -11882,6 +11905,10 @@ input[type="number"].goal-inline-edit-input {
     user-select: none;
     min-width: 140px;
 }
+@media (max-width: 360px) {
+    .arch-date-trigger { min-width: 100px; }
+    .arch-filter-search { min-width: 100px; }
+}
 .arch-date-trigger:hover {
     background: rgba(var(--white-rgb), 0.85);
     border-color: var(--bamboo-primary);
@@ -13272,7 +13299,8 @@ input[type="number"].goal-inline-edit-input {
 <style data-src="assets/styles/goals-responsive.css">
 /* ================================================================
    目标地图自适应匹配系统 (Goal Map Adaptive Layout)
-   基于 Obsidian iframe 容器宽度，覆盖以下场景：
+   由 displayManager 依据 #reviewContainer 实际渲染宽度注入 rw-* 类，
+   覆盖以下场景（宽度=容器实际渲染宽度，非设备视口）：
    - 窄侧边栏 / 移动端竖屏：≤ 480px
    - 中等侧边栏 / 平板：481px ~ 700px
    - 宽侧边栏 / 桌面端：701px ~ 960px
@@ -14976,6 +15004,27 @@ input[type="number"].goal-inline-edit-input {
         width: calc(100vw - 24px);
         right: 12px;
     }
+
+    /* 主题动效选择面板：6 列 → 4 列，避免窄屏畸形窄条 */
+    .theme-panel-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 360px) {
+    .theme-panel-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    /* 白噪音类型：4 列 → 3 列，文字加省略号防溢出 */
+    .wn-type-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    .wn-type-btn span {
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
 }
 
 /* ========== 日期选择器样式 (适配 fab-panel) ========== */
@@ -15197,7 +15246,7 @@ input[type="number"].goal-inline-edit-input {
 /* 小屏幕适配 */
 @media (max-width: 360px) {
     #panel-date-picker {
-        width: 280px;
+        width: min(280px, 92vw);
     }
     
     .wn-date-day {
@@ -16577,8 +16626,20 @@ input[type="number"].goal-inline-edit-input {
 }
 .settings-stats-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: var(--space-2);
+}
+
+/* 窄屏降级（设置模态框内部，@media 度量模态框所在视口） */
+@media (max-width: 480px) {
+    .settings-stats-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+@media (max-width: 360px) {
+    .settings-stats-grid {
+        grid-template-columns: 1fr;
+    }
 }
 .settings-stat-card {
     display: flex;
@@ -18029,16 +18090,17 @@ input[type="number"].goal-inline-edit-input {
 <style data-src="assets/styles/modal-responsive.css">
 /* ============================================================
    商店 · 响应式断点
-   ≤ 600px (--bp-md-narrow)：指标改为 2×2 网格
+   ≤ 768px：指标改为 2×2 网格
             NOTE: 钱包模态框 max-width: 70vw，在 768px+ 视口下约为 600px；
-            此断点专用于模态框内部布局，非通用布局断点。
+            若窄屏视口 <768px，模态框实宽约为视口的 90vw（modal-base.css），
+            断点提至 768px 覆盖 601~768px 区间，避免 4 列挤压。
    ≤ 480px (--bp-sm)：指标 1×4，金额独占整行，商品卡紧凑
    ≤ 360px (--bp-xxs)：极度紧凑，字号缩小
    ============================================================ */
 
-@media (max-width: 600px) {
+@media (max-width: 768px) {
     .shop-balance-metrics--row {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
     .shop-balance-metric--card {
         padding: clamp(8px, 2.5vw, 12px) clamp(4px, 1.2vw, 8px);
@@ -20915,7 +20977,7 @@ input[type="number"].goal-inline-edit-input {
     box-shadow: var(--shadow-floating);
     max-height: 80vh;
     overflow-y: auto;
-    min-width: clamp(200px, 40vw, 320px);
+    min-width: min(200px, calc(100vw - 12px));
 }
 .fab-actions.open {
     transform: translateY(0);
@@ -20946,7 +21008,7 @@ input[type="number"].goal-inline-edit-input {
 }
 .fab-action-btn {
     flex: 1;
-    min-width: calc(33.33% - 4px);
+    min-width: max(44px, calc(33.33% - 4px));
     padding: 8px 4px 6px;
     background: transparent;
     border: none;
@@ -25351,7 +25413,7 @@ nav .date-display-sub {
                         ${typeof LucideUtils<"u"?LucideUtils.createIcon(s.icon,{size:18}):""}
                         <span class="quick-nav-btn-tooltip">${s.label}</span>
                     </button>
-                `})),t.innerHTML=a,I().appendChild(t)},toggle(e){e&&e.stopPropagation();let t=P(".quick-nav");t.classList.toggle("expanded");let a=t.querySelector(".quick-nav-toggle");a.innerHTML=typeof LucideUtils<"u"?LucideUtils.createIcon(t.classList.contains("expanded")?"bookClosed":"bookOpen",{size:18}):""},scrollToSection(e){scrollToSection(e)},setupScrollSpy(){let e,t=()=>{let s=window.scrollY+300,i=W(".quick-nav-btn"),n=null;this.sections.forEach(o=>{let r=y(o.id);if(r){let l=r.offsetTop,c=r.offsetHeight;s>=l&&s<l+c&&(n=o.id)}}),i.forEach(o=>{let r=o.dataset.section===n;o.classList.toggle("active",r)})},a=()=>{e&&cancelAnimationFrame(e),e=requestAnimationFrame(t)};window.addEventListener("scroll",a,{passive:!0}),t()},scrollToTop(){window.scrollTo({top:0,behavior:"smooth"})}};ActionDispatcher.registerMany({"quick-nav-toggle":(e,t,a)=>Me.toggle(a),"quick-nav-scroll-to":e=>Me.scrollToSection(e.sectionId)});window.QuickNav=Me;var aa={};C(aa,{FABManager:()=>_s});var _s={container:null,mainBtn:null,actions:null,isOpen:!1,_initialized:!1,init(){this._initialized||(this._initialized=!0,this.container=P(".fab-container"),this.mainBtn=y("fabMain"),this.actions=y("fabActions"),!(!this.container||!this.mainBtn||!this.actions)&&(this.container.style.display="flex",this.container.style.opacity="1",this.container.style.visibility="visible",this.loadSavedPosition(),this.setupDrag(),this.setupOutsideClick(),this.setupResponsive()))},loadSavedPosition(){let e=StorageAdapter.get(StorageKeys.FAB_POSITION);if(e){let{right:t,bottom:a}=JSON.parse(e);this.container.style.right=t+"px",this.container.style.bottom=a+"px"}},savePosition(){let e=parseInt(this.container.style.right)||16,t=parseInt(this.container.style.bottom)||20;StorageAdapter.set(StorageKeys.FAB_POSITION,JSON.stringify({right:e,bottom:t}))},getViewport(){let e=window.visualViewport;return e?{width:e.width,height:e.height}:{width:window.innerWidth,height:window.innerHeight}},setupResponsive(){let e=()=>{let t=window.innerWidth,a=52,s=20,i=16;t>=1024&&(a=56,s=24,i=20),StorageAdapter.get(StorageKeys.FAB_POSITION)||(this.container.style.bottom=s+"px",this.container.style.right=i+"px"),this.mainBtn.style.width=a+"px",this.mainBtn.style.height=a+"px",this.isOpen&&this.positionPanel()};e(),window.addEventListener("resize",e),window.addEventListener("orientationchange",e)},setupDrag(){let e=!1,t=0,a=0,s=0,i=0,n=!1,o=(c,d)=>{e=!0,n=!1,t=c,a=d,s=parseInt(this.container.style.right)||16,i=parseInt(this.container.style.bottom)||20,this.container.classList.add("dragging")},r=(c,d)=>{if(!e)return;let u=t-c,p=a-d;(Math.abs(u)>3||Math.abs(p)>3)&&(n=!0);let f=parseInt(this.mainBtn.style.width)||56,h=this.getViewport();this.container.style.right=Math.max(0,Math.min(h.width-f,s+u))+"px",this.container.style.bottom=Math.max(0,Math.min(h.height-f,i+p))+"px"},l=()=>{e&&(e=!1,this.container.classList.remove("dragging"),n&&this.savePosition())};this.mainBtn.addEventListener("mousedown",c=>{c.button===0&&(c.preventDefault(),o(c.clientX,c.clientY))}),document.addEventListener("mousemove",c=>{e&&(c.preventDefault(),r(c.clientX,c.clientY))}),document.addEventListener("mouseup",l),this.mainBtn.addEventListener("touchstart",c=>{if(c.touches.length!==1)return;c.preventDefault();let d=c.touches[0];o(d.clientX,d.clientY)},{passive:!1}),document.addEventListener("touchmove",c=>{if(!e)return;c.preventDefault();let d=c.touches[0];r(d.clientX,d.clientY)},{passive:!1}),document.addEventListener("touchend",l),this.mainBtn.addEventListener("click",()=>{if(n){n=!1;return}this.isOpen?this.close():this.open()})},getMenuButtons(){return Array.from(this.actions.querySelectorAll(".fab-action-btn"))},_eventInside(e,t){if(!t)return!1;let a=typeof e.composedPath=="function"?e.composedPath():[];return a.length?a.includes(t):t.contains(e.target)},setupOutsideClick(){document.addEventListener("click",e=>{this.isOpen&&!this._eventInside(e,this.container)&&this.close()})},_handleKeydown(e){if(!this.isOpen)return;let t=this.getMenuButtons();if(t.length===0)return;let a=t.indexOf(document.activeElement);switch(e.key){case"ArrowDown":case"ArrowRight":e.preventDefault(),a<0||a>=t.length-1?t[0].focus():t[a+1].focus();break;case"ArrowUp":case"ArrowLeft":e.preventDefault(),a<=0?t[t.length-1].focus():t[a-1].focus();break;case"Home":e.preventDefault(),t[0].focus();break;case"End":e.preventDefault(),t[t.length-1].focus();break;case"Tab":e.preventDefault(),e.shiftKey?a<=0?t[t.length-1].focus():t[a-1].focus():a<0||a>=t.length-1?t[0].focus():t[a+1].focus();break;case"Escape":e.preventDefault(),e.stopPropagation(),this.close();break}},toggle(){this.isOpen?this.close():this.open()},positionPanel(){if(!this.mainBtn||!this.mainBtn.isConnected)return;let e;try{e=this.mainBtn.getBoundingClientRect()}catch{return}if(!e||e.width===0&&e.height===0)return;let t=this.getViewport(),a=e.top,s=t.height-e.bottom,i=e.left,n=8,o=this.actions.scrollWidth||220,r=this.actions.scrollHeight||200;this.container.classList.remove("fab-below","fab-align-left"),a<r+n&&s>a?(this.container.classList.add("fab-below"),this.actions.style.maxHeight=Math.min(t.height*.8,s-n)+"px"):this.actions.style.maxHeight=Math.min(t.height*.8,a-n)+"px",i<o&&this.container.classList.add("fab-align-left");let l=Math.min(o,t.width-12);this.actions.style.width=l+"px"},open(){this.isOpen||(this.isOpen=!0,this.positionPanel(),this.mainBtn.classList.add("open"),this.mainBtn.setAttribute("aria-expanded","true"),this.mainBtn.setAttribute("aria-label","\u6536\u8D77\u5FEB\u6377\u83DC\u5355"),this.actions.classList.add("open"),this.container.classList.add("fab-open"),this._boundKeydown=this._handleKeydown.bind(this),F().addEventListener("keydown",this._boundKeydown),requestAnimationFrame(()=>{let e=this.getMenuButtons();e.length>0&&e[0].focus()}))},close(){this.isOpen&&(this.isOpen=!1,this.mainBtn.classList.remove("open"),this.mainBtn.setAttribute("aria-expanded","false"),this.actions.classList.remove("open"),this.container.classList.remove("fab-open"),this.container.classList.remove("fab-below","fab-align-left"),this.actions.style.maxHeight="",this.actions.style.width="",this._boundKeydown&&(F().removeEventListener("keydown",this._boundKeydown),this._boundKeydown=null),this.mainBtn.focus())}};window.FABManager=_s;var ia={};C(ia,{Handlers:()=>ne});var ii=["a[href]","button","textarea",'input[type="text"]','input[type="number"]','input[type="search"]','input[type="email"]','input[type="password"]',"select",'[tabindex]:not([tabindex="-1"])'].join(", ");function Ss(e){return e?Array.from(e.querySelectorAll(ii)).filter(a=>{if(a.disabled||a.offsetParent===null&&getComputedStyle(a).position!=="fixed")return!1;let s=a.getAttribute("tabindex");return!(s&&Number(s)<0)}):[]}function Ts(e){if(!e)return!1;let t=e.getBoundingClientRect();return t.width>0&&t.height>0}function Le(){return typeof window>"u"?null:(window.__bambooFocusTrap||(window.__bambooFocusTrap={root:null,previouslyFocused:null,keyHandler:null,options:{}}),window.__bambooFocusTrap)}function ni(e){let t=Le();if(!t||!t.root)return;if(e.key==="Escape"&&typeof t.options.onEscape=="function"){e.preventDefault(),t.options.onEscape();return}if(e.key!=="Tab")return;let a=Ss(t.root).filter(Ts);if(a.length===0){e.preventDefault();return}let s=a[0],i=a[a.length-1],n=document.activeElement;e.shiftKey?(n===s||!t.root.contains(n))&&(e.preventDefault(),i.focus()):(n===i||!t.root.contains(n))&&(e.preventDefault(),s.focus())}var sa={activate(e,t={}){let a=Le();a&&(this.deactivate(),a.root=e,a.options=t||{},a.previouslyFocused=t.previouslyFocused||document.activeElement,a.keyHandler=s=>ni(s),document.addEventListener("keydown",a.keyHandler,!0))},deactivate(){let e=Le();!e||!e.keyHandler||(document.removeEventListener("keydown",e.keyHandler,!0),e.keyHandler=null,e.root=null,e.options={},e.previouslyFocused&&typeof e.previouslyFocused.focus=="function"&&requestAnimationFrame(()=>{e.previouslyFocused&&e.previouslyFocused.isConnected&&e.previouslyFocused.focus(),e.previouslyFocused=null}))},getFocusable(e){let t=Le(),a=e||t&&t.root;return a?Ss(a).filter(Ts):[]}};var ne={modalFocusStack:[],lastFocusedElement:null,_modalFocusCache:null,_modalObserver:null,_initialized:!1,init(){if(!this._initialized){if(this._initialized=!0,this.setupGlobalErrorHandler(),Navigation.init(),this.setupFabMenu(),this.setupGlobalKeyboardShortcuts(),Gestures.init(),QuickNav.init(),ThemeSelector.updateDarkModeButton(),typeof WeatherRenderer<"u"&&typeof WeatherRenderer.init=="function")try{WeatherRenderer.init()}catch{}if(typeof QuoteRenderer<"u"&&typeof QuoteRenderer.init=="function")try{QuoteRenderer.init()}catch{}}},setupGlobalErrorHandler(){window.addEventListener("error",e=>{let t=e.message||"\u672A\u77E5\u9519\u8BEF",a=e.filename||"",s=e.lineno||0;console.error(`[Error] ${t} at ${a}:${s}`),!t.includes("ResizeObserver")&&!t.includes("Script error")&&!t.includes("getBoundingClientRect")&&a&&Toast.showToast("\u51FA\u73B0\u4E86\u5C0F\u95EE\u9898\uFF0C\u8BF7\u5237\u65B0\u9875\u9762","error")}),window.addEventListener("unhandledrejection",e=>{console.error("[Unhandled Promise Rejection]",e.reason),e.reason&&typeof e.reason=="string"&&!e.reason.includes("ResizeObserver")&&Toast.showToast("\u7F51\u7EDC\u4E0D\u7A33\u5B9A\uFF0C\u8BF7\u7A0D\u540E\u518D\u8BD5","error")})},setupFabMenu(){FABManager.init()},setupGlobalKeyboardShortcuts(){F().addEventListener("keydown",e=>{if(e.target.tagName==="INPUT"||e.target.tagName==="TEXTAREA"||e.target.isContentEditable)return;let t=y("modalContainer");t&&t.classList.contains("no-keybind")})},openModal(e,t="\u7F16\u8F91"){this.lastFocusedElement=document.activeElement;let a=y("modalContainer");if(!a)return;let s="modal-title-"+Date.now();a.innerHTML=`
+                `})),t.innerHTML=a,I().appendChild(t)},toggle(e){e&&e.stopPropagation();let t=P(".quick-nav");t.classList.toggle("expanded");let a=t.querySelector(".quick-nav-toggle");a.innerHTML=typeof LucideUtils<"u"?LucideUtils.createIcon(t.classList.contains("expanded")?"bookClosed":"bookOpen",{size:18}):""},scrollToSection(e){scrollToSection(e)},setupScrollSpy(){let e,t=()=>{let s=window.scrollY+300,i=W(".quick-nav-btn"),n=null;this.sections.forEach(o=>{let r=y(o.id);if(r){let l=r.offsetTop,c=r.offsetHeight;s>=l&&s<l+c&&(n=o.id)}}),i.forEach(o=>{let r=o.dataset.section===n;o.classList.toggle("active",r)})},a=()=>{e&&cancelAnimationFrame(e),e=requestAnimationFrame(t)};window.addEventListener("scroll",a,{passive:!0}),t()},scrollToTop(){window.scrollTo({top:0,behavior:"smooth"})}};ActionDispatcher.registerMany({"quick-nav-toggle":(e,t,a)=>Me.toggle(a),"quick-nav-scroll-to":e=>Me.scrollToSection(e.sectionId)});window.QuickNav=Me;var aa={};C(aa,{FABManager:()=>_s});var _s={container:null,mainBtn:null,actions:null,isOpen:!1,_initialized:!1,init(){this._initialized||(this._initialized=!0,this.container=P(".fab-container"),this.mainBtn=y("fabMain"),this.actions=y("fabActions"),!(!this.container||!this.mainBtn||!this.actions)&&(this.container.style.display="flex",this.container.style.opacity="1",this.container.style.visibility="visible",this.loadSavedPosition(),this.setupDrag(),this.setupOutsideClick(),this.setupResponsive()))},loadSavedPosition(){let e=StorageAdapter.get(StorageKeys.FAB_POSITION);if(e){let{right:t,bottom:a}=JSON.parse(e);this.container.style.right=t+"px",this.container.style.bottom=a+"px"}},savePosition(){let e=parseInt(this.container.style.right)||16,t=parseInt(this.container.style.bottom)||20;StorageAdapter.set(StorageKeys.FAB_POSITION,JSON.stringify({right:e,bottom:t}))},getViewport(){let e=window.visualViewport;return e?{width:e.width,height:e.height}:{width:window.innerWidth,height:window.innerHeight}},setupResponsive(){let e=()=>{let t=this.getViewport().width,a=52,s=20,i=16;t>=1024&&(a=56,s=24,i=20),StorageAdapter.get(StorageKeys.FAB_POSITION)||(this.container.style.bottom=s+"px",this.container.style.right=i+"px"),this.mainBtn.style.width=a+"px",this.mainBtn.style.height=a+"px",this.isOpen&&this.positionPanel()};e(),window.addEventListener("resize",e),window.addEventListener("orientationchange",e)},setupDrag(){let e=!1,t=0,a=0,s=0,i=0,n=!1,o=(c,d)=>{e=!0,n=!1,t=c,a=d,s=parseInt(this.container.style.right)||16,i=parseInt(this.container.style.bottom)||20,this.container.classList.add("dragging")},r=(c,d)=>{if(!e)return;let u=t-c,p=a-d;(Math.abs(u)>3||Math.abs(p)>3)&&(n=!0);let f=parseInt(this.mainBtn.style.width)||56,h=this.getViewport();this.container.style.right=Math.max(0,Math.min(h.width-f,s+u))+"px",this.container.style.bottom=Math.max(0,Math.min(h.height-f,i+p))+"px"},l=()=>{e&&(e=!1,this.container.classList.remove("dragging"),n&&this.savePosition())};this.mainBtn.addEventListener("mousedown",c=>{c.button===0&&(c.preventDefault(),o(c.clientX,c.clientY))}),document.addEventListener("mousemove",c=>{e&&(c.preventDefault(),r(c.clientX,c.clientY))}),document.addEventListener("mouseup",l),this.mainBtn.addEventListener("touchstart",c=>{if(c.touches.length!==1)return;c.preventDefault();let d=c.touches[0];o(d.clientX,d.clientY)},{passive:!1}),document.addEventListener("touchmove",c=>{if(!e)return;c.preventDefault();let d=c.touches[0];r(d.clientX,d.clientY)},{passive:!1}),document.addEventListener("touchend",l),this.mainBtn.addEventListener("click",()=>{if(n){n=!1;return}this.isOpen?this.close():this.open()})},getMenuButtons(){return Array.from(this.actions.querySelectorAll(".fab-action-btn"))},_eventInside(e,t){if(!t)return!1;let a=typeof e.composedPath=="function"?e.composedPath():[];return a.length?a.includes(t):t.contains(e.target)},setupOutsideClick(){document.addEventListener("click",e=>{this.isOpen&&!this._eventInside(e,this.container)&&this.close()})},_handleKeydown(e){if(!this.isOpen)return;let t=this.getMenuButtons();if(t.length===0)return;let a=t.indexOf(document.activeElement);switch(e.key){case"ArrowDown":case"ArrowRight":e.preventDefault(),a<0||a>=t.length-1?t[0].focus():t[a+1].focus();break;case"ArrowUp":case"ArrowLeft":e.preventDefault(),a<=0?t[t.length-1].focus():t[a-1].focus();break;case"Home":e.preventDefault(),t[0].focus();break;case"End":e.preventDefault(),t[t.length-1].focus();break;case"Tab":e.preventDefault(),e.shiftKey?a<=0?t[t.length-1].focus():t[a-1].focus():a<0||a>=t.length-1?t[0].focus():t[a+1].focus();break;case"Escape":e.preventDefault(),e.stopPropagation(),this.close();break}},toggle(){this.isOpen?this.close():this.open()},positionPanel(){if(!this.mainBtn||!this.mainBtn.isConnected)return;let e;try{e=this.mainBtn.getBoundingClientRect()}catch{return}if(!e||e.width===0&&e.height===0)return;let t=this.getViewport(),a=e.top,s=t.height-e.bottom,i=e.left,n=8,o=this.actions.scrollWidth||220,r=this.actions.scrollHeight||200;this.container.classList.remove("fab-below","fab-align-left"),a<r+n&&s>a?(this.container.classList.add("fab-below"),this.actions.style.maxHeight=Math.min(t.height*.8,s-n)+"px"):this.actions.style.maxHeight=Math.min(t.height*.8,a-n)+"px",i<o&&this.container.classList.add("fab-align-left");let l=Math.min(o,t.width-12);this.actions.style.width=l+"px"},open(){this.isOpen||(this.isOpen=!0,this.positionPanel(),this.mainBtn.classList.add("open"),this.mainBtn.setAttribute("aria-expanded","true"),this.mainBtn.setAttribute("aria-label","\u6536\u8D77\u5FEB\u6377\u83DC\u5355"),this.actions.classList.add("open"),this.container.classList.add("fab-open"),this._boundKeydown=this._handleKeydown.bind(this),F().addEventListener("keydown",this._boundKeydown),requestAnimationFrame(()=>{let e=this.getMenuButtons();e.length>0&&e[0].focus()}))},close(){this.isOpen&&(this.isOpen=!1,this.mainBtn.classList.remove("open"),this.mainBtn.setAttribute("aria-expanded","false"),this.actions.classList.remove("open"),this.container.classList.remove("fab-open"),this.container.classList.remove("fab-below","fab-align-left"),this.actions.style.maxHeight="",this.actions.style.width="",this._boundKeydown&&(F().removeEventListener("keydown",this._boundKeydown),this._boundKeydown=null),this.mainBtn.focus())}};window.FABManager=_s;var ia={};C(ia,{Handlers:()=>ne});var ii=["a[href]","button","textarea",'input[type="text"]','input[type="number"]','input[type="search"]','input[type="email"]','input[type="password"]',"select",'[tabindex]:not([tabindex="-1"])'].join(", ");function Ss(e){return e?Array.from(e.querySelectorAll(ii)).filter(a=>{if(a.disabled||a.offsetParent===null&&getComputedStyle(a).position!=="fixed")return!1;let s=a.getAttribute("tabindex");return!(s&&Number(s)<0)}):[]}function Ts(e){if(!e)return!1;let t=e.getBoundingClientRect();return t.width>0&&t.height>0}function Le(){return typeof window>"u"?null:(window.__bambooFocusTrap||(window.__bambooFocusTrap={root:null,previouslyFocused:null,keyHandler:null,options:{}}),window.__bambooFocusTrap)}function ni(e){let t=Le();if(!t||!t.root)return;if(e.key==="Escape"&&typeof t.options.onEscape=="function"){e.preventDefault(),t.options.onEscape();return}if(e.key!=="Tab")return;let a=Ss(t.root).filter(Ts);if(a.length===0){e.preventDefault();return}let s=a[0],i=a[a.length-1],n=document.activeElement;e.shiftKey?(n===s||!t.root.contains(n))&&(e.preventDefault(),i.focus()):(n===i||!t.root.contains(n))&&(e.preventDefault(),s.focus())}var sa={activate(e,t={}){let a=Le();a&&(this.deactivate(),a.root=e,a.options=t||{},a.previouslyFocused=t.previouslyFocused||document.activeElement,a.keyHandler=s=>ni(s),document.addEventListener("keydown",a.keyHandler,!0))},deactivate(){let e=Le();!e||!e.keyHandler||(document.removeEventListener("keydown",e.keyHandler,!0),e.keyHandler=null,e.root=null,e.options={},e.previouslyFocused&&typeof e.previouslyFocused.focus=="function"&&requestAnimationFrame(()=>{e.previouslyFocused&&e.previouslyFocused.isConnected&&e.previouslyFocused.focus(),e.previouslyFocused=null}))},getFocusable(e){let t=Le(),a=e||t&&t.root;return a?Ss(a).filter(Ts):[]}};var ne={modalFocusStack:[],lastFocusedElement:null,_modalFocusCache:null,_modalObserver:null,_initialized:!1,init(){if(!this._initialized){if(this._initialized=!0,this.setupGlobalErrorHandler(),Navigation.init(),this.setupFabMenu(),this.setupGlobalKeyboardShortcuts(),Gestures.init(),QuickNav.init(),ThemeSelector.updateDarkModeButton(),typeof WeatherRenderer<"u"&&typeof WeatherRenderer.init=="function")try{WeatherRenderer.init()}catch{}if(typeof QuoteRenderer<"u"&&typeof QuoteRenderer.init=="function")try{QuoteRenderer.init()}catch{}}},setupGlobalErrorHandler(){window.addEventListener("error",e=>{let t=e.message||"\u672A\u77E5\u9519\u8BEF",a=e.filename||"",s=e.lineno||0;console.error(`[Error] ${t} at ${a}:${s}`),!t.includes("ResizeObserver")&&!t.includes("Script error")&&!t.includes("getBoundingClientRect")&&a&&Toast.showToast("\u51FA\u73B0\u4E86\u5C0F\u95EE\u9898\uFF0C\u8BF7\u5237\u65B0\u9875\u9762","error")}),window.addEventListener("unhandledrejection",e=>{console.error("[Unhandled Promise Rejection]",e.reason),e.reason&&typeof e.reason=="string"&&!e.reason.includes("ResizeObserver")&&Toast.showToast("\u7F51\u7EDC\u4E0D\u7A33\u5B9A\uFF0C\u8BF7\u7A0D\u540E\u518D\u8BD5","error")})},setupFabMenu(){FABManager.init()},setupGlobalKeyboardShortcuts(){F().addEventListener("keydown",e=>{if(e.target.tagName==="INPUT"||e.target.tagName==="TEXTAREA"||e.target.isContentEditable)return;let t=y("modalContainer");t&&t.classList.contains("no-keybind")})},openModal(e,t="\u7F16\u8F91"){this.lastFocusedElement=document.activeElement;let a=y("modalContainer");if(!a)return;let s="modal-title-"+Date.now();a.innerHTML=`
             <div class="modal-overlay" data-action="close-modal-overlay" role="presentation">
                 <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="${s}" data-stop-propagation>
                     <div class="modal-header">

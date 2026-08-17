@@ -54,7 +54,7 @@
     pointer-events: none;
 }
 .weather-widget.weather-open .weather-expand {
-    max-width: 520px;
+    max-width: min(520px, 60%);
     opacity: 1;
     pointer-events: auto;
 }

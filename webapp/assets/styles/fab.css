@@ -270,7 +270,7 @@
     box-shadow: var(--shadow-floating);
     max-height: 80vh;
     overflow-y: auto;
-    min-width: clamp(200px, 40vw, 320px);
+    min-width: min(200px, calc(100vw - 12px));
 }
 .fab-actions.open {
     transform: translateY(0);
@@ -301,7 +301,7 @@
 }
 .fab-action-btn {
     flex: 1;
-    min-width: calc(33.33% - 4px);
+    min-width: max(44px, calc(33.33% - 4px));
     padding: 8px 4px 6px;
     background: transparent;
     border: none;

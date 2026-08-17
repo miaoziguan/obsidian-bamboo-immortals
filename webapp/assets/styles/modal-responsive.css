@@ -1,15 +1,16 @@
 /* ============================================================
    商店 · 响应式断点
-   ≤ 600px (--bp-md-narrow)：指标改为 2×2 网格
+   ≤ 768px：指标改为 2×2 网格
             NOTE: 钱包模态框 max-width: 70vw，在 768px+ 视口下约为 600px；
-            此断点专用于模态框内部布局，非通用布局断点。
+            若窄屏视口 <768px，模态框实宽约为视口的 90vw（modal-base.css），
+            断点提至 768px 覆盖 601~768px 区间，避免 4 列挤压。
    ≤ 480px (--bp-sm)：指标 1×4，金额独占整行，商品卡紧凑
    ≤ 360px (--bp-xxs)：极度紧凑，字号缩小
    ============================================================ */
 
-@media (max-width: 600px) {
+@media (max-width: 768px) {
     .shop-balance-metrics--row {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
     .shop-balance-metric--card {
         padding: clamp(8px, 2.5vw, 12px) clamp(4px, 1.2vw, 8px);

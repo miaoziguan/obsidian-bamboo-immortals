@@ -299,8 +299,20 @@
 }
 .settings-stats-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: var(--space-2);
+}
+
+/* 窄屏降级（设置模态框内部，@media 度量模态框所在视口） */
+@media (max-width: 480px) {
+    .settings-stats-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+@media (max-width: 360px) {
+    .settings-stats-grid {
+        grid-template-columns: 1fr;
+    }
 }
 .settings-stat-card {
     display: flex;

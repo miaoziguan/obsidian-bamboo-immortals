@@ -3274,6 +3274,7 @@ button, .btn, .date-nav-btn, .edit-btn, .view-toggle-btn, .history-close, .modal
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-floating);
     min-width: 220px;
+    max-width: calc(100vw - 2rem); /* 窄屏钳制，避免弹出层边缘被裁 */
     overflow: clip; /* 允许内部内容滚动，同时裁切圆角 */
 }
 
@@ -3479,7 +3480,7 @@ button, .btn, .date-nav-btn, .edit-btn, .view-toggle-btn, .history-close, .modal
     pointer-events: none;
 }
 .weather-widget.weather-open .weather-expand {
-    max-width: 520px;
+    max-width: min(520px, 60%);
     opacity: 1;
     pointer-events: auto;
 }
@@ -5948,6 +5949,8 @@ button, .btn, .date-nav-btn, .edit-btn, .view-toggle-btn, .history-close, .modal
 /* =============================================
    响应式 — 时间线统计网格
    Canonical breakpoints: 480px / 768px
+   （@media 度量 iframe 视口；display-compact 度量容器实际宽度，
+    用户手动调窄"内容宽度"时两者互补，防止统计行残留 4 列挤压）
    ============================================= */
 
 @media (max-width: 768px) {
@@ -5960,6 +5963,14 @@ button, .btn, .date-nav-btn, .edit-btn, .view-toggle-btn, .history-close, .modal
     .timeline-stats-row {
         grid-template-columns: 1fr;
     }
+}
+
+/* 容器紧凑模式：用户把"内容宽度"调窄到 ≤600px / ≤480px 时，统计行同步降级 */
+.display-compact .timeline-stats-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.display-ultra-compact .timeline-stats-row {
+    grid-template-columns: 1fr;
 }
 
 
@@ -8661,10 +8672,14 @@ input[type="number"].goal-inline-edit-input {
 
 /* ==========================================================================
    响应式 - 基于内容宽度（container-aware）的渐进式分层
-   关键：Obsidian 插件在 iframe 中运行，@media 查询的是 iframe 宽度（可能很大），
-   而用户设置的"内容宽度"仅限制内部容器。因此使用 JS 根据内容宽度设置的
-   rw-620 / rw-520 / rw-460 / rw-420 / rw-360 类来响应实际显示宽度。
-   参考：displayManager.js _applyWidth 方法
+   架构：webapp 运行在 Obsidian 视图的 blob-URL iframe 内，并 attachShadow 到
+   该 iframe 的 document.body。因此 @media 查询的是 iframe 视口宽度：
+   - 移动端：iframe 宽度 = 屏幕宽度，@media (max-width: 480px) 可靠；
+   - 桌面端窄侧边栏：iframe 宽度 = 面板宽度，@media 同样随面板缩放；
+   - 但用户手动把"内容宽度"调窄（小于 iframe/视口宽度）时，@media 无法感知，
+     需要 JS 按容器实际渲染宽度设置 rw-620 / rw-520 / rw-460 / rw-420 / rw-360
+     类来响应真实显示宽度。
+   参考：displayManager.js _applyWidth / _applyResponsiveClasses 方法
    ========================================================================== */
 
 /* --- rw-620：容器宽度 ≤ 620px，隐藏右侧统计，保持单行 --- */
@@ -9332,7 +9347,7 @@ input[type="number"].goal-inline-edit-input {
 /* ============== 统计概览样式 ============== */
 .stats-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: var(--space-3);
 }
 
@@ -9872,7 +9887,7 @@ input[type="number"].goal-inline-edit-input {
     border: 1px solid rgba(var(--primary-rgb),0.08);
     transition: transform, opacity, box-shadow, border-color, background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
-    min-width: 100px;
+    min-width: 0;
     position: relative;
     overflow: clip; /* 允许 tooltip/focus ring 溢出 */
 }
@@ -9949,6 +9964,14 @@ input[type="number"].goal-inline-edit-input {
     font-size: var(--type-micro);
     color: var(--text-secondary);
     font-weight: 500;
+}
+
+/* 响应式布局 - 统计网格窄屏降级 */
+.rw-460 .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.rw-360 .stats-grid {
+    grid-template-columns: 1fr;
 }
 
 /* 响应式布局 - rw-460 */
@@ -11882,6 +11905,10 @@ input[type="number"].goal-inline-edit-input {
     user-select: none;
     min-width: 140px;
 }
+@media (max-width: 360px) {
+    .arch-date-trigger { min-width: 100px; }
+    .arch-filter-search { min-width: 100px; }
+}
 .arch-date-trigger:hover {
     background: rgba(var(--white-rgb), 0.85);
     border-color: var(--bamboo-primary);
@@ -13272,7 +13299,8 @@ input[type="number"].goal-inline-edit-input {
 <style data-src="assets/styles/goals-responsive.css">
 /* ================================================================
    目标地图自适应匹配系统 (Goal Map Adaptive Layout)
-   基于 Obsidian iframe 容器宽度，覆盖以下场景：
+   由 displayManager 依据 #reviewContainer 实际渲染宽度注入 rw-* 类，
+   覆盖以下场景（宽度=容器实际渲染宽度，非设备视口）：
    - 窄侧边栏 / 移动端竖屏：≤ 480px
    - 中等侧边栏 / 平板：481px ~ 700px
    - 宽侧边栏 / 桌面端：701px ~ 960px
@@ -14976,6 +15004,27 @@ input[type="number"].goal-inline-edit-input {
         width: calc(100vw - 24px);
         right: 12px;
     }
+
+    /* 主题动效选择面板：6 列 → 4 列，避免窄屏畸形窄条 */
+    .theme-panel-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 360px) {
+    .theme-panel-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    /* 白噪音类型：4 列 → 3 列，文字加省略号防溢出 */
+    .wn-type-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    .wn-type-btn span {
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
 }
 
 /* ========== 日期选择器样式 (适配 fab-panel) ========== */
@@ -15197,7 +15246,7 @@ input[type="number"].goal-inline-edit-input {
 /* 小屏幕适配 */
 @media (max-width: 360px) {
     #panel-date-picker {
-        width: 280px;
+        width: min(280px, 92vw);
     }
     
     .wn-date-day {
@@ -16577,8 +16626,20 @@ input[type="number"].goal-inline-edit-input {
 }
 .settings-stats-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: var(--space-2);
+}
+
+/* 窄屏降级（设置模态框内部，@media 度量模态框所在视口） */
+@media (max-width: 480px) {
+    .settings-stats-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+@media (max-width: 360px) {
+    .settings-stats-grid {
+        grid-template-columns: 1fr;
+    }
 }
 .settings-stat-card {
     display: flex;
@@ -18029,16 +18090,17 @@ input[type="number"].goal-inline-edit-input {
 <style data-src="assets/styles/modal-responsive.css">
 /* ============================================================
    商店 · 响应式断点
-   ≤ 600px (--bp-md-narrow)：指标改为 2×2 网格
+   ≤ 768px：指标改为 2×2 网格
             NOTE: 钱包模态框 max-width: 70vw，在 768px+ 视口下约为 600px；
-            此断点专用于模态框内部布局，非通用布局断点。
+            若窄屏视口 <768px，模态框实宽约为视口的 90vw（modal-base.css），
+            断点提至 768px 覆盖 601~768px 区间，避免 4 列挤压。
    ≤ 480px (--bp-sm)：指标 1×4，金额独占整行，商品卡紧凑
    ≤ 360px (--bp-xxs)：极度紧凑，字号缩小
    ============================================================ */
 
-@media (max-width: 600px) {
+@media (max-width: 768px) {
     .shop-balance-metrics--row {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
     .shop-balance-metric--card {
         padding: clamp(8px, 2.5vw, 12px) clamp(4px, 1.2vw, 8px);
@@ -20915,7 +20977,7 @@ input[type="number"].goal-inline-edit-input {
     box-shadow: var(--shadow-floating);
     max-height: 80vh;
     overflow-y: auto;
-    min-width: clamp(200px, 40vw, 320px);
+    min-width: min(200px, calc(100vw - 12px));
 }
 .fab-actions.open {
     transform: translateY(0);
@@ -20946,7 +21008,7 @@ input[type="number"].goal-inline-edit-input {
 }
 .fab-action-btn {
     flex: 1;
-    min-width: calc(33.33% - 4px);
+    min-width: max(44px, calc(33.33% - 4px));
     padding: 8px 4px 6px;
     background: transparent;
     border: none;

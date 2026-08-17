@@ -79,6 +79,7 @@
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-floating);
     min-width: 220px;
+    max-width: calc(100vw - 2rem); /* 窄屏钳制，避免弹出层边缘被裁 */
     overflow: clip; /* 允许内部内容滚动，同时裁切圆角 */
 }
 

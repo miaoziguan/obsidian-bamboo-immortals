@@ -106,13 +106,15 @@ export const FABManager = {
 
         this.mainBtn.addEventListener('mousedown', (e) => {
             if (e.button !== 0) return;
-            e.preventDefault();
+            // 注意：这里不能 preventDefault —— 桌面 mousedown 阻止默认不会吞 click，
+            // 但移动端在 touchstart 中 preventDefault 会抑制合成 click，导致菜单点不开。
+            // 故点击类操作保留默认行为，拖拽时才在 move 阶段抑制。
             onStart(e.clientX, e.clientY);
         });
 
         document.addEventListener('mousemove', (e) => {
             if (!isDragging) return;
-            e.preventDefault();
+            if (hasMoved) e.preventDefault();
             onMove(e.clientX, e.clientY);
         });
 
@@ -120,14 +122,16 @@ export const FABManager = {
 
         this.mainBtn.addEventListener('touchstart', (e) => {
             if (e.touches.length !== 1) return;
-            e.preventDefault();
+            // 关键：不能在此 preventDefault，否则移动端浏览器不再派发合成 click，
+            // open()/close() 全部挂在 click 上，悬浮菜单将永远点不开。
             const t = e.touches[0];
             onStart(t.clientX, t.clientY);
-        }, { passive: false });
+        }, { passive: true });
 
         document.addEventListener('touchmove', (e) => {
             if (!isDragging) return;
-            e.preventDefault();
+            // 仅在确认发生拖拽（hasMoved）时抑制滚动，保留轻点滚动的原生行为
+            if (hasMoved) e.preventDefault();
             const t = e.touches[0];
             onMove(t.clientX, t.clientY);
         }, { passive: false });

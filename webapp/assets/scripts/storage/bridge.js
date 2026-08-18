@@ -57,6 +57,22 @@ export class BridgeStorage {
       if (readyResp && typeof readyResp.syncPaletteToObsidian === 'boolean') {
         this.syncPaletteToObsidian = readyResp.syncPaletteToObsidian;
       }
+      // 平台感知：宿主是否为移动端（Obsidian 手机 App）。webapp 内无法直接
+      // import obsidian 的 Platform，由宿主在 app:ready 时注入。
+      // 供各模块做平台分支（如移动端隐藏拖拽提示、精简动画、抽屉适配）。
+      if (readyResp && typeof readyResp.isMobile === 'boolean') {
+        window.__bambooIsMobile = readyResp.isMobile;
+        this.isMobile = readyResp.isMobile;
+        // 同步给 shadow host：触发 shadowBootstrap 的 platform-mobile 类
+        // （mirror 每次重读 __bambooIsMobile，此处手动触发一次让类立即生效）
+        try {
+          const sr = window.__bambooShadowRoot;
+          if (sr && sr.host) {
+            if (readyResp.isMobile) sr.host.classList.add('platform-mobile');
+            else sr.host.classList.remove('platform-mobile');
+          }
+        } catch (_) {}
+      }
 
       // 激活门控：未激活时挂全屏激活遮罩（密钥在宿主侧，本模块仅转发激活码）
       if (readyResp && readyResp.licenseActive === false) {

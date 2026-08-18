@@ -311,6 +311,9 @@ function initShadow() {
             set.add('theme-dark');
         }
         if (set.has('theme-light')) set.add('theme-light');
+        // 移动端平台标记：bridge 就绪（app:ready）后 __bambooIsMobile 才有值，
+        // 因此这里每次 mirror 都重读，bridge 赋值后需手动触发一次 mirror。
+        if (window.__bambooIsMobile) set.add('platform-mobile');
         host.className = 'bamboo-shadow-host ' + [...set].join(' ');
     };
     mirror();

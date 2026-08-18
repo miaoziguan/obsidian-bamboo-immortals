@@ -20,7 +20,12 @@ export const FABManager = {
         this.container.style.visibility = 'visible';
 
         this.loadSavedPosition();
-        this.setupDrag();
+        // 移动端（Obsidian 手机 App）：禁用 FAB 拖拽。手机 WebView 里拖拽与
+        // 页面滚动存在天然冲突，且 FAB 位置由 setupResponsive 的固定 right/bottom
+        // 管理，用户没有拖动诉求；禁用后轻点必然开合菜单，避免误拖。
+        if (!window.__bambooIsMobile) {
+            this.setupDrag();
+        }
         this.setupOutsideClick();
         this.setupResponsive();
     },

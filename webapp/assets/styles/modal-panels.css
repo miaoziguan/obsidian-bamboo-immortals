@@ -1904,3 +1904,44 @@
 :host(.dark) .wnfp-tab:first-child {
     border-color: rgba(var(--border-dark-rgb, 60, 70, 60), 0.2);
 }
+
+/* ============================================================
+   移动端性能降级（platform-mobile）
+   移动端 Obsidian 手机 App 由 bridge 在 app:ready 时注入 __bambooIsMobile=true，
+   shadowBootstrap 给 host 加 platform-mobile 类。手机 WebView 的 CPU/GPU 资源
+   远弱于桌面，常驻 infinite 动画会持续占用主线程/合成线程，导致滚动卡顿、
+   耗电。此区块统一关闭或弱化高频动画，保留必要交互反馈（:active 等）。
+   ============================================================ */
+:host(.platform-mobile) .fab-main:not(.open) {
+    animation: none;
+}
+:host(.platform-mobile) .kpi-card.up,
+:host(.platform-mobile) .kpi-card.breakthrough,
+:host(.platform-mobile) .focus-box.result,
+:host(.platform-mobile) .focus-box.tomorrow {
+    animation: none;
+}
+:host(.platform-mobile) .breathePink,
+:host(.platform-mobile) .breatheSky,
+:host(.platform-mobile) .heartbeat {
+    animation: none;
+}
+:host(.platform-mobile) .goal-row::before,
+:host(.platform-mobile) .goal-row::after,
+:host(.platform-mobile) .bamboo-card::before,
+:host(.platform-mobile) .bamboo-card::after {
+    animation: none !important;
+}
+:host(.platform-mobile) .glow-pulse,
+:host(.platform-mobile) .lotteryPickedGlow,
+:host(.platform-mobile) .pulse-glow,
+:host(.platform-mobile) .nodeGlow,
+:host(.platform-mobile) .dotBreath,
+:host(.platform-mobile) .moonGlow,
+:host(.platform-mobile) .bamboo-glow-subtle,
+:host(.platform-mobile) .glow-pulse-fade {
+    animation: none !important;
+}
+:host(.platform-mobile) .status-excellent {
+    animation: none;
+}

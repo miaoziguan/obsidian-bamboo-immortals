@@ -1,4 +1,4 @@
-import { App, DataAdapter, normalizePath, requestUrl } from 'obsidian';
+import { App, DataAdapter, normalizePath, requestUrl, Platform } from 'obsidian';
 import { arrayBufferToBase64 } from '../utils/base64';
 import { VaultStorage } from '../storage/VaultStorage';
 import { ThemeBridge } from '../bridge/ThemeBridge';
@@ -244,6 +244,9 @@ export class AppAPI {
         customThemes: this.customThemes,
         customNoises: this.settings.noiseItems || [],
         syncPaletteToObsidian: this.settings.syncPaletteToObsidian || false,
+        // 平台感知：移动端 webapp 据此做平台分支（隐藏拖拽提示、优化动画、抽屉适配等）。
+        // 用可选链防御：测试环境 mock 的 obsidian 未导出 Platform 时安全降级为 false。
+        isMobile: Platform?.isMobile ?? false,
       });
       return;
     }

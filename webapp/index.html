@@ -246,16 +246,19 @@ try {
     console.error('renderSkeleton error:', e.message);
 }
 
-try {
-    await Promise.race([
-        store.initPromise,
-        new Promise((_, reject) => setTimeout(() => reject(new Error('store.initPromise timeout')), 10000))
-    ]);
-} catch (e) {
-    console.error('Store init failed:', e.message);
-}
+// 等待 store 初始化（用 async IIFE 替代模块顶层 await，
+// 兼容 iOS <15 的 WebKit —— 顶层 await 是 ES2022 特性，旧版会整个脚本解析失败）
+(async () => {
+    try {
+        await Promise.race([
+            store.initPromise,
+            new Promise((_, reject) => setTimeout(() => reject(new Error('store.initPromise timeout')), 10000))
+        ]);
+    } catch (e) {
+        console.error('Store init failed:', e.message);
+    }
 
-setTimeout(() => {
+    setTimeout(() => {
     const inits = [
         ['SectionManager', () => SectionManager.init()],
         ['Todo',            () => Todo.init()],
@@ -284,15 +287,16 @@ setTimeout(() => {
 
     document.body.classList.remove('loading');
 
-}, 100);
+    }, 100);
 
-const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-if (motionQuery.matches) {
-    document.body.classList.add('motion-reduced');
-}
-motionQuery.addEventListener('change', (e) => {
-    document.body.classList.toggle('motion-reduced', e.matches);
-});
+    const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    if (motionQuery.matches) {
+        document.body.classList.add('motion-reduced');
+    }
+    motionQuery.addEventListener('change', (e) => {
+        document.body.classList.toggle('motion-reduced', e.matches);
+    });
+})();
 </script>
     <script type="module" src="assets/scripts/utils/protocol.js?__BUILD__"></script>
 </body>

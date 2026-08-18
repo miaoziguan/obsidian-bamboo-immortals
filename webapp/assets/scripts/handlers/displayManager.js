@@ -266,10 +266,25 @@ export const DisplayManager = {
         if (!container || typeof ResizeObserver === 'undefined') return;
         if (this._resizeObserver) return;
 
-        this._resizeObserver = new ResizeObserver(() => {
+        // ResizeObserver 回调内禁止同步改动布局（改 class 会影响容器宽度，
+        // 同帧内再触发观察 → 循环 → "ResizeObserver loop completed" 警告）。
+        // 标准做法：回调里只记录尺寸，用 rAF 把类更新延迟到下一帧，打破循环。
+        // 同时仅在有效宽度发生变化时才实际更新，避免无谓的重复写入。
+        this._roPending = false;
+        this._roLastWidth = -1;
+        this._resizeObserver = new ResizeObserver((entries) => {
+            const entry = entries && entries[0];
+            const w = entry && entry.contentRect ? Math.round(entry.contentRect.width) : 0;
             if (typeof this._currentWidth !== 'number') return;
-            // 仅重算响应式类，避免 reset 用户设置的 --content-max-width
-            this._applyResponsiveClasses();
+            if (w === this._roLastWidth) return;
+            this._roLastWidth = w;
+            if (this._roPending) return;
+            this._roPending = true;
+            requestAnimationFrame(() => {
+                this._roPending = false;
+                // 仅重算响应式类，避免 reset 用户设置的 --content-max-width
+                this._applyResponsiveClasses();
+            });
         });
         this._resizeObserver.observe(container);
     },

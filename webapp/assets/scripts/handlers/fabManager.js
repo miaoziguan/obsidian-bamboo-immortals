@@ -23,12 +23,10 @@ export const FABManager = {
         // 点击开合菜单是核心功能，任何平台都必须绑定（拆自 setupDrag，
         // 避免移动端禁用拖拽时连 click 也一起丢失导致菜单点不开）。
         this.setupClickToggle();
-        // 移动端（Obsidian 手机 App）：禁用 FAB 拖拽。手机 WebView 里拖拽与
-        // 页面滚动存在天然冲突，且 FAB 位置由 setupResponsive 的固定 right/bottom
-        // 管理，用户没有拖动诉求；禁用后轻点必然开合菜单，避免误拖。
-        if (!window.__bambooIsMobile) {
-            this.setupDrag();
-        }
+        // 全平台启用拖拽：setupDrag 的 touch 系列监听（touchstart/touchmove/
+        // touchend）本就是为移动端设计的——仅拖拽位移后才 preventDefault
+        // 抑制滚动，轻点不拦截，拖拽结束的合成 click 由 _dragEndAt 时间戳抑制。
+        this.setupDrag();
         this.setupOutsideClick();
         this.setupResponsive();
     },

@@ -20,6 +20,9 @@ export const FABManager = {
         this.container.style.visibility = 'visible';
 
         this.loadSavedPosition();
+        // 点击开合菜单是核心功能，任何平台都必须绑定（拆自 setupDrag，
+        // 避免移动端禁用拖拽时连 click 也一起丢失导致菜单点不开）。
+        this.setupClickToggle();
         // 移动端（Obsidian 手机 App）：禁用 FAB 拖拽。手机 WebView 里拖拽与
         // 页面滚动存在天然冲突，且 FAB 位置由 setupResponsive 的固定 right/bottom
         // 管理，用户没有拖动诉求；禁用后轻点必然开合菜单，避免误拖。
@@ -106,7 +109,12 @@ export const FABManager = {
             if (!isDragging) return;
             isDragging = false;
             this.container.classList.remove('dragging');
-            if (hasMoved) this.savePosition();
+            if (hasMoved) {
+                this.savePosition();
+                // 拖拽位移后浏览器仍会派发合成 click，用时间戳让 setupClickToggle
+                // 在短时间内忽略该 click，避免拖拽结束后菜单被误开/误关。
+                this._dragEndAt = Date.now();
+            }
         };
 
         this.mainBtn.addEventListener('mousedown', (e) => {
@@ -143,13 +151,19 @@ export const FABManager = {
 
         document.addEventListener('touchend', onEnd);
 
-        this.mainBtn.addEventListener('click', () => {
-            if (hasMoved) { hasMoved = false; return; }
-            // 打开状态下点击主按钮关闭；关闭状态下点击打开。
-            // 避免 toggle() 在 mousedown/click 之间状态被修改后产生误判。
-            if (this.isOpen) this.close(); else this.open();
-        });
+    },
 
+    /** 点击主按钮开合菜单（核心功能，任何平台都必须绑定） */
+    setupClickToggle() {
+        const onClick = () => {
+            // 拖拽进行中（dragging class）或刚结束 350ms 内：忽略合成 click，
+            // 避免拖拽后菜单被误开/误关。
+            if (this.container && this.container.classList.contains('dragging')) return;
+            if (this._dragEndAt && Date.now() - this._dragEndAt < 350) return;
+            if (this.isOpen) this.close(); else this.open();
+        };
+        this._clickHandler = onClick;
+        this.mainBtn.addEventListener('click', onClick);
     },
 
     getMenuButtons() {

@@ -161,7 +161,8 @@ a:active) {
    background-attachment: fixed。后者在 shadow 滚动容器（host 同时 position:fixed
    且 overflow-y:auto）下于部分 webview 不绘制，导致暗色模式直接透出白底。
    position:fixed 的伪元素背景可稳定绘制，且视觉上同样铺满视口、不随内容滚动。 */
-:host::after {
+:host::after,
+:root::after {
     content: '';
     position: fixed;
     inset: 0;
@@ -187,7 +188,8 @@ a:active) {
     box-sizing: border-box;
 }
 
-:host::before {
+:host::before,
+:root::before {
     content: '';
     position: fixed;
     inset: 0;
@@ -203,7 +205,8 @@ a:active) {
 }
 
 /* 黑暗模式下重新设计高级感光影 - 增加亮度与对比度 */
-:host(.dark.bamboo-immortals-root)::before {
+:host(.dark.bamboo-immortals-root)::before,
+:root(.dark.bamboo-immortals-root)::before {
     display: block;
     background: 
         radial-gradient(circle at 50% 0%, rgba(var(--primary-rgb), 0.18) 0%, transparent 55%),
@@ -662,7 +665,7 @@ textarea),
     }
 
     #main-container {
-        padding: var(--space-4) var(--space-3);
+        padding: 0 var(--space-3);
     }
 
     .container {
@@ -700,7 +703,8 @@ textarea),
    Rules here ALSO apply to ≤480px due to cascade. */
 @media (max-width: 768px) {
     #main-container {
-        padding: 24px var(--space-4);
+        /* 移动端（含普通 iframe 中央视图）移除顶部留白，避免露出白底 */
+        padding: 0 var(--space-4);
     }
 
     .bamboo-card-header {

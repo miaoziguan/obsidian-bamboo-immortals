@@ -324,15 +324,20 @@ export const GoalsRenderer = {
                         </div>
                         
                         <div class="goal-row-actions">
-                            <button class="goal-row-action-btn goal-row-action-btn-info" data-action="goal-save-template" data-goal-id="${HTMLUtils.escapeHtmlAttr(goal.id)}" title="保存为模板">
-                                ${LucideUtils.createIcon('bookmark', { size: 14 })}
+                            <button class="goal-row-actions-toggle" type="button" data-action="goal-actions-toggle" data-goal-id="${HTMLUtils.escapeHtmlAttr(goal.id)}" aria-label="更多操作" aria-haspopup="true" aria-expanded="false" title="更多操作">
+                                ${LucideUtils.createIcon('moreVertical', { size: 18 })}
                             </button>
-                            <button class="goal-row-action-btn goal-row-action-btn-success" data-action="goal-archive" data-goal-id="${HTMLUtils.escapeHtmlAttr(goal.id)}" title="归档">
-                                ${LucideUtils.createIcon('archive', { size: 14 })}
-                            </button>
-                            <button class="goal-row-action-btn goal-row-action-btn-danger" data-action="goal-delete" data-goal-id="${HTMLUtils.escapeHtmlAttr(goal.id)}" title="删除">
-                                ${LucideUtils.createIcon('trash', { size: 14 })}
-                            </button>
+                            <div class="goal-row-actions-menu" role="menu">
+                                <button class="goal-row-action-btn goal-row-action-btn-info" data-action="goal-save-template" data-goal-id="${HTMLUtils.escapeHtmlAttr(goal.id)}" title="保存为模板" role="menuitem">
+                                    ${LucideUtils.createIcon('bookmark', { size: 14 })}
+                                </button>
+                                <button class="goal-row-action-btn goal-row-action-btn-success" data-action="goal-archive" data-goal-id="${HTMLUtils.escapeHtmlAttr(goal.id)}" title="归档" role="menuitem">
+                                    ${LucideUtils.createIcon('archive', { size: 14 })}
+                                </button>
+                                <button class="goal-row-action-btn goal-row-action-btn-danger" data-action="goal-delete" data-goal-id="${HTMLUtils.escapeHtmlAttr(goal.id)}" title="删除" role="menuitem">
+                                    ${LucideUtils.createIcon('trash', { size: 14 })}
+                                </button>
+                            </div>
                         </div>
                     </div>
                     <div class="goal-row-meta-row">
@@ -848,6 +853,27 @@ export const GoalsRenderer = {
                 return;
             }
 
+            // 「⋯」操作菜单触发：展开/收起当前卡片菜单，并关闭其它已展开菜单
+            const actionsToggle = t.closest('[data-action="goal-actions-toggle"]');
+            if (actionsToggle) {
+                e.stopPropagation();
+                const actions = actionsToggle.closest('.goal-row-actions');
+                if (!actions) return;
+                const isOpen = actions.classList.contains('open');
+                // 关闭同容器内所有已展开菜单
+                actions.parentElement.querySelectorAll('.goal-row-actions.open')
+                    .forEach((el) => {
+                        if (el !== actions) {
+                            el.classList.remove('open');
+                            const btn = el.querySelector('.goal-row-actions-toggle');
+                            if (btn) btn.setAttribute('aria-expanded', 'false');
+                        }
+                    });
+                actions.classList.toggle('open', !isOpen);
+                actionsToggle.setAttribute('aria-expanded', String(!isOpen));
+                return;
+            }
+
             // 操作按钮
             if (t.closest('.goal-row-action-btn')) return;
 
@@ -895,13 +921,32 @@ export const GoalsRenderer = {
                 return;
             }
 
-            // 点击操作按钮不触发其他行为
+            // 点击操作按钮不触发其他行为（菜单内按钮点击后收起浮层）
             const actionBtn = t.closest('[data-action]');
-            if (actionBtn) return;
+            if (actionBtn) {
+                if (actionBtn.closest('.goal-row-actions-menu')) {
+                    const wrap = actionBtn.closest('.goal-row-actions');
+                    if (wrap) {
+                        wrap.classList.remove('open');
+                        const tg = wrap.querySelector('.goal-row-actions-toggle');
+                        if (tg) tg.setAttribute('aria-expanded', 'false');
+                    }
+                }
+                return;
+            }
 
             // 点击子项目行不触发折叠
             const itemRow = t.closest('.goal-item-entry');
             if (itemRow) return;
+
+            // 点击卡片其它区域（非操作区）时收起所有已展开菜单
+            if (!t.closest('.goal-row-actions')) {
+                container.querySelectorAll('.goal-row-actions.open').forEach((el) => {
+                    el.classList.remove('open');
+                    const tg = el.querySelector('.goal-row-actions-toggle');
+                    if (tg) tg.setAttribute('aria-expanded', 'false');
+                });
+            }
         };
 
         container.addEventListener('click', container._goalClickHandler);
@@ -909,7 +954,17 @@ export const GoalsRenderer = {
         // 键盘支持 - 无障碍增强
         container._goalKeyHandler = (e) => {
             const healthCard = e.target.closest('.goal-health-overview');
-            if (!healthCard) return;
+            if (!healthCard) {
+                // ESC 关闭所有已展开的操作菜单
+                if (e.key === 'Escape') {
+                    container.querySelectorAll('.goal-row-actions.open').forEach((el) => {
+                        el.classList.remove('open');
+                        const tg = el.querySelector('.goal-row-actions-toggle');
+                        if (tg) tg.setAttribute('aria-expanded', 'false');
+                    });
+                }
+                return;
+            }
             
             if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();

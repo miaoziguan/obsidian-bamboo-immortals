@@ -403,15 +403,20 @@
 
 /* --- rw-420：容器宽度 ≤ 420px，400px 档两行布局 --- */
 .rw-420 .goal-health-overview {
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: nowrap;
     padding: 10px 12px;
-    row-gap: var(--space-2);
+    gap: 0;
 }
 .rw-420 .gho-right {
     display: none;
 }
-/* 第一行元素：禁止收缩，保持稳定 */
+/* 左侧：圆环 + 文字标签 */
 .rw-420 .gho-left {
-    gap: var(--space-2);
+    display: flex;
+    align-items: center;
+    gap: 8px;
     padding-right: 8px;
     flex-shrink: 0;
 }
@@ -423,116 +428,121 @@
     width: 22px;
     height: 22px;
 }
-.rw-420 .gho-label {
-    max-width: 48px;
-    font-size: var(--type-mini);
+.rw-420 .gho-score {
+    font-size: var(--type-sm);
 }
-/* 保留第一条分隔线（圆环与指标之间） */
+.rw-420 .gho-label {
+    max-width: none;
+    font-size: var(--type-sm);
+}
+/* 分隔线 */
 .rw-420 .gho-divider {
-    margin: 0 4px;
+    width: 1px;
     height: 24px;
+    margin: 0 8px;
     background: rgba(var(--primary-rgb), 0.08);
 }
-/* 隐藏指标↔建议、建议↔按钮之间的分隔线 */
-.rw-420 .gho-metrics + .gho-divider,
-.rw-420 .gho-suggestion + .gho-divider {
-    display: none;
-}
+/* 中间：三个指标点 */
 .rw-420 .gho-metrics {
     flex: 1;
-    gap: var(--space-2);
+    display: flex;
+    align-items: center;
     justify-content: center;
+    gap: var(--space-3);
     min-width: 0;
 }
 .rw-420 .gho-metric {
-    gap: 3px;
+    gap: 4px;
 }
 .rw-420 .gho-metric-name {
     display: none;
 }
 .rw-420 .gho-metric-val {
-    font-size: var(--type-sm);
+    font-size: var(--type-base);
+    font-weight: 600;
     min-width: 16px;
 }
-/* 复盘按钮保持右侧 */
+/* 右侧：复盘按钮 */
 .rw-420 .gho-review-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
     padding: 4px 8px;
-    font-size: var(--type-mini);
+    margin-left: 8px;
+    font-size: var(--type-sm);
     flex-shrink: 0;
+    border-radius: var(--radius-sm);
+    background: rgba(var(--primary-rgb), 0.08);
 }
-/* 建议区块独占第二行，居中显示 */
+/* 建议文字改放到圆环下方或干脆隐藏（按参考图，单行头部不显示） */
 .rw-420 .gho-suggestion {
-    flex-basis: 100%;
-    order: 10;
-    padding: 8px 0 0 0;
-    margin-top: 2px;
-    justify-content: center;
-    border-top: 1px solid rgba(var(--primary-rgb), 0.08);
-}
-.rw-420 .gho-suggestion-text {
-    font-size: var(--type-mini);
+    display: none;
 }
 
 /* --- rw-360：容器宽度 ≤ 360px，横向 → 纵向堆叠 --- */
 .rw-360 .goal-health-overview {
-    flex-direction: column;
-    align-items: stretch;
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: nowrap;
     padding: 10px 12px;
-    gap: var(--space-2);
+    gap: 0;
 }
 .rw-360 .gho-left {
-    gap: 10px;
-    padding-right: 0;
-    align-self: center;
-    justify-content: center;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-right: 8px;
+    flex-shrink: 0;
 }
 .rw-360 .gho-ring {
-    width: 36px;
-    height: 36px;
+    width: 34px;
+    height: 34px;
 }
 .rw-360 .gho-center {
-    width: 24px;
-    height: 24px;
+    width: 22px;
+    height: 22px;
 }
 .rw-360 .gho-score {
     font-size: var(--type-sm);
 }
+.rw-360 .gho-label {
+    font-size: var(--type-mini);
+    max-width: 48px;
+}
+.rw-360 .gho-divider {
+    width: 1px;
+    height: 22px;
+    margin: 0 6px;
+    background: rgba(var(--primary-rgb), 0.08);
+}
+.rw-360 .gho-metrics {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    min-width: 0;
+}
 .rw-360 .gho-metric-name {
     display: none;
 }
-.rw-360 .gho-label {
-    font-size: var(--type-mini);
-    max-width: 60px;
-}
-.rw-360 .gho-divider {
-    width: 100%;
-    height: 1px;
-    margin: 4px 0;
-}
-.rw-360 .goal-health-overview .gho-divider:nth-of-type(3),
-.rw-360 .goal-health-overview .gho-divider:nth-of-type(4) {
-    display: none;
-}
-.rw-360 .gho-metrics {
-    gap: var(--space-2);
-    justify-content: space-around;
-}
 .rw-360 .gho-metric-val {
     font-size: var(--type-sm);
+    min-width: 14px;
 }
 .rw-360 .gho-suggestion {
-    padding: 4px 8px;
-    justify-content: center;
-    order: 0;
-}
-.rw-360 .gho-suggestion-text {
-    font-size: var(--type-mini);
+    display: none;
 }
 .rw-360 .gho-review-btn {
-    padding: 6px 10px;
-    font-size: var(--type-sm);
-    align-self: stretch;
-    justify-content: center;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 6px;
+    margin-left: 6px;
+    font-size: var(--type-mini);
+    flex-shrink: 0;
+    border-radius: var(--radius-sm);
+    background: rgba(var(--primary-rgb), 0.08);
 }
 
 /* 目标行主容器：极致紧凑 */

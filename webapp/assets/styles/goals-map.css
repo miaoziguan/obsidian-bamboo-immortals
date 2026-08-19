@@ -95,6 +95,21 @@
     position: relative;
     z-index: 10;
 }
+
+/* 桌面端：操作区直接横排常显，「⋯」菜单触发按钮隐藏（菜单内按钮在桌面端也直接显示） */
+.goal-row-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    flex-shrink: 0;
+}
+.goal-row-actions-toggle { display: none; }
+.goal-row-actions-menu {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    position: static;
+}
 .goal-row-header {
     display: flex;
     align-items: center;
@@ -197,13 +212,11 @@
     color: var(--text-secondary);
     flex-shrink: 0;
     margin-left: 4px;
-    transition: transform 0.3s, background 0.2s;
+    transition: transform 0.3s, color 0.2s;
     opacity: 0.7;
     cursor: pointer;
-    padding: 0 6px;
+    padding: 0 2px;
     height: 28px;
-    border-radius: var(--radius-xs);
-    border: 1px solid transparent;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -211,7 +224,6 @@
 }
 .goal-row-toggle:hover {
     opacity: 1;
-    background: rgba(var(--primary-rgb), 0.1);
     color: var(--bamboo-primary);
 }
 
@@ -257,7 +269,7 @@
     flex-shrink: 0;
 }
 .goal-row:hover .goal-row-toggle {
-    opacity: 0.9;
+    opacity: 1;
 }
 .goal-row-analysis {
     font-size: var(--type-mini);

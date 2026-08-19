@@ -22,58 +22,125 @@
     border-radius: var(--radius-md);
 }
 .rw-460 .goal-row-main {
-    padding: var(--space-2) var(--space-3);
+    padding: 14px 14px;
 }
+/* 移动端目标卡片：垂直堆叠，第一行标题独占，操作收进「⋯」浮层菜单 */
 .rw-460 .goal-row-top-line {
-    gap: 6px;
-    margin-bottom: 6px;
-    flex-wrap: wrap;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    margin-bottom: 10px;
+    position: relative;
+    z-index: 10;
 }
 .rw-460 .goal-row-header {
-    padding: 4px 8px;
-    border-radius: var(--radius-xs);
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: var(--space-2);
+    padding: 12px 44px 12px 12px;
+    border-radius: var(--radius-sm);
     flex: 1 1 auto;
+    width: 100%;
     min-width: 0;
+    height: auto;
+    min-height: var(--touch-target);
 }
 .rw-460 .goal-row-title {
     font-size: var(--type-sm);
     padding: 0 4px;
-    height: 24px;
+    height: auto;
+    min-height: 28px;
+    flex: 1 1 auto;
+    max-width: none;
 }
 .rw-460 .goal-row-category {
     font-size: var(--type-mini);
     padding: 0 2px;
     height: 24px;
+    flex-shrink: 0;
 }
 .rw-460 .goal-row-toggle {
     padding: 0 4px;
     height: 24px;
     margin-left: 2px;
+    flex-shrink: 0;
 }
+/* 操作区：移动端隐藏桌面横排按钮（hover 显示），三个操作改由点击「⋯」浮层菜单 */
 .rw-460 .goal-row-actions {
+    position: absolute;
+    top: 50%;
+    right: 12px;
+    transform: translateY(-50%);
+    display: inline-flex;
+    align-items: center;
     gap: var(--space-1);
     opacity: 1;
     flex-shrink: 0;
-    margin-left: auto;
+    margin-left: 0;
+    z-index: 20;
 }
-.rw-460 .goal-row-action-btn {
-    padding: var(--space-2);
-    border-radius: var(--radius-xs);
-    min-width: var(--touch-target);
-    min-height: var(--touch-target);
+.rw-460 .goal-row-actions-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px;
+    min-width: 28px;
+    min-height: 28px;
+    background: transparent;
+    border: none;
+    color: var(--bamboo-deep);
+    cursor: pointer;
+    flex-shrink: 0;
+}
+.rw-460 .goal-row-actions-toggle[aria-expanded="true"] {
+    color: var(--bamboo-primary);
+}
+.rw-460 .goal-row-actions-menu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    flex-direction: row;
+    gap: var(--space-1);
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius-md);
+    background: var(--surface-solid);
+    box-shadow: 0 4px 16px rgba(var(--deep-rgb), 0.25);
+    border: 1px solid rgba(var(--primary-rgb), 0.18);
+    z-index: 30;
+    margin-top: 4px;
+}
+.rw-460 .goal-row-actions.open .goal-row-actions-menu {
+    display: flex;
 }
 .rw-460 .goal-row-meta-row {
-    gap: var(--space-1);
-    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px var(--space-2);
+    margin-bottom: 10px;
+    font-size: var(--type-mini);
+    color: var(--text-secondary);
 }
 .rw-460 .goal-row-meta {
     font-size: var(--type-mini);
+    flex: 1 1 auto;
+    min-width: 0;
+}
+.rw-460 .goal-row-analysis {
+    flex: 1 1 100%;
+    font-size: var(--type-mini);
+    margin: 2px 0 0;
 }
 .rw-460 .goal-date-range {
     font-size: var(--type-mini);
+    white-space: nowrap;
 }
 .rw-460 .goal-row-percent {
     font-size: var(--type-micro);
+    margin-left: auto;
 }
 .rw-460 .goal-row-bar {
     height: 4px;
@@ -175,6 +242,36 @@
 }
 .rw-460 .empty-state-desc {
     font-size: var(--type-xs);
+}
+
+/* ===== 超窄屏模式 (rw-360)：≤360px 保持可读呼吸感 ===== */
+.rw-360 .goal-row-main {
+    padding: var(--space-3) var(--space-3);
+    gap: 10px;
+}
+.rw-360 .goal-row-header {
+    padding: 10px 10px;
+    gap: var(--space-2);
+}
+.rw-360 .goal-row-title {
+    font-size: var(--type-xs);
+}
+.rw-360 .goal-row-category {
+    font-size: 10px;
+    padding: 0 1px;
+}
+.rw-360 .goal-row-actions-toggle {
+    min-width: calc(var(--touch-target) - 4px);
+    min-height: calc(var(--touch-target) - 4px);
+    padding: 4px;
+}
+.rw-360 .goal-row-action-btn {
+    min-width: calc(var(--touch-target) - 4px);
+    min-height: calc(var(--touch-target) - 4px);
+    padding: var(--space-1);
+}
+.rw-360 .goal-row-meta-row {
+    gap: 3px var(--space-1);
 }
 
 

@@ -278,6 +278,8 @@ export class Store {
             if (theme === 'dark') {
                 this.state.ui.isDarkMode = true;
                 document.documentElement.classList.add('dark');
+                const host = document.getElementById('bamboo-shadow-host');
+                if (host) host.classList.add('dark');
             }
             // 已持久化过明暗偏好（light/dark 任一）→ 视为用户已选择，重启后不回退到浅色优先
             if (theme === 'dark' || theme === 'light') {
@@ -364,6 +366,8 @@ export class Store {
         if (theme === 'dark') {
             this.state.ui.isDarkMode = true;
             document.documentElement.classList.add('dark');
+            const host = document.getElementById('bamboo-shadow-host');
+            if (host) host.classList.add('dark');
         }
         if (theme === 'dark' || theme === 'light') {
             this.state.ui.userThemeChosen = true;
@@ -800,6 +804,12 @@ export class Store {
             document.documentElement.classList.add('dark');
         } else {
             document.documentElement.classList.remove('dark');
+        }
+        // 同步到 shadow host：暗色样式全部挂在 :host(.dark) 上，
+        // 仅改 document.documentElement 不会生效（MutationObserver 有时序缺口）
+        const host = document.getElementById('bamboo-shadow-host');
+        if (host) {
+            host.classList.toggle('dark', !!newMode);
         }
 
         // 重新计算前景色变量（暗色模式需要更高明度）

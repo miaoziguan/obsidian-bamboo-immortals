@@ -319,9 +319,8 @@
     background: linear-gradient(180deg, var(--bg-gradient-start) 0%, var(--bg-gradient-mid1) 50%, var(--bg-gradient-mid2) 100%);
 }
 
-:host(.dark.bamboo-immortals-root) {
-    background: transparent;
-}
+/* 废弃：原 :host(.dark.bamboo-immortals-root) 因 bamboo-immortals-root 在 body 上而非 host 上，永远不会命中；
+   且 host 在暗色下需要 --surface-solid 兜底，不能设为透明。 */
 
 /* 竹林暗色模式：标题渐变 */
 :host(.dark) .section-title {
@@ -335,7 +334,12 @@
 :host(.dark) .bamboo-card,
 :host(.dark) .goal-row,
 :host(.dark) .kpi-card {
+    background: var(--card-bg);
     border-color: rgba(var(--primary-rgb), 0.25);
+}
+/* 竹林暗色模式：.bamboo-card 暗色背景兜底（双类提升特异性，盖过浅色回退与时段规则） */
+:host(.dark) .bamboo-card.bamboo-card {
+    background: hsla(var(--accent-hue), 18%, calc(10% + var(--accent-lightness-offset)), 0.6) !important;
 }
 
 /* 竹林暗色模式：进度条光晕 */

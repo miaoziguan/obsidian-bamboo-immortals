@@ -278,6 +278,7 @@ export class Store {
             if (theme === 'dark') {
                 this.state.ui.isDarkMode = true;
                 document.documentElement.classList.add('dark');
+                document.body.classList.add('dark');
                 const host = document.getElementById('bamboo-shadow-host');
                 if (host) host.classList.add('dark');
             }
@@ -311,7 +312,7 @@ export class Store {
             console.log('[Store] init complete: balance=' + this.state.balance +
                 ' ph_records=' + (this.state.purchaseHistory.records || []).length +
                 ' ih_records=' + (this.state.incomeHistory.records || []).length);
-            
+
         } catch (e) {
             console.error('Failed to load from storage:', e);
             this.loadFromStorageLegacy();
@@ -366,6 +367,7 @@ export class Store {
         if (theme === 'dark') {
             this.state.ui.isDarkMode = true;
             document.documentElement.classList.add('dark');
+            document.body.classList.add('dark');
             const host = document.getElementById('bamboo-shadow-host');
             if (host) host.classList.add('dark');
         }
@@ -800,17 +802,11 @@ export class Store {
 
         // 立即更新本地状态和 DOM
         this.state.ui.isDarkMode = newMode;
-        if (newMode) {
-            document.documentElement.classList.add('dark');
-        } else {
-            document.documentElement.classList.remove('dark');
-        }
-        // 同步到 shadow host：暗色样式全部挂在 :host(.dark) 上，
-        // 仅改 document.documentElement 不会生效（MutationObserver 有时序缺口）
-        const host = document.getElementById('bamboo-shadow-host');
-        if (host) {
-            host.classList.toggle('dark', !!newMode);
-        }
+        // dark 类需要同时存在于三处，暗色规则才完整命中：
+        //  - <html> / <body>：body 带 .bamboo-immortals-root，需 .dark 命中 body 内规则
+        //  - shadow host(#bamboo-shadow-host)：:host(.dark) 规则需要 host 自身带 .dark
+        const darkEls = [document.documentElement, document.body, document.getElementById('bamboo-shadow-host')].filter(Boolean);
+        darkEls.forEach((el) => el.classList.toggle('dark', !!newMode));
 
         // 重新计算前景色变量（暗色模式需要更高明度）
         if (typeof window.DisplayManager !== 'undefined' && window.DisplayManager.reapplyHueForDarkMode) {
@@ -825,6 +821,7 @@ export class Store {
                 // 忽略持久化失败
             }
         }
+
         this.notify();
     }
 

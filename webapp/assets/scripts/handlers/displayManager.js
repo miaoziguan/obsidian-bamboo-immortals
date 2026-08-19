@@ -619,12 +619,11 @@ export const DisplayManager = {
 
         // 修复：_applyObsidianBg 内联的 --card-bg/--card-glass 优先级高于 :host(.dark) CSS，
         // 模式切换时必须移除内联覆盖，让 CSS 变量层级的明暗切换生效。
-        // 移除后若 Obsidian 侧重新推送主题 bg，bridge.js 会再次调用 _applyObsidianBg。
-        const sidebarRgb = cs.getPropertyValue('--obsidian-sidebar-rgb').trim();
-        if (sidebarRgb) {
-            root.style.removeProperty('--card-bg');
-            root.style.removeProperty('--card-glass');
-        }
+        // 无论是否开启「跟随 Obsidian 主题配色」，暗色模式下都移除内联 --card-bg/--card-glass，
+        // 否则遗留的白底内联变量会盖过 CSS 暗色值（导致手动切暗色后卡片仍白底）。
+        // 移除后若 Obsidian 侧重新推送主题 bg，bridge.js 会再次调用 _applyObsidianBg 覆盖。
+        root.style.removeProperty('--card-bg');
+        root.style.removeProperty('--card-glass');
     },
 
     /**

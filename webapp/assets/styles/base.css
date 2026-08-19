@@ -210,7 +210,7 @@ a:active) {
 }
 
 /* 黑暗模式下重新设计高级感光影 - 增加亮度与对比度 */
-:host(.dark.bamboo-immortals-root)::before {
+:host(.dark)::before {
     display: block;
     background: 
         radial-gradient(circle at 50% 0%, rgba(var(--primary-rgb), 0.18) 0%, transparent 55%),

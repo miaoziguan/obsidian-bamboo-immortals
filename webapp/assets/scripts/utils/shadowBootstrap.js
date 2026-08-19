@@ -314,6 +314,10 @@ function initShadow() {
         // 移动端平台标记：bridge 就绪（app:ready）后 __bambooIsMobile 才有值，
         // 因此这里每次 mirror 都重读，bridge 赋值后需手动触发一次 mirror。
         if (window.__bambooIsMobile) set.add('platform-mobile');
+        // 保留 host 上由 store 直接写入的运行态 class（如 .dark 手动切换），
+        // 不被覆盖式重写擦除
+        if (host.classList.contains('dark')) set.add('dark');
+        if (host.classList.contains('theme-dark')) set.add('theme-dark');
         host.className = 'bamboo-shadow-host ' + [...set].join(' ');
     };
     mirror();

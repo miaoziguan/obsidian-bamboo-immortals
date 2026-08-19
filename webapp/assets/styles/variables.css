@@ -359,8 +359,7 @@
 }
 
 /* ========== 暗色模式（竹林星光暗色，完整覆盖所有变量） ========== */
-:host(.dark),
-:root(.dark) {
+:host(.dark) {
     /* 竹林星光 — 深邃、高级、有层次感的暗色背景 */
     --bm-primary-rgb: 130, 195, 130;
     --primary-rgb: var(--bm-primary-rgb); /* alias */

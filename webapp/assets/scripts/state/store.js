@@ -13,6 +13,9 @@ export class Store {
                 isDarkMode: false,
                 currentTheme: 'bamboo',
                 autoSyncTheme: true,
+                // 用户是否在 webapp 内手动选择过明暗；未选择时遵循「默认浅色优先」，
+                // 不被宿主（Obsidian/iOS 跟随系统）的暗色推送覆盖
+                userThemeChosen: false,
                 weatherEnabled: true,
                 weatherCity: null,
                 weatherExpanded: true,
@@ -276,6 +279,10 @@ export class Store {
                 this.state.ui.isDarkMode = true;
                 document.documentElement.classList.add('dark');
             }
+            // 已持久化过明暗偏好（light/dark 任一）→ 视为用户已选择，重启后不回退到浅色优先
+            if (theme === 'dark' || theme === 'light') {
+                this.state.ui.userThemeChosen = true;
+            }
 
             // 统一规范化主题为 bamboo，并清理任何旧的 theme-xxx 类
             const htmlEl = document.documentElement;
@@ -357,6 +364,9 @@ export class Store {
         if (theme === 'dark') {
             this.state.ui.isDarkMode = true;
             document.documentElement.classList.add('dark');
+        }
+        if (theme === 'dark' || theme === 'light') {
+            this.state.ui.userThemeChosen = true;
         }
 
         // legacy: 统一规范化为 bamboo 主题并清理旧的 theme-* 类
@@ -770,13 +780,18 @@ export class Store {
         this.setCurrentDate(date);
     }
 
-    async setDarkMode(isDark) {
+    async setDarkMode(isDark, fromHost = false) {
         const currentMode = this.state.ui.isDarkMode;
         const newMode = (typeof isDark === 'boolean') ? isDark : !currentMode;
 
         if (newMode === currentMode) {
             this.notify();
             return;
+        }
+
+        // 用户手动切换（非宿主推送）→ 标记为已选择，后续不再被宿主暗色推送覆盖
+        if (!fromHost) {
+            this.state.ui.userThemeChosen = true;
         }
 
         // 立即更新本地状态和 DOM

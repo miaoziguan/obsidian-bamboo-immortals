@@ -1,4 +1,4 @@
-import { Plugin, WorkspaceLeaf, Notice, TFile, MarkdownView } from 'obsidian';
+import { Plugin, WorkspaceLeaf, Notice, TFile, MarkdownView, Platform } from 'obsidian';
 import { DailyReviewView, VIEW_TYPE_DAILY_REVIEW } from './src/views/DailyReviewView';
 import { AppHost } from './src/host/AppHost';
 import { WebappController } from './src/host/WebappController';
@@ -915,30 +915,39 @@ export default class BambooReviewPlugin extends Plugin {
       // 已有视图，直接聚焦
       leaf = leaves[0];
     } else {
-      // 创建新视图（默认落在右侧栏）
-      const rightLeaf = workspace.getRightLeaf(false);
-      if (!rightLeaf) return;
-      leaf = rightLeaf;
-      await leaf.setViewState({
-        type: VIEW_TYPE_DAILY_REVIEW,
-        active: true,
-      });
-      // 展开右栏并给面板一个舒适宽度。
-      // 注意：setViewState 异步，视图真正挂载完成后右栏布局才稳定，
-      // 必须等下一帧再读/写宽度，否则读到 0 或被框架 CSS 覆盖。
-      const rightSplit = workspace.rightSplit as unknown as {
-        containerEl: HTMLElement;
-        expand(): void;
-      };
-      rightSplit.expand();
-      window.requestAnimationFrame(() => {
-        window.requestAnimationFrame(() => {
-          const el = rightSplit.containerEl;
-          if (el.offsetWidth < 420) {
-            el.setCssStyles({ width: '420px' });
-          }
+      if (Platform.isMobile) {
+        // 移动端：默认打开在中央视图（主编辑区），而非右侧栏
+        leaf = workspace.getLeaf(false);
+        await leaf.setViewState({
+          type: VIEW_TYPE_DAILY_REVIEW,
+          active: true,
         });
-      });
+      } else {
+        // 创建新视图（默认落在右侧栏）
+        const rightLeaf = workspace.getRightLeaf(false);
+        if (!rightLeaf) return;
+        leaf = rightLeaf;
+        await leaf.setViewState({
+          type: VIEW_TYPE_DAILY_REVIEW,
+          active: true,
+        });
+        // 展开右栏并给面板一个舒适宽度。
+        // 注意：setViewState 异步，视图真正挂载完成后右栏布局才稳定，
+        // 必须等下一帧再读/写宽度，否则读到 0 或被框架 CSS 覆盖。
+        const rightSplit = workspace.rightSplit as unknown as {
+          containerEl: HTMLElement;
+          expand(): void;
+        };
+        rightSplit.expand();
+        window.requestAnimationFrame(() => {
+          window.requestAnimationFrame(() => {
+            const el = rightSplit.containerEl;
+            if (el.offsetWidth < 420) {
+              el.setCssStyles({ width: '420px' });
+            }
+          });
+        });
+      }
     }
 
     if (leaf) {

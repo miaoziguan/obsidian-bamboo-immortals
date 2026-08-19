@@ -65,6 +65,8 @@
         hsla(calc(var(--accent-hue) + 0), 28%, 94%, 0.92) 30%,
         hsla(calc(var(--accent-hue) + 0), 24%, 90%, 0.9) 70%,
         hsla(calc(var(--accent-hue) + 0), 20%, 85%, 0.88) 100%);
+    /* 兜底实色背景：确保 --accent-hue 未就绪时也不透出白色玻璃（iOS 首次打开白卡修复） */
+    background-color: hsl(120, 28%, 94%);
     /* 深嵌体积：顶部强内高光 + 底部凹陷 + 竹绿调投影 */
     box-shadow:
         inset 0 1px 0 hsla(calc(var(--accent-hue) + 0), 40%, 98%, 0.8),

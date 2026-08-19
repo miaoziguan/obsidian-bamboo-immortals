@@ -28,7 +28,8 @@
  *   --bamboo-success → 用 --bamboo-primary（当前同值）
  *   --status-success → 用 --bamboo-primary（当前同值）
  * ======================================================== */
-:host {
+:host,
+:root {
     /* === 主题色相（可变）=== */
     --accent-hue: 120;  /* 默认竹青绿，可通过 DisplayManager 色相滑块调整 */
 
@@ -358,7 +359,8 @@
 }
 
 /* ========== 暗色模式（竹林星光暗色，完整覆盖所有变量） ========== */
-:host(.dark) {
+:host(.dark),
+:root(.dark) {
     /* 竹林星光 — 深邃、高级、有层次感的暗色背景 */
     --bm-primary-rgb: 130, 195, 130;
     --primary-rgb: var(--bm-primary-rgb); /* alias */

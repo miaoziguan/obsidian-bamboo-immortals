@@ -148,9 +148,15 @@ export class BridgeStorage {
     if (data.type === 'app:theme') {
       if (typeof store !== 'undefined' && data.payload) {
         const state = store.getState ? store.getState() : store.state;
-        if (state && state.ui && state.ui.autoSyncTheme === false) return;
+        const ui = state && state.ui;
+        if (ui && ui.autoSyncTheme === false) return;
         const isDark = data.payload.isDark;
-        store.setDarkMode(isDark);
+        // 默认浅色优先：用户未手动选择且宿主为暗色时不采纳，保持浅色
+        if (ui && ui.userThemeChosen) {
+          // 用户已选择，不采纳宿主推送
+        } else if (isDark === false) {
+          store.setDarkMode(false, true);
+        }
       }
       return;
     }
@@ -538,8 +544,16 @@ window.addEventListener('message', (event) => {
   if (data.payload && typeof data.payload.isDark === 'boolean') {
     if (typeof store !== 'undefined') {
       const state = store.getState ? store.getState() : store.state;
-      if (!(state && state.ui && state.ui.autoSyncTheme === false)) {
-        store.setDarkMode(data.payload.isDark);
+      const ui = state && state.ui;
+      if (!(ui && ui.autoSyncTheme === false)) {
+        // 默认浅色优先：用户未手动选择明暗时，不被宿主（Obsidian/iOS 跟随系统）暗色推送覆盖；
+        // 仅当宿主明确为浅色时才同步为浅。用户一旦手动选择过（userThemeChosen）则完全尊重用户。
+        if (ui.userThemeChosen) {
+          // 用户已选择，不采纳宿主推送
+        } else if (data.payload.isDark === false) {
+          store.setDarkMode(false, true);
+        }
+        // 宿主为暗色且用户未选择 → 保持浅色优先，不采纳
       }
     }
   }

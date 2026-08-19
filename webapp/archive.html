@@ -912,8 +912,7 @@ a:active) {
    background-attachment: fixed。后者在 shadow 滚动容器（host 同时 position:fixed
    且 overflow-y:auto）下于部分 webview 不绘制，导致暗色模式直接透出白底。
    position:fixed 的伪元素背景可稳定绘制，且视觉上同样铺满视口、不随内容滚动。 */
-:host::after,
-:root::after {
+:host::after {
     content: '';
     position: fixed;
     inset: 0;
@@ -922,6 +921,13 @@ a:active) {
     background: linear-gradient(165deg, var(--bg-gradient-start) 0%, var(--bg-gradient-mid1) 20%, var(--bg-gradient-mid2) 40%, var(--bg-gradient-mid1) 60%, var(--bg-gradient-end) 80%, var(--bg-gradient-start) 100%);
 }
 
+/* :host(shadow host) 自带主题背景兜底：webapp 运行于 Shadow DOM，:root 匹配
+   外层 document 不可见。若 ::after 伪元素因 iOS webview 层叠/position:fixed 不绘制，
+   host 自身也不透出 iframe 默认白底（移动端顶部白遮罩修复）。--surface-solid 随主题
+   自适应（浅色 #fff / 暗色 #1c2a1e）。 */
+:host {
+    background: var(--surface-solid);
+}
 
 :host::-webkit-scrollbar {
     display: none;
@@ -939,8 +945,7 @@ a:active) {
     box-sizing: border-box;
 }
 
-:host::before,
-:root::before {
+:host::before {
     content: '';
     position: fixed;
     inset: 0;
@@ -956,8 +961,7 @@ a:active) {
 }
 
 /* 黑暗模式下重新设计高级感光影 - 增加亮度与对比度 */
-:host(.dark.bamboo-immortals-root)::before,
-:root(.dark.bamboo-immortals-root)::before {
+:host(.dark.bamboo-immortals-root)::before {
     display: block;
     background: 
         radial-gradient(circle at 50% 0%, rgba(var(--primary-rgb), 0.18) 0%, transparent 55%),

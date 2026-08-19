@@ -295,6 +295,19 @@ export default class BambooReviewPlugin extends Plugin {
 
     const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_DAILY_REVIEW);
     if (leaves.length > 0) {
+      // 移动端：若健康面板落在侧栏（右/左），强制迁到中央视图（与 activateView 一致），
+      // 否则核心布局恢复会直接带回旧右栏 leaf，永远停在右侧栏。
+      if (Platform.isMobile) {
+        const inSidebar = leaves.some((l) => {
+          const r = l.getRoot();
+          return r === this.app.workspace.rightSplit || r === this.app.workspace.leftSplit;
+        });
+        if (inSidebar) {
+          for (const l of leaves) await l.detach();
+          await this.activateView();
+          return;
+        }
+      }
       const stale = leaves.filter((l) => {
         if (l.view instanceof DailyReviewView) return false;
         // 仅把「真正的旧版视图实例」视为残留；核心布局恢复产生的占位视图不动
@@ -912,9 +925,19 @@ export default class BambooReviewPlugin extends Plugin {
     const leaves = workspace.getLeavesOfType(VIEW_TYPE_DAILY_REVIEW);
 
     if (leaves.length > 0) {
-      // 已有视图，直接聚焦
       leaf = leaves[0];
-    } else {
+      if (Platform.isMobile) {
+        // 移动端强制中央视图：若现有面板落在侧栏（右/左），先拆掉再在中央重建，
+        // 否则核心布局恢复会把旧右栏 leaf 直接带回来，永远停在右侧栏。
+        const root = leaf.getRoot();
+        if (root === workspace.rightSplit || root === workspace.leftSplit) {
+          await leaf.detach();
+          leaf = null;
+        }
+      }
+    }
+
+    if (!leaf) {
       if (Platform.isMobile) {
         // 移动端：默认打开在中央视图（主编辑区），而非右侧栏
         leaf = workspace.getLeaf(false);

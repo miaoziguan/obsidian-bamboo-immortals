@@ -312,7 +312,6 @@ export class Store {
             console.log('[Store] init complete: balance=' + this.state.balance +
                 ' ph_records=' + (this.state.purchaseHistory.records || []).length +
                 ' ih_records=' + (this.state.incomeHistory.records || []).length);
-
         } catch (e) {
             console.error('Failed to load from storage:', e);
             this.loadFromStorageLegacy();

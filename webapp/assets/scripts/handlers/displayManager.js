@@ -638,8 +638,20 @@ export const DisplayManager = {
         if (!rgb) return;
 
         root.style.setProperty('--obsidian-sidebar-rgb', rgb);
-        root.style.setProperty('--card-bg', `rgba(${rgb}, 0.60)`);
-        root.style.setProperty('--card-glass', `rgba(${rgb}, 0.84)`);
+
+        // 暗色模式下，跟随 Obsidian 的主题色也应压暗为暗色卡片底，
+        // 否则内联浅色 --card-bg 会盖过 :host(.dark) 的暗色变量（冷启动首帧白卡）。
+        const isDark = root.classList.contains('dark') ||
+            document.documentElement.classList.contains('dark') ||
+            document.body.classList.contains('dark');
+        if (isDark) {
+            // 在 Obsidian 侧栏色基础上压暗（亮度 ~12%），保持与 Obsidian 同源但适配暗色
+            root.style.setProperty('--card-bg', `rgba(${rgb}, 0.18)`);
+            root.style.setProperty('--card-glass', `rgba(${rgb}, 0.32)`);
+        } else {
+            root.style.setProperty('--card-bg', `rgba(${rgb}, 0.60)`);
+            root.style.setProperty('--card-glass', `rgba(${rgb}, 0.84)`);
+        }
     },
 
     /**

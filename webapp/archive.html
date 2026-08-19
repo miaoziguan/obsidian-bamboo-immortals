@@ -14056,10 +14056,6 @@ input[type="number"].goal-inline-edit-input {
     background: var(--card-bg);
     border-color: rgba(var(--primary-rgb), 0.25);
 }
-/* 竹林暗色模式：.bamboo-card 暗色背景兜底（双类提升特异性，盖过浅色回退与时段规则） */
-:host(.dark) .bamboo-card.bamboo-card {
-    background: hsla(var(--accent-hue), 18%, calc(10% + var(--accent-lightness-offset)), 0.6) !important;
-}
 
 /* 竹林暗色模式：进度条光晕 */
 :host(.dark) .habit-progress-fill,

@@ -6099,6 +6099,13 @@ button, .btn, .date-nav-btn, .edit-btn, .view-toggle-btn, .history-close, .modal
     display: inline-block;
 }
 
+.todo-group-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-left: auto;
+}
+
 .todo-group.collapsed .todo-group-chevron {
     transform: rotate(-90deg);
 }
@@ -6538,7 +6545,7 @@ button, .btn, .date-nav-btn, .edit-btn, .view-toggle-btn, .history-close, .modal
     position: relative;
     display: inline;
     padding: 0 14px 0 0;
-    color: var(--text-secondary);
+    color: var(--bamboo-primary);
     transition: color 0.2s ease;
     cursor: pointer;
     line-height: inherit;
@@ -6546,7 +6553,7 @@ button, .btn, .date-nav-btn, .edit-btn, .view-toggle-btn, .history-close, .modal
 }
 
 .todo-focus-wrap:hover {
-    color: var(--bamboo-primary);
+    color: rgba(var(--primary-rgb), 0.8);
 }
 
 .todo-focus-wrap::after {
@@ -6557,7 +6564,7 @@ button, .btn, .date-nav-btn, .edit-btn, .view-toggle-btn, .history-close, .modal
     transform: translateY(-50%);
     width: 10px;
     height: 6px;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23666' stroke-width='1.2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23599b59' stroke-width='1.2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: center;
     background-size: contain;
@@ -6595,6 +6602,14 @@ button, .btn, .date-nav-btn, .edit-btn, .view-toggle-btn, .history-close, .modal
 :host(.dark) .todo-focus-menu {
     background: var(--bg-panel-dark, #1e1e1e);
     border-color: rgba(255, 255, 255, 0.12);
+}
+
+:host(.dark) .todo-focus-wrap:hover {
+    color: var(--bamboo-primary-light);
+}
+
+:host(.dark) .todo-focus-wrap::after {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2382c382' stroke-width='1.2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
 
 .todo-focus-wrap.open .todo-focus-menu {
@@ -25225,7 +25240,7 @@ nav .date-display-sub {
                         <button class="tstd-save">${LucideUtils.createIcon("check",{size:15,strokeWidth:2.5})}<span>\u4FDD\u5B58\u6A21\u677F</span></button>
                     </div>
                 </div>
-            `,I().appendChild(i),requestAnimationFrame(()=>{let u=i.querySelector(".tstd-container");u.style.cssText="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:10001;"});let n=u=>{document.removeEventListener("keydown",d),i.remove(),t(u)};i.querySelector(".tstd-overlay").addEventListener("click",()=>n(null)),i.querySelector(".tstd-close-btn").addEventListener("click",()=>n(null)),i.querySelector(".tstd-cancel").addEventListener("click",()=>n(null));let o=i.querySelector(".tstd-preview-icon"),r=i.querySelector(".tstd-selected-name"),l=i.querySelector(".tstd-preview-title"),c=i.querySelector("#tstd-name");i.querySelectorAll(".tstd-icon-btn").forEach(u=>{u.addEventListener("click",()=>{i.querySelectorAll(".tstd-icon-btn").forEach(p=>p.classList.remove("active")),u.classList.add("active"),s=u.dataset.icon,r.textContent=s,o.innerHTML=LucideUtils.createIcon(s,{size:18,strokeWidth:1.5})})}),c.addEventListener("input",()=>{l.textContent=c.value.trim()||"\u672A\u547D\u540D\u6A21\u677F"}),i.querySelector(".tstd-save").addEventListener("click",()=>{let u=i.querySelector(".tstd-input").value.trim();if(!u){Toast.showToast("\u8BF7\u8F93\u5165\u6A21\u677F\u540D\u79F0","warning");return}let p=i.querySelector(".tstd-desc").value.trim();n({name:u,desc:p,iconName:s})});let d=u=>{u.key==="Escape"&&i.isConnected&&n(null)};document.addEventListener("keydown",d)})},async deleteGoal(e){try{if(!await ConfirmDialog.confirmDelete("\u786E\u5B9A\u5220\u9664\u8FD9\u4E2A\u76EE\u6807\u5417\uFF1F\u6B64\u64CD\u4F5C\u65E0\u6CD5\u64A4\u9500\u3002"))return;await store.deleteGlobalGoal(e),typeof markSectionDirty=="function"?(markSectionDirty("goals"),markSectionDirty("todo")):typeof window.markSectionDirty=="function"&&(window.markSectionDirty("goals"),window.markSectionDirty("todo")),Toast.showToast("\u76EE\u6807\u5DF2\u5220\u9664","info")}catch(t){console.error("Failed to delete goal:",t),Toast.showToast("\u5220\u9664\u5931\u8D25","error")}}};ActionDispatcher.registerMany({"goal-remove-subitem":e=>Dt.removeSubItem(e.goalId,parseInt(e.subIdx,10))});window.GoalsEditor=Dt;var Mt={};C(Mt,{Goals:()=>is});Object.defineProperty(window,"GOAL_CATEGORIES",{get(){return GoalsRenderer.getCategories()},set(e){Object.defineProperty(window,"GOAL_CATEGORIES",{value:e,writable:!0,configurable:!0})},configurable:!0});var is={Renderer:GoalsRenderer,Editor:GoalsEditor,render(e,t){GoalsRenderer.render(e,t)},openEditor(){GoalsEditor.startAddInline()}};window.Goals=is;var Lt={};C(Lt,{TodoRenderer:()=>_e});var _e={_lastSnapshot:null,_snapshot(e){let t=[];typeof GoalsRenderer<"u"&&(t=GoalsRenderer.getTodayGoalTasks(store.getDateKey()));let a=t.length+"|";for(let s=0;s<t.length;s++){let i=t[s];a+=i.id+":"+(i.completed?"1":"0")+":"+i.currentValue+":"+i.dailyMin+";"}if(typeof store<"u"&&store.getGlobalGoals){let s=store.getGlobalGoals();a+="#G"+s.length+"|";for(let i=0;i<s.length;i++){let n=s[i];a+=n.id+":"+(n.name||n.title||"")+";"}}return typeof Todo<"u"&&Todo.getFocusGoalId&&(a+="#F"+(Todo.getFocusGoalId()||"")),a},_shouldSkipRender(e){let t=this._snapshot(e);return t===this._lastSnapshot?!0:(this._lastSnapshot=t,!1)},_invalidateCache(){this._lastSnapshot=null},patchToggle(e){try{let t=y("todoContent");if(!t)return!1;let a=[];if(typeof GoalsRenderer<"u"&&(a=GoalsRenderer.getTodayGoalTasks(store.getDateKey())),a.length===0)return!1;let s=a.find(A=>A.id===e);if(!s)return!1;let i=t.querySelector(`.todo-item[data-todo-id="${e}"]`);if(!i)return!1;let n=!!s.completed,o=a.filter(A=>!A.completed),r=a.filter(A=>A.completed),l=r.length,c=a.length,d=c>0?Math.round(l/c*100):0,u=y("todoCount");u&&(u.textContent=`${l}/${c}`);let p=t.querySelectorAll(".todo-stat-num");p.length>=3&&(p[0].textContent=String(o.length),p[1].textContent=String(r.length),p[2].textContent=d+"%");let m=t.querySelector(".todo-progress-fill");m&&(m.style.width=`${d}%`);let h=t.querySelector(".todo-group-goal .todo-group-badge");h&&(h.textContent=String(o.length));let g=t.querySelector(".todo-group-completed .todo-completed-count");g&&(g.textContent=String(r.length));let b=n?".todo-group-completed":".todo-group-goal",f=n?".todo-group-goal":".todo-group-completed",w=t.querySelector(b),_=w?w.querySelector(".todo-group-items"):null,v=t.querySelector(`${f} .todo-group-items`);if(!w||!_||!v||v.children.length<=1)return!1;i.classList.toggle("todo-item-completed",n);let T=i.querySelector(".todo-checkbox");return T&&(T.classList.toggle("checked",n),T.setAttribute("data-is-completed",String(n)),T.setAttribute("aria-label",n?"\u6807\u8BB0\u4E3A\u672A\u5B8C\u6210":"\u6807\u8BB0\u4E3A\u5DF2\u5B8C\u6210"),T.innerHTML=n?LucideUtils.createIcon("check",{size:9}):""),v.removeChild(i),_.appendChild(i),typeof Todo<"u"&&typeof Todo._syncCollapsedState=="function"&&Todo._syncCollapsedState(),this._lastSnapshot=this._snapshot(),!0}catch{return!1}},render(e){let t=y("todoContent");if(!t||this._shouldSkipRender(e))return;let a=[];typeof GoalsRenderer<"u"&&(a=GoalsRenderer.getTodayGoalTasks(store.getDateKey()));let s=a.filter(c=>c.completed).length,i=a.length,n=y("todoCount");if(n&&(n.textContent=`${s}/${i}`),a.length===0){t.innerHTML=`
+            `,I().appendChild(i),requestAnimationFrame(()=>{let u=i.querySelector(".tstd-container");u.style.cssText="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:10001;"});let n=u=>{document.removeEventListener("keydown",d),i.remove(),t(u)};i.querySelector(".tstd-overlay").addEventListener("click",()=>n(null)),i.querySelector(".tstd-close-btn").addEventListener("click",()=>n(null)),i.querySelector(".tstd-cancel").addEventListener("click",()=>n(null));let o=i.querySelector(".tstd-preview-icon"),r=i.querySelector(".tstd-selected-name"),l=i.querySelector(".tstd-preview-title"),c=i.querySelector("#tstd-name");i.querySelectorAll(".tstd-icon-btn").forEach(u=>{u.addEventListener("click",()=>{i.querySelectorAll(".tstd-icon-btn").forEach(p=>p.classList.remove("active")),u.classList.add("active"),s=u.dataset.icon,r.textContent=s,o.innerHTML=LucideUtils.createIcon(s,{size:18,strokeWidth:1.5})})}),c.addEventListener("input",()=>{l.textContent=c.value.trim()||"\u672A\u547D\u540D\u6A21\u677F"}),i.querySelector(".tstd-save").addEventListener("click",()=>{let u=i.querySelector(".tstd-input").value.trim();if(!u){Toast.showToast("\u8BF7\u8F93\u5165\u6A21\u677F\u540D\u79F0","warning");return}let p=i.querySelector(".tstd-desc").value.trim();n({name:u,desc:p,iconName:s})});let d=u=>{u.key==="Escape"&&i.isConnected&&n(null)};document.addEventListener("keydown",d)})},async deleteGoal(e){try{if(!await ConfirmDialog.confirmDelete("\u786E\u5B9A\u5220\u9664\u8FD9\u4E2A\u76EE\u6807\u5417\uFF1F\u6B64\u64CD\u4F5C\u65E0\u6CD5\u64A4\u9500\u3002"))return;await store.deleteGlobalGoal(e),typeof markSectionDirty=="function"?(markSectionDirty("goals"),markSectionDirty("todo")):typeof window.markSectionDirty=="function"&&(window.markSectionDirty("goals"),window.markSectionDirty("todo")),Toast.showToast("\u76EE\u6807\u5DF2\u5220\u9664","info")}catch(t){console.error("Failed to delete goal:",t),Toast.showToast("\u5220\u9664\u5931\u8D25","error")}}};ActionDispatcher.registerMany({"goal-remove-subitem":e=>Dt.removeSubItem(e.goalId,parseInt(e.subIdx,10))});window.GoalsEditor=Dt;var Mt={};C(Mt,{Goals:()=>is});Object.defineProperty(window,"GOAL_CATEGORIES",{get(){return GoalsRenderer.getCategories()},set(e){Object.defineProperty(window,"GOAL_CATEGORIES",{value:e,writable:!0,configurable:!0})},configurable:!0});var is={Renderer:GoalsRenderer,Editor:GoalsEditor,render(e,t){GoalsRenderer.render(e,t)},openEditor(){GoalsEditor.startAddInline()}};window.Goals=is;var Lt={};C(Lt,{TodoRenderer:()=>_e});var _e={_lastSnapshot:null,_snapshot(e){let t=[];typeof GoalsRenderer<"u"&&(t=GoalsRenderer.getTodayGoalTasks(store.getDateKey()));let a=t.length+"|";for(let s=0;s<t.length;s++){let i=t[s];a+=i.id+":"+(i.completed?"1":"0")+":"+i.currentValue+":"+i.dailyMin+";"}if(typeof store<"u"&&store.getGlobalGoals){let s=store.getGlobalGoals();a+="#G"+s.length+"|";for(let i=0;i<s.length;i++){let n=s[i];a+=n.id+":"+(n.name||n.title||"")+";"}}return typeof Todo<"u"&&Todo.getFocusGoalId&&(a+="#F"+(Todo.getFocusGoalId()||"")),a},_shouldSkipRender(e){let t=this._snapshot(e);return t===this._lastSnapshot?!0:(this._lastSnapshot=t,!1)},_invalidateCache(){this._lastSnapshot=null},patchToggle(e){try{let t=y("todoContent");if(!t)return!1;let a=[];if(typeof GoalsRenderer<"u"&&(a=GoalsRenderer.getTodayGoalTasks(store.getDateKey())),a.length===0)return!1;let s=a.find(A=>A.id===e);if(!s)return!1;let i=t.querySelector(`.todo-item[data-todo-id="${e}"]`);if(!i)return!1;let n=!!s.completed,o=a.filter(A=>!A.completed),r=a.filter(A=>A.completed),l=r.length,c=a.length,d=c>0?Math.round(l/c*100):0,u=y("todoCount");u&&(u.textContent=`${l}/${c}`);let p=t.querySelectorAll(".todo-stat-num");p.length>=3&&(p[0].textContent=String(o.length),p[1].textContent=String(r.length),p[2].textContent=d+"%");let m=t.querySelector(".todo-progress-fill");m&&(m.style.width=`${d}%`);let h=t.querySelector(".todo-group-goal .todo-group-badge");h&&(h.textContent=String(o.length));let g=t.querySelector(".todo-group-completed .todo-completed-count");g&&(g.textContent=String(r.length));let b=n?".todo-group-completed":".todo-group-goal",f=n?".todo-group-goal":".todo-group-completed",w=t.querySelector(b),_=w?w.querySelector(".todo-group-items"):null,v=t.querySelector(`${f} .todo-group-items`);if(!w||!_||!v||v.children.length<=1)return!1;i.classList.toggle("todo-item-completed",n);let T=i.querySelector(".todo-checkbox");return T&&(T.classList.toggle("checked",n),T.setAttribute("data-is-completed",String(n)),T.setAttribute("aria-label",n?"\u6807\u8BB0\u4E3A\u672A\u5B8C\u6210":"\u6807\u8BB0\u4E3A\u5DF2\u5B8C\u6210"),T.innerHTML=n?LucideUtils.createIcon("check",{size:9}):""),v.removeChild(i),_.appendChild(i),typeof Todo<"u"&&typeof Todo._syncCollapsedState=="function"&&Todo._syncCollapsedState(),this._lastSnapshot=this._snapshot(),!0}catch{return!1}},render(e){let t=y("todoContent");if(!t||this._shouldSkipRender(e))return;let a=[];typeof GoalsRenderer<"u"&&(a=GoalsRenderer.getTodayGoalTasks(store.getDateKey()));let s=a.filter(d=>d.completed).length,i=a.length,n=y("todoCount");if(n&&(n.textContent=`${s}/${i}`),a.length===0){t.innerHTML=`
                 <div class="empty-state-card">
                     <div class="empty-state-icon">
                         ${LucideUtils.createIcon("target",{size:48,strokeWidth:1.5})}
@@ -25234,14 +25249,14 @@ nav .date-display-sub {
                     <div class="empty-state-desc">\u5728\u76EE\u6807\u7BA1\u7406\u4E2D\u8BBE\u7F6E\u6BCF\u65E5\u4EFB\u52A1</div>
                     <div class="empty-state-hint">\u524D\u5F80\u76EE\u6807\u9875\u9762\u6DFB\u52A0\u4EFB\u52A1</div>
                 </div>
-            `;return}let o=a.filter(c=>!c.completed),r=a.filter(c=>c.completed),l=this.renderFocusSelect(o);t.innerHTML=`
+            `;return}let o=typeof Todo<"u"&&Todo.getFocusGoalId?Todo.getFocusGoalId():null;o&&(a=a.filter(d=>d.goalId===o));let r=a.filter(d=>!d.completed),l=a.filter(d=>d.completed),c=this.renderFocusSelect(r);t.innerHTML=`
             <div class="todo-stats">
                 <div class="todo-stat-item">
-                    <span class="todo-stat-num">${o.length}</span>
+                    <span class="todo-stat-num">${r.length}</span>
                     <span class="todo-stat-label">\u5F85\u5B8C\u6210</span>
                 </div>
                 <div class="todo-stat-item">
-                    <span class="todo-stat-num">${r.length}</span>
+                    <span class="todo-stat-num">${l.length}</span>
                     <span class="todo-stat-label">\u5DF2\u5B8C\u6210</span>
                 </div>
                 <div class="todo-stat-item">
@@ -25252,37 +25267,39 @@ nav .date-display-sub {
             <div class="todo-progress-bar">
                 <div class="todo-progress-fill" style="width: ${i>0?s/i*100:0}%"></div>
             </div>
-            ${o.length>0?`
+            ${r.length>0?`
                 <div class="todo-group todo-group-goal">
                     <div class="todo-group-header">
                         <div class="todo-group-label">
                             ${LucideUtils.createIcon("target",{size:16})}
                             <span>\u76EE\u6807\u4EFB\u52A1</span>
-                            <span class="todo-group-badge">${o.length}</span>
+                            <span class="todo-group-badge">${r.length}</span>
                         </div>
-                        ${l}
-                        <button class="todo-lottery-btn" data-action="todo-lottery-start"
-                                title="\u968F\u673A\u62BD\u9009\u4E00\u4E2A\u4EFB\u52A1\u6765\u6267\u884C"
-                                aria-label="\u4EFB\u52A1\u62BD\u7B7E">
-                            ${LucideUtils.createIcon("dice5",{size:16})}
-                        </button>
+                        <div class="todo-group-actions">
+                            ${c}
+                            <button class="todo-lottery-btn" data-action="todo-lottery-start"
+                                    title="\u968F\u673A\u62BD\u9009\u4E00\u4E2A\u4EFB\u52A1\u6765\u6267\u884C"
+                                    aria-label="\u4EFB\u52A1\u62BD\u7B7E">
+                                ${LucideUtils.createIcon("dice5",{size:16})}
+                            </button>
+                        </div>
                     </div>
                     <div class="todo-group-items">
-                        ${o.map((c,d)=>this.renderTodoItem(c,d,!1)).join("")}
+                        ${r.map((d,u)=>this.renderTodoItem(d,u,!1)).join("")}
                     </div>
                 </div>
             `:""}
-            ${r.length>0?`
+            ${l.length>0?`
                 <div class="todo-group todo-group-completed collapsed" id="todoCompletedGroup">
                     <div class="todo-group-header">
                         <div class="todo-group-label" data-action="todo-toggle-completed-group">
                             <span class="todo-group-chevron">${LucideUtils.createIcon("chevronDown",{size:14})}</span>
                             <span class="completed-label">${LucideUtils.createIcon("checkCircle",{size:14})}</span>
-                            \u5DF2\u5B8C\u6210 (<span class="todo-completed-count">${r.length}</span>)
+                            \u5DF2\u5B8C\u6210 (<span class="todo-completed-count">${l.length}</span>)
                         </div>
                     </div>
                     <div class="todo-group-items">
-                        ${r.map((c,d)=>this.renderTodoItem(c,d,!0)).join("")}
+                        ${l.map((d,u)=>this.renderTodoItem(d,u,!0)).join("")}
                     </div>
                 </div>
             `:""}
@@ -25686,54 +25703,56 @@ nav .date-display-sub {
                     <div class="empty-state-desc">\u5728\u76EE\u6807\u7BA1\u7406\u4E2D\u8BBE\u7F6E\u6BCF\u65E5\u4EFB\u52A1</div>
                     <div class="empty-state-hint">\u524D\u5F80\u76EE\u6807\u9875\u9762\u6DFB\u52A0\u4EFB\u52A1</div>
                 </div>
-            `:(()=>{let n=t.filter(l=>!l.completed),o=t.filter(l=>l.completed),r=s>0?Math.round(a/s*100):0;return`
+            `:(()=>{let n=typeof Todo<"u"&&Todo.getFocusGoalId?Todo.getFocusGoalId():null;n&&(t=t.filter(c=>c.goalId===n));let o=t.filter(c=>!c.completed),r=t.filter(c=>c.completed),l=s>0?Math.round(a/s*100):0;return`
                     <div class="todo-stats">
                         <div class="todo-stat-item">
-                            <span class="todo-stat-num">${n.length}</span>
+                            <span class="todo-stat-num">${o.length}</span>
                             <span class="todo-stat-label">\u5F85\u5B8C\u6210</span>
                         </div>
                         <div class="todo-stat-item">
-                            <span class="todo-stat-num">${o.length}</span>
+                            <span class="todo-stat-num">${r.length}</span>
                             <span class="todo-stat-label">\u5DF2\u5B8C\u6210</span>
                         </div>
                         <div class="todo-stat-item">
-                            <span class="todo-stat-num">${r}%</span>
+                            <span class="todo-stat-num">${l}%</span>
                             <span class="todo-stat-label">\u5B8C\u6210\u7387</span>
                         </div>
                     </div>
                     <div class="todo-progress-bar">
-                        <div class="todo-progress-fill" style="width: ${r}%"></div>
+                        <div class="todo-progress-fill" style="width: ${l}%"></div>
                     </div>
-                    ${n.length>0?`
+                    ${o.length>0?`
                         <div class="todo-group todo-group-goal">
                         <div class="todo-group-header">
                             <div class="todo-group-label">
                                 ${LucideUtils.createIcon("target",{size:16})}
                                 <span>\u76EE\u6807\u4EFB\u52A1</span>
-                                <span class="todo-group-badge">${n.length}</span>
+                                <span class="todo-group-badge">${o.length}</span>
                             </div>
-                            ${_e.renderFocusSelect(n)}
+                            <div class="todo-group-actions">
+                            ${_e.renderFocusSelect(o)}
                             <button class="todo-lottery-btn" data-action="todo-lottery-start"
                                         title="\u968F\u673A\u62BD\u9009\u4E00\u4E2A\u4EFB\u52A1\u6765\u6267\u884C"
                                         aria-label="\u4EFB\u52A1\u62BD\u7B7E">
                                     ${LucideUtils.createIcon("dice5",{size:16})}
                                 </button>
                             </div>
+                            </div>
                             <div class="todo-group-items">
-                                ${n.map(l=>i(l,!1)).join("")}
+                                ${o.map(c=>i(c,!1)).join("")}
                             </div>
                         </div>
                     `:""}
-                    ${o.length>0?`
+                    ${r.length>0?`
                         <div class="todo-group todo-group-completed collapsed" id="todoCompletedGroup">
                             <div class="todo-group-header">
                                 <div class="todo-group-label" data-action="todo-toggle-completed-group">
                                     <span class="todo-group-chevron">${LucideUtils.createIcon("chevronDown",{size:14})}</span>
-                                    \u5DF2\u5B8C\u6210 (<span class="todo-completed-count">${o.length}</span>)
+                                    \u5DF2\u5B8C\u6210 (<span class="todo-completed-count">${r.length}</span>)
                                 </div>
                             </div>
                             <div class="todo-group-items">
-                                ${o.map(l=>i(l,!0)).join("")}
+                                ${r.map(c=>i(c,!0)).join("")}
                             </div>
                         </div>
                     `:""}

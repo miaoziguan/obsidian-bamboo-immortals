@@ -497,6 +497,11 @@ export const renderTodoSection = () => {
                     <div class="empty-state-hint">前往目标页面添加任务</div>
                 </div>
             ` : (() => {
+                // 单目标聚焦：只保留该目标下的任务（选中下拉后其余目标被筛掉）
+                const focusGoalId = (typeof Todo !== 'undefined' && Todo.getFocusGoalId) ? Todo.getFocusGoalId() : null;
+                if (focusGoalId) {
+                    goalTasks = goalTasks.filter(t => t.goalId === focusGoalId);
+                }
                 const pending = goalTasks.filter(t => !t.completed);
                 const completed = goalTasks.filter(t => t.completed);
                 const progressPercent = totalCount > 0 ? Math.round(completedCount / totalCount * 100) : 0;
@@ -527,12 +532,14 @@ export const renderTodoSection = () => {
                                 <span>目标任务</span>
                                 <span class="todo-group-badge">${pending.length}</span>
                             </div>
+                            <div class="todo-group-actions">
                             ${TodoRenderer.renderFocusSelect(pending)}
                             <button class="todo-lottery-btn" data-action="todo-lottery-start"
                                         title="随机抽选一个任务来执行"
                                         aria-label="任务抽签">
                                     ${LucideUtils.createIcon('dice5', { size: 16 })}
                                 </button>
+                            </div>
                             </div>
                             <div class="todo-group-items">
                                 ${pending.map(todo => renderTodoItem(todo, false)).join('')}

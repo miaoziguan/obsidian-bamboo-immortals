@@ -53,13 +53,13 @@
 .rw-460 .goal-row-header .goal-priority-tag {
     height: 14px;
     padding: 0 5px;
-    font-size: 9px;
+    font-size: 9px; /* lint-disable: R2 窄屏优先级标签刻意固定 9px 不随 clamp 缩放 */
     line-height: 1;
 }
 .rw-360 .goal-row-header .goal-priority-tag {
     height: 13px;
     padding: 0 4px;
-    font-size: 9px;
+    font-size: 9px; /* lint-disable: R2 窄屏优先级标签刻意固定 9px 不随 clamp 缩放 */
 }
 .rw-460 .goal-row-title {
     font-size: var(--type-sm);
@@ -272,7 +272,7 @@
     font-size: var(--type-xs);
 }
 .rw-360 .goal-row-category {
-    font-size: 10px;
+    font-size: 10px; /* lint-disable: R2 窄屏分类标签刻意固定 10px 不随 clamp 缩放 */
     padding: 0 1px;
 }
 .rw-360 .goal-row-actions-toggle {
@@ -345,7 +345,7 @@
         height: 14px;
         padding-top: 0;
         padding-bottom: 0;
-        font-size: 9px;
+        font-size: 9px; /* lint-disable: R2 窄屏兜底优先级标签刻意固定 9px 不随 clamp 缩放 */
         line-height: 1;
         background: transparent;
     }

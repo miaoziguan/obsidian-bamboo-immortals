@@ -173,7 +173,7 @@ a:active) {
 /* :host(shadow host) 自带主题背景兜底：webapp 运行于 Shadow DOM，:root 匹配
    外层 document 不可见。若 ::after 伪元素因 iOS webview 层叠/position:fixed 不绘制，
    host 自身也不透出 iframe 默认白底（移动端顶部白遮罩修复）。--surface-solid 随主题
-   自适应（浅色 #fff / 暗色 #1c2a1e）。 */
+   自适应（浅色 #fff / 暗色 #1c2a1e）。 */ /* lint-disable: R3 仅为注释中的颜色说明文字，非代码 */
 :host {
     background: var(--surface-solid);
 }
@@ -714,7 +714,7 @@ textarea),
     .bamboo-card-header {
         padding: var(--space-1) var(--space-4);
         min-height: 0;
-        --touch-target: 0;
+        --touch-target: 0; /* lint-disable: R10 局部覆写触控热区令牌（该 header 内不撑 ::before 热区） */
     }
 
     /* Ensure text doesn't overflow card edges */

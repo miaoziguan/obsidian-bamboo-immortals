@@ -581,14 +581,14 @@
     border-radius: var(--radius-md);
     background: var(--bg-panel, #fff);
     border: 1px solid rgba(var(--primary-rgb), 0.15);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    box-shadow: var(--shadow-elevated);
     z-index: 100;
     text-align: left;
 }
 
 :host(.dark) .todo-focus-menu {
     background: var(--bg-panel-dark, #1e1e1e);
-    border-color: rgba(255, 255, 255, 0.12);
+    border-color: rgba(var(--white-rgb), 0.12);
 }
 
 :host(.dark) .todo-focus-wrap:hover {

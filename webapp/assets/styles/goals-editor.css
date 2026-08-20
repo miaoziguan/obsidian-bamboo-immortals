@@ -1371,7 +1371,7 @@
     padding: 0 10px;
     background: rgba(var(--white-rgb), 0.55);
     border: 1px solid var(--border-light);
-    border-radius: 10px;
+    border-radius: var(--radius-sm);
     flex: 1;
     min-width: 130px;
     transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
@@ -1427,7 +1427,7 @@
     padding: 0 10px;
     background: rgba(var(--white-rgb), 0.55);
     border: 1px solid var(--border-light);
-    border-radius: 10px;
+    border-radius: var(--radius-sm);
     flex-shrink: 0;
     transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
 }
@@ -1547,7 +1547,7 @@
     color: var(--text-secondary);
     background: transparent;
     border: 1px solid var(--border-light);
-    border-radius: 10px;
+    border-radius: var(--radius-sm);
     cursor: pointer;
     transition: border-color 0.12s, background 0.12s, color 0.12s;
     white-space: nowrap;

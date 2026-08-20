@@ -513,7 +513,7 @@ export const GoalService = {
             store.updateDayDataByDate(todayKey, dayData);
             await store.updateGlobalGoal(goalId, goal);
             await store.saveToStorage();
-            
+
             // 取消完成，仅今日任务退回竹币
             const cancelDesc = `完成：${goal.title} - ${item.name}`;
             if (isTodayTask) {
@@ -554,7 +554,7 @@ export const GoalService = {
             store.updateDayDataByDate(todayKey, dayData);
             await store.updateGlobalGoal(goalId, goal);
             await store.saveToStorage();
-            
+
             // 完成目标任务，仅今日任务奖励竹币
             if (isTodayTask) {
                 // 竹币收入按「完成时刻对应的当日本地日期」记账（避免保存时刻的 UTC 时间戳被解析回本地时跨天）

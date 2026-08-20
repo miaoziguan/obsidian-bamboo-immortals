@@ -48,7 +48,10 @@ export const ActionDispatcher = {
                 const handler = this._handlers[action];
                 if (handler) {
                     const isToggleInput = target.tagName === 'INPUT' && (target.type === 'checkbox' || target.type === 'radio');
-                    if (!isToggleInput) {
+                    // <select> 等表单控件靠 change 事件触发，click 阶段不能 preventDefault，
+                    // 否则原生下拉框无法正常展开
+                    const isFormControl = target.tagName === 'SELECT' || target.tagName === 'TEXTAREA' || target.tagName === 'INPUT';
+                    if (!isToggleInput && !isFormControl) {
                         e.preventDefault();
                     }
                     e.stopImmediatePropagation();
@@ -74,6 +77,25 @@ export const ActionDispatcher = {
             if (!handler) return;
 
             e.preventDefault();
+            handler(target.dataset, target, e);
+        });
+
+        // <select> 等表单控件靠 change 事件触发，而非 click/keydown
+        getDomRoot().addEventListener('change', (e) => {
+            const target = this._findClosestAttr(e, 'data-action');
+            if (!target) return;
+            // checkbox/radio 的状态切换已由 click 监听器派发，若此处再派发会双触发
+            // （一次 .click() 在浏览器/jsdom 中同时产生 click + change 两个事件）。
+            // 故 change 仅服务于 <select>/<textarea> 等需 change 的控件，跳过 toggle input。
+            if (target.tagName === 'INPUT' && (target.type === 'checkbox' || target.type === 'radio')) {
+                return;
+            }
+
+            const action = target.dataset.action;
+            const handler = this._handlers[action];
+            if (!handler) return;
+
+            e.stopImmediatePropagation();
             handler(target.dataset, target, e);
         });
     }

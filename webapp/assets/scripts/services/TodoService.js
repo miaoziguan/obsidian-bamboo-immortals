@@ -3,7 +3,9 @@ import { byId } from '../utils/domRef.js';
 export const TodoService = {
     /** 切换目标子任务的完成状态 */
     async toggle(todoId, type, goalId, itemIdx, isCompleted) {
-        await GoalService.completeGoalTask(goalId, parseInt(itemIdx), store.getDateKey(), isCompleted);
+        // 注意：第 5 参数 isCompleted 此处表示「目标态是否要变为完成」，
+        // completeGoalTask 的第 4 参数 isUncompleting 语义相反，需取反。
+        await GoalService.completeGoalTask(goalId, parseInt(itemIdx), store.getDateKey(), !isCompleted);
         markSectionDirty('timeline');
         // todo 优先走局部差异更新（避免整块重建）；结构性变化或异常时自动回退全量
         let patched = false;

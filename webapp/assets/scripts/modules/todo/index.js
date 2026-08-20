@@ -12,7 +12,27 @@ export const Todo = {
     },
     _pickedTaskId: null,
 
-    init() {},
+    // 重入锁：patchToggle 会把行跨组移动，导致一次 click 可能被 ActionDispatcher
+    // 重复派发两次 toggle（第二次时 checkbox 的 data-is-completed 已被改成相反值，
+    // 从而把刚写的 false 又写回 true）。同一 todoId 在 400ms 内只处理一次，
+    // 杜绝「取消完成却净写回完成」的持久化失效。
+    _toggleLock: {},
+
+    _tryToggleLock(todoId) {
+        const now = Date.now();
+        if (this._toggleLock[todoId] && now - this._toggleLock[todoId] < 400) {
+            return false;
+        }
+        this._toggleLock[todoId] = now;
+        return true;
+    },
+
+    // 单目标聚焦筛选（与「开始做」任务聚焦 bamboo_focus_${today} 互不冲突）
+    _focusGoalId: null,
+
+    init() {
+        this._restoreFocusGoal();
+    },
 
     render(data) {
         TodoRenderer.render(data);
@@ -27,8 +47,18 @@ export const Todo = {
         }
     },
 
-    toggle(todoId, type, goalId, itemIdx, isCompleted) {
-        TodoService.toggle(todoId, type, goalId, itemIdx, isCompleted);
+    async toggle(todoId, type, goalId, itemIdx, isCompleted) {
+        // 重入去重：一次点击可能被重复派发两次 toggle，第二次会基于已被改写的
+        // data-is-completed 把刚写的 false 又写回 true，导致「取消完成」失效。
+        if (!this._tryToggleLock(todoId)) return;
+        // 以「存储中的真实完成态」为准决定动作方向，忽略传入的 isCompleted
+        // （DOM 的 data-is-completed 可能在派发前已被改写，直接信它会把刚写的
+        // false 又写回 true）。当前已完成 → 取消；否则 → 完成。
+        const todayKey = store ? store.getDateKey() : '';
+        const completions = todayKey && store.getDataByDate(todayKey).goalTaskCompletions;
+        const currentCompleted = !!(completions && completions[goalId] && completions[goalId][itemIdx] === true);
+        const willComplete = !currentCompleted;
+        await TodoService.toggle(todoId, type, goalId, itemIdx, willComplete);
         // 如果勾选的是当前聚焦任务，自动清除聚焦态
         const today = store ? store.getDateKey() : '';
         const focusedId = today && typeof StorageAdapter !== 'undefined' ? StorageAdapter.get('bamboo_focus_' + today) : null;
@@ -49,8 +79,43 @@ export const Todo = {
     
     _getPendingTasks() {
         if (typeof GoalsRenderer === 'undefined') return [];
-        const goalTasks = GoalsRenderer.getTodayGoalTasks(store.getDateKey());
+        let goalTasks = GoalsRenderer.getTodayGoalTasks(store.getDateKey());
+        // 单目标聚焦：只保留该目标下的待选任务
+        if (this._focusGoalId) {
+            goalTasks = goalTasks.filter(t => t.goalId === this._focusGoalId);
+        }
         return goalTasks.filter(t => !t.completed && !t.isArchived);
+    },
+
+    /* ========== 单目标聚焦 ========== */
+
+    _focusGoalKey() {
+        const today = store ? store.getDateKey() : '';
+        return today ? 'bamboo_focus_goal_' + today : '';
+    },
+
+    _restoreFocusGoal() {
+        const key = this._focusGoalKey();
+        if (!key || typeof StorageAdapter === 'undefined') return;
+        this._focusGoalId = StorageAdapter.get(key) || null;
+    },
+
+    setFocusGoal(goalId) {
+        this._focusGoalId = goalId || null;
+        const key = this._focusGoalKey();
+        if (key && typeof StorageAdapter !== 'undefined') {
+            if (this._focusGoalId) StorageAdapter.set(key, this._focusGoalId);
+            else StorageAdapter.remove(key);
+        }
+        if (typeof TodoRenderer !== 'undefined') TodoRenderer.render();
+    },
+
+    clearFocusGoal() {
+        this.setFocusGoal(null);
+    },
+
+    getFocusGoalId() {
+        return this._focusGoalId || null;
     },
 
     _cleanupLotteryUI() {

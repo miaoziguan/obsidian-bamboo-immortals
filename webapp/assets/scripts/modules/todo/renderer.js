@@ -15,6 +15,22 @@ export const TodoRenderer = {
             const g = goalTasks[i];
             hash += g.id + ':' + (g.completed ? '1' : '0') + ':' + g.currentValue + ':' + g.dailyMin + ';';
         }
+        // 目标名称/聚焦指纹：目标数据常晚于任务加载（store 初始化时序），
+        // 若仅按任务数判等，会出现「首次渲染时目标未就绪 → 聚焦下拉未生成 →
+        // 后续目标就绪但快照相同被跳过 → 下拉永久缺失」。把目标 id:name 纳入指纹，
+        // 目标从空/未命名变为就绪即触发重渲染，确保聚焦下拉在目标数据到位后出现。
+        if (typeof store !== 'undefined' && store.getGlobalGoals) {
+            const goals = store.getGlobalGoals();
+            hash += '#G' + goals.length + '|';
+            for (let gi = 0; gi < goals.length; gi++) {
+                const g = goals[gi];
+                hash += g.id + ':' + (g.name || g.title || '') + ';';
+            }
+        }
+        // 当前聚焦目标也纳入指纹：切换聚焦时应重渲染列表
+        if (typeof Todo !== 'undefined' && Todo.getFocusGoalId) {
+            hash += '#F' + (Todo.getFocusGoalId() || '');
+        }
         return hash;
     },
 
@@ -124,7 +140,7 @@ export const TodoRenderer = {
         if (!container) return;
 
         if (this._shouldSkipRender(data)) return;
-        
+
         let goalTasks = [];
         if (typeof GoalsRenderer !== 'undefined') {
             goalTasks = GoalsRenderer.getTodayGoalTasks(store.getDateKey());
@@ -153,6 +169,9 @@ export const TodoRenderer = {
         const pending = goalTasks.filter(t => !t.completed);
         const completed = goalTasks.filter(t => t.completed);
 
+        // 单目标聚焦下拉：有待选任务且涉及多个目标时显示
+        const focusSelectHtml = this.renderFocusSelect(pending);
+
         container.innerHTML = `
             <div class="todo-stats">
                 <div class="todo-stat-item">
@@ -179,6 +198,7 @@ export const TodoRenderer = {
                             <span>目标任务</span>
                             <span class="todo-group-badge">${pending.length}</span>
                         </div>
+                        ${focusSelectHtml}
                         <button class="todo-lottery-btn" data-action="todo-lottery-start"
                                 title="随机抽选一个任务来执行"
                                 aria-label="任务抽签">
@@ -204,6 +224,49 @@ export const TodoRenderer = {
                     </div>
                 </div>
             ` : ''}
+        `;
+    },
+
+    renderFocusSelect(pendingTasks) {
+        const tasks = pendingTasks || [];
+        if (tasks.length === 0) return '';
+
+        // 从实际待选任务反推涉及的目标（含已归档目标——它的任务此刻也在列表里，
+        // 否则按 archived 过滤会把「归档但仍今日有任务」的目标漏掉，下拉消失）。
+        const goalMap = new Map();
+        for (const t of tasks) {
+            if (!t.goalId || goalMap.has(t.goalId)) continue;
+            let name = t.goalId;
+            if (typeof store !== 'undefined' && store.getGlobalGoals) {
+                const g = store.getGlobalGoals().find(gg => gg.id === t.goalId);
+                if (g) name = g.name || g.title || t.goalId;
+                else if (t.description) name = t.description.replace(/^\S+\s/, '');
+            } else if (t.description) {
+                name = t.description.replace(/^\S+\s/, '');
+            }
+            goalMap.set(t.goalId, name);
+        }
+
+        const current = (typeof Todo !== 'undefined' && Todo.getFocusGoalId)
+            ? Todo.getFocusGoalId() : null;
+        const currentLabel = current && goalMap.has(current)
+            ? goalMap.get(current)
+            : '全部目标';
+
+        const menuItems = [`<div class="todo-focus-item${current ? '' : ' active'}" data-action="todo-focus-item" data-goal-id="">全部目标</div>`].concat(
+            Array.from(goalMap.entries()).map(([gid, name]) => {
+                const act = (gid === current) ? ' active' : '';
+                return `<div class="todo-focus-item${act}" data-action="todo-focus-item" data-goal-id="${escapeHtml(gid)}">${escapeHtml(name)}</div>`;
+            })
+        ).join('');
+
+        return `
+            <div class="todo-focus-wrap" data-action="todo-focus-toggle" title="聚焦单个目标，随机抽签只在该目标内抽取">
+                <span class="focus-current-label">${escapeHtml(currentLabel)}</span>
+                <div class="todo-focus-menu" role="listbox">
+                    ${menuItems}
+                </div>
+            </div>
         `;
     },
 

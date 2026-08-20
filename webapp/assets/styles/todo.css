@@ -520,6 +520,93 @@
     background: rgba(var(--primary-rgb), 0.15);
 }
 
+/* ========== 单目标聚焦下拉（纯文字 + 自定义箭头，无背景层） ========== */
+.todo-focus-wrap {
+    position: relative;
+    display: inline;
+    padding: 0 14px 0 0;
+    color: var(--text-secondary);
+    transition: color 0.2s ease;
+    cursor: pointer;
+    line-height: inherit;
+    vertical-align: middle;
+}
+
+.todo-focus-wrap:hover {
+    color: var(--bamboo-primary);
+}
+
+.todo-focus-wrap::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 10px;
+    height: 6px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23666' stroke-width='1.2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
+    pointer-events: none;
+}
+
+/* 显示当前选中的文字 */
+.todo-focus-wrap .focus-current-label {
+    display: inline;
+    font-size: var(--type-xs);
+    font-weight: 500;
+    color: currentColor;
+    white-space: nowrap;
+    pointer-events: none;
+}
+
+/* 自定义下拉菜单（纯 div，无原生 select 系统样式） */
+.todo-focus-menu {
+    display: none;
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    min-width: 120px;
+    max-height: 240px;
+    overflow-y: auto;
+    padding: var(--space-1);
+    border-radius: var(--radius-md);
+    background: var(--bg-panel, #fff);
+    border: 1px solid rgba(var(--primary-rgb), 0.15);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    z-index: 100;
+    text-align: left;
+}
+
+:host(.dark) .todo-focus-menu {
+    background: var(--bg-panel-dark, #1e1e1e);
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+.todo-focus-wrap.open .todo-focus-menu {
+    display: block;
+}
+
+.todo-focus-item {
+    padding: 6px 8px;
+    border-radius: var(--radius-sm);
+    font-size: var(--type-xs);
+    color: var(--text-primary);
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.todo-focus-item:hover {
+    background: rgba(var(--primary-rgb), 0.10);
+}
+
+.todo-focus-item.active {
+    color: var(--bamboo-primary);
+    font-weight: 600;
+    background: rgba(var(--primary-rgb), 0.12);
+}
+
 /* ========== 任务抽签 ========== */
 .todo-lottery-btn {
     display: inline-flex;

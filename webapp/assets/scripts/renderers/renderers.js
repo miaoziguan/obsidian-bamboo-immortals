@@ -1,5 +1,6 @@
 import { byId, $, $$, modalMount, getDomRoot } from '../utils/domRef.js';
 import { RenderScheduler } from './renderScheduler.js';
+import { TodoRenderer } from '../modules/todo/renderer.js';
 
 export const renderDate = () => {
     const { currentDate } = store.getState();
@@ -520,13 +521,14 @@ export const renderTodoSection = () => {
                     </div>
                     ${pending.length > 0 ? `
                         <div class="todo-group todo-group-goal">
-                            <div class="todo-group-header">
-                                <div class="todo-group-label">
-                                    ${LucideUtils.createIcon('target', { size: 16 })}
-                                    <span>目标任务</span>
-                                    <span class="todo-group-badge">${pending.length}</span>
-                                </div>
-                                <button class="todo-lottery-btn" data-action="todo-lottery-start"
+                        <div class="todo-group-header">
+                            <div class="todo-group-label">
+                                ${LucideUtils.createIcon('target', { size: 16 })}
+                                <span>目标任务</span>
+                                <span class="todo-group-badge">${pending.length}</span>
+                            </div>
+                            ${TodoRenderer.renderFocusSelect(pending)}
+                            <button class="todo-lottery-btn" data-action="todo-lottery-start"
                                         title="随机抽选一个任务来执行"
                                         aria-label="任务抽签">
                                     ${LucideUtils.createIcon('dice5', { size: 16 })}
@@ -573,6 +575,29 @@ ActionDispatcher.registerMany({
     'timeline-toggle': (data) => Timeline.toggle(parseInt(data.index)),
     'todo-toggle': (data) => Todo.toggle(data.todoId, data.type, data.goalId, data.itemIdx, data.isCompleted === 'true'),
     'todo-toggle-completed-group': () => Todo.toggleCompletedGroup(),
+    'todo-focus-toggle': (_data, target) => {
+        const wrap = target.closest('.todo-focus-wrap');
+        if (!wrap) return;
+        const isOpen = wrap.classList.toggle('open');
+        if (isOpen) {
+            // 点击外部关闭
+            const onDocClick = (ev) => {
+                if (!wrap.contains(ev.target)) {
+                    wrap.classList.remove('open');
+                    document.removeEventListener('click', onDocClick, true);
+                }
+            };
+            // 延迟注册，避免本次 click 立即触发关闭
+            setTimeout(() => document.addEventListener('click', onDocClick, true), 0);
+        }
+    },
+    'todo-focus-item': (data) => {
+        const goalId = data.goalId || '';
+        if (goalId) Todo.setFocusGoal(goalId);
+        else Todo.clearFocusGoal();
+        const wrap = getDomRoot().querySelector('.todo-focus-wrap.open');
+        if (wrap) wrap.classList.remove('open');
+    },
     'todo-lottery-start': () => { console.log('[抽签] 骰子按钮被点击(r2)'); Todo.startLottery(); },
     'todo-lottery-start-task': (data) => Todo.startLotteryTask(data.todoId),
     'select-history-date': (data) => Handlers.selectHistoryDate(data.date)

@@ -100,11 +100,14 @@ export const ConsistencyService = {
         }
 
         // 反向：时间线已完成的 -> 补齐 goalTaskCompletions 完成态
+        // 注意：仅当该条目「从未记录过」(undefined) 时补齐；若已是显式 false
+        // （用户主动取消完成），必须尊重用户选择，绝不能覆盖回 true，否则
+        // 「取消完成态后重启又变回完成」的 bug 会复现。
         for (const task of timelineDone) {
             const { goalId, itemIdx } = textToId[task];
             if (!dayData.goalTaskCompletions) dayData.goalTaskCompletions = {};
             if (!dayData.goalTaskCompletions[goalId]) dayData.goalTaskCompletions[goalId] = {};
-            if (!dayData.goalTaskCompletions[goalId][itemIdx]) {
+            if (dayData.goalTaskCompletions[goalId][itemIdx] === undefined) {
                 dayData.goalTaskCompletions[goalId][itemIdx] = true;
                 changed = true;
             }

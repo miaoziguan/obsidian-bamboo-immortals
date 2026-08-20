@@ -333,23 +333,24 @@
 }
 
 /* ===== 窄屏终极兜底：无论哪个 rw-* 类，宽度 ≤768px 一律收扁 ===== */
+/* 用 :host 前缀提升特异性以覆盖默认 .goal-row-header 规则，避免依赖 !important */
 @media (max-width: 768px) {
-    .goal-row-header {
-        min-height: 22px !important;
-        height: auto !important;
-        padding-top: 2px !important;
-        padding-bottom: 2px !important;
+    :host .goal-row-header {
+        min-height: 22px;
+        height: auto;
+        padding-top: 2px;
+        padding-bottom: 2px;
     }
-    .goal-row-header .goal-priority-tag {
-        height: 14px !important;
-        padding-top: 0 !important;
-        padding-bottom: 0 !important;
-        font-size: 9px !important;
-        line-height: 1 !important;
-        background: transparent !important;
+    :host .goal-row-header .goal-priority-tag {
+        height: 14px;
+        padding-top: 0;
+        padding-bottom: 0;
+        font-size: 9px;
+        line-height: 1;
+        background: transparent;
     }
-    .goal-row-title {
-        min-height: 0 !important;
+    :host .goal-row-title {
+        min-height: 0;
     }
 }
 

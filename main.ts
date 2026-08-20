@@ -303,7 +303,7 @@ export default class BambooReviewPlugin extends Plugin {
           return r === this.app.workspace.rightSplit || r === this.app.workspace.leftSplit;
         });
         if (inSidebar) {
-          for (const l of leaves) await l.detach();
+          for (const l of leaves) l.detach();
           await this.activateView();
           return;
         }
@@ -931,7 +931,7 @@ export default class BambooReviewPlugin extends Plugin {
         // 否则核心布局恢复会把旧右栏 leaf 直接带回来，永远停在右侧栏。
         const root = leaf.getRoot();
         if (root === workspace.rightSplit || root === workspace.leftSplit) {
-          await leaf.detach();
+          leaf.detach();
           leaf = null;
         }
       }

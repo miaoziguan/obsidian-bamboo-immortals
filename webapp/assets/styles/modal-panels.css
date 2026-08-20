@@ -1928,9 +1928,9 @@
 }
 :host(.platform-mobile) .goal-row::before,
 :host(.platform-mobile) .goal-row::after,
-:host(.platform-mobile) .bamboo-card::before,
-:host(.platform-mobile) .bamboo-card::after {
-    animation: none !important;
+:host(.platform-mobile) .bamboo-card.bamboo-card::before,
+:host(.platform-mobile) .bamboo-card.bamboo-card::after {
+    animation: none;
 }
 :host(.platform-mobile) .glow-pulse,
 :host(.platform-mobile) .lotteryPickedGlow,
@@ -1940,7 +1940,7 @@
 :host(.platform-mobile) .moonGlow,
 :host(.platform-mobile) .bamboo-glow-subtle,
 :host(.platform-mobile) .glow-pulse-fade {
-    animation: none !important;
+    animation: none;
 }
 :host(.platform-mobile) .status-excellent {
     animation: none;

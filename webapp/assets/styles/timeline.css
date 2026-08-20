@@ -1507,10 +1507,10 @@
 
     /* 关键：timeline.css 的默认 .bamboo-card-header{min-height:var(--touch-target)} 在打包后
        排在 base.css 的移动端媒体查询之后，会反压我们的 min-height:0。
-       因此必须在本文件自己的移动端块里再次强制覆盖，确保移动端标题栏真正收紧。 */
-    .bamboo-card-header {
-        padding: var(--space-1) var(--space-4) !important;
-        min-height: 0 !important;
+       用双倍类提升特异性（.bamboo-card.bamboo-card-header）覆盖默认规则，避免依赖 !important。 */
+    .bamboo-card.bamboo-card-header {
+        padding: var(--space-1) var(--space-4);
+        min-height: 0;
     }
 
     .bamboo-card-header .bamboo-info {

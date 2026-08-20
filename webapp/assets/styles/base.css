@@ -712,7 +712,9 @@ textarea),
     }
 
     .bamboo-card-header {
-        padding: var(--space-4) var(--space-5);
+        padding: var(--space-1) var(--space-4);
+        min-height: 0;
+        --touch-target: 0;
     }
 
     /* Ensure text doesn't overflow card edges */

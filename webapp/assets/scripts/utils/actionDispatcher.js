@@ -27,7 +27,22 @@ export const ActionDispatcher = {
 
     init() {
         getDomRoot().addEventListener('click', (e) => {
-            const target = this._findClosestAttr(e, 'data-action');
+            let target = this._findClosestAttr(e, 'data-action');
+            // Fallback：浏览器命中测试有时会把点击事件派发到带 transform 的父元素而非子按钮
+            // （如 .todo-item:hover 的 translateX），导致 composedPath 中缺失真正的 data-action 元素。
+            // 此时用真实坐标从 shadow DOM 重新取最顶层元素补齐。
+            if (!target && typeof e.clientX === 'number') {
+                try {
+                    const sr = window.__bambooShadowRoot;
+                    const topEl = sr && sr.elementFromPoint
+                        ? sr.elementFromPoint(e.clientX, e.clientY)
+                        : document.elementFromPoint(e.clientX, e.clientY);
+                    if (topEl && topEl.nodeType === 1) {
+                        const closest = topEl.closest ? topEl.closest('[data-action]') : null;
+                        target = closest || (topEl.getAttribute && topEl.getAttribute('data-action') ? topEl : target);
+                    }
+                } catch (_) {}
+            }
             if (target) {
                 const action = target.dataset.action;
                 const handler = this._handlers[action];

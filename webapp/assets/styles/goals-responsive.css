@@ -39,13 +39,27 @@
     align-items: center;
     justify-content: flex-start;
     gap: var(--space-2);
-    padding: 12px 44px 12px 12px;
+    padding: 2px 44px 2px 8px;
     border-radius: var(--radius-sm);
     flex: 1 1 auto;
     width: 100%;
     min-width: 0;
     height: auto;
-    min-height: var(--touch-target);
+    min-height: 22px;
+}
+.rw-460 .goal-row-title {
+    min-height: 0;
+}
+.rw-460 .goal-row-header .goal-priority-tag {
+    height: 14px;
+    padding: 0 5px;
+    font-size: 9px;
+    line-height: 1;
+}
+.rw-360 .goal-row-header .goal-priority-tag {
+    height: 13px;
+    padding: 0 4px;
+    font-size: 9px;
 }
 .rw-460 .goal-row-title {
     font-size: var(--type-sm);
@@ -250,8 +264,9 @@
     gap: 10px;
 }
 .rw-360 .goal-row-header {
-    padding: 10px 10px;
+    padding: 3px 8px;
     gap: var(--space-2);
+    min-height: 24px;
 }
 .rw-360 .goal-row-title {
     font-size: var(--type-xs);
@@ -293,7 +308,9 @@
 
     /* 增大可点击区域 */
     .goal-row-header {
-        min-height: var(--touch-min);
+        min-height: 28px;
+        height: 28px;
+        padding: 0 8px;
     }
     .goal-item-entry {
         min-height: var(--touch-min);
@@ -312,6 +329,27 @@
     .completed-items-toggle {
         min-height: var(--touch-min);
         padding: 6px 10px;
+    }
+}
+
+/* ===== 窄屏终极兜底：无论哪个 rw-* 类，宽度 ≤768px 一律收扁 ===== */
+@media (max-width: 768px) {
+    .goal-row-header {
+        min-height: 22px !important;
+        height: auto !important;
+        padding-top: 2px !important;
+        padding-bottom: 2px !important;
+    }
+    .goal-row-header .goal-priority-tag {
+        height: 14px !important;
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+        font-size: 9px !important;
+        line-height: 1 !important;
+        background: transparent !important;
+    }
+    .goal-row-title {
+        min-height: 0 !important;
     }
 }
 

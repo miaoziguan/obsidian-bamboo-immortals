@@ -19,17 +19,14 @@
 }
 
 .goal-priority-tag.high {
-    background: rgba(var(--danger-rgb), 0.1);
     color: var(--cinnabar);
 }
 
 .goal-priority-tag.medium {
-    background: rgba(var(--gold-rgb), 0.1);
     color: var(--gold);
 }
 
 .goal-priority-tag.low {
-    background: rgba(var(--primary-rgb), 0.1);
     color: var(--bamboo-primary);
 }
 
@@ -50,6 +47,16 @@
 
 .goal-priority-dot.low {
     background: var(--bamboo-primary);
+}
+
+@media (max-width: 768px) {
+    .goal-priority-tag {
+        height: 20px;
+        padding: 0 6px;
+        font-size: var(--type-2xs, 10px);
+        line-height: 1;
+        background: transparent;
+    }
 }
 
 /* ========== 优先级选择器 ========== */

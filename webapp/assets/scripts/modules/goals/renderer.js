@@ -1083,7 +1083,6 @@ export const GoalsRenderer = {
                 this._pendingEditPromise = doSave();
             }
         };
-        const cancel = () => { if (closeHintFn) { closeHintFn({ target: input }); } this.renderSingleGoal(goalId); };
 
         switch (editType) {
             case 'title': {
@@ -1263,7 +1262,7 @@ export const GoalsRenderer = {
                     // 创建提示
                     const hint = document.createElement('div');
                     hint.className = 'goal-daily-hint';
-                    hint.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;"><span>💡 点击填入<br><strong>${suggestedVal}/天</strong></span><span style="cursor:pointer;opacity:0.7;font-size:14px;line-height:1;" class="hint-close">✕</span></div><span style="font-size:10px;opacity:0.8;">剩余 ${remainingVal.toFixed(1)} / ${remainingDays} 天</span><div style="font-size:10px;opacity:0.75;margin-top:3px;border-top:1px solid rgba(255,255,255,0.3);padding-top:3px;">Enter 保存 · Esc 取消</div>`;
+                    hint.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;"><span>💡 点击填入<br><strong>${suggestedVal}/天</strong></span><span style="cursor:pointer;opacity:0.7;font-size:14px;line-height:1;" class="hint-close">✕</span></div><span style="font-size:10px;opacity:0.8;">剩余 ${remainingVal.toFixed(1)} / ${remainingDays} 天</span><div style="font-size:10px;opacity:0.75;margin-top:3px;border-top:1px solid rgba(255,255,255,0.3);padding-top:3px;">回车保存</div>`;
                     hint.style.cssText = 'position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:8px;padding:10px 14px;background:var(--bamboo-primary);color:white;border-radius:10px;font-size:12px;white-space:nowrap;z-index:1000;box-shadow:0 4px 16px hsla(calc(var(--accent-hue) + 0), 26%, calc(48% + var(--accent-lightness-offset)), 0.3);line-height:1.4;cursor:pointer;transition:transform 0.2s,box-shadow 0.2s,opacity:0.2s;';
                     hint.addEventListener('mouseenter', () => {
                         hint.style.transform = 'translateX(-50%) scale(1.05)';
@@ -1331,7 +1330,7 @@ export const GoalsRenderer = {
         if (!closeHintFn) {
             hint = document.createElement('div');
             hint.className = 'goal-inline-edit-hint';
-            hint.textContent = 'Enter 保存 · Esc 取消';
+            hint.textContent = '回车保存';
 
             errorMsg = document.createElement('div');
             errorMsg.className = 'goal-inline-edit-error-msg';
@@ -1370,11 +1369,9 @@ export const GoalsRenderer = {
 
         input.addEventListener('blur', saveAndRender, { once: true });
         input.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); input.blur(); }
-            if (e.key === 'Escape') {
+            if (e.key === 'Enter' || e.key === 'Escape') {
                 e.preventDefault(); e.stopPropagation();
-                input.removeEventListener('blur', saveAndRender);
-                cancel();
+                input.blur();
             }
         });
     },

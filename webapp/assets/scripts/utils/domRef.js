@@ -69,7 +69,7 @@ export function setGlobalCssVar(name, value) {
 export function getCssVarRoot() {
     const host = getHost();
     if (host) {
-        return {
+        const delegate = {
             style: {
                 setProperty: (name, value) => setGlobalCssVar(name, value),
                 removeProperty: (name) => {
@@ -80,6 +80,12 @@ export function getCssVarRoot() {
                 },
             },
         };
+        // 转发 classList：调用方（如 _applyObsidianBg 的明暗判定）需要读真实 host 的 class
+        Object.defineProperty(delegate, 'classList', {
+            configurable: true,
+            get: () => host.classList,
+        });
+        return delegate;
     }
     return document.documentElement;
 }

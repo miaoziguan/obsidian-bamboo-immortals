@@ -248,7 +248,7 @@ export const TodoRenderer = {
 };
 
 ActionDispatcher.registerMany({
-    'todo-toggle': (data) => Todo.toggle(data.todoId, data.type, data.goalId, data.itemIdx, data.isCompleted === 'true'),
+    'todo-toggle': (data) => { Todo.toggle(data.todoId, data.type, data.goalId, data.itemIdx, data.isCompleted === 'true'); },
     'todo-toggle-completed-group': () => Todo.toggleCompletedGroup(),
     'todo-lottery-start': () => { console.log('[抽签] 骰子按钮被点击'); Todo.startLottery(); },
     'todo-lottery-start-task': (data) => Todo.startLotteryTask(data.todoId)

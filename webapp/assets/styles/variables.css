@@ -115,6 +115,13 @@
     --overdue-bg-rgb: 255, 240, 240;
     --overdue-bg-mid-rgb: 255, 235, 235;
     --overdue-bg-light-rgb: 255, 230, 230;
+
+    /* 玉石纹理 — 亮色模式（即将到期 header 淡橙黄渐变） */
+    --jade-cream-rgb: 255, 250, 240;
+    --jade-cream-mid-rgb: 255, 245, 230;
+    --jade-cream-deep-rgb: 255, 240, 220;
+    --jade-warm-rgb: 255, 235, 210;
+
     --ticket-gold: #B8860B;
     --bamboo-text-muted: var(--ink-pale); /* DEPRECATED: 用 --text-tertiary */
     --bamboo-text-secondary: var(--ink-light); /* DEPRECATED: 用 --text-secondary */

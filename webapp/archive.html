@@ -930,7 +930,7 @@ a:active) {
 /* :host(shadow host) 自带主题背景兜底：webapp 运行于 Shadow DOM，:root 匹配
    外层 document 不可见。若 ::after 伪元素因 iOS webview 层叠/position:fixed 不绘制，
    host 自身也不透出 iframe 默认白底（移动端顶部白遮罩修复）。--surface-solid 随主题
-   自适应（浅色 #fff / 暗色 #1c2a1e）。 */
+   自适应（浅色 #fff / 暗色 #1c2a1e）。 */ /* lint-disable: R3 仅为注释中的颜色说明文字，非代码 */
 :host {
     background: var(--surface-solid);
 }
@@ -1471,7 +1471,7 @@ textarea),
     .bamboo-card-header {
         padding: var(--space-1) var(--space-4);
         min-height: 0;
-        --touch-target: 0;
+        --touch-target: 0; /* lint-disable: R10 局部覆写触控热区令牌（该 header 内不撑 ::before 热区） */
     }
 
     /* Ensure text doesn't overflow card edges */
@@ -6594,14 +6594,14 @@ button, .btn, .date-nav-btn, .edit-btn, .view-toggle-btn, .history-close, .modal
     border-radius: var(--radius-md);
     background: var(--bg-panel, #fff);
     border: 1px solid rgba(var(--primary-rgb), 0.15);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    box-shadow: var(--shadow-elevated);
     z-index: 100;
     text-align: left;
 }
 
 :host(.dark) .todo-focus-menu {
     background: var(--bg-panel-dark, #1e1e1e);
-    border-color: rgba(255, 255, 255, 0.12);
+    border-color: rgba(var(--white-rgb), 0.12);
 }
 
 :host(.dark) .todo-focus-wrap:hover {
@@ -11947,7 +11947,7 @@ input[type="number"].goal-inline-edit-input {
     padding: 0 10px;
     background: rgba(var(--white-rgb), 0.55);
     border: 1px solid var(--border-light);
-    border-radius: 10px;
+    border-radius: var(--radius-sm);
     flex: 1;
     min-width: 130px;
     transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
@@ -12003,7 +12003,7 @@ input[type="number"].goal-inline-edit-input {
     padding: 0 10px;
     background: rgba(var(--white-rgb), 0.55);
     border: 1px solid var(--border-light);
-    border-radius: 10px;
+    border-radius: var(--radius-sm);
     flex-shrink: 0;
     transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
 }
@@ -12123,7 +12123,7 @@ input[type="number"].goal-inline-edit-input {
     color: var(--text-secondary);
     background: transparent;
     border: 1px solid var(--border-light);
-    border-radius: 10px;
+    border-radius: var(--radius-sm);
     cursor: pointer;
     transition: border-color 0.12s, background 0.12s, color 0.12s;
     white-space: nowrap;
@@ -13511,13 +13511,13 @@ input[type="number"].goal-inline-edit-input {
 .rw-460 .goal-row-header .goal-priority-tag {
     height: 14px;
     padding: 0 5px;
-    font-size: 9px;
+    font-size: 9px; /* lint-disable: R2 窄屏优先级标签刻意固定 9px 不随 clamp 缩放 */
     line-height: 1;
 }
 .rw-360 .goal-row-header .goal-priority-tag {
     height: 13px;
     padding: 0 4px;
-    font-size: 9px;
+    font-size: 9px; /* lint-disable: R2 窄屏优先级标签刻意固定 9px 不随 clamp 缩放 */
 }
 .rw-460 .goal-row-title {
     font-size: var(--type-sm);
@@ -13730,7 +13730,7 @@ input[type="number"].goal-inline-edit-input {
     font-size: var(--type-xs);
 }
 .rw-360 .goal-row-category {
-    font-size: 10px;
+    font-size: 10px; /* lint-disable: R2 窄屏分类标签刻意固定 10px 不随 clamp 缩放 */
     padding: 0 1px;
 }
 .rw-360 .goal-row-actions-toggle {
@@ -13803,7 +13803,7 @@ input[type="number"].goal-inline-edit-input {
         height: 14px;
         padding-top: 0;
         padding-bottom: 0;
-        font-size: 9px;
+        font-size: 9px; /* lint-disable: R2 窄屏兜底优先级标签刻意固定 9px 不随 clamp 缩放 */
         line-height: 1;
         background: transparent;
     }

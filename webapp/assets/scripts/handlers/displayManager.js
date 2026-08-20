@@ -1028,7 +1028,6 @@ export const DisplayManager = {
         this._sliderEl.addEventListener('change', (e) => {
             const val = Number(e.target.value);
             this._scheduleSave(val);
-            this.close();
         });
 
         // 预设按钮
@@ -1038,7 +1037,6 @@ export const DisplayManager = {
                 const val = Number(btn.dataset.value);
                 this._applyWidth(val, true);
                 this._scheduleSave(val);
-                this.close();
             });
         });
 
@@ -1053,7 +1051,6 @@ export const DisplayManager = {
             this._fontSliderEl.addEventListener('change', (e) => {
                 const val = Number(e.target.value);
                 this._scheduleSaveFont(val);
-                this.close();
             });
         }
 
@@ -1064,7 +1061,6 @@ export const DisplayManager = {
                 const val = Number(btn.dataset.value);
                 this._applyFontScale(val, true);
                 this._scheduleSaveFont(val);
-                this.close();
             });
         });
 
@@ -1079,7 +1075,6 @@ export const DisplayManager = {
             this._gapSliderEl.addEventListener('change', (e) => {
                 const val = Number(e.target.value);
                 this._scheduleSaveGap(val);
-                this.close();
             });
         }
 
@@ -1090,7 +1085,6 @@ export const DisplayManager = {
                 const val = Number(btn.dataset.value);
                 this._applyGapScale(val, true);
                 this._scheduleSaveGap(val);
-                this.close();
             });
         });
 
@@ -1105,7 +1099,6 @@ export const DisplayManager = {
             this._hueSliderEl.addEventListener('change', (e) => {
                 const val = Number(e.target.value);
                 this._scheduleSaveHue(val);
-                this.close();
             });
         }
 
@@ -1116,7 +1109,6 @@ export const DisplayManager = {
                 const val = Number(btn.dataset.value);
                 this._applyHue(val);
                 this._scheduleSaveHue(val);
-                this.close();
             });
         });
 
@@ -1126,7 +1118,6 @@ export const DisplayManager = {
             hueResetBtn.addEventListener('click', () => {
                 this._applyHue(this.DEFAULT_HUE);
                 this._scheduleSaveHue(this.DEFAULT_HUE);
-                this.close();
             });
         }
 
@@ -1140,7 +1131,6 @@ export const DisplayManager = {
             this._lightnessSliderEl.addEventListener('change', (e) => {
                 const val = Number(e.target.value);
                 this._scheduleSaveLightness(val);
-                this.close();
             });
         }
 
@@ -1151,7 +1141,6 @@ export const DisplayManager = {
                 const val = Number(btn.dataset.value);
                 this._applyLightness(val);
                 this._scheduleSaveLightness(val);
-                this.close();
             });
         });
 

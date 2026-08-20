@@ -84,18 +84,18 @@ export class AppHost {
    * 正常安装（webapp/ 已随插件分发且版本匹配）完全不触发联网；仅缺失或过期时兜底。
    */
   private async ensureWebapp(adapter: DataAdapter): Promise<void> {
-    const versionStampFile = '.webapp-version';
     const appHtmlPath = normalizePath(`${this.webappDir}/app.html`);
-    const stampPath = normalizePath(`${this.webappDir}/${versionStampFile}`);
 
+    // 本地开发 / 双通道（BRAT、git-clone、sync.sh）场景：只要本地 webapp/ 已存在，
+    // 磁盘即真相，永远信任本地、绝不联网下载覆盖。
+    // 否则版本守卫会在「版本戳缺失/不符」时从 GitHub Release 拉取旧 webapp.zip，
+    // 把本地含未发布改动（如未发版的 Todo 聚焦下拉）的 app.html 覆盖回旧版，
+    // 导致新功能在运行时丢失且难以排查。
     if (await this.fileExists(adapter, appHtmlPath)) {
-      // webapp/ 存在：仅当版本戳缺失（老 clone / 历史遗留）或版本不符时才重下，
-      // 否则信任磁盘 —— BRAT / git-clone 随仓库同步的最新 webapp 即正确，无需联网。
-      if (!(await this.fileExists(adapter, stampPath))) return;
-      const local = await this.readVersionStamp(adapter, stampPath);
-      if (local === this.version) return;
+      return;
     }
 
+    // 仅当本地 webapp 完全缺失（首次安装 / 文件被误删）才尝试自举下载兜底。
     if (!this.version) {
       return;
     }
@@ -107,13 +107,6 @@ export class AppHost {
         throw new Error(`下载返回异常状态 ${resp.status}`);
       }
       await this.extractZip(adapter, resp.arrayBuffer);
-      // webapp.zip 已携带 .webapp-version，解压后自动落盘；此处兜底再写一次，
-      // 避免同版本反复重下。
-      try {
-        await adapter.write(stampPath, this.version);
-      } catch {
-        // 写入版本戳失败不影响使用
-      }
     } catch (e) {
       throw new Error(
         `无法自动获取 webapp（${e instanceof Error ? e.message : '未知错误'}）。` +
@@ -122,13 +115,6 @@ export class AppHost {
     }
   }
 
-  private async readVersionStamp(adapter: DataAdapter, filePath: string): Promise<string | null> {
-    try {
-      return (await adapter.read(filePath)).trim();
-    } catch {
-      return null;
-    }
-  }
 
   private async extractZip(adapter: DataAdapter, buffer: ArrayBuffer): Promise<void> {
     // fflate 零依赖（无 setimmediate 之类会动态创建 <script> 的传递依赖），

@@ -38,4 +38,5 @@ export const AES_WRAP_KEY_SEED = 'bamboo-aes-wrap-key';
  */
 export const REVOKED_TAGS: string[] = [
   // 例：'A1B2',
+  'E3BA', // 2026-08-20 作废：BRI-E3BA-2E08-3FBA-868D-E199-35E0（退款/滥用）
 ];

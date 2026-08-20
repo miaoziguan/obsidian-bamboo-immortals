@@ -8,6 +8,7 @@
 
 import type BambooReviewPlugin from '../../main';
 import { verifyLicenseKey, getLicenseTag } from './licenseKey';
+import { REVOKED_TAGS } from './secretShards';
 
 const LICENSE_FIELD = 'licenseKey' as const;
 const ACTIVE_FIELD = 'licenseActive' as const;
@@ -16,10 +17,21 @@ const TAG_FIELD = 'licenseTag' as const;
 export class LicenseStore {
   constructor(private plugin: BambooReviewPlugin) {}
 
-  /** 当前是否已激活（已存 key 且上次校验通过会缓存为 true） */
+  /**
+   * 当前是否已激活（已存 key 且上次校验通过会缓存为 true）。
+   * 若已激活但归属 TAG 命中吊销黑名单（REVOKED_TAGS），视为失效：
+   * 后台清除激活态并返回 false，使该用户码在发版后立即失效（无需服务器）。
+   */
   isActive(): boolean {
     const s = this.plugin.settings as unknown as Record<string, unknown>;
-    return Boolean(s[ACTIVE_FIELD]);
+    if (!s[ACTIVE_FIELD]) return false;
+    const tag = (s[TAG_FIELD] as string) ?? '';
+    if (tag && REVOKED_TAGS.includes(tag)) {
+      // 吊销：异步清理激活态（不阻塞当前同步返回值）
+      void this.deactivate();
+      return false;
+    }
+    return true;
   }
 
   /** 读取已保存的激活码原文（脱敏显示用） */

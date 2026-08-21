@@ -242,19 +242,37 @@ export const DisplayManager = {
         }
         const effective = actualWidth > 0 ? actualWidth : (this._currentWidth || this.DEFAULT_WIDTH);
 
-        // 紧凑模式：容器变窄时触发票/票根的堆叠布局
-        container.classList.toggle('display-compact', effective <= 600);
-        container.classList.toggle('display-ultra-compact', effective <= 480);
+        // 横向布局守卫：容器实际宽度（受内容宽度设置约束）跌破桌面断点时自动退出横向模式。
+        // 内容宽度在显示设置里调到很小（如 400px）→ .container 实际变窄 → 此处触发退出，
+        // 而不依赖 window resize（窗口宽度可能不变）。
+        if (typeof LayoutMode !== 'undefined' && LayoutMode.checkAndExitIfNarrow) {
+            try { LayoutMode.checkAndExitIfNarrow(effective); } catch (e) { /* 不阻塞 */ }
+        }
+
+        // 横向布局模式：板块是均分列（1fr），实际列宽 = 容器宽 / 列数，远窄于容器总宽。
+        // 紧凑/超紧凑判定必须基于「列宽」而非容器总宽，否则用户调宽容器时
+        // compact 类被移除、但列仍窄 → 票/票根瞬间失去堆叠适配（挤压/跳动）。
+        let effectiveForCompact = effective;
+        if (typeof LayoutMode !== 'undefined' && LayoutMode.isActive && LayoutMode.isActive()) {
+            const cols = LayoutMode.getColumns ? LayoutMode.getColumns() : 2;
+            if (cols > 1) effectiveForCompact = Math.round(effective / cols);
+        }
+
+        // 紧凑模式：容器/列变窄时触发票/票根的堆叠布局
+        container.classList.toggle('display-compact', effectiveForCompact <= 600);
+        container.classList.toggle('display-ultra-compact', effectiveForCompact <= 480);
 
         // ===== 基于实际内容宽度的响应式类 =====
+        // 横向模式下 rw-* 也按列宽判定（板块内部窄屏修正需匹配真实列宽）
+        const eff = effectiveForCompact;
         container.classList.remove(
             'rw-620', 'rw-520', 'rw-460', 'rw-420', 'rw-360'
         );
-        if (effective <= 620) container.classList.add('rw-620');
-        if (effective <= 520) container.classList.add('rw-520');
-        if (effective <= 460) container.classList.add('rw-460');
-        if (effective <= 420) container.classList.add('rw-420');
-        if (effective <= 360) container.classList.add('rw-360');
+        if (eff <= 620) container.classList.add('rw-620');
+        if (eff <= 520) container.classList.add('rw-520');
+        if (eff <= 460) container.classList.add('rw-460');
+        if (eff <= 420) container.classList.add('rw-420');
+        if (eff <= 360) container.classList.add('rw-360');
     },
 
     /**

@@ -294,6 +294,10 @@ ActionDispatcher.registerMany({
     'fab-theme': () => {
         if (typeof window.ThemeEffects !== 'undefined') window.ThemeEffects.showThemePanel();
         if (typeof FABManager !== 'undefined') FABManager.close();
+    },
+    'fab-layout-toggle': () => {
+        if (typeof LayoutMode !== 'undefined') LayoutMode.toggle();
+        if (typeof FABManager !== 'undefined') FABManager.close();
     }
 });
 

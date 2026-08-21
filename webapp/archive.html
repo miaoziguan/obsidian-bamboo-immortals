@@ -1993,6 +1993,29 @@ textarea:focus-visible) {
     gap: calc(var(--space-6) * var(--section-gap-scale));
 }
 
+/* 桌面端横向布局模式：在首页根容器 #reviewContainer（class .container）上加 .horizontal-layout 时，
+   首页板块从纵向流式改为多列网格（按板块数均分列数）。
+   沿用现有板块顺序，仅改变排版方向（多列换行），不触碰板块顺序逻辑。
+   默认纵向；仅手动切到横向才生效（会话内临时视图，不持久化）。
+   仅 ≥600px 生效（与 display-compact ≤600 窄栏语义对齐）：更窄时即使残留 class
+   也强制纵向 + 隐藏入口，保证"桌面/宽栏专属"。 */
+.desktop-only {
+    display: none;
+}
+@media (min-width: 600px) {
+    .desktop-only {
+        display: inline-flex;
+    }
+    .sections-container.horizontal-layout {
+        display: grid;
+        /* 兜底 2 列；实际列数由 LayoutMode 按板块数内联设置（repeat(N, 1fr)）覆盖 */
+        grid-template-columns: repeat(2, 1fr);
+        grid-auto-rows: min-content;
+        align-items: start;
+        flex-direction: unset;
+    }
+}
+
 /* ========== 触控区域优化 ========== */
 .touch-friendly,
 button, .btn, .date-nav-btn, .edit-btn, .view-toggle-btn, .history-close, .modal-close, .tooltip-close {

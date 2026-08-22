@@ -81,6 +81,10 @@ export const RenderScheduler = {
         if (this._fullRenderFn) {
             this._fullRenderFn();
         }
+        // 多列（瀑布流）模式下重新分列（全量渲染清空重建了容器）
+        if (typeof LayoutMode !== 'undefined' && LayoutMode.isActive && LayoutMode.isActive()) {
+            try { LayoutMode.reflow(); } catch (e) { /* noop */ }
+        }
     },
 
     _doPartialRender(dirtyIds) {
@@ -168,6 +172,12 @@ export const RenderScheduler = {
         }
         if (this._tooltipFn) {
             try { this._tooltipFn(); } catch (e) { /* noop */ }
+        }
+
+        // 多列（瀑布流）模式下，渲染可能把板块插回容器顶层（绕开列 wrapper），
+        // 重新分列保持列独立高度布局
+        if (typeof LayoutMode !== 'undefined' && LayoutMode.isActive && LayoutMode.isActive()) {
+            try { LayoutMode.reflow(); } catch (e) { /* noop */ }
         }
     },
 

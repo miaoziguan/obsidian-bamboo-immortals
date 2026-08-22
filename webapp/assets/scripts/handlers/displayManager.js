@@ -242,11 +242,13 @@ export const DisplayManager = {
         }
         const effective = actualWidth > 0 ? actualWidth : (this._currentWidth || this.DEFAULT_WIDTH);
 
-        // 横向布局守卫：容器实际宽度（受内容宽度设置约束）跌破桌面断点时自动退出横向模式。
-        // 内容宽度在显示设置里调到很小（如 400px）→ .container 实际变窄 → 此处触发退出，
-        // 而不依赖 window resize（窗口宽度可能不变）。
+        // 横向布局守卫：内容宽度「设置」（--content-max-width，用户主动设定值）跌破
+        // 桌面断点时自动退出横向模式。注意不能拿 effective（容器实际渲染宽度）判断——
+        // 它会被 iframe 物理宽度截断（如主工作区视图本身只有 ~551px），导致横向模式
+        // 进入后立即被误判退出。真正该触发退出的是「用户把内容宽度调 <600px」。
         if (typeof LayoutMode !== 'undefined' && LayoutMode.checkAndExitIfNarrow) {
-            try { LayoutMode.checkAndExitIfNarrow(effective); } catch (e) { /* 不阻塞 */ }
+            const settingWidth = this._currentWidth || this.DEFAULT_WIDTH;
+            try { LayoutMode.checkAndExitIfNarrow(settingWidth); } catch (e) { /* 不阻塞 */ }
         }
 
         // 横向布局模式：板块是均分列（1fr），实际列宽 = 容器宽 / 列数，远窄于容器总宽。

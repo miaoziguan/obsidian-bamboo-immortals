@@ -52,6 +52,144 @@
     overflow: hidden;
 }
 
+/* ===== 竹林诗词区（横向布局专用，填充动效卡片下方空白） =====
+   默认隐藏；横向模式下 #themeEffectSection 撑满列高，
+   动画容器 flex:1 延展成大画布，诗词区贴底自然高度。 */
+.bamboo-poem-strip {
+    display: none;
+}
+@media (min-width: 600px) {
+    /* ===== 横向模式：动效固定高 + 横排诗词（不强行拉伸动画画面） ===== */
+    .sections-container.horizontal-layout #themeEffectSection {
+        display: flex;
+        flex-direction: column;
+        /* 卡片自然高度（320 动效 + 诗词），不被 grid stretch 拉高 → 避免底部留白 */
+        align-self: start;
+    }
+    .sections-container.horizontal-layout #themeEffectSection .bamboo-garden-section {
+        display: flex;
+        flex-direction: column;
+    }
+    .sections-container.horizontal-layout #themeEffectSection .bamboo-garden-container {
+        flex: 0 0 auto;
+        /* 列内自适应：宽度占满列，高度按 16:10 等比缩放（列窄时画面同步变矮，
+           不压扁不拉伸），配合 overflow:hidden 裁切保证画面完整 */
+        width: 100%;
+        height: auto;
+        aspect-ratio: 16 / 10;
+        border-color: transparent;
+        box-shadow: none;
+    }
+    .sections-container.horizontal-layout #themeEffectSection {
+        border-color: hsla(calc(var(--accent-hue) + 0), 30%, 50%, 0.35);
+        box-shadow:
+            0 2px 12px hsla(calc(var(--accent-hue) + 0), 25%, 40%, 0.10),
+            0 4px 20px hsla(calc(var(--accent-hue) + 0), 15%, 10%, 0.18),
+            inset 0 1px 0 rgba(var(--white-rgb), 0.12);
+    }
+    ::host(.dark) .sections-container.horizontal-layout #themeEffectSection {
+        border-color: hsla(calc(var(--accent-hue) + 0), 30%, 45%, 0.40);
+        box-shadow:
+            0 1px 4px hsla(calc(var(--accent-hue) + 0), 20%, 3%, 0.30),
+            0 6px 24px hsla(calc(var(--accent-hue) + 0), 15%, 2%, 0.40),
+            inset 0 1px 0 rgba(var(--white-rgb), 0.06);
+    }
+    .sections-container.horizontal-layout .bamboo-poem-strip {
+        display: flex;
+        flex: 0 0 auto;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: var(--space-2);
+        padding: var(--space-3) var(--space-3);
+        text-align: center;
+        background: linear-gradient(180deg, transparent, rgba(var(--green-pale-rgb), 0.16));
+    }
+    .sections-container.horizontal-layout .bamboo-poem-text {
+        font-size: var(--type-sm);
+        color: var(--text-secondary);
+        letter-spacing: 0.08em;
+        line-height: 1.7;
+        max-width: 90%;
+    }
+    .sections-container.horizontal-layout .bamboo-poem-author {
+        font-size: var(--type-mini);
+        color: var(--text-tertiary);
+        letter-spacing: 0.1em;
+    }
+    .sections-container.horizontal-layout .bamboo-poem-date {
+        margin-top: var(--space-1);
+        font-size: var(--type-mini);
+        color: var(--text-tertiary);
+        letter-spacing: 0.3em;
+        font-weight: 600;
+    }
+
+    /* ===== 看板模式：书签形态（顶部动效固定高 + 下方竖排诗词） =====
+       不强行拉伸动画；动效固定高度，诗词区占满剩余、竖排居中（书签意象） */
+    .sections-container.kanban-layout #themeEffectSection {
+        display: flex;
+        flex-direction: column;
+        /* 卡片自然高度（200 动效 + 诗词），不被 grid stretch 拉高 → 避免底部留白 */
+        align-self: start;
+    }
+    .sections-container.kanban-layout #themeEffectSection .bamboo-garden-section {
+        display: flex;
+        flex-direction: column;
+    }
+    .sections-container.kanban-layout #themeEffectSection .bamboo-garden-container {
+        flex: 0 0 auto;
+        height: 200px;
+        border-color: transparent;
+        box-shadow: none;
+    }
+    .sections-container.kanban-layout #themeEffectSection {
+        border-color: hsla(calc(var(--accent-hue) + 0), 30%, 50%, 0.35);
+        box-shadow:
+            0 2px 12px hsla(calc(var(--accent-hue) + 0), 25%, 40%, 0.10),
+            0 4px 20px hsla(calc(var(--accent-hue) + 0), 15%, 10%, 0.18),
+            inset 0 1px 0 rgba(var(--white-rgb), 0.12);
+    }
+    ::host(.dark) .sections-container.kanban-layout #themeEffectSection {
+        border-color: hsla(calc(var(--accent-hue) + 0), 30%, 45%, 0.40);
+        box-shadow:
+            0 1px 4px hsla(calc(var(--accent-hue) + 0), 20%, 3%, 0.30),
+            0 6px 24px hsla(calc(var(--accent-hue) + 0), 15%, 2%, 0.40),
+            inset 0 1px 0 rgba(var(--white-rgb), 0.06);
+    }
+    /* 竖排诗词区：自然高度，竖排（右到左），居中疏朗 */
+    .sections-container.kanban-layout .bamboo-poem-strip {
+        display: flex;
+        flex: 0 0 auto;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: var(--space-2);
+        padding: var(--space-4) var(--space-2);
+        min-height: 140px;
+        background: linear-gradient(180deg, transparent, rgba(var(--green-pale-rgb), 0.16));
+    }
+    .sections-container.kanban-layout .bamboo-poem-text {
+        writing-mode: vertical-rl;
+        font-size: var(--type-base);
+        color: var(--text-secondary);
+        letter-spacing: 0.45em;
+        line-height: 2;
+        max-height: 100%;
+    }
+    .sections-container.kanban-layout .bamboo-poem-author {
+        font-size: var(--type-mini);
+        color: var(--text-tertiary);
+        letter-spacing: 0.15em;
+    }
+    .sections-container.kanban-layout .bamboo-poem-date {
+        font-size: var(--type-mini);
+        color: var(--text-tertiary);
+        letter-spacing: 0.3em;
+        font-weight: 600;
+    }
+}
+
 
 
 .bamboo-garden-container {
@@ -87,10 +225,11 @@
 }
 
 :host(.dark) #themeEffectSection {
-    border-color: hsla(calc(var(--accent-hue) + 0), 28%, 35%, 0.15);
+    border-color: hsla(calc(var(--accent-hue) + 0), 32%, 45%, 0.45);
     box-shadow:
-        0 1px 4px hsla(calc(var(--accent-hue) + 0), 20%, 3%, 0.15),
-        0 4px 20px hsla(calc(var(--accent-hue) + 0), 15%, 2%, 0.2);
+        0 1px 4px hsla(calc(var(--accent-hue) + 0), 20%, 3%, 0.30),
+        0 6px 24px hsla(calc(var(--accent-hue) + 0), 15%, 2%, 0.40),
+        inset 0 1px 0 rgba(var(--white-rgb), 0.06);
 }
 
 /* 玻璃反射层 — 顶部斜射高光，模拟光线穿过玻璃的反射 */

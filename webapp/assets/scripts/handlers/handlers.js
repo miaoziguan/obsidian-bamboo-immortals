@@ -296,7 +296,10 @@ ActionDispatcher.registerMany({
         if (typeof FABManager !== 'undefined') FABManager.close();
     },
     'fab-layout-toggle': () => {
-        if (typeof LayoutMode !== 'undefined') LayoutMode.toggle();
+        if (typeof LayoutMode !== 'undefined') {
+            // 单按钮循环：纵向 → 横向 → 看板 → 纵向（toggle 内部循环推进）
+            LayoutMode.toggle();
+        }
         if (typeof FABManager !== 'undefined') FABManager.close();
     }
 });

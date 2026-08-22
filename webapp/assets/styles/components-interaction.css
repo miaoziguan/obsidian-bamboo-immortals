@@ -410,13 +410,44 @@
     .desktop-only {
         display: inline-flex;
     }
+
+    /* ===== 横向模式（独立规则）：交替入列瀑布流 ===== */
     .sections-container.horizontal-layout {
-        display: grid;
-        /* 兜底 2 列；实际列数由 LayoutMode 按板块数内联设置（repeat(N, 1fr)）覆盖 */
-        grid-template-columns: repeat(2, 1fr);
-        grid-auto-rows: min-content;
-        align-items: start;
-        flex-direction: unset;
+        display: flex;
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: flex-start;
+        gap: calc(var(--space-6) * var(--section-gap-scale));
+    }
+    .sections-container.horizontal-layout .layout-col {
+        flex: 1 1 0;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: calc(var(--space-6) * var(--section-gap-scale));
+    }
+    .sections-container.horizontal-layout .layout-col #themeEffectSection {
+        width: 100%;
+        min-width: 0;
+    }
+
+    /* ===== 看板模式（独立规则）：一行全排开，每板块一列 ===== */
+    .sections-container.kanban-layout {
+        display: flex;
+        flex-direction: row;
+        align-items: flex-start;
+        gap: calc(var(--space-6) * var(--section-gap-scale));
+    }
+    .sections-container.kanban-layout .layout-col.kanban-col {
+        flex: 1 1 0;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: calc(var(--space-6) * var(--section-gap-scale));
+    }
+    .sections-container.kanban-layout .layout-col.kanban-col #themeEffectSection {
+        width: 100%;
+        min-width: 0;
     }
 }
 

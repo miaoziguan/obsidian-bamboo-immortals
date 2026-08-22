@@ -38,6 +38,7 @@ export const BambooGarden = {
                     <div class="foreground-haze"></div>
                     <div id="leafContainer"></div>
                 </div>
+                ${typeof BambooPoem !== 'undefined' ? BambooPoem.render(typeof LayoutMode !== 'undefined' && LayoutMode.isKanban && LayoutMode.isKanban() ? 'kanban' : 'horizontal') : ''}
             </section>
         `;
     },

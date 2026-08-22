@@ -87,7 +87,7 @@
             0 4px 20px hsla(calc(var(--accent-hue) + 0), 15%, 10%, 0.18),
             inset 0 1px 0 rgba(var(--white-rgb), 0.12);
     }
-    ::host(.dark) .sections-container.horizontal-layout #themeEffectSection {
+    :host(.dark) .sections-container.horizontal-layout #themeEffectSection {
         border-color: hsla(calc(var(--accent-hue) + 0), 30%, 45%, 0.40);
         box-shadow:
             0 1px 4px hsla(calc(var(--accent-hue) + 0), 20%, 3%, 0.30),
@@ -150,7 +150,7 @@
             0 4px 20px hsla(calc(var(--accent-hue) + 0), 15%, 10%, 0.18),
             inset 0 1px 0 rgba(var(--white-rgb), 0.12);
     }
-    ::host(.dark) .sections-container.kanban-layout #themeEffectSection {
+    :host(.dark) .sections-container.kanban-layout #themeEffectSection {
         border-color: hsla(calc(var(--accent-hue) + 0), 30%, 45%, 0.40);
         box-shadow:
             0 1px 4px hsla(calc(var(--accent-hue) + 0), 20%, 3%, 0.30),

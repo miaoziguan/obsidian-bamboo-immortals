@@ -133,11 +133,6 @@ export class AppAPI {
     this.licenseStore = licenseStore;
   }
 
-  /** 当前是否激活（供宿主层/视图查询，避免重复读取 settings） */
-  isLicenseActive(): boolean {
-    return this.licenseStore.isActive();
-  }
-
   /** 确保存储结构存在 */
   async ensureStructure(): Promise<void> {
     await this.storage.ensureStructure();
@@ -175,12 +170,6 @@ export class AppAPI {
   bindIframe(iframe: HTMLIFrameElement): void {
     this.iframe = iframe;
     this.themeBridge.attachIframe(iframe);
-  }
-
-  /** 绑定 iframe 并开始监听消息（一步到位，兼容旧调用） */
-  attach(iframe: HTMLIFrameElement): void {
-    this.startListening();
-    this.bindIframe(iframe);
   }
 
   /** 解绑并停止监听 */

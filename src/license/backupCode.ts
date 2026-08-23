@@ -34,7 +34,3 @@ export function decodeBackup(backup: string): string {
     throw new Error('备份码损坏，无法解析');
   }
 }
-
-export function isBackupCode(s: string): boolean {
-  return (s || '').trim().startsWith(BACKUP_PREFIX);
-}

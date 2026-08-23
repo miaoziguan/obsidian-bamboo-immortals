@@ -678,14 +678,6 @@ export class VaultStorage {
     await this.ensureDir('data');
   }
 
-  /** 仅清空设置文件（overwrite 导入 settings 前调用） */
-  async clearAllSettings(): Promise<void> {
-    const path = this.settingsPath();
-    if (await this.app.vault.adapter.exists(path)) {
-      await this.app.vault.adapter.remove(path);
-    }
-  }
-
   async clearAll(): Promise<void> {
     if (await this.app.vault.adapter.exists(this.basePath)) {
       await this.app.vault.adapter.rmdir(this.basePath, true);
@@ -771,20 +763,4 @@ export class VaultStorage {
 
   // ---- Markdown 摘要 ----
 
-  private reviewPath(dateKey: string): string {
-    return normalizePath(`${this.basePath}/reviews/${dateKey}.md`);
-  }
-
-  async writeMarkdownReview(dateKey: string, markdown: string): Promise<void> {
-    await this.ensureDir('reviews');
-    const path = this.reviewPath(dateKey);
-    await this.vaultWrite(path, markdown);
-  }
-
-  async deleteMarkdownReview(dateKey: string): Promise<void> {
-    const path = this.reviewPath(dateKey);
-    if (await this.app.vault.adapter.exists(path)) {
-      await this.app.vault.adapter.remove(path);
-    }
-  }
 }

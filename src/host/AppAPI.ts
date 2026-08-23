@@ -102,6 +102,14 @@ export class AppAPI {
   private licenseStore: LicenseStore;
   /** 激活成功后回调（由 DailyReviewView 注入），用于通知宿主层刷新 UI */
   onLicenseActivated?: () => void;
+  /** 当前视图是否位于主工作区（中央）回调（由 DailyReviewView 注入） */
+  isMainLeaf?: () => boolean;
+  /** 把当前视图移动到主工作区回调（由 DailyReviewView 注入）；mode 为当前布局模式 */
+  moveToCenter?: (mode?: string) => void;
+  /** 把当前视图移回右侧栏回调（由 DailyReviewView 注入；仅当视图由系统从侧栏移来才执行） */
+  moveToSidebar?: () => void;
+  /** 待恢复的布局模式回调（由 DailyReviewView 注入，重建视图后 app:ready 带回 webapp） */
+  getPendingLayoutMode?: () => string | null;
   /** 视图已 detach 后置 true，扫描等异步任务据此提前终止（#L14） */
   private disposed = false;
 
@@ -213,6 +221,9 @@ export class AppAPI {
   private async onMessage(event: MessageEvent): Promise<void> {
     const msg = event.data as { type?: string; id?: string; payload?: unknown };
     if (!msg || !msg.type || !msg.id) return;
+    if (msg.type === 'app:moveToCenter') {
+      console.log('[AppAPI] received app:moveToCenter, source ok=', this.iframe ? event.source === this.iframe.contentWindow : 'no-iframe');
+    }
 
     // 来源校验
     if (this.iframe && event.source !== this.iframe.contentWindow) return;
@@ -247,7 +258,34 @@ export class AppAPI {
         // 平台感知：移动端 webapp 据此做平台分支（隐藏拖拽提示、优化动画、抽屉适配等）。
         // 用可选链防御：测试环境 mock 的 obsidian 未导出 Platform 时安全降级为 false。
         isMobile: Platform?.isMobile ?? false,
+        // 视图是否在主工作区（中央）：侧边栏时 webapp 据此决定是否请求移动到中央
+        isMainLeaf: this.isMainLeaf ? this.isMainLeaf() : true,
+        // 重建视图（侧边栏移中央）后待恢复的布局模式，webapp 据此自动进入横向/看板
+        pendingLayoutMode: this.getPendingLayoutMode ? this.getPendingLayoutMode() : null,
       });
+      return;
+    }
+
+    // ---- 视图移动到主工作区（侧边栏点横向/看板 → 自动切到中央）----
+    if (type === 'app:moveToCenter') {
+      if (this.moveToCenter) {
+        const mode = (payload as { mode?: string })?.mode || 'horizontal';
+        this.moveToCenter(mode);
+        this.respond(id, { ok: true });
+      } else {
+        this.respond(id, { ok: false, error: 'moveToCenter 未注入' });
+      }
+      return;
+    }
+
+    // ---- 视图移回右侧栏（恢复纵向时）----
+    if (type === 'app:moveToSidebar') {
+      if (this.moveToSidebar) {
+        this.moveToSidebar();
+        this.respond(id, { ok: true });
+      } else {
+        this.respond(id, { ok: false, error: 'moveToSidebar 未注入' });
+      }
       return;
     }
 

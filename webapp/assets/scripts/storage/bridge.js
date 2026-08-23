@@ -73,6 +73,15 @@ export class BridgeStorage {
           }
         } catch (_) {}
       }
+      // 视图位置感知：当前视图是否在主工作区（中央）。侧边栏时为 false，
+      // webapp 进入横向/看板模式时据此请求宿主把视图移动到中央。
+      if (readyResp && typeof readyResp.isMainLeaf === 'boolean') {
+        window.__bambooIsMainLeaf = readyResp.isMainLeaf;
+      }
+      // 重建视图（侧边栏移中央）后待恢复的布局模式
+      if (readyResp && readyResp.pendingLayoutMode) {
+        window.__bambooPendingLayoutMode = readyResp.pendingLayoutMode;
+      }
 
       // 激活门控：未激活时挂全屏激活遮罩（密钥在宿主侧，本模块仅转发激活码）
       if (readyResp && readyResp.licenseActive === false) {
@@ -329,6 +338,18 @@ export class BridgeStorage {
   async importBackup(backup) {
     await this.ensureReady();
     return this._send('app:importBackup', { backup });
+  }
+
+  /** 请求宿主把当前视图移动到主工作区（侧边栏 → 中央）；携带当前布局模式供宿主恢复 */
+  async moveToCenter(mode) {
+    await this.ensureReady();
+    return this._send('app:moveToCenter', { mode });
+  }
+
+  /** 请求宿主把当前视图移回右侧栏（恢复纵向时；宿主仅当视图由系统从侧栏移来才执行） */
+  async moveToSidebar() {
+    await this.ensureReady();
+    return this._send('app:moveToSidebar', {});
   }
 
   async clearAll() {

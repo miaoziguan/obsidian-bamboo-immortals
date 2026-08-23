@@ -15,6 +15,7 @@ export const LayoutMode = {
     _columns: 2,
     _savedWidth: null, // 进入时临时放宽内容宽度后记录的原宽度，退出时恢复
     _justEntered: false, // 进入流程保护期：避开刚进入时浏览器未回流导致守卫读到旧宽
+    _restoring: false, // 重建视图后恢复模式中：跳过 moveToCenter 请求（已在中央）
 
     isActive() {
         return this._mode !== 'none';
@@ -36,12 +37,33 @@ export const LayoutMode = {
     },
 
     /**
+     * 初始化：webapp 启动时由外部调用。检测「侧边栏移中央」重建后待恢复的布局模式
+     * （宿主 app:ready 带回），自动进入对应模式。恢复模式时已在中央视图，不再请求移动。
+     */
+    init() {
+        const pending = window.__bambooPendingLayoutMode;
+        this._restoring = true;
+        try {
+            if (pending === 'kanban') {
+                this._enter('kanban');
+            } else if (pending === 'horizontal') {
+                this._enter('horizontal');
+            }
+        } finally {
+            this._restoring = false;
+        }
+        window.__bambooPendingLayoutMode = null;
+    },
+
+    /**
      * 平台守卫：多列布局是桌面端体验。移动端（bridge 标记 __bambooIsMobile）
      * 或窗口跌破桌面断点（600px）一律禁止，避免窄屏下内联 grid 样式撑出多列挤压。
      */
     _isDesktop() {
+        // 仅按宿主平台判断：桌面端即使 iframe 窄（如侧边栏 ~300px）也允许进入多列，
+        // 因为窄场景会自动移动到中央视图并放宽内容宽度。移动端平台才禁止。
         if (window.__bambooIsMobile) return false;
-        return (window.innerWidth || document.documentElement.clientWidth) >= 600;
+        return true;
     },
 
     /** 单按钮循环：纵向 → 横向 → 看板 → 纵向 */
@@ -96,17 +118,23 @@ export const LayoutMode = {
             label = '横向布局';
         }
 
-        // 内容宽度自动适配：内容宽度（--content-max-width）不足时，
-        // 自动临时放宽到该模式的最小舒适宽度再进入（不持久化，退出时恢复）。
+        // 内容宽度自动适配：
+        // - 横向模式：无论当前内容宽度多少，点击「横向布局」一律设为 800px（确定性一致）
+        // - 看板模式：内容宽度不足 1200 时才放宽到 1200
         let widthAutoBumped = false;
-        if (container) {
-            let cw = 0;
-            try { cw = container.getBoundingClientRect().width; } catch (e) { cw = 0; }
-            let widthSetting = (typeof DisplayManager !== 'undefined' && DisplayManager._currentWidth)
-                ? DisplayManager._currentWidth : 0;
-            if (cw < minWidth && widthSetting < minWidth) {
-                this._savedWidth = widthSetting > 0 ? widthSetting : null;
-                if (typeof DisplayManager !== 'undefined' && DisplayManager._applyWidth) {
+        if (container && typeof DisplayManager !== 'undefined' && DisplayManager._applyWidth) {
+            if (mode === 'horizontal') {
+                // 无条件切到 800px
+                const currentW = DisplayManager._currentWidth || 0;
+                this._savedWidth = currentW > 0 ? currentW : null;
+                DisplayManager._applyWidth(autoBumpTo, true);
+                widthAutoBumped = true;
+            } else {
+                let cw = 0;
+                try { cw = container.getBoundingClientRect().width; } catch (e) { cw = 0; }
+                let widthSetting = DisplayManager._currentWidth || 0;
+                if (cw < minWidth && widthSetting < minWidth) {
+                    this._savedWidth = widthSetting > 0 ? widthSetting : null;
                     DisplayManager._applyWidth(autoBumpTo, true);
                     widthAutoBumped = true;
                 }
@@ -136,6 +164,23 @@ export const LayoutMode = {
             this._reflowHorizontal(el);
         }
 
+        // 进入横向/看板 → 请求宿主把视图移动到主工作区（携带当前模式，宿主重建视图后恢复）。
+        // webapp 不自行判定是否侧边栏，宿主 moveToCenter 回调里自判：在主区域则无操作。
+        // bridge.js 暴露的全局是 storageManager（BridgeStorage 实例），非 Bridge。
+        // 重建视图后 init() 恢复模式时不请求移动（已在中央），静默跳过。
+        if (this._restoring) {
+            // 恢复模式：已在中央，不请求移动（storageManager 此时可能尚未就绪，属正常跳过）
+        } else if (typeof storageManager !== 'undefined' && storageManager.moveToCenter) {
+            try {
+                const p = storageManager.moveToCenter(mode);
+                if (p && typeof p.then === 'function') {
+                    p.then((r) => console.log('[LayoutMode] moveToCenter resp', r)).catch((e) => console.warn('[LayoutMode] moveToCenter err', e && e.message));
+                }
+            } catch (e) { console.warn('[LayoutMode] moveToCenter throw', e && e.message); }
+        } else {
+            console.warn('[LayoutMode] storageManager.moveToCenter unavailable');
+        }
+
         // 主动重算 compact/ultra/rw 响应式类（按列宽判定；_justEntered 期间守卫跳过）
         if (typeof DisplayManager !== 'undefined' && DisplayManager._applyResponsiveClasses) {
             try { DisplayManager._applyResponsiveClasses(); } catch (e) { /* 不阻塞布局切换 */ }
@@ -151,6 +196,10 @@ export const LayoutMode = {
     _forceOff() {
         if (this._mode === 'none') return;
         this._mode = 'none';
+        // 恢复纵向：请求宿主把视图移回右侧栏（宿主仅当视图由系统从侧栏移来才执行）
+        if (typeof storageManager !== 'undefined' && storageManager.moveToSidebar) {
+            try { storageManager.moveToSidebar(); } catch (e) { /* 不阻塞 */ }
+        }
         const el = byId('sectionsContainer');
         if (el) {
             el.classList.remove('horizontal-layout', 'kanban-layout');
@@ -275,7 +324,34 @@ export const LayoutMode = {
         if (settingWidth > 0 && settingWidth < 600) {
             this._forceOff();
         }
+    },
+
+    /**
+     * 宽度驱动升级：横向模式 + 内容宽度 ≥1080px → 自动进入看板模式。
+     * 由 DisplayManager._applyResponsiveClasses 在内容宽度变化时调用。
+     * 单向联动（≥1080 升看板）；反向（<1080 回横向）保持手动切换。
+     * @param {number} settingWidth 内容宽度设置
+     */
+    checkAndUpgradeToKanban(settingWidth) {
+        if (this._mode !== 'horizontal') return;
+        if (this._justEntered) return;
+        if (settingWidth > 0 && settingWidth >= 1080) {
+            this._enter('kanban');
+        }
     }
 };
 
 window.LayoutMode = LayoutMode;
+
+// webapp 启动：bridge 就绪（storage:initialized）后，检测并恢复「侧边栏移中央」待恢复的布局模式
+(function () {
+    if (typeof EventBus !== 'undefined' && typeof EventBus.on === 'function') {
+        EventBus.on('storage:initialized', () => {
+            try { LayoutMode.init(); } catch (e) { /* 不阻塞启动 */ }
+        });
+    } else {
+        setTimeout(() => {
+            try { LayoutMode.init(); } catch (e) { /* 不阻塞启动 */ }
+        }, 300);
+    }
+})();

@@ -250,6 +250,11 @@ export const DisplayManager = {
             const settingWidth = this._currentWidth || this.DEFAULT_WIDTH;
             try { LayoutMode.checkAndExitIfNarrow(settingWidth); } catch (e) { /* 不阻塞 */ }
         }
+        // 宽度驱动升级：横向模式 + 内容宽度 ≥1080px → 自动进入看板模式（宽屏适合看板）
+        if (typeof LayoutMode !== 'undefined' && LayoutMode.checkAndUpgradeToKanban) {
+            const settingWidth = this._currentWidth || this.DEFAULT_WIDTH;
+            try { LayoutMode.checkAndUpgradeToKanban(settingWidth); } catch (e) { /* 不阻塞 */ }
+        }
 
         // 横向布局模式：板块是均分列（1fr），实际列宽 = 容器宽 / 列数，远窄于容器总宽。
         // 紧凑/超紧凑判定必须基于「列宽」而非容器总宽，否则用户调宽容器时

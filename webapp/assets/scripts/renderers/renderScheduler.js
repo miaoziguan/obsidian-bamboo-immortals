@@ -182,6 +182,13 @@ export const RenderScheduler = {
     },
 
     _insertInOrder(container, newEl, sectionId, allSections) {
+        // 多列（瀑布流/看板）模式下：板块被分入 .layout-col wrapper，container 的
+        // insertBefore 参照节点在 wrapper 内（非 container 直接子）会抛 NotFoundError。
+        // 此时跳过按序插入，交由 reflow() 在渲染末尾统一重新分列。
+        if (typeof LayoutMode !== 'undefined' && LayoutMode.isActive && LayoutMode.isActive()) {
+            container.appendChild(newEl);
+            return;
+        }
         const sectionIndex = allSections.findIndex(s => s.id === sectionId);
         let inserted = false;
         for (let i = sectionIndex + 1; i < allSections.length; i++) {

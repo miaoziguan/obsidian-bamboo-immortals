@@ -27,6 +27,10 @@ export class DailyReviewView extends ItemView {
   private appAPI: AppAPI | null = null;
   private iframe: HTMLIFrameElement | null = null;
   private cssChangeRef: EventRef | null = null;
+  /** 从侧边栏移到中央后待恢复的布局模式（重建视图后 app:ready 带回 webapp） */
+  private pendingLayoutMode: string | null = null;
+  /** 视图是否由系统从侧边栏移到中央（恢复纵向时据此决定是否移回右栏） */
+  private cameFromSidebar = false;
 
   constructor(
     leaf: WorkspaceLeaf,
@@ -54,10 +58,35 @@ export class DailyReviewView extends ItemView {
     return 'leaf';
   }
 
+  /** 视图状态持久化：重建（侧边栏↔中央）时恢复布局模式与来源标记 */
+  getState(): Record<string, unknown> {
+    return {
+      pendingLayoutMode: this.pendingLayoutMode ?? null,
+      cameFromSidebar: this.cameFromSidebar || false,
+    };
+  }
+
+  async setState(state: Record<string, unknown>): Promise<void> {
+    if (state && typeof state === 'object') {
+      if (typeof state.pendingLayoutMode === 'string') {
+        this.pendingLayoutMode = state.pendingLayoutMode;
+      }
+      if (state.cameFromSidebar) {
+        this.cameFromSidebar = true;
+      }
+    }
+  }
+
   async onOpen(): Promise<void> {
     // 持久化「面板开着」标记：插件热更新被核心 detach 后，新实例据此自动恢复面板
     this.settings.reviewViewOpen = true;
     void this.saveSettings();
+
+    // 从侧边栏移到中央的重建视图：读取待恢复的布局模式与来源标记
+    //（getState/setState 已由 Obsidian 在 setViewState 时自动调用恢复）
+    if (this.pendingLayoutMode || this.cameFromSidebar) {
+      console.log('[DailyReviewView] onOpen restored pendingLayoutMode=', this.pendingLayoutMode, 'cameFromSidebar=', this.cameFromSidebar);
+    }
 
     const container: HTMLElement = this.containerEl.children[1] as HTMLElement;
     container.empty();
@@ -86,6 +115,40 @@ export class DailyReviewView extends ItemView {
     // 激活成功（webapp 遮罩内输入激活码并经宿主校验通过）→ webapp 侧 licenseGate.js 会自行移除遮罩并解锁
     this.appAPI.onLicenseActivated = () => {
       new Notice('竹林修仙传：激活成功，全部功能已解锁 🎋', 4000);
+    };
+
+    // 视图是否在主工作区（中央）：webapp 进入横向/看板模式时据此决定是否请求移动。
+    // 用 leaf 容器是否位于左右侧边栏（Obsidian 固定布局类）判定，稳定可靠。
+    this.appAPI.isMainLeaf = () => {
+      try {
+        const el = this.leaf.view.containerEl;
+        const inSidebar = el.closest('.mod-left-split, .mod-right-split') !== null;
+        return !inSidebar;
+      } catch (e) {
+        return true;
+      }
+    };
+
+    // 侧边栏点横向/看板 → 原位移动到主工作区（不重建视图，app.workspace.moveLeaf 为运行时 API，
+    // 未声明于 d.ts，故做类型断言 + 功能检测；缺失时回退为提示用户手动移动）
+    this.appAPI.moveToCenter = (mode?: string) => {
+      const isMain = this.appAPI?.isMainLeaf?.() ?? true;
+      // 已在主工作区（中央）：无需移动
+      if (isMain) return;
+      void this.moveViewToCenter(mode || 'horizontal');
+    };
+    // 重建视图（侧边栏移中央）后，webapp app:ready 时带回待恢复的布局模式
+    this.appAPI.getPendingLayoutMode = () => {
+      const m = this.pendingLayoutMode;
+      // 一次性消费：取走后清空，避免后续重载重复恢复
+      this.pendingLayoutMode = null;
+      return m;
+    };
+    // 恢复纵向 → 移回右侧栏（仅当视图由系统从侧栏移来）
+    this.appAPI.moveToSidebar = () => {
+      console.log('[DailyReviewView] moveToSidebar called, cameFromSidebar=', this.cameFromSidebar);
+      if (!this.cameFromSidebar) return;
+      void this.moveViewToSidebar();
     };
 
     // 战略复盘面板「用 AI 改进」入口：webapp 健康分详情 → 插件 Agentic 编辑链路
@@ -171,6 +234,53 @@ export class DailyReviewView extends ItemView {
         text: `竹林修仙传加载失败: ${e instanceof Error ? e.message : '未知错误'}`,
         cls: 'bamboo-review-error',
       });
+    }
+  }
+
+  /**
+   * 把视图移动到中央工作区（方案 Y：重建视图 + 恢复布局模式）。
+   * app.workspace.moveLeaf 运行时不存在，故用官方 API：
+   * getLeaf(true)（中央新 leaf）→ setViewState(本视图，state 携带待恢复模式) → detach 旧 leaf。
+   */
+  private async moveViewToCenter(mode: string): Promise<void> {
+    try {
+      const ws = this.app.workspace;
+      const targetLeaf = ws.getLeaf(true);
+      if (!targetLeaf) {
+        new Notice('无法移动到中央工作区', 3000);
+        return;
+      }
+      // 在目标 leaf 上打开本视图，state 携带待恢复的布局模式 + 来源标记
+      await targetLeaf.setViewState({
+        type: VIEW_TYPE_DAILY_REVIEW,
+        state: { pendingLayoutMode: mode, cameFromSidebar: true },
+        active: true,
+      });
+      // 关闭原侧边栏 leaf
+      this.leaf.detach();
+    } catch (e) {
+      console.error('[DailyReviewView] moveViewToCenter error:', e);
+      new Notice('请将视图移至中央工作区以获得最佳横向布局体验', 3000);
+    }
+  }
+
+  /** 把视图移回右侧栏（方案 Y 反向：getRightLeaf + setViewState + detach 旧 leaf） */
+  private async moveViewToSidebar(): Promise<void> {
+    try {
+      const ws = this.app.workspace;
+      const rightLeaf = ws.getRightLeaf(false) || ws.getRightLeaf(true);
+      if (!rightLeaf) {
+        new Notice('无法移动到右侧栏', 3000);
+        return;
+      }
+      // 在右栏 leaf 上打开本视图（纵向为默认布局，无需恢复模式）
+      await rightLeaf.setViewState({
+        type: VIEW_TYPE_DAILY_REVIEW,
+        active: true,
+      });
+      this.leaf.detach();
+    } catch (e) {
+      console.error('[DailyReviewView] moveViewToSidebar error:', e);
     }
   }
 

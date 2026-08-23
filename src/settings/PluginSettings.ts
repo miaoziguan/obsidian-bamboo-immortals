@@ -688,8 +688,8 @@ class ConsultPage extends SettingPage {
           const input = setting.controlEl.querySelector('input');
           if (input) input.type = 'password';
         });
-    } catch (err) {
-      console.error('[竹林修仙传] 竹林咨询分区渲染异常：', err);
+    } catch {
+      // 竹林咨询分区渲染异常：非致命，静默兜底
     }
   }
 }

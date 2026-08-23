@@ -222,7 +222,7 @@ export class AppAPI {
     const msg = event.data as { type?: string; id?: string; payload?: unknown };
     if (!msg || !msg.type || !msg.id) return;
     if (msg.type === 'app:moveToCenter') {
-      console.log('[AppAPI] received app:moveToCenter, source ok=', this.iframe ? event.source === this.iframe.contentWindow : 'no-iframe');
+      // 来源校验下面统一做
     }
 
     // 来源校验

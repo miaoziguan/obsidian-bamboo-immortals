@@ -85,7 +85,7 @@ export class DailyReviewView extends ItemView {
     // 从侧边栏移到中央的重建视图：读取待恢复的布局模式与来源标记
     //（getState/setState 已由 Obsidian 在 setViewState 时自动调用恢复）
     if (this.pendingLayoutMode || this.cameFromSidebar) {
-      console.log('[DailyReviewView] onOpen restored pendingLayoutMode=', this.pendingLayoutMode, 'cameFromSidebar=', this.cameFromSidebar);
+      // 待恢复状态已在 getState/setState 中处理，无需额外日志
     }
 
     const container: HTMLElement = this.containerEl.children[1] as HTMLElement;
@@ -124,7 +124,7 @@ export class DailyReviewView extends ItemView {
         const el = this.leaf.view.containerEl;
         const inSidebar = el.closest('.mod-left-split, .mod-right-split') !== null;
         return !inSidebar;
-      } catch (e) {
+      } catch {
         return true;
       }
     };
@@ -146,7 +146,6 @@ export class DailyReviewView extends ItemView {
     };
     // 恢复纵向 → 移回右侧栏（仅当视图由系统从侧栏移来）
     this.appAPI.moveToSidebar = () => {
-      console.log('[DailyReviewView] moveToSidebar called, cameFromSidebar=', this.cameFromSidebar);
       if (!this.cameFromSidebar) return;
       void this.moveViewToSidebar();
     };
@@ -258,8 +257,7 @@ export class DailyReviewView extends ItemView {
       });
       // 关闭原侧边栏 leaf
       this.leaf.detach();
-    } catch (e) {
-      console.error('[DailyReviewView] moveViewToCenter error:', e);
+    } catch {
       new Notice('请将视图移至中央工作区以获得最佳横向布局体验', 3000);
     }
   }
@@ -279,8 +277,8 @@ export class DailyReviewView extends ItemView {
         active: true,
       });
       this.leaf.detach();
-    } catch (e) {
-      console.error('[DailyReviewView] moveViewToSidebar error:', e);
+    } catch {
+      // 移回侧栏失败：静默兜底
     }
   }
 

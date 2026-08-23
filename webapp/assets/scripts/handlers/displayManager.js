@@ -123,7 +123,10 @@ export const DisplayManager = {
     async _loadAndApply() {
         try {
             const savedWidth = await storageManager.getSetting('displayWidth');
-            if (savedWidth !== null && savedWidth !== undefined) {
+            // 若布局模式已激活（横向/看板）：宽度由 LayoutMode 管理，跳过覆盖，
+            // 避免异步读回旧设置宽度覆盖 LayoutMode 刚设的 800/1200，导致误升看板。
+            const layoutActive = (typeof LayoutMode !== 'undefined' && LayoutMode._mode && LayoutMode._mode !== 'none');
+            if (!layoutActive && savedWidth !== null && savedWidth !== undefined) {
                 const val = Number(savedWidth);
                 if (!isNaN(val) && val >= this.MIN_WIDTH && val <= 9999) {
                     this._applyWidth(val, false);

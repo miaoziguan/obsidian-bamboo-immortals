@@ -128,6 +128,11 @@ export const LayoutMode = {
                 const currentW = DisplayManager._currentWidth || 0;
                 this._savedWidth = currentW > 0 ? currentW : null;
                 DisplayManager._applyWidth(autoBumpTo, true);
+                // 同步持久化 800：避免 DisplayManager.init() 异步读回旧设置宽度（如 ≥1080）
+                // 覆盖本次 800，导致横向模式在 _justEntered 保护期后误升看板。
+                if (typeof storageManager !== 'undefined' && storageManager.putSetting) {
+                    try { storageManager.putSetting('displayWidth', autoBumpTo); } catch (e) { /* 不阻塞 */ }
+                }
                 widthAutoBumped = true;
             } else {
                 let cw = 0;
@@ -136,6 +141,10 @@ export const LayoutMode = {
                 if (cw < minWidth && widthSetting < minWidth) {
                     this._savedWidth = widthSetting > 0 ? widthSetting : null;
                     DisplayManager._applyWidth(autoBumpTo, true);
+                    // 同步持久化（看板 autoBumpTo=1200）：防止 DisplayManager.init 异步读回旧值覆盖
+                    if (typeof storageManager !== 'undefined' && storageManager.putSetting) {
+                        try { storageManager.putSetting('displayWidth', autoBumpTo); } catch (e) { /* 不阻塞 */ }
+                    }
                     widthAutoBumped = true;
                 }
             }

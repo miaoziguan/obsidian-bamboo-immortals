@@ -10,6 +10,10 @@ export const SettingsModal = {
         const currentInterval = this.autoSaveInterval;
         const { ui } = store.getState();
         const syncChecked = ui.autoSyncTheme ? 'checked' : '';
+        // 跨天自动刷新当前配置（从 CrossDayRefresh 全局读取，未就绪则用默认 0 点）
+        const cd = (typeof window !== 'undefined' && window.CrossDayRefresh) ? window.CrossDayRefresh : null;
+        const cdMode = cd ? cd._mode : '00:00';
+        const cdCustom = cd ? cd._custom : '00:00';
 
         return `
             <div class="fab-tab-content active" id="tab-content-general">
@@ -97,6 +101,19 @@ export const SettingsModal = {
                             <option value="5000" ${currentInterval === 5000 ? 'selected' : ''}>5秒</option>
                             <option value="10000" ${currentInterval === 10000 ? 'selected' : ''}>10秒</option>
                         </select>
+                    </div>
+                    <div class="settings-item">
+                        <div class="settings-item-info">
+                            <div class="settings-item-label">跨天自动刷新</div>
+                            <div class="settings-item-desc">到设定时刻自动刷新首页到当天；从后台切回也会检查</div>
+                        </div>
+                        <div class="settings-item-control-row">
+                            <select class="form-input settings-select-sm" id="crossDayMode">
+                                <option value="00:00" ${cdMode === '00:00' ? 'selected' : ''}>0 点（默认）</option>
+                                <option value="custom" ${cdMode === 'custom' ? 'selected' : ''}>自定义时间</option>
+                            </select>
+                            <input type="time" class="form-input settings-time-sm" id="crossDayTime" value="${cdCustom}" ${cdMode === 'custom' ? '' : 'hidden'}>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -327,6 +344,19 @@ export const SettingsModal = {
                         }
                     });
                 }
+                // 跨天自动刷新
+                const cdMode = byId('crossDayMode');
+                const cdTime = byId('crossDayTime');
+                if (cdMode && cdTime) {
+                    const saveCrossDay = () => {
+                        const mode = (cdMode.value === 'custom') ? 'custom' : '00:00';
+                        cdTime.hidden = (mode !== 'custom');
+                        const custom = (mode === 'custom') ? (cdTime.value || '00:00') : '00:00';
+                        this.setCrossDaySchedule(mode, custom);
+                    };
+                    cdMode.addEventListener('change', saveCrossDay);
+                    cdTime.addEventListener('change', saveCrossDay);
+                }
             }
         });
     },
@@ -350,6 +380,15 @@ export const SettingsModal = {
             storageManager.putSetting('autoSaveInterval', num).catch(() => {});
         }
         Toast.showToast(`自动保存间隔设为 ${num / 1000} 秒`, 'success');
+    },
+
+    setCrossDaySchedule(mode, custom) {
+        // 持久化与定时器排期由独立引擎 CrossDayRefresh 负责
+        if (typeof window !== 'undefined' && window.CrossDayRefresh && typeof window.CrossDayRefresh.setSchedule === 'function') {
+            window.CrossDayRefresh.setSchedule(mode, custom);
+        }
+        const label = (mode === 'custom') ? `自定义时间 ${custom}` : '0 点（默认）';
+        Toast.showToast(`跨天自动刷新设为 ${label}`, 'success');
     },
 
     // ---- 通用 Tab 操作（主题同步）----

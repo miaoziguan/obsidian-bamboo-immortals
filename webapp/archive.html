@@ -16886,6 +16886,17 @@ input[type="number"].goal-inline-edit-input {
     font-size: var(--type-micro);
     min-height: var(--touch-target);
 }
+.settings-item-control-row {
+    display: flex;
+    gap: var(--space-2);
+    align-items: center;
+}
+.settings-time-sm {
+    max-width: 110px;
+    padding: 4px 8px;
+    font-size: var(--type-micro);
+    min-height: var(--touch-target);
+}
 .settings-backup-status {
     display: flex;
     justify-content: space-between;
@@ -23807,41 +23818,6 @@ nav .date-display-sub {
 
 :host(.dark) .display-hue-slider::-moz-range-thumb {
     border-color: rgba(var(--primary-rgb), 0.35);
-}
-
-/* ===== 跨天自动刷新控件 ===== */
-.display-refresh-row {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-}
-
-.display-refresh-select,
-.display-refresh-time {
-    height: var(--touch-target);
-    min-height: var(--touch-target);
-    border: 1px solid var(--border-light);
-    background: var(--btn-secondary-bg);
-    color: var(--text-primary);
-    border-radius: var(--radius-sm);
-    font-size: var(--type-sm);
-    padding: 0 8px;
-}
-
-.display-refresh-select {
-    flex: 1;
-    cursor: pointer;
-}
-
-.display-refresh-time {
-    width: 110px;
-}
-
-.display-refresh-hint {
-    margin-top: 8px;
-    font-size: var(--type-xs);
-    color: var(--text-muted);
-    line-height: 1.5;
 }
 
 /* ===== 响应式 ===== */

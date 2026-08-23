@@ -28,13 +28,6 @@ export const DisplayManager = {
     _transitionTimer: null,
     _currentWidth: null,
     _resizeObserver: null,
-    _autoRefreshMode: '00:00',   // 跨天刷新模式：'00:00'(默认) | 'custom'
-    _autoRefreshCustom: '00:00', // 自定义时刻 HH:MM（仅 mode=custom 生效）
-    _crossDayTimer: null,
-    _crossDayVisibilityBound: false,
-    _refreshSaveTimer: null,
-    _refreshSelectEl: null,
-    _refreshTimeEl: null,
 
     /* ===== 预设档位 ===== */
     PRESETS: [
@@ -122,9 +115,6 @@ export const DisplayManager = {
         // 绑定事件
         this._bindEvents();
 
-        // 跨天自动刷新：排定时器 + 可见性兜底
-        this._armCrossDayTimer();
-
         // 监听容器尺寸变化（移动端旋转/侧栏缩放时重算 rw-* 断点）
         this._observeContainerResize();
     },
@@ -196,23 +186,6 @@ export const DisplayManager = {
             this._applyLightness(this.DEFAULT_LIGHTNESS);
         }
 
-        try {
-            const savedRefresh = await storageManager.getSetting('autoRefreshTime');
-            // 跨天自动刷新时刻：默认 0 点（"00:00"）；"custom" 配 autoRefreshCustom 存 HH:MM
-            let refreshMode = (savedRefresh === 'custom') ? 'custom' : '00:00';
-            let refreshCustom = '00:00';
-            if (refreshMode === 'custom') {
-                const customVal = await storageManager.getSetting('autoRefreshCustom');
-                if (typeof customVal === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(customVal)) {
-                    refreshCustom = customVal;
-                }
-            }
-            this._autoRefreshMode = refreshMode;
-            this._autoRefreshCustom = refreshCustom;
-        } catch (e) {
-            this._autoRefreshMode = '00:00';
-            this._autoRefreshCustom = '00:00';
-        }
     },
 
     /* ===== 应用宽度到 CSS ===== */
@@ -469,23 +442,6 @@ export const DisplayManager = {
         }, 500);
     },
 
-    _scheduleSaveRefresh(mode, custom) {
-        clearTimeout(this._refreshSaveTimer);
-        this._refreshSaveTimer = setTimeout(async () => {
-            try {
-                await storageManager.putSetting('autoRefreshTime', mode);
-                if (mode === 'custom') {
-                    await storageManager.putSetting('autoRefreshCustom', custom);
-                }
-                this._autoRefreshMode = mode;
-                this._autoRefreshCustom = custom;
-                this._armCrossDayTimer();
-            } catch (e) {
-                console.warn('[DisplayManager] Failed to save auto-refresh setting:', e.message);
-            }
-        }, 300);
-    },
-
     _scheduleSaveHue(value) {
         clearTimeout(this._hueSaveTimer);
         this._hueSaveTimer = setTimeout(async () => {
@@ -506,74 +462,6 @@ export const DisplayManager = {
                 console.warn('[DisplayManager] Failed to save lightness setting:', e.message);
             }
         }, 500);
-    },
-
-    /* ===== 跨天自动刷新引擎 =====
-     * 设计：每日在设定时刻（默认 0 点，可自定义 HH:MM）整页刷新首页到当天。
-     * 双保险：① setTimeout 计算到下一个设定时刻，到点刷新并重新排期；
-     *        ② visibilitychange 回到可见时比对真实日期，若已跨天立即刷新
-     *          （覆盖 overnight 挂着但午夜 tab 被节流、setTimeout 未触发的边缘情况）。
-     */
-    _getRefreshTime() {
-        if (this._autoRefreshMode === 'custom' && this._autoRefreshCustom) {
-            return this._autoRefreshCustom; // "HH:MM"
-        }
-        return '00:00';
-    },
-
-    _armCrossDayTimer() {
-        if (this._crossDayTimer) {
-            clearTimeout(this._crossDayTimer);
-            this._crossDayTimer = null;
-        }
-        // 已绑定过可见性监听则跳过重复绑定
-        if (!this._crossDayVisibilityBound) {
-            document.addEventListener('visibilitychange', () => {
-                if (document.visibilityState === 'visible') {
-                    this._checkCrossDayAndRefresh();
-                }
-            });
-            this._crossDayVisibilityBound = true;
-        }
-        const [h, m] = this._getRefreshTime().split(':').map(Number);
-        const now = new Date();
-        const next = new Date(now);
-        next.setHours(h, m, 0, 0);
-        if (next <= now) next.setDate(next.getDate() + 1); // 已过今天设定时刻 → 明天
-        const delay = next.getTime() - now.getTime();
-        this._crossDayTimer = setTimeout(() => {
-            this._doCrossDayRefresh();
-            this._armCrossDayTimer(); // 排下一周期
-        }, delay);
-    },
-
-    _checkCrossDayAndRefresh() {
-        try {
-            const store = (typeof window !== 'undefined' && window.store) || null;
-            if (!store || !store.state) return;
-            const shown = (typeof window.formatDate === 'function')
-                ? window.formatDate(store.state.currentDate)
-                : null;
-            const today = (typeof window.formatDate === 'function')
-                ? window.formatDate(new Date())
-                : null;
-            if (shown && today && shown !== today) {
-                this._doCrossDayRefresh();
-            }
-        } catch (e) { /* 不阻塞 */ }
-    },
-
-    _doCrossDayRefresh() {
-        try {
-            const store = (typeof window !== 'undefined' && window.store) || null;
-            if (!store || typeof store.goToDate !== 'function') return;
-            store.goToDate(new Date()); // 切回真实今天
-            if (typeof window.renderAll === 'function') {
-                window.renderAll(); // 整页重渲染
-            }
-        } catch (e) {
-            console.warn('[DisplayManager] Cross-day refresh failed:', e && e.message);
-        }
     },
 
     /* ===== 应用明度 ===== */
@@ -1146,51 +1034,6 @@ export const DisplayManager = {
         lightnessSection.appendChild(lightnessPresetRow);
         panel.appendChild(lightnessSection);
 
-        // ======== 跨天自动刷新区 ========
-        const refreshSection = document.createElement('div');
-        refreshSection.className = 'display-section';
-
-        const refreshLabel = document.createElement('div');
-        refreshLabel.className = 'display-section-label';
-        refreshLabel.innerHTML = `
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>
-            <span>跨天自动刷新</span>
-        `;
-        refreshSection.appendChild(refreshLabel);
-
-        // 模式选择：0 点 / 自定义
-        const refreshModeRow = document.createElement('div');
-        refreshModeRow.className = 'display-refresh-row';
-
-        const refreshSelect = document.createElement('select');
-        refreshSelect.className = 'display-refresh-select';
-        refreshSelect.setAttribute('aria-label', '跨天刷新时间');
-        refreshSelect.innerHTML = `
-            <option value="00:00">0 点（默认）</option>
-            <option value="custom">自定义时间</option>
-        `;
-        refreshSelect.value = (this._autoRefreshMode === 'custom') ? 'custom' : '00:00';
-        this._refreshSelectEl = refreshSelect;
-
-        // 自定义时间输入框（选 custom 时显示）
-        const refreshTimeInput = document.createElement('input');
-        refreshTimeInput.type = 'time';
-        refreshTimeInput.className = 'display-refresh-time';
-        refreshTimeInput.value = this._autoRefreshCustom || '00:00';
-        refreshTimeInput.hidden = (this._autoRefreshMode !== 'custom');
-        this._refreshTimeEl = refreshTimeInput;
-
-        refreshModeRow.appendChild(refreshSelect);
-        refreshModeRow.appendChild(refreshTimeInput);
-        refreshSection.appendChild(refreshModeRow);
-
-        const refreshHint = document.createElement('div');
-        refreshHint.className = 'display-refresh-hint';
-        refreshHint.textContent = '到设定时刻自动刷新首页到当天；从后台切回也会检查。';
-        refreshSection.appendChild(refreshHint);
-
-        panel.appendChild(refreshSection);
-
         // 挂载到 body
         modalMount().appendChild(panel);
         this._panelEl = panel;
@@ -1329,24 +1172,6 @@ export const DisplayManager = {
                 this._scheduleSaveLightness(val);
             });
         });
-
-        // 跨天自动刷新：模式选择
-        if (this._refreshSelectEl) {
-            this._refreshSelectEl.addEventListener('change', (e) => {
-                const mode = (e.target.value === 'custom') ? 'custom' : '00:00';
-                if (this._refreshTimeEl) this._refreshTimeEl.hidden = (mode !== 'custom');
-                const custom = (mode === 'custom' && this._refreshTimeEl) ? this._refreshTimeEl.value : '00:00';
-                this._scheduleSaveRefresh(mode, custom);
-            });
-        }
-        // 跨天自动刷新：自定义时间
-        if (this._refreshTimeEl) {
-            this._refreshTimeEl.addEventListener('change', (e) => {
-                const val = e.target.value || '00:00';
-                const mode = (this._refreshSelectEl && this._refreshSelectEl.value === 'custom') ? 'custom' : '00:00';
-                this._scheduleSaveRefresh(mode, val);
-            });
-        }
 
         // ESC 关闭
         document.addEventListener('keydown', (e) => {

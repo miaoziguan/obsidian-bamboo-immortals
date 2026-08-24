@@ -193,22 +193,50 @@ export class DailyReviewView extends ItemView {
       return plugin?.getBambooCoinAvailableBalance ? plugin.getBambooCoinAvailableBalance() : null;
     });
 
+    console.time('DailyReviewView-onOpen');
     // 扫描自定义主题
+    const scanTimer = 'DailyReviewView-scanCustomThemes';
+    console.time(scanTimer);
+    console.time('DailyReviewView-onOpen');
     const customThemes = await this.scanCustomThemes();
+    console.timeEnd(scanTimer);
     this.appAPI.setCustomThemes(customThemes);
 
-    // 创建 AppHost 并构建 blob URL
+    // 创建 AppHost（版本守卫 + blob URL 构建都延迟到 _mountWebapp，避免阻塞 onOpen）
     const version = (this.plugin as { manifest?: { version?: string } } | undefined)?.manifest?.version ?? '';
     this.appHost = new AppHost(this.app, this.pluginDir, version);
 
+    // 移动端视图片以「延迟视图(deferred view)」加载：onOpen 若被首次联网下载 webapp
+    // 阻塞过久，会触发 Obsidian 的 "Failed to load deferred view Timeout" 直接抛弃视图，
+    // 表现为永久卡在「加载中」。故把耗时挂载拆到独立异步方法，onOpen 用 void 触发后
+    // 立即返回，延迟视图超时阈值内立起空容器；webapp 就绪后再填充 iframe（桌面同效）。
+    void this._mountWebapp(container);
+    console.timeEnd('DailyReviewView-onOpen');
+  }
+
+  /**
+   * 异步挂载 webapp：先立起 loading 容器、建立通信层，再 await buildBlobUrl
+   * （首次安装/升级可能联网下载 1MB webapp.zip）拿到 blobUrl 并赋予 iframe.src。
+   * 由 onOpen 以 void 调用，避免阻塞延迟视图加载超时。
+   */
+  private async _mountWebapp(container: HTMLElement): Promise<void> {
     const loadingEl = container.createDiv({
       text: '竹林修仙传加载中…',
       cls: 'bamboo-review-loading',
     });
 
     try {
-      this.appAPI.startListening();
-      const blobUrl = await this.appHost.buildBlobUrl();
+      this.appAPI?.startListening();
+      const blobTimer = 'DailyReviewView-buildBlobUrl';
+      console.time(blobTimer);
+      const blobUrl = await this.appHost!.buildBlobUrl();
+      console.timeEnd(blobTimer);
+
+      // 视图可能已在加载期间被关闭
+      if (!container.isConnected) {
+        loadingEl.remove();
+        return;
+      }
 
       // 先创建 iframe 并绑定通信层，再赋予 src —— 确保 webapp 启动发来的
       // app:ready 到达时 this.iframe 已就绪，避免 onMessage 因 source 校验不通过
@@ -219,7 +247,7 @@ export class DailyReviewView extends ItemView {
           allow: 'camera; microphone; clipboard-read; clipboard-write',
         },
       });
-      this.appAPI.bindIframe(this.iframe);
+      this.appAPI?.bindIframe(this.iframe);
       loadingEl.remove();
 
       this.iframe.src = blobUrl;
@@ -235,6 +263,7 @@ export class DailyReviewView extends ItemView {
       });
     }
   }
+
 
   /**
    * 把视图移动到中央工作区（方案 Y：重建视图 + 恢复布局模式）。

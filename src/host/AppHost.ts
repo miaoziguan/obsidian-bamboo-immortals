@@ -1,4 +1,4 @@
-import { App, DataAdapter, normalizePath, requestUrl, Notice } from 'obsidian';
+import { App, DataAdapter, normalizePath, Notice } from 'obsidian';
 import { unzipSync } from 'fflate';
 
 /**
@@ -50,7 +50,9 @@ export class AppHost {
     if (!p) {
       const host = new AppHost(app, pluginDir, version);
       p = host.ensureWebapp(app.vault.adapter).catch(() => {
-        // 后台预拉取失败不阻断，打开视图时会重试
+        // 后台预拉取失败不阻断；失败时清除锁，避免视图打开时直接拿到已落定的
+        // 失败 Promise 而跳过真正的重试/下载。
+        AppHost.downloadLocks.delete(key);
       });
       AppHost.downloadLocks.set(key, p);
       // Promise 落定后释放锁，允许下次升级再触发
@@ -60,11 +62,15 @@ export class AppHost {
   }
 
   async buildBlobUrl(entryFile: string = 'app.html'): Promise<string> {
+    const timer = `buildBlobUrl-${entryFile}`;
+    console.time(timer);
     const adapter = this.app.vault.adapter;
 
     // 自愈：版本不符时从对应版本 Release 自举下载并解压覆盖。
     // 下载失败（多为网络/防火墙问题）不静默吞掉——明确告知用户是网络导致、
     // 建议开启魔法后重试，但仍用本地已有旧版打开视图（不阻断使用）。
+    const ensureTimer = `${timer}-ensureWebapp`;
+    console.time(ensureTimer);
     try {
       await this.ensureWebapp(adapter);
     } catch (e) {
@@ -75,20 +81,28 @@ export class AppHost {
         10000
       );
     }
+    console.timeEnd(ensureTimer);
 
     const appHtmlPath = normalizePath(`${this.webappDir}/${entryFile}`);
     let html: string;
+    const readTimer = `${timer}-readHtml`;
+    console.time(readTimer);
     try {
       html = await adapter.read(appHtmlPath);
     } catch {
       throw new Error(`无法读取 webapp/${entryFile}，且自动下载失败。请尝试在 Obsidian 中重新安装本插件，或手动放置 webapp/ 目录`);
     }
+    console.timeEnd(readTimer);
 
     // 整页 HTML 已自包含（CSS 内联 + bundle 内联为静态 <script>），直接 blob 交给 iframe。
     // 运行时不创建、不拼接任何 script 元素。
+    const blobTimer = `${timer}-createBlob`;
+    console.time(blobTimer);
     const pageBlob = new Blob([html], { type: 'text/html' });
     const pageUrl = URL.createObjectURL(pageBlob);
     this.blobUrls.push(pageUrl);
+    console.timeEnd(blobTimer);
+    console.timeEnd(timer);
     return pageUrl;
   }
 
@@ -101,12 +115,18 @@ export class AppHost {
    *     webapp 能随插件版本经 GitHub Release 送达更新。
    */
   private async ensureWebapp(adapter: DataAdapter): Promise<void> {
+    const timer = `ensureWebapp-${this.version}`;
+    console.time(timer);
     const appHtmlPath = normalizePath(`${this.webappDir}/app.html`);
     const htmlExists = await this.fileExists(adapter, appHtmlPath);
+    console.log(`[AppHost] webappDir=${this.webappDir}, app.html exists=${htmlExists}, pluginVersion=${this.version}`);
 
     if (!htmlExists) {
       // 完全缺失（首次安装 / 文件被误删）：自举下载兜底
-      return this._downloadGuarded(adapter);
+      console.log('[AppHost] app.html 缺失，触发联网自举下载');
+      const p = this._downloadGuarded(adapter);
+      console.timeEnd(timer);
+      return p;
     }
 
     // 版本戳：webapp/.webapp-version 由 bundle-webapp.mjs 生成，随 webapp.zip 分发。
@@ -118,19 +138,33 @@ export class AppHost {
     } catch {
       localVersion = null; // 戳缺失
     }
+    console.log(`[AppHost] local webapp version=${localVersion ?? '(missing)'}`);
 
     // 戳缺失 → 默认信任本地（开发机 / 历史遗留），但本地 app.html 若明显损坏
     // （如历史并发下载留下的半截文件）则仍强制联网更新，避免持续空白。
     if (!localVersion) {
-      if (await this._isAppHtmlHealthy(adapter)) return;
-      return this._downloadGuarded(adapter);
+      const healthy = await this._isAppHtmlHealthy(adapter);
+      if (healthy) {
+        console.log('[AppHost] 版本戳缺失但 app.html 健康，信任本地');
+        console.timeEnd(timer);
+        return;
+      }
+      console.log('[AppHost] 版本戳缺失且 app.html 损坏，触发联网自举下载');
+      const p = this._downloadGuarded(adapter);
+      console.timeEnd(timer);
+      return p;
     }
     // 本地版本 >= 当前版本 → 同版或开发版，不下载
     if (AppHost._compareVersion(localVersion, this.version) >= 0) {
+      console.log('[AppHost] 本地 webapp 已最新或更新，跳过下载');
+      console.timeEnd(timer);
       return;
     }
     // 本地版本 < 当前版本 → 过期，联网更新（走去重锁，避免多路并发重复下载）
-    return this._downloadGuarded(adapter);
+    console.log(`[AppHost] 本地 webapp 过期(${localVersion} < ${this.version})，触发联网更新`);
+    const p = this._downloadGuarded(adapter);
+    console.timeEnd(timer);
+    return p;
   }
 
   /** 经 downloadLocks 去重的下载入口：并发调用（prefetch / buildBlobUrl）共享同一 Promise */
@@ -149,17 +183,40 @@ export class AppHost {
   private async _downloadAndExtract(adapter: DataAdapter): Promise<void> {
     if (!this.version) return;
     const url = `https://github.com/${this.repo}/releases/download/${this.version}/webapp.zip`;
+    console.log(`[AppHost] 开始下载 webapp.zip: ${url}`);
+    const dlTimer = 'download-webapp-zip';
+    console.time(dlTimer);
     try {
-      const resp = await requestUrl({ url, method: 'GET' });
-      if (resp.status < 200 || resp.status >= 300 || !resp.arrayBuffer) {
+      // 用 fetch + AbortSignal.timeout（requestUrl 类型不支持 timeout）：
+      // 避免国内访问 GitHub 长时间挂起导致视图永久卡「加载中」。
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
+      let resp: Response;
+      try {
+        resp = await fetch(url, { signal: controller.signal });
+      } finally {
+        clearTimeout(timeoutId);
+      }
+      if (!resp.ok || !resp.arrayBuffer) {
         throw new Error(`下载返回异常状态 ${resp.status}`);
       }
-      await this.extractZip(adapter, resp.arrayBuffer);
+      const buf = await resp.arrayBuffer();
+      console.timeEnd(dlTimer);
+      console.log(`[AppHost] webapp.zip 下载完成，大小 ${buf.byteLength} bytes，开始解压`);
+      const extractTimer = 'extract-webapp-zip';
+      console.time(extractTimer);
+      await this.extractZip(adapter, buf);
+      console.timeEnd(extractTimer);
+      console.log('[AppHost] webapp.zip 解压完成');
     } catch (e) {
+      console.timeEnd(dlTimer);
+      const msg = e instanceof Error ? e.message : '未知错误';
+      const isTimeout = /timeout|aborted|timed out|the operation was aborted/i.test(msg);
       throw new Error(
-        `无法自动获取 webapp（${e instanceof Error ? e.message : '未知错误'}）。` +
-        '多为网络/防火墙问题：请检查网络或开启代理（魔法）后重试；' +
-        '也可在 Obsidian 中重新安装本插件。'
+        `无法自动获取 webapp（${msg}）。` +
+        (isTimeout
+          ? '下载超时（30s）：多为网络/防火墙问题。请检查网络或开启代理（魔法）后，在设置中重新打开本视图即可重试。'
+          : '多为网络/防火墙问题：请检查网络或开启代理（魔法）后重试；也可在 Obsidian 中重新安装本插件。')
       );
     }
   }

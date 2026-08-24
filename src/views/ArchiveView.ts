@@ -80,22 +80,47 @@ export class ArchiveView extends ItemView {
     );
     await this.appAPI.ensureStructure();
 
+    console.time('ArchiveView-onOpen');
     // 扫描自定义主题
+    const scanTimer = 'ArchiveView-scanCustomThemes';
+    console.time(scanTimer);
     const customThemes = await this.scanCustomThemes();
+    console.timeEnd(scanTimer);
     this.appAPI.setCustomThemes(customThemes);
 
-    // 创建 AppHost 并构建 blob URL（加载 archive.html）
+    // 创建 AppHost（版本守卫 + blob URL 构建延迟到 _mountWebapp，避免阻塞 onOpen）
     const version = (this.plugin as { manifest?: { version?: string } } | undefined)?.manifest?.version ?? '';
     this.appHost = new AppHost(this.app, this.pluginDir, version);
 
+    // 同 DailyReviewView：onOpen 用 void 触发异步挂载，避免首次联网下载 webapp 阻塞
+    // 延迟视图加载超时（表现为永久卡「加载中」）。
+    void this._mountWebapp(container);
+    console.timeEnd('ArchiveView-onOpen');
+  }
+
+  /**
+   * 异步挂载 webapp（加载 archive.html）：先立起 loading 容器、建立通信层，
+   * 再 await buildBlobUrl（首次安装/升级可能联网下载 webapp.zip）拿到 blobUrl 赋给 iframe。
+   * 由 onOpen 以 void 调用，不阻塞延迟视图加载超时。
+   */
+  private async _mountWebapp(container: HTMLElement): Promise<void> {
     const loadingEl = container.createDiv({
       text: '目标归档加载中…',
       cls: 'bamboo-review-loading',
     });
 
     try {
-      this.appAPI.startListening();
-      const blobUrl = await this.appHost.buildBlobUrl('archive.html');
+      this.appAPI?.startListening();
+      const blobTimer = 'ArchiveView-buildBlobUrl';
+      console.time(blobTimer);
+      const blobUrl = await this.appHost!.buildBlobUrl('archive.html');
+      console.timeEnd(blobTimer);
+
+      // 视图可能已在加载期间被关闭
+      if (!container.isConnected) {
+        loadingEl.remove();
+        return;
+      }
 
       this.iframe = container.createEl('iframe', {
         cls: 'bamboo-review-frame',
@@ -106,7 +131,7 @@ export class ArchiveView extends ItemView {
       });
 
       loadingEl.remove();
-      this.appAPI.bindIframe(this.iframe);
+      this.appAPI?.bindIframe(this.iframe);
 
       this.cssChangeRef = this.app.workspace.on('css-change', () => {
         this.appAPI?.onThemeChanged(this.settings.followObsidianTheme);
@@ -119,6 +144,7 @@ export class ArchiveView extends ItemView {
       });
     }
   }
+
 
   async onClose(): Promise<void> {
     if (this.cssChangeRef) {

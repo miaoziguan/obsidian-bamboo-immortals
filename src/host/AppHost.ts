@@ -25,6 +25,13 @@ export class AppHost {
   private app: App;
   private webappDir: string;
   private blobUrls: string[] = [];
+
+  /** 静态缓存已编码的 data: URL（跨视图实例共享，消除切布局模式重建视图时
+   *  反复同步 encodeURIComponent(1.5MB) 的主线程卡顿 / 白屏）。
+   *  仅缓存 data: URL（blob: 会被 revokeObjectURL 失效，不可跨实例共享）。
+   *  data: 字符串无资源泄漏，生命周期随进程，故 destroy 不清空。 */
+  private static cachedPageUrl: string | null = null;
+  private static cachedHtmlLength = -1;
   private readonly version: string;
   private readonly repo = 'miaoziguan/obsidian-bamboo-immortals';
 
@@ -106,7 +113,19 @@ export class AppHost {
     //   编码用 encodeURIComponent（非 base64）以减小体积膨胀（~10-20% vs base64 ~33%）。
     const blobTimer = `${timer}-createUrl`;
     console.time(blobTimer);
+    // 内容长度未变时复用已编码的 data: URL，避免切布局模式重建视图时
+    // 反复同步 encodeURIComponent(1.5MB) 造成主线程卡顿 / 白屏。
+    if (AppHost.cachedPageUrl && AppHost.cachedHtmlLength === html.length) {
+      console.timeEnd(blobTimer);
+      console.timeEnd(timer);
+      return AppHost.cachedPageUrl;
+    }
     const pageUrl = this.buildPageUrl(html);
+    // 仅 data: URL 可安全缓存（blob: 会被 destroy 的 revokeObjectURL 失效，多视图共享会崩）
+    if (pageUrl.startsWith('data:')) {
+      AppHost.cachedPageUrl = pageUrl;
+      AppHost.cachedHtmlLength = html.length;
+    }
     console.timeEnd(blobTimer);
     console.timeEnd(timer);
     return pageUrl;
@@ -427,5 +446,7 @@ export class AppHost {
       URL.revokeObjectURL(url);
     }
     this.blobUrls = [];
+    // 注意：cachedPageUrl 为静态字段（data: 字符串无资源泄漏、跨实例复用），
+    // 不在 destroy 清空——避免切布局模式重建视图后丢失缓存、再次同步编码 1.5MB。
   }
 }

@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { zipSync, strToU8 } from 'fflate';
 import { createMockApp } from '../../../test/mocks/obsidian';
 import { AppHost } from '../AppHost';
@@ -86,6 +86,12 @@ describe('AppHost.extractZip（fflate 实现）', () => {
  * Shadow DOM 有兼容性限制，统一改用 data: URL 可绕开该限制（修复 B）。
  */
 describe('AppHost.buildBlobUrl 返回 data: URL（修复 B）', () => {
+  beforeEach(() => {
+    // 静态缓存跨实例共享，测试间需重置，避免命中上一用例的缓存
+    (AppHost as unknown as { cachedPageUrl: string | null }).cachedPageUrl = null;
+    (AppHost as unknown as { cachedHtmlLength: number }).cachedHtmlLength = -1;
+  });
+
   it('webapp 已存在时返回 data: 文本 HTML URL，而非 blob:', async () => {
     const { app, adapter } = createMockApp();
     // 预置自包含 app.html（版本戳同版，避免触发联网下载）
@@ -110,5 +116,22 @@ describe('AppHost.buildBlobUrl 返回 data: URL（修复 B）', () => {
     const host = new AppHost(app as never, 'plugins/bamboo', '2.2.5');
     const url = await host.buildBlobUrl();
     expect(url.startsWith('blob:')).toBe(true);
+  });
+
+  it('静态缓存跨实例复用：模拟切布局重建视图，第二次 buildBlobUrl 直接返回缓存（消除重复编码卡顿）', async () => {
+    const { app, adapter } = createMockApp();
+    await adapter.write('plugins/bamboo/webapp/app.html', '<!DOCTYPE html><html><body>竹</body></html>');
+    await adapter.write('plugins/bamboo/webapp/.webapp-version', '2.2.5');
+
+    // 实例 1：首次构建（编码 1.5MB），写入静态缓存
+    const host1 = new AppHost(app as never, 'plugins/bamboo', '2.2.5');
+    const url1 = await host1.buildBlobUrl();
+    expect(url1.startsWith('data:')).toBe(true);
+
+    // 实例 2：模拟 moveViewToCenter 重建视图（新 AppHost 实例）
+    const host2 = new AppHost(app as never, 'plugins/bamboo', '2.2.5');
+    const url2 = await host2.buildBlobUrl();
+    // 内容长度未变 → 必须命中静态缓存，返回同一 data: URL（不重新同步编码）
+    expect(url2).toBe(url1);
   });
 });

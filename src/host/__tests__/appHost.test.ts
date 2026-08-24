@@ -79,3 +79,36 @@ describe('AppHost.extractZip（fflate 实现）', () => {
     expect(await adapter.exists('plugins/bamboo/webapp/app.html')).toBe(true);
   });
 });
+
+/**
+ * 锁定 buildBlobUrl 返回 data: URL（而非 blob:）。
+ * 鸿蒙 ArkWeb / 老旧安卓 WebView 对 blob: 源 iframe 加载 <script type=module> /
+ * Shadow DOM 有兼容性限制，统一改用 data: URL 可绕开该限制（修复 B）。
+ */
+describe('AppHost.buildBlobUrl 返回 data: URL（修复 B）', () => {
+  it('webapp 已存在时返回 data: 文本 HTML URL，而非 blob:', async () => {
+    const { app, adapter } = createMockApp();
+    // 预置自包含 app.html（版本戳同版，避免触发联网下载）
+    await adapter.write('plugins/bamboo/webapp/app.html', '<!DOCTYPE html><html><body>竹</body></html>');
+    await adapter.write('plugins/bamboo/webapp/.webapp-version', '2.2.5');
+
+    const host = new AppHost(app as never, 'plugins/bamboo', '2.2.5');
+    const url = await host.buildBlobUrl();
+
+    expect(url.startsWith('data:text/html')).toBe(true);
+    expect(url.startsWith('blob:')).toBe(false);
+    // 中文内容经 encodeURIComponent 后正确编码，可还原
+    expect(decodeURIComponent(url)).toContain('竹');
+  });
+
+  it('data: URL 超 2MB 时回退 blob:（兼容极端环境长度上限）', async () => {
+    const { app, adapter } = createMockApp();
+    const big = '<!-- ' + 'x'.repeat(3 * 1024 * 1024) + ' --><html><body>ok</body></html>';
+    await adapter.write('plugins/bamboo/webapp/app.html', big);
+    await adapter.write('plugins/bamboo/webapp/.webapp-version', '2.2.5');
+
+    const host = new AppHost(app as never, 'plugins/bamboo', '2.2.5');
+    const url = await host.buildBlobUrl();
+    expect(url.startsWith('blob:')).toBe(true);
+  });
+});

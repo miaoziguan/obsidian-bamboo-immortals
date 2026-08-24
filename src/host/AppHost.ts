@@ -97,16 +97,36 @@ export class AppHost {
     }
     console.timeEnd(readTimer);
 
-    // 整页 HTML 已自包含（CSS 内联 + bundle 内联为静态 <script>），直接 blob 交给 iframe。
+    // 整页 HTML 已自包含（CSS 内联 + bundle 内联为静态 <script>）。
     // 运行时不创建、不拼接任何 script 元素。
-    const blobTimer = `${timer}-createBlob`;
+    // 统一用 data: URL 承载（而非 blob:）：
+    //   鸿蒙 ArkWeb（及老旧安卓 WebView）对 blob: 源 iframe 加载 <script type=module> /
+    //   Shadow DOM 有兼容性限制，data: URL 在桌面 Chromium / 安卓 WebView / 鸿蒙 ArkWeb
+    //   三类平台上兼容性均 ≥ blob:，可绕开 blob 源 opaque origin 下的执行受限问题。
+    //   编码用 encodeURIComponent（非 base64）以减小体积膨胀（~10-20% vs base64 ~33%）。
+    const blobTimer = `${timer}-createUrl`;
     console.time(blobTimer);
-    const pageBlob = new Blob([html], { type: 'text/html' });
-    const pageUrl = URL.createObjectURL(pageBlob);
-    this.blobUrls.push(pageUrl);
+    const pageUrl = this.buildPageUrl(html);
     console.timeEnd(blobTimer);
     console.timeEnd(timer);
     return pageUrl;
+  }
+
+  /**
+   * 生成承载自包含 HTML 的 iframe src。
+   * 优先 data: URL；当 data: 超长（部分环境对 URL 长度有上限）时回退 blob:
+   * （桌面端原路径，兼容性兜底）。
+   * @param html 自包含 HTML 字符串（CSS 内联 + bundle 内联）
+   */
+  private buildPageUrl(html: string): string {
+    const dataUrl = `data:text/html;charset=utf-8,${encodeURIComponent(html)}`;
+    // 极端环境对 data: URL 长度设限（通常 2MB+），超界回退 blob:。
+    if (dataUrl.length > 2 * 1024 * 1024) {
+      console.warn('[AppHost] data: URL 超长，回退 blob:');
+      const blob = new Blob([html], { type: 'text/html' });
+      return URL.createObjectURL(blob);
+    }
+    return dataUrl;
   }
 
   /**

@@ -180,6 +180,28 @@ export class AppHost {
     }
   }
 
+  // 默认按文本用 adapter.write（UTF-8 字符串），仅已知二进制扩展名才 writeBinary。
+  // 关键：app.html/css/js 等 1MB+ 文本若用 writeBinary 当二进制写，在安卓
+  // CapacitorAdapter 下有不确定性（社区报告大 buffer 写入有 truncate/挂起风险），
+  // 按语义用 write 更稳且规避该风险。隐藏文件（如 .webapp-version）无标准扩展名，
+  // 默认走文本分支，安全。
+  private static BINARY_EXT = new Set([
+    'png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'ico', 'avif',
+    'woff', 'woff2', 'ttf', 'otf', 'eot',
+    'mp3', 'wav', 'ogg', 'mp4', 'webm',
+    'zip',
+  ]);
+  private async _writeEntry(adapter: DataAdapter, target: string, content: Uint8Array): Promise<void> {
+    const ext = target.split('.').pop()?.toLowerCase() || '';
+    if (AppHost.BINARY_EXT.has(ext)) {
+      await adapter.writeBinary(target, content.slice().buffer);
+    } else {
+      // Uint8Array → UTF-8 字符串（webapp 文本资源均为 UTF-8）
+      const text = new TextDecoder('utf-8').decode(content);
+      await adapter.write(target, text);
+    }
+  }
+
   /**
    * 版本比较：a > b 返回正数，a === b 返回 0，a < b 返回负数。
    * 仅比较主.次.修的数字段，非数字段忽略。
@@ -221,7 +243,7 @@ export class AppHost {
       const tmpTarget = normalizePath(`${tmpDir}/${rel}`);
       await this.ensureParentDirSafe(adapter, tmpTarget);
       if (await this.isFolder(adapter, tmpTarget)) continue;
-      await adapter.writeBinary(tmpTarget, content.slice().buffer);
+      await this._writeEntry(adapter, tmpTarget, content);
     }
 
     // commit：assets 等先写，入口文件最后写
@@ -234,7 +256,7 @@ export class AppHost {
     for (const { target, content } of ordered) {
       await this.ensureParentDirSafe(adapter, target);
       if (await this.isFolder(adapter, target)) continue;
-      await adapter.writeBinary(target, content.slice().buffer);
+      await this._writeEntry(adapter, target, content);
     }
 
     // 清理临时目录

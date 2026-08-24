@@ -24,14 +24,14 @@ describe('AppHost.extractZip（fflate 实现）', () => {
       zipData.buffer
     );
 
-    const html = new TextDecoder().decode(await adapter.readBinary('plugins/bamboo/webapp/app.html'));
+    const html = await adapter.read('plugins/bamboo/webapp/app.html');
     expect(html).toBe('<html>bamboo</html>');
 
-    const nested = new TextDecoder().decode(await adapter.readBinary('plugins/bamboo/webapp/assets/scripts/x.js'));
+    const nested = await adapter.read('plugins/bamboo/webapp/assets/scripts/x.js');
     expect(nested).toBe('console.log(1)');
 
-    // .webapp-version 由 extractZip 经 writeBinary 写出（与真实 Obsidian adapter.read 可读文本一致）
-    const ver = new TextDecoder().decode(await adapter.readBinary('plugins/bamboo/webapp/.webapp-version'));
+    // .webapp-version 由 extractZip 经 write 写出（文本资源统一走 write）
+    const ver = await adapter.read('plugins/bamboo/webapp/.webapp-version');
     expect(ver).toBe('2.2.5');
 
     // 嵌套目录已被自动创建
@@ -62,9 +62,7 @@ describe('AppHost.extractZip（fflate 实现）', () => {
     expect(dirStat?.type).toBe('folder');
 
     // 嵌套文件应正常落盘
-    const nested = new TextDecoder().decode(
-      await adapter.readBinary('plugins/bamboo/webapp/assets/scripts/x.js')
-    );
+    const nested = await adapter.read('plugins/bamboo/webapp/assets/scripts/x.js');
     expect(nested).toBe('console.log(1)');
   });
 

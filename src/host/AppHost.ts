@@ -1,4 +1,4 @@
-import { App, DataAdapter, normalizePath, requestUrl } from 'obsidian';
+import { App, DataAdapter, normalizePath, requestUrl, Notice } from 'obsidian';
 import { unzipSync } from 'fflate';
 
 /**
@@ -59,8 +59,14 @@ export class AppHost {
   async buildBlobUrl(entryFile: string = 'app.html'): Promise<string> {
     const adapter = this.app.vault.adapter;
 
-    // 自愈：webapp/ 缺失时从对应版本 Release 自举下载并解压
-    await this.ensureWebapp(adapter);
+    // 自愈：版本不符时从对应版本 Release 自举下载并解压覆盖。
+    // 下载失败（无网络等）静默降级，仍优先读取本地已有 webapp（即便过期也可临时使用），
+    // 避免「升级后恰好离线」导致整个视图打不开。真正缺失会在下方读取时抛明确错误。
+    try {
+      await this.ensureWebapp(adapter);
+    } catch (e) {
+      new Notice('竹仙 webapp 自检更新失败，已使用本地现有版本（可能非最新）。请检查网络后在设置中重试。');
+    }
 
     const appHtmlPath = normalizePath(`${this.webappDir}/${entryFile}`);
     let html: string;
@@ -79,27 +85,47 @@ export class AppHost {
   }
 
   /**
-   * 自愈（版本守卫）：若本地 webapp 缺失，或已存在但版本戳与当前插件版本不符，
-   * 则重新从 GitHub Release 下载对应版本的 webapp.zip 解压（覆盖）。
-   * 正常安装（webapp/ 已随插件分发且版本匹配）完全不触发联网；仅缺失或过期时兜底。
+   * 自愈（版本守卫）：确保磁盘 webapp 与当前插件版本一致。
+   *   - 版本戳缺失（git-clone 开发机 / 老安装）：信任本地，不联网，避免覆盖未发布改动；
+   *   - 本地版本 >= 当前版本：视为同版或开发版，不下载；
+   *   - 本地版本 < 当前版本：明确过期（插件已升级但 webapp 未跟随），从对应版本
+   *     GitHub Release 重新自举下载 webapp.zip 并解压覆盖，使移动端/终端用户的
+   *     webapp 能随插件版本经 GitHub Release 送达更新。
    */
   private async ensureWebapp(adapter: DataAdapter): Promise<void> {
     const appHtmlPath = normalizePath(`${this.webappDir}/app.html`);
+    const htmlExists = await this.fileExists(adapter, appHtmlPath);
 
-    // 本地开发 / 双通道（BRAT、git-clone、sync.sh）场景：只要本地 webapp/ 已存在，
-    // 磁盘即真相，永远信任本地、绝不联网下载覆盖。
-    // 否则版本守卫会在「版本戳缺失/不符」时从 GitHub Release 拉取旧 webapp.zip，
-    // 把本地含未发布改动（如未发版的 Todo 聚焦下拉）的 app.html 覆盖回旧版，
-    // 导致新功能在运行时丢失且难以排查。
-    if (await this.fileExists(adapter, appHtmlPath)) {
-      return;
+    if (!htmlExists) {
+      // 完全缺失（首次安装 / 文件被误删）：自举下载兜底
+      return this._downloadAndExtract(adapter);
     }
 
-    // 仅当本地 webapp 完全缺失（首次安装 / 文件被误删）才尝试自举下载兜底。
-    if (!this.version) {
-      return;
+    // 版本戳：webapp/.webapp-version 由 bundle-webapp.mjs 生成，随 webapp.zip 分发。
+    // 开发者 git-clone（.gitignore 忽略该文件）本地无戳 → 信任本地不联网。
+    const stampPath = normalizePath(`${this.webappDir}/.webapp-version`);
+    let localVersion: string | null = null;
+    try {
+      localVersion = (await adapter.read(stampPath)).trim();
+    } catch {
+      localVersion = null; // 戳缺失
     }
 
+    // 戳缺失 → 信任本地（开发机 / 历史遗留）
+    if (!localVersion) {
+      return;
+    }
+    // 本地版本 >= 当前版本 → 同版或开发版，不下载
+    if (AppHost._compareVersion(localVersion, this.version) >= 0) {
+      return;
+    }
+    // 本地版本 < 当前版本 → 过期，联网更新
+    return this._downloadAndExtract(adapter);
+  }
+
+  /** 下载对应版本 webapp.zip 并解压覆盖；失败抛错由调用方处理 */
+  private async _downloadAndExtract(adapter: DataAdapter): Promise<void> {
+    if (!this.version) return;
     const url = `https://github.com/${this.repo}/releases/download/${this.version}/webapp.zip`;
     try {
       const resp = await requestUrl({ url, method: 'GET' });
@@ -114,6 +140,23 @@ export class AppHost {
       );
     }
   }
+
+  /**
+   * 版本比较：a > b 返回正数，a === b 返回 0，a < b 返回负数。
+   * 仅比较主.次.修的数字段，非数字段忽略。
+   */
+  private static _compareVersion(a: string, b: string): number {
+    const pa = a.split('.').map((n) => parseInt(n, 10) || 0);
+    const pb = b.split('.').map((n) => parseInt(n, 10) || 0);
+    const len = Math.max(pa.length, pb.length);
+    for (let i = 0; i < len; i++) {
+      const va = pa[i] || 0;
+      const vb = pb[i] || 0;
+      if (va !== vb) return va - vb;
+    }
+    return 0;
+  }
+
 
 
   private async extractZip(adapter: DataAdapter, buffer: ArrayBuffer): Promise<void> {

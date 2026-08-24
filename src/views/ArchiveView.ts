@@ -93,31 +93,35 @@ export class ArchiveView extends ItemView {
       cls: 'bamboo-review-loading',
     });
 
-    try {
-      this.appAPI.startListening();
-      const blobUrl = await this.appHost.buildBlobUrl('archive.html');
+    // 移动端延迟视图超时规避：onOpen 尽快返回，先同步建好 iframe + 通信层，
+    // 耗时的 buildBlobUrl（可能联网下载 webapp）异步完成后再赋 src。
+    this.appAPI.startListening();
 
-      this.iframe = container.createEl('iframe', {
-        cls: 'bamboo-review-frame',
-        attr: {
-          src: blobUrl,
-          allow: 'camera; microphone; clipboard-read; clipboard-write',
-        },
-      });
+    this.iframe = container.createEl('iframe', {
+      cls: 'bamboo-review-frame',
+      attr: {
+        allow: 'camera; microphone; clipboard-read; clipboard-write',
+      },
+    });
+    this.appAPI.bindIframe(this.iframe);
 
-      loadingEl.remove();
-      this.appAPI.bindIframe(this.iframe);
+    this.cssChangeRef = this.app.workspace.on('css-change', () => {
+      this.appAPI?.onThemeChanged(this.settings.followObsidianTheme);
+    });
 
-      this.cssChangeRef = this.app.workspace.on('css-change', () => {
-        this.appAPI?.onThemeChanged(this.settings.followObsidianTheme);
+    this.appHost.buildBlobUrl('archive.html')
+      .then((blobUrl) => {
+        if (!this.iframe) return;
+        this.iframe.src = blobUrl;
+        loadingEl.remove();
+      })
+      .catch((e) => {
+        loadingEl.remove();
+        container.createDiv({
+          text: `目标归档加载失败: ${e instanceof Error ? e.message : '未知错误'}`,
+          cls: 'bamboo-review-error',
+        });
       });
-    } catch (e) {
-      loadingEl.remove();
-      container.createDiv({
-        text: `目标归档加载失败: ${e instanceof Error ? e.message : '未知错误'}`,
-        cls: 'bamboo-review-error',
-      });
-    }
   }
 
   async onClose(): Promise<void> {

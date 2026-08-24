@@ -206,34 +206,43 @@ export class DailyReviewView extends ItemView {
       cls: 'bamboo-review-loading',
     });
 
-    try {
-      this.appAPI.startListening();
-      const blobUrl = await this.appHost.buildBlobUrl();
+    // 移动端视图片以「延迟视图(deferred view)」加载，onOpen 若被阻塞过久
+    // （如首开触发 webapp 下载/解压）会触发 Obsidian 的
+    // "Failed to load deferred view Error: Timeout" 而直接放弃该视图。
+    // 故 onOpen 必须尽快返回：先同步建立 iframe + 通信层 + 主题监听，
+    // 把耗时的 buildBlobUrl（可能联网下载 webapp）放到 await 链之外异步完成，
+    // 下载就绪后再赋 iframe.src；视图早已立起，不会超时。
+    this.appAPI.startListening();
 
-      // 先创建 iframe 并绑定通信层，再赋予 src —— 确保 webapp 启动发来的
-      // app:ready 到达时 this.iframe 已就绪，避免 onMessage 因 source 校验不通过
-      // 而丢弃握手（握手失败时 store 首屏会退化为空/离线数据，需重启才恢复）。
-      this.iframe = container.createEl('iframe', {
-        cls: 'bamboo-review-frame',
-        attr: {
-          allow: 'camera; microphone; clipboard-read; clipboard-write',
-        },
-      });
-      this.appAPI.bindIframe(this.iframe);
-      loadingEl.remove();
+    // 先创建 iframe 并绑定通信层，再赋予 src —— 确保 webapp 启动发来的
+    // app:ready 到达时 this.iframe 已就绪，避免 onMessage 因 source 校验不通过
+    // 而丢弃握手（握手失败时 store 首屏会退化为空/离线数据，需重启才恢复）。
+    this.iframe = container.createEl('iframe', {
+      cls: 'bamboo-review-frame',
+      attr: {
+        allow: 'camera; microphone; clipboard-read; clipboard-write',
+      },
+    });
+    this.appAPI.bindIframe(this.iframe);
 
-      this.iframe.src = blobUrl;
+    this.cssChangeRef = this.app.workspace.on('css-change', () => {
+      this.appAPI?.onThemeChanged(this.settings.followObsidianTheme);
+    });
 
-      this.cssChangeRef = this.app.workspace.on('css-change', () => {
-        this.appAPI?.onThemeChanged(this.settings.followObsidianTheme);
+    // 不 await：下载/解压在后台进行，完成后再填充 iframe.src。
+    this.appHost.buildBlobUrl()
+      .then((blobUrl) => {
+        if (!this.iframe) return; // 视图已关闭
+        this.iframe.src = blobUrl;
+        loadingEl.remove();
+      })
+      .catch((e) => {
+        loadingEl.remove();
+        container.createDiv({
+          text: `竹林修仙传加载失败: ${e instanceof Error ? e.message : '未知错误'}`,
+          cls: 'bamboo-review-error',
+        });
       });
-    } catch (e) {
-      loadingEl.remove();
-      container.createDiv({
-        text: `竹林修仙传加载失败: ${e instanceof Error ? e.message : '未知错误'}`,
-        cls: 'bamboo-review-error',
-      });
-    }
   }
 
   /**

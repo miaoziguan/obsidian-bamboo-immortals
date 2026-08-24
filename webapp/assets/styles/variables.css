@@ -740,3 +740,20 @@
         --text-secondary: #e0e0e0;
     }
 }
+
+/* === 移动端玻璃拟态主动降级（鸿蒙 ArkWeb / 老旧安卓 WebView 性能兜底） ===
+ * 背景：鸿蒙 ArkWeb 对 backdrop-filter 合成开销大，点组件刷新时频繁重采样导致卡顿。
+ * 但 ArkWeb 语法上"支持" backdrop-filter，故 @supports not 不触发，需按平台类主动降级。
+ * 方案（与暗色模式同款 :host() 写法，无 !important，纯变量重绑）：
+ *   1) --glass-blur 置 0 → 所有 blur(var(--glass-blur)) 自动变 blur(0)，消除模糊计算；
+ *   2) --card-glass 转不透明 fallback 底色 → 关模糊后不穿底、对比度充足；
+ *   3) 显式 * { backdrop-filter: none } 关掉合成层（写末尾靠后定义，双保险）。
+ * 桌面端不命中 .platform-mobile，视觉零变化。 */
+:host(.platform-mobile) {
+    --glass-blur: 0px;
+    --card-glass: var(--card-bg-fallback);
+}
+:host(.platform-mobile) * {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+}

@@ -1,4 +1,4 @@
-import { App, DataAdapter, normalizePath, Notice } from 'obsidian';
+import { App, DataAdapter, normalizePath, requestUrl, Notice } from 'obsidian';
 import { unzipSync } from 'fflate';
 
 /**
@@ -44,19 +44,22 @@ export class AppHost {
    * 失败仅告警（不抛出），真正打开视图时 buildBlobUrl 会再次尝试；
    * 同一插件目录并发只触发一次下载（见 ensureWebapp 的 downloadLocks）。
    */
+  /**
+   * 后台预拉取：插件 onload 时调用，提前把缺失的 webapp 下载并解压到插件目录。
+   * 用独立的 prefetchPromises 缓存（不写 downloadLocks），避免 prefetch 的 pending
+   * 下载 Promise 阻塞视图打开时的独立下载；prefetch 失败仅告警，视图打开时会重试。
+   */
+  private static prefetchPromises = new Map<string, Promise<void>>();
   static prefetch(app: App, pluginDir: string, version: string): Promise<void> {
     const key = normalizePath(`${pluginDir}/webapp`);
-    let p = AppHost.downloadLocks.get(key);
+    let p = AppHost.prefetchPromises.get(key);
     if (!p) {
       const host = new AppHost(app, pluginDir, version);
       p = host.ensureWebapp(app.vault.adapter).catch(() => {
-        // 后台预拉取失败不阻断；失败时清除锁，避免视图打开时直接拿到已落定的
-        // 失败 Promise 而跳过真正的重试/下载。
-        AppHost.downloadLocks.delete(key);
+        // 后台预拉取失败不阻断，视图打开时会重试
       });
-      AppHost.downloadLocks.set(key, p);
-      // Promise 落定后释放锁，允许下次升级再触发
-      p.finally(() => { if (AppHost.downloadLocks.get(key) === p) AppHost.downloadLocks.delete(key); });
+      AppHost.prefetchPromises.set(key, p);
+      p.finally(() => { if (AppHost.prefetchPromises.get(key) === p) AppHost.prefetchPromises.delete(key); });
     }
     return p;
   }
@@ -172,8 +175,14 @@ export class AppHost {
     const key = this.webappDir;
     let p = AppHost.downloadLocks.get(key);
     if (!p) {
-      p = this._downloadAndExtract(adapter);
+      p = this._downloadAndExtract(adapter).catch((e) => {
+        // 下载失败立即清锁，允许视图打开/用户重试时重新触发下载，
+        // 而不是拿到已落定的失败 Promise 而跳过（否则 webapp 永远缺失）。
+        AppHost.downloadLocks.delete(key);
+        throw e;
+      });
       AppHost.downloadLocks.set(key, p);
+      // Promise 落定（成功或失败）后释放锁，允许下次升级再触发；失败分支已在上面删除。
       p.finally(() => { if (AppHost.downloadLocks.get(key) === p) AppHost.downloadLocks.delete(key); });
     }
     return p;
@@ -187,35 +196,36 @@ export class AppHost {
     const dlTimer = 'download-webapp-zip';
     console.time(dlTimer);
     try {
-      // 用 fetch + AbortSignal.timeout（requestUrl 类型不支持 timeout）：
-      // 避免国内访问 GitHub 长时间挂起导致视图永久卡「加载中」。
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000);
-      let resp: Response;
-      try {
-        resp = await fetch(url, { signal: controller.signal });
-      } finally {
-        clearTimeout(timeoutId);
-      }
-      if (!resp.ok || !resp.arrayBuffer) {
+      // requestUrl 走 Obsidian 内置网络栈（不受浏览器 CORS 限制，国内访问 GitHub 比 fetch 稳）；
+      // 但其类型不支持 timeout 字段，故用 Promise.race 包一层 15s 超时，避免连接挂起
+      // 导致 _mountWebapp 的 await buildBlobUrl 永久挂起、iframe 永远无 src、视图被
+      // Obsidian 判定 deferred view 超时抛弃而永久卡「加载中」。
+      const TIMEOUT_MS = 15000;
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('下载超时（15s）')), TIMEOUT_MS);
+      });
+      const resp = await Promise.race([
+        requestUrl({ url, method: 'GET' }),
+        timeoutPromise,
+      ]);
+      if (resp.status < 200 || resp.status >= 300 || !resp.arrayBuffer) {
         throw new Error(`下载返回异常状态 ${resp.status}`);
       }
-      const buf = await resp.arrayBuffer();
       console.timeEnd(dlTimer);
-      console.log(`[AppHost] webapp.zip 下载完成，大小 ${buf.byteLength} bytes，开始解压`);
+      console.log(`[AppHost] webapp.zip 下载完成，大小 ${resp.arrayBuffer.byteLength} bytes，开始解压`);
       const extractTimer = 'extract-webapp-zip';
       console.time(extractTimer);
-      await this.extractZip(adapter, buf);
+      await this.extractZip(adapter, resp.arrayBuffer);
       console.timeEnd(extractTimer);
       console.log('[AppHost] webapp.zip 解压完成');
     } catch (e) {
       console.timeEnd(dlTimer);
       const msg = e instanceof Error ? e.message : '未知错误';
-      const isTimeout = /timeout|aborted|timed out|the operation was aborted/i.test(msg);
+      const isTimeout = /超时|timeout/i.test(msg);
       throw new Error(
         `无法自动获取 webapp（${msg}）。` +
         (isTimeout
-          ? '下载超时（30s）：多为网络/防火墙问题。请检查网络或开启代理（魔法）后，在设置中重新打开本视图即可重试。'
+          ? '下载超时（15s）：多为网络/防火墙问题。请检查网络或开启代理（魔法）后，在设置中重新打开本视图即可重试。'
           : '多为网络/防火墙问题：请检查网络或开启代理（魔法）后重试；也可在 Obsidian 中重新安装本插件。')
       );
     }

@@ -193,13 +193,8 @@ export class DailyReviewView extends ItemView {
       return plugin?.getBambooCoinAvailableBalance ? plugin.getBambooCoinAvailableBalance() : null;
     });
 
-    console.time('DailyReviewView-onOpen');
     // 扫描自定义主题
-    const scanTimer = 'DailyReviewView-scanCustomThemes';
-    console.time(scanTimer);
-    console.time('DailyReviewView-onOpen');
     const customThemes = await this.scanCustomThemes();
-    console.timeEnd(scanTimer);
     this.appAPI.setCustomThemes(customThemes);
 
     // 创建 AppHost（版本守卫 + blob URL 构建都延迟到 _mountWebapp，避免阻塞 onOpen）
@@ -211,7 +206,6 @@ export class DailyReviewView extends ItemView {
     // 表现为永久卡在「加载中」。故把耗时挂载拆到独立异步方法，onOpen 用 void 触发后
     // 立即返回，延迟视图超时阈值内立起空容器；webapp 就绪后再填充 iframe（桌面同效）。
     void this._mountWebapp(container);
-    console.timeEnd('DailyReviewView-onOpen');
   }
 
   /**
@@ -227,10 +221,7 @@ export class DailyReviewView extends ItemView {
 
     try {
       this.appAPI?.startListening();
-      const blobTimer = 'DailyReviewView-buildBlobUrl';
-      console.time(blobTimer);
       const blobUrl = await this.appHost!.buildBlobUrl();
-      console.timeEnd(blobTimer);
 
       // 视图可能已在加载期间被关闭
       if (!container.isConnected) {

@@ -80,12 +80,8 @@ export class ArchiveView extends ItemView {
     );
     await this.appAPI.ensureStructure();
 
-    console.time('ArchiveView-onOpen');
     // 扫描自定义主题
-    const scanTimer = 'ArchiveView-scanCustomThemes';
-    console.time(scanTimer);
     const customThemes = await this.scanCustomThemes();
-    console.timeEnd(scanTimer);
     this.appAPI.setCustomThemes(customThemes);
 
     // 创建 AppHost（版本守卫 + blob URL 构建延迟到 _mountWebapp，避免阻塞 onOpen）
@@ -95,7 +91,6 @@ export class ArchiveView extends ItemView {
     // 同 DailyReviewView：onOpen 用 void 触发异步挂载，避免首次联网下载 webapp 阻塞
     // 延迟视图加载超时（表现为永久卡「加载中」）。
     void this._mountWebapp(container);
-    console.timeEnd('ArchiveView-onOpen');
   }
 
   /**
@@ -111,10 +106,7 @@ export class ArchiveView extends ItemView {
 
     try {
       this.appAPI?.startListening();
-      const blobTimer = 'ArchiveView-buildBlobUrl';
-      console.time(blobTimer);
       const blobUrl = await this.appHost!.buildBlobUrl('archive.html');
-      console.timeEnd(blobTimer);
 
       // 视图可能已在加载期间被关闭
       if (!container.isConnected) {

@@ -66,21 +66,17 @@ export class AppHost {
         // 后台预拉取失败不阻断，视图打开时会重试
       });
       AppHost.prefetchPromises.set(key, p);
-      p.finally(() => { if (AppHost.prefetchPromises.get(key) === p) AppHost.prefetchPromises.delete(key); });
+      void p.finally(() => { if (AppHost.prefetchPromises.get(key) === p) AppHost.prefetchPromises.delete(key); });
     }
     return p;
   }
 
   async buildBlobUrl(entryFile: string = 'app.html'): Promise<string> {
-    const timer = `buildBlobUrl-${entryFile}`;
-    console.time(timer);
     const adapter = this.app.vault.adapter;
 
     // 自愈：版本不符时从对应版本 Release 自举下载并解压覆盖。
     // 下载失败（多为网络/防火墙问题）不静默吞掉——明确告知用户是网络导致、
     // 建议开启魔法后重试，但仍用本地已有旧版打开视图（不阻断使用）。
-    const ensureTimer = `${timer}-ensureWebapp`;
-    console.time(ensureTimer);
     try {
       await this.ensureWebapp(adapter);
     } catch (e) {
@@ -91,18 +87,14 @@ export class AppHost {
         10000
       );
     }
-    console.timeEnd(ensureTimer);
 
     const appHtmlPath = normalizePath(`${this.webappDir}/${entryFile}`);
     let html: string;
-    const readTimer = `${timer}-readHtml`;
-    console.time(readTimer);
     try {
       html = await adapter.read(appHtmlPath);
     } catch {
       throw new Error(`无法读取 webapp/${entryFile}，且自动下载失败。请尝试在 Obsidian 中重新安装本插件，或手动放置 webapp/ 目录`);
     }
-    console.timeEnd(readTimer);
 
     // 整页 HTML 已自包含（CSS 内联 + bundle 内联为静态 <script>）。
     // 运行时不创建、不拼接任何 script 元素。
@@ -111,13 +103,9 @@ export class AppHost {
     //   Shadow DOM 有兼容性限制，data: URL 在桌面 Chromium / 安卓 WebView / 鸿蒙 ArkWeb
     //   三类平台上兼容性均 ≥ blob:，可绕开 blob 源 opaque origin 下的执行受限问题。
     //   编码用 encodeURIComponent（非 base64）以减小体积膨胀（~10-20% vs base64 ~33%）。
-    const blobTimer = `${timer}-createUrl`;
-    console.time(blobTimer);
     // 内容长度未变时复用已编码的 data: URL，避免切布局模式重建视图时
     // 反复同步 encodeURIComponent(1.5MB) 造成主线程卡顿 / 白屏。
     if (AppHost.cachedPageUrl && AppHost.cachedHtmlLength === html.length) {
-      console.timeEnd(blobTimer);
-      console.timeEnd(timer);
       return AppHost.cachedPageUrl;
     }
     const pageUrl = this.buildPageUrl(html);
@@ -126,8 +114,6 @@ export class AppHost {
       AppHost.cachedPageUrl = pageUrl;
       AppHost.cachedHtmlLength = html.length;
     }
-    console.timeEnd(blobTimer);
-    console.timeEnd(timer);
     return pageUrl;
   }
 
@@ -141,7 +127,6 @@ export class AppHost {
     const dataUrl = `data:text/html;charset=utf-8,${encodeURIComponent(html)}`;
     // 极端环境对 data: URL 长度设限（通常 2MB+），超界回退 blob:。
     if (dataUrl.length > 2 * 1024 * 1024) {
-      console.warn('[AppHost] data: URL 超长，回退 blob:');
       const blob = new Blob([html], { type: 'text/html' });
       return URL.createObjectURL(blob);
     }
@@ -157,17 +142,12 @@ export class AppHost {
    *     webapp 能随插件版本经 GitHub Release 送达更新。
    */
   private async ensureWebapp(adapter: DataAdapter): Promise<void> {
-    const timer = `ensureWebapp-${this.version}`;
-    console.time(timer);
     const appHtmlPath = normalizePath(`${this.webappDir}/app.html`);
     const htmlExists = await this.fileExists(adapter, appHtmlPath);
-    console.log(`[AppHost] webappDir=${this.webappDir}, app.html exists=${htmlExists}, pluginVersion=${this.version}`);
 
     if (!htmlExists) {
       // 完全缺失（首次安装 / 文件被误删）：自举下载兜底
-      console.log('[AppHost] app.html 缺失，触发联网自举下载');
       const p = this._downloadGuarded(adapter);
-      console.timeEnd(timer);
       return p;
     }
 
@@ -180,32 +160,23 @@ export class AppHost {
     } catch {
       localVersion = null; // 戳缺失
     }
-    console.log(`[AppHost] local webapp version=${localVersion ?? '(missing)'}`);
 
     // 戳缺失 → 默认信任本地（开发机 / 历史遗留），但本地 app.html 若明显损坏
     // （如历史并发下载留下的半截文件）则仍强制联网更新，避免持续空白。
     if (!localVersion) {
       const healthy = await this._isAppHtmlHealthy(adapter);
       if (healthy) {
-        console.log('[AppHost] 版本戳缺失但 app.html 健康，信任本地');
-        console.timeEnd(timer);
         return;
       }
-      console.log('[AppHost] 版本戳缺失且 app.html 损坏，触发联网自举下载');
       const p = this._downloadGuarded(adapter);
-      console.timeEnd(timer);
       return p;
     }
     // 本地版本 >= 当前版本 → 同版或开发版，不下载
     if (AppHost._compareVersion(localVersion, this.version) >= 0) {
-      console.log('[AppHost] 本地 webapp 已最新或更新，跳过下载');
-      console.timeEnd(timer);
       return;
     }
     // 本地版本 < 当前版本 → 过期，联网更新（走去重锁，避免多路并发重复下载）
-    console.log(`[AppHost] 本地 webapp 过期(${localVersion} < ${this.version})，触发联网更新`);
     const p = this._downloadGuarded(adapter);
-    console.timeEnd(timer);
     return p;
   }
 
@@ -222,7 +193,7 @@ export class AppHost {
       });
       AppHost.downloadLocks.set(key, p);
       // Promise 落定（成功或失败）后释放锁，允许下次升级再触发；失败分支已在上面删除。
-      p.finally(() => { if (AppHost.downloadLocks.get(key) === p) AppHost.downloadLocks.delete(key); });
+      void p.finally(() => { if (AppHost.downloadLocks.get(key) === p) AppHost.downloadLocks.delete(key); });
     }
     return p;
   }
@@ -231,9 +202,6 @@ export class AppHost {
   private async _downloadAndExtract(adapter: DataAdapter): Promise<void> {
     if (!this.version) return;
     const url = `https://github.com/${this.repo}/releases/download/${this.version}/webapp.zip`;
-    console.log(`[AppHost] 开始下载 webapp.zip: ${url}`);
-    const dlTimer = 'download-webapp-zip';
-    console.time(dlTimer);
     try {
       // requestUrl 走 Obsidian 内置网络栈（不受浏览器 CORS 限制，国内访问 GitHub 比 fetch 稳）；
       // 但其类型不支持 timeout 字段，故用 Promise.race 包一层 15s 超时，避免连接挂起
@@ -241,7 +209,7 @@ export class AppHost {
       // Obsidian 判定 deferred view 超时抛弃而永久卡「加载中」。
       const TIMEOUT_MS = 15000;
       const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('下载超时（15s）')), TIMEOUT_MS);
+        window.setTimeout(() => reject(new Error('下载超时（15s）')), TIMEOUT_MS);
       });
       const resp = await Promise.race([
         requestUrl({ url, method: 'GET' }),
@@ -250,15 +218,8 @@ export class AppHost {
       if (resp.status < 200 || resp.status >= 300 || !resp.arrayBuffer) {
         throw new Error(`下载返回异常状态 ${resp.status}`);
       }
-      console.timeEnd(dlTimer);
-      console.log(`[AppHost] webapp.zip 下载完成，大小 ${resp.arrayBuffer.byteLength} bytes，开始解压`);
-      const extractTimer = 'extract-webapp-zip';
-      console.time(extractTimer);
       await this.extractZip(adapter, resp.arrayBuffer);
-      console.timeEnd(extractTimer);
-      console.log('[AppHost] webapp.zip 解压完成');
     } catch (e) {
-      console.timeEnd(dlTimer);
       const msg = e instanceof Error ? e.message : '未知错误';
       const isTimeout = /超时|timeout/i.test(msg);
       throw new Error(

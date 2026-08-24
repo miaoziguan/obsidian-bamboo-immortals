@@ -103,8 +103,14 @@ export class ArchiveView extends ItemView {
       cls: 'bamboo-review-loading',
     });
 
+    const appAPI = this.appAPI;
+    if (!appAPI) {
+      loadingEl.remove();
+      return;
+    }
+
     try {
-      this.appAPI!.startListening();
+      appAPI.startListening();
 
       const blobUrl = await this.appHost.buildBlobUrl('archive.html');
 
@@ -120,11 +126,11 @@ export class ArchiveView extends ItemView {
           allow: 'camera; microphone; clipboard-read; clipboard-write',
         },
       });
-      this.appAPI!.bindIframe(this.iframe);
+      appAPI.bindIframe(this.iframe);
       loadingEl.remove();
 
       this.cssChangeRef = this.app.workspace.on('css-change', () => {
-        this.appAPI?.onThemeChanged(this.settings.followObsidianTheme);
+        appAPI.onThemeChanged(this.settings.followObsidianTheme);
       });
     } catch (e) {
       loadingEl.remove();

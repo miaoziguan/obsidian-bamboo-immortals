@@ -220,8 +220,14 @@ export class DailyReviewView extends ItemView {
       cls: 'bamboo-review-loading',
     });
 
+    const appAPI = this.appAPI;
+    if (!appAPI) {
+      loadingEl.remove();
+      return;
+    }
+
     try {
-      this.appAPI!.startListening();
+      appAPI.startListening();
 
       // 先构建 blob URL（可能下载），再创建 iframe 并赋予 src —— 确保 webapp 启动
       // 发来的 app:ready 到达时 this.iframe 已就绪，避免握手被丢弃（首屏退化为离线）。
@@ -240,11 +246,11 @@ export class DailyReviewView extends ItemView {
           allow: 'camera; microphone; clipboard-read; clipboard-write',
         },
       });
-      this.appAPI!.bindIframe(this.iframe);
+      appAPI.bindIframe(this.iframe);
       loadingEl.remove();
 
       this.cssChangeRef = this.app.workspace.on('css-change', () => {
-        this.appAPI?.onThemeChanged(this.settings.followObsidianTheme);
+        appAPI.onThemeChanged(this.settings.followObsidianTheme);
       });
     } catch (e) {
       loadingEl.remove();

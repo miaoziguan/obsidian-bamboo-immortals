@@ -60,12 +60,17 @@ export class AppHost {
     const adapter = this.app.vault.adapter;
 
     // 自愈：版本不符时从对应版本 Release 自举下载并解压覆盖。
-    // 下载失败（无网络等）静默降级，仍优先读取本地已有 webapp（即便过期也可临时使用），
-    // 避免「升级后恰好离线」导致整个视图打不开。真正缺失会在下方读取时抛明确错误。
+    // 下载失败（多为网络/防火墙问题）不静默吞掉——明确告知用户是网络导致、
+    // 建议开启魔法后重试，但仍用本地已有旧版打开视图（不阻断使用）。
     try {
       await this.ensureWebapp(adapter);
     } catch (e) {
-      new Notice('竹仙 webapp 自检更新失败，已使用本地现有版本（可能非最新）。请检查网络后在设置中重试。');
+      const msg = e instanceof Error ? e.message : String(e);
+      new Notice(
+        '竹仙 webapp 自检更新失败（网络问题）：' + msg +
+        '。请检查网络或开启代理（魔法）后，在设置中重新打开本视图即可重试更新。当前仍使用本地旧版。',
+        10000
+      );
     }
 
     const appHtmlPath = normalizePath(`${this.webappDir}/${entryFile}`);
@@ -136,7 +141,8 @@ export class AppHost {
     } catch (e) {
       throw new Error(
         `无法自动获取 webapp（${e instanceof Error ? e.message : '未知错误'}）。` +
-        '请检查网络后重试，或在 Obsidian 中重新安装本插件。'
+        '多为网络/防火墙问题：请检查网络或开启代理（魔法）后重试；' +
+        '也可在 Obsidian 中重新安装本插件。'
       );
     }
   }

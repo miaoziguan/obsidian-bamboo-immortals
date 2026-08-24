@@ -34,24 +34,27 @@ export class AppHost {
     this.version = version;
   }
 
-  // 后台预拉取的去重缓存：避免插件 onload 预拉取与视图打开时重复下载
-  private static prefetchCache = new Map<string, Promise<void>>();
+  // 下载去重锁：按 webapp 目录维度，保证 prefetch 与 buildBlobUrl 并发时仅真实下载一次。
+  // 否则两路各自 new AppHost().ensureWebapp() 会交叉写同一目录，移动端极易出现 app.html 半截 → 空白。
+  private static downloadLocks = new Map<string, Promise<void>>();
 
   /**
    * 后台预拉取：插件 onload 时调用，提前把缺失的 webapp 下载并解压到插件目录。
    * 正常安装（webapp/ 已随插件分发）时仅做一次存在性检查，几乎零开销。
    * 失败仅告警（不抛出），真正打开视图时 buildBlobUrl 会再次尝试；
-   * 同一插件目录并发只触发一次下载。
+   * 同一插件目录并发只触发一次下载（见 ensureWebapp 的 downloadLocks）。
    */
   static prefetch(app: App, pluginDir: string, version: string): Promise<void> {
     const key = normalizePath(`${pluginDir}/webapp`);
-    let p = AppHost.prefetchCache.get(key);
+    let p = AppHost.downloadLocks.get(key);
     if (!p) {
       const host = new AppHost(app, pluginDir, version);
       p = host.ensureWebapp(app.vault.adapter).catch(() => {
         // 后台预拉取失败不阻断，打开视图时会重试
       });
-      AppHost.prefetchCache.set(key, p);
+      AppHost.downloadLocks.set(key, p);
+      // Promise 落定后释放锁，允许下次升级再触发
+      p.finally(() => { if (AppHost.downloadLocks.get(key) === p) AppHost.downloadLocks.delete(key); });
     }
     return p;
   }
@@ -103,7 +106,7 @@ export class AppHost {
 
     if (!htmlExists) {
       // 完全缺失（首次安装 / 文件被误删）：自举下载兜底
-      return this._downloadAndExtract(adapter);
+      return this._downloadGuarded(adapter);
     }
 
     // 版本戳：webapp/.webapp-version 由 bundle-webapp.mjs 生成，随 webapp.zip 分发。
@@ -116,16 +119,30 @@ export class AppHost {
       localVersion = null; // 戳缺失
     }
 
-    // 戳缺失 → 信任本地（开发机 / 历史遗留）
+    // 戳缺失 → 默认信任本地（开发机 / 历史遗留），但本地 app.html 若明显损坏
+    // （如历史并发下载留下的半截文件）则仍强制联网更新，避免持续空白。
     if (!localVersion) {
-      return;
+      if (await this._isAppHtmlHealthy(adapter)) return;
+      return this._downloadGuarded(adapter);
     }
     // 本地版本 >= 当前版本 → 同版或开发版，不下载
     if (AppHost._compareVersion(localVersion, this.version) >= 0) {
       return;
     }
-    // 本地版本 < 当前版本 → 过期，联网更新
-    return this._downloadAndExtract(adapter);
+    // 本地版本 < 当前版本 → 过期，联网更新（走去重锁，避免多路并发重复下载）
+    return this._downloadGuarded(adapter);
+  }
+
+  /** 经 downloadLocks 去重的下载入口：并发调用（prefetch / buildBlobUrl）共享同一 Promise */
+  private _downloadGuarded(adapter: DataAdapter): Promise<void> {
+    const key = this.webappDir;
+    let p = AppHost.downloadLocks.get(key);
+    if (!p) {
+      p = this._downloadAndExtract(adapter);
+      AppHost.downloadLocks.set(key, p);
+      p.finally(() => { if (AppHost.downloadLocks.get(key) === p) AppHost.downloadLocks.delete(key); });
+    }
+    return p;
   }
 
   /** 下载对应版本 webapp.zip 并解压覆盖；失败抛错由调用方处理 */
@@ -144,6 +161,22 @@ export class AppHost {
         '多为网络/防火墙问题：请检查网络或开启代理（魔法）后重试；' +
         '也可在 Obsidian 中重新安装本插件。'
       );
+    }
+  }
+
+  /**
+   * 轻量健康校验：本地 app.html 是否存在且为完整自包含页面。
+   * 用于「版本戳缺失」场景兜底——历史并发下载可能留下半截/损坏文件，
+   * 此时不应盲目信任本地，应触发联网更新。开发机正常完整页面一定通过。
+   */
+  private async _isAppHtmlHealthy(adapter: DataAdapter): Promise<boolean> {
+    try {
+      const html = await adapter.read(normalizePath(`${this.webappDir}/app.html`));
+      if (typeof html !== 'string' || html.length < 1000) return false;
+      // 自包含页面必含 <script（内联 bundle），无则视为损坏
+      return html.includes('<script');
+    } catch {
+      return false;
     }
   }
 
@@ -169,26 +202,64 @@ export class AppHost {
     // fflate 零依赖（无 setimmediate 之类会动态创建 <script> 的传递依赖），
     // 返回的 entries 仅含文件（不含目录条目），目录由 ensureParentDirSafe 按需创建。
     const files = unzipSync(new Uint8Array(buffer));
-    const entries: { target: string; content: Uint8Array }[] = [];
+    const entries: { rel: string; target: string; content: Uint8Array }[] = [];
     for (const [rawPath, content] of Object.entries(files)) {
       const rel = normalizePath(rawPath.replace(/^\.?\//, ''));
       if (!rel) continue;
       if (rel.endsWith('/')) continue; // 目录占位条目，无需写出
-      entries.push({ target: normalizePath(`${this.webappDir}/${rel}`), content });
+      entries.push({ rel, target: normalizePath(`${this.webappDir}/${rel}`), content });
     }
 
-    // 第一遍：先建好所有父目录。若某一级已被同名文件占用（zip 目录占位条目、
-    // 或本地残留的坏文件），先删除再建目录，避免后续 writeBinary 触发 ENOTDIR。
-    for (const { target } of entries) {
+    // 两段式写入，防止「写入过程中被读取方看到半截 app.html」导致移动端空白：
+    //   ① 全部解压到临时目录 webapp/.dl/（与正式目录隔离，读取方毫不知情）；
+    //   ② commit 阶段再把文件落到正式目录，且入口文件（app.html/archive.html）
+    //      最后写，确保任何时刻入口文件要么完整旧版、要么完整新版。
+    const tmpDir = normalizePath(`${this.webappDir}/.dl`);
+    // 清空可能残留的临时目录
+    await this.removeRecursivelySafe(adapter, tmpDir);
+    for (const { rel, content } of entries) {
+      const tmpTarget = normalizePath(`${tmpDir}/${rel}`);
+      await this.ensureParentDirSafe(adapter, tmpTarget);
+      if (await this.isFolder(adapter, tmpTarget)) continue;
+      await adapter.writeBinary(tmpTarget, content.slice().buffer);
+    }
+
+    // commit：assets 等先写，入口文件最后写
+    const entryFiles = new Set(['app.html', 'archive.html']);
+    const ordered = [...entries].sort((a, b) => {
+      const aEntry = entryFiles.has(a.rel) ? 1 : 0;
+      const bEntry = entryFiles.has(b.rel) ? 1 : 0;
+      return aEntry - bEntry; // 0 在前（先写），1 在后（最后写入口文件）
+    });
+    for (const { target, content } of ordered) {
       await this.ensureParentDirSafe(adapter, target);
+      if (await this.isFolder(adapter, target)) continue;
+      await adapter.writeBinary(target, content.slice().buffer);
     }
 
-    // 第二遍：写文件。若某条目路径已被当作目录写入（占位文件与真实目录冲突），
-    // 跳过该占位文件，不覆盖为文件，保证 assets/scripts/* 等嵌套文件能正常落盘。
-    for (const { target, content } of entries) {
-      if (await this.isFolder(adapter, target)) continue;
-      // Uint8Array → 独立 ArrayBuffer，避免共享底层 buffer 导致越界
-      await adapter.writeBinary(target, content.slice().buffer);
+    // 清理临时目录
+    await this.removeRecursivelySafe(adapter, tmpDir);
+  }
+
+  /** 递归删除目录（尽力而为，失败不阻断） */
+  private async removeRecursivelySafe(adapter: DataAdapter, dir: string): Promise<void> {
+    const kind = await this.statKind(adapter, dir);
+    if (kind !== 'folder') return;
+    try {
+      const listed = await adapter.list(dir);
+      const items: string[] = [...(listed.files || []), ...(listed.folders || [])];
+      for (const item of items) {
+        const child = normalizePath(`${dir}/${item}`);
+        const childKind = await this.statKind(adapter, child);
+        if (childKind === 'folder') {
+          await this.removeRecursivelySafe(adapter, child);
+        } else {
+          try { await adapter.remove(child); } catch { /* 忽略 */ }
+        }
+      }
+      try { await adapter.rmdir(dir, true); } catch { /* 忽略 */ }
+    } catch {
+      // 目录不可用（如不支持 list），忽略
     }
   }
 

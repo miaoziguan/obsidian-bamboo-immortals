@@ -97,15 +97,17 @@ describe('bridge.js 协议接收端', () => {
     });
     afterEach(() => spy.mockRestore());
 
-    test('携带 {type, id, payload}，目标为 parent.origin 或 *', () => {
+    test('携带 {type, id, payload}，目标为通配符 *（跨平台安全可达）', () => {
       mod.storageManager._send('storage:readDay', { dateKey: '2026-07-14' });
       expect(spy).toHaveBeenCalledTimes(1);
       const [msg, target] = spy.mock.calls[0];
       expect(msg.type).toBe('storage:readDay');
       expect(msg.payload).toEqual({ dateKey: '2026-07-14' });
       expect(typeof msg.id).toBe('string');
-      // 目标使用 parent.origin（非空时优先于通配符 '*'，更安全）
-      expect(target).toBe(window.parent.origin);
+      // 统一用 '*'：安卓 blob 源下 window.parent.origin 为字符串 'null'，
+      // postMessage(msg, 'null') 会抛 SyntaxError；'*' 在所有平台（桌面/安卓/ios）
+      // 安全可达，宿主侧校验 event.source（contentWindow 对象）而非 origin 字符串。
+      expect(target).toBe('*');
     });
 
     test('id 唯一（连续两次不同）', () => {

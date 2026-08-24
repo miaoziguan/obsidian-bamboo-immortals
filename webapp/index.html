@@ -241,7 +241,9 @@ document.body.classList.add('loading');
 window.openArchivePage = function() {
     const id = 'req_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
     try {
-        window.parent.postMessage({ type: 'app:openArchive', id, payload: {} }, window.parent.origin || '*');
+        // 统一用 '*'：安卓 blob 源下 window.parent.origin 为字符串 'null'，会令
+        // postMessage(msg, 'null') 抛 SyntaxError；'*' 在所有平台安全可达。
+        window.parent.postMessage({ type: 'app:openArchive', id, payload: {} }, '*');
     } catch {
         window.parent.postMessage({ type: 'app:openArchive', id, payload: {} }, '*');
     }

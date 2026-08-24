@@ -136,12 +136,12 @@ export class BridgeStorage {
 
       this._pendingRequests.set(id, { resolve, reject, timeout });
 
-      // postMessage 使用 window.parent.origin 避免通配符
-      try {
-        window.parent.postMessage({ type, id, payload }, window.parent.origin || '*');
-      } catch {
-        window.parent.postMessage({ type, id, payload }, '*');
-      }
+      // 统一用 '*' 作 targetOrigin。
+      // 注意：在安卓 Obsidian（Capacitor WebView）中，blob 源 iframe 的
+      // window.parent.origin 返回字符串 'null'，postMessage(msg, 'null') 会抛
+      // SyntaxError（'null' 既非 '*' 也非合法 origin）；而 '*' 在所有平台（桌面/安卓/ios）
+      // 都安全且可达——宿主侧校验的是 event.source（contentWindow 对象），不依赖 origin 字符串。
+      window.parent.postMessage({ type, id, payload }, '*');
     });
   }
 

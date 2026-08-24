@@ -109,12 +109,6 @@ export class AppHost {
       return this._downloadGuarded(adapter);
     }
 
-    // 健康检查优先于版本戳：若本地 app.html 明显损坏（历史并发下载留下的半截文件），
-    // 无论版本戳是否匹配都要强制重下，否则会持续空白（安卓端实测「Unexpected end of input」）。
-    if (!(await this._isAppHtmlHealthyCached(adapter))) {
-      return this._downloadGuarded(adapter);
-    }
-
     // 版本戳：webapp/.webapp-version 由 bundle-webapp.mjs 生成，随 webapp.zip 分发。
     // 开发者 git-clone（.gitignore 忽略该文件）本地无戳 → 信任本地不联网。
     const stampPath = normalizePath(`${this.webappDir}/.webapp-version`);
@@ -125,9 +119,11 @@ export class AppHost {
       localVersion = null; // 戳缺失
     }
 
-    // 戳缺失 → 信任本地（开发机 / 历史遗留）；健康已在上一步确认
+    // 戳缺失 → 默认信任本地（开发机 / 历史遗留），但本地 app.html 若明显损坏
+    // （如历史并发下载留下的半截文件）则仍强制联网更新，避免持续空白。
     if (!localVersion) {
-      return;
+      if (await this._isAppHtmlHealthy(adapter)) return;
+      return this._downloadGuarded(adapter);
     }
     // 本地版本 >= 当前版本 → 同版或开发版，不下载
     if (AppHost._compareVersion(localVersion, this.version) >= 0) {
@@ -173,23 +169,6 @@ export class AppHost {
    * 用于「版本戳缺失」场景兜底——历史并发下载可能留下半截/损坏文件，
    * 此时不应盲目信任本地，应触发联网更新。开发机正常完整页面一定通过。
    */
-  // 健康检查结果缓存：避免每次打开视图都读取 1.26MB 的 app.html（安卓端尤其耗 IO）。
-  // key=webappDir，10 分钟内复用。文件被覆盖后内容变化但缓存未过期时，版本戳逻辑仍会兜底
-  // （戳过期或不匹配会触发重下），故短时效缓存安全。
-  private static healthCache = new Map<string, { ok: boolean; ts: number }>();
-  private static HEALTH_CACHE_TTL = 10 * 60 * 1000;
-
-  private async _isAppHtmlHealthyCached(adapter: DataAdapter): Promise<boolean> {
-    const cached = AppHost.healthCache.get(this.webappDir);
-    const now = Date.now();
-    if (cached && now - cached.ts < AppHost.HEALTH_CACHE_TTL) {
-      return cached.ok;
-    }
-    const ok = await this._isAppHtmlHealthy(adapter);
-    AppHost.healthCache.set(this.webappDir, { ok, ts: now });
-    return ok;
-  }
-
   private async _isAppHtmlHealthy(adapter: DataAdapter): Promise<boolean> {
     try {
       const html = await adapter.read(normalizePath(`${this.webappDir}/app.html`));

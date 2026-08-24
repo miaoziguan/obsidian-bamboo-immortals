@@ -193,24 +193,10 @@ export class DailyReviewView extends ItemView {
       return plugin?.getBambooCoinAvailableBalance ? plugin.getBambooCoinAvailableBalance() : null;
     });
 
-    // 扫描自定义主题（本地快速 IO，同步 await 不影响延迟视图超时）
+    // 扫描自定义主题
     const customThemes = await this.scanCustomThemes();
     this.appAPI.setCustomThemes(customThemes);
 
-    // 移动端视图片以「延迟视图(deferred view)」加载：onOpen 若被 buildBlobUrl
-    // （首开可能联网下载/解压 webapp）阻塞过久，会触发 Obsidian 的
-    // "Failed to load deferred view Error: Timeout" 直接放弃该视图。
-    // 故把耗时的挂载拆到独立异步方法，onOpen 用 void 触发后立即返回，不 await，
-    // 延迟视图超时阈值内立起空容器；webapp 就绪后再填充 iframe（桌面行为不变）。
-    void this._mountWebapp(container);
-  }
-
-  /**
-   * 异步挂载 webapp：先建立 iframe + 通信层 + 主题监听，再 await buildBlobUrl
-   * （可能联网下载）拿到 blobUrl 并同步赋予 iframe.src。
-   * 由 onOpen 以 void 调用，避免阻塞延迟视图加载超时。
-   */
-  private async _mountWebapp(container: HTMLElement): Promise<void> {
     // 创建 AppHost 并构建 blob URL
     const version = (this.plugin as { manifest?: { version?: string } } | undefined)?.manifest?.version ?? '';
     this.appHost = new AppHost(this.app, this.pluginDir, version);
@@ -220,37 +206,26 @@ export class DailyReviewView extends ItemView {
       cls: 'bamboo-review-loading',
     });
 
-    const appAPI = this.appAPI;
-    if (!appAPI) {
-      loadingEl.remove();
-      return;
-    }
-
     try {
-      appAPI.startListening();
-
-      // 先构建 blob URL（可能下载），再创建 iframe 并赋予 src —— 确保 webapp 启动
-      // 发来的 app:ready 到达时 this.iframe 已就绪，避免握手被丢弃（首屏退化为离线）。
+      this.appAPI.startListening();
       const blobUrl = await this.appHost.buildBlobUrl();
 
-      // 视图可能已在加载期间被关闭
-      if (!container.isConnected) {
-        loadingEl.remove();
-        return;
-      }
-
+      // 先创建 iframe 并绑定通信层，再赋予 src —— 确保 webapp 启动发来的
+      // app:ready 到达时 this.iframe 已就绪，避免 onMessage 因 source 校验不通过
+      // 而丢弃握手（握手失败时 store 首屏会退化为空/离线数据，需重启才恢复）。
       this.iframe = container.createEl('iframe', {
         cls: 'bamboo-review-frame',
         attr: {
-          src: blobUrl,
           allow: 'camera; microphone; clipboard-read; clipboard-write',
         },
       });
-      appAPI.bindIframe(this.iframe);
+      this.appAPI.bindIframe(this.iframe);
       loadingEl.remove();
 
+      this.iframe.src = blobUrl;
+
       this.cssChangeRef = this.app.workspace.on('css-change', () => {
-        appAPI.onThemeChanged(this.settings.followObsidianTheme);
+        this.appAPI?.onThemeChanged(this.settings.followObsidianTheme);
       });
     } catch (e) {
       loadingEl.remove();

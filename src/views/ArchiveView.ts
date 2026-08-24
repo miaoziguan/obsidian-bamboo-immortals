@@ -80,20 +80,10 @@ export class ArchiveView extends ItemView {
     );
     await this.appAPI.ensureStructure();
 
-    // 扫描自定义主题（本地快速 IO）
+    // 扫描自定义主题
     const customThemes = await this.scanCustomThemes();
     this.appAPI.setCustomThemes(customThemes);
 
-    // 移动端延迟视图超时规避：把耗时的 webapp 挂载拆到独立异步方法，
-    // onOpen 用 void 触发后立即返回，不阻塞延迟视图加载超时。
-    void this._mountWebapp(container);
-  }
-
-  /**
-   * 异步挂载归档 webapp：先建立 iframe + 通信层 + 主题监听，再 await buildBlobUrl
-   * （可能联网下载）拿到 blobUrl 并同步赋予 iframe.src。由 onOpen 以 void 调用。
-   */
-  private async _mountWebapp(container: HTMLElement): Promise<void> {
     // 创建 AppHost 并构建 blob URL（加载 archive.html）
     const version = (this.plugin as { manifest?: { version?: string } } | undefined)?.manifest?.version ?? '';
     this.appHost = new AppHost(this.app, this.pluginDir, version);
@@ -103,21 +93,9 @@ export class ArchiveView extends ItemView {
       cls: 'bamboo-review-loading',
     });
 
-    const appAPI = this.appAPI;
-    if (!appAPI) {
-      loadingEl.remove();
-      return;
-    }
-
     try {
-      appAPI.startListening();
-
+      this.appAPI.startListening();
       const blobUrl = await this.appHost.buildBlobUrl('archive.html');
-
-      if (!container.isConnected) {
-        loadingEl.remove();
-        return;
-      }
 
       this.iframe = container.createEl('iframe', {
         cls: 'bamboo-review-frame',
@@ -126,11 +104,12 @@ export class ArchiveView extends ItemView {
           allow: 'camera; microphone; clipboard-read; clipboard-write',
         },
       });
-      appAPI.bindIframe(this.iframe);
+
       loadingEl.remove();
+      this.appAPI.bindIframe(this.iframe);
 
       this.cssChangeRef = this.app.workspace.on('css-change', () => {
-        appAPI.onThemeChanged(this.settings.followObsidianTheme);
+        this.appAPI?.onThemeChanged(this.settings.followObsidianTheme);
       });
     } catch (e) {
       loadingEl.remove();

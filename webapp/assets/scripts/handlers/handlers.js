@@ -59,12 +59,28 @@ export const Handlers = {
 
     /** 隐私模式：恢复上次模糊强度，并给内容容器打 data-private 标记 */
     setupPrivacyMode() {
-        // 给承载用户数据的内容容器打标，UI 骨架（FAB/导航/图标）不受影响。
+        // 给承载用户数据的内容容器打标（markText 现已全局扫描，此标记仅作语义兼容保留）。
         const contentRoot = byId('sectionsContainer') || byId('reviewContainer');
         if (contentRoot && !contentRoot.hasAttribute('data-private')) {
             contentRoot.setAttribute('data-private', '');
         }
-        if (typeof PrivacyMode !== 'undefined') PrivacyMode.init();
+        if (typeof PrivacyMode !== 'undefined') {
+            PrivacyMode.init();
+            // 动态渲染（AI 规划写入、切日期、待办/时间线回流等）后补标文字叶子，
+            // 确保新出现的文字也被纳入模糊。观察整个 shadow root，覆盖任何位置的板块。
+            const mark = () => PrivacyMode.markText();
+            const sr = window.__bambooShadowRoot;
+            const observeTarget = (sr && sr.documentElement) || contentRoot || document.body;
+            if (typeof MutationObserver === 'function' && observeTarget) {
+                this._privacyObserver = new MutationObserver(mark);
+                this._privacyObserver.observe(observeTarget, {
+                    childList: true,
+                    subtree: true,
+                });
+            }
+            // 首屏渲染可能晚于 init（数据异步到达），下一帧再补一次
+            requestAnimationFrame(mark);
+        }
     },
 
     setupGlobalKeyboardShortcuts() {

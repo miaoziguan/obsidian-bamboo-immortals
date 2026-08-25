@@ -271,6 +271,7 @@
     max-height: 80vh;
     overflow-y: auto;
     min-width: min(200px, calc(100vw - 12px));
+    max-width: calc(100vw - 12px);
 }
 .fab-actions.open {
     transform: translateY(0);
@@ -409,6 +410,66 @@
 }
 .fab-container.touch-active {
     transform: scale(0.95);
+}
+
+/* === 隐私强度调节面板（FAB 菜单内，不进设置面板）=== */
+.fab-privacy-panel {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px 12px;
+    margin: 2px 0 6px;
+    background: var(--bg-elevated, rgba(255, 255, 255, 0.06));
+    border-radius: 10px;
+    /* 跟随隐私菜单容器的宽度，避免溢出 */
+    width: 100%;
+    box-sizing: border-box;
+}
+.fab-privacy-panel[hidden] {
+    display: none;
+}
+.fab-privacy-label {
+    font-size: 12px;
+    color: var(--text-secondary, #9aa0a6);
+    white-space: nowrap;
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.fab-privacy-controls {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+.fab-privacy-step {
+    flex: 0 0 auto;
+    width: 26px;
+    height: 26px;
+    border-radius: 7px;
+    border: 1px solid var(--bamboo-border, rgba(255, 255, 255, 0.14));
+    background: var(--bg-elevated, rgba(255, 255, 255, 0.08));
+    color: var(--text-primary, #e8eaed);
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+}
+.fab-privacy-step:active {
+    transform: scale(0.92);
+}
+.fab-privacy-range {
+    flex: 1 1 auto;
+    min-width: 0;
+    height: 4px;
+    accent-color: var(--bamboo-primary, #2d5a27);
+    cursor: pointer;
 }
 .fab-container.fab-open {
     z-index: var(--z-layer-modal);

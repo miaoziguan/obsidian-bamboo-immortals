@@ -109,6 +109,15 @@
                             <span class="fab-btn-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/><circle cx="12" cy="16" r="1.5"/></svg></span>
                             <span class="fab-btn-text">隐私模糊</span>
                         </button>
+                        <!-- 隐私强度调节面板：仅隐私开启时可见，挂在 FAB 菜单内，不进设置面板 -->
+                        <div class="fab-privacy-panel" id="fabPrivacyPanel" hidden>
+                            <span class="fab-privacy-label">模糊强度</span>
+                            <div class="fab-privacy-controls">
+                                <button class="fab-privacy-step" data-action="fab-privacy-less" aria-label="减弱" type="button">−</button>
+                                <input class="fab-privacy-range" id="fabPrivacyRange" type="range" min="1" max="20" step="1" value="10" aria-label="模糊强度" oninput="event.stopPropagation(); if (window.PrivacyMode) { window.PrivacyMode.setLevel(Number(this.value)); }" />
+                                <button class="fab-privacy-step" data-action="fab-privacy-more" aria-label="增强" type="button">+</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
 

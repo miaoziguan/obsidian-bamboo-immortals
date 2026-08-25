@@ -69,16 +69,22 @@ export const PrivacyMode = {
      *  - 变量同时设在 :root(html) 与 shadow host：自定义属性继承穿透 shadow 边界，
      *    但部分 WebView 对跨 shadow 继承有怪异，直接设到 host（[data-private] 的直接祖先）
      *    可 100% 可靠命中。
-     *  - 隐私态 class 加在 body 上：shadowBootstrap 的 MutationObserver 会把它镜像到
-     *    shadow host（#bamboo-shadow-host），故 :host(.privacy-on) 生效；noShadow 回退时
-     *    body 即容器，body.privacy-on 直接生效。 */
+     *  - 隐私态 class 同时加在 body 与 shadow host 两处：不依赖 shadowBootstrap 的
+     *    MutationObserver 异步镜像（其偶发漏镜像会导致关闭时 host 残留 .privacy-on 而使
+     *    模糊无法消除）；这里直接双写，确保 :host(.privacy-on) 与 body.privacy-on 同时成立/撤销。
+     *  - noShadow 回退时 host 为 null，仅 body 生效，与旧逻辑一致。 */
     apply(level) {
         const px = level + 'px';
         const root = document.documentElement;
         if (root) root.style.setProperty('--privacy-blur', px);
         const sr = window.__bambooShadowRoot;
         const host = sr && sr.host;
-        if (host) host.style.setProperty('--privacy-blur', px);
+        if (host) {
+            host.style.setProperty('--privacy-blur', px);
+            // 直通同步：shadow 模式下模糊态由 :host(.privacy-on) 命中，必须确保 host 的 class 正确
+            if (level > 0) host.classList.add('privacy-on');
+            else host.classList.remove('privacy-on');
+        }
         const body = document.body;
         if (body) {
             if (level > 0) body.classList.add('privacy-on');
@@ -88,7 +94,45 @@ export const PrivacyMode = {
 
     /** 视图初始化时调用：恢复上次状态 */
     init() {
+        this.markText();
         this.apply(this.getLevel());
+    },
+
+    /**
+     * 给「纯文字叶子元素」批量补打 data-private-text 标记（全局扫描，零遗漏兜底）。
+     * 扫描整个 shadow root（或 document）内含直接文本节点的叶子元素，排除 UI 骨架
+     * （FAB/模态/导航/按钮/媒体/图标/进度条等），确保图片/图标保持清晰、而任何
+     * 位置的文字（含待办/时间线板块、动态渲染内容）都被纳入模糊。
+     * 仅处理尚未标记的元素，幂等可重复调用（配合动态渲染的 MutationObserver）。
+     */
+    markText() {
+        // 作用域：shadow 模式扫 shadow root，无 shadow 回退 document
+        const sr = window.__bambooShadowRoot;
+        const scope = (sr && sr.documentElement) || document;
+        if (!scope) return;
+        // UI 骨架 / 结构型 / 媒体：整棵子树跳过，不被模糊
+        const isSkeleton = (el) =>
+            el.matches(
+                'img, svg, video, canvas, audio, ' +
+                'button, input, select, textarea, ' +
+                '.fab-container, .fab-actions, .fab-action-btn, .fab-main, .fab-privacy-panel, ' +
+                '.modal-container, .modal-base, .modal-panel, ' +
+                '.nav, .navbar, .topnav, .quick-nav, .side-nav, ' +
+                '.icon, .goal-progress, .progress-bar, .bamboo-progress, .todo-progress-bar, ' +
+                '.tooltip, .fab-btn-icon, .bamboo-icon, .todo-lottery-btn'
+            );
+        const walk = (node) => {
+            if (node.nodeType !== 1) return; // 仅元素
+            if (isSkeleton(node)) return;    // 骨架/媒体：跳过整棵子树
+            const hasText = Array.from(node.childNodes).some(
+                (c) => c.nodeType === 3 && c.textContent.trim().length > 0
+            );
+            if (hasText && !node.hasAttribute('data-private-text')) {
+                node.setAttribute('data-private-text', '');
+            }
+            for (const child of Array.from(node.children)) walk(child);
+        };
+        for (const child of Array.from(scope.children)) walk(child);
     },
 };
 

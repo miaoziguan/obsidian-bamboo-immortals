@@ -1,16 +1,56 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 /* === 防偷窥隐私模式（PrivacyMode）===
-   仅模糊承载用户数据的元素（打 data-private 标记），UI 骨架（按钮/导航/图标）
-   保持清晰可点。强度由 --privacy-blur 变量驱动，transition 跟手。
-   关闭时容器不带 .privacy-on，data-private 不模糊。
+   仅模糊「文字内容」，不波及图片/媒体/图标按钮/进度图形等 UI 骨架。
+   - [data-private] 作为隐私作用域容器（挂在内容根，如 sectionsContainer）；
+   - 真正被模糊的是作用域内的「文字类元素」：
+       · 显式 data-private-text 标记（PrivacyMode 给纯文本叶子批量补打，零遗漏）；
+       · 以及一组稳定的文字类选择器兜底（标题/描述/数字/行内编辑等）。
+   - 图片(img)、媒体、svg 图标、按钮、进度条均不在白名单内 → 保持清晰可点。
+   强度由 --privacy-blur 变量驱动，transition 跟手。
 
    注意：webapp 运行于 Shadow DOM，shadowBootstrap 会把 body/documentElement 的
    class 镜像到 shadow host（#bamboo-shadow-host），故隐私态的 .privacy-on 实际在
    host 上而非 shadow 内的 body。故需同时匹配 :host(.privacy-on)（shadow 模式）
    与 body.privacy-on（__BAMBOO_NO_SHADOW__ kill-switch 回退，无 shadow 时）。 */
-:host(.privacy-on) [data-private],
-body.privacy-on [data-private] {
+:host(.privacy-on) [data-private-text],
+:host(.privacy-on) :is(
+    p, [data-inline-edit],
+    .goal-item-name, .goal-item-daily, .goal-item-date, .goal-item-status, .goal-item-entry,
+    .goal-title, .goal-text,
+    .section-title, .section-desc, .section-settings-title, .section-settings-desc,
+    .health-goal-title, .stat-value, .stat-label,
+    .todo-focus-item, .todo-item-text, .todo-title, .todo-desc, .todo-goal-daily,
+    .todo-goal-progress, .todo-goal-source, .todo-stat-num, .todo-stat-label,
+    .todo-group-label, .todo-completed-count,
+    .bamboo-name, .bamboo-time, .bamboo-count, .bamboo-item-time, .bamboo-item-task,
+    .bamboo-item-eval, .bamboo-title, .empty-state-title, .empty-state-desc, .empty-state-hint,
+    .text-block, .card-title, .card-desc, .quote-text, .weather-text,
+    .ticket-time-name, .ticket-time-value, .ticket-highlight-value, .ticket-highlight-label,
+    .ticket-sub-label, .ticket-body-text,
+    .stub-back-ring-text, .stub-back-caption, .stub-back-stat-value, .stub-back-stat,
+    .stub-back-title, .stub-nc-name, .stub-name, .stub-caption, .stub-value,
+    .designer-ticket .ticket-text, .ticket-stub-content
+),
+body.privacy-on [data-private-text],
+body.privacy-on :is(
+    p, [data-inline-edit],
+    .goal-item-name, .goal-item-daily, .goal-item-date, .goal-item-status, .goal-item-entry,
+    .goal-title, .goal-text,
+    .section-title, .section-desc, .section-settings-title, .section-settings-desc,
+    .health-goal-title, .stat-value, .stat-label,
+    .todo-focus-item, .todo-item-text, .todo-title, .todo-desc, .todo-goal-daily,
+    .todo-goal-progress, .todo-goal-source, .todo-stat-num, .todo-stat-label,
+    .todo-group-label, .todo-completed-count,
+    .bamboo-name, .bamboo-time, .bamboo-count, .bamboo-item-time, .bamboo-item-task,
+    .bamboo-item-eval, .bamboo-title, .empty-state-title, .empty-state-desc, .empty-state-hint,
+    .text-block, .card-title, .card-desc, .quote-text, .weather-text,
+    .ticket-time-name, .ticket-time-value, .ticket-highlight-value, .ticket-highlight-label,
+    .ticket-sub-label, .ticket-body-text,
+    .stub-back-ring-text, .stub-back-caption, .stub-back-stat-value, .stub-back-stat,
+    .stub-back-title, .stub-nc-name, .stub-name, .stub-caption, .stub-value,
+    .designer-ticket .ticket-text, .ticket-stub-content
+) {
     filter: blur(var(--privacy-blur));
     transition: filter 0.18s ease;
     /* 模糊状态下仍可被点击操作（如切日期、开设置），仅视觉遮挡 */
@@ -18,8 +58,34 @@ body.privacy-on [data-private] {
 }
 /* 尊重用户的「减少动态效果」系统偏好：关闭模糊过渡（直接切） */
 @media (prefers-reduced-motion: reduce) {
-    :host(.privacy-on) [data-private],
-    body.privacy-on [data-private] {
+    :host(.privacy-on) [data-private-text],
+    :host(.privacy-on) :is(
+        p, [data-inline-edit],
+        .goal-item-name, .goal-item-daily, .goal-item-date, .goal-item-status, .goal-item-entry,
+        .goal-title, .goal-text,
+        .section-title, .section-desc, .section-settings-title, .section-settings-desc,
+        .health-goal-title, .stat-value, .stat-label,
+        .todo-focus-item, .todo-item-text, .todo-title, .todo-desc, .todo-goal-daily,
+        .todo-goal-progress, .todo-goal-source, .todo-stat-num, .todo-stat-label,
+        .todo-group-label, .todo-completed-count,
+        .bamboo-name, .bamboo-time, .bamboo-count, .bamboo-item-time, .bamboo-item-task,
+        .bamboo-item-eval, .bamboo-title, .empty-state-title, .empty-state-desc, .empty-state-hint,
+        .text-block, .card-title, .card-desc, .quote-text, .weather-text
+    ),
+    body.privacy-on [data-private-text],
+    body.privacy-on :is(
+        p, [data-inline-edit],
+        .goal-item-name, .goal-item-daily, .goal-item-date, .goal-item-status, .goal-item-entry,
+        .goal-title, .goal-text,
+        .section-title, .section-desc, .section-settings-title, .section-settings-desc,
+        .health-goal-title, .stat-value, .stat-label,
+        .todo-focus-item, .todo-item-text, .todo-title, .todo-desc, .todo-goal-daily,
+        .todo-goal-progress, .todo-goal-source, .todo-stat-num, .todo-stat-label,
+        .todo-group-label, .todo-completed-count,
+        .bamboo-name, .bamboo-time, .bamboo-count, .bamboo-item-time, .bamboo-item-task,
+        .bamboo-item-eval, .bamboo-title, .empty-state-title, .empty-state-desc, .empty-state-hint,
+        .text-block, .card-title, .card-desc, .quote-text, .weather-text
+    ) {
         transition: none;
     }
 }

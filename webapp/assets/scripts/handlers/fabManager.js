@@ -33,6 +33,8 @@ export const FABManager = {
         // 隐私按钮点击已改用 HTML 内联 onclick 兜底（绕过 Shadow DOM retarget
         // 与所有事件委托不确定性），这里只同步初始态。
         this._syncPrivacyButton();
+        // 强度调节面板（-/+ 步进 + 滑杆即时调），挂在 FAB 菜单内，不进设置面板。
+        this.setupPrivacyControls();
 
         // 暴露到 window，供内联 onclick 同步按钮态与关闭菜单
         window.FABManager = this;
@@ -88,11 +90,50 @@ export const FABManager = {
     /** 同步隐私按钮视觉态（aria-pressed + 图标类）。on=true 表示隐私开启（模糊中） */
     updatePrivacyButton(on) {
         const btn = this.actions && this.actions.querySelector('[data-action="fab-privacy"]');
-        if (!btn) return;
-        btn.setAttribute('aria-pressed', on ? 'true' : 'false');
-        btn.classList.toggle('active', !!on);
-        const label = on ? '关闭隐私模糊' : '隐私模糊（防偷窥）';
-        btn.setAttribute('aria-label', label);
+        if (btn) {
+            btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+            btn.classList.toggle('active', !!on);
+            const label = on ? '关闭隐私模糊' : '隐私模糊（防偷窥）';
+            btn.setAttribute('aria-label', label);
+        }
+        // 强度面板仅隐私开启时可见；同步滑杆为当前强度
+        const panel = byId('fabPrivacyPanel');
+        if (panel) {
+            panel.hidden = !on;
+            const range = byId('fabPrivacyRange');
+            if (range && typeof PrivacyMode !== 'undefined') {
+                const lv = PrivacyMode.getLevel();
+                range.value = String(lv > 0 ? lv : (PrivacyMode.DEFAULT_LEVEL || 10));
+            }
+        }
+    },
+
+    /** 隐私强度调节：−/+ 步进按钮 + 滑杆即时调（均挂在 FAB 菜单内，不进设置面板） */
+    setupPrivacyControls() {
+        const less = this.actions && this.actions.querySelector('[data-action="fab-privacy-less"]');
+        const more = this.actions && this.actions.querySelector('[data-action="fab-privacy-more"]');
+        const step = (delta) => {
+            if (typeof PrivacyMode === 'undefined') return;
+            const next = Math.max(1, Math.min(PrivacyMode.MAX_LEVEL, PrivacyMode.getLevel() + delta));
+            PrivacyMode.setLevel(next);
+            this.updatePrivacyButton(true);
+        };
+        if (less) {
+            less.addEventListener('click', (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                step(-1);
+            });
+        }
+        if (more) {
+            more.addEventListener('click', (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                step(1);
+            });
+        }
+        // 滑杆的 oninput 已内联调 PrivacyMode.setLevel；此处仅确保初次同步一次
+        if (typeof PrivacyMode !== 'undefined') this.updatePrivacyButton(PrivacyMode.isOn());
     },
 
     /** 初始化时同步隐私按钮态（PrivacyMode.init 已 apply，这里只管图标） */
@@ -329,8 +370,9 @@ export const FABManager = {
         const spaceToLeft = btnRect.left;
         const gap = 8;
 
-        const panelW = this.actions.scrollWidth || 220;
         const panelH = this.actions.scrollHeight || 200;
+        // 注意：菜单宽度不再由 JS 强制写死（旧逻辑写固定 width 会在窄栏溢出/被裁），
+        // 改由 CSS 的 min-width/max-width: calc(100vw - 12px) 自适应。JS 只负责上下/左右翻转。
 
         this.container.classList.remove('fab-below', 'fab-align-left');
 
@@ -341,12 +383,20 @@ export const FABManager = {
             this.actions.style.maxHeight = Math.min(vp.height * 0.8, spaceAbove - gap) + 'px';
         }
 
-        if (spaceToLeft < panelW) {
+        // 按钮太靠左（向左空间不足菜单宽）时改为向右展开，避免溢出左边界
+        const estW = Math.min(this.actions.offsetWidth || 220, vp.width - 12);
+        const alignLeft = spaceToLeft < estW;
+        if (alignLeft) {
             this.container.classList.add('fab-align-left');
         }
 
-        const maxW = Math.min(panelW, vp.width - 12);
-        this.actions.style.width = maxW + 'px';
+        // 动态约束菜单最大宽度，确保无论向左/向右展开都不溢出视口边界
+        // （容器可被拖拽到任意 right，故不能依赖 CSS 固定值，必须按按钮实际位置算）
+        const spaceToRight = vp.width - btnRect.right;
+        const maxW = alignLeft
+            ? Math.max(160, spaceToRight - gap)   // 向右展开：受右方空间限制
+            : Math.max(160, spaceToLeft - gap);   // 向左展开：受左方空间限制
+        this.actions.style.maxWidth = maxW + 'px';
     },
 
     open() {

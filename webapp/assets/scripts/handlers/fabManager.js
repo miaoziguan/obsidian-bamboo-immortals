@@ -37,15 +37,25 @@ export const FABManager = {
         this._syncPrivacyButton();
     },
 
-    /** 隐私按钮点击 → 翻转模糊态。直接委托在 shadow 内的菜单容器上，
-     *  e.target 为真实 shadow 节点（未 retarget），closest 可靠命中。
+    /** 隐私按钮点击 → 翻转模糊态。
+     *  监听挂在 getDomRoot()（shadow 模式下即 shadowRoot，运行时取值确保拿到正确根），
+     *  并用 composedPath() 取真实事件路径（含 shadow 内节点），兼容 Obsidian 下
+     *  e.target 被 retarget 成 host 导致 closest 找不到按钮的情况——这正是此前
+     *  「点了没反应、菜单也不关」的根因：this.actions 在 retarget 下 closest 返回 null
+     *  提前 return，连 close 都没执行。
      *  作为 fab-privacy 的唯一处理方，避免与 ActionDispatcher 双触发。 */
     setupPrivacyAction() {
-        if (!this.actions) return;
-        this.actions.addEventListener('click', (e) => {
-            const btn = (e.target && e.target.closest)
-                ? e.target.closest('[data-action="fab-privacy"]')
-                : null;
+        const root = getDomRoot();
+        if (!root) return;
+        root.addEventListener('click', (e) => {
+            const path = (typeof e.composedPath === 'function') ? e.composedPath() : [e.target];
+            let btn = null;
+            for (const node of path) {
+                if (node && node.nodeType === 1 && typeof node.closest === 'function') {
+                    const m = node.closest('[data-action="fab-privacy"]');
+                    if (m) { btn = m; break; }
+                }
+            }
             if (!btn) return;
             e.preventDefault();
             e.stopPropagation();

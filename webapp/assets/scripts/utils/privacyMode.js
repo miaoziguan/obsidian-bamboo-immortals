@@ -11,18 +11,32 @@
  */
 export const PrivacyMode = {
     KEY: 'privacy_blur_level',
+    LAST_KEY: 'privacy_blur_last',
     DEFAULT_LEVEL: 10,
     MAX_LEVEL: 20,
     MIN_LEVEL: 0,
 
-    /** 读取当前模糊强度（0=关，否则 px）。非法值回退默认。 */
+    /** 读取当前模糊强度（0=关，否则 px）。
+     *  重要：未设置过（首次使用）返回 0 = 关，绝不默认开启隐私。 */
     getLevel() {
         try {
             const raw = localStorage.getItem(this.KEY);
-            if (raw === null) return this.DEFAULT_LEVEL;
+            if (raw === null) return 0;
             const n = parseInt(raw, 10);
-            if (isNaN(n)) return this.DEFAULT_LEVEL;
+            if (isNaN(n)) return 0;
             return Math.max(this.MIN_LEVEL, Math.min(this.MAX_LEVEL, n));
+        } catch (_) {
+            return 0;
+        }
+    },
+
+    /** 读取上次使用的非零强度（用于关闭后再开时恢复，不丢档位） */
+    getLastLevel() {
+        try {
+            const raw = localStorage.getItem(this.LAST_KEY);
+            const n = raw === null ? NaN : parseInt(raw, 10);
+            if (isNaN(n)) return this.DEFAULT_LEVEL;
+            return Math.max(this.MIN_LEVEL, Math.min(this.MAX_LEVEL, n)) || this.DEFAULT_LEVEL;
         } catch (_) {
             return this.DEFAULT_LEVEL;
         }
@@ -33,17 +47,20 @@ export const PrivacyMode = {
         return this.getLevel() > 0;
     },
 
-    /** 持久化强度并立即应用到 DOM */
+    /** 持久化强度并立即应用到 DOM；强度>0 时记住上次强度 */
     setLevel(level) {
         const n = Math.max(this.MIN_LEVEL, Math.min(this.MAX_LEVEL, Math.round(level)));
-        try { localStorage.setItem(this.KEY, String(n)); } catch (_) {}
+        try {
+            localStorage.setItem(this.KEY, String(n));
+            if (n > 0) localStorage.setItem(this.LAST_KEY, String(n));
+        } catch (_) {}
         this.apply(n);
         return n;
     },
 
-    /** 在「默认强度」与「关闭(0)」之间翻转，返回翻转后是否开启 */
+    /** 在「关」与「上次强度」之间翻转，返回翻转后是否开启 */
     toggle() {
-        const next = this.isOn() ? 0 : this.DEFAULT_LEVEL;
+        const next = this.isOn() ? 0 : this.getLastLevel();
         this.setLevel(next);
         return next > 0;
     },

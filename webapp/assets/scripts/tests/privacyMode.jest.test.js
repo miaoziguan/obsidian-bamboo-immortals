@@ -17,13 +17,14 @@ describe('PrivacyMode 防偷窥模糊', () => {
     document.body.classList.remove('privacy-on');
   });
 
-  test('默认强度为 10，未设置时返回默认', () => {
-    expect(PrivacyMode.getLevel()).toBe(10);
+  test('未设置时默认关闭（0），绝不默认开启隐私', () => {
+    expect(PrivacyMode.getLevel()).toBe(0);
+    expect(PrivacyMode.isOn()).toBe(false);
   });
 
-  test('读取非法值回退默认', () => {
+  test('读取非法值回退关闭', () => {
     localStorage.setItem(PrivacyMode.KEY, 'abc');
-    expect(PrivacyMode.getLevel()).toBe(10);
+    expect(PrivacyMode.getLevel()).toBe(0);
   });
 
   test('强度被钳制在 0..20', () => {
@@ -49,16 +50,25 @@ describe('PrivacyMode 防偷窥模糊', () => {
     expect(document.body.classList.contains('privacy-on')).toBe(false);
   });
 
-  test('toggle 在「默认强度」与「关闭(0)」间翻转', () => {
-    // 初始默认开启（getLevel=10>0）
-    expect(PrivacyMode.isOn()).toBe(true);
-    // 开启 → toggle 关闭
-    expect(PrivacyMode.toggle()).toBe(false);
+  test('toggle 在「关」与「上次强度」间翻转，且首次使用默认不开启', () => {
+    // 初始未设置 = 关
     expect(PrivacyMode.isOn()).toBe(false);
-    expect(PrivacyMode.getLevel()).toBe(0);
-    // 关闭 → toggle 回到默认强度 10
+    // 关 → 开：首次用默认强度 10
     expect(PrivacyMode.toggle()).toBe(true);
     expect(PrivacyMode.getLevel()).toBe(10);
+    // 开 → 关
+    expect(PrivacyMode.toggle()).toBe(false);
+    expect(PrivacyMode.getLevel()).toBe(0);
+    // 关 → 开：恢复上次强度 10（记住档位）
+    expect(PrivacyMode.toggle()).toBe(true);
+    expect(PrivacyMode.getLevel()).toBe(10);
+  });
+
+  test('toggle 关闭后再开，恢复用户上次自定义强度（非默认）', () => {
+    PrivacyMode.setLevel(16); // 用户自定义 16
+    expect(PrivacyMode.toggle()).toBe(false); // 关
+    expect(PrivacyMode.toggle()).toBe(true);  // 再开
+    expect(PrivacyMode.getLevel()).toBe(16);  // 恢复 16，而非默认 10
   });
 
   test('isOn 仅在强度>0 时为 true', () => {

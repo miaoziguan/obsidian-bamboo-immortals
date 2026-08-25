@@ -819,54 +819,6 @@ export const DisplayManager = {
         widthSection.appendChild(presetRow);
         panel.appendChild(widthSection);
 
-        // 隐私模糊强度控制区（防偷窥模式，UI 偏好，非业务数据）
-        if (typeof PrivacyMode !== 'undefined') {
-            const privacySection = document.createElement('div');
-            privacySection.className = 'display-section';
-
-            const privacyLabel = document.createElement('div');
-            privacyLabel.className = 'display-section-label';
-            privacyLabel.innerHTML = `
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                <span>隐私模糊强度</span>
-            `;
-            privacySection.appendChild(privacyLabel);
-
-            const privacySliderRow = document.createElement('div');
-            privacySliderRow.className = 'display-slider-row';
-
-            const privacySlider = document.createElement('input');
-            privacySlider.type = 'range';
-            privacySlider.className = 'display-slider';
-            privacySlider.min = PrivacyMode.MIN_LEVEL;
-            privacySlider.max = PrivacyMode.MAX_LEVEL;
-            privacySlider.step = 2;
-            const curLevel = PrivacyMode.getLevel();
-            privacySlider.value = curLevel;
-            privacySlider.setAttribute('aria-label', '隐私模糊强度');
-            privacySection.appendChild(privacySliderRow);
-
-            const privacyValueLabel = document.createElement('span');
-            privacyValueLabel.className = 'display-value-label';
-            const levelText = (v) => v <= 0 ? '关' : v <= 6 ? '轻' : v <= 10 ? '中' : v <= 16 ? '重' : '极';
-            privacyValueLabel.textContent = levelText(curLevel);
-
-            privacySliderRow.appendChild(privacySlider);
-            privacySliderRow.appendChild(privacyValueLabel);
-
-            privacySlider.addEventListener('input', () => {
-                const v = parseInt(privacySlider.value, 10);
-                PrivacyMode.setLevel(v);
-                privacyValueLabel.textContent = levelText(v);
-                if (typeof FABManager !== 'undefined' && FABManager.updatePrivacyButton) {
-                    FABManager.updatePrivacyButton(v > 0);
-                }
-            });
-
-            privacySection.appendChild(privacySliderRow);
-            panel.appendChild(privacySection);
-        }
-
         // 字号控制区
         const fontSection = document.createElement('div');
         fontSection.className = 'display-section';

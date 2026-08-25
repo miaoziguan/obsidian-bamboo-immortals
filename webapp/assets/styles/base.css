@@ -3,7 +3,13 @@
 /* === 防偷窥隐私模式（PrivacyMode）===
    仅模糊承载用户数据的元素（打 data-private 标记），UI 骨架（按钮/导航/图标）
    保持清晰可点。强度由 --privacy-blur 变量驱动，transition 跟手。
-   关闭时 body 不带 .privacy-on，data-private 不模糊。 */
+   关闭时容器不带 .privacy-on，data-private 不模糊。
+
+   注意：webapp 运行于 Shadow DOM，shadowBootstrap 会把 body/documentElement 的
+   class 镜像到 shadow host（#bamboo-shadow-host），故隐私态的 .privacy-on 实际在
+   host 上而非 shadow 内的 body。故需同时匹配 :host(.privacy-on)（shadow 模式）
+   与 body.privacy-on（__BAMBOO_NO_SHADOW__ kill-switch 回退，无 shadow 时）。 */
+:host(.privacy-on) [data-private],
 body.privacy-on [data-private] {
     filter: blur(var(--privacy-blur));
     transition: filter 0.18s ease;
@@ -12,6 +18,7 @@ body.privacy-on [data-private] {
 }
 /* 尊重用户的「减少动态效果」系统偏好：关闭模糊过渡（直接切） */
 @media (prefers-reduced-motion: reduce) {
+    :host(.privacy-on) [data-private],
     body.privacy-on [data-private] {
         transition: none;
     }

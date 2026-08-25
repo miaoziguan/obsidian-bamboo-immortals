@@ -11,7 +11,6 @@
  */
 export const PrivacyMode = {
     KEY: 'privacy_blur_level',
-    LAST_KEY: 'privacy_blur_last',
     DEFAULT_LEVEL: 10,
     MAX_LEVEL: 20,
     MIN_LEVEL: 0,
@@ -29,46 +28,40 @@ export const PrivacyMode = {
         }
     },
 
-    /** 上次使用的非零强度（关闭时记住，用于 toggle 恢复） */
-    getLastLevel() {
-        try {
-            const raw = localStorage.getItem(this.LAST_KEY);
-            const n = raw === null ? NaN : parseInt(raw, 10);
-            if (isNaN(n)) return this.DEFAULT_LEVEL;
-            return Math.max(this.MIN_LEVEL, Math.min(this.MAX_LEVEL, n)) || this.DEFAULT_LEVEL;
-        } catch (_) {
-            return this.DEFAULT_LEVEL;
-        }
-    },
-
     /** 当前是否处于隐私开启状态（强度 > 0） */
     isOn() {
         return this.getLevel() > 0;
     },
 
-    /** 持久化强度并立即应用到 DOM；强度>0 时同时记上次强度 */
+    /** 持久化强度并立即应用到 DOM */
     setLevel(level) {
         const n = Math.max(this.MIN_LEVEL, Math.min(this.MAX_LEVEL, Math.round(level)));
-        try {
-            localStorage.setItem(this.KEY, String(n));
-            if (n > 0) localStorage.setItem(this.LAST_KEY, String(n));
-        } catch (_) {}
+        try { localStorage.setItem(this.KEY, String(n)); } catch (_) {}
         this.apply(n);
         return n;
     },
 
-    /** 在「上次强度」与「关闭(0)」之间翻转，返回翻转后是否开启 */
+    /** 在「默认强度」与「关闭(0)」之间翻转，返回翻转后是否开启 */
     toggle() {
-        const next = this.isOn() ? 0 : this.getLastLevel();
+        const next = this.isOn() ? 0 : this.DEFAULT_LEVEL;
         this.setLevel(next);
         return next > 0;
     },
 
-    /** 将强度写入 :root 的 --privacy-blur，并切换 body.privacy-on */
+    /** 将强度写入 --privacy-blur，并切换隐私态 class。
+     *  - 变量同时设在 :root(html) 与 shadow host：自定义属性继承穿透 shadow 边界，
+     *    但部分 WebView 对跨 shadow 继承有怪异，直接设到 host（[data-private] 的直接祖先）
+     *    可 100% 可靠命中。
+     *  - 隐私态 class 加在 body 上：shadowBootstrap 的 MutationObserver 会把它镜像到
+     *    shadow host（#bamboo-shadow-host），故 :host(.privacy-on) 生效；noShadow 回退时
+     *    body 即容器，body.privacy-on 直接生效。 */
     apply(level) {
+        const px = level + 'px';
         const root = document.documentElement;
-        if (!root) return;
-        root.style.setProperty('--privacy-blur', level + 'px');
+        if (root) root.style.setProperty('--privacy-blur', px);
+        const sr = window.__bambooShadowRoot;
+        const host = sr && sr.host;
+        if (host) host.style.setProperty('--privacy-blur', px);
         const body = document.body;
         if (body) {
             if (level > 0) body.classList.add('privacy-on');

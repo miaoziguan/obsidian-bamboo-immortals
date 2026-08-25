@@ -31,10 +31,15 @@ describe('PrivacyMode 防偷窥模糊', () => {
     expect(PrivacyMode.setLevel(999)).toBe(20);
   });
 
-  test('setLevel 持久化 + 写入 --privacy-blur 变量', () => {
+  test('setLevel 持久化 + 写入 --privacy-blur 变量（root 与 shadow host）', () => {
     PrivacyMode.setLevel(12);
     expect(localStorage.getItem(PrivacyMode.KEY)).toBe('12');
     expect(document.documentElement.style.getPropertyValue('--privacy-blur')).toBe('12px');
+    // 若处于 shadow 模式（__bambooShadowRoot 存在），host 也应被设变量
+    const sr = window.__bambooShadowRoot;
+    if (sr && sr.host) {
+      expect(sr.host.style.getPropertyValue('--privacy-blur')).toBe('12px');
+    }
   });
 
   test('apply: 强度>0 时 body 带 privacy-on，=0 时移除', () => {
@@ -44,15 +49,16 @@ describe('PrivacyMode 防偷窥模糊', () => {
     expect(document.body.classList.contains('privacy-on')).toBe(false);
   });
 
-  test('toggle 在「关」与「上次强度」间翻转', () => {
-    // 先设一个非默认强度并记录
-    PrivacyMode.setLevel(16);
-    // 当前开启 → toggle 关闭
+  test('toggle 在「默认强度」与「关闭(0)」间翻转', () => {
+    // 初始默认开启（getLevel=10>0）
+    expect(PrivacyMode.isOn()).toBe(true);
+    // 开启 → toggle 关闭
     expect(PrivacyMode.toggle()).toBe(false);
     expect(PrivacyMode.isOn()).toBe(false);
-    // 当前关闭 → toggle 回到上次强度 16
+    expect(PrivacyMode.getLevel()).toBe(0);
+    // 关闭 → toggle 回到默认强度 10
     expect(PrivacyMode.toggle()).toBe(true);
-    expect(PrivacyMode.getLevel()).toBe(16);
+    expect(PrivacyMode.getLevel()).toBe(10);
   });
 
   test('isOn 仅在强度>0 时为 true', () => {

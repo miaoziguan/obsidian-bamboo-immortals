@@ -105,7 +105,7 @@
                             <span class="fab-btn-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg></span>
                             <span class="fab-btn-text">竹林修仙</span>
                         </button>
-                        <button class="fab-action-btn" data-action="fab-privacy" role="menuitem" aria-label="隐私模糊（防偷窥）" aria-pressed="false">
+                        <button class="fab-action-btn" data-action="fab-privacy" role="menuitem" aria-label="隐私模糊（防偷窥）" aria-pressed="false" onclick="event.stopPropagation(); if (window.PrivacyMode) { window.PrivacyMode.toggle(); if (window.FABManager) window.FABManager.updatePrivacyButton(window.PrivacyMode.isOn()); if (window.FABManager) window.FABManager.close(); } return false;">
                             <span class="fab-btn-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/><circle cx="12" cy="16" r="1.5"/></svg></span>
                             <span class="fab-btn-text">隐私模糊</span>
                         </button>

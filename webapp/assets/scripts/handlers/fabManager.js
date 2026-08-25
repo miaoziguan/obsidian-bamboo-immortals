@@ -30,11 +30,12 @@ export const FABManager = {
         this.setupOutsideClick();
         this.setupResponsive();
         this.setupPrivacyShortcut();
-        // 隐私按钮专属点击处理（单一来源，不经 ActionDispatcher 的全局守卫，
-        // 避免任何环境下「点了没反应 / 开了关不掉」）
-        this.setupPrivacyAction();
-        // 隐私按钮初始态同步（若 PrivacyMode 已就绪）
+        // 隐私按钮点击已改用 HTML 内联 onclick 兜底（绕过 Shadow DOM retarget
+        // 与所有事件委托不确定性），这里只同步初始态。
         this._syncPrivacyButton();
+
+        // 暴露到 window，供内联 onclick 同步按钮态与关闭菜单
+        window.FABManager = this;
     },
 
     /** 隐私按钮点击 → 翻转模糊态。

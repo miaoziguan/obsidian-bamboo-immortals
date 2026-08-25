@@ -306,13 +306,6 @@ ActionDispatcher.registerMany({
         if (typeof window.ThemeEffects !== 'undefined') window.ThemeEffects.showThemePanel();
         if (typeof FABManager !== 'undefined') FABManager.close();
     },
-    'fab-privacy': () => {
-        if (typeof PrivacyMode !== 'undefined') {
-            const on = PrivacyMode.toggle();
-            FABManager.updatePrivacyButton && FABManager.updatePrivacyButton(on);
-        }
-        if (typeof FABManager !== 'undefined') FABManager.close();
-    },
     'fab-layout-toggle': () => {
         if (typeof LayoutMode !== 'undefined') {
             // 单按钮循环：纵向 → 横向 → 看板 → 纵向（toggle 内部循环推进）

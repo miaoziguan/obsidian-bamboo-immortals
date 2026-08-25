@@ -30,8 +30,32 @@ export const FABManager = {
         this.setupOutsideClick();
         this.setupResponsive();
         this.setupPrivacyShortcut();
+        // 隐私按钮专属点击处理（单一来源，不经 ActionDispatcher 的全局守卫，
+        // 避免任何环境下「点了没反应 / 开了关不掉」）
+        this.setupPrivacyAction();
         // 隐私按钮初始态同步（若 PrivacyMode 已就绪）
         this._syncPrivacyButton();
+    },
+
+    /** 隐私按钮点击 → 翻转模糊态。直接委托在 shadow 内的菜单容器上，
+     *  e.target 为真实 shadow 节点（未 retarget），closest 可靠命中。
+     *  作为 fab-privacy 的唯一处理方，避免与 ActionDispatcher 双触发。 */
+    setupPrivacyAction() {
+        if (!this.actions) return;
+        this.actions.addEventListener('click', (e) => {
+            const btn = (e.target && e.target.closest)
+                ? e.target.closest('[data-action="fab-privacy"]')
+                : null;
+            if (!btn) return;
+            e.preventDefault();
+            e.stopPropagation();
+            const PM = window.PrivacyMode;
+            if (PM) {
+                const on = PM.toggle();
+                this.updatePrivacyButton(on);
+            }
+            this.close();
+        });
     },
 
     /** 全局快捷键 Cmd/Ctrl + . 切换隐私模糊（输入框内不触发，避免干扰输入） */

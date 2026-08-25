@@ -75,6 +75,10 @@ async function bootArchive() {
     console.error('[Archive] GoalsArchiver not available');
   }
 
+  // 隐私模式：给归档内容根打标并恢复上次模糊强度（与主视图共享同一 storage 键）
+  if (root && !root.hasAttribute('data-private')) root.setAttribute('data-private', '');
+  if (typeof PrivacyMode !== 'undefined') PrivacyMode.init();
+
   document.body.classList.remove('loading');
 
   const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');

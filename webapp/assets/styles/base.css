@@ -1,5 +1,22 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
+/* === 防偷窥隐私模式（PrivacyMode）===
+   仅模糊承载用户数据的元素（打 data-private 标记），UI 骨架（按钮/导航/图标）
+   保持清晰可点。强度由 --privacy-blur 变量驱动，transition 跟手。
+   关闭时 body 不带 .privacy-on，data-private 不模糊。 */
+body.privacy-on [data-private] {
+    filter: blur(var(--privacy-blur));
+    transition: filter 0.18s ease;
+    /* 模糊状态下仍可被点击操作（如切日期、开设置），仅视觉遮挡 */
+    pointer-events: auto;
+}
+/* 尊重用户的「减少动态效果」系统偏好：关闭模糊过渡（直接切） */
+@media (prefers-reduced-motion: reduce) {
+    body.privacy-on [data-private] {
+        transition: none;
+    }
+}
+
 /* === 统一可点击元素交互 ===
    裸标签选择器（button/a/select）用 :where() 包裹降为 0,0,0 权重，
    作为 Shadow DOM 内的零权重默认值；组件类可无权重竞赛地覆写。

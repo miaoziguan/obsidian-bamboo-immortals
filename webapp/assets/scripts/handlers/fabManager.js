@@ -29,6 +29,41 @@ export const FABManager = {
         this.setupDrag();
         this.setupOutsideClick();
         this.setupResponsive();
+        this.setupPrivacyShortcut();
+        // 隐私按钮初始态同步（若 PrivacyMode 已就绪）
+        this._syncPrivacyButton();
+    },
+
+    /** 全局快捷键 Cmd/Ctrl + . 切换隐私模糊（输入框内不触发，避免干扰输入） */
+    setupPrivacyShortcut() {
+        const handler = (e) => {
+            if (!(e.ctrlKey || e.metaKey) || e.key !== '.') return;
+            const t = e.target;
+            if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+            e.preventDefault();
+            if (typeof PrivacyMode !== 'undefined') {
+                const on = PrivacyMode.toggle();
+                this.updatePrivacyButton(on);
+            }
+        };
+        this._privacyKeyHandler = handler;
+        getDomRoot().addEventListener('keydown', handler);
+    },
+
+    /** 同步隐私按钮视觉态（aria-pressed + 图标类）。on=true 表示隐私开启（模糊中） */
+    updatePrivacyButton(on) {
+        const btn = this.actions && this.actions.querySelector('[data-action="fab-privacy"]');
+        if (!btn) return;
+        btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+        btn.classList.toggle('active', !!on);
+        const label = on ? '关闭隐私模糊' : '隐私模糊（防偷窥）';
+        btn.setAttribute('aria-label', label);
+    },
+
+    /** 初始化时同步隐私按钮态（PrivacyMode.init 已 apply，这里只管图标） */
+    _syncPrivacyButton() {
+        if (typeof PrivacyMode === 'undefined') return;
+        this.updatePrivacyButton(PrivacyMode.isOn());
     },
 
     loadSavedPosition() {

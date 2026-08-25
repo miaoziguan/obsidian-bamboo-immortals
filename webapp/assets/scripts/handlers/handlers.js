@@ -16,6 +16,7 @@ export const Handlers = {
         this.setupGlobalErrorHandler();
         Navigation.init();
         this.setupFabMenu();
+        this.setupPrivacyMode();
         this.setupGlobalKeyboardShortcuts();
         Gestures.init();
         QuickNav.init();
@@ -54,6 +55,16 @@ export const Handlers = {
 
     setupFabMenu() {
         FABManager.init();
+    },
+
+    /** 隐私模式：恢复上次模糊强度，并给内容容器打 data-private 标记 */
+    setupPrivacyMode() {
+        // 给承载用户数据的内容容器打标，UI 骨架（FAB/导航/图标）不受影响。
+        const contentRoot = byId('sectionsContainer') || byId('reviewContainer');
+        if (contentRoot && !contentRoot.hasAttribute('data-private')) {
+            contentRoot.setAttribute('data-private', '');
+        }
+        if (typeof PrivacyMode !== 'undefined') PrivacyMode.init();
     },
 
     setupGlobalKeyboardShortcuts() {
@@ -293,6 +304,13 @@ ActionDispatcher.registerMany({
     },
     'fab-theme': () => {
         if (typeof window.ThemeEffects !== 'undefined') window.ThemeEffects.showThemePanel();
+        if (typeof FABManager !== 'undefined') FABManager.close();
+    },
+    'fab-privacy': () => {
+        if (typeof PrivacyMode !== 'undefined') {
+            const on = PrivacyMode.toggle();
+            FABManager.updatePrivacyButton && FABManager.updatePrivacyButton(on);
+        }
         if (typeof FABManager !== 'undefined') FABManager.close();
     },
     'fab-layout-toggle': () => {

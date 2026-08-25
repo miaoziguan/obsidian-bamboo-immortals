@@ -90,6 +90,15 @@ body.privacy-on :is(
     }
 }
 
+/* 付费激活页永远不被隐私模糊：它包含 <p> 等通用文字标签，必须兜底豁免 */
+:host(.privacy-on) .bamboo-license-gate,
+:host(.privacy-on) .bamboo-license-gate *,
+body.privacy-on .bamboo-license-gate,
+body.privacy-on .bamboo-license-gate * {
+    filter: none !important;
+    transition: none !important;
+}
+
 /* === 统一可点击元素交互 ===
    裸标签选择器（button/a/select）用 :where() 包裹降为 0,0,0 权重，
    作为 Shadow DOM 内的零权重默认值；组件类可无权重竞赛地覆写。

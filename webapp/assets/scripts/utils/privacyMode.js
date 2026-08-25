@@ -110,7 +110,7 @@ export const PrivacyMode = {
         const sr = window.__bambooShadowRoot;
         const scope = (sr && sr.documentElement) || document;
         if (!scope) return;
-        // UI 骨架 / 结构型 / 媒体：整棵子树跳过，不被模糊
+        // UI 骨架 / 结构型 / 媒体 / 付费激活页：整棵子树跳过，不被模糊
         const isSkeleton = (el) =>
             el.matches(
                 'img, svg, video, canvas, audio, ' +
@@ -119,7 +119,8 @@ export const PrivacyMode = {
                 '.modal-container, .modal-base, .modal-panel, ' +
                 '.nav, .navbar, .topnav, .quick-nav, .side-nav, ' +
                 '.icon, .goal-progress, .progress-bar, .bamboo-progress, .todo-progress-bar, ' +
-                '.tooltip, .fab-btn-icon, .bamboo-icon, .todo-lottery-btn'
+                '.tooltip, .fab-btn-icon, .bamboo-icon, .todo-lottery-btn, ' +
+                '.bamboo-license-gate, [class^="blg-"]'
             );
         const walk = (node) => {
             if (node.nodeType !== 1) return; // 仅元素

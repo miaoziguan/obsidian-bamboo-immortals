@@ -90,13 +90,15 @@ body.privacy-on :is(
     }
 }
 
-/* 付费激活页永远不被隐私模糊：它包含 <p> 等通用文字标签，必须兜底豁免 */
+/* 付费激活页永远不被隐私模糊：它包含 <p> 等通用文字标签，必须兜底豁免。
+   本规则位于隐私模糊规则之后，且选择器特异性不低于 [data-private-text]/
+   :is(...) 规则，故无需 !important 即可靠覆盖（后定义者胜出）。 */
 :host(.privacy-on) .bamboo-license-gate,
 :host(.privacy-on) .bamboo-license-gate *,
 body.privacy-on .bamboo-license-gate,
 body.privacy-on .bamboo-license-gate * {
-    filter: none !important;
-    transition: none !important;
+    filter: none;
+    transition: none;
 }
 
 /* === 统一可点击元素交互 ===

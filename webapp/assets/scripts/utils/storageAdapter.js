@@ -21,6 +21,7 @@ export const StorageKeys = {
     WEATHER_EXPANDED:   'weatherExpanded',
     QUOTE_SOURCE:       'quoteSource',
     QUOTE_ENABLED:      'quoteEnabled',
+    AUTO_SYNC_THEME:    'autoSyncTheme',
     CUSTOM_TEMPLATES:   'bamboo_custom_templates',
 };
 

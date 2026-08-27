@@ -268,7 +268,17 @@ export class Store {
             await WalletService.recalibrateStats();
             storageManager.putSetting('shopStats', this.state.stats).catch(e => console.warn('[Store] shopStats save failed:', e));
 
-            this.state.ui.autoSyncTheme = autoSyncThemeRaw !== 'false';
+            // autoSyncTheme：vault 读不到时回退 localStorage 耐久缓存（防 bridge 写丢失）
+            let autoSyncLocal = null;
+            try {
+                if (typeof StorageAdapter !== 'undefined' && typeof StorageAdapter.get === 'function') {
+                    autoSyncLocal = StorageAdapter.get(StorageKeys.AUTO_SYNC_THEME);
+                }
+            } catch (_) { /* localStorage 不可用时忽略，仅 vault 为准 */ }
+            this.state.ui.autoSyncTheme =
+                autoSyncThemeRaw !== null && autoSyncThemeRaw !== undefined
+                    ? autoSyncThemeRaw !== 'false'
+                    : autoSyncLocal !== 'false';
             this.state.ui.weatherEnabled = weatherEnabledRaw === 'true';
             this.state.ui.weatherCity = (weatherCityRaw && weatherCityRaw.length > 0) ? weatherCityRaw : null;
             this.state.ui.weatherExpanded = weatherExpandedRaw === 'true';
@@ -899,11 +909,16 @@ export class Store {
 
     async setSyncTheme(enabled) {
         this.state.ui.autoSyncTheme = enabled;
+        const val = enabled ? 'true' : 'false';
+        // 双写：vault（权威事实源）+ localStorage（即时耐久缓存，防 iframe 卸载竞态丢写）
+        if (typeof StorageAdapter !== 'undefined' && typeof StorageAdapter.set === 'function') {
+            try { StorageAdapter.set(StorageKeys.AUTO_SYNC_THEME, val); } catch (_) {}
+        }
         if (typeof storageManager !== 'undefined' && typeof storageManager.putSetting === 'function') {
             try {
-                await storageManager.putSetting('autoSyncTheme', enabled ? 'true' : 'false');
+                await storageManager.putSetting('autoSyncTheme', val);
             } catch (e) {
-                // 忽略持久化失败
+                // 忽略持久化失败（localStorage 兜底已先行写入）
             }
         }
         this.notify();

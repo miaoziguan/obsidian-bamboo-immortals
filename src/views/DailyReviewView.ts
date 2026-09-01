@@ -149,6 +149,36 @@ export class DailyReviewView extends ItemView {
       if (!this.cameFromSidebar) return;
       void this.moveViewToSidebar();
     };
+    // 进入横向/看板多列模式 → 折叠 Obsidian 右侧栏，为多列布局腾出横向宽度。
+    // rightSplit 未声明于 d.ts（运行时 API），故做类型断言 + 功能检测；
+    // 移动端/旧版无 rightSplit 时静默跳过，不阻塞布局切换。
+    this.appAPI.collapseRightSidebar = () => {
+      try {
+        const ws = this.app.workspace as unknown as {
+          rightSplit?: { collapse?: () => void; collapsed?: boolean };
+        };
+        const rs = ws?.rightSplit;
+        if (!rs || typeof rs.collapse !== 'function') return false;
+        const wasCollapsed = !!rs.collapsed;
+        rs.collapse();
+        return wasCollapsed;
+      } catch {
+        /* 折叠失败不影响布局切换 */
+        return false;
+      }
+    };
+    // 恢复纵向 → 展开右侧栏（仅当此前由本插件折叠时调用，见 LayoutMode._collapsedRightSidebar）
+    this.appAPI.expandRightSidebar = () => {
+      try {
+        const ws = this.app.workspace as unknown as {
+          rightSplit?: { expand?: () => void };
+        };
+        const rs = ws?.rightSplit;
+        if (rs && typeof rs.expand === 'function') rs.expand();
+      } catch {
+        /* 展开失败不影响布局切换 */
+      }
+    };
 
     // 战略复盘面板「用 AI 改进」入口：webapp 健康分详情 → 插件 Agentic 编辑链路
     this.appAPI.onAiImproveGoal = (payload) => {
@@ -162,6 +192,18 @@ export class DailyReviewView extends ItemView {
     this.appAPI.onOpenArchive = () => {
       const plugin = this.plugin as { openArchive?: () => Promise<void> } | undefined;
       void plugin?.openArchive?.();
+    };
+
+    // 画中卷入口：webapp FAB → 插件打开画中卷独立中央视图（不影响日报）
+    this.appAPI.onOpenScroll = () => {
+      const plugin = this.plugin as { openScroll?: () => Promise<void> } | undefined;
+      void plugin?.openScroll?.();
+    };
+
+    // 画中卷入口：点击画中卷默认以左侧边栏形态打开（百宝箱首个功能）
+    this.appAPI.onOpenScrollLeftSidebar = () => {
+      const plugin = this.plugin as { openScrollLeftSidebar?: () => Promise<void> } | undefined;
+      void plugin?.openScrollLeftSidebar?.();
     };
 
     // 健康分单一数据源：webapp 通过 app:getHealthOverview 向插件请求权威健康快照，

@@ -26,6 +26,7 @@ import type { GoalBrief } from './src/types/data';
 import type { AgenticPlanOptions } from './src/ai/AgenticPlanController';
 import { PlanEditorView, VIEW_TYPE_PLAN_EDITOR } from './src/views/PlanEditorView';
 import { ArchiveView, VIEW_TYPE_ARCHIVE } from './src/views/ArchiveView';
+import { ScrollView, VIEW_TYPE_SCROLL } from './src/views/ScrollView';
 import { SuggestionApplyModal } from './src/ai/SuggestionApplyModal';
 import { diagnose } from './src/ai/GoalDiagnoser';
 import { ConsultModal, type ConsultOptions } from './src/consult/ConsultModal';
@@ -102,6 +103,11 @@ export default class BambooReviewPlugin extends Plugin {
       return new ArchiveView(leaf, pluginDir, this, this.settings, () => this.saveSettings());
     });
 
+    // 注册「画中卷」独立视图（便签墙 + 香道番茄钟，独立中央页签，不影响日报）
+    this.registerView(VIEW_TYPE_SCROLL, (leaf: WorkspaceLeaf) => {
+      return new ScrollView(leaf, pluginDir, this, this.settings, () => this.saveSettings());
+    });
+
     // 宿主 → webapp 直连接口（Phase3 门面，内部仍走 sendCommand 线协议）
     this.webapp = new WebappController(() => {
       const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_DAILY_REVIEW);
@@ -138,6 +144,18 @@ export default class BambooReviewPlugin extends Plugin {
       id: 'open-archive',
       name: '打开目标归档',
       callback: () => void this.openArchive(),
+    });
+
+    this.addCommand({
+      id: 'open-scroll',
+      name: '打开画中卷（左侧栏）',
+      callback: () => void this.openScrollLeftSidebar(),
+    });
+
+    this.addCommand({
+      id: 'open-scroll-center',
+      name: '打开画中卷（中央页签）',
+      callback: () => void this.openScroll(),
     });
 
     this.addCommand({
@@ -275,7 +293,8 @@ export default class BambooReviewPlugin extends Plugin {
     // 先于核心 detach 视图执行：标记本次为插件卸载（禁用/热更新），
     // 让 layout-change 检测跳过清除 reviewViewOpen，供重载后自动恢复面板。
     this.pluginUnloading = true;
-    ThemeBridge.default.restoreDefaults();
+    // 遍历 registry 清理所有视图实例注入的调色变量（含各自 trailing 防抖定时器）
+    ThemeBridge.restoreAllDefaults();
   }
 
   /**
@@ -998,6 +1017,47 @@ export default class BambooReviewPlugin extends Plugin {
     if (leaf) {
       await workspace.revealLeaf(leaf);
     }
+  }
+
+  /** 激活或创建画中卷独立视图（独立中央页签，不影响日报） */
+  async openScroll(): Promise<void> {
+    const { workspace } = this.app;
+
+    let leaf: WorkspaceLeaf | null = null;
+    const leaves = workspace.getLeavesOfType(VIEW_TYPE_SCROLL);
+
+    if (leaves.length > 0) {
+      leaf = leaves[0];
+    } else {
+      leaf = workspace.getLeaf(false);
+      await leaf.setViewState({
+        type: VIEW_TYPE_SCROLL,
+        active: true,
+      });
+    }
+
+    if (leaf) {
+      await workspace.revealLeaf(leaf);
+    }
+  }
+
+  /** 激活或创建画中卷视图，并以左侧边栏（类似大纲面板）形态打开——百宝箱首个功能的默认入口
+   *  使用 getLeftLeaf(false)：复用左侧栏现有位置作为标签页打开，不新建 split（避免上下分栏）。 */
+  async openScrollLeftSidebar(): Promise<void> {
+    const { workspace } = this.app;
+
+    // 关掉其他位置残留的画中卷（避免同一视图在多处重复出现）
+    const existing = workspace.getLeavesOfType(VIEW_TYPE_SCROLL);
+    const leftLeaf = workspace.getLeftLeaf(false);
+    if (!leftLeaf) return;
+    await leftLeaf.setViewState({
+      type: VIEW_TYPE_SCROLL,
+      active: true,
+    });
+    await workspace.revealLeaf(leftLeaf);
+
+    // 复用左栏后，再清理其它位置的旧实例
+    existing.forEach((l) => { if (l !== leftLeaf) l.detach(); });
   }
 
   /** 加载设置 */

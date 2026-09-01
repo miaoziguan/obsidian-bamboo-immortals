@@ -106,9 +106,10 @@ export const PrivacyMode = {
      * 仅处理尚未标记的元素，幂等可重复调用（配合动态渲染的 MutationObserver）。
      */
     markText() {
-        // 作用域：shadow 模式扫 shadow root，无 shadow 回退 document
+        // 作用域：shadow 模式扫 shadow root（注意 ShadowRoot 无 documentElement，
+        // 须直接用 sr 本身，而非 sr.documentElement），无 shadow 回退 document
         const sr = window.__bambooShadowRoot;
-        const scope = (sr && sr.documentElement) || document;
+        const scope = sr || document;
         if (!scope) return;
         // UI 骨架 / 结构型 / 媒体 / 付费激活页：整棵子树跳过，不被模糊
         const isSkeleton = (el) =>

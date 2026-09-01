@@ -63,20 +63,18 @@ export const BambooPoem = {
         const poem = poemForDate();
         const dateText = cnDate();
         const authorLine = `${poem.author} · ${poem.source}`;
-        if (mode === 'kanban') {
-            return `
-                <div class="bamboo-poem-strip">
-                    <div class="bamboo-poem-text">${shortLine(poem.text)}</div>
-                    <div class="bamboo-poem-author">—— ${authorLine}</div>
-                    <div class="bamboo-poem-date">${dateText}</div>
-                </div>
-            `;
-        }
+        const poemText = mode === 'kanban'
+            ? shortLine(poem.text)
+            : `「${poem.text}」`;
+        // 统一结构：都用 meta 容器承载作者/日期；破折号不再写死到 HTML,
+        // 由 CSS 伪元素控制(横向显示,看板隐藏),避免看板残留旧模板导致破折号去不掉。
         return `
             <div class="bamboo-poem-strip">
-                <div class="bamboo-poem-text">「${poem.text}」</div>
-                <div class="bamboo-poem-author">—— ${authorLine}</div>
-                <div class="bamboo-poem-date">${dateText}</div>
+                <div class="bamboo-poem-text">${poemText}</div>
+                <div class="bamboo-poem-meta">
+                    <div class="bamboo-poem-author" data-layout="${mode}">${authorLine}</div>
+                    <div class="bamboo-poem-date">${dateText}</div>
+                </div>
             </div>
         `;
     }

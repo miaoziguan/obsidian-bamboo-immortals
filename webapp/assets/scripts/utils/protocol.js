@@ -22,12 +22,16 @@ export const APP_MESSAGE_TYPES = [
   'app:saveCustomNoises',
   'app:theme:sync',
   'theme:syncPalette',
+  'theme:appDarkMode',
   'app:listVaultAudioFiles',
   'app:readVaultFile',
   'app:readLocalFile',
   'app:proxyAudioUrl',
   'app:aiImproveGoal',
   'app:openArchive',
+  'app:openScroll',
+  'app:openScrollLeftSidebar',
+  'app:getTheme',
   'app:getHealthOverview',
   'app:getCultivationRealm',
   'app:getBambooCoinBalance',
@@ -54,6 +58,12 @@ export const APP_MESSAGE_TYPES = [
   'storage:getCustomTemplates',
   'storage:putCustomTemplate',
   'storage:deleteCustomTemplate',
+  // file:*（画中卷文本文件协议：list / get / write / delete）
+  'file:list',
+  'file:get',
+  'file:write',
+  'file:delete',
+  'file:response',
   // host → webapp
   'goals:changed',
   'theme:changed',
@@ -68,11 +78,11 @@ export const APP_MESSAGE_TYPES = [
 
 const KNOWN = new Set(APP_MESSAGE_TYPES);
 
-/** type 是否合法：精确命中集合，或 storage: 前缀（子类型众多，按前缀放行） */
+/** type 是否合法：精确命中集合，或 storage:/file: 前缀（子类型众多，按前缀放行） */
 export function isKnownType(type) {
   if (typeof type !== 'string') return false;
   if (KNOWN.has(type)) return true;
-  return type.startsWith('storage:');
+  return type.startsWith('storage:') || type.startsWith('file:');
 }
 
 /**

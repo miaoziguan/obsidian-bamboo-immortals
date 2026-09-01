@@ -445,9 +445,55 @@
         flex-direction: column;
         gap: calc(var(--space-6) * var(--section-gap-scale));
     }
+    /* 看板：各板块顶部对齐，清除任何顶部外边距/内边距导致的错位 */
+    .sections-container.kanban-layout .layout-col.kanban-col > section {
+        margin-top: 0;
+        padding-top: 0;
+    }
+    .sections-container.kanban-layout .layout-col.kanban-col > section > *:first-child {
+        margin-top: 0;   /* 板块内第一个子元素的 margin-top 也会制造顶部留白 */
+        padding-top: 0;  /* 以及它自身的 padding-top（如 .cultivation-header / .stats-section 标题行） */
+    }
+    /* 兜底：首子元素若是纯容器，再往里一层标题的 padding-top 也清掉 */
+    .sections-container.kanban-layout .layout-col.kanban-col > section > *:first-child > *:first-child {
+        margin-top: 0;
+        padding-top: 0;
+    }
+    /* 例外：目标待办文案 .todo-stats 位于 #todoContent 内，被兜底规则清掉了顶部内边距而贴顶。
+       只恢复它的 padding-top，板块卡片顶仍与其它板块对齐（不动 section 自身 padding）。 */
+    .sections-container.kanban-layout .layout-col.kanban-col > section.todo-section .todo-stats {
+        padding-top: var(--space-3);
+    }
+
     .sections-container.kanban-layout .layout-col.kanban-col #themeEffectSection {
         width: 100%;
         min-width: 0;
+    }
+}
+
+/* ===== 布局切换过渡 =====
+   纵向/横向/看板互切时，分列会一次性重建 DOM，直接跳变会显得生硬。
+   这里只动 opacity / transform（走合成层，不触发重排），成本极低。
+   layout-switching 类由 LayoutMode 在切换后临时添加，动画结束自行移除。 */
+.sections-container.layout-switching {
+    animation: layoutSwitchIn 0.26s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes layoutSwitchIn {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+/* 尊重系统「减少动效」设置 */
+@media (prefers-reduced-motion: reduce) {
+    .sections-container.layout-switching {
+        animation: none;
     }
 }
 

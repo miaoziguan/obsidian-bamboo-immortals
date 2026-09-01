@@ -2,6 +2,8 @@ import { byId, $ } from '../utils/domRef.js';
 export const SettingsModal = {
     enableSwipe: true,
     autoSaveInterval: 2000,
+    incenseDuration: 60,      // 香总时长（分钟）
+    incenseGooseInterval: 10, // 化雁间隔（分钟）
 
     // ---- Tab 内容渲染 ----
 
@@ -21,8 +23,8 @@ export const SettingsModal = {
                     <div class="fab-panel-section-title">显示</div>
                     <div class="settings-item">
                         <div class="settings-item-info">
-                            <div class="settings-item-label">自动跟随 Obsidian 主题</div>
-                            <div class="settings-item-desc">开启后，随 Obsidian 主题自动切换明/暗模式</div>
+                            <div class="settings-item-label">自动跟随 Obsidian 明暗</div>
+                            <div class="settings-item-desc">开启后，随 Obsidian 明暗模式自动切换明/暗</div>
                         </div>
                         <label class="toggle-switch">
                             <input type="checkbox" ${syncChecked} data-action="settings-toggle-sync-theme">
@@ -114,6 +116,25 @@ export const SettingsModal = {
                             </select>
                             <input type="time" class="form-input settings-time-sm" id="crossDayTime" value="${cdCustom}" ${cdMode === 'custom' ? '' : 'hidden'}>
                         </div>
+                    </div>
+                </div>
+                <div class="fab-panel-section">
+                    <div class="fab-panel-section-title">静坐一炉香</div>
+                    <div class="settings-item">
+                        <div class="settings-item-info">
+                            <div class="settings-item-label">一炷香总时长</div>
+                            <div class="settings-item-desc">香道番茄钟整支香的燃烧时长（分钟）</div>
+                        </div>
+                        <input type="number" id="incenseDuration" class="form-input" style="max-width:90px;"
+                            min="1" max="240" step="1" value="${this.incenseDuration}" data-action="settings-set-incense-duration">
+                    </div>
+                    <div class="settings-item">
+                        <div class="settings-item-info">
+                            <div class="settings-item-label">化雁间隔</div>
+                            <div class="settings-item-desc">每燃烧多少分钟，一段香灰随风化作大雁飞向远方（分钟）</div>
+                        </div>
+                        <input type="number" id="incenseGooseInterval" class="form-input" style="max-width:90px;"
+                            min="1" max="120" step="1" value="${this.incenseGooseInterval}" data-action="settings-set-incense-goose">
                     </div>
                 </div>
             </div>
@@ -389,6 +410,34 @@ export const SettingsModal = {
         }
         const label = (mode === 'custom') ? `自定义时间 ${custom}` : '0 点（默认）';
         Toast.showToast(`跨天自动刷新设为 ${label}`, 'success');
+    },
+
+    // ---- 香道番茄钟设置 ----
+
+    _persistIncense(key, value) {
+        StorageAdapter.set(key, String(value));
+        if (typeof storageManager !== 'undefined' && storageManager.putSetting) {
+            storageManager.putSetting(key, value).catch(() => {});
+        }
+    },
+
+    setIncenseDuration(value) {
+        let n = parseInt(value, 10);
+        if (!Number.isFinite(n) || n < 1) n = 1;
+        if (n > 240) n = 240;
+        this.incenseDuration = n;
+        this._persistIncense('incenseDuration', n);
+        if (typeof Toast !== 'undefined') Toast.showToast(`一炷香时长设为 ${n} 分钟`, 'success');
+    },
+
+    setIncenseGooseInterval(value) {
+        let n = parseInt(value, 10);
+        if (!Number.isFinite(n) || n < 1) n = 1;
+        if (n > 120) n = 120;
+        if (n > this.incenseDuration) n = this.incenseDuration; // 间隔不得超过总时长
+        this.incenseGooseInterval = n;
+        this._persistIncense('incenseGooseInterval', n);
+        if (typeof Toast !== 'undefined') Toast.showToast(`化雁间隔设为 ${n} 分钟`, 'success');
     },
 
     // ---- 通用 Tab 操作（主题同步）----
@@ -800,12 +849,31 @@ export const SettingsModal = {
         if (StorageAdapter.get(StorageKeys.ENABLE_SWIPE) === 'false') {
             this.enableSwipe = false;
         }
+        // 香道番茄钟：优先 bridge(VaultStorage)，回退 localStorage
+        try {
+            if (typeof storageManager !== 'undefined' && storageManager.getSetting) {
+                const d = await storageManager.getSetting('incenseDuration');
+                if (d && typeof d === 'number') this.incenseDuration = d;
+                const g = await storageManager.getSetting('incenseGooseInterval');
+                if (g && typeof g === 'number') this.incenseGooseInterval = g;
+            }
+        } catch {}
+        if (this.incenseDuration === 60) {
+            const sd = StorageAdapter.get('incenseDuration');
+            if (sd) this.incenseDuration = parseInt(sd, 10) || 60;
+        }
+        if (this.incenseGooseInterval === 10) {
+            const sg = StorageAdapter.get('incenseGooseInterval');
+            if (sg) this.incenseGooseInterval = parseInt(sg, 10) || 10;
+        }
     }
 };
 
 ActionDispatcher.registerMany({
     'settings-toggle-swipe': (_ds, target) => SettingsModal.toggleSwipe(target.checked),
     'settings-set-autosave-interval': (_ds, target) => SettingsModal.setAutoSaveInterval(target.value),
+    'settings-set-incense-duration': (_ds, target) => SettingsModal.setIncenseDuration(target.value),
+    'settings-set-incense-goose': (_ds, target) => SettingsModal.setIncenseGooseInterval(target.value),
     'settings-toggle-sync-theme': (_ds, target) => SettingsModal.toggleSyncTheme(target.checked),
     'settings-toggle-weather': (_ds, target) => SettingsModal.toggleWeather(target.checked),
     'settings-toggle-weather-expanded': (_ds, target) => SettingsModal.toggleWeatherExpanded(target.checked),

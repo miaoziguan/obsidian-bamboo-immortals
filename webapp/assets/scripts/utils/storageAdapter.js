@@ -22,6 +22,7 @@ export const StorageKeys = {
     QUOTE_SOURCE:       'quoteSource',
     QUOTE_ENABLED:      'quoteEnabled',
     AUTO_SYNC_THEME:    'autoSyncTheme',
+    USER_THEME_CHOSEN:  'userThemeChosen',
     CUSTOM_TEMPLATES:   'bamboo_custom_templates',
 };
 

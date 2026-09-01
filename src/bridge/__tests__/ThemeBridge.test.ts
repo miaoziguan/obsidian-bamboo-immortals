@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ThemeBridge } from '../ThemeBridge';
 
 /**
@@ -125,5 +125,82 @@ describe('ThemeBridge WCAG helpers', () => {
   it('ensureContrast 对已满足对比度的颜色原样返回', () => {
     const adjusted = ThemeBridge.ensureContrast('#000000', '#ffffff', 4.5);
     expect(adjusted).toBe('#000000');
+  });
+});
+
+/**
+ * restoreAllDefaults 单测：验证「将调色同步到 Obsidian」关闭时，
+ * 遍历 registry 清理所有 AppAPI 实例（各自 trailing 防抖定时器 + _suppressed），
+ * 而非仅清理 default 进程单例——否则 50ms 防抖窗口内关闭开关，
+ * AppAPI 实例的 trailing 回调会把刚清空的 body 变量重新写回。
+ */
+describe('ThemeBridge.restoreAllDefaults', () => {
+  let removeProperty: ReturnType<typeof vi.fn>;
+  let setProperty: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    removeProperty = vi.fn();
+    setProperty = vi.fn();
+    // ThemeBridge.restoreDefaults/_applyPaletteNow 依赖 Obsidian 注入的 activeDocument 全局
+    vi.stubGlobal('activeDocument', {
+      body: { style: { removeProperty, setProperty } },
+    });
+    vi.stubGlobal('window', {
+      setTimeout: vi.fn(() => 1),
+      clearTimeout: vi.fn(),
+    });
+  });
+
+  afterEach(() => {
+    // 先在 stub 仍生效时清理 registry（detachIframe 从 registry 移除 + 清定时器），
+    // 再还原全局，避免用例间互相污染或引用已还原的 activeDocument
+    ((ThemeBridge as unknown as { registry: Set<ThemeBridge> }).registry).forEach((bridge) =>
+      bridge.detachIframe()
+    );
+    ThemeBridge.restoreAllDefaults();
+    vi.unstubAllGlobals();
+  });
+
+  it('registry 中每个实例的 trailing 防抖定时器都被取消', () => {
+    const bridgeA = new ThemeBridge();
+    const bridgeB = new ThemeBridge();
+    bridgeA.attachIframe({ contentWindow: { postMessage: vi.fn() } } as any);
+    bridgeB.attachIframe({ contentWindow: { postMessage: vi.fn() } } as any);
+
+    // 两实例各触发一次 applyPalette：leading 立即写入，trailing 定时器挂起（stub 返回 id=1）
+    bridgeA.applyPalette(120, 0, false);
+    bridgeB.applyPalette(200, 5, true);
+    expect(setProperty).toHaveBeenCalled();
+
+    removeProperty.mockClear();
+    setProperty.mockClear();
+
+    ThemeBridge.restoreAllDefaults();
+
+    // clearTimeout 被调用（取消挂起的 trailing 定时器）
+    expect(window.clearTimeout).toHaveBeenCalled();
+    // 注入的 7 个变量被移除
+    const removed = removeProperty.mock.calls.map((c) => c[0]);
+    expect(removed).toEqual(
+      expect.arrayContaining([
+        '--interactive-accent',
+        '--background-primary',
+        '--text-normal',
+      ])
+    );
+    // restoreDefaults 之后不应再有 setProperty（trailing 未重新注入）
+    expect(setProperty).not.toHaveBeenCalled();
+  });
+
+  it('restoreAllDefaults 后新调色请求仍可立即生效（_suppressed 不跨实例污染）', () => {
+    const bridge = new ThemeBridge();
+    bridge.attachIframe({ contentWindow: { postMessage: vi.fn() } } as any);
+    bridge.applyPalette(120, 0, false);
+    ThemeBridge.restoreAllDefaults();
+
+    setProperty.mockClear();
+    bridge.applyPalette(120, 0, false);
+    // 新请求解除抑制：leading edge 立即写入
+    expect(setProperty).toHaveBeenCalled();
   });
 });

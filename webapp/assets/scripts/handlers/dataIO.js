@@ -264,7 +264,7 @@ window.DataIO = {
                 if (typeof target !== 'object' || Array.isArray(target)) throw new Error('设置数据格式不正确（应为对象）');
                 // 保留当前 UI 偏好不被导入覆盖
                 const cur = store.getState();
-                const uiKeys = ['theme', 'autoSyncTheme', 'weatherEnabled', 'weatherCity', 'weatherExpanded',
+                const uiKeys = ['theme', 'autoSyncTheme', 'userThemeChosen', 'weatherEnabled', 'weatherCity', 'weatherExpanded',
                     'quoteSource', 'quoteEnabled', 'colorTheme', 'autoSaveInterval',
                     'displayWidth', 'displayFontScale', 'displayGapScale', 'displayHue',
                     'displayLightness', 'displayBackgroundEnabled'];

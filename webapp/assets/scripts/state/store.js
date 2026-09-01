@@ -249,16 +249,17 @@ export class Store {
                 storageManager.getSetting('weatherExpanded'),
                 storageManager.getSetting('quoteSource'),
                 storageManager.getSetting('quoteEnabled'),
+                storageManager.getSetting('userThemeChosen'),
             ]).catch(e => {
                 console.error('[Store] Failed to load settings:', e);
-                return [null, null, null, null, null, null, null];
+                return [null, null, null, null, null, null, null, null];
             });
 
             const goalsPromise = this.loadGlobalGoals().catch(e => {
                 console.error('[Store] loadGlobalGoals failed, continuing with rest of init:', e);
             });
 
-            const [[theme, autoSyncThemeRaw, weatherEnabledRaw, weatherCityRaw, weatherExpandedRaw, quoteSourceRaw, quoteEnabledRaw]] = await Promise.all([
+            const [[theme, autoSyncThemeRaw, weatherEnabledRaw, weatherCityRaw, weatherExpandedRaw, quoteSourceRaw, quoteEnabledRaw, userThemeChosenRaw]] = await Promise.all([
                 settingsPromise,
                 goalsPromise
             ]);
@@ -292,10 +293,11 @@ export class Store {
                 const host = document.getElementById('bamboo-shadow-host');
                 if (host) host.classList.add('dark');
             }
-            // 已持久化过明暗偏好（light/dark 任一）→ 视为用户已选择，重启后不回退到浅色优先
-            if (theme === 'dark' || theme === 'light') {
-                this.state.ui.userThemeChosen = true;
-            }
+            // 注意：userThemeChosen 仅表示「用户是否在 webapp 内 *手动* 选择过明暗」，
+            // 必须由 setDarkMode(!fromHost) 置位并持久化，绝不能由「加载了明暗偏好」推导——
+            // 否则只要存档里 theme 是 light/dark（必然如此），自动跟随 Obsidian 明暗就会被永久锁死。
+            // 它的 localStorage 兜底读取放在下方 idle 同步之前，vault 值为权威源。
+            this.state.ui.userThemeChosen = userThemeChosenRaw === 'true';
 
             // 统一规范化主题为 bamboo，并清理任何旧的 theme-xxx 类
             const htmlEl = document.documentElement;
@@ -380,9 +382,15 @@ export class Store {
             const host = document.getElementById('bamboo-shadow-host');
             if (host) host.classList.add('dark');
         }
-        if (theme === 'dark' || theme === 'light') {
-            this.state.ui.userThemeChosen = true;
-        }
+        // 与 init 路径保持一致：userThemeChosen 仅由手动切换置位并持久化，
+        // 不能由加载了明暗偏好推导，否则会锁死「自动跟随 Obsidian 明暗」。
+        let chosenLocal = null;
+        try {
+            if (typeof StorageAdapter !== 'undefined' && typeof StorageAdapter.get === 'function') {
+                chosenLocal = StorageAdapter.get(StorageKeys.USER_THEME_CHOSEN);
+            }
+        } catch (_) { /* localStorage 不可用时忽略 */ }
+        this.state.ui.userThemeChosen = chosenLocal === 'true';
 
         // legacy: 统一规范化为 bamboo 主题并清理旧的 theme-* 类
         const htmlElLegacy = document.documentElement;
@@ -804,9 +812,15 @@ export class Store {
             return;
         }
 
-        // 用户手动切换（非宿主推送）→ 标记为已选择，后续不再被宿主暗色推送覆盖
+        // 用户手动切换（非宿主推送）→ 标记为已选择，后续不再被宿主暗色推送覆盖；
+        // 同时持久化（双写 vault 权威源 + localStorage 即时缓存），使手动选择跨重启保留，
+        // 且「自动跟随 Obsidian 明暗」在「用户未手动选过」时正确生效。
         if (!fromHost) {
             this.state.ui.userThemeChosen = true;
+            try { StorageAdapter.set(StorageKeys.USER_THEME_CHOSEN, 'true'); } catch (_) {}
+            if (typeof storageManager !== 'undefined' && typeof storageManager.putSetting === 'function') {
+                storageManager.putSetting('userThemeChosen', 'true').catch(() => {});
+            }
         }
 
         // 立即更新本地状态和 DOM
@@ -832,6 +846,19 @@ export class Store {
         }
 
         this.notify();
+
+        // 用户手动切换（非宿主推送）→ 广播给宿主，由宿主转发给所有视图（含画中卷独立 iframe）。
+        // 否则画中卷只跟随 Obsidian 系统主题，应用内切夜间模式时无法感知。
+        if (!fromHost) {
+            try {
+                if (window.parent && window.parent !== window) {
+                    window.parent.postMessage(
+                        { type: 'theme:appDarkMode', id: 'appDark_' + Date.now(), payload: { isDark: !!newMode } },
+                        '*'
+                    );
+                }
+            } catch (_) { /* 跨域/无宿主时静默 */ }
+        }
     }
 
     async toggleDarkMode() {

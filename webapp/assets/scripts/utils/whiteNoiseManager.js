@@ -29,6 +29,16 @@ export const WhiteNoiseManager = {
     _timerInterval: null, // setInterval id
     _timerEndAt: null,    // 定时到期时间戳
 
+    // 解码后的自定义音源缓存（key: 音源 id）。内置音源由 NoiseGenerator 自行缓存。
+    _bufferCache: new Map(),
+    _bufferCacheCtx: null,  // 缓存所属的 AudioContext；context 换了缓存必须整体失效
+    _MAX_BUFFER_CACHE: 3,   // 解码后是裸 PCM，很占内存，只保留最近 3 个
+    // 验证阶段（添加音源时）已解码的结果，key 为音源 data 路径。
+    // 用户「添加后立即播放」时可复用，省去再读文件 + 再解码一遍整段 PCM。
+    _verifyBufferCache: new Map(),
+    _MAX_VERIFY_CACHE: 4,
+    _playToken: 0,          // 播放请求序号，用于丢弃过期的异步加载结果
+
     // 初始化
     async init() {
         // 加载自定义音效（优先从插件持久化层，克服 localStorage port-scoped 问题）
@@ -69,69 +79,172 @@ export const WhiteNoiseManager = {
     // 播放音效
     async play(typeId) {
         const noiseType = [...this.NOISE_TYPES, ...this.customNoises].find(t => t.id === typeId);
-        if (!noiseType) return;
+        if (!noiseType) {
+            // 原本是静默 return，表现为"点了没反应"，完全无从排查。
+            // 常见诱因：自定义音源列表尚未加载完（init 未完成）或该音源已被删除。
+            console.warn('[Bamboo] 未找到音源:', typeId, '已加载的自定义音源:', this.customNoises.map(n => n && n.id));
+            Toast.showToast('未找到该音源，可能已被删除或尚未加载完成', 'error');
+            return;
+        }
+
+        // 竞态防护：每次播放领一个号。自定义音源要跨进程读取 + base64 回传 + 解码，
+        // 耗时可达数秒；若期间用户又切了别的音源，本次结果必须整体丢弃，否则
+        // “先发起的慢请求后完成”会覆盖掉用户最后的选择 —— 表现为界面显示 A 却在放 B。
+        const token = ++this._playToken;
+        const stale = () => token !== this._playToken;
 
         const ctx = NoisePlayer.getAudioCtx();
-        let buffer;
+        // AudioBuffer 与创建它的 AudioContext 绑定，context 换了缓存必须整体失效
+        if (this._bufferCacheCtx !== ctx) {
+            this._bufferCache.clear();
+            this._verifyBufferCache.clear();
+            this._bufferCacheCtx = ctx;
+        }
 
-        // 根据音源类型加载音频
-        if (noiseType.source === 'url') {
-            // 外部链接 — 通过插件端代理，绕过 webview CORS 限制（桌面/移动一致）
-            try {
-                Toast.showToast('正在加载外部音源...', 'info');
-                const dataUrl = await this._requestBinaryFile('app:proxyAudioUrl', { url: noiseType.data });
-                const response = await fetch(dataUrl);
-                if (!response.ok) throw new Error('网络请求失败');
-                const arrayBuffer = await response.arrayBuffer();
-                buffer = await ctx.decodeAudioData(arrayBuffer);
-            } catch (e) {
-                console.error('Failed to load audio source:', e);
-                if (e.name === 'TimeoutError' || e.name === 'AbortError') {
-                    Toast.showToast('音源加载超时，请检查网络状况', 'error');
-                } else if (e.message && e.message.includes('decode')) {
-                    Toast.showToast('音频文件已损坏或格式不兼容', 'error');
-                } else if (e.message && e.message.includes('fetch')) {
-                    Toast.showToast('无法连接音源，链接可能已失效', 'error');
-                } else {
-                    Toast.showToast('无法播放该音源，请确认链接有效且支持跨域', 'error');
+        let buffer;
+        const isExternal = noiseType.source === 'url' || noiseType.source === 'file';
+
+        if (isExternal) {
+            // 自定义音源：命中缓存直接复用。
+            // 否则每次切歌都要重跑「postMessage → 插件读文件 → base64 回传 → fetch → decode」，
+            // 一首几 MB 的音频要等好几秒，来回切换几乎是卡死级的体验。
+            buffer = this._getCachedBuffer(typeId);
+            // 复用「添加验证阶段」已解码的结果：用户添加后立即播放可跳过整段读取+解码
+            if (!buffer && noiseType.data) buffer = this._takeVerifyBuffer(noiseType.data);
+            if (!buffer) {
+                const isFile = noiseType.source === 'file';
+                try {
+                    Toast.showToast(isFile ? '正在读取本地文件...' : '正在加载外部音源...', 'info');
+                    const dataUrl = isFile
+                        ? await this._readLocalSource(noiseType.data)
+                        : await this._requestBinaryFile('app:proxyAudioUrl', { url: noiseType.data });
+                    if (stale()) return;
+                    const arrayBuffer = await this._dataUrlToArrayBuffer(dataUrl);
+                    if (stale()) return;
+                    buffer = await ctx.decodeAudioData(arrayBuffer);
+                    if (stale()) return;
+                    this._cacheBuffer(typeId, buffer);
+                } catch (e) {
+                    // 宿主返回的原因（如"文件不存在：xxx.mp3"）是定位问题的关键，
+                    // 之前只按关键词分类、匹配不上就给一句笼统提示，真实原因被吞掉了。
+                    // 这里把原因原样附在提示后面。
+                    console.error('[Bamboo] 加载音源失败:', { typeId, source: noiseType.source, data: noiseType.data, err: e });
+                    const detail = (e && e.message) ? '：' + e.message : '';
+                    if (e.name === 'TimeoutError' || e.name === 'AbortError' || (e.message && e.message.includes('超时'))) {
+                        Toast.showToast((isFile ? '读取本地文件超时' : '音源加载超时') + detail, 'error');
+                    } else if (e.message && e.message.includes('decode')) {
+                        Toast.showToast('音频解码失败，格式可能不兼容' + detail, 'error');
+                    } else if (e.message && e.message.includes('fetch')) {
+                        Toast.showToast('音频数据读取失败' + detail, 'error');
+                    } else {
+                        Toast.showToast((isFile ? '无法读取该文件' : '无法播放该音源') + detail, 'error');
+                    }
+                    return;
                 }
-                return;
-            }
-        } else if (noiseType.source === 'file') {
-            // 本地文件 — 库内相对路径走 readVaultFile，绝对路径走 readLocalFile
-            try {
-                Toast.showToast('正在读取本地文件...', 'info');
-                const isVaultPath = !noiseType.data.startsWith('/') && !noiseType.data.includes(':\\');
-                const dataUrl = isVaultPath
-                    ? await this._requestVaultFileRead(noiseType.data)
-                    : await this._requestFileRead(noiseType.data);
-                const response = await fetch(dataUrl);
-                if (!response.ok) throw new Error('读取失败');
-                const arrayBuffer = await response.arrayBuffer();
-                buffer = await ctx.decodeAudioData(arrayBuffer);
-            } catch (e) {
-                console.error('Failed to load local file:', e);
-                if (e.message && e.message.includes('超时')) {
-                    Toast.showToast('读取本地文件超时，文件可能过大', 'error');
-                } else if (e.message && e.message.includes('decode')) {
-                    Toast.showToast('本地音频文件已损坏或格式不兼容', 'error');
-                } else {
-                    Toast.showToast('无法读取本地文件，请确认文件路径正确且为有效音频', 'error');
-                }
-                return;
             }
         } else {
-            // 内置音效：使用 NoiseGenerator 生成
-            buffer = NoiseGenerator.generate(typeId, ctx);
+            // 内置音效：在 Worker 里异步生成，不占主线程（首次播放不再卡一下）。
+            // NoiseGenerator 内部已按 typeId 缓存，重复播放直接命中。
+            buffer = await NoiseGenerator.generateAsync(typeId, ctx);
+            if (stale()) return;
         }
+
+        if (stale()) return;
 
         // 调用播放器播放
         await NoisePlayer.play(typeId, noiseType, buffer);
+
+        if (stale()) return;
 
         // 更新UI
         this.updateTicketStubState(true);
         NoisePanel.updateUI();
         this.updateTicketControlDisplay();
+    },
+
+    // 本地文件音源：库内相对路径走 readVaultFile，绝对路径走 readLocalFile
+    _readLocalSource(data) {
+        const isVaultPath = !data.startsWith('/') && !data.includes(':\\');
+        return isVaultPath ? this._requestVaultFileRead(data) : this._requestFileRead(data);
+    },
+
+    /**
+     * 音源数据 → ArrayBuffer（喂给 decodeAudioData）。
+     *
+     * 三种来源：
+     *  1. ArrayBuffer / Uint8Array —— 宿主直接二进制回传（结构化克隆）。
+     *     最快路径：完全跳过 base64 编码 + 大字符串回传 + 这里再解码的整趟往返。
+     *  2. 带 MIME 的 base64 data URL —— 旧宿主 / 外链音源仍走此格式。
+     *     fetch 失败时回退到手工 atob 解码，保证音源始终可播。
+     *  3. 其它 —— 视为非法数据。
+     */
+    async _dataUrlToArrayBuffer(dataUrl) {
+        // 路径 1：宿主已直接回传二进制，无需任何编解码
+        if (dataUrl instanceof ArrayBuffer) return dataUrl;
+        if (dataUrl && typeof dataUrl.byteLength === 'number' && typeof dataUrl.slice === 'function') {
+            // Uint8Array / Int8Array 等 ArrayBufferView：截取底层 buffer 的有效区间
+            return dataUrl.buffer.slice(dataUrl.byteOffset, dataUrl.byteOffset + dataUrl.byteLength);
+        }
+        if (!dataUrl || typeof dataUrl !== 'string') {
+            throw new Error('音源数据为空');
+        }
+        try {
+            const resp = await fetch(dataUrl);
+            if (!resp.ok) throw new Error('读取失败 (HTTP ' + resp.status + ')');
+            return await resp.arrayBuffer();
+        } catch (e) {
+            const comma = dataUrl.indexOf(',');
+            if (comma < 0 || typeof atob !== 'function') throw e;
+            try {
+                const binary = atob(dataUrl.slice(comma + 1));
+                const bytes = new Uint8Array(binary.length);
+                for (let i = 0; i < binary.length; i++) {
+                    bytes[i] = binary.charCodeAt(i);
+                }
+                return bytes.buffer;
+            } catch (e2) {
+                // 回退也失败时，抛出原始错误更能反映真实原因
+                throw e;
+            }
+        }
+    },
+
+    // 取缓存的解码结果（命中后移到末尾，维持 LRU 顺序）
+    _getCachedBuffer(id) {
+        if (!this._bufferCache.has(id)) return null;
+        const buf = this._bufferCache.get(id);
+        this._bufferCache.delete(id);
+        this._bufferCache.set(id, buf);
+        return buf;
+    },
+
+    // 写入缓存。解码后的 PCM 很占内存（几分钟的音频可达上百 MB），
+    // 所以只保留最近若干个，超出就淘汰最久未用的。
+    _cacheBuffer(id, buffer) {
+        if (this._bufferCache.has(id)) this._bufferCache.delete(id);
+        this._bufferCache.set(id, buffer);
+        while (this._bufferCache.size > this._MAX_BUFFER_CACHE) {
+            const oldest = this._bufferCache.keys().next().value;
+            this._bufferCache.delete(oldest);
+        }
+    },
+
+    // 写入验证缓冲（key: data 路径）。解码后是裸 PCM，很占内存，仅保留最近若干个
+    _cacheVerifyBuffer(data, buffer) {
+        if (this._verifyBufferCache.has(data)) this._verifyBufferCache.delete(data);
+        this._verifyBufferCache.set(data, buffer);
+        while (this._verifyBufferCache.size > this._MAX_VERIFY_CACHE) {
+            const oldest = this._verifyBufferCache.keys().next().value;
+            this._verifyBufferCache.delete(oldest);
+        }
+    },
+
+    // 取出并消费验证缓冲（命中后即从缓存移除，避免长期驻留占内存）
+    _takeVerifyBuffer(data) {
+        if (!this._verifyBufferCache.has(data)) return null;
+        const buf = this._verifyBufferCache.get(data);
+        this._verifyBufferCache.delete(data);
+        return buf;
     },
 
     // 暂停
@@ -291,6 +404,13 @@ export const WhiteNoiseManager = {
             }
             // 只有正在播放时才恢复定时器
             if (NoisePlayer.isPlaying) {
+                // 先停掉可能存在的旧 interval，避免叠加出两个倒计时。
+                // 这里不能调 clearTimer()——它会把 storage 里的定时数据一并删掉，
+                // 而本方法后面不会再写回，导致下次刷新时定时丢失。
+                if (this._timerInterval) {
+                    clearInterval(this._timerInterval);
+                    this._timerInterval = null;
+                }
                 this.timerMinutes = minutes;
                 this._timerEndAt = endAt;
                 this._timerInterval = setInterval(() => {
@@ -450,6 +570,10 @@ export const WhiteNoiseManager = {
         this.customNoises = this.customNoises.filter(n => n.id !== id);
         this._saveCustomNoises();
 
+        // 释放该音源的解码缓存，并作废可能正在进行的加载（避免删了还在往播放器里塞）
+        this._bufferCache.delete(id);
+        this._playToken++;
+
         if (NoisePlayer.currentType === id) {
             this.stop();
         }
@@ -499,32 +623,31 @@ export const WhiteNoiseManager = {
                 }
                 arrayBuffer = await resp.arrayBuffer();
             } else {
-                // 本地文件：库内路径走 readVaultFile，绝对路径走 readLocalFile
-                const isVaultPath = !data.startsWith('/') && !data.includes(':\\');
-                const dataUrl = isVaultPath
-                    ? await this._requestVaultFileRead(data)
-                    : await this._requestFileRead(data);
-                const resp = await fetch(dataUrl);
-                if (!resp.ok) {
-                    return { ok: false, reason: '本地文件读取失败，请检查文件路径是否正确' };
-                }
-                arrayBuffer = await resp.arrayBuffer();
+                // 本地文件：库内路径走 readVaultFile，绝对路径走 readLocalFile。
+                // 与播放走同一套转换（fetch 不可用时回退手工 base64 解码），
+                // 避免"验证能过但播放失败"这类两端不一致。
+                const dataUrl = await this._readLocalSource(data);
+                arrayBuffer = await this._dataUrlToArrayBuffer(dataUrl);
             }
 
             // 实际解码验证（这是最终的可靠性验证）
-            await ctx.decodeAudioData(arrayBuffer.slice(0));
+            const decoded = await ctx.decodeAudioData(arrayBuffer.slice(0));
+            // 顺便缓存解码结果：添加后用户若立即播放，可直接复用，省去再读 + 再解码一遍
+            this._cacheVerifyBuffer(data, decoded);
             return { ok: true };
         } catch (e) {
+            // 同样把真实原因带出来，否则只能看到一句笼统的"验证失败"
+            const detail = (e && e.message) ? '（' + e.message + '）' : '';
             if (e.name === 'TimeoutError' || e.name === 'AbortError') {
-                return { ok: false, reason: '音源加载超时（20s），请检查网络状况或音源大小' };
+                return { ok: false, reason: '音源加载超时（20s），请检查网络状况或音源大小' + detail };
             }
             if (e.name === 'EncodingError' || (e.message && e.message.includes('decode'))) {
-                return { ok: false, reason: '无法解码该音频文件，文件可能已损坏或编码格式不兼容' };
+                return { ok: false, reason: '无法解码该音频文件，文件可能已损坏或编码格式不兼容' + detail };
             }
             if (e.name === 'TypeError' && e.message && e.message.includes('fetch')) {
-                return { ok: false, reason: '网络请求失败，请检查链接是否支持跨域访问（CORS）' };
+                return { ok: false, reason: '网络请求失败，请检查链接是否支持跨域访问（CORS）' + detail };
             }
-            return { ok: false, reason: '音源验证失败：' + (e.message || '未知错误') };
+            return { ok: false, reason: '音源验证失败' + detail };
         }
     },
 
@@ -717,10 +840,13 @@ export const WhiteNoiseManager = {
     _requestVaultFileList() {
         return new Promise((resolve, reject) => {
             const requestId = 'vault_list_' + Date.now() + '_' + Math.random().toString(36).substring(2, 10);
+            let timer = null;
             const handler = (event) => {
                 const msg = event.data;
                 if (!msg || msg.id !== requestId) return;
                 window.removeEventListener('message', handler);
+                // 已收到响应就撤掉超时定时器，否则它会白挂 15s 并一直持有闭包
+                if (timer) { clearTimeout(timer); timer = null; }
                 if (msg.error) {
                     console.warn('[Bamboo] 插件返回扫描错误:', msg.error);
                     reject(new Error(msg.error));
@@ -732,7 +858,7 @@ export const WhiteNoiseManager = {
             };
             window.addEventListener('message', handler);
             console.debug('[Bamboo] 请求扫描库内音频文件, requestId:', requestId);
-            setTimeout(() => {
+            timer = setTimeout(() => {
                 window.removeEventListener('message', handler);
                 console.warn('[Bamboo] 扫描库文件超时 (15s), requestId:', requestId);
                 reject(new Error('扫描库文件超时，请检查插件是否已正确加载'));
@@ -748,10 +874,13 @@ export const WhiteNoiseManager = {
     _requestBinaryFile(messageType, payload) {
         return new Promise((resolve, reject) => {
             const requestId = messageType + '_' + Date.now() + '_' + Math.random().toString(36).substring(2, 10);
+            let timer = null;
             const handler = (event) => {
                 const msg = event.data;
                 if (!msg || msg.id !== requestId) return;
                 window.removeEventListener('message', handler);
+                // 已收到响应就撤掉超时定时器，否则它会白挂 20s 并一直持有闭包
+                if (timer) { clearTimeout(timer); timer = null; }
                 if (msg.error) {
                     reject(new Error(msg.error));
                 } else {
@@ -760,7 +889,7 @@ export const WhiteNoiseManager = {
             };
             window.addEventListener('message', handler);
             // 超时保护 20s（大文件 base64 回传较慢）
-            setTimeout(() => {
+            timer = setTimeout(() => {
                 window.removeEventListener('message', handler);
                 reject(new Error('读取文件超时，文件可能过大'));
             }, 20000);

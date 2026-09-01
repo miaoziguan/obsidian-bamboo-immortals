@@ -307,7 +307,7 @@
        唯一标准：流体 --type-*（带 clamp，自适应视口）。
        下方 --font-size-* 仅为兼容别名，已映射到 --type-*，新代码禁止直接使用。
     */
-    --font-family: 'PingFang SC', 'Noto Sans SC', 'Microsoft YaHei', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-family: 'PingFang SC', 'Microsoft YaHei', -apple-system, BlinkMacSystemFont, sans-serif;
     --font-size-scale: 1;
     --section-gap-scale: 0.8;
     --font-size-xs: var(--type-xs);

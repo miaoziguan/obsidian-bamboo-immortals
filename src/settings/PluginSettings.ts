@@ -7,6 +7,28 @@ import { encodeBackup, decodeBackup } from '../license/backupCode';
 /** Obsidian 插件运行时注入的主窗口 document（非 iframe 内的 document） */
 declare const activeDocument: Document;
 
+/**
+ * 向所有已打开的复盘 iframe（主复盘/画中卷/归档共用 .bamboo-review-frame class）广播消息。
+ *
+ * 修复：原先用 querySelector 只取 DOM 中第一个 frame，多视图同时打开时其余视图
+ * 收不到设置变更（theme:changed / theme:followDisabled / theme:syncPaletteEnabled），
+ * 需重开视图才生效；theme:syncPaletteEnabled 还会导致其余视图内部的
+ * syncPaletteToObsidian 标志停留在旧值。改用 querySelectorAll 全量广播。
+ * 各视图的 webapp 接收端（bridge.js）对主视图/精简视图分支均有 typeof 防御，广播安全。
+ */
+function broadcastToReviewFrames(message: Record<string, unknown>): void {
+  try {
+    const frames = activeDocument.querySelectorAll<HTMLIFrameElement>('.bamboo-review-frame');
+    frames.forEach((frame) => {
+      if (frame.contentWindow) {
+        frame.contentWindow.postMessage(message, '*');
+      }
+    });
+  } catch (e) {
+    // 无活动文档等极端时序下静默：设置已持久化，视图重开后由 app:ready 推送对齐
+  }
+}
+
 /** 自定义白噪音音源 */
 export interface NoiseItem {
   id: string;
@@ -527,8 +549,6 @@ class AppearancePage extends SettingPage {
           .onChange(async (value) => {
             this.plugin.settings.followObsidianTheme = value;
             await this.plugin.saveSettings();
-            const frame = activeDocument.querySelector<HTMLIFrameElement>('.bamboo-review-frame');
-            if (!frame?.contentWindow) return;
             if (value) {
               // 立即推送当前主题强调色反推的色相 + 侧边栏背景色温 + 文字色温
               const accent = getComputedStyle(activeDocument.body)
@@ -554,18 +574,18 @@ class AppearancePage extends SettingPage {
               if (bg !== null) payload.bg = bg;
               if (textNormalRgb !== null) payload.textNormal = textNormalRgb;
               if (textMutedRgb !== null) payload.textMuted = textMutedRgb;
-              frame.contentWindow.postMessage({
+              broadcastToReviewFrames({
                 type: 'theme:changed',
                 id: 'settings_' + Date.now(),
                 payload,
-              }, '*');
+              });
             } else {
-              // 关闭联动 → 通知 iframe 恢复用户手动调色
-              frame.contentWindow.postMessage({
+              // 关闭联动 → 通知所有 iframe 恢复用户手动调色
+              broadcastToReviewFrames({
                 type: 'theme:followDisabled',
                 id: 'settings_' + Date.now(),
                 payload: {},
-              }, '*');
+              });
             }
           })
       );
@@ -580,16 +600,15 @@ class AppearancePage extends SettingPage {
             this.plugin.settings.syncPaletteToObsidian = value;
             await this.plugin.saveSettings();
             if (!value) {
-              ThemeBridge.default.restoreDefaults();
+              // 遍历 registry 清理所有视图实例（含 trailing 防抖定时器），而非仅 default 单例
+              ThemeBridge.restoreAllDefaults();
             }
-            const frame = activeDocument.querySelector<HTMLIFrameElement>('.bamboo-review-frame');
-            if (frame?.contentWindow) {
-              frame.contentWindow.postMessage({
-                type: 'theme:syncPaletteEnabled',
-                id: 'settings_' + Date.now(),
-                payload: { enabled: value }
-              }, '*');
-            }
+            // 广播给所有视图，使各 iframe 内部的 syncPaletteToObsidian 标志同步更新
+            broadcastToReviewFrames({
+              type: 'theme:syncPaletteEnabled',
+              id: 'settings_' + Date.now(),
+              payload: { enabled: value }
+            });
           })
       );
   }

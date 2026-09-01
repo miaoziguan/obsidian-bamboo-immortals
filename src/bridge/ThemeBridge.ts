@@ -4,6 +4,9 @@
  *              + 反向：接收 webapp 调色值，注入 Obsidian 原生界面
  */
 export class ThemeBridge {
+    /** 所有 ThemeBridge 实例注册表：用于跨视图广播应用内主题切换（如悬浮菜单夜间模式） */
+    private static registry = new Set<ThemeBridge>();
+
     private iframe: HTMLIFrameElement | null = null;
     private _paletteSyncTimer: number | null = null;
     /** Leading-edge 标记：防抖窗口内首次调用已立即应用，后续 trailing 合并（UI Audit 4.5.3）*/
@@ -28,10 +31,12 @@ export class ThemeBridge {
 
   attachIframe(iframe: HTMLIFrameElement): void {
     this.iframe = iframe;
+    ThemeBridge.registry.add(this);
   }
 
   detachIframe(): void {
     this.iframe = null;
+    ThemeBridge.registry.delete(this);
     // iframe 解绑 → 新上下文需重新推送主题，清除解析缓存
     this._themeCacheKey = null;
     this._themeCachePayload = null;
@@ -292,22 +297,34 @@ export class ThemeBridge {
    * 向 iframe 推送当前主题状态
    * @param followObsidianTheme 为 true 时，附带从 Obsidian 主题
    *        --interactive-accent 反推的意境色相 hue，驱动插件整盘配色联动
+   * @param forceIsDark 若传入 boolean，强制使用指定的明暗（用于应用内切换主题时，
+   *        广播给所有视图，不依赖 Obsidian 当前主题状态）
+   * @param palette 应用内调色（悬浮菜单色相/明度滑块的当前值）。传入时会随
+   *        theme:changed 一并发给 iframe，使画中卷等「无 DisplayManager」的
+   *        独立 iframe 视图也能跟随主视图配色。优先级高于 followObsidianTheme
+   *        反推出的色相——用户手动调色应盖过主题推算值。
    */
-  pushTheme(followObsidianTheme = false): void {
+  pushTheme(
+    followObsidianTheme = false,
+    forceIsDark?: boolean,
+    palette?: { hue: number; lightnessOffset: number }
+  ): void {
     if (!this.iframe?.contentWindow) return;
 
-    type ThemePayload = { isDark: boolean; hue?: number; bg?: string; textNormal?: string; textMuted?: string };
+    type ThemePayload = { isDark: boolean; hue?: number; lightnessOffset?: number; bg?: string; textNormal?: string; textMuted?: string };
 
     // 一次性读取 getComputedStyle，复用同一对象读取全部变量（原实现重复调用 4 次）
     const cs = getComputedStyle(activeDocument.body);
-    const isDark = this.isDarkMode();
+    const isDark = typeof forceIsDark === 'boolean' ? forceIsDark : this.isDarkMode();
     const accent = cs.getPropertyValue('--interactive-accent').trim();
     const sidebar = cs.getPropertyValue('--background-secondary').trim();
     const textNormalRaw = cs.getPropertyValue('--text-normal').trim();
     const textMutedRaw = cs.getPropertyValue('--text-muted').trim();
 
     // 签名缓存：主题未变时跳过 rgbToHue / contrastRatio / ensureContrastRgb 等重解析（UI Audit 4.5.3）
-    const signature = `${isDark}|${followObsidianTheme}|${accent}|${sidebar}|${textNormalRaw}|${textMutedRaw}`;
+    // 调色值必须纳入签名：否则用户只改色相/明度时会命中旧缓存，新值根本不会下发。
+    const paletteKey = palette ? `${palette.hue}|${palette.lightnessOffset}` : '';
+    const signature = `${isDark}|${followObsidianTheme}|${accent}|${sidebar}|${textNormalRaw}|${textMutedRaw}|${paletteKey}`;
 
     let payload: ThemePayload;
     if (signature === this._themeCacheKey && this._themeCachePayload) {
@@ -315,8 +332,12 @@ export class ThemeBridge {
     } else {
       payload = { isDark };
       if (followObsidianTheme) {
-        const hue = ThemeBridge.rgbToHue(accent);
-        if (hue !== null) payload.hue = hue;
+        // 仅当应用内调色未显式提供色相时，才从 Obsidian 主题反推色相；
+        // 否则下方会用 palette.hue 覆盖，此处 rgbToHue 纯属浪费计算（UI Audit 4.5.3）。
+        if (!(palette && Number.isFinite(palette.hue))) {
+          const hue = ThemeBridge.rgbToHue(accent);
+          if (hue !== null) payload.hue = hue;
+        }
 
         // 侧边栏背景色：驱动插件卡片底色贴近 Obsidian 色温
         const bg = ThemeBridge.rgbToRgbString(sidebar);
@@ -339,6 +360,12 @@ export class ThemeBridge {
           }
         }
       }
+      // 应用内调色（色相/明度滑块）必须下发：画中卷等独立 iframe 视图内没有
+      // DisplayManager，只能靠这两个 CSS 变量驱动整盘配色（variables.css 中
+      // --bg-gradient-* 等全部由它们派生）。放在 followObsidianTheme 分支之后，
+      // 确保手动调色优先于主题反推色相。
+      if (palette && Number.isFinite(palette.hue)) payload.hue = palette.hue;
+      if (palette && Number.isFinite(palette.lightnessOffset)) payload.lightnessOffset = palette.lightnessOffset;
       this._themeCacheKey = signature;
       this._themeCachePayload = payload;
     }
@@ -356,6 +383,17 @@ export class ThemeBridge {
   /** 供外部调用：Obsidian 主题变化时触发 */
   onThemeChanged(followObsidianTheme = false): void {
     this.pushTheme(followObsidianTheme);
+  }
+
+  /**
+   * 广播应用内主题切换给所有已打开视图（日报/画中卷/归档等各自独立 iframe）。
+   * 当悬浮菜单切换夜间模式时，应用主题改变但 Obsidian 主题未必改变（未开启调色同步），
+   * 需主动把所有视图的 iframe 统一为同一明暗，确保画中卷等独立视图跟随。
+   */
+  static broadcastTheme(isDark: boolean, palette?: { hue: number; lightnessOffset: number }): void {
+    ThemeBridge.registry.forEach((bridge) => {
+      bridge.pushTheme(false, isDark, palette);
+    });
   }
 
   // ===== 双向调色 =====
@@ -444,13 +482,21 @@ export class ThemeBridge {
     if (this._paletteSyncTimer) window.clearTimeout(this._paletteSyncTimer);
     this._suppressed = false; // 新调色请求到来 → 解除抑制
 
-    // Leading edge：窗口内首次调用立即应用
+    // Leading edge：窗口内首次调用立即应用（消除滑块拖拽首帧延迟）
     if (!this._paletteLeading) {
       this._paletteLeading = true;
       this._applyPaletteNow(hue, lightnessOffset, isDark);
+      // 单次调色（非拖拽）场景下，leading 已写入最新值，trailing 只需复位标记，
+      // 无需再写一次相同值（消除冗余 DOM 写）；拖拽中（窗口内再次调用）会刷新
+      // 下方定时器，由它写入最后一次变形的值。
+      this._paletteSyncTimer = window.setTimeout(() => {
+        this._paletteLeading = false;
+        this._paletteSyncTimer = null;
+      }, 50);
+      return;
     }
 
-    // Trailing edge：窗口结束后应用最后一次的值，并复位 leading 标记
+    // Trailing edge：窗口内已有调用（拖拽中）→ 50ms 后应用最后一次变形的值并复位 leading 标记
     this._paletteSyncTimer = window.setTimeout(() => {
       this._paletteLeading = false;
       this._paletteSyncTimer = null;
@@ -485,5 +531,21 @@ export class ThemeBridge {
   private static _default: ThemeBridge | null = null;
   static get default(): ThemeBridge {
     return (this._default ??= new ThemeBridge());
+  }
+
+  /**
+   * 恢复【全部】实例注入的 CSS 变量（设置面板关闭「将调色同步到 Obsidian」/ 插件 onunload 时调用）。
+   *
+   * 修复：原先仅调 ThemeBridge.default.restoreDefaults()，但每个视图（主复盘/画中卷/归档）
+   * 的 AppAPI 各持有独立 ThemeBridge 实例，applyPalette 的 leading/trailing 防抖状态
+   * （_paletteSyncTimer / _paletteLeading / _suppressed）互不相通。若用户在拖动色相后的
+   * 50ms 防抖窗口内关闭同步开关，default 单例的清理无法取消 AppAPI 实例的 trailing
+   * 定时器——其 _applyPaletteNow 会在变量被清空后重新写回 body（Obsidian 界面闪回调色态）。
+   * 此方法遍历 registry 清理全部实例，再兜底清理 default 单例（default 从不 applyPalette，
+   * 属防御性调用，保持与旧行为兼容）。
+   */
+  static restoreAllDefaults(): void {
+    ThemeBridge.registry.forEach((bridge) => bridge.restoreDefaults());
+    ThemeBridge.default.restoreDefaults();
   }
 }

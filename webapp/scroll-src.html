@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="theme-bamboo">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
+<meta name="description" content="Bamboo Immortals - 画中卷">
+<meta name="theme-color" content="#2D5A27">
+
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect fill='%232D5A27' width='32' height='32' rx='6'/><path d='M16 6v20M16 10l-4 2M16 10l4 2M16 16l-3 1.5M16 16l3 1.5' stroke='%23ffffff' stroke-width='2' stroke-linecap='round'/></svg>">
+<title>画中卷</title>
+<link rel="stylesheet" href="assets/styles/variables.css?__BUILD__">
+<link rel="stylesheet" href="assets/styles/base.css?__BUILD__">
+<link rel="stylesheet" href="assets/styles/components-interaction.css?__BUILD__">
+<link rel="stylesheet" href="assets/styles/forms.css?__BUILD__">
+<link rel="stylesheet" href="assets/styles/modal-base.css?__BUILD__">
+</head>
+<body>
+  <!-- 画中卷独立视图：内容由 ScrollManager 挂载到 shadow root，不渲染日报主体 -->
+  <div id="scroll-view-root"></div>
+
+  <!-- 极简依赖（不含日报渲染 / FAB 模块） -->
+  <script type="module" src="assets/scripts/utils/shadowBootstrap.js?__BUILD__"></script>
+  <script type="module" src="assets/scripts/utils/constants.js?__BUILD__"></script>
+  <script type="module" src="assets/scripts/utils/storageAdapter.js?__BUILD__"></script>
+  <script type="module" src="assets/scripts/storage/bridge.js?__BUILD__"></script>
+  <script type="module" src="assets/scripts/utils/protocol.js?__BUILD__"></script>
+  <script type="module" src="assets/scripts/utils/privacyMode.js?__BUILD__"></script>
+  <script type="module" src="assets/scripts/utils/domRef.js?__BUILD__"></script>
+  <script type="module" src="assets/scripts/utils/actionDispatcher.js?__BUILD__"></script>
+  <script type="module" src="assets/scripts/utils/toast.js?__BUILD__"></script>
+  <script type="module" src="assets/scripts/utils/eventBus.js?__BUILD__"></script>
+  <script type="module" src="assets/scripts/handlers/scrollManager.js?__BUILD__"></script>
+</body>
+</html>

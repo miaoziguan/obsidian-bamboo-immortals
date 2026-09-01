@@ -13,6 +13,7 @@ const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "package.json"
 const ENTRIES = [
   { html: "index.html", out: "app.html" },
   { html: "archive-src.html", out: "archive.html" },
+  { html: "scroll-src.html", out: "scroll.html" },
 ];
 
 async function buildSelfContainedHtml(htmlFile, outFile) {

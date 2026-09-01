@@ -32,9 +32,41 @@ export const NoisePlayer = {
             this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         }
         if (this.audioCtx.state === 'suspended') {
-            this.audioCtx.resume();
+            // resume() 返回 Promise，无用户手势时会被浏览器拒绝（自动播放策略），
+            // 这里不能 await（调用方都是同步取 ctx），失败由 ensureRunning() 兜底。
+            try {
+                const p = this.audioCtx.resume();
+                if (p && typeof p.catch === 'function') p.catch(() => {});
+            } catch (e) { /* 忽略，ensureRunning 会兜底 */ }
         }
         return this.audioCtx;
+    },
+
+    /**
+     * 确保 AudioContext 真的在出声。
+     * 场景：页面刷新后 WhiteNoiseManager.init() 会自动恢复播放，但此时没有用户手势，
+     * 浏览器会拒绝 resume() → UI 显示"正在播放"却听不到声音。
+     * 这里检测到仍处于 suspended 时挂一次性手势监听，用户首次交互立刻恢复。
+     */
+    ensureRunning() {
+        if (!this.audioCtx || this.audioCtx.state === 'running') return;
+        const tryResume = () => {
+            if (this.audioCtx && this.audioCtx.state === 'suspended') {
+                try {
+                    const p = this.audioCtx.resume();
+                    if (p && typeof p.catch === 'function') p.catch(() => {});
+                } catch (e) { /* 仍被拒绝则等下一次手势 */ }
+            }
+        };
+        tryResume();
+        if (this.audioCtx.state !== 'running') {
+            const events = ['pointerdown', 'keydown', 'touchstart'];
+            const handler = () => {
+                tryResume();
+                events.forEach(ev => window.removeEventListener(ev, handler));
+            };
+            events.forEach(ev => window.addEventListener(ev, handler));
+        }
     },
 
     // 播放音效
@@ -78,6 +110,9 @@ export const NoisePlayer = {
         StorageAdapter.set(StorageKeys.WHITENOISE_PLAYING, 'true');
         this.isPlaying = true;
 
+        // 无用户手势时（刷新后自动恢复）ctx 可能还是 suspended，兜底挂手势监听
+        this.ensureRunning();
+
         return true;
     },
 
@@ -112,13 +147,19 @@ export const NoisePlayer = {
         }
         if (this.sourceNode) {
             try { this.sourceNode.stop(); } catch(e) {}
+            try { this.sourceNode.disconnect(); } catch(e) {}
             this.sourceNode = null;
         }
         if (this.filterNode) {
             try { this.filterNode.disconnect(); } catch(e) {}
             this.filterNode = null;
         }
-        this.gainNode = null;
+        // 必须断开：gainNode 连着 ctx.destination，只把引用置 null 的话节点仍挂在
+        // 音频图上，每播放一次就残留一个，切换音源频繁时会持续累积。
+        if (this.gainNode) {
+            try { this.gainNode.disconnect(); } catch(e) {}
+            this.gainNode = null;
+        }
         this.isPlaying = false;
         StorageAdapter.set(StorageKeys.WHITENOISE_PLAYING, 'false');
     },
@@ -141,6 +182,12 @@ export const NoisePlayer = {
         if (!this.isPlaying) return;
 
         const ctx = this.getAudioCtx();
+        // 先撤掉可能待执行的旧淡出定时器（如 pause() 的 350ms 那个）。
+        // 否则旧的仍会在中途触发 stop()，把旧定时器之后才开始的新播放一并停掉。
+        if (this._fadeTimer) {
+            clearTimeout(this._fadeTimer);
+            this._fadeTimer = null;
+        }
         if (this.gainNode) {
             this.gainNode.gain.linearRampToValueAtTime(0, ctx.currentTime + durationSec);
         }

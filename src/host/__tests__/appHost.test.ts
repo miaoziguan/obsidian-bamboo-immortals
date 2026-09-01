@@ -89,7 +89,7 @@ describe('AppHost.buildBlobUrl 返回 data: URL（修复 B）', () => {
   beforeEach(() => {
     // 静态缓存跨实例共享，测试间需重置，避免命中上一用例的缓存
     (AppHost as unknown as { cachedPageUrl: string | null }).cachedPageUrl = null;
-    (AppHost as unknown as { cachedHtmlLength: number }).cachedHtmlLength = -1;
+    (AppHost as unknown as { cachedHtmlHash: number }).cachedHtmlHash = -1;
   });
 
   it('webapp 已存在时返回 data: 文本 HTML URL，而非 blob:', async () => {

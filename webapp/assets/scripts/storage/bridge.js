@@ -10,6 +10,8 @@
  * 或者用此文件替换 storageManager.js。
  */
 import { bootstrapLicenseGate } from '../utils/licenseGate.js';
+// 精简视图（画中卷）内没有 DisplayManager，收到主题调色时用它直接写 CSS 变量
+import { setGlobalCssVar } from '../utils/domRef.js';
 
 export class BridgeStorage {
   constructor() {
@@ -101,10 +103,11 @@ export class BridgeStorage {
       SectionRegistry.applyBridgeConfig();
     }
 
-    // 首屏补发调色同步：DisplayManager.init 与 bridge 就绪是两条异步链路，
-    // 若 DisplayManager 早于本 readyResp 完成加载，其 _maybeSyncPalette 会因
-    // storageManager.syncPaletteToObsidian 尚未赋值而提前 return，导致首屏漏同步。
-    // 开关开启时，延迟一拍（等 DisplayManager._loadAndApply 应用完色相/明度）主动补发。
+    // 首屏补发「调色 → 写回 Obsidian 原生界面」：DisplayManager.init 与 bridge 就绪是
+    // 两条异步链路，若 DisplayManager 早于本 readyResp 完成加载，开关值尚未到位，
+    // 故延迟一拍（等 DisplayManager._loadAndApply 应用完色相/明度）主动补发一次。
+    // 注：本补发只影响「是否写回 Obsidian」；跨 iframe 视图的调色广播不受此开关限制——
+    // _maybeSyncPalette 已无条件上报，由宿主广播，使画中卷等始终跟随主视图配色。
     if (this.syncPaletteToObsidian) {
       setTimeout(() => {
         if (typeof window.DisplayManager !== 'undefined' && window.DisplayManager._maybeSyncPalette) {
@@ -112,6 +115,9 @@ export class BridgeStorage {
         }
       }, 60);
     }
+
+    // 首屏调色同步：让无 DisplayManager 的精简视图（画中卷）打开即跟随主视图配色
+    await this._applySavedPalette();
 
     // 延迟触发 storage:initialized，确保所有模块脚本已注册监听器
     setTimeout(() => {
@@ -122,6 +128,37 @@ export class BridgeStorage {
         });
       }
     }, 0);
+  }
+
+  /**
+   * 首屏调色同步：拉取持久化的色相/明度并写入 CSS 变量。
+   *
+   * 仅对「没有 DisplayManager」的精简视图（画中卷）生效——主视图由
+   * DisplayManager._loadAndApply 自行读取，这里再写一遍虽幂等但无必要。
+   * 画中卷的 bundle 不含 displayManager.js，若不在此处主动拉取，它就永远停在
+   * variables.css 的默认值（色相 120 / 明度 0%），只有等用户在主视图动一次滑块、
+   * 经宿主广播过来才会变色。
+   *
+   * 注：本方法在 initialize() 内部调用，故直接用 _send 而非 getSetting，
+   * 避免与 ensureReady()/initPromise 产生任何时序耦合。
+   */
+  async _applySavedPalette() {
+    if (typeof window.DisplayManager !== 'undefined') return; // 主视图自行处理
+    try {
+      const [hue, lightness] = await Promise.all([
+        this._send('storage:getSetting', { key: 'displayHue' }),
+        this._send('storage:getSetting', { key: 'displayLightness' }),
+      ]);
+      // 未存过档时返回 null（typeof 为 object），自动跳过、保留 variables.css 默认值
+      if (typeof hue === 'number' && Number.isFinite(hue)) {
+        setGlobalCssVar('--accent-hue', String(hue));
+      }
+      if (typeof lightness === 'number' && Number.isFinite(lightness)) {
+        setGlobalCssVar('--accent-lightness-offset', lightness + '%');
+      }
+    } catch (e) {
+      // 读取失败（超时等）不影响渲染，保持默认配色
+    }
   }
 
   /** 发送请求到父窗口并等待响应 */
@@ -152,26 +189,6 @@ export class BridgeStorage {
       ? window.AppProtocol.parseAppMessage(event, window.parent)
       : (event.source === window.parent ? event.data : null));
     if (!data) return;
-
-    // 处理来自父窗口的同步消息（非请求响应）
-    if (data.type === 'app:theme') {
-      if (typeof store !== 'undefined' && data.payload) {
-        const state = store.getState ? store.getState() : store.state;
-        const ui = state && state.ui;
-        if (ui && ui.autoSyncTheme === false) return;
-        const isDark = data.payload.isDark;
-        // 用户已手动选择过则尊重用户，不再跟随宿主；
-        // 否则跟随宿主：宿主暗色→暗色，宿主浅色→浅色
-        if (!ui.userThemeChosen) {
-          if (isDark === true) {
-            store.setDarkMode(true, true);
-          } else if (isDark === false) {
-            store.setDarkMode(false, true);
-          }
-        }
-      }
-      return;
-    }
 
     // 调色联动开关更新
     if (data.type === 'theme:syncPaletteEnabled' && data.payload) {
@@ -352,6 +369,20 @@ export class BridgeStorage {
     return this._send('app:moveToSidebar', {});
   }
 
+  /** 请求宿主折叠 Obsidian 右侧栏（进入横向/看板多列模式时腾出横向宽度）
+   *  @returns {Promise<{ok:boolean, wasCollapsed:boolean}>} wasCollapsed=折叠前是否已折叠
+   *           （webapp 据此判断恢复纵向时是否需对称展开，避免动用户原有状态） */
+  async collapseRightSidebar() {
+    await this.ensureReady();
+    return this._send('app:collapseRightSidebar', {});
+  }
+
+  /** 请求宿主展开 Obsidian 右侧栏（恢复纵向时对称还原） */
+  async expandRightSidebar() {
+    await this.ensureReady();
+    return this._send('app:expandRightSidebar', {});
+  }
+
   async clearAll() {
     await this.ensureReady();
     return this._send('storage:clearAll', {});
@@ -503,6 +534,46 @@ export class BridgeStorage {
     }
   }
 
+  /** 请求宿主打开「画中卷」独立中央视图（不影响日报视图） */
+  async openScrollView() {
+    await this.ensureReady();
+    try {
+      return await this._send('app:openScroll', {});
+    } catch (e) {
+      console.warn('[Bridge] app:openScroll 不可用:', e && e.message);
+    }
+  }
+
+  /** 请求宿主把「画中卷」以左侧边栏形态打开（百宝箱首个功能默认入口） */
+  async openScrollLeftSidebar() {
+    await this.ensureReady();
+    try {
+      return await this._send('app:openScrollLeftSidebar', {});
+    } catch (e) {
+      console.warn('[Bridge] app:openScrollLeftSidebar 不可用:', e && e.message);
+    }
+  }
+
+  /** 主动请求宿主当前明暗主题（画中卷加载后自行拉取，确保跟随亮暗） */
+  async requestTheme() {
+    await this.ensureReady();
+    try {
+      return await this._send('app:getTheme', {});
+    } catch (e) {
+      console.warn('[Bridge] app:getTheme 不可用:', e && e.message);
+    }
+  }
+
+  /** 在 Obsidian 原生打开指定 vault 文件 */
+  async openFile(path) {
+    await this.ensureReady();
+    try {
+      return await this._send('app:openFile', { path });
+    } catch (e) {
+      console.warn('[Bridge] app:openFile 不可用:', e && e.message);
+    }
+  }
+
   getCurrentAdapterType() {
     return 'bridge';
   }
@@ -580,6 +651,15 @@ window.addEventListener('message', (event) => {
           }
         }
       }
+    } else {
+      // 极简环境（画中卷等未加载 store 的视图）：直接把 .dark 同步到 shadow host，
+      // 使 :host(.dark) 主题变量与背景规则生效，从而跟随 Obsidian 亮暗模式。
+      const host = document.getElementById('bamboo-shadow-host');
+      if (host) host.classList.toggle('dark', data.payload.isDark);
+      // 双保险：同步到文档根，避免任何 :root/.dark 规则遗漏
+      if (typeof document !== 'undefined' && document.documentElement) {
+        document.documentElement.classList.toggle('dark', data.payload.isDark);
+      }
     }
   }
 
@@ -587,7 +667,24 @@ window.addEventListener('message', (event) => {
   // fromTheme=true → 不回写 Obsidian，杜绝 iframe→Obsidian→iframe 死循环
   if (data.payload && typeof data.payload.hue === 'number') {
     if (typeof window.DisplayManager !== 'undefined' && window.DisplayManager._applyHue) {
+      // 主视图：经 DisplayManager 应用，顺带刷新由色相派生的一组 RGB 变量与滑块 UI
       window.DisplayManager._applyHue(data.payload.hue, true);
+    } else if (typeof setGlobalCssVar === 'function') {
+      // 画中卷等精简视图：bundle 内没有 DisplayManager，直接写变量即可。
+      // variables.css 中 --bg-gradient-*、卡片、文字等全部由 --accent-hue 派生，
+      // 因此写这一个变量就能让整盘配色跟随主视图。
+      setGlobalCssVar('--accent-hue', String(data.payload.hue));
+    }
+  }
+
+  // 明度联动：与色相同源下发（悬浮菜单明度滑块）。
+  // 此前 lightnessOffset 从未跨 iframe 同步过，画中卷只能停在默认明度。
+  if (data.payload && typeof data.payload.lightnessOffset === 'number') {
+    if (typeof window.DisplayManager !== 'undefined' && window.DisplayManager._applyLightness) {
+      // fromTheme=true → 不回写，避免「广播→再回写→再广播」的回环（同 _applyHue）
+      window.DisplayManager._applyLightness(data.payload.lightnessOffset, true);
+    } else if (typeof setGlobalCssVar === 'function') {
+      setGlobalCssVar('--accent-lightness-offset', data.payload.lightnessOffset + '%');
     }
   }
 

@@ -197,10 +197,15 @@ export const NoisePanel = {
 
     // 更新定时器UI（不重建整个面板）
     updateTimerUI() {
-        const timerBtn = this.panelEl && this.panelEl.querySelector('#wnTimerBtn');
+        // 面板没打开就不用更新：倒计时每秒都会调用这里，面板不可见时还去
+        // querySelector + 写 textContent，是白噪音开着期间的持续性浪费。
+        // 与 updateUI() 保持一致的可见性判断。
+        if (!this.panelEl || !this.panelVisible) return;
+
+        const timerBtn = this.panelEl.querySelector('#wnTimerBtn');
         if (!timerBtn) {
-            // 面板未渲染或按钮不存在，全量重建
-            if (this.panelEl) this._rebuild();
+            // 面板已打开但按钮不存在（结构有变），全量重建
+            this._rebuild();
             return;
         }
 

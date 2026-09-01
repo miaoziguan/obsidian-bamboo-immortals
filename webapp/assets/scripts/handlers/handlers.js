@@ -1,5 +1,6 @@
 import { byId, $, getHost, getDomRoot } from '../utils/domRef.js';
 import { FocusTrap } from '../utils/focusTrap.js';
+import { ScrollFeaturePicker } from './scrollFeaturePicker.js';
 export const Handlers = {
     modalFocusStack: [],
     lastFocusedElement: null,
@@ -291,6 +292,11 @@ ActionDispatcher.registerMany({
     'fab-archive': () => { 
         if (typeof openArchivePage === 'function') openArchivePage();
         if (typeof FABManager !== 'undefined') FABManager.close();
+    },
+    'fab-scroll': () => {
+        // 悬浮菜单点击「画中卷」后，先弹出功能选择浮层（香道/更多意境），选定后再打开视图。
+        if (typeof FABManager !== 'undefined') FABManager.close();
+        ScrollFeaturePicker.open();
     },
     'fab-sections': () => { 
         if (typeof SectionManager !== 'undefined') SectionManager.openManager(); 

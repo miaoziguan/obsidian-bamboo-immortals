@@ -2443,6 +2443,7 @@
 :host(.dark) .arch-card:hover {
     background: rgba(var(--surface-dark-rgb, 20, 30, 24), 0.3);
 }
+
 :host(.dark) .arch-card:active {
     background: rgba(var(--surface-dark-rgb, 20, 30, 24), 0.5);
 }

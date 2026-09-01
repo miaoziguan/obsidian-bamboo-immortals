@@ -11,6 +11,34 @@ export const BambooGarden = {
     _leafPoolInit: false,
     _initialized: false,
 
+    /**
+     * 按当前布局模式重渲染诗词卡（切换纵向/横向/看板时调用）。
+     * 原因：布局切换只改 CSS 类名、不重建诗词 DOM，否则看板里会残留进看板前
+     * 渲染的 horizontal 模板（带「——」、无 meta 容器），导致破折号删不掉、
+     * 作者无法绝对定位贴底。这里就地替换 .bamboo-poem-strip 节点。
+     */
+    rerenderPoem() {
+        try {
+            const strip = document.querySelector('#themeEffectSection .bamboo-poem-strip');
+            if (!strip || typeof BambooPoem === 'undefined') return;
+            const mode = (typeof LayoutMode !== 'undefined' && LayoutMode.isKanban && LayoutMode.isKanban())
+                ? 'kanban' : 'horizontal';
+            // 幂等：已是目标模式则直接返回。切换布局时 _enter 会手动调用一次、
+            // sectionsContainer 的 class 变化又会经 MutationObserver 再调一次，
+            // 没有这层判断就会把诗词卡 DOM 重建两遍（切换卡顿来源之一）。
+            if (strip.getAttribute('data-poem-mode') === mode) return;
+            const tmp = document.createElement('div');
+            tmp.innerHTML = BambooPoem.render(mode);
+            const next = tmp.querySelector('.bamboo-poem-strip');
+            if (next) {
+                next.setAttribute('data-poem-mode', mode);
+                strip.replaceWith(next);
+            }
+        } catch (e) {
+            console.warn('[BambooGarden] rerenderPoem failed', e);
+        }
+    },
+
     render() {
         return `
             <section class="bamboo-garden-section" id="bambooGardenSection" role="region">
@@ -54,6 +82,23 @@ export const BambooGarden = {
         // 初始即按当前明暗模式应用大背景（避免依赖 CSS :host(.dark) 在个别 webview 下未命中）
         this.updateTheme();
         // 明暗切换由 ThemeEffects 统一观察者驱动（合并 observer，避免重复监听 documentElement.class）
+
+        // 看板布局只改 CSS 类名、不重建诗词 DOM，会导致看板里残留进看板前的
+        // horizontal 模板（带「——」、无 meta 容器）。监听 sectionsContainer 的
+        // class 变化：一旦切到 kanban-layout 就按看板模板重渲染诗词卡。
+        this._observeLayoutChange();
+    },
+
+    _observeLayoutChange() {
+        const sc = byId('sectionsContainer');
+        if (!sc || typeof MutationObserver === 'undefined') return;
+        if (this._layoutObserver) this._layoutObserver.disconnect();
+        this._layoutObserver = new MutationObserver(() => {
+            if (sc.classList.contains('kanban-layout')) this.rerenderPoem();
+        });
+        this._layoutObserver.observe(sc, { attributes: true, attributeFilter: ['class'] });
+        // 初始即处于看板也渲染一次
+        if (sc.classList.contains('kanban-layout')) this.rerenderPoem();
     },
 
     _setupVisibilityGuard() {
@@ -101,6 +146,12 @@ export const BambooGarden = {
             const el = byId(id);
             if (el) el.remove();
         });
+
+        // 断开布局监听
+        if (this._layoutObserver) {
+            this._layoutObserver.disconnect();
+            this._layoutObserver = null;
+        }
     },
     
     createBambooForest() {

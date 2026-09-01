@@ -1,4 +1,4 @@
-import { App, DataAdapter, normalizePath, requestUrl, Platform } from 'obsidian';
+import { App, TFile, DataAdapter, normalizePath, requestUrl, Platform } from 'obsidian';
 import { arrayBufferToBase64 } from '../utils/base64';
 import { VaultStorage } from '../storage/VaultStorage';
 import { ThemeBridge } from '../bridge/ThemeBridge';
@@ -66,6 +66,18 @@ export class AppAPI {
   onOpenArchive?: () => void;
 
   /**
+   * 「画中卷」入口回调（由 DailyReviewView 注入，转发到插件 openScroll）。
+   * webapp FAB 点「画中卷」时触发，打开画中卷独立中央视图（不影响日报）。
+   */
+  onOpenScroll?: () => void;
+
+  /**
+   * 「画中卷」入口回调（由 DailyReviewView 注入，转发到插件 openScrollLeftSidebar）。
+   * 点击画中卷默认以左侧边栏（类似大纲面板）形态打开。
+   */
+  onOpenScrollLeftSidebar?: () => void;
+
+  /**
    * 健康分权威快照数据源（由 DailyReviewView 注入，转发到插件的 getStrategyOverview()）。
    * webapp 通过 app:getHealthOverview 向插件请求单一数据源的健康分套件，
    * 避免插件与前端各算一遍导致的分数漂移。
@@ -108,10 +120,17 @@ export class AppAPI {
   moveToCenter?: (mode?: string) => void;
   /** 把当前视图移回右侧栏回调（由 DailyReviewView 注入；仅当视图由系统从侧栏移来才执行） */
   moveToSidebar?: () => void;
+  /** 折叠 Obsidian 右侧栏回调（由 DailyReviewView 注入；进入横向/看板多列模式时调用）
+   *  @returns 折叠前右侧栏是否已折叠（供 webapp 判断恢复纵向时是否需对称展开） */
+  collapseRightSidebar?: () => boolean;
+  /** 展开 Obsidian 右侧栏回调（由 DailyReviewView 注入；恢复纵向且此前由我们折叠时调用） */
+  expandRightSidebar?: () => void;
   /** 待恢复的布局模式回调（由 DailyReviewView 注入，重建视图后 app:ready 带回 webapp） */
   getPendingLayoutMode?: () => string | null;
   /** 视图已 detach 后置 true，扫描等异步任务据此提前终止（#L14） */
   private disposed = false;
+  /** Obsidian App 引用（打开文件等宿主操作需要） */
+  private app: App;
 
   constructor(
     app: App,
@@ -123,6 +142,7 @@ export class AppAPI {
   ) {
     this.settings = settings;
     this.saveSettings = saveSettings;
+    this.app = app;
     // 注意：webapp 读取目标的实际路径由此处决定（VaultStorage 默认 basePath = bamboo-review）。
     // writeAiGoals 必须写入同一路径，否则 AI 目标不显示。详见 main.ts writeAiGoals 的注释。
     this.storage = new VaultStorage(app);
@@ -170,6 +190,9 @@ export class AppAPI {
   bindIframe(iframe: HTMLIFrameElement): void {
     this.iframe = iframe;
     this.themeBridge.attachIframe(iframe);
+    // iframe 一旦绑定即主动推一次当前主题，确保画中卷/归档等独立视图首屏即跟随亮暗，
+    // 不依赖 app:ready 往返的时序（避免 contentWindow 尚未就绪导致 pushTheme 漏推）。
+    this.themeBridge.pushTheme(this.settings.followObsidianTheme);
   }
 
   /** 解绑并停止监听 */
@@ -278,6 +301,28 @@ export class AppAPI {
       return;
     }
 
+    // ---- 折叠 Obsidian 右侧栏（进入横向/看板多列模式时腾出横向宽度）----
+    if (type === 'app:collapseRightSidebar') {
+      if (this.collapseRightSidebar) {
+        const wasCollapsed = this.collapseRightSidebar();
+        this.respond(id, { ok: true, wasCollapsed: !!wasCollapsed });
+      } else {
+        this.respond(id, { ok: false, error: 'collapseRightSidebar 未注入' });
+      }
+      return;
+    }
+
+    // ---- 展开 Obsidian 右侧栏（恢复纵向时对称还原）----
+    if (type === 'app:expandRightSidebar') {
+      if (this.expandRightSidebar) {
+        this.expandRightSidebar();
+        this.respond(id, { ok: true });
+      } else {
+        this.respond(id, { ok: false, error: 'expandRightSidebar 未注入' });
+      }
+      return;
+    }
+
     // ---- 备份码导出：仅已激活设备可导出（本质是已存激活码的便携封装）----
     if (type === 'app:exportBackup') {
       if (!this.licenseStore.isActive()) {
@@ -381,6 +426,24 @@ export class AppAPI {
       if (this.settings.syncPaletteToObsidian) {
         this.themeBridge.applyPalette(p.hue, p.lightnessOffset, p.isDark);
       }
+      // 应用内调色（含明暗与色相）→ 广播给所有已打开视图（含画中卷独立 iframe）。
+      // 色相/明度必须一并下发：画中卷等独立 iframe 视图内没有 DisplayManager，
+      // 只有拿到这两个值才能驱动自身配色（其内部样式全由 --accent-hue /
+      // --accent-lightness-offset 派生）。
+      // 注意：此处不受 syncPaletteToObsidian 开关控制——那个开关管的是
+      // 「webapp 调色是否写回 Obsidian 原生界面」，而「所有视图跟随主视图调色」
+      // 是插件内部一致性要求，始终生效。
+      ThemeBridge.broadcastTheme(p.isDark, { hue: p.hue, lightnessOffset: p.lightnessOffset });
+      this.respond(id, { ok: true });
+      return;
+    }
+
+    // ---- 应用内手动切换明暗（如悬浮菜单夜间模式）----
+    // webapp 的 store.setDarkMode 仅在用户手动切换时发出本消息（宿主推送不触发），
+    // 由宿主广播给所有视图，确保画中卷等独立 iframe 跟随应用明暗，不依赖 Obsidian 系统主题。
+    if (type === 'theme:appDarkMode') {
+      const isDark = !!(payload as { isDark?: boolean } | null)?.isDark;
+      ThemeBridge.broadcastTheme(isDark);
       this.respond(id, { ok: true });
       return;
     }
@@ -415,6 +478,13 @@ export class AppAPI {
       return;
     }
 
+    // ---- 画中卷 · 通用文本文件协议（listDir / get / write / delete）----
+    // 作用域限定在「画中卷」绑定目录内，路径遍历防护由 handleFileOp 统一执行。
+    if (type === 'file:list' || type === 'file:get' || type === 'file:write' || type === 'file:delete') {
+      await this.handleFileOp(id, type, payload);
+      return;
+    }
+
     // ---- 代理外部音源链接（绕过 webview CORS，桌面/移动一致）----
     if (type === 'app:proxyAudioUrl') {
       await this.handleProxyAudioUrl(id, payload);
@@ -441,6 +511,48 @@ export class AppAPI {
     if (type === 'app:openArchive') {
       this.onOpenArchive?.();
       this.respond(id, { ok: true });
+      return;
+    }
+
+    // ---- 画中卷：打开独立中央视图（不影响日报）----
+    if (type === 'app:openScroll') {
+      this.onOpenScroll?.();
+      this.respond(id, { ok: true });
+      return;
+    }
+
+    // ---- 画中卷：打开到左侧边栏（百宝箱首个功能，默认形态）----
+    if (type === 'app:openScrollLeftSidebar') {
+      this.onOpenScrollLeftSidebar?.();
+      this.respond(id, { ok: true });
+      return;
+    }
+
+    // ---- 画中卷：主动请求当前主题（webapp 加载后自行拉取，确保跟随亮暗）----
+    if (type === 'app:getTheme') {
+      this.themeBridge.pushTheme(this.settings.followObsidianTheme);
+      this.respond(id, { ok: true });
+      return;
+    }
+
+    // ---- 在 Obsidian 原生打开指定 vault 文件（画中卷便签 → 原生 md 编辑器）----
+    if (type === 'app:openFile') {
+      try {
+        const raw = (payload as { path?: string } | null)?.path;
+        const p: string = typeof raw === 'string' ? raw : '';
+        if (!p) { this.respondError(id, '未提供文件路径'); return; }
+        const file = this.app.vault.getAbstractFileByPath(p);
+        if (!file || !(file instanceof TFile)) {
+          this.respondError(id, '文件不存在：' + p);
+          return;
+        }
+        // false：在当前活跃 leaf 旁开新 leaf（不替换画中卷本身）
+        const leaf = this.app.workspace.getLeaf(false);
+        await leaf.openFile(file);
+        this.respond(id, { ok: true });
+      } catch (e) {
+        this.respondError(id, e instanceof Error ? e.message : '打开文件失败');
+      }
       return;
     }
 
@@ -595,9 +707,10 @@ export class AppAPI {
           const ext = file.substring(file.lastIndexOf('.')).toLowerCase();
           if (ALLOWED_AUDIO_EXTENSIONS.includes(ext)) {
             try {
-              const fullPath = normalizePath(`${this.noisePath}/${file}`);
-              const stat = await adapter.stat(fullPath);
-              results.push({ path: fullPath, name: file, size: stat?.size ?? 0, ext });
+              // adapter.list 返回的是相对 vault 根的绝对路径（已包含 noisePath），无需再次拼接
+              const stat = await adapter.stat(file);
+              const name = file.substring(file.lastIndexOf('/') + 1);
+              results.push({ path: file, name, size: stat?.size ?? 0, ext });
             } catch { /* skip */ }
           }
         }
@@ -622,8 +735,8 @@ export class AppAPI {
         if (folder.startsWith('.')) continue;
         const skipSet = new Set([...SKIP_DIRS, ...(this.configDir ? [this.configDir] : [])]);
         if (skipSet.has(folder)) continue;
-        const subPath = relativeDir ? normalizePath(`${relativeDir}/${folder}`) : folder;
-        await scanDir(subPath, depth + 1);
+        // adapter.list 返回的 folders 已是相对 vault 根的绝对路径，直接递归
+        await scanDir(folder, depth + 1);
         if (this.disposed) return;
       }
 
@@ -632,9 +745,10 @@ export class AppAPI {
         const ext = file.substring(file.lastIndexOf('.')).toLowerCase();
         if (ALLOWED_AUDIO_EXTENSIONS.includes(ext)) {
           try {
-            const relativePath = relativeDir ? normalizePath(`${relativeDir}/${file}`) : file;
-            const stat = await adapter.stat(relativePath);
-            results.push({ path: relativePath, name: file, size: stat?.size ?? 0, ext });
+            // adapter.list 返回的 files 已是相对 vault 根的绝对路径，直接使用
+            const stat = await adapter.stat(file);
+            const name = file.substring(file.lastIndexOf('/') + 1);
+            results.push({ path: file, name, size: stat?.size ?? 0, ext });
           } catch { /* skip */ }
         }
       }
@@ -649,7 +763,7 @@ export class AppAPI {
   private async handleReadVaultFile(id: string, payload: unknown): Promise<void> {
     try {
       const p = payload as { path: string };
-      const relativePath = p.path || '';
+      let relativePath = p.path || '';
       if (!relativePath) throw new Error('未提供文件路径');
 
       const ext = relativePath.substring(relativePath.lastIndexOf('.')).toLowerCase();
@@ -657,11 +771,22 @@ export class AppAPI {
       if (relativePath.includes('..')) throw new Error('路径遍历禁止');
 
       const adapter = this.vaultAdapter;
-      const stat = await adapter.stat(relativePath);
+      let stat = await adapter.stat(relativePath);
+      // 兼容旧版本：若路径因重复拼接 noisePath 而含双前缀，自动去掉一层再试
+      if (!stat && this.noisePath) {
+        const dup = normalizePath(this.noisePath + '/' + this.noisePath);
+        if (relativePath.startsWith(dup + '/')) {
+          const fixed = normalizePath(relativePath.slice(this.noisePath.length + 1));
+          stat = await adapter.stat(fixed);
+          if (stat) relativePath = fixed;
+        }
+      }
       if (!stat || stat.type !== 'file') throw new Error('文件不存在：' + relativePath);
       if (stat.size > MAX_AUDIO_FILE_BYTES) throw new Error('音频文件过大，无法加载');
 
       const buffer = await adapter.readBinary(relativePath);
+      // 回传 base64 data URL：与 readLocalFile / proxyAudioUrl 保持同一契约，
+      // webapp 端 (whiteNoiseManager._dataUrlToArrayBuffer) 统一按 data URL 解析。
       this.respond(id, { data: this.toDataUrl(buffer, ext) });
     } catch (e) {
       this.respondError(id, e instanceof Error ? e.message : '读取文件失败');
@@ -691,6 +816,99 @@ export class AppAPI {
       this.respond(id, { data: this.toDataUrl(buffer, ext) });
     } catch (e) {
       this.respondError(id, e instanceof Error ? e.message : '读取本地文件失败');
+    }
+  }
+
+  /**
+   * 画中卷通用文本文件协议。作用域严格限定在绑定的「画中卷」目录（默认 vault 根下
+   * `画中卷/`），所有 path 都经 resolveScrollPath 归一化并禁止越界（路径遍历防护）。
+   * 支持：
+   *  - file:list   { dir? }                      → { files: [{name, path, mtime, size}] }
+   *  - file:get    { path | filename }           → { content: string }
+   *  - file:write  { path, content }             → { ok: true }
+   *  - file:delete { path }                      → { ok: true }
+   */
+  private async handleFileOp(id: string, type: string, payload: unknown): Promise<void> {
+    try {
+      const p = (payload || {}) as { path?: string; filename?: string; content?: string; dir?: string };
+      const adapter = this.vaultAdapter;
+      const root = normalizePath('画中卷');
+
+      // 目录确保存在（首次使用自动创建绑定目录）
+      try { await adapter.mkdir(root); } catch { /* 已存在则忽略 */ }
+
+      const resolveScrollPath = (raw: string | undefined): string => {
+        const src = (raw || '').trim();
+        if (!src) throw new Error('未提供文件路径');
+        if (src.includes('..')) throw new Error('路径遍历禁止');
+        const norm = normalizePath(src);
+        // 允许以「画中卷」开头或相对，统一收敛到绑定目录内
+        const full = norm.startsWith(root + '/') || norm === root
+          ? norm
+          : normalizePath(`${root}/${norm}`);
+        if (!full.startsWith(root + '/') && full !== root) throw new Error('超出画中卷目录范围');
+        return full;
+      };
+
+      if (type === 'file:list') {
+        const dir = resolveScrollPath(p.dir || root);
+        let entries;
+        try {
+          entries = await adapter.list(dir);
+        } catch {
+          // 目录暂不存（首次）视为空
+          this.respond(id, { files: [] });
+          return;
+        }
+        const files = [];
+        for (const name of entries.files) {
+          if (!name.toLowerCase().endsWith('.md')) continue;
+          const fullPath = normalizePath(`${dir}/${name}`);
+          try {
+            const st = await adapter.stat(fullPath);
+            files.push({ name, path: fullPath, mtime: st?.mtime ?? 0, size: st?.size ?? 0 });
+          } catch {
+            files.push({ name, path: fullPath, mtime: 0, size: 0 });
+          }
+        }
+        files.sort((a, b) => b.mtime - a.mtime);
+        this.respond(id, { files });
+        return;
+      }
+
+      if (type === 'file:get') {
+        const fullPath = resolveScrollPath(p.path || p.filename);
+        if (!fullPath.toLowerCase().endsWith('.md')) throw new Error('仅支持 .md 文件');
+        const content = await adapter.read(fullPath);
+        this.respond(id, { content: content || '' });
+        return;
+      }
+
+      if (type === 'file:write') {
+        const fullPath = resolveScrollPath(p.path);
+        if (!fullPath.toLowerCase().endsWith('.md')) throw new Error('仅支持 .md 文件');
+        const content = typeof p.content === 'string' ? p.content : '';
+        // 父目录确保存在（含子目录新建）
+        const parent = fullPath.substring(0, fullPath.lastIndexOf('/'));
+        if (parent && parent !== root) {
+          try { await adapter.mkdir(parent); } catch { /* 已存在忽略 */ }
+        }
+        await adapter.write(fullPath, content);
+        this.respond(id, { ok: true });
+        return;
+      }
+
+      if (type === 'file:delete') {
+        const fullPath = resolveScrollPath(p.path);
+        if (!fullPath.toLowerCase().endsWith('.md')) throw new Error('仅支持 .md 文件');
+        await adapter.remove(fullPath);
+        this.respond(id, { ok: true });
+        return;
+      }
+
+      this.respondError(id, '未知的 file 操作：' + type);
+    } catch (e) {
+      this.respondError(id, e instanceof Error ? e.message : '文件操作失败');
     }
   }
 

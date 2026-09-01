@@ -24,6 +24,15 @@ export const DisplayManager = {
     _hueValueLabelEl: null,
     _lightnessSliderEl: null,
     _lightnessValueLabelEl: null,
+    _currentHue: null,            // 当前生效色相（供广播/明度联动读取，避免每次 input 都 getComputedStyle 强制布局）
+    _currentLightness: null,      // 当前生效明度偏移
+    _paletteRAF: null,            // 调色广播 rAF 节流句柄
+    _huePresetBtns: null,         // 缓存色相预设按钮，避免每次 input 都 querySelectorAll
+    _lightnessPresetBtns: null,   // 缓存明度预设按钮
+    _applyRAF: null,              // 拖动时「写变量+同步UI」rAF 合并句柄
+    _pendingHue: null,            // 待应用的色相（input 高频期间缓存，rAF 内统一落盘）
+    _pendingLightness: null,      // 待应用的明度偏移
+    _dragging: false,             // 拖动滑块期间为 true：_syncHueUI/_syncLightnessUI 据此跳过回设 slider.value，避免 rAF 把 thumb 弹回
     _saveTimer: null,
     _transitionTimer: null,
     _currentWidth: null,
@@ -464,56 +473,95 @@ export const DisplayManager = {
         }, 500);
     },
 
-    /* ===== 应用明度 ===== */
-    _applyLightness(val) {
+    /* ===== 应用明度 =====
+       fromTheme=true 表示值来自主题/广播下发（而非用户拖动滑块），此时不再回写 Obsidian，
+       否则会形成「广播 → _applyLightness → _maybeSyncPalette → 再广播」的死循环。
+       与 _applyHue(hue, fromTheme) 的语义保持一致。 */
+    _applyLightness(val, fromTheme = false) {
         const root = getCssVarRoot();
         if (!root) return;
+        this._currentLightness = val;
         root.style.setProperty('--accent-lightness-offset', val + '%');
         this._syncLightnessUI(val);
-        this._maybeSyncPalette();
+        if (!fromTheme) this._maybeSyncPalette();
+    },
+
+    /* 拖动滑块时把「写变量 + 同步 UI」合并到每帧一次（rAF），
+       避免 input 高频（>60Hz 的高刷指针/触控板）下每事件都做 21 次 setProperty + UI 同步，
+       主线程更轻、交互更跟手。每帧由 _applyHue/_applyLightness 统一落盘，重绘仍由浏览器 在帧边界合并。
+       预设/重置/主题联动等低频调用仍直接走 _applyHue/_applyLightness（即时生效，不走此处）。 */
+    _scheduleApply() {
+        if (this._applyRAF) return;
+        this._applyRAF = requestAnimationFrame(() => {
+            this._applyRAF = null;
+            if (this._pendingHue !== null && this._pendingHue !== undefined) {
+                const h = this._pendingHue;
+                this._pendingHue = null;
+                this._applyHue(h);
+            }
+            if (this._pendingLightness !== null && this._pendingLightness !== undefined) {
+                const l = this._pendingLightness;
+                this._pendingLightness = null;
+                this._applyLightness(l);
+            }
+        });
     },
 
     /**
-     * 如果开启了"将调色同步到 Obsidian"，则向父窗口发送当前调色值
+     * 向父窗口发送当前调色值。
+     *
+     * 注意：此处【不能】用 syncPaletteToObsidian 开关提前 return。
+     * 该开关的语义是「是否把插件调色写回 Obsidian 原生界面」，这个判断应由
+     * 宿主完成（见 AppAPI 的 theme:syncPalette 分支）。而本消息还有第二个用途：
+     * 让宿主把调色广播给其他独立 iframe 视图（画中卷/归档），使所有视图跟随
+     * 主视图配色——这个同步必须始终发生。若在此处拦截，未开启该开关时宿主
+     * 根本收不到消息，画中卷永远不会跟随调色。
      */
     _maybeSyncPalette() {
-        if (typeof storageManager === 'undefined' || !storageManager.syncPaletteToObsidian) return;
-        // 读取当前调色值（从生效根的计算样式，保证准确性）
-        const cs = getGlobalComputedStyle();
-        // 注意：不能用 `|| DEFAULT_HUE` 兜底——色相为 0（纯红）时 parseInt 返回 0，
-        // 会被误判为未设置而回退成默认竹青绿。仅当解析失败/空时才回退。
-        const hueRaw = cs.getPropertyValue('--accent-hue').trim();
-        const parsedHue = parseInt(hueRaw);
-        const hue = (hueRaw !== '' && !isNaN(parsedHue)) ? parsedHue : this.DEFAULT_HUE;
-        const offsetStr = cs.getPropertyValue('--accent-lightness-offset').trim();
-        const parsedLo = parseInt(offsetStr);
-        // 明度偏移同理：0 是合法值，不能 `|| 0` 兜底（不过 0 与兜底 0 等价，这里统一走 NaN 守卫）
-        const lightnessOffset = (offsetStr !== '' && !isNaN(parsedLo)) ? parsedLo : 0;
-        // 明暗状态必须与 --accent-hue 同一根读取：shadow 模式下变量挂在 host 上，
-        // 若仍读 document.documentElement 会与上方 cs 来源不一致（host 有 dark、documentElement 未置时误判亮色）。
-        const isDarkRoot = getHost() || document.documentElement;
-        const isDark = isDarkRoot.classList.contains('dark');
-        try {
-            window.parent.postMessage({
-                type: 'theme:syncPalette',
-                id: 'dm_' + Date.now(),
-                payload: { hue, lightnessOffset, isDark }
-            }, '*');
-        } catch (e) {
-            // 跨域静默
-        }
+        if (typeof storageManager === 'undefined') return;
+        // 拖动期间完全不广播（滑块卡顿的主因）：
+        // 宿主 AppAPI 收到 theme:syncPalette 后会无条件 ThemeBridge.broadcastTheme 广播给
+        // 所有已打开视图（主视图/画中卷/归档等独立 iframe），每个视图各自 setGlobalCssVar 后
+        // 都会触发一次整页样式重算 + 重绘；拖动时每帧广播 = 每帧 N 份整页 recalc。
+        // 改为松手（change）时广播一次最终值，仍满足「所有视图跟随主视图调色」的一致性要求。
+        if (this._dragging) return;
+        // rAF 节流：拖动滑块时 input 事件高频触发，若每次都 postMessage + 读计算样式，
+        // 会高频跨 iframe 广播并强制同步布局（forced reflow），导致滑块卡顿。
+        // 合并为每帧最多一次广播，且复用已记录的 this._currentHue/_currentLightness（见 _applyHue/_applyLightness），
+        // 彻底避免每次 input 都 getComputedStyle 强制布局。
+        if (this._paletteRAF) return;
+        this._paletteRAF = requestAnimationFrame(() => {
+            this._paletteRAF = null;
+            const hue = (this._currentHue !== null && this._currentHue !== undefined && !isNaN(this._currentHue))
+                ? this._currentHue : this.DEFAULT_HUE;
+            const lightnessOffset = (this._currentLightness !== null && this._currentLightness !== undefined && !isNaN(this._currentLightness))
+                ? this._currentLightness : 0;
+            // 明暗状态：shadow 模式下变量挂在 host 上，优先用 host 判定
+            const isDarkRoot = getHost() || document.documentElement;
+            const isDark = isDarkRoot.classList.contains('dark');
+            try {
+                window.parent.postMessage({
+                    type: 'theme:syncPalette',
+                    id: 'dm_' + Date.now(),
+                    payload: { hue, lightnessOffset, isDark }
+                }, '*');
+            } catch (e) {
+                // 跨域静默
+            }
+        });
     },
 
     _syncLightnessUI(val) {
-        if (this._lightnessSliderEl) {
+        // 拖动期间（_dragging）不回设 slider.value：thumb 由用户指针实时控制，避免 rAF 弹跳
+        if (this._lightnessSliderEl && !this._dragging) {
             this._lightnessSliderEl.value = val;
         }
         if (this._lightnessValueLabelEl) {
             this._lightnessValueLabelEl.textContent = (val >= 0 ? '+' : '') + val + '%';
         }
-        if (this._panelEl) {
-            const btns = this._panelEl.querySelectorAll('.display-lightness-preset-btn');
-            btns.forEach(btn => {
+        // 复用缓存的预设按钮列表（面板重建时由 _bindPanel 刷新），避免每次 input 都 querySelectorAll
+        if (this._lightnessPresetBtns) {
+            this._lightnessPresetBtns.forEach(btn => {
                 const pv = Number(btn.dataset.value);
                 btn.classList.toggle('active', pv === val);
             });
@@ -533,24 +581,41 @@ export const DisplayManager = {
         const root = getCssVarRoot();
         if (!root) return;
 
-        // 暗色模式下提高前景色明度，确保文字 / 按钮 / 卡片在深色背景上可见
-        // :host(.dark) CSS 变量被 setProperty 覆盖，此处需同源处理
-        // 因 MutationObserver 是异步的，需同时检查 host 和 documentElement
-        const darkHost = getHost();
-        const isDark = (darkHost && darkHost.classList.contains('dark')) ||
-                       document.documentElement.classList.contains('dark');
-        const darkLift = isDark ? 10 : 0;  // 前景色明度提升（%）
-
         // 记录用户手动色相，供关闭联动后恢复
         if (!fromTheme) this._userHue = hue;
+        // 记录当前生效色相，供广播（_maybeSyncPalette）与明度联动读取，避免每次 input 都 getComputedStyle
+        this._currentHue = hue;
 
         root.style.setProperty('--accent-hue', hue);
 
         // 主题联动来的色相不回写 Obsidian，避免 iframe→Obsidian→iframe 循环
         if (!fromTheme) this._maybeSyncPalette();
 
-        // 同步更新所有绿色系 RGB 变量（用于 rgba() 半透明色）
-        // 暗色模式下明度 +darkLift，确保前景色在深色背景上可见（匹配 :host(.dark) CSS 变量值）
+        // 派生 RGB 变量（20 个，供 rgba() 半透明色使用）：拖动期间跳过，
+        // 使每帧只变更 --accent-hue 这 1 个根变量，显著减少需要重算样式的元素数；
+        // 松手（change）时补齐一次，最终配色与不跳过时完全一致。
+        if (!this._dragging) this._applyDerivedRgb(hue);
+
+        this._syncHueUI(hue);
+    },
+
+    /**
+     * 写入由色相派生的 RGB 通道变量（--primary-rgb / --deep-rgb / ... 共 20 个），
+     * 供 rgba(var(--xx-rgb), a) 半透明色使用。
+     * 拖动滑块期间跳过（见 _applyHue 的 _dragging 分支），仅松手时补齐一次，
+     * 以降低每帧需要重算样式的元素数量。
+     */
+    _applyDerivedRgb(hue) {
+        const root = getCssVarRoot();
+        if (!root) return;
+
+        // 暗色模式下提高前景色明度，确保文字 / 按钮 / 卡片在深色背景上可见
+        // （匹配 :host(.dark) CSS 变量值；host 的 dark 类由 MutationObserver 异步同步，故两者都查）
+        const darkHost = getHost();
+        const isDark = (darkHost && darkHost.classList.contains('dark')) ||
+                       document.documentElement.classList.contains('dark');
+        const darkLift = isDark ? 10 : 0;  // 前景色明度提升（%）
+
         // 竹青绿主色 hsl(hue, 27%, 48%) → 暗色 hsl(hue, 27%, 58%) #5A9A5A → #82C382
         const primaryRgb = this._hslToRgb(hue, 27, 48 + darkLift);
         root.style.setProperty('--primary-rgb', primaryRgb);
@@ -589,16 +654,12 @@ export const DisplayManager = {
         root.style.setProperty('--green-very-bright-rgb', greenVeryBrightRgb);
 
         // 暗色模式表面色（卡片、面板背景等）
-        // 暗色表面 hsl(hue, 18%, 10%) → 极暗的色调基底
         const surfaceDarkRgb = this._hslToRgb(hue, 18, 10);
         root.style.setProperty('--surface-dark-rgb', surfaceDarkRgb);
-        // 暗色表面中调 hsl(hue, 18%, 13%)
         const surfaceDarkMidRgb = this._hslToRgb(hue, 18, 13);
         root.style.setProperty('--surface-dark-rgb-mid', surfaceDarkMidRgb);
-        // 暗色表面亮调 hsl(hue, 18%, 16%)
         const surfaceDarkEndRgb = this._hslToRgb(hue, 18, 16);
         root.style.setProperty('--surface-dark-rgb-end', surfaceDarkEndRgb);
-        // 更深的暗色表面 hsl(hue, 14%, 8%)
         const surfaceDeepRgb = this._hslToRgb(hue, 14, 8);
         root.style.setProperty('--surface-deep-rgb', surfaceDeepRgb);
         const surfaceDeepAltRgb = this._hslToRgb(hue, 17, 10);
@@ -610,8 +671,6 @@ export const DisplayManager = {
         // 暗色模式淡绿变体 hsl(hue, 18%, 13%)
         const paleGreenAltRgbDark = this._hslToRgb(hue, 18, 13);
         root.style.setProperty('--pale-green-alt-rgb-dark', paleGreenAltRgbDark);
-
-        this._syncHueUI(hue);
     },
 
     /**
@@ -732,15 +791,17 @@ export const DisplayManager = {
     },
 
     _syncHueUI(hue) {
-        if (this._hueSliderEl) {
+        // 拖动期间（_dragging）不回设 slider.value：thumb 由用户指针实时控制，
+        // 若 rAF 内把它设回 pendingHue 快照（可能落后于当前指针位置），会导致 thumb 弹跳。
+        if (this._hueSliderEl && !this._dragging) {
             this._hueSliderEl.value = hue;
         }
         if (this._hueValueLabelEl) {
             this._hueValueLabelEl.textContent = hue + '°';
         }
-        if (this._panelEl) {
-            const huePresetBtns = this._panelEl.querySelectorAll('.display-hue-preset-btn');
-            huePresetBtns.forEach(btn => {
+        // 复用缓存的预设按钮列表（面板重建时由 _bindPanel 刷新），避免每次 input 都 querySelectorAll
+        if (this._huePresetBtns) {
+            this._huePresetBtns.forEach(btn => {
                 const pv = Number(btn.dataset.value);
                 btn.classList.toggle('active', pv === hue);
             });
@@ -1120,19 +1181,27 @@ export const DisplayManager = {
         // 色相滑块 input 事件（实时预览）
         if (this._hueSliderEl) {
             this._hueSliderEl.addEventListener('input', (e) => {
-                const val = Number(e.target.value);
-                this._applyHue(val);
+                document.documentElement.classList.add('recoloring');
+                this._dragging = true;
+                this._pendingHue = Number(e.target.value);
+                this._scheduleApply();
             });
 
             // 色相滑块 change 事件（松手持久化）
             this._hueSliderEl.addEventListener('change', (e) => {
                 const val = Number(e.target.value);
+                document.documentElement.classList.remove('recoloring');
+                this._dragging = false;
+                this._currentHue = val;
+                this._applyDerivedRgb(val);
+                this._maybeSyncPalette();
                 this._scheduleSaveHue(val);
             });
         }
 
         // 色相预设按钮
         const huePresetBtns = this._panelEl.querySelectorAll('.display-hue-preset-btn');
+        this._huePresetBtns = huePresetBtns;
         huePresetBtns.forEach(btn => {
             btn.addEventListener('click', () => {
                 const val = Number(btn.dataset.value);
@@ -1153,18 +1222,25 @@ export const DisplayManager = {
         // 明度滑块 input 事件（实时预览）
         if (this._lightnessSliderEl) {
             this._lightnessSliderEl.addEventListener('input', (e) => {
-                const val = Number(e.target.value);
-                this._applyLightness(val);
+                document.documentElement.classList.add('recoloring');
+                this._dragging = true;
+                this._pendingLightness = Number(e.target.value);
+                this._scheduleApply();
             });
 
             this._lightnessSliderEl.addEventListener('change', (e) => {
                 const val = Number(e.target.value);
+                document.documentElement.classList.remove('recoloring');
+                this._dragging = false;
+                this._currentLightness = val;
+                this._maybeSyncPalette();
                 this._scheduleSaveLightness(val);
             });
         }
 
         // 明度预设按钮
         const lightnessPresetBtns = this._panelEl.querySelectorAll('.display-lightness-preset-btn');
+        this._lightnessPresetBtns = lightnessPresetBtns;
         lightnessPresetBtns.forEach(btn => {
             btn.addEventListener('click', () => {
                 const val = Number(btn.dataset.value);

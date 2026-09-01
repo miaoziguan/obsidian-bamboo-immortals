@@ -31,7 +31,7 @@ export class AppHost {
    *  仅缓存 data: URL（blob: 会被 revokeObjectURL 失效，不可跨实例共享）。
    *  data: 字符串无资源泄漏，生命周期随进程，故 destroy 不清空。 */
   private static cachedPageUrl: string | null = null;
-  private static cachedHtmlLength = -1;
+  private static cachedHtmlHash = -1;
   private readonly version: string;
   private readonly repo = 'miaoziguan/obsidian-bamboo-immortals';
 
@@ -71,6 +71,20 @@ export class AppHost {
     return p;
   }
 
+  /**
+   * 轻量内容哈希（djb2 变体），作为 data: URL 缓存的判据。
+   * 不能用 html.length 代替：不同内容完全可能长度相同，那样会错误复用旧 URL，
+   * 使 webapp 更新后视图仍加载上一版代码（现象诡异且极难定位）。
+   * 遍历 1.5MB 字符串仅数毫秒，远小于重复 encodeURIComponent 的开销。
+   */
+  private static hashHtml(html: string): number {
+    let h = 5381;
+    for (let i = 0; i < html.length; i++) {
+      h = ((h << 5) + h + html.charCodeAt(i)) | 0; // h * 33 + c
+    }
+    return h;
+  }
+
   async buildBlobUrl(entryFile: string = 'app.html'): Promise<string> {
     const adapter = this.app.vault.adapter;
 
@@ -105,14 +119,15 @@ export class AppHost {
     //   编码用 encodeURIComponent（非 base64）以减小体积膨胀（~10-20% vs base64 ~33%）。
     // 内容长度未变时复用已编码的 data: URL，避免切布局模式重建视图时
     // 反复同步 encodeURIComponent(1.5MB) 造成主线程卡顿 / 白屏。
-    if (AppHost.cachedPageUrl && AppHost.cachedHtmlLength === html.length) {
+    const hash = AppHost.hashHtml(html);
+    if (AppHost.cachedPageUrl && AppHost.cachedHtmlHash === hash) {
       return AppHost.cachedPageUrl;
     }
     const pageUrl = this.buildPageUrl(html);
     // 仅 data: URL 可安全缓存（blob: 会被 destroy 的 revokeObjectURL 失效，多视图共享会崩）
     if (pageUrl.startsWith('data:')) {
       AppHost.cachedPageUrl = pageUrl;
-      AppHost.cachedHtmlLength = html.length;
+      AppHost.cachedHtmlHash = hash;
     }
     return pageUrl;
   }

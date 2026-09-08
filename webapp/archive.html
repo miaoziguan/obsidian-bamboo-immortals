@@ -1144,8 +1144,10 @@ body.privacy-on .bamboo-license-gate * {
    （mousedown 已 preventDefault，但 mousemove 仍可能扩展残留选区） */
 .scroll-workbench.scroll-dragging,
 .scroll-workbench.scroll-dragging * {
-    user-select: none !important;
-    -webkit-user-select: none !important;
+    /* 无需 !important：shadow root 内只有本样式表，且本选择器优先级
+       高于任何元素级 / 继承来的 user-select 声明 */
+    user-select: none;
+    -webkit-user-select: none;
 }
 .scroll-firebrand.lit {
     opacity: 0;
@@ -1388,8 +1390,13 @@ body.privacy-on .bamboo-license-gate * {
 /* 吹熄过渡（#7）：余烬暗灭、火光隐去、前沿焦褐带消散、青烟被吹散加速淡出，香身停在当前进度 */
 .scroll-incense.blowing .scroll-incense-ember,
 .scroll-incense.blowing .scroll-incense-flare,
-.scroll-incense.blowing .scroll-incense-transition { opacity: 0 !important; transition: opacity 0.9s ease; }
-.scroll-incense.blowing .scroll-incense-ember { animation: none; }
+.scroll-incense.blowing .scroll-incense-transition {
+    /* 先 animation:none 停掉余烬/火光的 opacity 关键帧，再以普通声明压到 0：
+       动画的优先级高于普通声明，不停动画就得靠 !important 才能盖住。 */
+    animation: none;
+    opacity: 0;
+    transition: opacity 0.9s ease;
+}
 .scroll-incense.blowing .scroll-incense-ember span { animation: none; opacity: 0; }
 .scroll-incense.blowing .scroll-incense-smoke { opacity: 0; transition: opacity 1.1s ease; }
 .scroll-incense.blowing .scroll-smoke-wisp { animation-duration: 2.2s; }
@@ -1489,7 +1496,7 @@ body.privacy-on .bamboo-license-gate * {
 }
 /* 暗色模式：香灰整体提亮偏白，深底上更清晰；颗粒纹理也换成浅色，
    避免深色颗粒在浅灰底上变成脏点。 */
-::host(.dark) .scroll-incense-ash {
+:host(.dark) .scroll-incense-ash {
     --ash-1: rgba(226,222,214,0.92);
     --ash-2: rgba(238,234,226,0.8);
     --ash-3: rgba(248,245,238,0.7);
@@ -1520,7 +1527,7 @@ body.privacy-on .bamboo-license-gate * {
    配合 JS 里更缓的缩小与更晚的淡出，让雁在深底上全程可辨。
    注：描边方案在此无效——缩小是父元素的 CSS transform，
    vector-effect: non-scaling-stroke 无法阻止其连带缩放，故改为放缓缩小。 */
-::host(.dark) .scroll-wild-goose {
+:host(.dark) .scroll-wild-goose {
     --goose-fill: #ffffff;
     width: 32px;
     height: 18px;
@@ -1528,7 +1535,7 @@ body.privacy-on .bamboo-license-gate * {
 }
 /* 再给雁身描一圈白边把轮廓加粗，让它在深底上更跳。
    这里刻意不用 filter 做发光：滤镜会随振翅动画每帧重算，代价高于加粗描边。 */
-::host(.dark) .scroll-wild-goose .goose-body {
+:host(.dark) .scroll-wild-goose .goose-body {
     stroke: rgba(255,255,255,0.92);
     stroke-width: 1.6;
     paint-order: stroke fill;
@@ -1677,7 +1684,7 @@ body.privacy-on .bamboo-license-gate * {
 }
 
 /* 暗色模式：整体提亮一档并加强点缀，避免铜炉/灵石在深底上糊成一团 */
-::host(.dark) .scroll-censer {
+:host(.dark) .scroll-censer {
     --cs-1: hsl(calc(var(--accent-hue) + 28), 29.2%, calc(87.3% + var(--accent-lightness-offset)));
     --cs-2: hsl(calc(var(--accent-hue) + 25), 24.1%, calc(78.8% + var(--accent-lightness-offset)));
     --cs-3: hsl(calc(var(--accent-hue) + 33), 23.1%, calc(69.4% + var(--accent-lightness-offset)));
@@ -1690,7 +1697,7 @@ body.privacy-on .bamboo-license-gate * {
     --cs-accent: hsla(calc(var(--accent-hue) + 20), 20%, calc(55.9% + var(--accent-lightness-offset)), 0.5);
     --cs-accent-2: hsla(calc(var(--accent-hue) + 20), 24.3%, calc(63.7% + var(--accent-lightness-offset)), 0.35);
 }
-::host(.dark) .cs-stone {
+:host(.dark) .cs-stone {
     --cs-1: hsl(calc(var(--accent-hue) + 27), 16.4%, calc(89.2% + var(--accent-lightness-offset)));
     --cs-2: hsl(calc(var(--accent-hue) + 24), 10%, calc(80.4% + var(--accent-lightness-offset)));
     --cs-3: hsl(calc(var(--accent-hue) + 30), 7.6%, calc(69% + var(--accent-lightness-offset)));
@@ -1702,7 +1709,7 @@ body.privacy-on .bamboo-license-gate * {
     --cs-hole: hsla(calc(var(--accent-hue) + 35), 11.8%, calc(56.9% + var(--accent-lightness-offset)), 0.45);
     --cs-accent: hsla(calc(var(--accent-hue) + 26), 30.4%, calc(95.5% + var(--accent-lightness-offset)), 0.62);
 }
-::host(.dark) .cs-bianshan {
+:host(.dark) .cs-bianshan {
     --cs-1: hsl(calc(var(--accent-hue) + 0), 7.1%, calc(94.5% + var(--accent-lightness-offset)));
     --cs-2: hsl(calc(var(--accent-hue) + -20), 6.4%, calc(90.8% + var(--accent-lightness-offset)));
     --cs-3: hsl(calc(var(--accent-hue) + -60), 4.7%, calc(83.1% + var(--accent-lightness-offset)));
@@ -1758,7 +1765,7 @@ body.privacy-on .bamboo-license-gate * {
 }
 
 /* 暗色下的折枝梅：花瓣提亮一档，红润不糊 */
-::host(.dark) .cs-mei {
+:host(.dark) .cs-mei {
     --cs-1: hsl(calc(var(--accent-hue) + -125), 60.5%, calc(85.1% + var(--accent-lightness-offset)));
     --cs-2: hsl(calc(var(--accent-hue) + -127), 53%, calc(74.1% + var(--accent-lightness-offset)));
     --cs-3: hsl(calc(var(--accent-hue) + -129), 42.7%, calc(65.1% + var(--accent-lightness-offset)));
@@ -1793,11 +1800,15 @@ body.privacy-on .bamboo-license-gate * {
 /* 掐灭火星 / 暂停：停表但保留已燃进度，余烬火光青烟熄灭，香身停在当前长度 */
 .scroll-incense.paused .scroll-incense-ember,
 .scroll-incense.paused .scroll-incense-flare,
-.scroll-incense.paused .scroll-incense-transition { opacity: 0 !important; transition: opacity 0.7s ease; }
-.scroll-incense.paused .scroll-incense-ember,
-.scroll-incense.paused .scroll-incense-ember span { animation: none !important; opacity: 0; }
-.scroll-incense.paused .scroll-incense-smoke { opacity: 0 !important; transition: opacity 0.9s ease; }
-.scroll-incense.paused .scroll-smoke-wisp { animation-play-state: paused !important; }
+.scroll-incense.paused .scroll-incense-transition {
+    /* 同上：animation:none 先停关键帧，普通声明即可压住 opacity */
+    animation: none;
+    opacity: 0;
+    transition: opacity 0.7s ease;
+}
+.scroll-incense.paused .scroll-incense-ember span { animation: none; opacity: 0; }
+.scroll-incense.paused .scroll-incense-smoke { opacity: 0; transition: opacity 0.9s ease; }
+.scroll-incense.paused .scroll-smoke-wisp { animation-play-state: paused; }
 /* 新器物转入：轻微转体 + 渐显 */
 .scroll-censer-svg { transform: perspective(360px) rotateY(0deg); }
 .scroll-censer.turn-in .scroll-censer-svg {
@@ -2182,9 +2193,11 @@ a:active) {
 /* 拖动色相/明度滑块期间（html.recoloring）：临时禁用所有过渡。
    否则每次 input 改色都会重启 color/background-color 过渡动画，等于持续重绘动画而非一次性着色，
    这是滑块拖动时整页每帧都在跑过渡动画、丝滑度不足的隐藏主因。松手（change）即移除 class 恢复过渡。 */
-html.recoloring, html.recoloring *,
-html.recoloring *::before, html.recoloring *::after {
-    transition: none !important;
+/* 用 :not(#recoloring) 把特异性抬到 ID 级 (1,x,x)，压过各组件自己的 transition 声明，
+   从而不必借助 !important —— 拖动调色滑块期间全局停掉过渡，避免每帧重跑动画。 */
+html.recoloring:not(#recoloring), html.recoloring:not(#recoloring) *,
+html.recoloring:not(#recoloring) *::before, html.recoloring:not(#recoloring) *::after {
+    transition: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -3031,7 +3044,7 @@ textarea:focus-visible) {
   display: flex;
   align-items: center;
   margin: 0 0.53em 0.8em 0;
-  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-family: "SFMono-Regular", Menlo, Consolas, monospace;
   font-size: 0.6em;
   font-weight: 700;
   letter-spacing: 0.05em;
@@ -3079,7 +3092,7 @@ textarea:focus-visible) {
 }
 
 /* 亮色模式：屏幕/标签在浅机身中减重（暗色模式保持原深色） */
-::host(:not(.dark)) .tw-screen,
+:host(:not(.dark)) .tw-screen,
 body:not(.dark) .tw-screen {
   background: linear-gradient(135deg, rgba(var(--white-rgb), 0.55), rgba(var(--pale-rgb), 0.72));
   -webkit-backdrop-filter: blur(6px) saturate(1.0) brightness(1.05);
@@ -3128,7 +3141,7 @@ body:not(.dark) .tw-screen-msg {
 .theme-dark .tw-screen-glare,
 :host(.dark) .tw-screen-glare { display: none; }
 
-::host(:not(.dark)) .tw-screen-top,
+:host(:not(.dark)) .tw-screen-top,
 body:not(.dark) .tw-screen-top {
   color: rgba(var(--bamboo-deep-rgb), 0.72);
 }
@@ -3154,7 +3167,7 @@ body:not(.dark) .tw-screen-font {
   opacity: 0.85;
 }
 
-::host(:not(.dark)) .tw-case-label,
+:host(:not(.dark)) .tw-case-label,
 body:not(.dark) .tw-case-label {
   color: var(--ink-medium);
   opacity: 0.78;
@@ -3179,7 +3192,7 @@ body:not(.dark) .tw-case-right {
   display: flex;
   justify-content: space-between;
   margin-bottom: 0.27em;
-  font-family: ui-monospace, monospace;
+  font-family: Menlo, Consolas, monospace;
   font-size: 0.6em;
   color: rgba(var(--bamboo-deep-rgb), 0.72);
   user-select: none;
@@ -3676,9 +3689,8 @@ body.dark .tw-print,
   bottom: calc(100% + 2px); /* 贴卡极近，几乎与顶边融为一体 */
   left: 50%;                /* 居中挂靠卡顶，而非右对齐悬在右上角（排版更平衡） */
   /* 宽度严格按内容收缩：避免 left:50%/max-width:100% 在某些渲染下被拉成整宽，
-     导致 justify-content 把图标撑开。fit-content 让工具条就是 6 个按钮排一排。 */
-  width: -webkit-fit-content;
-  width: -moz-fit-content;
+     导致 justify-content 把图标撑开。fit-content 让工具条就是 6 个按钮排一排。
+     只保留无前缀写法：Obsidian 桌面（Chromium）与移动（系统 WebView）均已支持。 */
   width: fit-content;
   max-width: 100%;          /* 窄卡片/小屏时不超出卡片左缘 */
   display: flex;
@@ -3748,15 +3760,15 @@ body.dark .tw-print,
 .tw-card-zoom-in {
   /* 点击目标随栏宽(--tw-scale)等比缩放、clamp 保可点下限(≥15px)，
      不随卡片手动缩放(--tw-card-zoom)与字级变化 —— 避免便签放大 2.4x 时按钮跟着胀。
-     用 !important 防止任何运行时/主题/继承把它撑开；calc(var()) 若失效，
-     由 JS 内联像素兜底（inline < !important，!important 有效时优先；失效时 JS 顶上）。 */
-  width: clamp(18px, calc(20px * var(--tw-scale, 1)), 24px) !important;
-  height: clamp(18px, calc(20px * var(--tw-scale, 1)), 24px) !important;
-  min-width: 15px !important;
-  min-height: 15px !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  flex: none !important;
+     无需 !important：类选择器（0,1,0）已压过 components-interaction.css 里的
+     元素级 button { min-width/min-height } 触控规则，且无其它规则设置这些属性。 */
+  width: clamp(18px, calc(20px * var(--tw-scale, 1)), 24px);
+  height: clamp(18px, calc(20px * var(--tw-scale, 1)), 24px);
+  min-width: 15px;
+  min-height: 15px;
+  padding: 0;
+  margin: 0;
+  flex: none;
   font-family: inherit;
   font-size: calc(11px * var(--tw-scale, 1));
   line-height: 1;
@@ -3775,9 +3787,9 @@ body.dark .tw-print,
 .tw-card-font svg,
 .tw-card-zoom-out svg,
 .tw-card-zoom-in svg {
-  width: clamp(16px, calc(18px * var(--tw-scale, 1)), 22px) !important;
-  height: clamp(16px, calc(18px * var(--tw-scale, 1)), 22px) !important;
-  flex: none !important;
+  width: clamp(16px, calc(18px * var(--tw-scale, 1)), 22px);
+  height: clamp(16px, calc(18px * var(--tw-scale, 1)), 22px);
+  flex: none;
 }
 /* 颜色收敛：常规操作一律中性灰，只有「移除」才上语义色 —— 颜色越稀有越有分量 */
 .tw-card-del:hover { color: rgb(var(--danger-rgb)); }

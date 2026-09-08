@@ -24,7 +24,7 @@ function broadcastToReviewFrames(message: Record<string, unknown>): void {
         frame.contentWindow.postMessage(message, '*');
       }
     });
-  } catch (e) {
+  } catch {
     // 无活动文档等极端时序下静默：设置已持久化，视图重开后由 app:ready 推送对齐
   }
 }

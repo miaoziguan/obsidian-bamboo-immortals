@@ -92,9 +92,11 @@ export class ScrollView extends ItemView {
 
     // 让 iframe 占满侧边栏/面板容器高度，否则内容会按高度塌陷，
     // 寻呼机被挤在顶部无法落底。
-    container.style.height = '100%';
-    container.style.display = 'flex';
-    container.style.flexDirection = 'column';
+    container.setCssStyles({
+      height: '100%',
+      display: 'flex',
+      flexDirection: 'column',
+    });
 
     try {
       this.appAPI?.startListening();
@@ -113,10 +115,12 @@ export class ScrollView extends ItemView {
           allow: 'camera; microphone; clipboard-read; clipboard-write',
         },
       });
-      this.iframe.style.flex = '1 1 auto';
-      this.iframe.style.width = '100%';
-      this.iframe.style.minHeight = '0';
-      this.iframe.style.border = 'none';
+      this.iframe.setCssStyles({
+        flex: '1 1 auto',
+        width: '100%',
+        minHeight: '0',
+        border: 'none',
+      });
 
       // 画中卷功能选型（typewriter/incense）经 data: URL 的 #hash 在 Obsidian 中不稳定，
       // 改为 iframe 加载完成后由宿主主动 postMessage 注入（与主题同步同机制）。

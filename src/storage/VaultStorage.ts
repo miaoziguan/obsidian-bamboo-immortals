@@ -453,8 +453,8 @@ export class VaultStorage {
     if (!(await this.app.vault.adapter.exists(path))) return [];
     try {
       const content = await this.app.vault.adapter.read(path);
-      const parsed = content ? JSON.parse(content) : [];
-      return Array.isArray(parsed) ? parsed : [];
+      const parsed: unknown = content ? JSON.parse(content) : [];
+      return Array.isArray(parsed) ? (parsed as Record<string, unknown>[]) : [];
     } catch {
       return [];
     }

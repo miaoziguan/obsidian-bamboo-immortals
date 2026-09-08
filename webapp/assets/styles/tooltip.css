@@ -1,0 +1,65 @@
+/* ===== 自绘 tooltip =====
+   取代 native title：系统 title 要悬停满一秒才弹、样式是系统灰条，与整体质感割裂。
+   即时出现（120ms 淡入 + 6px 上浮），整块画布共用一个浮层，不每张便签各建一个。 */
+.tw-tip {
+  position: fixed;
+  z-index: 9999;
+  padding: 5px 9px;
+  border-radius: 6px;
+  background: rgba(28, 30, 26, 0.92);
+  color: #f4f2ec;
+  font-size: 11px;
+  line-height: 1.25;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.12s ease, transform 0.12s ease;
+  box-shadow: 0 4px 14px -4px rgba(0, 0, 0, 0.45);
+}
+.tw-tip.on { opacity: 1; transform: translateY(0); }
+
+/* 画中卷画布内位置选择器：底部中央三个等径极简圆点（左壁/中堂/右壁），仅以颜色区分当前停靠位置 */
+.tw-scroll-locdots {
+  position: fixed;
+  left: 50%;
+  bottom: 14px;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 5px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  z-index: 9999;
+  opacity: 0.6;
+  transition: opacity 120ms ease;
+}
+.tw-scroll-locdots:hover { opacity: 1; }
+.tw-scroll-dot {
+  position: relative;
+  width: 8px;
+  height: 8px;
+  box-sizing: border-box;
+  display: inline-block;
+  border: none;
+  padding: 0;
+  margin: 0;
+  border-radius: 50%;
+  background: var(--text-muted, rgba(150, 160, 150, 0.9));
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+/* 透明扩展点击区：视觉点不变，命中范围扩大到约 16px，提升点击灵敏度 */
+.tw-scroll-dot::before {
+  content: '';
+  position: absolute;
+  inset: -5px;
+  border-radius: 50%;
+}
+.tw-scroll-dot:hover { background: var(--text-normal, rgba(110, 130, 110, 1)); }
+.tw-scroll-dot.is-active {
+  background: var(--text-accent, rgba(75, 200, 130, 1));
+}
+

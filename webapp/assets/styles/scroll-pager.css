@@ -1,0 +1,745 @@
+/* ========== 画中卷·复古打字机 ========== */
+.scroll-feature-bar {
+  flex: none;
+  display: flex;
+  gap: 6px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border-subtle, rgba(120,100,70,0.18));
+  background: var(--scroll-bar-bg, rgba(255,250,238,0.5));
+}
+.scroll-feature-tab {
+  flex: 1;
+  min-height: 36px;
+  border: 1px solid var(--border-subtle, rgba(120,100,70,0.22));
+  border-radius: 8px;
+  background: var(--scroll-tab-bg, rgba(255,255,255,0.55));
+  color: var(--text-secondary, #6b5d49);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .18s, color .18s, box-shadow .18s;
+}
+.scroll-feature-tab.is-active {
+  background: var(--scroll-tab-active, #6b5640);
+  color: #f4ecd8;
+  box-shadow: 0 2px 6px rgba(80,60,30,0.25);
+}
+
+/* ===== 画中卷 · 复古寻呼机打字 feature（移植 Vintage Pager 视觉） ===== */
+.scroll-typewriter-feature {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  cursor: grab;          /* 全局可拖动画布：机身区空白处也触发平移 */
+  touch-action: none;
+  /* 无论侧栏多宽，左右都保留安全间距（避免设备/纸条贴边）
+     随侧栏宽度自适应：窄侧栏保底 24px，宽侧栏上限 56px */
+  padding-inline: clamp(24px, 7%, 56px);
+  /* 字体栈：纯系统字体，彻底不依赖 Google Fonts（离线 / 中国大陆均一致可用）。
+     页面以 data: URL 加载进 iframe，本地字体在任何环境都能稳定呈现，
+     不引入任何网络字体，避免不可达时的风格塌陷；
+     每条链都以系统字体收尾，绝不回落 cursive / fantasy（中文系统下是未定义行为）。 */
+  --tw-font-sans: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
+                  "Noto Sans SC", "Source Han Sans SC", sans-serif;
+  --tw-font-serif: "Songti SC", "STSong", "SimSun", "Noto Serif SC", serif;
+  --tw-font-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas,
+                  "Courier New", monospace;
+  --tw-font-kai: "Kaiti SC", "STKaiti", "KaiTi", "楷体", "Noto Serif SC", serif;
+  /* 便签三款风格全部落在系统字体上（已移除书法体与网络字体）：
+     classic=衬线（经典印刷） / modern=无衬线（现代） / kai=楷体（书法）。 */
+  --tw-font-classic: var(--tw-font-serif);
+  --tw-font-modern:  var(--tw-font-sans);
+  --tw-font-screen:  var(--tw-font-mono);
+}
+
+/* 画布（桌面）：淡网格底，呼应 pager 的复古纸感 */
+.tw-canvas {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: visible;   /* 允许便签拖出画布到机身区域，否则 overflow:hidden 会把超出画布的部分裁掉 */
+  /* 不提升层叠：保留打字机机身(.tw-beeper z:30)在最前；
+     便签拖到机身区时落在机身后方(出纸口吐纸的视觉)，不被裁切即可 */
+  /* 背景透明：直接继承首页（工作台）的同款主题渐变，亮暗随 --bg-gradient-* 自动切换；
+     此处只叠加淡网格纹理，不再覆盖中性底色，保证与首页背景统一 */
+  background: transparent;
+  /* 单一容器：机身与卡片的所有根字号都用本画布宽度的 cqi 驱动 */
+  container-type: inline-size;
+  cursor: grab;        /* 画布桌面可整体拖动（机身固定） */
+  touch-action: none;
+  will-change: transform;
+}
+.scroll-typewriter-feature.dragging { cursor: grabbing; }
+
+/* ===== 寻呼机外壳（绿壳） ===== */
+.tw-beeper {
+  flex: none;
+  display: flex;
+  justify-content: center;
+  position: relative;
+  /* 底部留白：容纳厚度侧壁(8px)、bounce、焦散光斑与接触影，避免被容器底部裁切 */
+  margin-bottom: 40px;
+  z-index: 30; /* 高于纸条卡片(z:20)，让纸条从设备后方「出纸口」吐出 */
+  pointer-events: none; /* 机身外壳不拦截鼠标事件，让后方便签仍可被选中拖动 */
+}
+/* 机身内部交互控件仍接收事件，避免 pointer-events:none 误伤按钮/输入框 */
+.tw-beeper button,
+.tw-beeper textarea,
+.tw-beeper input {
+  pointer-events: auto;
+}
+
+.tw-case {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+  /* 根字号由 JS _observeScale 按 .tw-case 真实宽度写入内联 px 驱动；
+     机身内尺寸一律 em 跟随，比例自洽（本环境 Electron 不支持 cqi，故不用容器查询） */
+  font-size: 14.5px;
+  padding: 1.07em 1.6em 2.13em;
+  border-radius: 1.6em;
+  /* 玻璃通透外壳：亮色下更轻更透 */
+  background: linear-gradient(135deg,
+    rgba(var(--pale-rgb), 0.38) 0%,
+    rgba(var(--primary-rgb), 0.30) 45%,
+    rgba(var(--bamboo-deep-rgb), 0.24) 100%);
+  -webkit-backdrop-filter: blur(20px) saturate(1.2) brightness(1.12);
+  backdrop-filter: blur(20px) saturate(1.2) brightness(1.12);
+  border: 1px solid rgba(var(--white-rgb), 0.55);
+  box-shadow:
+    /* A. 厚度侧壁（8px）：量感对齐暗色，颜色进一步调浅 */
+    0 1px 0 rgba(var(--primary-rgb), 0.20),
+    0 2px 0 rgba(var(--primary-rgb), 0.19),
+    0 3px 0 rgba(var(--primary-rgb), 0.18),
+    0 4px 0 rgba(var(--primary-rgb), 0.16),
+    0 5px 0 rgba(var(--primary-rgb), 0.15),
+    0 6px 0 rgba(var(--primary-rgb), 0.14),
+    0 7px 0 rgba(var(--primary-rgb), 0.12),
+    0 8px 0 rgba(var(--primary-rgb), 0.11),
+    /* C. 厚度下缘 bounce 光（桌面反射到侧壁底缘的一线亮边） */
+    0 9px 0 rgba(var(--white-rgb), 0.12),
+    /* D. 三层接触影：量感对齐暗色，颜色更轻 */
+    0 9px 8px -2px rgba(var(--deep-rgb), 0.08),
+    0 14px 26px -4px rgba(var(--deep-rgb), 0.06),
+    0 22px 50px -8px rgba(var(--deep-rgb), 0.04),
+    /* B. 顶边锐高光（外缘最顶细线，保留） */
+    inset 0 1px 0 rgba(var(--white-rgb), 0.42),
+    /* B. 正面柔光斜面倒角（16px：上/左受光保留，下/右暗面用浅绿保留厚度） */
+    inset 0 16px 22px -12px rgba(var(--white-rgb), 0.48),
+    inset 0 -16px 22px -12px rgba(var(--primary-rgb), 0.09),
+    inset 16px 0 22px -12px rgba(var(--white-rgb), 0.30),
+    inset -16px 0 22px -12px rgba(var(--primary-rgb), 0.07),
+    /* C. 底部内侧 bounce（桌面反射回底部的柔和亮带） */
+    inset 0 -6px 8px -6px rgba(var(--white-rgb), 0.20),
+    /* 内部透光与底部折射 */
+    inset 0 8px 24px rgba(var(--white-rgb), 0.14),
+    inset 0 -14px 26px rgba(var(--white-rgb), 0.08);
+  transition: transform .3s;
+}
+/* 栏栅玻璃（长虹玻璃）：竖向棱条，周期 9px。
+   分层：外壳 backdrop-filter 负责「模糊背景（透光不透影）」，
+   本层叠在其上做棱条的「亮脊→中调→暗边」折射。
+   位于内容之下（z 0）：不透明屏幕自然遮住条纹（屏幕不带条纹），
+   半透明按键/PRINT 则透出下方棱条，整体质感统一。 */
+.tw-case::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    /* 斜向镜面扫光：让绿玻璃表面有反射高光带（体积感关键） */
+    linear-gradient(110deg, transparent 32%, rgba(var(--white-rgb), 0.20) 48%, rgba(var(--white-rgb), 0.06) 60%, transparent 76%),
+    repeating-linear-gradient(90deg,
+      rgba(var(--white-rgb), 0.14) 0px,
+      rgba(var(--white-rgb), 0.05) 1.5px,
+      rgba(var(--white-rgb), 0.01) 3.5px,
+      rgba(var(--black-rgb), 0.01) 5px,
+      rgba(var(--black-rgb), 0.06) 7px,
+      rgba(var(--black-rgb), 0.02) 9px),
+    radial-gradient(ellipse 60% 50% at 20% 15%, rgba(var(--white-rgb), 0.14), transparent 62%),
+    radial-gradient(ellipse 50% 55% at 85% 90%, rgba(var(--white-rgb), 0.08), transparent 62%);
+  pointer-events: none;
+  /* 边缘磨砂 mask：中心栏栅饱满，圆角/底边/顶边棱条渐隐，
+     真实长虹玻璃边缘的磨砂过渡，避免条纹在圆角处硬截断 */
+  -webkit-mask-image: radial-gradient(ellipse 78% 72% at 50% 45%, black 55%, transparent 100%);
+          mask-image: radial-gradient(ellipse 78% 72% at 50% 45%, black 55%, transparent 100%);
+  z-index: 0;
+}
+/* 票根式顶部 1px 渐变高光线：精致边缘光（取代原硬侧光） */
+.tw-case::after {
+  content: "";
+  position: absolute;
+  top: 0.5px; left: 8%; right: 8%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(var(--white-rgb), 0.45), transparent);
+  pointer-events: none;
+  z-index: 2;
+}
+.tw-case:hover { transform: scale(1.005); }
+
+/* 窄栏紧凑模式：机身外轮廓收成正方形（外壳方，屏幕 flex 填满）。
+   由 JS _observeScale 量得 .tw-case 宽度 ≤400px 时加 .tw-square 触发
+   （本环境 Electron 不支持 @container，故改用 class 切换）。
+   用 flex 列 + aspect-ratio:1 强制正方，屏幕 flex:1 填满；
+   .tw-screen min-height:0 / 输入区 height:auto 防止内容把外轮廓反推成竖条。 */
+.tw-case.tw-square {
+  display: flex;
+  flex-direction: column;
+  aspect-ratio: 1 / 1;
+}
+.tw-case.tw-square .tw-screen {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.tw-case.tw-square .tw-screen-input-wrap {
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 5.4em;
+}
+
+/* 暗色模式：降低机身绿玻璃不透明度 + 降饱和，让背景透出，避免颜色太实 */
+.theme-dark .tw-case,
+:host(.dark) .tw-case {
+  background:
+    linear-gradient(135deg,
+      rgba(var(--pale-rgb), 0.30) 0%,
+      rgba(var(--primary-rgb), 0.24) 45%,
+      rgba(var(--bamboo-deep-rgb), 0.20) 100%);
+  -webkit-backdrop-filter: blur(20px) saturate(1.3) brightness(1.0);
+  backdrop-filter: blur(20px) saturate(1.3) brightness(1.0);
+  box-shadow:
+    0 1px 0 rgba(var(--bamboo-deep-rgb), 0.32),
+    0 2px 0 rgba(var(--bamboo-deep-rgb), 0.30),
+    0 3px 0 rgba(var(--bamboo-deep-rgb), 0.28),
+    0 4px 0 rgba(var(--bamboo-deep-rgb), 0.26),
+    0 5px 0 rgba(var(--bamboo-deep-rgb), 0.24),
+    0 6px 0 rgba(var(--bamboo-deep-rgb), 0.22),
+    0 7px 0 rgba(var(--bamboo-deep-rgb), 0.20),
+    0 8px 0 rgba(var(--bamboo-deep-rgb), 0.18),
+    0 9px 0 rgba(var(--white-rgb), 0.12),
+    0 9px 8px -2px rgba(var(--deep-rgb), 0.16),
+    0 14px 26px -4px rgba(var(--deep-rgb), 0.12),
+    0 22px 50px -8px rgba(var(--deep-rgb), 0.10),
+    inset 0 1px 0 rgba(var(--white-rgb), 0.42),
+    inset 0 16px 22px -12px rgba(var(--white-rgb), 0.48),
+    inset 0 -16px 22px -12px rgba(var(--deep-rgb), 0.30),
+    inset 16px 0 22px -12px rgba(var(--white-rgb), 0.30),
+    inset -16px 0 22px -12px rgba(var(--deep-rgb), 0.26),
+    inset 0 -6px 8px -6px rgba(var(--white-rgb), 0.18),
+    inset 0 8px 24px rgba(var(--white-rgb), 0.14),
+    inset 0 -14px 26px rgba(var(--primary-rgb), 0.14);
+}
+
+/* 顶部标签：AUTO-FEED + SERIES 9000 5G */
+.tw-case-label {
+  display: flex;
+  align-items: center;
+  margin: 0 0.53em 0.8em 0;
+  font-family: "SFMono-Regular", Menlo, Consolas, monospace;
+  font-size: 0.6em;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink-dark);
+  opacity: 0.95;
+}
+/* 标签两端文字禁止折行，避免窄设备下 "AUTO- FEED" 被截断 */
+.tw-case-label > span,
+.tw-case-label .tw-case-right { white-space: nowrap; }
+.tw-case-label .tw-dot {
+  display: inline-block;
+  width: 0.4em; height: 0.4em;
+  margin-right: 0.25em;
+  border-radius: 50%;
+  background: rgb(var(--danger-rgb));
+  animation: tw-pulse 1s infinite;
+  vertical-align: middle;
+}
+.tw-case-right { display: inline-flex; align-items: center; gap: 0.27em; margin-left: auto; }
+.tw-signal { letter-spacing: -0.07em; }
+
+/* 屏幕（深色玻璃盖板，荧光绿透出） */
+.tw-screen {
+  position: relative;
+  padding: 0.93em 1.07em;
+  border-radius: 0.8em;
+  background: linear-gradient(135deg, rgba(var(--white-rgb), 0.55), rgba(var(--pale-rgb), 0.72));
+  -webkit-backdrop-filter: blur(6px) saturate(1.0) brightness(1.05);
+  backdrop-filter: blur(6px) saturate(1.0) brightness(1.05);
+  /* 凹陷式：亮色下用深绿边 + 内凹阴影，强化“挖进机身”的体感 */
+  border: 1px solid rgba(var(--bamboo-deep-rgb), 0.28);
+  border-bottom: 1px solid rgba(var(--white-rgb), 0.5);
+  box-shadow:
+    /* 上内壁背光（孔的上沿没光） */
+    inset 0 9px 18px -4px rgba(var(--bamboo-deep-rgb), 0.22),
+    inset 0 22px 34px -16px rgba(var(--bamboo-deep-rgb), 0.16),
+    inset 10px 0 18px -8px rgba(var(--bamboo-deep-rgb), 0.10),
+    inset -10px 0 18px -8px rgba(var(--bamboo-deep-rgb), 0.10),
+    /* 下内壁受反光 */
+    inset 0 -3px 0 rgba(var(--white-rgb), 0.55),
+    inset 0 -24px 42px rgba(var(--primary-rgb), 0.12),
+    0 0 0 1px rgba(var(--bamboo-deep-rgb), 0.20);
+  margin-bottom: 1.6em;
+}
+
+/* 亮色模式：屏幕/标签在浅机身中减重（暗色模式保持原深色） */
+:host(:not(.dark)) .tw-screen,
+body:not(.dark) .tw-screen {
+  background: linear-gradient(135deg, rgba(var(--white-rgb), 0.55), rgba(var(--pale-rgb), 0.72));
+  -webkit-backdrop-filter: blur(6px) saturate(1.0) brightness(1.05);
+  backdrop-filter: blur(6px) saturate(1.0) brightness(1.05);
+  border: 1px solid rgba(var(--bamboo-deep-rgb), 0.28);
+  border-bottom: 1px solid rgba(var(--white-rgb), 0.5);
+  box-shadow:
+    /* 上内壁背光（孔的上沿没光） */
+    inset 0 9px 18px -4px rgba(var(--bamboo-deep-rgb), 0.22),
+    inset 0 22px 34px -16px rgba(var(--bamboo-deep-rgb), 0.16),
+    inset 10px 0 18px -8px rgba(var(--bamboo-deep-rgb), 0.10),
+    inset -10px 0 18px -8px rgba(var(--bamboo-deep-rgb), 0.10),
+    /* 下内壁受反光 */
+    inset 0 -3px 0 rgba(var(--white-rgb), 0.55),
+    inset 0 -24px 42px rgba(var(--primary-rgb), 0.12),
+    0 0 0 1px rgba(var(--bamboo-deep-rgb), 0.20);
+  }
+/* 亮色模式：系统消息浮层改用浅墨绿半透明底，避免切换便签样式瞬间闪黑屏 */
+:host(:not(.dark)) .tw-screen-msg,
+body:not(.dark) .tw-screen-msg {
+  background: rgba(70, 120, 85, 0.72);
+}
+
+/* 暗色模式：深色屏幕凹进机身（挖孔质感，光源在上方，加深） */
+.theme-dark .tw-screen,
+:host(.dark) .tw-screen {
+  background: linear-gradient(160deg, rgba(var(--black-rgb), 0.74), rgba(var(--deep-rgb), 0.86));
+  -webkit-backdrop-filter: blur(6px) saturate(1.3) brightness(0.78);
+  backdrop-filter: blur(6px) saturate(1.3) brightness(0.78);
+  border: 1px solid rgba(var(--black-rgb), 0.55);
+  box-shadow:
+    /* 外框上沿：机身在屏幕上缘压下的更深暗影（凹坑外缘背光加重） */
+    0 -7px 16px -3px rgba(var(--black-rgb), 0.72),
+    /* 外框下沿：机身下缘受光的亮线（中性光，非绿） */
+    0 3px 6px rgba(var(--white-rgb), 0.14),
+    /* 内凹：上内壁暗（加深加大）、下内壁亮（加强） */
+    inset 0 16px 26px -10px rgba(var(--black-rgb), 0.88),
+    inset 0 -14px 22px -10px rgba(var(--white-rgb), 0.18),
+    /* 内描边：加深挖孔边界 */
+    inset 0 0 0 1px rgba(var(--black-rgb), 0.65),
+    /* CRT 屏幕中心极淡荧光绿辉光（仅为内容发光感） */
+    inset 0 0 40px rgba(var(--green-very-bright-rgb), 0.06);
+}
+.theme-dark .tw-screen-top { color: rgba(var(--green-very-bright-rgb), 0.7); }
+/* 暗色屏幕：隐藏右侧玻璃高光，避免凹陷玻璃被方向性照亮出现"右侧翘起" */
+.theme-dark .tw-screen-glare,
+:host(.dark) .tw-screen-glare { display: none; }
+
+:host(:not(.dark)) .tw-screen-top,
+body:not(.dark) .tw-screen-top {
+  color: rgba(var(--bamboo-deep-rgb), 0.72);
+}
+
+/* 亮色模式：屏内文字改深绿可读，避免荧光绿在淡白绿背景上糊 */
+:host(:not(.dark)) .tw-input,
+body:not(.dark) .tw-input {
+  color: rgb(var(--bamboo-deep-rgb));
+  caret-color: rgb(var(--bamboo-deep-rgb));
+  text-shadow: none;
+  /* 亮色模式：给屏内输入区一块内屏底色，与外层玻璃分层（避免整屏糊成一体） */
+  background: rgba(var(--pale-rgb), 0.7);
+  border-radius: 0;
+  padding: 0.53em 0.67em;
+  box-shadow:
+    inset 0 3px 6px -2px rgba(var(--bamboo-deep-rgb), 0.14),
+    inset 0 -2px 4px -2px rgba(var(--white-rgb), 0.75),
+    0 0 0 1px rgba(var(--primary-rgb), 0.15);
+}
+:host(:not(.dark)) .tw-screen-font,
+body:not(.dark) .tw-screen-font {
+  color: rgb(var(--bamboo-deep-rgb));
+  opacity: 0.85;
+}
+
+:host(:not(.dark)) .tw-case-label,
+body:not(.dark) .tw-case-label {
+  color: var(--ink-medium);
+  opacity: 0.78;
+}
+
+:host(:not(.dark)) .tw-case-right,
+body:not(.dark) .tw-case-right {
+  color: rgba(45, 130, 70, 0.9);
+}
+
+.tw-screen-glare {
+  position: absolute;
+  top: 0; right: 0;
+  width: 66%; height: 100%;
+  background: linear-gradient(to left, rgba(var(--white-rgb),0.08), rgba(var(--white-rgb),0.02) 55%, transparent);
+  pointer-events: none;
+  border-top-right-radius: 0.8em;
+  border-bottom-right-radius: 0.8em;
+  mix-blend-mode: screen;
+}
+.tw-screen-top {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.27em;
+  font-family: Menlo, Consolas, monospace;
+  font-size: 0.6em;
+  color: rgba(var(--bamboo-deep-rgb), 0.72);
+  user-select: none;
+}
+/* 屏幕顶栏两端文字禁止折行（避免窄设备下 "compose_modeFONT:" 粘连） */
+.tw-screen-top > span,
+.tw-screen-font { white-space: nowrap; }
+.tw-screen-font { color: rgb(var(--bamboo-deep-rgb)); opacity: 0.85; }
+.theme-dark .tw-screen-font { color: rgb(var(--green-very-bright-rgb)); opacity: 0.8; }
+.tw-batt { opacity: 0.6; }
+
+.tw-screen-input-wrap { position: relative; min-height: 5.4em; height: 5.4em; }
+.tw-input {
+  position: absolute;
+  inset: 0;
+  width: 100%; height: 100%;
+  resize: none;
+  border: none; outline: none;
+  background: transparent;
+  color: rgb(var(--bamboo-deep-rgb));
+  font-family: var(--tw-font-screen);
+  font-size: 1.2em;
+  font-weight: 500;
+  line-height: 1.6;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  caret-color: rgb(var(--bamboo-deep-rgb));
+  text-shadow: none;
+}
+.theme-dark .tw-input {
+  color: rgb(var(--green-very-bright-rgb));
+  caret-color: rgb(var(--green-very-bright-rgb));
+  text-shadow: 0 0 6px rgba(var(--green-very-bright-rgb), 0.4);
+}
+.tw-input::placeholder { color: rgba(var(--bamboo-deep-rgb), 0.5); text-transform: uppercase; }
+.theme-dark .tw-input::placeholder { color: rgba(var(--green-very-bright-rgb), 0.5); }
+.tw-input::selection { background: rgb(var(--bamboo-deep-rgb)); color: #fff; }
+.theme-dark .tw-input::selection { background: rgb(var(--green-very-bright-rgb)); color: #000; }
+/* 黑屏细滚动条（文字超屏时不突兀） */
+.tw-input { scrollbar-width: thin; scrollbar-color: rgba(var(--bamboo-deep-rgb),0.25) transparent; }
+.tw-input::-webkit-scrollbar { width: 6px; }
+.tw-input::-webkit-scrollbar-track { background: transparent; }
+.tw-input::-webkit-scrollbar-thumb { background: rgba(var(--bamboo-deep-rgb),0.25); border-radius: 3px; }
+.theme-dark .tw-input { scrollbar-color: rgba(var(--green-very-bright-rgb),0.25) transparent; }
+.theme-dark .tw-input::-webkit-scrollbar-thumb { background: rgba(var(--green-very-bright-rgb),0.25); }
+
+/* 屏幕光标（聚焦时右上角脉冲点） */
+.tw-cursor {
+  position: absolute;
+  top: 0.27em; right: 0.27em;
+  width: 0.53em; height: 0.53em;
+  border-radius: 50%;
+  background: rgb(var(--bamboo-deep-rgb));
+  opacity: 0;
+  pointer-events: none;
+}
+.theme-dark .tw-cursor {
+  background: rgb(var(--green-very-bright-rgb));
+}
+.tw-cursor.on { opacity: 0.5; }
+
+/* 系统消息浮层（TRANSMITTING / FONT） */
+.tw-screen-msg {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(var(--surface-deep-rgb),0.9);
+  font-family: var(--tw-font-screen);
+  font-size: 1.2em;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: rgb(var(--green-very-bright-rgb));
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .2s;
+}
+.tw-screen-msg.on { opacity: 1; }
+
+/* 控制区 */
+.tw-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.53em;
+  margin: 0 0.27em;
+  transform: translateY(-0.8em);
+}
+.tw-keys-left { display: flex; gap: 0.93em; }
+.tw-rbtn {
+  width: 1.07em; height: 1.07em;
+  min-width: 0; min-height: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-size: calc(var(--tw-scale, 1) * 28px);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  /* 干净玻璃球：高光点 + 顶面玻璃反光 + 底部细反光 + 球面本体（左上受光→右下背光） */
+  border: 0.07em solid rgba(var(--white-rgb), 0.34);
+  background:
+    radial-gradient(circle at 33% 27%,
+      rgba(var(--white-rgb), 0.85) 0%,
+      rgba(var(--white-rgb), 0.5) 9%,
+      rgba(var(--white-rgb), 0.18) 20%,
+      transparent 34%),
+    radial-gradient(ellipse 48% 30% at 39% 28%,
+      rgba(var(--white-rgb), 0.55) 0%,
+      rgba(var(--white-rgb), 0.14) 42%,
+      transparent 66%),
+    radial-gradient(ellipse 62% 24% at 52% 95%,
+      rgba(var(--white-rgb), 0.16) 0%,
+      transparent 60%),
+    radial-gradient(circle at 36% 32%,
+      color-mix(in srgb, rgb(var(--primary-rgb)), white 56%) 0%,
+      rgb(var(--primary-rgb)) 56%,
+      color-mix(in srgb, rgb(var(--primary-rgb)), black 40%) 100%);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  color: #fff;
+  /* 机身挖孔：按钮镶在深色圆井里；仅保留柔和投影，不再加内阴影暗带 */
+  box-shadow:
+    0 0 0 0.07em rgba(var(--deep-rgb), 0.82),
+    0 0 0 0.11em rgba(var(--deep-rgb), 0.42),
+    0 0.09em 0.22em rgba(var(--black-rgb), 0.28),
+    0 0 0.5em rgba(var(--primary-rgb), 0.30);
+  cursor: pointer;
+  transition: color .15s, transform .08s;
+}
+.tw-rbtn svg { width: 0.55em; height: 0.55em; }
+.tw-rbtn:hover { color: #fff; }
+.tw-rbtn:active { transform: translateY(0.13em); box-shadow: 0 0 0 0.07em rgba(var(--deep-rgb), 0.82), 0 0 0 0.11em rgba(var(--deep-rgb), 0.42), 0 0 0.18em rgba(var(--black-rgb), 0.30), inset 0 0.18em 0.4em rgba(var(--deep-rgb), 0.5); }
+#twPaper:hover { color: rgb(var(--pale-rgb)); }
+#twFont:hover { color: #fff; }
+#twClear:hover { color: rgb(var(--danger-rgb)); }
+
+.tw-grill { display: none; flex-direction: column; gap: 0.27em; opacity: 0.2; }
+.tw-grill i { display: block; width: 3.2em; height: 0.13em; border-radius: 0.13em; background: #000; }
+@media (min-width: 768px) { .tw-grill { display: flex; } }
+
+/* 橙色 PRINT 大钮 */
+.tw-print {
+  font-size: calc(var(--tw-scale, 1) * 28px);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.07em; height: 1.07em;
+  min-width: 0; min-height: 0;
+  padding: 0;
+  box-sizing: border-box;
+  border: 0.07em solid rgba(var(--white-rgb), 0.36);
+  border-radius: 50%;
+  /* 干净玻璃球：高光点 + 顶面玻璃反光 + 底部细反光 + 球面本体 */
+  background:
+    radial-gradient(circle at 33% 27%,
+      rgba(var(--white-rgb), 0.85) 0%,
+      rgba(var(--white-rgb), 0.5) 9%,
+      rgba(var(--white-rgb), 0.18) 20%,
+      transparent 34%),
+    radial-gradient(ellipse 48% 30% at 39% 28%,
+      rgba(var(--white-rgb), 0.55) 0%,
+      rgba(var(--white-rgb), 0.14) 42%,
+      transparent 66%),
+    radial-gradient(ellipse 62% 24% at 52% 95%,
+      rgba(var(--white-rgb), 0.16) 0%,
+      transparent 60%),
+    radial-gradient(circle at 36% 32%,
+      color-mix(in srgb, rgb(var(--gold-rgb)), white 78%) 0%,
+      color-mix(in srgb, rgb(var(--gold-rgb)), white 50%) 46%,
+      color-mix(in srgb, rgb(var(--gold-rgb)), white 34%) 70%,
+      color-mix(in srgb, rgb(var(--gold-rgb)), black 18%) 100%);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  color: var(--white);
+  cursor: pointer;
+  box-shadow:
+    0 0 0 0.07em rgba(var(--deep-rgb), 0.80),
+    0 0 0 0.11em rgba(var(--deep-rgb), 0.42),
+    0 0.09em 0.22em rgba(var(--black-rgb), 0.26),
+    0 0 0.5em rgba(var(--gold-rgb), 0.30);
+  transition: filter .15s, transform .08s;
+}
+/* 亮色模式：绿色按钮井口压淡 */
+:host(:not(.dark)) .tw-rbtn {
+  box-shadow:
+    0 0 0 0.07em rgba(var(--surface-deep-rgb), 0.20),
+    0 0 0 0.11em rgba(var(--surface-deep-rgb), 0.10),
+    0 0 0 0.16em rgba(var(--white-rgb), 0.18),
+    0 0.09em 0.22em rgba(var(--black-rgb), 0.18),
+    0 0 0.5em rgba(var(--primary-rgb), 0.10);
+}
+
+/* 亮色模式：PRINT 钮井口压淡，避免黄球边缘显脏 */
+:host(:not(.dark)) .tw-print,
+body:not(.dark) .tw-print {
+  box-shadow:
+    0 0 0 0.1em rgba(var(--surface-deep-rgb), 0.24),
+    0 0 0 0.17em rgba(var(--surface-deep-rgb), 0.08),
+    0 0 0 0.24em rgba(var(--white-rgb), 0.08),
+    inset 0 0.14em 0.28em -0.07em rgba(var(--black-rgb), 0.10),
+    inset 0 -0.07em 0.14em -0.07em rgba(var(--black-rgb), 0.12),
+    0 0 0.69em rgba(var(--gold-rgb), 0.26);
+}
+.tw-print svg { width: 0.72em; height: 0.72em; }
+.tw-print:hover { filter: brightness(1.1); }
+.tw-print:active { transform: translateY(0.13em); box-shadow: 0 0 0 0.07em rgba(var(--deep-rgb), 0.80), 0 0 0 0.1em rgba(var(--deep-rgb), 0.45), 0 0 0 0.14em rgba(var(--white-rgb), 0.12), inset 0 0.28em 0.69em rgba(var(--black-rgb), 0.30); }
+
+
+/* 暗色模式：按钮恢复饱和实色，并加深井口让凹槽更明显 */
+body.dark .tw-rbtn,
+:host(.dark) .tw-rbtn {
+  background:
+    radial-gradient(circle at 33% 27%,
+      rgba(var(--white-rgb), 0.82) 0%,
+      rgba(var(--white-rgb), 0.45) 9%,
+      rgba(var(--white-rgb), 0.14) 20%,
+      transparent 34%),
+    radial-gradient(ellipse 48% 30% at 39% 28%,
+      rgba(var(--white-rgb), 0.42) 0%,
+      rgba(var(--white-rgb), 0.08) 42%,
+      transparent 66%),
+    radial-gradient(ellipse 62% 24% at 52% 95%,
+      rgba(var(--white-rgb), 0.12) 0%,
+      transparent 60%),
+    radial-gradient(circle at 36% 32%,
+      color-mix(in srgb, rgb(var(--primary-rgb)), white 34%) 0%,
+      rgb(var(--primary-rgb)) 46%,
+      color-mix(in srgb, rgb(var(--primary-rgb)), black 30%) 78%,
+      color-mix(in srgb, rgb(var(--primary-rgb)), black 50%) 100%);
+  box-shadow:
+    0 0 0 0.1em rgba(var(--deep-rgb), 0.85),
+    0 0 0 0.17em rgba(var(--black-rgb), 0.30),
+    0 0.09em 0.22em rgba(var(--black-rgb), 0.30),
+    0 0 0.55em rgba(var(--primary-rgb), 0.30);
+}
+body.dark .tw-print,
+:host(.dark) .tw-print {
+  background:
+    radial-gradient(circle at 30% 22%,
+      rgba(var(--white-rgb), 0.95) 0%,
+      rgba(var(--white-rgb), 0.5) 6%,
+      transparent 14%),
+    radial-gradient(ellipse 44% 28% at 37% 25%,
+      rgba(var(--white-rgb), 0.68) 0%,
+      rgba(var(--white-rgb), 0.12) 42%,
+      transparent 62%),
+    radial-gradient(ellipse 62% 24% at 52% 95%,
+      rgba(var(--white-rgb), 0.12) 0%,
+      transparent 60%),
+    radial-gradient(circle at 36% 32%,
+      color-mix(in srgb, rgb(var(--gold-rgb)), white 72%) 0%,
+      color-mix(in srgb, rgb(var(--gold-rgb)), white 52%) 46%,
+      color-mix(in srgb, rgb(var(--gold-rgb)), white 28%) 70%,
+      color-mix(in srgb, rgb(var(--gold-rgb)), black 24%) 100%);
+  box-shadow:
+    0 0 0 0.1em rgba(var(--deep-rgb), 0.80),
+    0 0 0 0.17em rgba(var(--black-rgb), 0.28),
+    0 0.09em 0.22em rgba(var(--black-rgb), 0.28),
+    0 0 0.6em rgba(var(--gold-rgb), 0.28);
+}
+
+/* 键盘聚焦轮廓（可访问性） */
+.tw-rbtn:focus-visible,
+.tw-print:focus-visible,
+.tw-card-del:focus-visible {
+  outline: 0.14em solid rgb(var(--primary-rgb));
+  outline-offset: 0.14em;
+}
+
+/* 竹林中国 品牌标（紧贴红色闪烁点） */
+.tw-brand {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  margin: 0 0 0 1.4em;
+  /* 上下内边距不对称（上多下少）把文字整体下压一点点，
+     修正 CJK 字形在 line-height:1 下视觉偏高的观感；总和保持 0.32em，药丸高度不变。 */
+  padding: 0.24em 0.85em 0.08em;
+  border-radius: 0.32em;
+  background: rgba(var(--primary-rgb), 0.20);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  /* 亮色模式：底色是浅绿半透明，文字必须用深绿（--bamboo-deep-rgb）才够对比度；
+     原先用 --pale-rgb（浅绿 168,213,168）是浅字压浅底，几乎看不清。 */
+  border: 1px solid rgba(var(--bamboo-deep-rgb), 0.28);
+  color: rgb(var(--bamboo-deep-rgb));
+  font-size: 0.82em;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  line-height: 1;
+  box-shadow: inset 0 1px 2px rgba(var(--black-rgb),0.12);
+}
+.tw-auto {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+  margin-left: 0.4em;
+}
+/* 暗色模式：品牌牌改深底荧光绿字 */
+.theme-dark .tw-brand,
+:host(.dark) .tw-brand {
+  /* 凹刻药丸：渐变背景让"上深下浅"在小尺寸下也能被肉眼读出，
+     再叠加内阴影把边缘压暗、底部补一道微高光，凹槽感更明确。
+     同时写 :host(.dark) 兜底——Shadow DOM 内不总有 .theme-dark 祖先。 */
+  background: linear-gradient(
+    180deg,
+    rgba(var(--black-rgb), 0.55) 0%,
+    rgba(var(--black-rgb), 0.35) 55%,
+    rgba(var(--black-rgb), 0.22) 100%
+  );
+  border: 1px solid rgba(var(--green-very-bright-rgb), 0.32);
+  border-top-color: rgba(0, 0, 0, 0.55);
+  border-bottom-color: rgba(255, 255, 255, 0.10);
+  color: rgb(var(--green-very-bright-rgb));
+  box-shadow:
+    inset 0 3px 4px rgba(0, 0, 0, 0.75),
+    inset 0 -1px 1px rgba(255, 255, 255, 0.12);
+}
+/* 桌面阴影/反射 */
+.tw-desk-shadow {
+  position: absolute;
+  left: 1.07em; right: 1.07em; bottom: -1.07em;
+  height: 2.13em;
+  /* 栏栅透光焦散：竖向条纹光斑（周期 9px 呼应棱条）+ 柔和彩色光晕 + 投影 */
+  background:
+    repeating-linear-gradient(90deg,
+      rgba(var(--primary-rgb), 0.06) 0px,
+      transparent 2px,
+      rgba(var(--primary-rgb), 0.04) 5px,
+      transparent 9px),
+    radial-gradient(ellipse 60% 65% at 35% 50%, rgba(var(--primary-rgb), 0.07), transparent 72%),
+    radial-gradient(ellipse 45% 55% at 70% 50%, rgba(var(--pale-rgb), 0.04), transparent 70%),
+    radial-gradient(ellipse at center, rgba(var(--deep-rgb), 0.04), transparent 75%);
+  filter: blur(10px);
+  border-radius: 50%;
+  z-index: -1;
+}
+/* 暗色模式：桌面投影转深黑（下沉），避免浅绿光晕在暗背景上发亮 */
+.theme-dark .tw-desk-shadow {
+  background:
+    repeating-linear-gradient(90deg,
+      rgba(var(--black-rgb), 0.10) 0px,
+      transparent 2px,
+      rgba(var(--black-rgb), 0.06) 5px,
+      transparent 9px),
+    radial-gradient(ellipse 60% 65% at 35% 50%, rgba(var(--black-rgb), 0.18), transparent 72%),
+    radial-gradient(ellipse 45% 55% at 70% 50%, rgba(var(--green-very-bright-rgb), 0.05), transparent 70%),
+    radial-gradient(ellipse at center, rgba(var(--black-rgb), 0.22), transparent 75%);
+}
+

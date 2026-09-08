@@ -68,14 +68,22 @@ export class AppAPI {
   /**
    * 「画中卷」入口回调（由 DailyReviewView 注入，转发到插件 openScroll）。
    * webapp FAB 点「画中卷」时触发，打开画中卷独立中央视图（不影响日报）。
+   * feature 为功能选择器暂存选型（如 'typewriter'），经 blob URL hash 注入画中卷。
    */
-  onOpenScroll?: () => void;
+  onOpenScroll?: (feature?: string) => void;
 
   /**
    * 「画中卷」入口回调（由 DailyReviewView 注入，转发到插件 openScrollLeftSidebar）。
    * 点击画中卷默认以左侧边栏（类似大纲面板）形态打开。
+   * feature 为功能选择器暂存选型（如 'typewriter'），经 blob URL hash 注入画中卷。
    */
-  onOpenScrollLeftSidebar?: () => void;
+  onOpenScrollLeftSidebar?: (feature?: string) => void;
+
+  /**
+   * 「画中卷」位置切换回调（由 DailyReviewView 注入，转发到插件 openScrollAt）。
+   * webapp 画布内 3-dot 控件点击时触发，把画中卷移到指定栏。
+   */
+  onMoveScroll?: (location?: string) => void;
 
   /**
    * 健康分权威快照数据源（由 DailyReviewView 注入，转发到插件的 getStrategyOverview()）。
@@ -138,11 +146,13 @@ export class AppAPI {
     saveSettings: () => Promise<void>,
     noisePath: string,
     configDir: string,
-    licenseStore: LicenseStore
+    licenseStore: LicenseStore,
+    onMoveScroll?: (location?: string) => void
   ) {
     this.settings = settings;
     this.saveSettings = saveSettings;
     this.app = app;
+    this.onMoveScroll = onMoveScroll;
     // 注意：webapp 读取目标的实际路径由此处决定（VaultStorage 默认 basePath = bamboo-review）。
     // writeAiGoals 必须写入同一路径，否则 AI 目标不显示。详见 main.ts writeAiGoals 的注释。
     this.storage = new VaultStorage(app);
@@ -516,14 +526,22 @@ export class AppAPI {
 
     // ---- 画中卷：打开独立中央视图（不影响日报）----
     if (type === 'app:openScroll') {
-      this.onOpenScroll?.();
+      this.onOpenScroll?.(payload && typeof payload === 'object' ? (payload as { feature?: unknown }).feature as string | undefined : undefined);
       this.respond(id, { ok: true });
       return;
     }
 
     // ---- 画中卷：打开到左侧边栏（百宝箱首个功能，默认形态）----
     if (type === 'app:openScrollLeftSidebar') {
-      this.onOpenScrollLeftSidebar?.();
+      this.onOpenScrollLeftSidebar?.(payload && typeof payload === 'object' ? (payload as { feature?: unknown }).feature as string | undefined : undefined);
+      this.respond(id, { ok: true });
+      return;
+    }
+
+    // ---- 画中卷：画布内 3-dot 请求切换停靠位置 ----
+    if (type === 'app:moveScroll') {
+      const loc = payload && typeof payload === 'object' ? (payload as { location?: unknown }).location : undefined;
+      this.onMoveScroll?.(typeof loc === 'string' ? loc : undefined);
       this.respond(id, { ok: true });
       return;
     }
@@ -683,6 +701,10 @@ export class AppAPI {
         return await this.storage.putCustomTemplate(p.template as CustomTemplate);
       case 'storage:deleteCustomTemplate':
         return await this.storage.deleteCustomTemplate(p.id as string);
+      case 'storage:getTypewriterNotes':
+        return await this.storage.getTypewriterNotes();
+      case 'storage:putTypewriterNotes':
+        return await this.storage.putTypewriterNotes(p.notes);
       default:
         throw new Error(`Unknown storage message type: ${type}`);
     }

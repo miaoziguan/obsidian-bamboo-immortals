@@ -14,8 +14,10 @@ import { getDomRoot } from '../utils/domRef.js';
 // 统一使用 SVG 小图标，避免 emoji 被误读为情绪表达。
 const INCENSE_ICON = `<svg class="scroll-pick-icon-svg" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 26h12a3 3 0 0 0-3-5H13a3 3 0 0 0-3 5z"/><line x1="16" y1="21" x2="16" y2="9"/><path d="M16 9c0-2 1.5-3 1.5-5"/></svg>`;
 const MORE_ICON = `<svg class="scroll-pick-icon-svg" viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="M16 2l3.7 8.3L28 12l-7 6.8 1.7 9.2L16 22.8l-6.7 5.2 1.7-9.2L4 12l8.3-1.7L16 2z"/></svg>`;
+const TYPEWRITER_ICON = `<svg class="scroll-pick-icon-svg" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="14" width="22" height="11" rx="2"/><path d="M11 14V9h10v5"/><line x1="16" y1="9" x2="16" y2="7"/><line x1="8" y1="19" x2="24" y2="19"/><circle cx="9" cy="22.5" r="1.1"/><circle cx="16" cy="22.5" r="1.1"/><circle cx="23" cy="22.5" r="1.1"/></svg>`;
 const FEATURES = [
   { key: 'incense', title: '香道', icon: INCENSE_ICON, desc: '', placeholder: false },
+  { key: 'typewriter', title: '打字机', icon: TYPEWRITER_ICON, desc: '', placeholder: false },
   { key: 'more', title: '更多意境', icon: MORE_ICON, desc: '', placeholder: true },
 ];
 
@@ -87,11 +89,15 @@ export const ScrollFeaturePicker = {
   /** 选定功能：关闭浮层并请求宿主打开画中卷视图 */
   _choose(key) {
     this.close();
+    // 暂存选定功能，画中卷视图挂载时据此默认激活（同源 iframe 共享 localStorage）
+    try {
+      if (typeof StorageAdapter !== 'undefined') StorageAdapter.set('scrollFeaturePending', key);
+    } catch (_) { /* 忽略 */ }
     if (typeof storageManager === 'undefined') return;
     if (storageManager.openScrollLeftSidebar) {
-      storageManager.openScrollLeftSidebar();
+      storageManager.openScrollLeftSidebar(key);
     } else if (storageManager.openScrollView) {
-      storageManager.openScrollView();
+      storageManager.openScrollView(key);
     }
   },
 

@@ -1,5 +1,5 @@
-import { ItemView, WorkspaceLeaf, EventRef } from 'obsidian';
-import type { BambooReviewSettings } from '../settings/PluginSettings';
+import { ItemView, WorkspaceLeaf, EventRef, Notice } from 'obsidian';
+import type { BambooReviewSettings, ScrollLocation } from '../settings/PluginSettings';
 import { AppHost } from '../host/AppHost';
 import { AppAPI } from '../host/AppAPI';
 import type BambooReviewPlugin from '../../main';
@@ -18,6 +18,10 @@ export const VIEW_TYPE_SCROLL = 'bamboo-scroll';
  * 与 ArchiveView 同构，但入口为 scroll.html，且只暴露 file:* 协议所需的存储层。
  */
 export class ScrollView extends ItemView {
+  /** 功能选择器暂存的选型（'typewriter'/'incense' 等），由宿主 openScroll* 写入，拼入 iframe blob URL 的 #hash */
+  static pendingFeature: string | null = null;
+  /** 视图内移动按钮 / 打开入口写入的当前停靠位置，供 iframe 加载后广播给 webapp 切布局 */
+  static pendingLocation: ScrollLocation | null = null;
   private pluginDir: string;
   private plugin: unknown;
   private settings: BambooReviewSettings;
@@ -67,16 +71,8 @@ export class ScrollView extends ItemView {
       return;
     }
 
-    // 初始化 AppAPI（通信层）
-    this.appAPI = new AppAPI(
-      this.app,
-      this.settings,
-      this.saveSettings,
-      this.settings.noisePath || '',
-      this.app.vault.configDir,
-      (this.plugin as BambooReviewPlugin).license ??
-        new LicenseStore(this.plugin as BambooReviewPlugin)
-    );
+    // 初始化 AppAPI（通信层），并通过构造参数传入 3-dot 移动回调，避免被 esbuild 当死代码摇掉
+    this.appAPI = this._createAppApi();
     await this.appAPI.ensureStructure();
 
     // 创建 AppHost（版本守卫 + blob URL 构建）
@@ -84,6 +80,7 @@ export class ScrollView extends ItemView {
     this.appHost = new AppHost(this.app, this.pluginDir, version);
 
     // 同 ArchiveView：onOpen 用 void 触发异步挂载，避免延迟视图加载超时
+    // 位置选择器（3-dot）已移入画布内（webapp scrollManager），故此处只挂载 iframe。
     void this._mountWebapp(container);
   }
 
@@ -92,6 +89,12 @@ export class ScrollView extends ItemView {
       text: '画中卷加载中…',
       cls: 'bamboo-review-loading',
     });
+
+    // 让 iframe 占满侧边栏/面板容器高度，否则内容会按高度塌陷，
+    // 寻呼机被挤在顶部无法落底。
+    container.style.height = '100%';
+    container.style.display = 'flex';
+    container.style.flexDirection = 'column';
 
     try {
       this.appAPI?.startListening();
@@ -109,6 +112,19 @@ export class ScrollView extends ItemView {
           src: blobUrl,
           allow: 'camera; microphone; clipboard-read; clipboard-write',
         },
+      });
+      this.iframe.style.flex = '1 1 auto';
+      this.iframe.style.width = '100%';
+      this.iframe.style.minHeight = '0';
+      this.iframe.style.border = 'none';
+
+      // 画中卷功能选型（typewriter/incense）经 data: URL 的 #hash 在 Obsidian 中不稳定，
+      // 改为 iframe 加载完成后由宿主主动 postMessage 注入（与主题同步同机制）。
+      this.iframe.addEventListener('load', () => {
+        const cw = this.iframe?.contentWindow;
+        if (!cw) return;
+        cw.postMessage({ type: 'scroll:feature', feature: ScrollView.pendingFeature }, '*');
+        cw.postMessage({ type: 'scroll:location', location: ScrollView.pendingLocation }, '*');
       });
 
       loadingEl.remove();
@@ -142,6 +158,82 @@ export class ScrollView extends ItemView {
       this.iframe.remove();
       this.iframe = null;
     }
+  }
+
+  /** 构造 AppAPI（通信层），含 3-dot 移动回调。onOpen 与 reloadWebapp 共用，避免逻辑分叉 */
+  private _createAppApi(): AppAPI {
+    return new AppAPI(
+      this.app,
+      this.settings,
+      this.saveSettings,
+      this.settings.noisePath || '',
+      this.app.vault.configDir,
+      (this.plugin as BambooReviewPlugin).license ??
+        new LicenseStore(this.plugin as BambooReviewPlugin),
+      (loc) => {
+        void (async () => {
+          try {
+            const ws = this.app.workspace;
+            const targetLoc = (loc as ScrollLocation) || 'center';
+            // 记忆默认位置：下次「打开画中卷」沿用此栏
+            this.settings.scrollDefaultLocation = targetLoc;
+            await this.saveSettings();
+            ScrollView.pendingLocation = targetLoc;
+            let target: WorkspaceLeaf | null = null;
+            if (targetLoc === 'left') target = ws.getLeftLeaf(false) || ws.getLeftLeaf(true);
+            else if (targetLoc === 'right') target = ws.getRightLeaf(false) || ws.getRightLeaf(true);
+            else target = ws.getLeaf(true);
+            if (!target) {
+              new Notice('无法移动画中卷', 3000);
+              return;
+            }
+            await target.setViewState({
+              type: VIEW_TYPE_SCROLL,
+              state: { feature: ScrollView.pendingFeature ?? undefined, location: targetLoc },
+              active: true,
+            });
+            this.leaf.detach();
+          } catch {
+            new Notice('画中卷移动失败', 3000);
+          }
+        })();
+      }
+    );
+  }
+
+  /**
+   * 重新加载 webapp（开发期热更新用）：卸载旧 iframe / 通信层 / 版本守卫，
+   * 按最新磁盘 scroll.html 重建 iframe 的 blob URL。
+   *
+   * 根因：画中卷 iframe 仅在 onOpen 挂载一次；插件热重载（Hot Reload / BRAT）后，
+   * 该 leaf 往往沿用旧 bundle 的旧视图实例，其 iframe 仍指向旧 blob URL → 磁盘上的
+   * CSS/JS 改动永远照不到运行中的视图。本方法让开发者在命令面板执行一次即可换上新构建，
+   * 无需关闭/重开视图，也不必依赖热重载是否会重建视图实例。
+   */
+  async reloadWebapp(): Promise<void> {
+    if (this.cssChangeRef) {
+      this.app.workspace.offref(this.cssChangeRef);
+      this.cssChangeRef = null;
+    }
+    this.appAPI?.detach();
+    this.appAPI = null;
+    this.appHost?.destroy();
+    this.appHost = null;
+    if (this.iframe) {
+      this.iframe.remove();
+      this.iframe = null;
+    }
+
+    const container = this.containerEl.children[1] as HTMLElement;
+    if (!this.pluginDir) {
+      new Notice('画中卷：无法定位插件目录，重载失败', 4000);
+      return;
+    }
+    this.appAPI = this._createAppApi();
+    await this.appAPI.ensureStructure();
+    const version = (this.plugin as { manifest?: { version?: string } } | undefined)?.manifest?.version ?? '';
+    this.appHost = new AppHost(this.app, this.pluginDir, version);
+    await this._mountWebapp(container);
   }
 
   /** 接收来自插件的导航/操作指令 */

@@ -29,6 +29,9 @@ function broadcastToReviewFrames(message: Record<string, unknown>): void {
   }
 }
 
+/** 画中卷视图可停靠的位置 */
+export type ScrollLocation = 'left' | 'center' | 'right';
+
 /** 自定义白噪音音源 */
 export interface NoiseItem {
   id: string;
@@ -88,6 +91,8 @@ export interface BambooReviewSettings {
    * 视图 onOpen 置 true、用户主动关闭置 false；插件卸载（禁用/热更新）触发的
    * 关闭不清除，供重载后 onload 判断「更新前面板是否开着」并自动恢复。
    */
+  /** 画中卷默认打开位置（left/center/right），由视图内移动按钮或设置面板写入 */
+  scrollDefaultLocation: ScrollLocation;
   reviewViewOpen: boolean;
 }
 
@@ -113,6 +118,7 @@ export const DEFAULT_SETTINGS: BambooReviewSettings = {
   smtpSecure: true,
   smtpUser: '',
   smtpPass: '',
+  scrollDefaultLocation: 'left',
   reviewViewOpen: false,
 };
 
@@ -611,6 +617,22 @@ class AppearancePage extends SettingPage {
             });
           })
       );
+
+    // === 画中卷停靠位置 ===
+    new Setting(containerEl)
+      .setName('画中卷默认打开位置')
+      .setDesc('画中卷（便签墙 / 香道）打开时默认停靠的位置；在视图内用标签页按钮移动后也会更新此项')
+      .addDropdown((drop) =>
+        drop
+          .addOption('left', '左侧栏')
+          .addOption('center', '中央页签')
+          .addOption('right', '右侧栏')
+          .setValue(this.plugin.settings.scrollDefaultLocation)
+          .onChange(async (value) => {
+            this.plugin.settings.scrollDefaultLocation = value as ScrollLocation;
+            await this.plugin.saveSettings();
+          })
+      );
   }
 }
 
@@ -731,7 +753,7 @@ class PurchaseModal extends Modal {
 
     // 价格
     const priceBox = contentEl.createDiv({ cls: 'bamboo-purchase-price' });
-    priceBox.createSpan({ text: '限时早鸟价 ¥29', cls: 'bamboo-purchase-early' });
+    priceBox.createSpan({ text: '限时早鸟价 ¥49', cls: 'bamboo-purchase-early' });
     priceBox.createSpan({ text: ' / 正式价 ¥9999', cls: 'bamboo-purchase-regular' });
     contentEl.createEl('p', {
       text: '一次性买断，无订阅、无有效期。付款后获得专属激活码，离线激活、永久可用。',

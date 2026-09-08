@@ -8,6 +8,7 @@ import {
   PluginSettings,
   DEFAULT_SETTINGS,
   type BambooReviewSettings,
+  type ScrollLocation,
 } from './src/settings/PluginSettings';
 import { VaultStorage } from './src/storage/VaultStorage';
 import { type PlannerSettings } from './src/ai/MarkdownPlanner';
@@ -146,17 +147,24 @@ export default class BambooReviewPlugin extends Plugin {
       callback: () => void this.openArchive(),
     });
 
+    // 开发期热更新：重新加载「画中卷」webapp iframe（按最新磁盘 scroll.html 重建 blob URL）。
+    // 解决插件热重载后画中卷视图实例沿用旧 iframe（旧 blob URL）→ 改动照不到运行视图的问题。
     this.addCommand({
-      id: 'open-scroll',
-      name: '打开画中卷（左侧栏）',
-      callback: () => void this.openScrollLeftSidebar(),
+      id: 'reload-scroll-webapp',
+      name: '竹仙：重新加载画中卷（应用最新改动）',
+      callback: () => {
+        const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_SCROLL);
+        if (leaves.length === 0) {
+          new Notice('画中卷未打开，无需重载');
+          return;
+        }
+        const view = leaves[0].view as ScrollView;
+        void view.reloadWebapp();
+        new Notice('画中卷已重新加载');
+      },
     });
 
-    this.addCommand({
-      id: 'open-scroll-center',
-      name: '打开画中卷（中央页签）',
-      callback: () => void this.openScroll(),
-    });
+
 
     this.addCommand({
       id: 'open-settings-in-app',
@@ -261,6 +269,10 @@ export default class BambooReviewPlugin extends Plugin {
     // 添加左侧 Ribbon 图标
     this.addRibbonIcon('leaf', '竹林修仙传', () => {
       void this.activateView();
+    });
+    // 画中卷快捷入口：直接打开画中卷独立视图（按默认位置），命令面板已不再提供此入口
+    this.addRibbonIcon('scroll', '打开画中卷', () => {
+      void this.openScrollAt(this.settings.scrollDefaultLocation);
     });
 
     // 插件更新/重载后面板恢复：
@@ -1020,44 +1032,77 @@ export default class BambooReviewPlugin extends Plugin {
   }
 
   /** 激活或创建画中卷独立视图（独立中央页签，不影响日报） */
-  async openScroll(): Promise<void> {
-    const { workspace } = this.app;
-
-    let leaf: WorkspaceLeaf | null = null;
-    const leaves = workspace.getLeavesOfType(VIEW_TYPE_SCROLL);
-
-    if (leaves.length > 0) {
-      leaf = leaves[0];
-    } else {
-      leaf = workspace.getLeaf(false);
-      await leaf.setViewState({
-        type: VIEW_TYPE_SCROLL,
-        active: true,
-      });
-    }
-
-    if (leaf) {
-      await workspace.revealLeaf(leaf);
-    }
+  async openScroll(feature?: string): Promise<void> {
+    return this.openScrollAt('center', feature);
   }
 
   /** 激活或创建画中卷视图，并以左侧边栏（类似大纲面板）形态打开——百宝箱首个功能的默认入口
    *  使用 getLeftLeaf(false)：复用左侧栏现有位置作为标签页打开，不新建 split（避免上下分栏）。 */
-  async openScrollLeftSidebar(): Promise<void> {
+  async openScrollLeftSidebar(feature?: string): Promise<void> {
+    return this.openScrollAt('left', feature);
+  }
+
+  /** 激活或创建画中卷视图，并以右侧栏形态打开（常驻副屏：便签墙 / 香道番茄钟） */
+  async openScrollRightSidebar(feature?: string): Promise<void> {
+    return this.openScrollAt('right', feature);
+  }
+
+  /**
+   * 统一打开画中卷视图并停靠到指定位置（left/center/right）。
+   * - center：中央新页签（getLeaf(true)，不抢占当前编辑笔记）
+   * - left：左侧栏（getLeftLeaf，复用现有左栏 tab）
+   * - right：右侧栏（getRightLeaf，必要时新建并展开给舒适宽度）
+   * 移动端无侧栏，强制 center。打开后清理其它位置的残留实例，保证同一视图只出现一次。
+   * 注：此入口只负责「打开到某位置」，不修改默认位置；默认位置由视图内移动按钮或设置面板写入。
+   */
+  async openScrollAt(loc: ScrollLocation, feature?: string, persistDefault = false): Promise<void> {
+    ScrollView.pendingFeature = feature ?? null;
+    ScrollView.pendingLocation = loc;
     const { workspace } = this.app;
 
-    // 关掉其他位置残留的画中卷（避免同一视图在多处重复出现）
-    const existing = workspace.getLeavesOfType(VIEW_TYPE_SCROLL);
-    const leftLeaf = workspace.getLeftLeaf(false);
-    if (!leftLeaf) return;
-    await leftLeaf.setViewState({
-      type: VIEW_TYPE_SCROLL,
-      active: true,
-    });
-    await workspace.revealLeaf(leftLeaf);
+    let target: WorkspaceLeaf | null = null;
+    if (Platform.isMobile) {
+      target = workspace.getLeaf(false);
+    } else if (loc === 'left') {
+      target = workspace.getLeftLeaf(false);
+    } else if (loc === 'right') {
+      target = workspace.getRightLeaf(false) || workspace.getRightLeaf(true);
+    } else {
+      target = workspace.getLeaf(true);
+    }
+    if (!target) {
+      new Notice('无法打开画中卷');
+      return;
+    }
 
-    // 复用左栏后，再清理其它位置的旧实例
-    existing.forEach((l) => { if (l !== leftLeaf) l.detach(); });
+    // 记录已存在实例，打开后清理（排除即将复用的 target 自身）
+    const existing = workspace.getLeavesOfType(VIEW_TYPE_SCROLL);
+
+    await target.setViewState({ type: VIEW_TYPE_SCROLL, active: true });
+    await workspace.revealLeaf(target);
+
+    // 右侧栏需展开并给舒适宽度（同 activateView 右栏处理）
+    if (loc === 'right' && !Platform.isMobile) {
+      const rightSplit = workspace.rightSplit as unknown as {
+        containerEl: HTMLElement;
+        expand(): void;
+      };
+      rightSplit.expand();
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => {
+          const el = rightSplit.containerEl;
+          if (el.offsetWidth < 420) el.setCssStyles({ width: '420px' });
+        });
+      });
+    }
+
+    existing.forEach((l) => { if (l !== target) l.detach(); });
+
+    // 画布内 3-dot 移动时记回默认位置（命令「展卷」打开不覆盖默认）
+    if (persistDefault && this.settings.scrollDefaultLocation !== loc) {
+      this.settings.scrollDefaultLocation = loc;
+      await this.saveSettings();
+    }
   }
 
   /** 加载设置 */

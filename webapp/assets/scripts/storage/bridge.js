@@ -264,6 +264,16 @@ export class BridgeStorage {
     return this._send('storage:getSetting', { key });
   }
 
+  async getTypewriterNotes() {
+    await this.ensureReady();
+    return this._send('storage:getTypewriterNotes', {});
+  }
+
+  async putTypewriterNotes(notes) {
+    await this.ensureReady();
+    return this._send('storage:putTypewriterNotes', { notes });
+  }
+
   async putSetting(key, value) {
     await this.ensureReady();
     return this._send('storage:putSetting', { key, value });
@@ -535,20 +545,20 @@ export class BridgeStorage {
   }
 
   /** 请求宿主打开「画中卷」独立中央视图（不影响日报视图） */
-  async openScrollView() {
+  async openScrollView(feature) {
     await this.ensureReady();
     try {
-      return await this._send('app:openScroll', {});
+      return await this._send('app:openScroll', { feature: feature || null });
     } catch (e) {
       console.warn('[Bridge] app:openScroll 不可用:', e && e.message);
     }
   }
 
   /** 请求宿主把「画中卷」以左侧边栏形态打开（百宝箱首个功能默认入口） */
-  async openScrollLeftSidebar() {
+  async openScrollLeftSidebar(feature) {
     await this.ensureReady();
     try {
-      return await this._send('app:openScrollLeftSidebar', {});
+      return await this._send('app:openScrollLeftSidebar', { feature: feature || null });
     } catch (e) {
       console.warn('[Bridge] app:openScrollLeftSidebar 不可用:', e && e.message);
     }

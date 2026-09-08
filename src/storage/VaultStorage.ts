@@ -442,6 +442,33 @@ export class VaultStorage {
     return normalizePath(`${this.basePath}/plans-map.json`);
   }
 
+  // ---- 画中卷·便签（typewriter notes）----
+  // 独立 JSON 文件，与 settings/goals 解耦，避免大数组膨胀配置；上限由 webapp 侧控制。
+  private typewriterNotesPath(): string {
+    return normalizePath(`${this.basePath}/typewriter-notes.json`);
+  }
+
+  async getTypewriterNotes(): Promise<Record<string, unknown>[]> {
+    const path = this.typewriterNotesPath();
+    if (!(await this.app.vault.adapter.exists(path))) return [];
+    try {
+      const content = await this.app.vault.adapter.read(path);
+      const parsed = content ? JSON.parse(content) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+
+  async putTypewriterNotes(notes: unknown): Promise<void> {
+    // fail-fast：非法输入直接抛错，绝不静默降级为 []（否则会清空用户便签且无感知）。
+    // 正常调用方应传数组；契约由 webapp 的 TypewriterStore 收敛保证。
+    if (!Array.isArray(notes)) {
+      throw new Error(`putTypewriterNotes: payload must be an array, got ${notes == null ? 'null' : typeof notes}`);
+    }
+    await this.vaultWrite(this.typewriterNotesPath(), JSON.stringify(notes, null, 2));
+  }
+
   async getPlansIndex(): Promise<Record<string, string[]>> {
     const path = this.plansIndexPath();
     if (!(await this.app.vault.adapter.exists(path))) return {};

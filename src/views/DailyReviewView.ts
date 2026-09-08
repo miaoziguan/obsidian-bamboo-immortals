@@ -195,15 +195,21 @@ export class DailyReviewView extends ItemView {
     };
 
     // 画中卷入口：webapp FAB → 插件打开画中卷独立中央视图（不影响日报）
-    this.appAPI.onOpenScroll = () => {
-      const plugin = this.plugin as { openScroll?: () => Promise<void> } | undefined;
-      void plugin?.openScroll?.();
+    this.appAPI.onOpenScroll = (feature) => {
+      const plugin = this.plugin as { openScroll?: (f?: string) => Promise<void> } | undefined;
+      void plugin?.openScroll?.(feature);
     };
 
     // 画中卷入口：点击画中卷默认以左侧边栏形态打开（百宝箱首个功能）
-    this.appAPI.onOpenScrollLeftSidebar = () => {
-      const plugin = this.plugin as { openScrollLeftSidebar?: () => Promise<void> } | undefined;
-      void plugin?.openScrollLeftSidebar?.();
+    this.appAPI.onOpenScrollLeftSidebar = (feature) => {
+      const plugin = this.plugin as { openScrollLeftSidebar?: (f?: string) => Promise<void> } | undefined;
+      void plugin?.openScrollLeftSidebar?.(feature);
+    };
+
+    // 画中卷位置切换：画布内 3-dot 控件 → 插件 openScrollAt（persist=true 记回默认位置）
+    this.appAPI.onMoveScroll = (location) => {
+      const plugin = this.plugin as { openScrollAt?: (loc: string, feature?: string, persist?: boolean) => Promise<void> } | undefined;
+      void plugin?.openScrollAt?.(location ?? 'center', undefined, true);
     };
 
     // 健康分单一数据源：webapp 通过 app:getHealthOverview 向插件请求权威健康快照，

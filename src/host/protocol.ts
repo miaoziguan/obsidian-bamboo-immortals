@@ -41,6 +41,7 @@ export const ALL_MESSAGE_TYPES = [
   'app:openArchive',
   'app:openScroll',
   'app:openScrollLeftSidebar',
+  'app:moveScroll',
   'app:collapseRightSidebar',
   'app:expandRightSidebar',
   'app:getTheme',
@@ -68,6 +69,8 @@ export const ALL_MESSAGE_TYPES = [
   'storage:exportAll',
   'storage:importAll',
   'storage:clearAll',
+  'storage:getTypewriterNotes',
+  'storage:putTypewriterNotes',
   // file:*（画中卷文本文件协议：list / get / write / delete）
   'file:list',
   'file:get',
@@ -77,6 +80,7 @@ export const ALL_MESSAGE_TYPES = [
   // ---- host → webapp ----
   'goals:changed',
   'theme:changed',
+  'scroll:location',
   'theme:followDisabled',
   'theme:syncPaletteEnabled',
   'nav:prevDay',

@@ -92,6 +92,8 @@ async function buildSelfContainedHtml(htmlFile, outFile) {
     const hrefMatch = tag.match(/href=["']([^"']+)["']/i);
     if (!hrefMatch) return tag;
     const href = hrefMatch[1];
+    // 跳过外部 URL（如 Google Fonts），原样保留，交由 webview 运行时加载
+    if (href.startsWith("http://") || href.startsWith("https://")) return tag;
     const clean = href.split("?")[0].replace(/^\.\//, "");
     const cssPath = path.join(webappDir, clean);
     try {

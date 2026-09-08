@@ -31,6 +31,7 @@ export const APP_MESSAGE_TYPES = [
   'app:openArchive',
   'app:openScroll',
   'app:openScrollLeftSidebar',
+  'app:moveScroll',
   'app:getTheme',
   'app:getHealthOverview',
   'app:getCultivationRealm',
@@ -67,6 +68,7 @@ export const APP_MESSAGE_TYPES = [
   // host → webapp
   'goals:changed',
   'theme:changed',
+  'scroll:location',
   'theme:followDisabled',
   'theme:syncPaletteEnabled',
   'nav:prevDay',

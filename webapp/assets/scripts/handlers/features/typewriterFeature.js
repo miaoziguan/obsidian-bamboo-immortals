@@ -84,11 +84,11 @@ const FONT_FEEDBACK = { classic: "SERIF 宋体", modern: "SANS 黑体", kai: "KA
 
 // 便签纸张样式：与 base.css 的 .tw-card[data-paper="x"] 一一对应。
 // 新增一种纸 = 这里加一项 + CSS 加一条同名的 [data-paper] 规则。
-const PAPERS = ["plain", "night", "zhuye", "shuyan", "redsilk", "ruoshui", "tengyun", "juhuo", "yingyue"];
-const PAPER_LABELS = { plain: "素笺", night: "夜光", zhuye: "竹叶", shuyan: "书燕", redsilk: "红绸", ruoshui: "若水", tengyun: "腾云", juhuo: "举火", yingyue: "映月" };
-const PAPER_FEEDBACK = { plain: "素笺 PLAIN", night: "夜光 NIGHT", zhuye: "竹叶 ZHUYE", shuyan: "书燕 SHUYAN", redsilk: "红绸 REDSILK", ruoshui: "若水 RUOSHUI", tengyun: "腾云 TENGYUN", juhuo: "举火 JUHUO", yingyue: "映月 YINGYUE" };
+const PAPERS = ["plain", "night", "shuyan", "redsilk", "ruoshui", "tengyun", "juhuo", "yingyue"];
+const PAPER_LABELS = { plain: "素笺", night: "夜光", shuyan: "书燕", redsilk: "红绸", ruoshui: "若水", tengyun: "腾云", juhuo: "举火", yingyue: "映月" };
+const PAPER_FEEDBACK = { plain: "素笺 PLAIN", night: "夜光 NIGHT", shuyan: "书燕 SHUYAN", redsilk: "红绸 REDSILK", ruoshui: "若水 RUOSHUI", tengyun: "腾云 TENGYUN", juhuo: "举火 JUHUO", yingyue: "映月 YINGYUE" };
 // 卡片抬头随纸样变化，增强「换了台不同的打印机」的代入感
-const PAPER_TITLES = { plain: "Bamboo Immortals", night: "Bamboo Immortals", zhuye: "BAMBOO IMMORTALS", shuyan: "BAMBOO IMMORTALS", redsilk: "BAMBOO IMMORTALS", ruoshui: "BAMBOO IMMORTALS", tengyun: "BAMBOO IMMORTALS", juhuo: "BAMBOO IMMORTALS", yingyue: "BAMBOO IMMORTALS" };
+const PAPER_TITLES = { plain: "Bamboo Immortals", night: "Bamboo Immortals", shuyan: "BAMBOO IMMORTALS", redsilk: "BAMBOO IMMORTALS", ruoshui: "BAMBOO IMMORTALS", tengyun: "BAMBOO IMMORTALS", juhuo: "BAMBOO IMMORTALS", yingyue: "BAMBOO IMMORTALS" };
 
 export const TypewriterFeature = {
   _el: null,
@@ -315,7 +315,7 @@ export const TypewriterFeature = {
       input.focus();
     });
 
-    // 便签样式切换：循环全部 PAPERS（素笺/牛皮/夜光/朱砂），并更新屏幕 PAPER 标签。
+    // 便签样式切换：循环全部 PAPERS，并更新屏幕 PAPER 标签。
     // 只影响「之后打印」的卡片，已生成的卡片保持其打印时的样式（各自 data-paper 固定）。
     this._el.querySelector('#twPaper').addEventListener('click', () => {
       this._paperIdx = (this._paperIdx + 1) % PAPERS.length;
@@ -838,7 +838,7 @@ export const TypewriterFeature = {
 
   /** 切换纸样：在这张便签上循环 PAPERS。
    *  两处副作用必须一并处理：
-   *   1) 定版纸样（竹叶/书燕等）字级封顶更低，切过去要把字级夹回新上限；
+   *   1) 定版纸样（书燕等）字级封顶更低，切过去要把字级夹回新上限；
    *   2) 纸样会改变卡片尺寸/比例，连线端点要重算。 */
   _bindPaperSwitch(card) {
     const btn = card.querySelector('.tw-card-paper');
@@ -857,11 +857,11 @@ export const TypewriterFeature = {
     });
   },
 
-  /** 字级档位上限：定版纸样（竹叶/书燕）的文本区是按百分比预留的、纸面高度固定，
+  /** 字级档位上限：定版纸样（书燕）的文本区是按百分比预留的、纸面高度固定，
       字放太大撑出留白区会破坏版式，故封顶「很大 140%」（文本区已加 overflow 兜底）；
       流式纸样字变大纸自然变长，可一路到最大档。 */
   _maxFontIdx(paper) {
-    return (paper === 'zhuye' || paper === 'shuyan' || paper === 'redsilk' || paper === 'ruoshui' || paper === 'tengyun' || paper === 'juhuo' || paper === 'yingyue') ? 5 : FONT_SCALES.length - 1;
+    return (paper === 'shuyan' || paper === 'redsilk' || paper === 'ruoshui' || paper === 'tengyun' || paper === 'juhuo' || paper === 'yingyue') ? 5 : FONT_SCALES.length - 1;
   },
 
   /** 落盘值 → 档位索引：取最接近的一档（兼容浮点误差与历史数据） */

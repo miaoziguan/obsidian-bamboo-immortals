@@ -703,7 +703,11 @@ body.privacy-on .bamboo-license-gate * {
 }
 /* 支持 clip-path 时改用裁剪表达「已燃区间」：自顶部裁掉已化雁的段、自底部裁掉未燃部分。
    相比改 height/top（每次 --burn 写入都重排并连带纹理重绘），裁剪不触发布局，
-   且元素尺寸恒定，香灰的颗粒/裂纹纹理不会被拉伸变形。 */
+   且元素尺寸恒定，香灰的颗粒/裂纹纹理不会被拉伸变形。
+   兼容性说明：caniuse 把 clip-path 标为「部分支持」仅因不支持外部 SVG 中的形状
+   （url(file.svg#c)）；本处用的是 inset()，Chromium 全版本与 Safari 13.1+ 均完整支持，
+   Obsidian 桌面（Electron/Chromium）与移动（系统 WebView）实际不受影响，故定向豁免。 */
+/* stylelint-disable plugin/no-unsupported-browser-features */
 @supports (clip-path: inset(0 0 0 0)) {
     .scroll-incense-ash {
         top: 0;
@@ -715,6 +719,7 @@ body.privacy-on .bamboo-license-gate * {
         transition: clip-path 0.9s linear;
     }
 }
+/* stylelint-enable plugin/no-unsupported-browser-features */
 /* 暗色模式：香灰整体提亮偏白，深底上更清晰；颗粒纹理也换成浅色，
    避免深色颗粒在浅灰底上变成脏点。 */
 :host(.dark) .scroll-incense-ash {
@@ -794,7 +799,9 @@ body.privacy-on .bamboo-license-gate * {
     border-radius: 0 0 2px 2px;
     transition: height 0.9s linear;
 }
-/* 同上：未燃段改用裁剪，自顶部裁掉已燃烧的部分，避免每 250ms 的 height 重排 */
+/* 同上：未燃段改用裁剪，自顶部裁掉已燃烧的部分，避免每 250ms 的 height 重排
+   （clip-path 兼容性豁免理由同 .scroll-incense-ash） */
+/* stylelint-disable plugin/no-unsupported-browser-features */
 @supports (clip-path: inset(0 0 0 0)) {
     .scroll-incense-unburnt {
         bottom: auto;
@@ -807,6 +814,7 @@ body.privacy-on .bamboo-license-gate * {
         transition: clip-path 0.9s linear;
     }
 }
+/* stylelint-enable plugin/no-unsupported-browser-features */
 .scroll-incense-texture {
     position: absolute;
     inset: 0;
@@ -2860,6 +2868,9 @@ body.dark .tw-print,
   overflow: hidden;
   background: var(--rice-paper);
 }
+/* 锯齿撕纸边：caniuse 对 clip-path 的「部分支持」仅指外部 SVG 形状，polygon() 在所有
+   Obsidian 运行时均可用，故定向豁免（见 .scroll-incense-ash 处的完整说明）。 */
+/* stylelint-disable-next-line plugin/no-unsupported-browser-features */
 .tw-card-edge-inner {
   position: absolute;
   left: 0;
@@ -3232,12 +3243,10 @@ body.dark .tw-print,
   from {
     transform: rotate(var(--tw-card-rot)) scale(calc(var(--tw-card-scale) * 0.9)) translateY(300px);
     opacity: 0;
-    clip-path: inset(70% 0 0 0);
   }
   to {
     transform: rotate(var(--tw-card-rot)) scale(var(--tw-card-scale)) translateY(0);
     opacity: 1;
-    clip-path: inset(0 0 0 0);
   }
 }
 

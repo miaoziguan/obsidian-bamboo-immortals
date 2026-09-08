@@ -393,7 +393,7 @@ body:not(.dark) .tw-case-right {
   color: rgba(var(--bamboo-deep-rgb), 0.72);
   user-select: none;
 }
-/* 屏幕顶栏两端文字禁止折行（避免窄设备下 "compose_modeFONT:" 粘连） */
+/* 屏幕顶栏两端文字禁止折行（避免窄设备下 "凝墨成笺FONT:" 粘连） */
 .tw-screen-top > span,
 .tw-screen-font { white-space: nowrap; }
 .tw-screen-font { color: rgb(var(--bamboo-deep-rgb)); opacity: 0.85; }

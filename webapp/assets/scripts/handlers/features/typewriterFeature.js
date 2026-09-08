@@ -184,7 +184,7 @@ export const TypewriterFeature = {
           <div class="tw-screen">
             <div class="tw-screen-glare" aria-hidden="true"></div>
             <div class="tw-screen-top">
-              <span>compose_mode</span>
+              <span>凝墨成笺</span>
               <span class="tw-screen-font">FONT: <b id="twFontLabel">${FONT_LABELS.classic}</b> · <b id="twPaperLabel">${PAPER_LABELS.plain}</b></span>
             </div>
             <div class="tw-screen-input-wrap">

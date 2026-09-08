@@ -254,7 +254,6 @@ const ScrollManager = {
                     <linearGradient id="fbHi" x1="0.2" y1="0" x2="0.8" y2="1"><stop offset="0%" stop-color="#ffffff" stop-opacity="0.4"/><stop offset="100%" stop-color="#ffffff" stop-opacity="0"/></linearGradient>
                   </defs>
                 </svg>
-                <span class="scroll-firebrand-hint"></span>
               </div>
             </div>
           </div>
@@ -484,7 +483,6 @@ const ScrollManager = {
   _bindFirebrand() {
     const firebrand = this._el && this._el.querySelector('.scroll-firebrand');
     if (!firebrand) return;
-    const hint = firebrand.querySelector('.scroll-firebrand-hint');
     const isCapOff = () => firebrand.classList.contains('cap-off');
 
     const openCap = () => {
@@ -492,7 +490,6 @@ const ScrollManager = {
       this._litTriggered = false;
     this._litHoldActive = false;
       firebrand.classList.add('cap-off');
-      if (hint) hint.textContent = '拖动点燃';
     };
 
     const onDown = (e) => {
@@ -625,13 +622,11 @@ const ScrollManager = {
     return t || e;
   },
 
-  /** 火折子归位：清除拖拽位移/状态类/提示，回到初始位置（松手时调用） */
+  /** 火折子归位：清除拖拽位移/状态类，回到初始位置（松手时调用） */
   _releaseFirebrand(firebrand) {
     if (!firebrand) return;
     firebrand.style.transform = '';
     firebrand.classList.remove('cap-off', 'dragging', 'near', 'lit');
-    const hint = firebrand.querySelector('.scroll-firebrand-hint');
-    if (hint) hint.textContent = '拔帽取火';
   },
 
   /**
@@ -680,8 +675,6 @@ const ScrollManager = {
     if (firebrand) {
       firebrand.classList.remove('cap-off', 'dragging', 'near', 'lit');
       firebrand.style.transform = '';
-      const hint = firebrand.querySelector('.scroll-firebrand-hint');
-      if (hint) hint.textContent = '拔帽取火';
     }
     incense.classList.remove('near');
     // 过渡收尾：彻底熄灭并复位（清化雁、复位 burn 与剩余）

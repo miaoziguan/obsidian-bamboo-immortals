@@ -531,7 +531,8 @@ const ScrollManager = {
       const p = this._pointer(e);
       const dx = p.clientX - this._dragOrigin.x - this._dragOffset.x;
       const dy = p.clientY - this._dragOrigin.y - this._dragOffset.y;
-      // 拖拽中保持拔帽后的 45° 斜举（translate 会覆盖 CSS transform，故此处显式带 rotate）
+      // 拖拽中保持拔帽后的 45° 斜举（translate 会覆盖 CSS transform，故此处显式带 rotate）。
+      // 火焰靠自身 +45° 反向旋转（见 base.css）与此外层 -45° 互抵，拖拽时仍保持竖直、贴合筒口。
       // 注：不限制拖拽范围，火折子可自由拖动画面；溢出由 CSS overflow-x:clip 裁切，
       // 且不创建滚动容器（详见 base.css 中 .scroll-left/.scroll-body/.scroll-screen 注释）。
       firebrand.style.transform = `translate(${dx}px, ${dy}px) rotate(-45deg)`;

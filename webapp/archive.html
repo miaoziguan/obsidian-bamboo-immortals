@@ -1139,6 +1139,9 @@ body.privacy-on .bamboo-license-gate * {
     cursor: grabbing;
     transition: none;
     animation: none;
+    /* 拖拽内联 transform = translate(...) rotate(-45deg) 的支点（竹身中下部），
+       与火焰根部 +45° 反向旋转互抵，使火焰保持竖直、贴合倾斜后的筒口。 */
+    transform-origin: 50% 65%;
 }
 /* 拖拽火折子期间全局禁用文本选择：杜绝原生选区高亮在画面中拖出多余色带
    （mousedown 已 preventDefault，但 mousemove 仍可能扩展残留选区） */
@@ -1159,19 +1162,35 @@ body.privacy-on .bamboo-license-gate * {
     width: 32px;
     height: 64px;
     display: block;
+    overflow: visible; /* 斜举后火焰/筒身可能探出 32×64 视口，避免被裁切 */
     filter: drop-shadow(0 3px 6px rgba(90,130,95,0.28));
 }
 /* 火绒：帽未开时藏起，拔帽后显火 */
 .scroll-firebrand .flame {
     opacity: 0;
+    /* 关键：SVG <g> 的 transform-origin 默认按元素自身包围盒解析，
+       火焰盒仅约 10×23，24px 34px 会落到盒外 → rotate(45deg) 绕远处点旋转，
+       虽父级 -45deg 抵消了「旋转」却把火焰甩偏（看起来歪/不直）。
+       显式 view-box 让 24px 34px 落在 SVG 视口坐标（火焰根部），
+       +45deg 绕根部转、父级 -45deg 抵消后火焰竖直贴合筒口。 */
+    transform-box: view-box;
     transform-origin: 24px 34px;
     transform: scale(0.4);
     transition: opacity 0.35s ease, transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
     pointer-events: none;
 }
-/* 拔帽显火：火苗绕根部反向旋转 45°，抵消火折子 -45° 斜举，使火焰始终竖直向上（物理规律：热浮力使火苗朝正上方） */
+/* 开帽即显火：筒身竖直、火焰天然竖直向上、贴合筒口（无需反向旋转）。
+   唯拖拽时（.dragging，见下方规则）火折子斜举 -45°，火焰才绕根部反向 +45° 保持直立。 */
 .scroll-firebrand.cap-off .flame {
     opacity: 1;
+    transform: scale(1);
+}
+/* 拖拽火折子时：筒身由内联 transform 斜举 -45°，火焰绕根部（view-box 24,34）反向 +45°
+   与之外抵，最终竖直且贴合倾斜后的筒口（两次等量反向旋转、支点不同 → 纯平移）。
+   须限定 .dragging 且写在 .cap-off .flame 之后，确保「仅拖拽时」才反向旋转，
+   开帽静止时火焰保持天然竖直。关键是 .flame 须 transform-box: view-box（见上方 .flame 规则），
+   否则 rotate 绕的是火焰包围盒外的点，会甩偏（看起来歪）。 */
+.scroll-firebrand.cap-off.dragging .flame {
     transform: scale(1) rotate(45deg);
 }
 /* 火绒动效：火苗跳动 + 火星上飘，全部走 transform/opacity（合成属性）。
@@ -1239,12 +1258,10 @@ body.privacy-on .bamboo-license-gate * {
     0%   { transform: translateY(0); opacity: 0.8; }
     100% { transform: translateY(-11px); opacity: 0; }
 }
-/* 拔帽后火折子本体自动斜举 45°（更合点燃常理）；停 idle 动画使 transform 生效。
-   支点取竹身中下部（约 65%），斜举时整支火折子（含底端）都离开画面底部，避免在底边缘拖出一条斜线 */
+/* 拔帽常态：筒身竖直、停 idle 动画。斜举(-45°)只在拖拽时由内联 transform 施加
+   （见 scrollManager.onMove），火焰反向旋转则见 .cap-off.dragging .flame。 */
 .scroll-firebrand.cap-off {
     animation: none;
-    transform: rotate(-45deg);
-    transform-origin: 50% 65%;
 }
 /* 可拔竹帽：拔帽后飞出并消失，再次轻点盖回 */
 .scroll-firebrand-cap {

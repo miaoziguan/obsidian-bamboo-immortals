@@ -3555,7 +3555,7 @@ body.dark .tw-print,
     radial-gradient(ellipse at center, rgba(var(--black-rgb), 0.22), transparent 75%);
 }
 
-/* ===== 纸条卡片（带锯齿穿孔边） ===== */
+/* ===== 纸条卡片 ===== */
 .tw-card {
   position: absolute;
   z-index: 20;
@@ -3647,19 +3647,10 @@ body.dark .tw-print,
   overflow: hidden;
   background: var(--rice-paper);
 }
-/* 锯齿撕纸边：caniuse 对 clip-path 的「部分支持」仅指外部 SVG 形状，polygon() 在所有
-   Obsidian 运行时均可用，故定向豁免（见 .scroll-incense-ash 处的完整说明）。 */
-/* stylelint-disable-next-line plugin/no-unsupported-browser-features */
-.tw-card-edge-inner {
-  position: absolute;
-  left: 0;
-  width: 100%;
-  height: 1.78em;
-  background: var(--rice-paper);
-  clip-path: polygon(0% 0%, 5% 100%, 10% 0%, 15% 100%, 20% 0%, 25% 100%, 30% 0%, 35% 100%, 40% 0%, 45% 100%, 50% 0%, 55% 100%, 60% 0%, 65% 100%, 70% 0%, 75% 100%, 80% 0%, 85% 100%, 90% 0%, 95% 100%, 100% 0%);
-}
-.tw-card-edge-top .tw-card-edge-inner { bottom: -0.89em; transform: rotate(180deg); }
-.tw-card-edge-bottom .tw-card-edge-inner { top: -0.89em; }
+/* 原「锯齿撕纸边」实现（.tw-card-edge-inner + clip-path: polygon()）已作为死代码删除：
+   内外层同为 var(--rice-paper) 纯色，裁出的齿间缺口被父层同色背景填平，
+   裁与不裁观感完全一致；且 9 种纸样中 7 种本就把边条 display:none。
+   边条 .tw-card-edge 本身保留 —— 它是纸面上下各 0.89em 的延伸，删掉会改变卡片高度。 */
 .tw-card-main {
   position: relative;
   padding: 0.22em 1.78em 1.78em;
@@ -3869,9 +3860,9 @@ body.dark .tw-print,
 .tw-card[data-font="kai"]     .tw-card-text { font-family: var(--tw-font-kai); letter-spacing: 0.02em; }
 
 /* ===== 便签纸张样式（卡片 data-paper 驱动） =====
-   机制：正文区 .tw-card-main 与上下锯齿边 .tw-card-edge 的背景都引用 --rice-paper，
+   机制：正文区 .tw-card-main 与上下纸边 .tw-card-edge 的背景都引用 --rice-paper，
    正文文字引用 --ink-dark，因此只需在卡片级重定义这几个变量，
-   主纸面与锯齿边即自动同步换色，无需分别给两者写 background。
+   主纸面与纸边即自动同步换色，无需分别给两者写 background。
    --tw-rule-rgb 是「描边基色」，分隔线 / 装饰条 / 打字光标都按它取透明度。
    扩展一种纸：JS 的 PAPERS 数组加一项 + 这里补一条同名 [data-paper] 规则。 */
 
@@ -7278,7 +7269,7 @@ button, .btn, .date-nav-btn, .edit-btn, .view-toggle-btn, .history-close, .modal
         </div>
         <div class="tw-desk-shadow" aria-hidden="true"></div>
       </div>`,e.appendChild(t),this._el=t,this._canvas=t.querySelector(".tw-canvas"),this._input=t.querySelector(".tw-input"),this._case=t.querySelector(".tw-case"),this._canvas.addEventListener("pointerdown",s=>{s.target.closest(".tw-card")||(this._pinOnly(null),this._exitAllEdits())}),this._observeScale()},_observeScale(){let n=()=>{if(!this._case||!this._case.isConnected){this._ro&&this._ro.disconnect();return}let r=this._case.getBoundingClientRect().width;if(!r)return;let c=Math.min(1,Math.max(.75,r/420)),f=14.5*c,a=28*c;this._case.style.fontSize=f.toFixed(2)+"px",this._case.style.setProperty("--tw-scale",c.toFixed(3)),this._el.style.setProperty("--tw-scale",c.toFixed(3)),this._case.classList.toggle("tw-square",r<=400),Array.from(this._case.querySelectorAll(".tw-rbtn")).forEach(u=>{u.style.width=(a*1.07).toFixed(2)+"px",u.style.height=(a*1.07).toFixed(2)+"px",u.style.fontSize=a.toFixed(2)+"px"});let d=this._case.querySelector(".tw-print");d&&(d.style.width=(a*1.07).toFixed(2)+"px",d.style.height=(a*1.07).toFixed(2)+"px",d.style.fontSize=a.toFixed(2)+"px"),this._el.querySelectorAll(".tw-card-tools button").forEach(u=>{u.style.width=(20*c).toFixed(2)+"px",u.style.height=(20*c).toFixed(2)+"px"}),this._el.querySelectorAll(".tw-card-tools svg").forEach(u=>{u.style.width=(18*c).toFixed(2)+"px",u.style.height=(18*c).toFixed(2)+"px"})};n(),typeof ResizeObserver<"u"&&(this._ro=new ResizeObserver(n),this._ro.observe(this._case))},_bindInput(){let e=this._input,t=this._el.querySelector("#twCursor");e.addEventListener("focus",()=>t.classList.add("on")),e.addEventListener("blur",()=>t.classList.remove("on"));let s=()=>this._spawn(e.value.trim());this._el.querySelector("#twPrint").addEventListener("click",s),e.addEventListener("keydown",i=>{(i.metaKey||i.ctrlKey)&&i.key==="Enter"&&(i.preventDefault(),s())}),this._el.querySelector("#twFont").addEventListener("click",()=>{this._fontIdx=(this._fontIdx+1)%gt.length;let i=gt[this._fontIdx];this._el.querySelector("#twFontLabel").textContent=qt[i],this._showScreenMsg("FONT: "+Fe[i],1e3)}),this._el.querySelector("#twClear").addEventListener("click",()=>{e.value="",e.focus()}),this._el.querySelector("#twPaper").addEventListener("click",()=>{this._paperIdx=(this._paperIdx+1)%I.length;let i=I[this._paperIdx];this._el.querySelector("#twPaperLabel").textContent=X[i],this._showScreenMsg("PAPER: "+qe[i],1e3)})},_showScreenMsg(e,t=1400){let s=this._el.querySelector("#twScreenMsg");s.textContent=e,s.classList.add("on"),this._msgTimer&&clearTimeout(this._msgTimer),this._msgTimer=setTimeout(()=>s.classList.remove("on"),t)},_createCardEl(e){let t=e.id||Math.random().toString(36).slice(2,8).toUpperCase(),s=e.font||"classic",i=e.paper||"plain",o=e.date||this._now(),n=document.createElement("div");n.className="tw-card",n.setAttribute("role","note"),n.dataset.id=t,n.dataset.font=s,n.dataset.paper=i,n.dataset.date=o,this._applyZoom(n,e.zoom),this._applyRot(n,e.rot),n.innerHTML=`
-      <div class="tw-card-edge tw-card-edge-top" aria-hidden="true"><div class="tw-card-edge-inner"></div></div>
+      <div class="tw-card-edge tw-card-edge-top" aria-hidden="true"></div>
       <div class="tw-card-main">
         <div class="tw-card-noise" aria-hidden="true"></div>
         <div class="tw-card-head">
@@ -7289,7 +7280,7 @@ button, .btn, .date-nav-btn, .edit-btn, .view-toggle-btn, .history-close, .modal
         </div>
         <div class="tw-card-text"></div>
       </div>
-      <div class="tw-card-edge tw-card-edge-bottom" aria-hidden="true"><div class="tw-card-edge-inner"></div></div>
+      <div class="tw-card-edge tw-card-edge-bottom" aria-hidden="true"></div>
       <div class="tw-card-tools">
         <button type="button" class="tw-card-paper" aria-label="\u5207\u6362\u4FBF\u7B7E\u6837\u5F0F">${Le}</button>
         <button type="button" class="tw-card-font tw-card-font-down" aria-label="\u7F29\u5C0F\u5B57\u53F7">${Ce}</button>

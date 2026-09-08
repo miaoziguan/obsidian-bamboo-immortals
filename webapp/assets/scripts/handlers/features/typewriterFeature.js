@@ -3,13 +3,13 @@
  * （视觉移植自 v0「Vintage Pager」的 Motorola Beeper：绿壳 + 黑屏荧光绿 + 橙钮）
  *
  * 作为「画中卷」容器（ScrollManager）注册的独立功能挂载。自包含：
- * 拥有独立 DOM 与全部交互（黑屏荧光绿输入 → 点 PRINT → 生成锯齿边纸条卡片 →
+ * 拥有独立 DOM 与全部交互（黑屏荧光绿输入 → 点 PRINT → 生成纸条卡片 →
  * 逐字打出 → 卡片拖拽）。
  *
  * 交互：
  *  - 绿色外壳寻呼机（#8cc63f）+ 近黑屏幕（#0a1205）+ 荧光绿文字（#33ff00）；
  *  - 圆形黑键（相机/字体切换/清除）+ 橙色 PRINT 大钮 + MOTOROLA 品牌标；
- *  - 输入文字 → 点 PRINT（或 Ctrl/Cmd+Enter）→ 画布生成一张米白纸条（带锯齿穿孔边）；
+ *  - 输入文字 → 点 PRINT（或 Ctrl/Cmd+Enter）→ 画布生成一张米白纸条；
  *  - 卡片逐字缓慢打出（50ms），带脉冲光标；可拖拽到任意位置；可移除。
  *
  * 持久化：写好的便签经 bridge → VaultStorage 落盘到 vault（独立 typewriter-notes.json），
@@ -352,7 +352,7 @@ export const TypewriterFeature = {
     this._applyZoom(card, note.zoom);
     this._applyRot(card, note.rot);
     card.innerHTML = `
-      <div class="tw-card-edge tw-card-edge-top" aria-hidden="true"><div class="tw-card-edge-inner"></div></div>
+      <div class="tw-card-edge tw-card-edge-top" aria-hidden="true"></div>
       <div class="tw-card-main">
         <div class="tw-card-noise" aria-hidden="true"></div>
         <div class="tw-card-head">
@@ -363,7 +363,7 @@ export const TypewriterFeature = {
         </div>
         <div class="tw-card-text"></div>
       </div>
-      <div class="tw-card-edge tw-card-edge-bottom" aria-hidden="true"><div class="tw-card-edge-inner"></div></div>
+      <div class="tw-card-edge tw-card-edge-bottom" aria-hidden="true"></div>
       <div class="tw-card-tools">
         <button type="button" class="tw-card-paper" aria-label="切换便签样式">${ICON_PAPER}</button>
         <button type="button" class="tw-card-font tw-card-font-down" aria-label="缩小字号">${ICON_FONT_DOWN}</button>

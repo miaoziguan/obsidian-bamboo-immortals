@@ -166,6 +166,18 @@ export default class BambooReviewPlugin extends Plugin {
 
 
 
+    // 画中卷双意境：两条一等命令，各自停靠到推荐位置，独立成 leaf 可并存（见 openScrollAt 的 feature 去重）。
+    this.addCommand({
+      id: 'open-scroll-incense',
+      name: '画中卷：打开香道',
+      callback: () => void this.openScrollLeftSidebar('incense'),
+    });
+    this.addCommand({
+      id: 'open-scroll-typewriter',
+      name: '画中卷：打开打字机便签墙',
+      callback: () => void this.openScroll('typewriter'),
+    });
+
     this.addCommand({
       id: 'open-settings-in-app',
       name: '打开应用设置',
@@ -1096,7 +1108,17 @@ export default class BambooReviewPlugin extends Plugin {
       });
     }
 
-    existing.forEach((l) => { if (l !== target) l.detach(); });
+    // 双 leaf 去重：仅拆掉「同功能」的其它 leaf；异功能 leaf 保留 → 香道/打字机可并存。
+    // 复用规则：本次未显式指定功能（如 ribbon/展卷）且 target 已是某功能 leaf 时，沿用其功能，避免误覆盖。
+    let incomingFeature: string = feature ?? 'incense';
+    const targetFeature = (target as unknown as { __scrollFeature?: string }).__scrollFeature;
+    if (!feature && targetFeature) incomingFeature = targetFeature;
+    (target as unknown as { __scrollFeature?: string }).__scrollFeature = incomingFeature;
+    existing.forEach((l) => {
+      if (l === target) return;
+      const lf = (l as unknown as { __scrollFeature?: string }).__scrollFeature ?? 'incense';
+      if (lf === incomingFeature) l.detach();
+    });
 
     // 画布内 3-dot 移动时记回默认位置（命令「展卷」打开不覆盖默认）
     if (persistDefault && this.settings.scrollDefaultLocation !== loc) {

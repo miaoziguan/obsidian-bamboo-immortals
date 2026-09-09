@@ -73,11 +73,19 @@ const ScrollManager = {
         pending = StorageAdapter.get('scrollFeaturePending');
       }
     } catch (_) { /* data: iframe 常无 localStorage 权限，忽略 */ }
-    if (pending === 'typewriter') return await this._mountTypewriter();
 
-    // ② 宿主注入：非阻塞，直接读取已到达的 feature；不 await，避免画中卷长时间白屏
-    if (ScrollManager._hfResolved === 'typewriter') return await this._mountTypewriter();
-    return false;
+    // ② 宿主注入的 feature（scroll:feature postMessage）。必须 await 该 promise：专用命令只走 postMessage，
+    // 且消息常在 _mountPendingFeature 之后才到达；若同步读 _hfResolved（此时尚为 null）会把打字机误判为香道。
+    const injected = await ScrollManager._hf;
+    const resolved = injected || (pending && pending !== 'null' ? pending : null) || 'incense';
+    // 记录本 leaf 功能，供三圆点默认/诊断使用；并清除暂存，避免影响下次「无指定功能」打开。
+    ScrollManager.feature = resolved;
+    try {
+      if (typeof StorageAdapter !== 'undefined' && StorageAdapter.set) StorageAdapter.set('scrollFeaturePending', null);
+    } catch (_) { /* 忽略 */ }
+
+    if (resolved === 'typewriter') return await this._mountTypewriter();
+    return false; // 默认香道（incense 等）
   },
 
   /** 挂载打字机功能（自包含，跟随宿主明暗主题） */

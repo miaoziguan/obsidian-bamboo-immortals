@@ -31,6 +31,10 @@ export class ScrollView extends ItemView {
   private appAPI: AppAPI | null = null;
   private iframe: HTMLIFrameElement | null = null;
   private cssChangeRef: EventRef | null = null;
+  /** 本 leaf 所属功能（'incense' | 'typewriter'），per-leaf 存储以支持双 leaf 并存（替代原 static pendingFeature） */
+  private _feature: string = 'incense';
+  /** 本 leaf 当前停靠位置，per-leaf 存储（替代原 static pendingLocation） */
+  private _location: ScrollLocation = 'center';
 
   constructor(
     leaf: WorkspaceLeaf,
@@ -127,8 +131,12 @@ export class ScrollView extends ItemView {
       this.iframe.addEventListener('load', () => {
         const cw = this.iframe?.contentWindow;
         if (!cw) return;
-        cw.postMessage({ type: 'scroll:feature', feature: ScrollView.pendingFeature }, '*');
-        cw.postMessage({ type: 'scroll:location', location: ScrollView.pendingLocation }, '*');
+        // 本 leaf 的功能/位置：优先 leaf 视图状态（三圆点移动写入），回退宿主 pending（命令打开写入）。
+        const vs = this.leaf.getViewState() as { state?: { feature?: string; location?: ScrollLocation } } | null;
+        this._feature = vs?.state?.feature ?? ScrollView.pendingFeature ?? 'incense';
+        this._location = vs?.state?.location ?? ScrollView.pendingLocation ?? 'center';
+        cw.postMessage({ type: 'scroll:feature', feature: this._feature }, '*');
+        cw.postMessage({ type: 'scroll:location', location: this._location }, '*');
       });
 
       loadingEl.remove();
@@ -183,6 +191,7 @@ export class ScrollView extends ItemView {
             this.settings.scrollDefaultLocation = targetLoc;
             await this.saveSettings();
             ScrollView.pendingLocation = targetLoc;
+            this._location = targetLoc;
             let target: WorkspaceLeaf | null = null;
             if (targetLoc === 'left') target = ws.getLeftLeaf(false) || ws.getLeftLeaf(true);
             else if (targetLoc === 'right') target = ws.getRightLeaf(false) || ws.getRightLeaf(true);
@@ -193,7 +202,7 @@ export class ScrollView extends ItemView {
             }
             await target.setViewState({
               type: VIEW_TYPE_SCROLL,
-              state: { feature: ScrollView.pendingFeature ?? undefined, location: targetLoc },
+              state: { feature: this._feature ?? undefined, location: targetLoc },
               active: true,
             });
             this.leaf.detach();

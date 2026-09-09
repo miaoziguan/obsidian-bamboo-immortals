@@ -94,10 +94,14 @@ export const ScrollFeaturePicker = {
       if (typeof StorageAdapter !== 'undefined') StorageAdapter.set('scrollFeaturePending', key);
     } catch (_) { /* 忽略 */ }
     if (typeof storageManager === 'undefined') return;
-    if (storageManager.openScrollLeftSidebar) {
-      storageManager.openScrollLeftSidebar(key);
-    } else if (storageManager.openScrollView) {
-      storageManager.openScrollView(key);
+    // 各功能按推荐默认停靠位打开：香道→左栏、打字机(及其它)→主区，
+    // 二者落不同 leaf（左栏 vs 主区），可并存（见宿主 openScrollAt 的 feature 去重）。
+    if (key === 'incense') {
+      if (storageManager.openScrollLeftSidebar) storageManager.openScrollLeftSidebar(key);
+      else if (storageManager.openScrollView) storageManager.openScrollView(key);
+    } else {
+      if (storageManager.openScrollView) storageManager.openScrollView(key);
+      else if (storageManager.openScrollLeftSidebar) storageManager.openScrollLeftSidebar(key);
     }
   },
 

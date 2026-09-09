@@ -1294,12 +1294,14 @@ export const TypewriterFeature = {
         this._scheduleSave();
       });
       const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
-      title.textContent = '双击删除 · 拖中点改走向 · 点圆点切线型';
+      title.textContent = '双击删除 · 拖中点改走向 · 点圆点切线型 · 点虚线点切换实线/虚线';
       hit.appendChild(title);
       svg.appendChild(hit);
 
       const path = mk('path', 'tw-link');
       path.setAttribute('d', d);
+      // 线型（实线/虚线）：随连线存盘，逐条独立。虚线用 is-dashed 类驱动 CSS stroke-dasharray
+      if (l.dash === 'dashed') path.classList.add('is-dashed');
       svg.appendChild(path);
 
       // 端点：源端实心圆点；目标端实心小三角（filled triangle，React Flow / Figma 默认端点）。
@@ -1528,6 +1530,39 @@ export const TypewriterFeature = {
     del.addEventListener('mouseleave', release);
     del.addEventListener('click', onDel);
     svg.appendChild(del);
+
+    // ④ 实线/虚线切换按钮：落在连线 1/8 处、与删除按钮对向（删除偏移 +15，本钮偏移 -15），
+    //  避免压线或互相遮挡。点击在 实线 ↔ 虚线 间循环，状态随连线存盘（逐条独立）。
+    const dPt = line.getPointAtLength(len * 0.125);
+    const da2 = line.getPointAtLength(Math.max(0, len * 0.125 - 1));
+    const db2 = line.getPointAtLength(Math.min(len, len * 0.125 + 1));
+    const ddx = db2.x - da2.x, ddy = db2.y - da2.y;
+    const dl = Math.hypot(ddx, ddy) || 1;
+    const dnx = -ddy / dl, dny = ddx / dl;            // 线法线（与删除按钮同向）
+    const dx2 = dPt.x - dnx * 15, dy2 = dPt.y - dny * 15;   // 与删除按钮对向偏移 -15
+    const dash = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    dash.setAttribute('class', 'tw-link-ctl tw-link-dash' + (link.dash === 'dashed' ? ' is-on' : ''));
+    const dashBg = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    dashBg.setAttribute('class', 'tw-link-dash-bg');
+    dashBg.setAttribute('cx', dx2); dashBg.setAttribute('cy', dy2); dashBg.setAttribute('r', '8');
+    // 图标所见即所得：实线态画实线、虚线态画虚线
+    const dashIco = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    dashIco.setAttribute('class', 'tw-link-dash-ico');
+    dashIco.setAttribute('d', (link.dash === 'dashed')
+      ? `M ${dx2 - 4} ${dy2 - 1} l 1.6 0 M ${dx2 - 0.6} ${dy2 - 1} l 1.6 0 M ${dx2 + 2.8} ${dy2 - 1} l 1.6 0`
+      : `M ${dx2 - 4.5} ${dy2 - 1} L ${dx2 + 4.5} ${dy2 - 1}`);
+    const dashT = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+    dashT.textContent = (link.dash === 'dashed') ? '当前虚线 · 点击改实线' : '当前实线 · 点击改虚线';
+    dash.appendChild(dashBg); dash.appendChild(dashIco); dash.appendChild(dashT);
+    dash.addEventListener('mouseenter', keep);
+    dash.addEventListener('mouseleave', release);
+    dash.addEventListener('click', (e) => {
+      e.stopPropagation();
+      link.dash = (link.dash === 'dashed') ? 'solid' : 'dashed';
+      this._renderLinks();
+      this._scheduleSave();
+    });
+    svg.appendChild(dash);
   },
 
   /** 建立连线：A→B 与 B→A 视为同一条（去重），自连忽略 */
@@ -1536,7 +1571,7 @@ export const TypewriterFeature = {
     const dup = this._links.some((l) =>
       (l.from === fromId && l.to === toId) || (l.from === toId && l.to === fromId));
     if (dup) return false;
-    this._links.push({ from: fromId, to: toId, route: 'auto', bend: 0 });
+    this._links.push({ from: fromId, to: toId, route: 'auto', bend: 0, dash: 'solid' });
     this._renderLinks();
     this._scheduleSave();
     return true;

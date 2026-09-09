@@ -4361,6 +4361,34 @@ body.dark .tw-print,
 :host(.dark) .tw-link-mode { fill: #6fb0ef; stroke: #3f87c9; }
 :host(.dark) .tw-link-mode:hover { fill: #8cc2f5; }
 
+/* 虚线线身：与 .tw-link.is-temp 同一套 dash 节奏，保持视觉语言一致 */
+.tw-link.is-dashed { stroke-dasharray: 5 5; }
+
+.tw-link-ctl.tw-link-dash { cursor: pointer; }
+.tw-link-dash-bg {
+  fill: rgba(255, 255, 255, 0.92);
+  stroke: rgba(46, 62, 40, 0.55);
+  stroke-width: 1.5;
+  transition: fill .14s ease, stroke .14s ease;
+}
+.tw-link-dash-ico {
+  fill: none;
+  stroke: rgba(46, 62, 40, 0.85);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  transition: stroke .14s ease;
+}
+.tw-link-ctl.tw-link-dash:hover .tw-link-dash-bg { fill: rgba(46, 62, 40, 0.95); stroke: rgba(46, 62, 40, 0.95); }
+.tw-link-ctl.tw-link-dash:hover .tw-link-dash-ico { stroke: #fff; }
+/* 当前为虚线态时，钮底染蓝以提示「此线已虚线」 */
+.tw-link-dash.is-on .tw-link-dash-bg { fill: rgba(74, 144, 217, 0.95); stroke: #2f6fb0; }
+.tw-link-dash.is-on .tw-link-dash-ico { stroke: #fff; }
+:host(.dark) .tw-link-dash-bg { fill: rgba(40, 46, 38, 0.92); stroke: rgba(206, 220, 190, 0.6); }
+:host(.dark) .tw-link-dash-ico { stroke: rgba(206, 220, 190, 0.9); }
+:host(.dark) .tw-link-ctl.tw-link-dash:hover .tw-link-dash-bg { fill: rgba(206, 220, 190, 0.95); }
+:host(.dark) .tw-link-ctl.tw-link-dash:hover .tw-link-dash-ico { stroke: #1c1f1a; }
+:host(.dark) .tw-link-dash.is-on .tw-link-dash-bg { fill: rgba(111, 176, 239, 0.95); stroke: #3f87c9; }
+
 .tw-link-ctl.tw-link-del { cursor: pointer; }
 .tw-link-del-bg {
   fill: rgba(255, 255, 255, 0.92);

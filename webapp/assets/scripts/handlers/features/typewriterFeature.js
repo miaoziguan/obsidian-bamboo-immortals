@@ -1496,16 +1496,12 @@ export const TypewriterFeature = {
     });
 
     // ③ 删除按钮：hover 连线时浮现于约 3/4 处（与 1/4 线型按钮、中点弯曲手柄三者错开，互不干扰）。
-    //  位置用线法线偏移 15px，使 × 落在连线侧旁而非压在线上；用 cx/cy 定位（非 transform 属性），
-    //  避免 CSS hover 的 scale(1.25) 覆盖 translate 导致控件跳动。
+    //  直接落在线上（与线型按钮同策略），避免「按钮偏在线侧 → 指针离开 16px 命中带 → 80ms 收起定时器
+    //  先一步撤掉控件、点击落空」的失真；用 cx/cy 定位（非 transform 属性），避免 CSS hover 的 scale
+    //  覆盖 translate 导致控件跳动。
     const f = 0.72;
     const mPt = line.getPointAtLength(len * f);
-    const aT = line.getPointAtLength(Math.max(0, len * f - 1));
-    const bT = line.getPointAtLength(Math.min(len, len * f + 1));
-    const tdx = bT.x - aT.x, tdy = bT.y - aT.y;
-    const tl = Math.hypot(tdx, tdy) || 1;
-    const nx = -tdy / tl, ny = tdx / tl;                 // 线法线
-    const dx = mPt.x + nx * 15, dy = mPt.y + ny * 15;
+    const dx = mPt.x, dy = mPt.y;
     const keep = () => { clearTimeout(this._hoverTimer); this._ctlHover = true; };
     const release = () => { this._ctlHover = false; this._scheduleEndHover(); };
     const onDel = (e) => {
@@ -1531,15 +1527,11 @@ export const TypewriterFeature = {
     del.addEventListener('click', onDel);
     svg.appendChild(del);
 
-    // ④ 实线/虚线切换按钮：落在连线 1/8 处、与删除按钮对向（删除偏移 +15，本钮偏移 -15），
-    //  避免压线或互相遮挡。点击在 实线 ↔ 虚线 间循环，状态随连线存盘（逐条独立）。
+    // ④ 实线/虚线切换按钮：落在连线 1/8 处（与线型按钮同策略，直接压在线上的点位），
+    //  避免「按钮偏在线侧 → 指针离开 16px 命中带 → 80ms 收起定时器先撤控件、点击落空」的失真。
+    //  点击在 实线 ↔ 虚线 间循环，状态随连线存盘（逐条独立）。
     const dPt = line.getPointAtLength(len * 0.125);
-    const da2 = line.getPointAtLength(Math.max(0, len * 0.125 - 1));
-    const db2 = line.getPointAtLength(Math.min(len, len * 0.125 + 1));
-    const ddx = db2.x - da2.x, ddy = db2.y - da2.y;
-    const dl = Math.hypot(ddx, ddy) || 1;
-    const dnx = -ddy / dl, dny = ddx / dl;            // 线法线（与删除按钮同向）
-    const dx2 = dPt.x - dnx * 15, dy2 = dPt.y - dny * 15;   // 与删除按钮对向偏移 -15
+    const dx2 = dPt.x, dy2 = dPt.y;
     const dash = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     dash.setAttribute('class', 'tw-link-ctl tw-link-dash' + (link.dash === 'dashed' ? ' is-on' : ''));
     const dashBg = document.createElementNS('http://www.w3.org/2000/svg', 'circle');

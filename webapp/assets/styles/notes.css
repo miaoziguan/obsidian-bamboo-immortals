@@ -761,7 +761,9 @@
   stroke-width: 1.5;
   stroke-linecap: round;
   stroke-linejoin: round;
-  stroke-dasharray: 6 5;   
+  /* 默认实线；虚线由 .tw-link.is-dashed 单独开启（见下方）。
+   * 注意：不要把 dasharray 放在基础样式里，否则 solid 与 dashed 两种状态都会是虚线，
+   * 导致实线切换失效。 */
   pointer-events: none;   
   transition: stroke 0.18s ease;
 }

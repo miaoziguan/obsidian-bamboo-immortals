@@ -113,7 +113,6 @@ export const TypewriterFeature = {
   _ctlEls: null,         // hover 控件的元素引用表（同一条连线时复用更新，避免每帧重建）
   _linkRaf: 0,           // 重绘节流（拖动/旋转/缩放时合并为每帧一次）
   _linkRo: null,         // 观察卡片尺寸变化 → 自动重绘连线
-  _dragLink: null,       // 正在拖拽的临时连线 {fromId, temp}
   _hoverLink: null,      // 当前悬浮的连线 {from,to}（用于在其上挂控件）
   _hoverTimer: null,     // 收起悬浮控件的防抖
   _ctlHover: false,      // 指针是否停在连线的控件上（是则不收起）
@@ -163,7 +162,6 @@ export const TypewriterFeature = {
     this._linkSigCache = '';
     this._ctlEls = null;
     this._links = [];
-    this._dragLink = null;
     clearTimeout(this._hoverTimer);
     this._hoverTimer = null;
     this._hoverLink = null;
@@ -431,11 +429,6 @@ export const TypewriterFeature = {
     this._ensureAudio();
     this._playFeedSound();
     const canvas = this._canvas;
-
-    // 首次生成卡片时移除画布提示
-    const hint = canvas.querySelector('.tw-canvas-hint');
-    if (hint) hint.remove();
-
     const font = FONTS[this._fontIdx];
     const paper = PAPERS[this._paperIdx];
     const date = this._now();
@@ -1188,25 +1181,6 @@ export const TypewriterFeature = {
       svg.style.width = iconPx.toFixed(2) + 'px';
       svg.style.height = iconPx.toFixed(2) + 'px';
     }
-    // 【临时探针·发布前删除】核实运行构建与两钮真实尺寸
-    this._probeKnob(el);
-  },
-
-  /** 【临时探针·发布前删除】元素入文档后才有布局盒，故 creation 期延到下一帧再量 */
-  _probeKnob(el) {
-    if (!el.isConnected) { requestAnimationFrame(() => this._probeKnob(el)); return; }
-    try {
-      const cs = getComputedStyle(el);
-      const card = el.closest('.tw-card');
-      const ccs = card ? getComputedStyle(card) : null;
-      console.log('[tw-knob-probe]', el.className.replace('tw-card-', ''),
-        'inline=' + el.style.width,
-        'rect=' + Math.round(el.getBoundingClientRect().width * 10) / 10,
-        'computed=' + (cs.width || '(empty)'),
-        'box=' + cs.boxSizing,
-        'zoom=' + (ccs ? ccs.getPropertyValue('--tw-card-zoom') : '?'),
-        'cardFs=' + (ccs ? ccs.fontSize : '?'));
-    } catch (_) { /* 忽略 */ }
   },
 
   /** 左侧中部旋转握柄（与右侧连线锚点对称，下方通道留给工具条）：
@@ -1763,7 +1737,9 @@ export const TypewriterFeature = {
     const dup = this._links.some((l) =>
       (l.from === fromId && l.to === toId) || (l.from === toId && l.to === fromId));
     if (dup) return false;
-    this._links.push({ from: fromId, to: toId, route: 'auto', bend: 0, dash: 'solid' });
+    // route 初值直接写 'bezier'（实际默认行为）：原先用无语义的 'auto' 占位，
+    // 而 _linkGeom 只判 === 'straight'，'auto' 恒等于 bezier，切换一次后就再也回不到 'auto'。
+    this._links.push({ from: fromId, to: toId, route: 'bezier', bend: 0, dash: 'solid' });
     this._renderLinks();
     this._scheduleSave();
     return true;
@@ -2006,8 +1982,6 @@ export const TypewriterFeature = {
     const { notes, canvasOffset, links } = await TypewriterStore.load();
     this._links = Array.isArray(links) ? links : [];
     const canvas = this._canvas;
-    const hint = canvas.querySelector('.tw-canvas-hint');
-    if (notes.length && hint) hint.remove();
     const cr = canvas.getBoundingClientRect();
     const w = cr.width || 1;
     const h = cr.height || 1;

@@ -1072,26 +1072,76 @@ export default class BambooReviewPlugin extends Plugin {
     ScrollView.pendingLocation = loc;
     const { workspace } = this.app;
 
+    const existing = workspace.getLeavesOfType(VIEW_TYPE_SCROLL);
+
+    // 双意境：同功能至多一个 leaf；异功能（香道/打字机）可并存。
+    let incomingFeature: string = feature ?? 'incense';
+
+    // 【复用·根因修复】悬浮菜单重复点击画中卷时，若已存在「同功能 + 同停靠位」的 leaf，
+    // 直接复用它（不新建 leaf、不重挂 iframe），避免反复新建视图。
+    // 仅当 feature 明确时按 feature 精确匹配（浮层选香道/打字机都带 feature）；
+    // feature 不明确（如画布内移动）则跳过复用，走下方按位置创建/复用空位（保留移动语义）。
     let target: WorkspaceLeaf | null = null;
-    if (Platform.isMobile) {
-      target = workspace.getLeaf(false);
-    } else if (loc === 'left') {
-      target = workspace.getLeftLeaf(false);
-    } else if (loc === 'right') {
-      target = workspace.getRightLeaf(false) || workspace.getRightLeaf(true);
-    } else {
-      target = workspace.getLeaf(true);
+    let wasReused = false;
+    if (feature) {
+      const reuse = existing.find((l) => {
+        const lf = (l as unknown as { __scrollFeature?: string }).__scrollFeature ?? 'incense';
+        const ll = (l as unknown as { __scrollLocation?: string }).__scrollLocation ?? 'center';
+        return lf === feature && ll === loc;
+      }) ?? null;
+      if (reuse) {
+        target = reuse;
+        wasReused = true;
+      }
+    }
+    if (!target) {
+      if (Platform.isMobile) {
+        target = workspace.getLeaf(false);
+      } else if (loc === 'left') {
+        target = workspace.getLeftLeaf(false);
+      } else if (loc === 'right') {
+        target = workspace.getRightLeaf(false) || workspace.getRightLeaf(true);
+      } else {
+        target = workspace.getLeaf(true);
+      }
+      // feature 不明确时（如画布内移动），沿用即将复用的空位的旧功能，避免误覆盖
+      if (!feature) {
+        const tf = (target as unknown as { __scrollFeature?: string }).__scrollFeature;
+        if (tf) incomingFeature = tf;
+      }
     }
     if (!target) {
       new Notice('无法打开画中卷');
       return;
     }
 
-    // 记录已存在实例，打开后清理（排除即将复用的 target 自身）
-    const existing = workspace.getLeavesOfType(VIEW_TYPE_SCROLL);
+    (target as unknown as { __scrollFeature?: string }).__scrollFeature = incomingFeature;
+    (target as unknown as { __scrollLocation?: string }).__scrollLocation = loc;
 
-    await target.setViewState({ type: VIEW_TYPE_SCROLL, active: true });
-    await workspace.revealLeaf(target);
+    // 捕获「本次打开前」该 leaf 已挂载视图的功能：setViewState 会经 setState 立即把
+    // _feature 改成 incomingFeature，故重载判定必须用「改之前」的旧值，否则已挂载视图换功能时
+    //（同类型视图被复用、iframe 不重载）会判成「已一致」而漏掉 reloadWebapp，旧功能赖着不走。
+    const prevFeature = (target.view instanceof ScrollView) ? (target.view as ScrollView).getFeature() : null;
+
+    if (wasReused) {
+      // 已挂载且功能/位置一致：仅把视图带到前台（选中其 tab），不重建、也不抢键盘焦点。
+      // 注意用 revealLeaf 而非 setActiveLeaf({focus:true})：后者会把焦点抢进画中卷 iframe，
+      // 导致主页（日报 iframe）失焦触发重渲染，表现为主页轻微跳动。revealLeaf 只在其容器内
+      // 选中/展开并显示该 leaf，不移动全局键盘焦点，主页保持活跃、不跳。
+      await workspace.revealLeaf(target);
+    } else {
+      // 【持久化·根因修复】把本 leaf 的功能与停靠位写入视图状态。
+      // Obsidian 会把 leaf state 存进 workspace 布局并随重启恢复；而 ScrollView 的还原链是
+      //   state.feature ?? ScrollView.pendingFeature(static，重启即 null) ?? 'incense'
+      // 原先此处不带 state → 重启后必然回落默认香道，表现为「上次是打字机、重开变香道」。
+      // 真正落盘靠的是 ScrollView 重写的 getState()（Obsidian 序列化的是它，而非此入参）。
+      await target.setViewState({
+        type: VIEW_TYPE_SCROLL,
+        state: { feature: incomingFeature, location: loc },
+        active: true,
+      });
+      await workspace.revealLeaf(target);
+    }
 
     // 右侧栏需展开并给舒适宽度（同 activateView 右栏处理）
     if (loc === 'right' && !Platform.isMobile) {
@@ -1108,12 +1158,14 @@ export default class BambooReviewPlugin extends Plugin {
       });
     }
 
-    // 双 leaf 去重：仅拆掉「同功能」的其它 leaf；异功能 leaf 保留 → 香道/打字机可并存。
-    // 复用规则：本次未显式指定功能（如 ribbon/展卷）且 target 已是某功能 leaf 时，沿用其功能，避免误覆盖。
-    let incomingFeature: string = feature ?? 'incense';
-    const targetFeature = (target as unknown as { __scrollFeature?: string }).__scrollFeature;
-    if (!feature && targetFeature) incomingFeature = targetFeature;
-    (target as unknown as { __scrollFeature?: string }).__scrollFeature = incomingFeature;
+    // 功能注入是一次性的（iframe load 时 postMessage，webapp 侧为一次性 promise）。
+    // 只有「已挂载视图、且打开前功能与本次不同」才需重载 webapp 让新功能在 load 时注入；
+    // 全新 leaf（prevFeature=null）靠 load handler 注入即可，不必重载。
+    const newView = target.view;
+    if (prevFeature !== null && prevFeature !== incomingFeature && newView instanceof ScrollView) {
+      await (newView as ScrollView).reloadWebapp();
+    }
+
     existing.forEach((l) => {
       if (l === target) return;
       const lf = (l as unknown as { __scrollFeature?: string }).__scrollFeature ?? 'incense';

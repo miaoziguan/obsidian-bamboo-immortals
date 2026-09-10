@@ -62,6 +62,28 @@ export class ScrollView extends ItemView {
     return 'scroll';
   }
 
+  /** 本 leaf 当前功能（'incense' | 'typewriter'）。
+   *  功能注入是一次性的（iframe load 时由宿主 postMessage，webapp 侧为一次性 promise），
+   *  故宿主若要把「已挂载」的视图换成别的功能，必须重载其 iframe（reloadWebapp），
+   *  仅改视图状态不会生效（同类型视图会被复用、iframe 不重载）。 */
+  getFeature(): string {
+    return this._feature;
+  }
+
+  /** 持久化本 leaf 的功能/停靠位：Obsidian 序列化的是 view.getState()（而非 setViewState 入参），
+   *  故必须重写，否则重启后 leaf 视图状态丢失 feature → 回落默认香道（即「打字机变香道」）。 */
+  getState(): Record<string, unknown> {
+    return { feature: this._feature, location: this._location };
+  }
+
+  /** 自 workspace 布局恢复（重启后 Obsidian 调它回填功能/位置），iframe 加载时据此注入。 */
+  async setState(state: Record<string, unknown>): Promise<void> {
+    if (state && typeof state === 'object') {
+      if (typeof state.feature === 'string') this._feature = state.feature;
+      if (typeof state.location === 'string') this._location = state.location as ScrollLocation;
+    }
+  }
+
   async onOpen(): Promise<void> {
     const container: HTMLElement = this.containerEl.children[1] as HTMLElement;
     container.empty();
@@ -131,10 +153,15 @@ export class ScrollView extends ItemView {
       this.iframe.addEventListener('load', () => {
         const cw = this.iframe?.contentWindow;
         if (!cw) return;
-        // 本 leaf 的功能/位置：优先 leaf 视图状态（三圆点移动写入），回退宿主 pending（命令打开写入）。
+        // 本 leaf 的功能/位置：优先 leaf 视图状态（打开命令 / 三圆点移动写入；
+        // 随 workspace 布局持久化，重启后即由此还原），回退宿主 pending（同会话内命令打开写入）。
         const vs = this.leaf.getViewState() as { state?: { feature?: string; location?: ScrollLocation } } | null;
         this._feature = vs?.state?.feature ?? ScrollView.pendingFeature ?? 'incense';
         this._location = vs?.state?.location ?? ScrollView.pendingLocation ?? 'center';
+        // pending 是静态量、只服务「本次打开」，消费后立即清空：
+        // 否则残留值会被后续重载或其它 leaf 误读（双 leaf 并存时尤其危险）。
+        ScrollView.pendingFeature = null;
+        ScrollView.pendingLocation = null;
         cw.postMessage({ type: 'scroll:feature', feature: this._feature }, '*');
         cw.postMessage({ type: 'scroll:location', location: this._location }, '*');
       });

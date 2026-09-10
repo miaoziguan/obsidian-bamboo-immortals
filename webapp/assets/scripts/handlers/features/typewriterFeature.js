@@ -108,6 +108,9 @@ export const TypewriterFeature = {
   _audioCtx: null,       // 吐纸音效的 Web Audio 上下文（轻量合成，无需外部音频文件）
   _links: [],            // 便签连线：[{from,to}] 便签 id 对（端点坐标实时算，不入档）
   _linkSvg: null,        // 连线 SVG 层（画布坐标系，随画布平移自动跟随）
+  _linkEls: [],          // 每条连线的 SVG 元素引用（结构不变时复用更新，避免每帧重建 DOM）
+  _linkSigCache: '',     // 上次渲染的连线结构签名（判断能否走「只更新几何」快路径）
+  _ctlEls: null,         // hover 控件的元素引用表（同一条连线时复用更新，避免每帧重建）
   _linkRaf: 0,           // 重绘节流（拖动/旋转/缩放时合并为每帧一次）
   _linkRo: null,         // 观察卡片尺寸变化 → 自动重绘连线
   _dragLink: null,       // 正在拖拽的临时连线 {fromId, temp}
@@ -156,6 +159,9 @@ export const TypewriterFeature = {
     this._fitDone = false;
     if (this._linkRaf) { cancelAnimationFrame(this._linkRaf); this._linkRaf = 0; }
     this._linkSvg = null;
+    this._linkEls = [];
+    this._linkSigCache = '';
+    this._ctlEls = null;
     this._links = [];
     this._dragLink = null;
     clearTimeout(this._hoverTimer);
@@ -278,6 +284,8 @@ export const TypewriterFeature = {
         s.style.width = (18 * scale).toFixed(2) + 'px';
         s.style.height = (18 * scale).toFixed(2) + 'px';
       });
+      // 外围圆钮（旋转/连线）同策略内联像素：两钮必须严格等大，缩放变化时跟随刷新
+      this._el.querySelectorAll('.tw-card-rotate, .tw-card-link').forEach((k) => this._applyKnobSize(k));
     };
     apply();
     if (typeof ResizeObserver !== 'undefined') {
@@ -579,24 +587,37 @@ export const TypewriterFeature = {
     let startX = 0;
     let startY = 0;
     let moved = false;   // 区分「轻点」与「拖动」：轻点 = 钉住外围工具条
+    // 【性能】拖拽的是卡片、画布本身不动（平移是另一套手势），
+    // 故 canvas rect 在 pointerdown 取一次即可。原先每次 pointermove 都
+    // getBoundingClientRect()（还含一次纯属浪费的 card rect：cw/ch 从未被使用），
+    // 与下面的样式写入交替 → 典型「写→读」布局抖动。现在 move 里只剩算术，零布局读。
+    let crLeft = 0;
+    let crTop = 0;
+    // 高刷指针 pointermove 可达 120Hz+，远多于屏幕刷新率；
+    // 用 rAF 把一帧内的多次事件合并成一次写入，避免重复使布局失效。
+    let raf = 0;
+    let px = 0;
+    let py = 0;
+    const apply = () => {
+      raf = 0;
+      card.style.left = px + 'px';
+      card.style.top = py + 'px';
+      this._scheduleRenderLinks();   // 便签移动，连线端点跟随
+    };
     const onMove = (e) => {
       if (!dragging) return;
       if (Math.abs(e.clientX - startX) > 4 || Math.abs(e.clientY - startY) > 4) moved = true;
       // 无限画布：坐标相对 .tw-canvas（含其 transform 平移），不 clamp，
       // 便签可拖到画布任意远处；画布本身可平移来查看（见 _makeCanvasDraggable）
-      const root = canvas;
-      const cr = root.getBoundingClientRect();
-      const cRect = card.getBoundingClientRect();
-      const cw = cRect.width;
-      const ch = cRect.height;
-      let x = e.clientX - cr.left - offX;
-      let y = e.clientY - cr.top - offY;
-      card.style.left = x + 'px';
-      card.style.top = y + 'px';
-      this._scheduleRenderLinks();   // 便签移动，连线端点跟随
+      px = e.clientX - crLeft - offX;
+      py = e.clientY - crTop - offY;
+      if (!raf) raf = requestAnimationFrame(apply);
     };
     const onUp = () => {
       dragging = false;
+      if (raf) { cancelAnimationFrame(raf); raf = 0; }
+      // 松手时补写最后一帧：rAF 可能尚未执行，不能丢掉最后的位移
+      if (moved) { card.style.left = px + 'px'; card.style.top = py + 'px'; this._scheduleRenderLinks(); }
       card.classList.remove('dragging');
       document.removeEventListener('pointermove', onMove);
       document.removeEventListener('pointerup', onUp);
@@ -611,9 +632,14 @@ export const TypewriterFeature = {
       moved = false;
       startX = e.clientX;
       startY = e.clientY;
+      const cr = canvas.getBoundingClientRect();
+      crLeft = cr.left;
+      crTop = cr.top;
       const rect = card.getBoundingClientRect();
       offX = e.clientX - rect.left;
       offY = e.clientY - rect.top;
+      px = parseFloat(card.style.left) || 0;
+      py = parseFloat(card.style.top) || 0;
       card.classList.add('dragging');
       card.style.zIndex = String(++this._zTop);
       // 拖拽置顶后同步层叠快照，避免 mouseleave 时把便签回落回旧层级
@@ -670,6 +696,16 @@ export const TypewriterFeature = {
     };
     // 监听挂在功能根(wrap)而非 canvas：机身区(绿壳空白处)也能拖动画布，实现全局平移
     root.addEventListener('pointerdown', onDown);
+    // 【根因修复·退不出编辑态】编辑态下，点便签文本/控件以外的任意处（空白画布、机身区、
+    // 其它便签、纸边）即退出编辑。挂在「捕获阶段」先于上方画布平移的 e.preventDefault() 生效——
+    // 否则 preventDefault 会抑制默认失焦、导致 blur 兜底失效，便签卡在编辑态出不去。
+    root.addEventListener('pointerdown', (e) => {
+      const editing = this._canvas && this._canvas.querySelector('.tw-card.editing');
+      if (!editing) return;
+      if (e.target.closest('.tw-card-text')) return;            // 仍在文本内：继续编辑
+      if (e.target.closest('button, .tw-card-resize, .tw-card-rotate, .tw-card-link, input, textarea')) return;
+      this._exitAllEdits();
+    }, true);
   },
 
   /** 把画布平移到指定偏移并持久化 */
@@ -1005,40 +1041,51 @@ export const TypewriterFeature = {
     range.collapse(false);
     sel.removeAllRanges();
     sel.addRange(range);
-    text.addEventListener('input', this._onEditInput);
-    text.addEventListener('keydown', this._onEditKey);
-    text.addEventListener('paste', this._onEditPaste);
+    // 【根因修复】事件回调必须用闭包绑定 this：浏览器触发 addEventListener 时 this 会指向
+    // text 元素而非 feature 实例，否则 _exitEdit/_scheduleSave 变成 undefined ——
+    // 表现为 Escape 退出失效、输入不自动落盘。处理器存到 card._editHandlers 以便对称移除。
+    const onInput = () => this._scheduleSave();
+    const onKey = (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        this._exitEdit(card); // Enter 不拦截：contenteditable 内回车即多行便签
+      }
+    };
+    const onPaste = (e) => {
+      e.preventDefault();
+      const t = (e.clipboardData || window.clipboardData).getData('text/plain');
+      document.execCommand('insertText', false, t); // 只粘纯文本，不把网页样式带进便签
+    };
+    card._editHandlers = { onInput, onKey, onPaste };
+    text.addEventListener('input', onInput);
+    text.addEventListener('keydown', onKey);
+    text.addEventListener('paste', onPaste);
+    // 【根因修复·退不出编辑态】失焦即退出：点了便签以外的任何地方（空白画布 / 其它便签 /
+    // 卡片纸边）都算「完成编辑」，避免卡在编辑态出不去。
+    // 必须在 _exitEdit 里先移除本监听、再 removeAttribute('contenteditable')，
+    // 否则移除 contenteditable 触发的 blur 会二次进入 _exitEdit。
+    const onBlur = () => this._exitEdit(card);
+    card._editBlur = onBlur;
+    text.addEventListener('blur', onBlur);
   },
 
   _exitEdit(card) {
     if (!card.classList.contains('editing')) return;
     const text = card.querySelector('.tw-card-text');
     card.classList.remove('editing');
+    const h = card._editHandlers;
+    card._editHandlers = null;
     if (text) {
+      if (card._editBlur) { text.removeEventListener('blur', card._editBlur); card._editBlur = null; }
       text.removeAttribute('contenteditable');
-      text.removeEventListener('input', this._onEditInput);
-      text.removeEventListener('keydown', this._onEditKey);
-      text.removeEventListener('paste', this._onEditPaste);
+      if (h) {
+        text.removeEventListener('input', h.onInput);
+        text.removeEventListener('keydown', h.onKey);
+        text.removeEventListener('paste', h.onPaste);
+      }
       if (window.getSelection) window.getSelection().removeAllRanges();
       this._scheduleSave(); // 落盘：_collectNotes 读的是 .tw-card-text 内容
     }
-  },
-
-  _onEditInput() { this._scheduleSave(); },
-
-  _onEditKey(e) {
-    if (e.key === 'Escape') {
-      e.preventDefault();
-      const card = e.currentTarget.closest('.tw-card');
-      if (card) this._exitEdit(card);
-    }
-    // Enter 不拦截：contenteditable 内回车即多行便签
-  },
-
-  _onEditPaste(e) {
-    e.preventDefault();
-    const t = (e.clipboardData || window.clipboardData).getData('text/plain');
-    document.execCommand('insertText', false, t); // 只粘纯文本，不把网页样式带进便签
   },
 
   /** 右下角手柄拖拽缩放 + 双击手柄复位 + ⌘/Ctrl 滚轮微调。
@@ -1123,7 +1170,47 @@ export const TypewriterFeature = {
     return d;
   },
 
-  /** 底部中央旋转握柄：拖动绕卡片中心自由旋转；Shift 吸附 15°；双击握柄归零。 */
+  /** 外围圆钮（旋转 .tw-card-rotate / 连线 .tw-card-link）统一内联像素尺寸。
+   *  【真根因】设计系统全局触控目标规则（base-foundation.css）把 [role="button"]
+   *  地板到 min-width/min-height:44px，且 min-width 压过一切 width（含内联）——
+   *  连线锚点(role=button)中招被撑到 44px，旋转握柄(role=slider)不命中 → 一大一小。
+   *  故除 width/height 外还须内联同值 min-width/min-height，保证左右严格等大。 */
+  _applyKnobSize(el) {
+    const scale = parseFloat(this._el && this._el.style.getPropertyValue('--tw-scale')) || 1;
+    const px = Math.min(38, Math.max(26, 30 * scale));
+    const iconPx = Math.min(21, Math.max(15, 17 * scale));
+    el.style.width = px.toFixed(2) + 'px';
+    el.style.height = px.toFixed(2) + 'px';
+    el.style.minWidth = px.toFixed(2) + 'px';
+    el.style.minHeight = px.toFixed(2) + 'px';
+    const svg = el.querySelector('svg');
+    if (svg) {
+      svg.style.width = iconPx.toFixed(2) + 'px';
+      svg.style.height = iconPx.toFixed(2) + 'px';
+    }
+    // 【临时探针·发布前删除】核实运行构建与两钮真实尺寸
+    this._probeKnob(el);
+  },
+
+  /** 【临时探针·发布前删除】元素入文档后才有布局盒，故 creation 期延到下一帧再量 */
+  _probeKnob(el) {
+    if (!el.isConnected) { requestAnimationFrame(() => this._probeKnob(el)); return; }
+    try {
+      const cs = getComputedStyle(el);
+      const card = el.closest('.tw-card');
+      const ccs = card ? getComputedStyle(card) : null;
+      console.log('[tw-knob-probe]', el.className.replace('tw-card-', ''),
+        'inline=' + el.style.width,
+        'rect=' + Math.round(el.getBoundingClientRect().width * 10) / 10,
+        'computed=' + (cs.width || '(empty)'),
+        'box=' + cs.boxSizing,
+        'zoom=' + (ccs ? ccs.getPropertyValue('--tw-card-zoom') : '?'),
+        'cardFs=' + (ccs ? ccs.fontSize : '?'));
+    } catch (_) { /* 忽略 */ }
+  },
+
+  /** 左侧中部旋转握柄（与右侧连线锚点对称，下方通道留给工具条）：
+      拖动绕卡片中心自由旋转；Shift 吸附 15°；双击握柄归零。 */
   _makeRotatable(card) {
     const handle = document.createElement('div');
     handle.className = 'tw-card-rotate';
@@ -1131,33 +1218,44 @@ export const TypewriterFeature = {
     handle.setAttribute('aria-label', '旋转便签');
     handle.title = '拖动旋转 · Shift 吸附 15° · 双击归零';
     handle.innerHTML = ICON_ROTATE;
+    this._applyKnobSize(handle);   // 内联像素：与右侧连线锚点严格等大
     card.appendChild(handle);
 
     let rotating = false;
     let lastAngle = 0;
-    const centerOf = () => {
-      const r = card.getBoundingClientRect();
-      return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+    // 【性能】旋转是绕卡片中心的，中心在旋转下不变 → pointerdown 时取一次即可复用。
+    // 原先每次 move 都 getBoundingClientRect()，且与 _applyRot 的写入交替 → 强制同步重排。
+    let cx0 = 0;
+    let cy0 = 0;
+    // 目标角度在本次手势内本地累计：合帧后 _applyRot 每帧才写一次 dataset，
+    // 若仍像原先那样「读 dataset.rot + 增量」，一帧内的第二个事件会读到未更新的旧值 → 丢增量。
+    let pendingDeg = 0;
+    let raf = 0;
+    const angleOf = (ax, ay, px, py) => Math.atan2(py - ay, px - ax) * 180 / Math.PI;
+    const apply = () => {
+      raf = 0;
+      this._applyRot(card, pendingDeg);
+      this._scheduleRenderLinks();   // 旋转后端点沿旋转矩形重算
     };
-    const angleOf = (cx, cy, px, py) => Math.atan2(py - cy, px - cx) * 180 / Math.PI;
-
     const onMove = (e) => {
       if (!rotating) return;
-      const c = centerOf();
-      let a = angleOf(c.x, c.y, e.clientX, e.clientY);
+      const a = angleOf(cx0, cy0, e.clientX, e.clientY);
       let delta = a - lastAngle;
       // 跨越 ±180° 时 atan2 会跳变，归一化增量避免「猛地多转一圈」
       if (delta > 180) delta -= 360;
       else if (delta < -180) delta += 360;
       lastAngle = a;
-      let next = (Number(card.dataset.rot) || 0) + delta;
-      if (e.shiftKey) next = Math.round(next / 15) * 15;   // Shift 吸附到 15° 网格
-      this._applyRot(card, next);
-      this._scheduleRenderLinks();   // 旋转后端点沿旋转矩形重算
+      pendingDeg += delta;
+      // Shift 吸附到 15° 网格；吸附值写回累计量，保证松手后不回弹
+      if (e.shiftKey) pendingDeg = Math.round(pendingDeg / 15) * 15;
+      if (!raf) raf = requestAnimationFrame(apply);
     };
     const onUp = () => {
       if (!rotating) return;
       rotating = false;
+      if (raf) { cancelAnimationFrame(raf); raf = 0; }
+      this._applyRot(card, pendingDeg);   // 补写最后一帧，避免丢掉末尾增量
+      this._scheduleRenderLinks();
       card.classList.remove('is-rotating');
       document.removeEventListener('pointermove', onMove);
       document.removeEventListener('pointerup', onUp);
@@ -1167,8 +1265,11 @@ export const TypewriterFeature = {
       e.preventDefault();
       e.stopPropagation();
       rotating = true;
-      const c = centerOf();
-      lastAngle = angleOf(c.x, c.y, e.clientX, e.clientY);
+      const r = card.getBoundingClientRect();
+      cx0 = r.left + r.width / 2;
+      cy0 = r.top + r.height / 2;
+      pendingDeg = Number(card.dataset.rot) || 0;
+      lastAngle = angleOf(cx0, cy0, e.clientX, e.clientY);
       card.classList.add('is-rotating');
       card.style.zIndex = String(++this._zTop);
       document.addEventListener('pointermove', onMove);
@@ -1246,83 +1347,129 @@ export const TypewriterFeature = {
   _renderLinks() {
     if (!this._canvas) return;
     const svg = this._ensureLinkLayer();
-    // 只清正式连线，保留正在拖拽的临时线（is-temp）
-    Array.from(svg.children).forEach((ch) => {
-      if (!ch.classList || !ch.classList.contains('is-temp')) svg.removeChild(ch);
-    });
     const byId = new Map();
     this._canvas.querySelectorAll('.tw-card').forEach((c) => byId.set(c.dataset.id, c));
+    const items = [];
     this._links.forEach((l) => {
       const a = byId.get(l.from);
       const b = byId.get(l.to);
       if (!a || !b) return;
-      const ca = { x: a.offsetLeft + a.offsetWidth / 2, y: a.offsetTop + a.offsetHeight / 2 };
-      const cb = { x: b.offsetLeft + b.offsetWidth / 2, y: b.offsetTop + b.offsetHeight / 2 };
-      // ① 选边：端点落在自动挑出的边上，出线方向为该边的外法线
-      const A = this._anchorOn(a, cb);
-      const B = this._anchorOn(b, ca);
-      const p1 = A.p;
-      const p2 = B.p;
-      // ② 路线：曲线（默认）或直线（手动切换后存 route）
-      const mode = (l.route === 'straight') ? 'straight' : 'bezier';
-      const { d, tip } = this._routePath(A.p, A.u, B.p, B.u, mode, Number(l.bend) || 0);
-      // 统一工厂：线/端点/箭头都带 data-from/to，供「关联高亮」一起提亮
-      const mk = (tag, cls) => {
-        const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
-        el.setAttribute('class', cls);
-        el.setAttribute('data-from', l.from);
-        el.setAttribute('data-to', l.to);
-        return el;
-      };
-
-      // 隐形命中层：可见线只有 1.5px，直接点几乎选不中。
-      // 叠一条同路径、16px 宽、完全透明的线专收事件（Figma / tldraw 的标准做法）：
-      // 视觉上完全看不见，但命中宽度从 1.5px 放大到 16px。
-      const hit = mk('path', 'tw-link-hit');
-      hit.setAttribute('d', d);
-      hit.addEventListener('mouseenter', () => {
-        clearTimeout(this._hoverTimer);
-        this._hoverLink = { from: l.from, to: l.to };
-        this._setLinkActive(l.from, l.to, true);
-        this._renderLinkControls(l.from, l.to);
-      });
-      hit.addEventListener('mouseleave', () => this._scheduleEndHover());
-      hit.addEventListener('dblclick', (e) => {
-        e.stopPropagation();   // 避免冒泡到画布触发 fit-all
-        this._endLinkHover();
-        this._removeLink(l.from, l.to);
-        this._scheduleSave();
-      });
-      const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
-      title.textContent = '双击删除 · 拖中点改走向 · 点圆点切线型 · 点虚线点切换实线/虚线';
-      hit.appendChild(title);
-      svg.appendChild(hit);
-
-      const path = mk('path', 'tw-link');
-      path.setAttribute('d', d);
-      // 线型（实线/虚线）：随连线存盘，逐条独立。虚线用 is-dashed 类驱动 CSS stroke-dasharray
-      if (l.dash === 'dashed') path.classList.add('is-dashed');
-      svg.appendChild(path);
-
-      // 端点：源端实心圆点；目标端实心小三角（filled triangle，React Flow / Figma 默认端点）。
-      //  三角尖端指向目标便签（沿 -B.u 入纸边），线尾被三角填充盖住、不穿心。两端都带 data-from/to 供高亮。
-      const src = mk('circle', 'tw-link-dot tw-link-dot-src');
-      src.setAttribute('cx', p1.x); src.setAttribute('cy', p1.y); src.setAttribute('r', '3.6');
-      svg.appendChild(src);
-      // 箭头轴 = 曲线末端切线 tip（与线身同方向），而非卡片外法线 B.u：
-      // 曲线带 bow 时入线方向与卡片边成角，若箭头按 B.u 画（垂直卡片）二者方向不一致，
-      // 衔接处出现折角。改用 tip 后箭头与线身共线、无缝收尾；尖端落在 p2，线尾被三角盖住。
-      const ah = 8, aw = 7;   // 三角高 / 半宽
-      const apx = -tip.y, apy = tip.x;                          // 垂直于入线方向
-      const bx = p2.x - tip.x * ah, by = p2.y - tip.y * ah;     // 底边中心（朝源侧退 ah）
-      const ab1 = { x: bx + apx * aw / 2, y: by + apy * aw / 2 };
-      const ab2 = { x: bx - apx * aw / 2, y: by - apy * aw / 2 };
-      const arrow = mk('path', 'tw-link-arrow-end');
-      arrow.setAttribute('d', `M ${p2.x} ${p2.y} L ${ab1.x} ${ab1.y} L ${ab2.x} ${ab2.y} Z`);
-      svg.appendChild(arrow);
+      items.push({ l, a, b });
     });
+    // 【性能】结构签名：只有连线的增删/顺序变了才重建 DOM。
+    // 端点移动（拖卡/旋转/缩放）时复用已有元素、只改几何属性 —— 每帧从
+    // 「每线 5 建 5 删 + 挂 3 个监听」降到「每线 4 次 setAttribute」，GC 压力骤降。
+    const sig = items.map((it) => it.l.from + '>' + it.l.to).join('|');
+    const reusable = this._linkEls.length === items.length
+      && this._linkSigCache === sig
+      && this._linkEls.every((g) => g && g.path && g.path.parentNode === svg);
+    if (reusable) {
+      items.forEach((it, i) => this._updateLinkGeom(this._linkEls[i], it));
+    } else {
+      // 只清正式连线，保留正在拖拽的临时线（is-temp）
+      Array.from(svg.children).forEach((ch) => {
+        if (!ch.classList || !ch.classList.contains('is-temp')) svg.removeChild(ch);
+      });
+      this._linkEls = items.map((it) => this._buildLink(svg, it));
+      this._linkSigCache = sig;
+    }
     // 重绘后补回悬浮控件（拖动弯曲时每帧都会重绘）
     if (this._hoverLink) this._renderLinkControls(this._hoverLink.from, this._hoverLink.to);
+  },
+
+  /** 为一条连线建出全部 SVG 元素（仅结构变化时调用），返回引用供后续复用更新 */
+  _buildLink(svg, it) {
+    const l = it.l;
+    // 统一工厂：线/端点/箭头都带 data-from/to，供「关联高亮」一起提亮
+    const mk = (tag, cls) => {
+      const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+      el.setAttribute('class', cls);
+      el.setAttribute('data-from', l.from);
+      el.setAttribute('data-to', l.to);
+      return el;
+    };
+
+    // 隐形命中层：可见线只有 1.5px，直接点几乎选不中。
+    // 叠一条同路径、16px 宽、完全透明的线专收事件（Figma / tldraw 的标准做法）：
+    // 视觉上完全看不见，但命中宽度从 1.5px 放大到 16px。
+    const hit = mk('path', 'tw-link-hit');
+    hit.addEventListener('mouseenter', () => {
+      clearTimeout(this._hoverTimer);
+      this._hoverLink = { from: l.from, to: l.to };
+      this._setLinkActive(l.from, l.to, true);
+      this._renderLinkControls(l.from, l.to);
+    });
+    hit.addEventListener('mouseleave', () => this._scheduleEndHover());
+    hit.addEventListener('dblclick', (e) => {
+      e.stopPropagation();   // 避免冒泡到画布触发 fit-all
+      this._endLinkHover();
+      this._removeLink(l.from, l.to);
+      this._scheduleSave();
+    });
+    const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+    title.textContent = '双击删除 · 拖中点改走向 · 点圆点切线型 · 点虚线点切换实线/虚线';
+    hit.appendChild(title);
+    svg.appendChild(hit);
+
+    const path = mk('path', 'tw-link');
+    svg.appendChild(path);
+
+    // 端点：源端实心圆点；目标端实心小三角（filled triangle，React Flow / Figma 默认端点）。
+    //  三角尖端指向目标便签（沿 -B.u 入纸边），线尾被三角填充盖住、不穿心。两端都带 data-from/to 供高亮。
+    const src = mk('circle', 'tw-link-dot tw-link-dot-src');
+    src.setAttribute('r', '3.6');
+    svg.appendChild(src);
+    const arrow = mk('path', 'tw-link-arrow-end');
+    svg.appendChild(arrow);
+
+    const g = { hit, path, src, arrow };
+    this._applyLinkGeom(g, this._linkGeom(it));
+    return g;
+  },
+
+  /** 算一条连线的几何：路径 d、源端点、箭头三角。端点坐标实时算，不入档。 */
+  _linkGeom(it) {
+    const l = it.l;
+    const a = it.a;
+    const b = it.b;
+    const ca = { x: a.offsetLeft + a.offsetWidth / 2, y: a.offsetTop + a.offsetHeight / 2 };
+    const cb = { x: b.offsetLeft + b.offsetWidth / 2, y: b.offsetTop + b.offsetHeight / 2 };
+    // ① 选边：端点落在自动挑出的边上，出线方向为该边的外法线
+    const A = this._anchorOn(a, cb);
+    const B = this._anchorOn(b, ca);
+    // ② 路线：曲线（默认）或直线（手动切换后存 route）
+    const mode = (l.route === 'straight') ? 'straight' : 'bezier';
+    const { d, tip } = this._routePath(A.p, A.u, B.p, B.u, mode, Number(l.bend) || 0);
+    // 箭头轴 = 曲线末端切线 tip（与线身同方向），而非卡片外法线 B.u：
+    // 曲线带 bow 时入线方向与卡片边成角，若箭头按 B.u 画（垂直卡片）二者方向不一致，
+    // 衔接处出现折角。改用 tip 后箭头与线身共线、无缝收尾；尖端落在 p2，线尾被三角盖住。
+    const ah = 8, aw = 7;   // 三角高 / 半宽
+    const apx = -tip.y, apy = tip.x;                          // 垂直于入线方向
+    const bx = B.p.x - tip.x * ah, by = B.p.y - tip.y * ah;   // 底边中心（朝源侧退 ah）
+    const ab1 = { x: bx + apx * aw / 2, y: by + apy * aw / 2 };
+    const ab2 = { x: bx - apx * aw / 2, y: by - apy * aw / 2 };
+    // 线型（实线/虚线）：随连线存盘，逐条独立。虚线用 is-dashed 类驱动 CSS stroke-dasharray
+    return {
+      d,
+      p1: A.p,
+      arrowD: `M ${B.p.x} ${B.p.y} L ${ab1.x} ${ab1.y} L ${ab2.x} ${ab2.y} Z`,
+      dash: l.dash === 'dashed',
+    };
+  },
+
+  /** 把几何写进已有元素（零 DOM 重建） */
+  _applyLinkGeom(g, geo) {
+    g.hit.setAttribute('d', geo.d);
+    g.path.setAttribute('d', geo.d);
+    g.src.setAttribute('cx', geo.p1.x);
+    g.src.setAttribute('cy', geo.p1.y);
+    g.arrow.setAttribute('d', geo.arrowD);
+    g.path.classList.toggle('is-dashed', geo.dash);
+  },
+
+  /** 单条连线的几何更新：拖拽/旋转/缩放的每帧热路径 */
+  _updateLinkGeom(g, it) {
+    this._applyLinkGeom(g, this._linkGeom(it));
   },
 
   // ===== 连线路由：选边 → 路线 =====
@@ -1395,6 +1542,7 @@ export const TypewriterFeature = {
     // ResizeObserver 触发重绘）时其 mouseleave 不会触发，若不复位 _ctlHover 会卡在 true，
     // 导致 end-hover 定时器永久 bail、连线永远回不到常态（悬浮后偶尔无法恢复）。
     this._ctlHover = false;
+    this._ctlEls = null;   // 控件已移除，复用缓存一并作废
     Array.from(svg.querySelectorAll('.tw-link-ctl')).forEach((el) => el.remove());
   },
 
@@ -1417,25 +1565,44 @@ export const TypewriterFeature = {
 
   /** hover 连线时在线上浮现两个控件（tldraw elbowMidPoint 的做法）：
    *  中点「弯曲手柄」可拖动改变走向；约 1/4 处「线型按钮」点击在 曲线/直线 间循环。
-   *  位置用 getPointAtLength 精确取在曲线上。 */
+   *  位置用 getPointAtLength 精确取在曲线上。
+   * 【性能】拖弯曲手柄时本函数每帧都会被 _renderLinks 回调。原先每帧都
+   *  「清空 4 个控件组 + 重建约 12 个 SVG 元素 + 重挂 12 个监听 + 2 次 querySelectorAll」。
+   * 现在：hover 的仍是同一条连线、且控件元素都还挂在连线层上 → 只更新坐标与图标（零重建）；
+   * 换了连线、或元素被清过 → 才走原来的全量构建。 */
   _renderLinkControls(from, to) {
-    this._clearLinkControls();
     const svg = this._linkSvg;
     if (!svg) return;
+    if (!this._linkOf(from, to)) { this._clearLinkControls(); return; }
+    const key = from + '>' + to;
+    const c = this._ctlEls;
+    // 复用前提：同一条连线，且缓存的控件与线元素都还在连线层上
+    const reusable = c && c.key === key && c.lineEl.parentNode === svg
+      && c.bend.parentNode === svg && c.dash.parentNode === svg;
+    if (reusable) {
+      this._applyLinkControlsGeom(c);
+      return;
+    }
+    this._clearLinkControls();
+    this._ctlEls = this._buildLinkControls(svg, from, to, key);
+  },
+
+  /** 取连线对象（惰性查：控件被复用后生命周期变长，不能让回调闭包长期持有旧对象） */
+  _linkOf(from, to) {
+    return this._links.find((l) => l.from === from && l.to === to) || null;
+  },
+
+  /** 首次（或换了连线之后）构建 hover 控件，返回可复用的元素引用表 */
+  _buildLinkControls(svg, from, to, key) {
     const line = Array.from(svg.querySelectorAll('.tw-link')).find((el) =>
       el.getAttribute('data-from') === from && el.getAttribute('data-to') === to);
-    const link = this._links.find((l) => l.from === from && l.to === to);
-    if (!line || !link || typeof line.getTotalLength !== 'function') return;
-    const len = line.getTotalLength();
-    if (!len) return;
-    const cardById = (id) => Array.from(this._canvas.querySelectorAll('.tw-card'))
-      .find((c) => c.dataset.id === id);
+    if (!line || typeof line.getTotalLength !== 'function') return null;
+    if (!line.getTotalLength()) return null;
 
-    const mkCtl = (cls, pt, label) => {
+    // 坐标交给 _applyLinkControlsGeom 统一写，此处只定「半径」等不变量
+    const mkCtl = (cls, label) => {
       const el = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
       el.setAttribute('class', cls);
-      el.setAttribute('cx', pt.x);
-      el.setAttribute('cy', pt.y);
       el.setAttribute('r', '5');
       const t = document.createElementNS('http://www.w3.org/2000/svg', 'title');
       t.textContent = label;
@@ -1448,10 +1615,12 @@ export const TypewriterFeature = {
     };
 
     // ① 中点弯曲手柄：拖动把线沿法线推弯，弯曲量随线存盘
-    const handle = mkCtl('tw-link-ctl tw-link-bend', line.getPointAtLength(len / 2), '拖动改变连线走向');
-    handle.addEventListener('pointerdown', (e) => {
+    const bend = mkCtl('tw-link-ctl tw-link-bend', '拖动改变连线走向');
+    bend.addEventListener('pointerdown', (e) => {
       e.stopPropagation();
       e.preventDefault();
+      const cardById = (id) => Array.from(this._canvas.querySelectorAll('.tw-card'))
+        .find((c) => c.dataset.id === id);
       const cardA = cardById(from);
       const cardB = cardById(to);
       if (!cardA || !cardB) return;
@@ -1468,9 +1637,11 @@ export const TypewriterFeature = {
       const nx = -vy / vl;
       const ny = vx / vl;
       const onMove = (ev) => {
+        const lk = this._linkOf(from, to);
+        if (!lk) return;
         const mx = ev.clientX - rect.left;
         const my = ev.clientY - rect.top;
-        link.bend = Math.round((mx - base.x) * nx + (my - base.y) * ny);
+        lk.bend = Math.round((mx - base.x) * nx + (my - base.y) * ny);
         this._renderLinks();
       };
       const onUp = () => {
@@ -1484,13 +1655,14 @@ export const TypewriterFeature = {
     });
 
     // ② 线型切换按钮：点击在 曲线 → 直线 间循环（React Flow 的 edge type 思路）
-    const modeBtn = mkCtl('tw-link-ctl tw-link-mode', line.getPointAtLength(len * 0.28),
-      '点击切换线型（曲线 / 直线）');
-    modeBtn.addEventListener('click', (e) => {
+    const mode = mkCtl('tw-link-ctl tw-link-mode', '点击切换线型（曲线 / 直线）');
+    mode.addEventListener('click', (e) => {
       e.stopPropagation();
+      const lk = this._linkOf(from, to);
+      if (!lk) return;
       const order = ['bezier', 'straight'];
-      const cur = (link.route === 'straight') ? 'straight' : 'bezier';
-      link.route = order[(order.indexOf(cur) + 1) % order.length];
+      const cur = (lk.route === 'straight') ? 'straight' : 'bezier';
+      lk.route = order[(order.indexOf(cur) + 1) % order.length];
       this._renderLinks();
       this._scheduleSave();
     });
@@ -1499,62 +1671,90 @@ export const TypewriterFeature = {
     //  直接落在线上（与线型按钮同策略），避免「按钮偏在线侧 → 指针离开 16px 命中带 → 80ms 收起定时器
     //  先一步撤掉控件、点击落空」的失真；用 cx/cy 定位（非 transform 属性），避免 CSS hover 的 scale
     //  覆盖 translate 导致控件跳动。
-    const f = 0.72;
-    const mPt = line.getPointAtLength(len * f);
-    const dx = mPt.x, dy = mPt.y;
     const keep = () => { clearTimeout(this._hoverTimer); this._ctlHover = true; };
     const release = () => { this._ctlHover = false; this._scheduleEndHover(); };
-    const onDel = (e) => {
-      e.stopPropagation();
-      this._endLinkHover();          // 收起控件 + 取消关联高亮
-      this._removeLink(from, to);
-      this._scheduleSave();
-    };
     const del = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     del.setAttribute('class', 'tw-link-ctl tw-link-del');
     const delBg = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
     delBg.setAttribute('class', 'tw-link-del-bg');
-    delBg.setAttribute('cx', dx); delBg.setAttribute('cy', dy); delBg.setAttribute('r', '8');
+    delBg.setAttribute('r', '8');
     const delX = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     delX.setAttribute('class', 'tw-link-del-x');
-    delX.setAttribute('d', `M ${dx - 3} ${dy - 3} L ${dx + 3} ${dy + 3} M ${dx - 3} ${dy + 3} L ${dx + 3} ${dy - 3}`);
     del.appendChild(delBg); del.appendChild(delX);
     const delT = document.createElementNS('http://www.w3.org/2000/svg', 'title');
     delT.textContent = '点击删除连线';
     del.appendChild(delT);
     del.addEventListener('mouseenter', keep);
     del.addEventListener('mouseleave', release);
-    del.addEventListener('click', onDel);
+    del.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this._endLinkHover();          // 收起控件 + 取消关联高亮
+      this._removeLink(from, to);
+      this._scheduleSave();
+    });
     svg.appendChild(del);
 
     // ④ 实线/虚线切换按钮：落在连线 1/8 处（与线型按钮同策略，直接压在线上的点位），
     //  避免「按钮偏在线侧 → 指针离开 16px 命中带 → 80ms 收起定时器先撤控件、点击落空」的失真。
     //  点击在 实线 ↔ 虚线 间循环，状态随连线存盘（逐条独立）。
-    const dPt = line.getPointAtLength(len * 0.125);
-    const dx2 = dPt.x, dy2 = dPt.y;
     const dash = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-    dash.setAttribute('class', 'tw-link-ctl tw-link-dash' + (link.dash === 'dashed' ? ' is-on' : ''));
+    dash.setAttribute('class', 'tw-link-ctl tw-link-dash');
     const dashBg = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
     dashBg.setAttribute('class', 'tw-link-dash-bg');
-    dashBg.setAttribute('cx', dx2); dashBg.setAttribute('cy', dy2); dashBg.setAttribute('r', '8');
+    dashBg.setAttribute('r', '8');
     // 图标所见即所得：实线态画实线、虚线态画虚线
     const dashIco = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     dashIco.setAttribute('class', 'tw-link-dash-ico');
-    dashIco.setAttribute('d', (link.dash === 'dashed')
-      ? `M ${dx2 - 4} ${dy2 - 1} l 1.6 0 M ${dx2 - 0.6} ${dy2 - 1} l 1.6 0 M ${dx2 + 2.8} ${dy2 - 1} l 1.6 0`
-      : `M ${dx2 - 4.5} ${dy2 - 1} L ${dx2 + 4.5} ${dy2 - 1}`);
     const dashT = document.createElementNS('http://www.w3.org/2000/svg', 'title');
-    dashT.textContent = (link.dash === 'dashed') ? '当前虚线 · 点击改实线' : '当前实线 · 点击改虚线';
     dash.appendChild(dashBg); dash.appendChild(dashIco); dash.appendChild(dashT);
     dash.addEventListener('mouseenter', keep);
     dash.addEventListener('mouseleave', release);
     dash.addEventListener('click', (e) => {
       e.stopPropagation();
-      link.dash = (link.dash === 'dashed') ? 'solid' : 'dashed';
+      const lk = this._linkOf(from, to);
+      if (!lk) return;
+      lk.dash = (lk.dash === 'dashed') ? 'solid' : 'dashed';
       this._renderLinks();
       this._scheduleSave();
     });
     svg.appendChild(dash);
+
+    const c = { key, from, to, lineEl: line, bend, mode, del, delBg, delX, dash, dashBg, dashIco, dashT };
+    this._applyLinkControlsGeom(c);
+    return c;
+  },
+
+  /** 把控件摆到当前曲线的对应位置（每帧热路径：只改属性，零 DOM 重建） */
+  _applyLinkControlsGeom(c) {
+    const line = c.lineEl;
+    const len = line.getTotalLength();
+    if (!len) return;
+    const link = this._linkOf(c.from, c.to);
+    // ① 弯曲手柄：中点
+    const p = line.getPointAtLength(len / 2);
+    c.bend.setAttribute('cx', p.x);
+    c.bend.setAttribute('cy', p.y);
+    // ② 线型按钮：约 0.28 处
+    const mp = line.getPointAtLength(len * 0.28);
+    c.mode.setAttribute('cx', mp.x);
+    c.mode.setAttribute('cy', mp.y);
+    // ③ 删除按钮：约 3/4 处
+    const mPt = line.getPointAtLength(len * 0.72);
+    const dx = mPt.x, dy = mPt.y;
+    c.delBg.setAttribute('cx', dx);
+    c.delBg.setAttribute('cy', dy);
+    c.delX.setAttribute('d', `M ${dx - 3} ${dy - 3} L ${dx + 3} ${dy + 3} M ${dx - 3} ${dy + 3} L ${dx + 3} ${dy - 3}`);
+    // ④ 实线/虚线按钮：1/8 处（图标与文案随线型变）
+    const dPt = line.getPointAtLength(len * 0.125);
+    const dx2 = dPt.x, dy2 = dPt.y;
+    c.dashBg.setAttribute('cx', dx2);
+    c.dashBg.setAttribute('cy', dy2);
+    const dashed = !!link && link.dash === 'dashed';
+    c.dashIco.setAttribute('d', dashed
+      ? `M ${dx2 - 4} ${dy2 - 1} l 1.6 0 M ${dx2 - 0.6} ${dy2 - 1} l 1.6 0 M ${dx2 + 2.8} ${dy2 - 1} l 1.6 0`
+      : `M ${dx2 - 4.5} ${dy2 - 1} L ${dx2 + 4.5} ${dy2 - 1}`);
+    c.dashT.textContent = dashed ? '当前虚线 · 点击改实线' : '当前实线 · 点击改虚线';
+    c.dash.classList.toggle('is-on', dashed);
   },
 
   /** 建立连线：A→B 与 B→A 视为同一条（去重），自连忽略 */
@@ -1663,6 +1863,7 @@ export const TypewriterFeature = {
     anchor.setAttribute('aria-label', '拖到另一张便签建立连线');
     anchor.title = '拖到另一张便签建立连线';
     anchor.innerHTML = ICON_LINK;
+    this._applyKnobSize(anchor);   // 内联像素：与左侧旋转握柄严格等大
     card.appendChild(anchor);
 
     // 关联高亮：hover 便签时，与它相连的线一起提亮
@@ -1679,22 +1880,37 @@ export const TypewriterFeature = {
       svg.appendChild(temp);
       card.style.zIndex = String(++this._zTop);
       let target = null;
+      // 【性能】连线拖拽期间画布不动 → canvas rect 只在手势开始时取一次。
+      // 原先 toCanvas() 与 _cardAtPoint() 每次 move 各取一次（两次强制重排）。
+      const cr = this._canvas.getBoundingClientRect();
+      const crLeft = cr.left;
+      const crTop = cr.top;
+      // 一帧内的多次 pointermove 合并成一次更新（高刷指针可达 120Hz+）
+      let raf = 0;
+      let lastX = e.clientX;
+      let lastY = e.clientY;
       // 屏幕坐标 → 画布局部坐标（画布仅有 translate，无缩放，故直接相减即可）
-      const toCanvas = (cx, cy) => {
-        const r = this._canvas.getBoundingClientRect();
-        return { x: cx - r.left, y: cy - r.top };
-      };
-      const onMove = (ev) => {
-        const p = toCanvas(ev.clientX, ev.clientY);
-        const p1 = this._edgePoint(card, p.x, p.y);
-        temp.setAttribute('d', `M ${p1.x} ${p1.y} L ${p.x} ${p.y}`);
+      const apply = () => {
+        raf = 0;
+        const px = lastX - crLeft;
+        const py = lastY - crTop;
+        const p1 = this._edgePoint(card, px, py);
+        temp.setAttribute('d', `M ${p1.x} ${p1.y} L ${px} ${py}`);
         // 临时线 pointer-events:none，不会挡住命中检测
-        const next = this._cardAtPoint(ev.clientX, ev.clientY, card);
+        const next = this._cardAtPoint(lastX, lastY, card);
         if (target && target !== next) target.classList.remove('is-link-target');
         if (next) next.classList.add('is-link-target');
         target = next;
       };
+      const onMove = (ev) => {
+        lastX = ev.clientX;
+        lastY = ev.clientY;
+        if (!raf) raf = requestAnimationFrame(apply);
+      };
       const onUp = () => {
+        if (raf) { cancelAnimationFrame(raf); raf = 0; }
+        // 松手时按最后一次指针位置定靶：rAF 可能尚未执行，否则会误判为「落在空白处」
+        apply();
         document.removeEventListener('pointermove', onMove);
         document.removeEventListener('pointerup', onUp);
         if (target) target.classList.remove('is-link-target');

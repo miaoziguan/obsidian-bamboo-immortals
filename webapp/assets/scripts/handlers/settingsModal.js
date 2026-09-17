@@ -4,6 +4,7 @@ export const SettingsModal = {
     autoSaveInterval: 2000,
     incenseDuration: 60,      // 香总时长（分钟）
     incenseGooseInterval: 10, // 化雁间隔（分钟）
+    mmExportFolder: '思维子弹', // 思维子弹导出为 Markdown 的落库目录（Vault 相对路径，默认落到 vault 根）
 
     // ---- Tab 内容渲染 ----
 
@@ -78,6 +79,18 @@ export const SettingsModal = {
                         <input type="text" id="quoteSourceInput" class="form-input" style="max-width:220px;"
                             value="${store.state.ui.quoteSource || ''}"
                             placeholder="如 竹林语录.md">
+                    </div>
+                </div>
+                <div class="fab-panel-section">
+                    <div class="fab-panel-section-title">思维子弹</div>
+                    <div class="settings-item">
+                        <div class="settings-item-info">
+                            <div class="settings-item-label">子弹导出目录</div>
+                            <div class="settings-item-desc">思维子弹图导出为 Markdown 的落库位置（Vault 相对路径，如 画中卷/子弹笔记 或 思维子弹）</div>
+                        </div>
+                        <input type="text" id="mmExportFolderInput" class="form-input" style="max-width:220px;"
+                            value="${this.mmExportFolder || '画中卷/子弹笔记'}"
+                            placeholder="如 思维子弹">
                     </div>
                 </div>
                 <div class="fab-panel-section">
@@ -365,6 +378,18 @@ export const SettingsModal = {
                         }
                     });
                 }
+                const mmFolderInput = byId('mmExportFolderInput');
+                if (mmFolderInput) {
+                    const saveFolder = () => {
+                        const val = (mmFolderInput.value || '').trim();
+                        this.setMmExportFolder(val);
+                    };
+                    mmFolderInput.addEventListener('blur', saveFolder);
+                    mmFolderInput.addEventListener('change', saveFolder);
+                    mmFolderInput.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter') { e.preventDefault(); mmFolderInput.blur(); }
+                    });
+                }
                 // 跨天自动刷新
                 const cdMode = byId('crossDayMode');
                 const cdTime = byId('crossDayTime');
@@ -497,6 +522,18 @@ export const SettingsModal = {
             Toast.showToast(trimmed.length > 0 ? ('语录来源：' + trimmed) : '语录来源已清除', 'success');
         }
         this._refreshTab('general');
+    },
+
+    // ---- 思维子弹导出目录 ----
+    async setMmExportFolder(raw) {
+        let norm = (raw || '').trim().replace(/\\/g, '/').replace(/^\/+/, '');
+        if (norm.includes('..')) norm = '';           // 禁止路径遍历
+        if (!norm) norm = '思维子弹';                   // 空/非法回退默认
+        this.mmExportFolder = norm;
+        try { if (typeof storageManager !== 'undefined' && storageManager.putSetting) await storageManager.putSetting('mmExportFolder', norm); } catch (_) {}
+        if (typeof Toast !== 'undefined' && typeof Toast.showToast === 'function') {
+            Toast.showToast('子弹导出目录：' + norm, 'success');
+        }
     },
 
     // ---- 数据 Tab 操作 ----
@@ -865,6 +902,17 @@ export const SettingsModal = {
         if (this.incenseGooseInterval === 10) {
             const sg = StorageAdapter.get('incenseGooseInterval');
             if (sg) this.incenseGooseInterval = parseInt(sg, 10) || 10;
+        }
+        // 思维子弹导出目录：优先 bridge，回退 localStorage
+        try {
+            if (typeof storageManager !== 'undefined' && storageManager.getSetting) {
+                const f = await storageManager.getSetting('mmExportFolder');
+                if (typeof f === 'string' && f) this.mmExportFolder = f;
+            }
+        } catch {}
+        if (!this.mmExportFolder) {
+            const lf = StorageAdapter.get('mmExportFolder');
+            if (lf) this.mmExportFolder = lf;
         }
     }
 };

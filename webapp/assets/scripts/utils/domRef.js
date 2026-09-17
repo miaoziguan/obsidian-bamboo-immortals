@@ -100,8 +100,38 @@ export function getGlobalComputedStyle() {
 // Shadow DOM 下事件 e.target 会被 retarget 成 host，故用 composedPath() 取真实路径
 // （含 shadow 内节点）判断事件目标是否落在 node 内。兼容 kill-switch 回退（light DOM）。
 export function eventInTargets(e, node) {
-    if (!node) return false;
-    const path = (e && typeof e.composedPath === 'function') ? e.composedPath() : [];
-    if (path.length) return path.includes(node);
-    return !!(e && e.target && node.contains && node.contains(e.target));
+  if (!node) return false;
+  const path = (e && typeof e.composedPath === 'function') ? e.composedPath() : [];
+  if (path.length) return path.includes(node);
+  return !!(e && e.target && node.contains && node.contains(e.target));
+}
+
+/**
+ * 事件是否来自文本输入处（input / textarea / contentEditable）。
+ * 供 document / window 级的快捷键守卫使用。
+ *
+ * 【为什么不能直接读 e.target】Shadow DOM 会把穿越边界的事件 target 重定向成
+ * shadow host —— 从 document 看过去它只是一个普通 div。于是
+ * `e.target.tagName === 'INPUT'`、`e.target.closest('input, textarea')` 恒不成立，
+ * 守卫形同虚设。典型后果：在机身输入框里敲回车/退格时，被 document 级监听
+ * 误当成画布快捷键执行（例如多建一颗空子弹、把选中的便签删掉）。
+ * 正确做法是用 composedPath() 取**真实**事件路径来判定。
+ */
+export function isFromTextEntry(e) {
+  if (!e) return false;
+  if (typeof e.composedPath === 'function') {
+    const path = e.composedPath();
+    if (path.length) {
+      return path.some((n) => {
+        if (!n || n.nodeType !== 1) return false;
+        const tag = (n.tagName || '').toLowerCase();
+        return tag === 'input' || tag === 'textarea' || n.isContentEditable === true;
+      });
+    }
+  }
+  // 无 composedPath（老环境 / 合成事件）时回退到 target 自身判定
+  const t = e.target;
+  if (!t) return false;
+  const tag = (t.tagName || '').toLowerCase();
+  return tag === 'input' || tag === 'textarea' || t.isContentEditable === true;
 }

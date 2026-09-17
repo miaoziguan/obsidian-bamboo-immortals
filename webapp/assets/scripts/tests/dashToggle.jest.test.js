@@ -5,6 +5,7 @@
 // 验证打字机便签连线的「实线/虚线」切换逻辑：点击 dash 控件后，
 // 对应连线的 .tw-link path 应在 is-dashed 类之间正确切换，且状态随 _links 持久化。
 const { loadModule } = require('./__helpers__/testUtils');
+const { LinkLayer } = loadModule('services/LinkLayer.js', ['LinkLayer']);
 
 // jsdom 不实现 SVG 几何方法，桩掉
 beforeAll(() => {
@@ -42,6 +43,18 @@ function setup() {
   canvas.appendChild(makeCard('a', 100, 100));
   canvas.appendChild(makeCard('b', 400, 100));
   Tw._canvas = canvas;
+  // 【P8 抽取债】连线渲染已抽到 LinkLayer；孤立加载本模块时构造函数不跑，必须手动接线。
+  // 刻意不注入 getGeom：卡片在 DOM 里，让 LinkLayer 走 DOM 回退取端点。
+  Tw._linkLayer = new LinkLayer({
+    container: canvas,
+    nodeSelector: '.tw-card',
+    getLinks: () => Tw._links,
+    setLinks: (v) => { Tw._links.length = 0; Tw._links.push(...v); },
+    addLink: () => true,
+    removeLink: () => {},
+    removeLinksOf: () => {},
+    onChange: () => {},
+  });
   Tw._links = [{ from: 'a', to: 'b', route: 'bezier', bend: 0, dash: 'dashed' }];
   Tw._hoverLink = { from: 'a', to: 'b' };
   Tw._hoverTimer = null;
@@ -49,11 +62,13 @@ function setup() {
   return Tw;
 }
 
+// 连线 svg 现在由 LinkLayer 持有（P8 抽取），不再挂在 feature._linkSvg
 function dashButton(Tw) {
-  return Tw._linkSvg.querySelector('.tw-link-dash');
+  // hover 控件建在独立的 _ctlSvg 上（与线身 _svg 分开），不能到 _svg 里找
+  return Tw._linkLayer._ctlSvg.querySelector('.tw-link-dash');
 }
 function pathHasDash(Tw) {
-  return Tw._linkSvg.querySelector('.tw-link').classList.contains('is-dashed');
+  return Tw._linkLayer._svg.querySelector('.tw-link').classList.contains('is-dashed');
 }
 
 test('点击 dash 控件将虚线切回实线', () => {

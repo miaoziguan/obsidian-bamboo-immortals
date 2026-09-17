@@ -469,6 +469,80 @@ export class VaultStorage {
     await this.vaultWrite(this.typewriterNotesPath(), JSON.stringify(notes, null, 2));
   }
 
+  // ---- 画中卷·写作档（多组卡片：每组独立文件 + 轻量索引）----
+  // 索引(仅 groups 元信息：id/title/updatedAt/current)放 settings.json 的 typewriter:writing-index（极小）；
+  // 每组卡片(重，且无上限)放独立文件 typewriter-writing/<id>.json。
+  // 这样「保存」只重写该组文件，不再把多组卡片塞进 settings.json 导致每次保存全量重写（性能隐患的根源）。
+  // 旧版曾把整组写作数据塞进 settings.json 的 typewriter:writing，由 webapp 侧首启自动迁移（见 TypewriterStore._migrateLegacyWriting）。
+  private typewriterWritingDocPath(id: string): string {
+    return normalizePath(`${this.basePath}/typewriter-writing/${id}.json`);
+  }
+
+  async getTypewriterWritingIndex(): Promise<unknown> {
+    return this.getSetting('typewriter:writing-index');
+  }
+
+  async putTypewriterWritingIndex(idx: unknown): Promise<void> {
+    await this.putSetting('typewriter:writing-index', idx);
+  }
+
+  async getTypewriterWritingDoc(id: string): Promise<{ version: number; notes: unknown[]; links: unknown[]; canvasOffset: { x: number; y: number } | null } | null> {
+    const path = this.typewriterWritingDocPath(id);
+    if (!(await this.app.vault.adapter.exists(path))) return null;
+    try {
+      const content = await this.app.vault.adapter.read(path);
+      const parsed: unknown = content ? JSON.parse(content) : null;
+      if (!parsed || typeof parsed !== 'object' || !Array.isArray((parsed as Record<string, unknown>).notes)) return null;
+      return parsed as { version: number; notes: unknown[]; links: unknown[]; canvasOffset: { x: number; y: number } | null };
+    } catch {
+      return null;
+    }
+  }
+
+  async putTypewriterWritingDoc(id: string, doc: unknown): Promise<void> {
+    // vaultWrite 会自动创建不存在的父目录（typewriter-writing/），无需预先 mkdir
+    await this.vaultWrite(this.typewriterWritingDocPath(id), JSON.stringify(doc, null, 2));
+  }
+
+  async deleteTypewriterWritingDoc(id: string): Promise<void> {
+    const path = this.typewriterWritingDocPath(id);
+    if (await this.app.vault.adapter.exists(path)) {
+      await this.app.vault.adapter.remove(path);
+    }
+  }
+
+  // ---- 画中卷·思维子弹（多组导图：每组独立文件 + 轻量索引）----
+  // 与写作档完全同构：索引(轻量)走 settings.json；每组文档放独立文件 typewriter-mindmap/<id>.json，
+  // 避免多组 + 大文档把 settings.json 撑大、每次保存整文件重写（性能悬崖）。
+  private typewriterMindmapDocPath(id: string): string {
+    return normalizePath(`${this.basePath}/typewriter-mindmap/${id}.json`);
+  }
+
+  async getTypewriterMindmapDoc(id: string): Promise<{ version: number; nodes: unknown[]; links: unknown[]; view: { x: number; y: number } | null; style: number } | null> {
+    const path = this.typewriterMindmapDocPath(id);
+    if (!(await this.app.vault.adapter.exists(path))) return null;
+    try {
+      const content = await this.app.vault.adapter.read(path);
+      const parsed: unknown = content ? JSON.parse(content) : null;
+      if (!parsed || typeof parsed !== 'object' || !Array.isArray((parsed as Record<string, unknown>).nodes)) return null;
+      return parsed as { version: number; nodes: unknown[]; links: unknown[]; view: { x: number; y: number } | null; style: number };
+    } catch {
+      return null;
+    }
+  }
+
+  async putTypewriterMindmapDoc(id: string, doc: unknown): Promise<void> {
+    // vaultWrite 会自动创建不存在的父目录（typewriter-mindmap/），无需预先 mkdir
+    await this.vaultWrite(this.typewriterMindmapDocPath(id), JSON.stringify(doc, null, 2));
+  }
+
+  async deleteTypewriterMindmapDoc(id: string): Promise<void> {
+    const path = this.typewriterMindmapDocPath(id);
+    if (await this.app.vault.adapter.exists(path)) {
+      await this.app.vault.adapter.remove(path);
+    }
+  }
+
   async getPlansIndex(): Promise<Record<string, string[]>> {
     const path = this.plansIndexPath();
     if (!(await this.app.vault.adapter.exists(path))) return {};

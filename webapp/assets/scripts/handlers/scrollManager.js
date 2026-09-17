@@ -31,6 +31,9 @@ const ScrollManager = {
   _ashDroppedSegs: 0,     // 已化雁的香灰段数（每 _gooseMs +1）
   _durationMs: POMODORO_MS, // 香总燃烧时长（可设置）
   _gooseMs: SEG_MS,          // 化雁间隔（可设置）
+  _settleTimer: null,     // 熄灭过渡的收尾定时器（可取消，见 _extinguish）
+  _audioCtx: null,        // 火折子音效的 Web Audio 上下文（轻量合成，无需外部音频文件）
+  _lastGooseSound: 0,     // 化雁音效节流时间戳（后台补算多段时避免连响成片）
 
   /**
    * 入口：画中卷以独立视图形态呈现（由宿主 openScroll 打开的独立中央页签）。
@@ -168,6 +171,15 @@ const ScrollManager = {
     }
     if (this._moveRaf) { cancelAnimationFrame(this._moveRaf); this._moveRaf = 0; }
     if (this._narrowRO) { this._narrowRO.disconnect(); this._narrowRO = null; }
+    // 熄灭收尾定时器：若视图恰好在 1.15s 过渡窗口内被关闭，必须取消，
+    // 否则回调仍会对已卸载的 DOM 写类、并复位剩余时长。
+    if (this._settleTimer) { clearTimeout(this._settleTimer); this._settleTimer = null; }
+    // 点燃演化阶段的定时器（lighting/glowing）：同上，避免关闭后仍改写已卸载节点
+    if (this._lightTimers) { this._lightTimers.forEach(clearTimeout); this._lightTimers = []; }
+    // 释放音频上下文：浏览器对同时存在的 AudioContext 数量有上限，
+    // 反复开关画中卷而不释放会耗尽配额、导致后续音效彻底无声。
+    if (this._audioCtx) { try { this._audioCtx.close(); } catch (_) { /* 忽略 */ } this._audioCtx = null; }
+    this._lastGooseSound = 0;
     // 释放缓存的 DOM 引用，避免闭包长期持有已卸载节点
     this._censerEl = null;
     this._svgBack = null;
@@ -351,9 +363,15 @@ const ScrollManager = {
     const rem = this._startRemaining - elapsed;
     if (rem <= 0) {
       this._remaining = 0;
-      this._updateIncense(true);
-      this._renderClock();
+      this._updateIncense(true);   // 写 --burn:0，香身燃到尽头
+      this._renderClock();          // 先停在 00:00，让用户看清这一炷已尽
+      // 关键：必须走统一的熄灭收尾。CSS 的青烟、余烬、前沿跳动全部由 .is-lit 驱动，
+      // 而 --burn:0 只能让香身燃尽、并不能熄烟——若这里仅停表而不清 .is-lit，
+      // 就会出现「香烧完了却一直处在飘烟状态」。
       this._stopTimer();
+      // 不传火折子：自然燃尽时用户可能正拖着火折子，清除 dragging/cap-off 会让
+      // 拖拽释放逻辑的状态不一致。火折子状态交由用户自己的手势收尾。
+      this._extinguish(this._incenseEl, null);
       if (typeof Toast !== 'undefined') Toast.showToast('一炷香尽，歇息片刻 🍃', 'success');
       return;
     }
@@ -471,6 +489,13 @@ const ScrollManager = {
       'fill="rgba(86,80,74,0.82)"/></svg>';
     incense.appendChild(goose);
 
+    // 化雁声效：一片雁飘落配一声缥缈雁鸣；节流避免后台补算多段时连响成片
+    const gsNow = Date.now();
+    if (!this._lastGooseSound || gsNow - this._lastGooseSound > 1200) {
+      this._lastGooseSound = gsNow;
+      this._playCapSound('goose');
+    }
+
     // 0%→16%：在香头处凝形飘离（微缩淡入+轻抬），似香灰化出（#1）
     // 之后沿 S 形风路径远去：先主向、中途回摆、终没入天际，整体渐小渐淡（#3）
     const anim = goose.animate(
@@ -496,14 +521,18 @@ const ScrollManager = {
     const openCap = () => {
       if (isCapOff()) return;
       this._litTriggered = false;
-    this._litHoldActive = false;
+      this._litHoldActive = false;
       firebrand.classList.add('cap-off');
+      this._playCapSound('open');   // 拔帽：清脆竹木"嗒" + 火绒露出的高频气流"嘶"
     };
 
     const onDown = (e) => {
       // 仅响应主键（左键）：右键留给香炉唤出香插选单，中键同理，都不应触发火折子逻辑。
       // 触摸事件没有 button 属性（undefined != null 为 false），正常放行。
       if (e.button != null && e.button !== 0) return;
+      // 在用户手势内建立/resume 音频上下文：点燃/吹熄是在 mousemove 中触发的，
+      // 而移动事件不属于「用户手势」，非手势内 resume 会被自动播放策略拒绝 → 静音。
+      this._ensureAudio();
       // 阻止默认行为（含原生文本选择）。mousedown 的 preventDefault 在部分平台/触摸
       // 路径下不足以完全抑制拖选，故再给根容器加 .scroll-dragging 全局禁用选择，
       // 避免拖拽火折子时选区高亮在画面中拖出一条多余的色带。
@@ -592,6 +621,7 @@ const ScrollManager = {
         firebrand.classList.remove('cap-off', 'dragging', 'near');
         if (this._incenseEl) this._incenseEl.classList.remove('near');
         if (hint) hint.textContent = '';
+        this._playCapSound('close');   // 盖回：略闷的木"嗒"，与拔帽对称
         return;
       }
       if (!this._firebrandDragging) return;
@@ -634,6 +664,9 @@ const ScrollManager = {
   /** 火折子归位：清除拖拽位移/状态类，回到初始位置（松手时调用） */
   _releaseFirebrand(firebrand) {
     if (!firebrand) return;
+    // 归位会把竹帽盖回：仅在确实戴着帽时出「盖回」声，与拔帽对称。
+    // 若帽子已由吹熄流程摘掉，此处不再重复出声。
+    if (firebrand.classList.contains('cap-off')) this._playCapSound('close');
     firebrand.style.transform = '';
     firebrand.classList.remove('cap-off', 'dragging', 'near', 'lit');
   },
@@ -648,6 +681,7 @@ const ScrollManager = {
     // 先进入「引燃」阶段：火苗由大收敛吻上香头、余烬由小点亮（#6 衔接），青烟渐显
     incense.classList.add('is-lit', 'kissing');
     this._startTimer();
+    this._playCapSound('ignite');   // 点香：极轻的引燃"噗/嘶"（火苗窜起）
     // 点燃后火折子不立即归位：留在用户手中继续跟随，待松手(onUp)才回原位
     // （不再加 .lit 类——该类会让火折子 opacity:0 隐藏，与"留在手中"需求冲突）
     incense.classList.remove('near');
@@ -669,25 +703,38 @@ const ScrollManager = {
   },
 
   /**
-   * 吹熄（#7）：火折子再次靠近已点燃的香头即吹熄。停表 + 加 .blowing 过渡类
-   * （余烬暗灭、火光隐去、青烟被吹散淡出），约 1.15s 后硬重置回初始未燃态。
+   * 熄灭收尾的统一实现：吹熄（用户主动）与「自然燃尽」（计时归零）两条终止路径共用。
+   *
+   * 为什么必须收敛到一处：青烟 / 余烬 / 燃烧前沿跳动的 CSS 动画**全部由 .is-lit 驱动**，
+   * 只要在终止时漏掉「清除 .is-lit」这一步，烟就会永远继续飘。此前 _tick 的燃尽分支
+   * 只做了「停表 + 写 --burn:0」，而 --burn 只决定香身剩余长度、并不熄烟，
+   * 于是留下「香烧完了却一直处在飘烟状态」的问题；_blowOut 恰好有一套完整收尾。
+   *
+   * 两段式收尾是有意的：
+   *   ① 先加 .blowing 过渡类 —— 此刻仍保留 is-lit，好让熄灭相关的 CSS 规则命中，
+   *      呈现「余烬暗灭、火光隐去、青烟渐渐散去」的连续视觉，而不是硬切；
+   *   ② 到点后再硬清理 —— 移除 is-lit 才真正停下动画，并清掉化雁残留、复位剩余时长，
+   *      让这一炷香可以重新开始。
    */
-  _blowOut(incense, firebrand) {
-    if (!this._litTriggered) return;
+  _extinguish(incense, firebrand) {
+    if (!incense) return;
     this._stopTimer();
+    // 状态机复位为「未点燃」：否则 _applyFirebrandTouch 会把下一次触摸误判成「吹熄」
     this._litTriggered = false;
     this._litHoldActive = false;
     if (this._lightTimers) { this._lightTimers.forEach(clearTimeout); this._lightTimers = []; }
-    // 吹熄过渡：保留 is-lit 以便 .blowing 规则命中，移除一切燃烧阶段类
+    // ① 熄灭过渡：保留 is-lit 让 .blowing 规则命中，同时移除一切燃烧阶段类
     incense.classList.add('blowing');
-    incense.classList.remove('lighting', 'glowing', 'kissing');
+    incense.classList.remove('lighting', 'glowing', 'kissing', 'paused', 'near');
     if (firebrand) {
       firebrand.classList.remove('cap-off', 'dragging', 'near', 'lit');
       firebrand.style.transform = '';
     }
-    incense.classList.remove('near');
-    // 过渡收尾：彻底熄灭并复位（清化雁、复位 burn 与剩余）
-    setTimeout(() => {
+    // 收尾定时器必须可取消且去重：连续熄灭（快速重复触碰）或视图关闭都不该让它泄漏
+    if (this._settleTimer) clearTimeout(this._settleTimer);
+    // ② 过渡结束：彻底熄灭并复位（清化雁、复位 burn 与剩余）
+    this._settleTimer = setTimeout(() => {
+      this._settleTimer = null;
       incense.classList.remove('is-lit', 'blowing');
       incense.style.removeProperty('--ash-top');
       incense.querySelectorAll('.scroll-wild-goose').forEach((n) => n.remove());
@@ -695,6 +742,20 @@ const ScrollManager = {
       this._remaining = this._durationMs;
       this._renderTimer();
     }, 1150);
+  },
+
+  /**
+   * 吹熄（#7）：火折子再次靠近已点燃的香头即吹熄。
+   * 收尾逻辑已统一到 _extinguish（与自然燃尽共用），此处只保留「必须已点燃」的守卫。
+   */
+  _blowOut(incense, firebrand) {
+    if (!this._litTriggered) return;
+    // 「呼」的吹气声只属于**用户主动吹熄**：_extinguish 同时服务于「自然燃尽」，
+    // 那种情况下并没有人在吹，不该出声。故发声放在这里，而不是 _extinguish 内部。
+    // 另：_extinguish 会摘掉 cap-off，随后 _releaseFirebrand 的盖回声因守卫不会触发，
+    // 因此吹熄只出这一声"呼"，不会与"嗒"叠在一起。
+    this._playCapSound('blow');
+    this._extinguish(incense, firebrand);
   },
 
   /**
@@ -780,6 +841,7 @@ const ScrollManager = {
     if (!incense || !incense.classList.contains('is-lit')) return;
     this._stopTimer();
     if (this._lightTimers) { this._lightTimers.forEach(clearTimeout); this._lightTimers = []; }
+    this._playCapSound('pinch');   // 掐灭火星：极轻柔的"噗"，比吹熄更短更轻
     incense.classList.add('paused');
     incense.classList.remove('lighting', 'glowing', 'kissing');
     // 保留 is-lit：表示这炷香已被点燃过，可再次续燃
@@ -828,6 +890,8 @@ const ScrollManager = {
     } catch (_) { /* 存储不可用时仅本次会话有效 */ }
     this._renderCenser();
     if (!animate || !this._el) return;
+    // 切换款式时轻响一声（瓷器轻碰 / 玉磬），与器物转动同步；首次渲染(animate=false)静音
+    this._playCapSound('censer');
     // 重启动画：先移除再强制回流，故无需在动画结束后清理 class
     const censer = this._el.querySelector('.scroll-censer');
     if (!censer) return;
@@ -870,6 +934,200 @@ const ScrollManager = {
         this._stepCenserStyle(1);
       }
     });
+  },
+
+  // ---------------- 火折子音效（Web Audio 轻量合成，无需外部音频文件） ----------------
+
+  /**
+   * 提前在用户手势（按下火折子）内创建并恢复音频上下文。
+   * 关键：点燃/吹熄是在 mousemove/touchmove 中触发的，而移动事件不属于"用户手势"，
+   * 浏览器自动播放策略会拒绝在非手势内 resume 上下文 → 静音。故在按下（mousedown）时
+   * 就激活上下文，保证随后拖动靠近香头时的点燃/吹熄也能正常出声。
+   */
+  _ensureAudio() {
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      if (!this._audioCtx) this._audioCtx = new AC();
+      if (this._audioCtx.state === 'suspended') { try { this._audioCtx.resume(); } catch (_) { /* 忽略 */ } }
+    } catch (_) { /* 音频不可用时静默 */ }
+  },
+
+  /**
+   * 火折子音效（Web Audio 轻量合成，无需外部音频文件）。
+   *  - open   拔帽：清脆竹木"嗒" + 火绒露出的高频气流"嘶"
+   *  - close  盖回：略闷的木"嗒"
+   *  - ignite 点香：极轻的引燃"噗/嘶"（火苗窜起），比拔帽更柔更短、不打断专注
+   *  - blow   吹熄：柔和的"呼"气流声（呼气渐弱），比点燃稍长
+   *  - pinch  掐灭：极轻柔的"噗"（火星捏灭），比吹熄更短更轻
+   *  - goose  化雁：缥缈的远空雁鸣（基频+五度轻颤、高→低滑落）+ 极轻风声
+   *  - censer 换香插：清脆的瓷磬/玉击声（基频 + 高八度泛音）
+   * 均在用户手势内触发：拔帽已建立/resume 音频上下文；点燃/吹熄因前置必拔帽，上下文已 running。
+   * @param {'open'|'close'|'ignite'|'blow'|'pinch'|'goose'|'censer'} kind
+   */
+  _playCapSound(kind) {
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      if (!this._audioCtx) this._audioCtx = new AC();
+      const ctx = this._audioCtx;
+      if (ctx.state === 'suspended') { try { ctx.resume(); } catch (_) { /* 忽略 */ } }
+      const now = ctx.currentTime;
+      const isOpen = kind === 'open';
+      const isClose = kind === 'close';
+
+      // 木质"嗒"（拔帽/盖回）：triangle 频率下滑 + 指数衰减包络
+      if (isOpen || isClose) {
+        const dur = isOpen ? 0.14 : 0.11;
+        const gain = ctx.createGain();
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.exponentialRampToValueAtTime(isOpen ? 0.45 : 0.32, now + 0.006);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+        gain.connect(ctx.destination);
+        const osc = ctx.createOscillator();
+        osc.type = 'triangle';
+        const f0 = isOpen ? 420 : 300;
+        osc.frequency.setValueAtTime(f0, now);
+        osc.frequency.exponentialRampToValueAtTime(f0 * 0.55, now + dur);
+        osc.connect(gain);
+        osc.start(now);
+        osc.stop(now + dur);
+      }
+
+      // 拔帽：火绒露出的高频气流"嘶"
+      if (isOpen) this._noisePuff(ctx, now, { dur: 0.09, freq: 2600, q: 0.8, peak: 0.18 });
+
+      // 点香：极轻的引燃"噗/嘶"（火苗窜起）——低频闷"噗" + 中高频"嘶"
+      if (kind === 'ignite') {
+        const pg = ctx.createGain();
+        pg.gain.setValueAtTime(0.0001, now);
+        pg.gain.exponentialRampToValueAtTime(0.28, now + 0.01);
+        pg.gain.exponentialRampToValueAtTime(0.0001, now + 0.10);
+        pg.connect(ctx.destination);
+        const po = ctx.createOscillator();
+        po.type = 'triangle';
+        po.frequency.setValueAtTime(170, now);
+        po.frequency.exponentialRampToValueAtTime(110, now + 0.1);
+        po.connect(pg);
+        po.start(now); po.stop(now + 0.1);
+        this._noisePuff(ctx, now, { dur: 0.18, freq: 2200, q: 0.7, peak: 0.24 });
+      }
+
+      // 吹熄：柔和的"呼"气流声（呼气渐弱，比点燃稍长）。用中频带通保留"气感"，
+      // 避免纯 lowpass 在小型扬声器上发闷听不清；再叠一层极弱低频"噗"让吹灭更实。
+      if (kind === 'blow') {
+        this._noisePuff(ctx, now, { dur: 0.46, freq: 1300, q: 0.5, peak: 0.58, type: 'bandpass', sweep: true });
+        const bg = ctx.createGain();
+        bg.gain.setValueAtTime(0.0001, now);
+        bg.gain.exponentialRampToValueAtTime(0.26, now + 0.01);
+        bg.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
+        bg.connect(ctx.destination);
+        const bo = ctx.createOscillator();
+        bo.type = 'sine';
+        bo.frequency.setValueAtTime(140, now);
+        bo.frequency.exponentialRampToValueAtTime(80, now + 0.12);
+        bo.connect(bg);
+        bo.start(now); bo.stop(now + 0.12);
+      }
+
+      // 掐灭线香（单击暂停）：极轻柔的"噗"（火星捏灭）
+      if (kind === 'pinch') {
+        this._noisePuff(ctx, now, { dur: 0.16, freq: 700, q: 0.6, peak: 0.26, type: 'bandpass' });
+        const pg2 = ctx.createGain();
+        pg2.gain.setValueAtTime(0.0001, now);
+        pg2.gain.exponentialRampToValueAtTime(0.12, now + 0.008);
+        pg2.gain.exponentialRampToValueAtTime(0.0001, now + 0.1);
+        pg2.connect(ctx.destination);
+        const po2 = ctx.createOscillator();
+        po2.type = 'sine';
+        po2.frequency.setValueAtTime(150, now);
+        po2.frequency.exponentialRampToValueAtTime(90, now + 0.1);
+        po2.connect(pg2);
+        po2.start(now); po2.stop(now + 0.1);
+      }
+
+      // 化雁：缥缈的远空雁鸣（基频+五度轻颤、整体高→低滑落）+ 极轻风声，克制不扰专注
+      if (kind === 'goose') {
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.0001, now);
+        g.gain.exponentialRampToValueAtTime(0.13, now + 0.07);
+        g.gain.exponentialRampToValueAtTime(0.0001, now + 0.55);
+        g.connect(ctx.destination);
+        const fund = 880;
+        [fund, fund * 1.5].forEach((f, i) => {
+          const o = ctx.createOscillator();
+          o.type = 'sine';
+          o.frequency.setValueAtTime(f * 1.06, now);
+          o.frequency.exponentialRampToValueAtTime(f * 0.8, now + 0.55); // 高→低滑落，似远处雁鸣收尾
+          // 轻颤音（vibrato）
+          const lfo = ctx.createOscillator();
+          lfo.frequency.value = 5.5;
+          const lfoGain = ctx.createGain();
+          lfoGain.gain.value = f * 0.012;
+          lfo.connect(lfoGain); lfoGain.connect(o.frequency);
+          const og = ctx.createGain();
+          og.gain.value = i === 0 ? 1 : 0.45; // 五度弱一些
+          o.connect(og); og.connect(g);
+          o.start(now); o.stop(now + 0.58);
+          lfo.start(now); lfo.stop(now + 0.58);
+        });
+        // 极轻风声（雁翅掠风）
+        this._noisePuff(ctx, now, { dur: 0.42, freq: 1150, q: 0.6, peak: 0.05, type: 'bandpass', sweep: true });
+      }
+
+      // 切换香插：清脆悦耳的瓷磬/玉击声（基频 + 高八度泛音，短促柔衰减），与器物转动同步
+      if (kind === 'censer') {
+        const make = (freq, peak, delay) => {
+          const g = ctx.createGain();
+          g.gain.setValueAtTime(0.0001, now + delay);
+          g.gain.exponentialRampToValueAtTime(peak, now + delay + 0.006);
+          g.gain.exponentialRampToValueAtTime(0.0001, now + delay + 0.4);
+          g.connect(ctx.destination);
+          const o = ctx.createOscillator();
+          o.type = 'sine';
+          o.frequency.setValueAtTime(freq, now + delay);
+          o.frequency.exponentialRampToValueAtTime(freq * 0.985, now + delay + 0.4); // 极微下滑，似玉磬余韵
+          o.connect(g);
+          o.start(now + delay); o.stop(now + delay + 0.42);
+        };
+        make(1320, 0.2, 0);        // 主音：清亮"叮"
+        make(2640, 0.07, 0.01);    // 高八度泛音，极轻，添"瓷光"质感
+      }
+    } catch (_) { /* 音频不可用时静默，不影响交互 */ }
+  },
+
+  /**
+   * 生成一段带包络的滤波噪声脉冲（火绒"嘶"、引燃"噗"、雁翅风声共用）。
+   * @param {AudioContext} ctx
+   * @param {number} now 起始时间(ctx.currentTime)
+   * @param {object} o {dur, freq, q, peak, type, sweep}
+   */
+  _noisePuff(ctx, now, o) {
+    const dur = o.dur || 0.1;
+    const freq = o.freq || 2400;
+    const q = o.q || 0.8;
+    const peak = o.peak || 0.15;
+    const type = o.type || 'bandpass';
+    const nBuf = ctx.createBuffer(1, Math.max(1, Math.ceil(ctx.sampleRate * dur)), ctx.sampleRate);
+    const data = nBuf.getChannelData(0);
+    for (let i = 0; i < data.length; i++) {
+      const env = 1 - i / data.length;
+      data[i] = (Math.random() * 2 - 1) * env * env; // 噪声 × 二次衰减包络
+    }
+    const nSrc = ctx.createBufferSource();
+    nSrc.buffer = nBuf;
+    const filt = ctx.createBiquadFilter();
+    filt.type = type;
+    filt.frequency.setValueAtTime(freq, now);
+    if (o.sweep) filt.frequency.exponentialRampToValueAtTime(Math.max(200, freq * 0.4), now + dur);
+    filt.Q.value = q;
+    const ng = ctx.createGain();
+    ng.gain.setValueAtTime(0.0001, now);
+    ng.gain.exponentialRampToValueAtTime(peak, now + (o.sweep ? 0.06 : 0.012));
+    ng.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+    nSrc.connect(filt); filt.connect(ng); ng.connect(ctx.destination);
+    nSrc.start(now);
+    nSrc.stop(now + dur);
   },
 
   // ---------------- 工具 ----------------

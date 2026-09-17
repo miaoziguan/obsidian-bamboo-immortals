@@ -204,3 +204,53 @@ describe('ThemeBridge.restoreAllDefaults', () => {
     expect(setProperty).toHaveBeenCalled();
   });
 });
+
+/**
+ * reapplyOnThemeChange 单测：验证「将调色同步到 Obsidian」开启后，
+ * Obsidian 切换明暗（css-change）时，行内调色变量会随新模式重算——
+ * 否则旧模式算出的颜色会残留并覆盖新主题（行内样式优先级高于主题 CSS）。
+ */
+describe('ThemeBridge.reapplyOnThemeChange', () => {
+  let setProperty: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    setProperty = vi.fn();
+    vi.stubGlobal('activeDocument', {
+      body: {
+        // 用 classList 模拟明暗：contains('theme-dark') 由用例按需改
+        classList: { contains: (c: string) => c === 'theme-dark' },
+        style: { setProperty, removeProperty: vi.fn() },
+      },
+    });
+    vi.stubGlobal('window', { setTimeout: vi.fn(() => 1), clearTimeout: vi.fn() });
+  });
+
+  afterEach(() => {
+    ((ThemeBridge as unknown as { registry: Set<ThemeBridge> }).registry).forEach((b) =>
+      b.detachIframe()
+    );
+    ThemeBridge.restoreAllDefaults();
+    vi.unstubAllGlobals();
+  });
+
+  it('applyPalette 后，reapplyOnThemeChange(true) 以暗色重算行内变量', () => {
+    const bridge = new ThemeBridge();
+    bridge.attachIframe({ contentWindow: { postMessage: vi.fn() } } as any);
+    bridge.applyPalette(120, 0, false); // 用户原在亮色模式调过色
+    setProperty.mockClear();
+
+    bridge.reapplyOnThemeChange(true); // Obsidian 切到暗色
+
+    const accentCall = setProperty.mock.calls.find((c) => c[0] === '--interactive-accent');
+    expect(accentCall).toBeDefined();
+    expect(accentCall![1]).toBe('hsl(120, 40%, 50%)'); // 暗色强调色
+  });
+
+  it('未 applyPalette 时 reapplyOnThemeChange 是安全空操作', () => {
+    const bridge = new ThemeBridge();
+    bridge.attachIframe({ contentWindow: { postMessage: vi.fn() } } as any);
+    setProperty.mockClear();
+    bridge.reapplyOnThemeChange(true);
+    expect(setProperty).not.toHaveBeenCalled();
+  });
+});

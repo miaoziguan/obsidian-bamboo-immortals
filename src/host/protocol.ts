@@ -33,6 +33,8 @@ export const ALL_MESSAGE_TYPES = [
   'app:theme:sync',
   'theme:syncPalette',
   'theme:appDarkMode',
+  // 画中卷·打字机机身明暗开关：请求宿主切换 Obsidian 基础主题（moonstone ↔ obsidian）
+  'app:toggleObsidianTheme',
   'app:listVaultAudioFiles',
   'app:readVaultFile',
   'app:readLocalFile',
@@ -46,6 +48,7 @@ export const ALL_MESSAGE_TYPES = [
   'app:expandRightSidebar',
   'app:getTheme',
   'app:openFile',
+  'app:exportMindmap',
   'app:getHealthOverview',
   'app:getCultivationRealm',
   'app:getBambooCoinBalance',
@@ -71,6 +74,10 @@ export const ALL_MESSAGE_TYPES = [
   'storage:clearAll',
   'storage:getTypewriterNotes',
   'storage:putTypewriterNotes',
+  'storage:deleteTypewriterWritingDoc',
+  'storage:getTypewriterMindmapDoc',
+  'storage:putTypewriterMindmapDoc',
+  'storage:deleteTypewriterMindmapDoc',
   // file:*（画中卷文本文件协议：list / get / write / delete）
   'file:list',
   'file:get',

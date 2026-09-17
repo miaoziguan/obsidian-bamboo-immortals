@@ -1,0 +1,375 @@
+/* ===== 思维子弹（独立文档；与便签层互斥显示。产品名，原「思维导图」） =====
+   节点形态：**子弹框**（胶囊形，两端全圆，无左侧竖线）。
+   自由模型：**没有层级、没有自动布局**——每颗子弹是自由拖动的独立个体，
+   任意两颗之间可手动拉一条连线（多对多、无父子）。所以这里**没有**根/一级/二级的
+   层级配色，所有子弹视觉一致；层级感只来自用户自己连出的线。 */
+
+.tw-mm {
+  /* 绝对定位铺满父容器(.scroll-typewriter-feature 已 position:relative)：
+     不再作为 flex 子项只拿「机身以上」的剩余空间，而是覆盖整个区域（含机身区）。
+     机身(.tw-beeper z-index:30)浮在上方，交互不受影响；节点可布满全视口。 */
+  position: absolute;
+  inset: 0;
+  overflow: hidden;              /* 画布视口：节点/连线超出部分裁掉 */
+  cursor: grab;
+  touch-action: none;
+  /* 与便签画布同一套字号基准：导图节点用 em 随容器缩放 */
+  font-size: var(--type-base);
+  color: var(--text-primary);
+}
+
+.tw-mm.is-panning { cursor: grabbing; }
+
+.tw-mm-canvas {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  transform-origin: 0 0;
+}
+
+/* 节点层：铺满画布，作为子弹的绝对定位参照（与画布原点重合，坐标即画布坐标） */
+.tw-mm-nodes {
+  position: absolute;
+  inset: 0;
+  z-index: 2;                    /* 必须在连线层（.tw-links 的 z-index:1）之上 */
+  pointer-events: none;          /* 空白处要让双击/平移穿透；节点自己重新打开事件 */
+}
+
+/* 连线层：复用便签模式的 .tw-links（同坐标、同交互、同视觉），不再单独定义 */
+
+/* 思维子弹的连线控件层：抬到节点之上，悬浮控件/拖拽预览线不被小胶囊压住，点击更稳 */
+.tw-mm .tw-links-ctl { z-index: 4; }
+
+.tw-mm-node {
+  position: absolute;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  padding: 0.5em 0.95em;
+  border: 1px solid var(--border-light);
+  /* 子弹框：两端全圆（胶囊），视觉上比「左侧色条」更干净 */
+  border-radius: var(--radius-pill);
+  background: var(--card-bg);
+  box-shadow: var(--shadow-surface);
+  font-size: var(--type-sm);
+  line-height: var(--line-height-tight);
+  color: var(--text-primary);
+  cursor: grab;
+  user-select: none;
+  pointer-events: auto;          /* 打开事件（父层 .tw-mm-nodes 关了） */
+  overflow: visible;             /* 连线圆点 protrude 出去也不能被节点自身裁掉 */
+  transition: box-shadow 0.16s ease, border-color 0.16s ease, opacity 0.16s ease;
+}
+
+/* 文本框：换行不撑破节点（max-width 由 JS 写 inline，保持单一来源） */
+.tw-mm-text {
+  display: block;
+  min-width: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  outline: none;
+}
+
+.tw-mm-text.is-placeholder { color: var(--text-tertiary); font-style: italic; }
+
+/* —— 连线锚点：每颗子弹右侧的连线按钮（由共享 LinkLayer 注入，便签连线同一套交互） ——
+   关键修复 A（不挡内容）：本元素带 role="button"，会命中 base-foundation.css 的全局触控目标规则
+   :where([role="button"]…){ min-width/min-height: var(--touch-target)=44px }，把钮撑成 44px 见方、
+   远大于胶囊且压住文字。这里显式用 min-width/min-height 压回 13px（与 .tw-card-link 同一套路），
+   并整体移到胶囊右侧之外、去掉底色光环，彻底不侵扰子弹内容。
+   关键修复 B（好抓取）：可见圆点很小（13px）且落在胶囊外，胶囊右缘与锚点间若留空隙会形成「死区」——
+   鼠标从胶囊移向锚点时短暂离开两者，:hover 失效、锚点消失、抓不住。用透明 ::before 命中扩展区
+   把死区填上并加高竖直命中带；只探入胶囊 2px，不影响拖拽本体。 */
+.tw-mm-node .tw-link-anchor {
+  position: absolute;
+  top: 50%;
+  right: -14px;                 /* 与胶囊只留约 1px 缝，靠 ::before 桥接，不显空隙 */
+  transform: translateY(-50%);
+  width: 13px;
+  height: 13px;
+  min-width: 13px;              /* 覆盖全局触控目标 44px，否则钮比子弹还大 */
+  min-height: 13px;
+  border-radius: 50%;
+  background: var(--card-bg);
+  border: 1.4px solid rgba(var(--primary-rgb), 0.5);
+  box-shadow: none;             /* 不再用底色光环「抠」文字区 */
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: crosshair;
+  flex: none;
+  z-index: 6;                   /* 压在文本之上，确保一定可点 */
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.12s ease, background 0.12s ease, border-color 0.12s ease, opacity 0.16s ease;
+}
+/* 透明命中扩展：填补胶囊→锚点的死区 + 加高竖直命中带，小圆点也好抓 */
+.tw-mm-node .tw-link-anchor::before {
+  content: "";
+  position: absolute;
+  left: -3px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 26px;
+  background: transparent;
+}
+.tw-mm-node .tw-link-anchor svg { width: 8px; height: 8px; display: block; }
+.tw-mm-node:hover .tw-link-anchor { opacity: 1; pointer-events: auto; }
+.tw-mm-node.is-editing .tw-link-anchor { opacity: 0; pointer-events: none; }   /* 编辑时不需要连线把手 */
+.tw-mm-node .tw-link-anchor:hover { transform: translateY(-50%) scale(1.15); background: rgba(var(--primary-rgb), 0.16); border-color: rgba(var(--primary-rgb), 0.85); }
+
+/* 连线目标高亮：拖拽连接时，悬停的子弹描出候选高亮 */
+.tw-mm-node.is-link-target {
+  outline: 1.5px solid rgba(var(--primary-rgb), 0.5);
+  outline-offset: 5px;
+}
+
+/* —— 状态 —— */
+.tw-mm-node.is-sel {
+  outline: 2px solid #c9a24a;
+  outline-offset: 2px;
+  box-shadow: var(--shadow-card);
+  z-index: 20;
+}
+
+.tw-mm-node.is-dragging {
+  cursor: grabbing;
+  opacity: 0.92;
+  box-shadow: var(--shadow-card);
+  z-index: 25;
+}
+
+/* 拖放连线：把一颗子弹「丢」到另一颗上时的目标高亮（松手即建立连线） */
+.tw-mm-node.is-drop-target {
+  outline: 2px dashed rgb(var(--primary-rgb));
+  outline-offset: 3px;
+  box-shadow: 0 0 0 3px color-mix(in srgb, rgb(var(--primary-rgb)) 25%, transparent);
+}
+
+.tw-mm-node.is-editing {
+  cursor: text;
+  outline: 2px dashed rgba(var(--primary-rgb), 0.65);
+  outline-offset: 2px;
+  z-index: 30;
+}
+.tw-mm-node.is-editing .tw-mm-text { cursor: text; user-select: text; }
+
+/* 框选删除：复刻便签模式的矩形框选 + 多选高亮 */
+.tw-mm-marquee {
+  position: absolute;
+  border: 1px dashed rgba(var(--primary-rgb), 0.9);
+  background: rgba(var(--primary-rgb), 0.12);
+  pointer-events: none;
+  z-index: 40;
+}
+.tw-mm-node.is-multi-sel {
+  outline: 2px solid rgba(var(--primary-rgb), 0.9);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 1px rgba(var(--primary-rgb), 0.4);
+}
+
+/* 子弹样式：由 .tw-mm 根上的 .tw-mm-style-0..5 切换（导图模式下第一个机身按钮循环）。
+   0 = 经典胶囊（即默认，无需覆盖）；其余 5 种各一套边框/底色/阴影，均基于主题变量以适配明暗。 */
+.tw-mm.tw-mm-style-1 .tw-mm-node {            /* 方角便签 */
+  border-radius: 6px;
+  border: 1.5px solid var(--border-strong, var(--border-light));
+  box-shadow: var(--shadow-card);
+}
+.tw-mm.tw-mm-style-2 .tw-mm-node {            /* 霓虹终端 */
+  border-radius: var(--radius-pill);
+  background: #0a1205;
+  border: 1.5px solid #33ff00;
+  color: #33ff00;
+  text-shadow: 0 0 0.2em rgba(51, 255, 0, 0.5);
+  box-shadow: 0 0 0.5em rgba(51, 255, 0, 0.35), 0 0.1em 0.3em rgba(0, 0, 0, 0.4);
+}
+.tw-mm.tw-mm-style-2 .tw-mm-node .tw-mm-text.is-placeholder { color: rgba(51, 255, 0, 0.5); }
+.tw-mm.tw-mm-style-2 .tw-mm-node .tw-link-anchor { background: #0a1205; border-color: rgba(51, 255, 0, 0.6); }
+.tw-mm.tw-mm-style-3 .tw-mm-node {            /* 胶囊点（左侧强调点） */
+  padding-left: 1.7em;
+}
+.tw-mm.tw-mm-style-3 .tw-mm-node::before {
+  content: ""; position: absolute; left: 0.7em; top: 50%; transform: translateY(-50%);
+  width: 0.5em; height: 0.5em; border-radius: 50%;
+  background: rgb(var(--primary-rgb));
+}
+.tw-mm.tw-mm-style-4 .tw-mm-node {            /* 草图虚线 */
+  border-radius: 10px;
+  background: transparent;
+  border: 1.5px dashed var(--border-strong, var(--text-secondary));
+  box-shadow: none;
+}
+.tw-mm.tw-mm-style-5 .tw-mm-node {            /* 玻璃瓷片 */
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--card-bg) 72%, transparent);
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(var(--primary-rgb), 0.35);
+  box-shadow: 0 0.15em 0.5em rgba(0, 0, 0, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+/* —— 空态 —— */
+.tw-mm-empty {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: max-content;
+  max-width: 22em;
+  text-align: center;
+  pointer-events: none;          /* 空白处的双击要能穿透到画布 */
+}
+.tw-mm-empty[hidden] { display: none; }
+.tw-mm-empty-title {
+  margin: 0 0 0.4em;
+  font-size: var(--type-md);
+  color: var(--text-secondary);
+}
+.tw-mm-empty-sub {
+  margin: 0;
+  font-size: var(--type-sm);
+  color: var(--text-tertiary);
+}
+.tw-mm-empty .tw-mm-seed {
+  margin-top: 1.2em;
+  padding: 0.5em 1em;
+  border: 1px solid rgba(var(--primary-rgb), 0.4);
+  border-radius: var(--radius-control);
+  background: var(--card-bg);
+  color: var(--text-primary);
+  font-size: var(--type-sm);
+  cursor: pointer;
+  pointer-events: auto;          /* 按钮自己收事件 */
+}
+.tw-mm-empty .tw-mm-seed:hover { box-shadow: var(--shadow-card); }
+.tw-mm-empty-note {
+  margin: 0.6em 0 0;
+  font-size: var(--type-xs);
+  color: var(--text-tertiary);
+}
+
+/* ===== 每颗子弹可单独着色（由 JS 写 --mm-accent 局部变量） ===== */
+.tw-mm-node {
+  border-color: var(--mm-accent, var(--border-light));
+  /* 改色（方案 C）：在默认底色上叠一层很淡的 accent 填色，让颜色成为可一眼扫读的“分组信号”，不伤文字对比；
+     未着色时 --mm-accent 回退到 card-bg，混合结果等同原底色，视觉零差异。 */
+  background: color-mix(in srgb, var(--mm-accent, var(--card-bg)) 14%, var(--card-bg));
+}
+.tw-mm-node .tw-link-anchor {
+  border-color: color-mix(in srgb, var(--mm-accent, rgb(var(--primary-rgb))) 55%, transparent);
+  color: var(--mm-accent, var(--text-secondary));
+}
+.tw-mm-node.is-connect-src {
+  outline: 2px dashed rgb(var(--primary-rgb));
+  outline-offset: 3px;
+  box-shadow: 0 0 0 3px color-mix(in srgb, rgb(var(--primary-rgb)) 22%, transparent);
+}
+
+/* ===== 搜索高亮 ===== */
+.tw-mm-node.is-search-hit { outline: 2px solid rgba(var(--primary-rgb), 0.35); outline-offset: 2px; }
+.tw-mm-node.is-search-cur { outline: 2px solid #c9a24a; outline-offset: 2px; box-shadow: var(--shadow-card); z-index: 22; }
+
+/* ===== 选中浮动工具条（图标按钮 + 一级内联色盘） ===== */
+.tw-mm-toolbar {
+  position: absolute;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px 5px;
+  background: var(--card-bg);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-control);
+  box-shadow: var(--shadow-card);
+  transform: translate(-50%, calc(-100% - 6px));
+  pointer-events: auto;
+}
+.tw-mm-toolbar[hidden] { display: none; }
+.tw-mm-toolbar.is-below { transform: translate(-50%, 6px); }
+
+/* 图标按钮 */
+.tw-mm-tb-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px; height: 24px;
+  min-width: 24px; min-height: 24px;   /* 覆盖 base-foundation 全局触控目标 44px */
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-secondary);
+  padding: 0;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.tw-mm-tb-btn:hover { background: rgba(var(--primary-rgb), 0.12); color: var(--text-primary); }
+.tw-mm-tb-btn[hidden] { display: none; }
+
+/* 分隔线（图标与色盘之间） */
+.tw-mm-tb-sep {
+  width: 1px; height: 14px;
+  background: var(--border-light);
+  margin: 0 2px;
+  flex-shrink: 0;
+}
+
+/* 内联色盘圆点（直接在工具条里，点击即改色） */
+.tw-mm-swatch {
+  width: 14px; height: 14px;
+  min-width: 14px; min-height: 14px;   /* 覆盖 base-foundation 全局触控目标 44px */
+  position: relative;
+  border-radius: 50%;
+  border: 1px solid var(--border-light);
+  background: var(--card-bg);
+  padding: 0;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+.tw-mm-swatch:hover { transform: scale(1.3); box-shadow: 0 0 0 2px color-mix(in srgb, rgb(var(--primary-rgb)) 25%, transparent); }
+/* 默认色 = 圆圈加斜杠（∅）：设计工具通用的「无颜色 / 清除」符号，避免「×」被误读为删除 */
+.tw-mm-swatch[data-color=""] {
+  overflow: hidden;
+}
+.tw-mm-swatch[data-color=""]::after {
+  content: "";
+  position: absolute;
+  left: 50%; top: 50%;
+  width: 150%; height: 1.5px;
+  background: var(--text-tertiary);
+  border-radius: 1px;
+  transform: translate(-50%, -50%) rotate(-45deg);
+}
+
+/* ===== 搜索框 ===== */
+.tw-mm-search {
+  position: absolute;
+  z-index: 50;
+  top: 10px; left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px;
+  background: var(--card-bg);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-control);
+  box-shadow: var(--shadow-card);
+  pointer-events: auto;
+}
+.tw-mm-search[hidden] { display: none; }
+.tw-mm-search-input {
+  border: none; background: transparent; color: var(--text-primary);
+  font-size: var(--type-sm); width: 12em; outline: none;
+}
+.tw-mm-search-count { font-size: var(--type-xs); color: var(--text-tertiary); min-width: 2.5em; text-align: center; }
+.tw-mm-search button {
+  border: none; background: transparent; color: var(--text-secondary);
+  cursor: pointer; font-size: var(--type-xs); padding: 0.2em 0.45em; border-radius: 5px;
+}
+.tw-mm-search button:hover { background: rgba(var(--primary-rgb), 0.12); }
+
+

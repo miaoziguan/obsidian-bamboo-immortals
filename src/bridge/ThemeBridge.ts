@@ -28,6 +28,8 @@ export class ThemeBridge {
 
     /** 防抖竞态标记：restoreDefaults 被调用后设为 true，阻止延迟回调覆写（实例级，避免分屏多实例互相干扰 H9） */
     private _suppressed = false;
+    /** 最近一次 applyPalette 的调色值，用于 Obsidian 切换明暗时以新模式重算行内变量 */
+    private _lastPalette: { hue: number; lightnessOffset: number; isDark: boolean } | null = null;
 
   attachIframe(iframe: HTMLIFrameElement): void {
     this.iframe = iframe;
@@ -481,6 +483,7 @@ export class ThemeBridge {
   applyPalette(hue: number, lightnessOffset: number, isDark: boolean): void {
     if (this._paletteSyncTimer) window.clearTimeout(this._paletteSyncTimer);
     this._suppressed = false; // 新调色请求到来 → 解除抑制
+    this._lastPalette = { hue, lightnessOffset, isDark }; // 缓存，供 Obsidian 切换明暗时重算
 
     // Leading edge：窗口内首次调用立即应用（消除滑块拖拽首帧延迟）
     if (!this._paletteLeading) {
@@ -504,6 +507,17 @@ export class ThemeBridge {
     }, 50);
   }
 
+  /**
+   * Obsidian 明暗切换时重算调色（仅在「将调色同步到 Obsidian」开启时由宿主调用）。
+   * applyPalette 写入的 7 个 CSS 变量是行内样式，优先级高于 Obsidian 主题 CSS；
+   * 若不随明暗重算，旧模式算出的颜色会残留并覆盖新主题，导致切换「失效」。
+   */
+  reapplyOnThemeChange(isDark: boolean): void {
+    if (!this._lastPalette) return;
+    this._lastPalette.isDark = isDark;
+    this._applyPaletteNow(this._lastPalette.hue, this._lastPalette.lightnessOffset, isDark);
+  }
+
   /** 立即写入调色变量到 Obsidian body（受 _suppressed 抑制）*/
   private _applyPaletteNow(hue: number, lightnessOffset: number, isDark: boolean): void {
     if (this._suppressed) return; // restoreDefaults 在防抖窗口内被调用
@@ -522,6 +536,7 @@ export class ThemeBridge {
       this._paletteSyncTimer = null;
     }
     this._paletteLeading = false;
+    this._lastPalette = null; // 清空调色缓存：同步关闭后不再随主题切换重算
     for (const key of ThemeBridge.INJECTED_VARS) {
       activeDocument.body.style.removeProperty(key);
     }

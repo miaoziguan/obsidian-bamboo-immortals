@@ -1,4 +1,5 @@
 import { byId } from '../utils/domRef.js';
+import { TypewriterStore } from '../services/TypewriterStore.js';
 window.DataIO = {
 
     /**
@@ -416,6 +417,10 @@ window.DataIO = {
             }
 
             await storageManager.importData(data, options);
+            // 导入会整体替换 settings.json，写作索引的内存缓存随之失效（否则读到导入前的旧组）
+            if (TypewriterStore && typeof TypewriterStore.invalidateWritingIndex === 'function') {
+                TypewriterStore.invalidateWritingIndex();
+            }
 
             // 恢复 UI 设置
             if (Object.keys(savedUISettings).length > 0) {

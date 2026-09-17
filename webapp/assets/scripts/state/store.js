@@ -948,6 +948,21 @@ export class Store {
                 // 忽略持久化失败（localStorage 兜底已先行写入）
             }
         }
+
+        // 重开「跟随 Obsidian 明暗」时，清除「用户手动选过」标记。
+        // 否则 userThemeChosen 是一次性锁：用户曾手动切过一次明暗后就永久为 true，
+        // 即使重开跟随开关，bridge.js 的门控 !ui.userThemeChosen 仍会阻断 Obsidian 的主题推送，
+        // 导致「跟随 Obsidian 主题配色」功能彻底失效。
+        if (enabled) {
+            this.state.ui.userThemeChosen = false;
+            if (typeof StorageAdapter !== 'undefined' && typeof StorageAdapter.set === 'function') {
+                try { StorageAdapter.set(StorageKeys.USER_THEME_CHOSEN, 'false'); } catch (_) {}
+            }
+            if (typeof storageManager !== 'undefined' && typeof storageManager.putSetting === 'function') {
+                try { await storageManager.putSetting('userThemeChosen', 'false'); } catch (_) {}
+            }
+        }
+
         this.notify();
     }
 

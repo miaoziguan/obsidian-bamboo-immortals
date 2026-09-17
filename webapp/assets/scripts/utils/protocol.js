@@ -23,6 +23,8 @@ export const APP_MESSAGE_TYPES = [
   'app:theme:sync',
   'theme:syncPalette',
   'theme:appDarkMode',
+  // 画中卷·打字机机身明暗开关：请求宿主切换 Obsidian 基础主题（moonstone ↔ obsidian）
+  'app:toggleObsidianTheme',
   'app:listVaultAudioFiles',
   'app:readVaultFile',
   'app:readLocalFile',

@@ -5,6 +5,10 @@
 // 关键根因：画布平移的 pointerdown 调了 e.preventDefault()，会抑制默认失焦，导致 blur 兜底失效；
 // 故退出逻辑必须挂在捕获阶段、先于 preventDefault 生效。
 const { loadModule } = require('./__helpers__/testUtils');
+// 【P8 抽取债】_exitEdit 改走 WritingDoc 原语同步模型；孤立加载本模块时 import 被剥离，
+// 需注入全局供其解析（否则抛 ReferenceError: WritingDoc is not defined）。
+const { WritingDoc } = loadModule('handlers/features/writingDoc.js', ['WritingDoc']);
+global.WritingDoc = WritingDoc;
 
 const StoreMock = {
   KEY_LINKS: 'typewriter:links',
@@ -45,6 +49,7 @@ function setup() {
   Tw._el = el;
   Tw._canvas = canvas;
   Tw._zTop = 0;
+  Tw._notes = [];   // _exitEdit 会用 WritingDoc.setText 同步模型，规范模型须先就位
   Tw._scheduleSave = jest.fn();
   Tw._finishTyping = jest.fn();
   Tw._makeCanvasDraggable(); // 注册根级指针监听（含本次修复的捕获退出逻辑）

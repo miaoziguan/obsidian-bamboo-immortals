@@ -2403,6 +2403,19 @@
     background: rgba(var(--surface-dark-rgb, 20, 30, 24), 0.5);
 }
 
+:host(.dark) .arch-filter-field {
+    border-color: rgba(var(--border-dark-rgb, 60, 70, 60), 0.35);
+    background: rgba(var(--surface-dark-rgb, 20, 30, 24), 0.55);
+}
+:host(.dark) .arch-filter-field:focus-within {
+    border-color: rgba(var(--text-secondary-rgb, 140, 150, 140), 0.5);
+    background: rgba(var(--surface-dark-rgb, 20, 30, 24), 0.75);
+}
+:host(.dark) .arch-date-trigger:hover {
+    border-color: rgba(var(--text-secondary-rgb, 140, 150, 140), 0.5);
+    background: rgba(var(--surface-dark-rgb, 20, 30, 24), 0.75);
+}
+
 :host(.dark) .arch-reset-btn {
     border-color: rgba(var(--border-dark-rgb, 60, 70, 60), 0.35);
 }
@@ -2413,10 +2426,15 @@
 :host(.dark) .arch-select {
     border-color: rgba(var(--border-dark-rgb, 60, 70, 60), 0.35);
     color: var(--text-secondary);
+    /* 完整 background 简写：压过 forms.css 全局 :host(.dark) select 的 background
+       （其简写会把 repeat/position 重置为 repeat/0 0，导致箭头平铺成斑驳块） */
+    background: transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23b0b8b0' stroke-width='1.2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right center;
+    box-shadow: none;
 }
 :host(.dark) .arch-select:hover,
 :host(.dark) .arch-select:focus {
     border-color: rgba(var(--text-secondary-rgb, 140, 150, 140), 0.5);
+    background-color: transparent;
 }
 
 /* 日期输入暗色 */

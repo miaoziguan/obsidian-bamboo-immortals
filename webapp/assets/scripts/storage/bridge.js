@@ -274,6 +274,54 @@ export class BridgeStorage {
     return this._send('storage:putTypewriterNotes', { notes });
   }
 
+  // ---- 画中卷·写作档（多组卡片：每组独立文件 + 轻量索引）----
+  // 索引极小，走 settings；每组卡片走独立文件，避免多组 + 无上限时撑大 settings.json。
+  async getTypewriterWritingIndex() {
+    await this.ensureReady();
+    return this._send('storage:getTypewriterWritingIndex', {});
+  }
+
+  async putTypewriterWritingIndex(idx) {
+    await this.ensureReady();
+    return this._send('storage:putTypewriterWritingIndex', { idx });
+  }
+
+  async getTypewriterWritingDoc(id) {
+    await this.ensureReady();
+    return this._send('storage:getTypewriterWritingDoc', { id });
+  }
+
+  async putTypewriterWritingDoc(id, doc) {
+    await this.ensureReady();
+    return this._send('storage:putTypewriterWritingDoc', { id, doc });
+  }
+
+  async deleteTypewriterWritingDoc(id) {
+    await this.ensureReady();
+    try {
+      return await this._send('storage:deleteTypewriterWritingDoc', { id });
+    } catch (e) {
+      console.warn('[Bridge] deleteTypewriterWritingDoc 不可用:', e && e.message);
+    }
+  }
+  // 思维子弹组文档：与写作档同构，每组独立文件（typewriter-mindmap/<id>.json），不进 settings.json
+  async getTypewriterMindmapDoc(id) {
+    await this.ensureReady();
+    return this._send('storage:getTypewriterMindmapDoc', { id });
+  }
+  async putTypewriterMindmapDoc(id, doc) {
+    await this.ensureReady();
+    return this._send('storage:putTypewriterMindmapDoc', { id, doc });
+  }
+  async deleteTypewriterMindmapDoc(id) {
+    await this.ensureReady();
+    try {
+      return await this._send('storage:deleteTypewriterMindmapDoc', { id });
+    } catch (e) {
+      console.warn('[Bridge] deleteTypewriterMindmapDoc 不可用:', e && e.message);
+    }
+  }
+
   async putSetting(key, value) {
     await this.ensureReady();
     return this._send('storage:putSetting', { key, value });
@@ -544,6 +592,34 @@ export class BridgeStorage {
     }
   }
 
+  /** 写文本到 Vault（落库）：经宿主 file:write 写入，作用域限制在画中卷目录内。
+   *  @returns {Promise<{ok:boolean}|null>} 成功返回宿主响应；桥不可用/超时返回 null（由调用方兜底）。 */
+  async writeFile(path, content) {
+    const p = (path || '').trim();
+    if (!p) return null;
+    await this.ensureReady();
+    try {
+      return await this._send('file:write', { path: p, content: typeof content === 'string' ? content : '' });
+    } catch (e) {
+      console.warn('[Bridge] writeFile 不可用:', e && e.message);
+      return null;
+    }
+  }
+
+  /** 思维子弹导出：写 Markdown 到 Vault 任意相对路径（宿主 app:exportMindmap，不受画中卷限制）。
+   *  @returns {Promise<{ok:boolean,path?:string}|null>} 桥不可用/超时返回 null（调用方兜底下载）。 */
+  async exportMindmap(path, content) {
+    const p = (path || '').trim();
+    if (!p) return null;
+    await this.ensureReady();
+    try {
+      return await this._send('app:exportMindmap', { path: p, content: typeof content === 'string' ? content : '' });
+    } catch (e) {
+      console.warn('[Bridge] exportMindmap 不可用:', e && e.message);
+      return null;
+    }
+  }
+
   /** 请求宿主打开「画中卷」独立中央视图（不影响日报视图） */
   async openScrollView(feature) {
     await this.ensureReady();
@@ -571,6 +647,18 @@ export class BridgeStorage {
       return await this._send('app:getTheme', {});
     } catch (e) {
       console.warn('[Bridge] app:getTheme 不可用:', e && e.message);
+    }
+  }
+
+  /** 切换 Obsidian 明暗主题（画中卷打字机机身开关）。isDark 为期望明暗值。
+   *  @returns {Promise<{ok:boolean,isDark?:boolean}|null>} 桥不可用/超时返回 null，由调用方兜底。 */
+  async toggleObsidianTheme(isDark) {
+    try {
+      await this.ensureReady();
+      return await this._send('app:toggleObsidianTheme', { isDark: !!isDark });
+    } catch (e) {
+      console.warn('[Bridge] app:toggleObsidianTheme 不可用:', e && e.message);
+      return null;
     }
   }
 
@@ -650,16 +738,12 @@ window.addEventListener('message', (event) => {
     if (typeof store !== 'undefined') {
       const state = store.getState ? store.getState() : store.state;
       const ui = state && state.ui;
+      // autoSyncTheme === false 才视为「跟随关闭」。
+      // 跟随开启时必须以 Obsidian 为准直接跟随——userThemeChosen 只在「跟随关闭、用户手动选过」
+      // 时才有意义；开跟随时它若仍为真（例如用户曾手动切过明暗、开关却一直开着），
+      // 会永久阻断 theme:changed，导致「跟随 Obsidian 主题配色」彻底失效。
       if (!(ui && ui.autoSyncTheme === false)) {
-        // 用户已手动选择过则尊重用户，不再跟随宿主；
-        // 否则跟随宿主：宿主暗色→暗色，宿主浅色→浅色
-        if (!ui.userThemeChosen) {
-          if (data.payload.isDark === true) {
-            store.setDarkMode(true, true);
-          } else if (data.payload.isDark === false) {
-            store.setDarkMode(false, true);
-          }
-        }
+        store.setDarkMode(data.payload.isDark, true);
       }
     } else {
       // 极简环境（画中卷等未加载 store 的视图）：直接把 .dark 同步到 shadow host，

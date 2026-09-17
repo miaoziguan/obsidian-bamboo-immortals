@@ -174,7 +174,9 @@
 .tw-card-paper,
 .tw-card-font,
 .tw-card-zoom-out,
-.tw-card-zoom-in {
+.tw-card-zoom-in,
+.tw-card-move,
+.tw-card-lv {
   
   width: clamp(18px, calc(20px * var(--tw-scale, 1)), 24px);
   height: clamp(18px, calc(20px * var(--tw-scale, 1)), 24px);
@@ -200,11 +202,55 @@
 .tw-card-paper svg,
 .tw-card-font svg,
 .tw-card-zoom-out svg,
-.tw-card-zoom-in svg {
+.tw-card-zoom-in svg,
+.tw-card-move svg,
+.tw-card-lv svg {
   width: clamp(16px, calc(18px * var(--tw-scale, 1)), 22px);
   height: clamp(16px, calc(18px * var(--tw-scale, 1)), 22px);
   flex: none;
 }
+
+/* 结构级别钮（仅 MD可视化写作档出现）：文字标签，宽度自适应，与图标钮同高。
+   默认 display:none —— 便签档工具条保持原样，不额外占位；写作档由画布上的
+   .tw-mode-write 打开。显式写 min-width/min-height 是为了压过全局触控目标规则
+   （base-foundation.css 把按钮地板到 44px，见 .tw-card-rotate 处的同款说明）。 */
+.tw-card-level {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  height: clamp(18px, calc(20px * var(--tw-scale, 1)), 24px);
+  min-width: 2.5em;
+  min-height: 15px;
+  padding: 0 0.34em;
+  border: 1px solid var(--border-light);
+  border-radius: 4px;
+  background: transparent;
+  color: #5b6257;
+  font-size: clamp(9px, calc(10px * var(--tw-scale, 1)), 12px);
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  cursor: pointer;
+  flex: none;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+/* 常驻显示：浮在卡片**上方左端**。
+   必须放在卡片外部——放进卡内会压住正文（.tw-card-main 顶部只有 0.9em 内边距）；
+   也不能留在 .tw-card-tools 里，那条工具条平时 opacity:0，子元素的 opacity 无法覆盖父级。
+   这是层级色的主要载体：轻微同色底 + 同色文字，扫一眼画布即可看出层级分布。 */
+.tw-canvas.tw-mode-write .tw-card-level {
+  display: inline-flex;
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 0;
+  z-index: 61;                    /* 高于工具条(60)：两者都浮在卡片上方 */
+  background: color-mix(in srgb, var(--lv-color) 14%, var(--surface-solid));
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.16);
+}
+.tw-card-level:hover { background: rgba(var(--primary-rgb), 0.12); color: #2f3a2c; }
+:host(.dark) .tw-card-level { color: #cdc8bb; border-color: rgba(255, 255, 255, 0.18); }
+:host(.dark) .tw-card-level:hover { color: #f2efe6; }
 
 .tw-card-del:hover { color: rgb(var(--danger-rgb)); }
 .tw-card-font:hover,
@@ -252,7 +298,6 @@
 .tw-card-text {
   position: relative;
   z-index: 10;
-  min-height: calc(var(--tw-grid) * 2);
   font-size: var(--tw-fs-base);
   line-height: var(--tw-line);
   font-weight: 500;
@@ -307,7 +352,9 @@
 .tw-card[data-paper="plain"] .tw-card-title {
   font-size: var(--tw-fs-xs); font-weight: 400; letter-spacing: 0.3em; opacity: 0.55;
 }
-.tw-card[data-paper="plain"] .tw-card-text {
+/* 便签档（非写作档）才有的信笺排版：写作档卡片随内容成文，不套这套（含 margin-bottom，
+   否则标题下方会凭空多一截——正是之前"上下不等距"的泄漏源，故写作档彻底不进此规则） */
+.tw-canvas:not(.tw-mode-write) .tw-card[data-paper="plain"] .tw-card-text {
   order: 2; font-weight: 400; line-height: 2; margin-bottom: var(--tw-sp-4); letter-spacing: 0.02em;
 }
 .tw-card[data-paper="plain"] .tw-card-meta {
@@ -758,9 +805,29 @@
   overflow: visible;
   pointer-events: none;   
   z-index: 1;
-  
+}
+
+/* 连线色令牌：必须【同时】声明在连线层与控件层上。
+ * 二者是**兄弟**节点（都 append 进同一个容器），CSS 自定义属性不会横向继承——
+ * 只写在 .tw-links 上时，控件层内的 var(--tw-link-stroke*) 全部解析失败
+ * （invalid at computed-value time → 属性退回初始值）。而 .tw-link.is-temp 只靠
+ * stroke 上色，stroke 的初始值正是 none，于是「拖锚点连线」全程看不到任何预览线，
+ * 即连线过程不可见。便签与子弹两种模式共用这两个类名，故此处修复同时生效。 */
+.tw-links,
+.tw-links-ctl {
   --tw-link-stroke: rgba(46, 62, 40, 0.42);
   --tw-link-stroke-hi: rgba(46, 62, 40, 0.9);
+}
+
+/* 控件层：与 .tw-links 同坐标系（inset:0、无 viewBox），承载悬浮控件与拖拽预览线。
+ * 默认与连线层同 z-index（便签大卡片场景下控件仍位于卡片之下，保持原有行为）；
+ * 思维子弹模式在 mindmap.css 里把它抬到节点之上。 */
+.tw-links-ctl {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 1;
 }
 
 .tw-link {
@@ -868,6 +935,9 @@
 .tw-link-arrow-end.is-active { fill: var(--tw-link-stroke-hi); }
 
 .tw-link.is-temp { stroke-dasharray: 4 5; stroke: var(--tw-link-stroke-hi); opacity: .85; pointer-events: none; }
+/* 已指向一个可连接的目标：预览线转实线并加粗，给出「此刻松手即成线」的明确信号。
+ * 拖拽过程因此有「搜索中(虚线) → 已锁定(实线)」两个阶段，而不是全程一个样子。 */
+.tw-link.is-temp.is-valid { stroke-dasharray: none; stroke-width: 2.2; opacity: 1; }
 
 .tw-card.is-link-target { outline: 1.5px solid rgba(46, 62, 40, 0.45); outline-offset: 5px; }
 
@@ -912,7 +982,477 @@
   pointer-events: auto;
 }
 
-:host(.dark) .tw-links {
+/* ===== MD可视化写作档：自成体系的国际化卡片 =====
+   写作档刻意不复用便签的纸样资产（齿边 / 纸纹 / 信笺色 / BAMBOO IMMORTALS 抬头 / 中式字体）：
+   便签是「随手记」的中式信笺，写作是「成文」，需要中性、克制、国际通用的卡片语言。
+
+   【为什么圆角与阴影挂在 .tw-card-main 而不是 .tw-card】
+   工具条 .tw-card-tools（bottom: calc(100% + 2px)）与旋转/连线握柄都定位在卡片**外部**，
+   若给 .tw-card 加 overflow:hidden 会把它们一并裁掉。故 .tw-card 只做定位容器，
+   表面/圆角/阴影全部下移到 .tw-card-main —— 齿边隐藏后，main 的外框就是卡片的外框。
+
+   【位置】必须排在所有 .tw-card[data-paper="x"] 之后：
+   `.tw-card[data-paper="plain"] .tw-card-main`（0-3-0）与本段同特异度，靠源码顺序决胜。 */
+.tw-canvas.tw-mode-write {
+  --tw-write-ink: #1F2430;
+  --tw-write-line: rgba(16, 24, 40, 0.10);
+  /* 拉丁优先的国际化字体栈：拉丁文走各系统 UI 字体（SF / Segoe UI / Roboto），
+     中文再回落苹方 / 思源。便签的 --tw-font-sans 是中文优先栈，会把英文也渲染成中文字形。 */
+  --tw-font-global: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                    "Helvetica Neue", Arial, "PingFang SC", "Noto Sans SC", sans-serif;
+}
+.tw-canvas.tw-mode-write .tw-card {
+  background: transparent;   /* 表面交给 main，卡片本体只做定位容器 */
+  border: 0;
+  box-shadow: none;          /* 方形阴影不能留在圆角卡后面 → 一并下移到 main */
+  aspect-ratio: auto;        /* 随内容长高，不套便签定版纸样的 600/300 固定比例 */
+}
+.tw-canvas.tw-mode-write .tw-card-main {
+  background: var(--surface-solid);      /* 主题自适应纯色（亮色纯白 / 暗色深表面） */
+  border: 1px solid var(--tw-write-line);
+  border-radius: 14px;                   /* 圆角基准：克制耐看，接近 Apple / Notion */
+  overflow: hidden;                      /* 只裁 main 内部，工具条在它之外不受影响 */
+  padding: 0.9em 1.15em 1.15em;          /* 用 em：随卡片缩放联动 */
+  box-shadow:
+    0 1px 2px rgba(16, 24, 40, 0.06),
+    0 8px 20px -6px rgba(16, 24, 40, 0.14);
+  transition: box-shadow 0.18s ease;
+}
+.tw-canvas.tw-mode-write .tw-card:hover .tw-card-main {
+  box-shadow:
+    0 1px 2px rgba(16, 24, 40, 0.08),
+    0 12px 26px -8px rgba(16, 24, 40, 0.18);
+}
+/* 卸掉便签的装饰资产：上下齿边与纸纹 */
+.tw-canvas.tw-mode-write .tw-card-edge,
+.tw-canvas.tw-mode-write .tw-card-noise { display: none; }
+/* 写作档不需要旋转：卡片是平铺成文的「纸片」，旋转只会打乱阅读秩序。
+   连线锚点（.tw-card-link）必须保留 —— 连线正是本模式的文章顺序来源。 */
+.tw-canvas.tw-mode-write .tw-card-rotate { display: none; }
+/* 去掉信笺抬头（BAMBOO IMMORTALS 属纸样资产）；纸样钮在写作档同样无意义 */
+.tw-canvas.tw-mode-write .tw-card-head,
+.tw-canvas.tw-mode-write .tw-card-paper { display: none; }
+
+/* ===== 写作档专属工具：上移 / 下移（文章顺序）与层级 ± =====
+   默认 display:none —— 便签档/导图档不出现；写作档由 .tw-mode-write 打开。
+   同时隐藏便签档那套「字号 ± / 卡片缩放 ±」：写作档的字号由层级（字阶）决定，
+   再给手动字号与卡片缩放，就是同一视觉属性的第二、第三个真值 —— 「这卡为什么这么大」
+   将无从判断，正是配色段明确规避的「颜色与结构两个真值打架」的同款问题。 */
+.tw-card-move,
+.tw-card-lv { display: none; }
+.tw-canvas.tw-mode-write .tw-card-move,
+.tw-canvas.tw-mode-write .tw-card-lv { display: inline-flex; }
+.tw-canvas.tw-mode-write .tw-card-font,
+.tw-canvas.tw-mode-write .tw-card-zoom-out,
+.tw-canvas.tw-mode-write .tw-card-zoom-in { display: none; }
+/* 到边界置灰（首卡不能再上移、H1 不能再提升、引用/列表不参与升降）——
+   别让「点了没反应」变成没有解释的失灵。 */
+.tw-card-move[disabled],
+.tw-card-lv[disabled] { opacity: 0.3; cursor: default; }
+.tw-canvas.tw-mode-write .tw-card-text {
+  font-family: var(--tw-font-global);
+  color: var(--tw-write-ink);
+  line-height: 1.65;
+  letter-spacing: 0;
+}
+/* ---- 字阶：层级最主要的常驻信号 ----
+   卡片纯白、无任何长条状装饰，层级靠排版本身说话（字号 + 字重 + 行高），
+   与真实文档大纲的读法一致。字号用 em —— 相对卡片自身字号，随缩放/放大联动。
+   大标题字距略收（大字号下默认字距会显散），行高同步收紧，与正文拉开节奏。 */
+.tw-canvas.tw-mode-write .tw-card[data-level="h1"] .tw-card-text {
+  font-size: 1.75em; font-weight: 700; line-height: 1.25; letter-spacing: -0.015em;
+}
+.tw-canvas.tw-mode-write .tw-card[data-level="h2"] .tw-card-text {
+  font-size: 1.5em; font-weight: 700; line-height: 1.28; letter-spacing: -0.012em;
+}
+.tw-canvas.tw-mode-write .tw-card[data-level="h3"] .tw-card-text {
+  font-size: 1.32em; font-weight: 650; line-height: 1.34; letter-spacing: -0.008em;
+}
+.tw-canvas.tw-mode-write .tw-card[data-level="h4"] .tw-card-text {
+  font-size: 1.18em; font-weight: 650; line-height: 1.42;
+}
+.tw-canvas.tw-mode-write .tw-card[data-level="h5"] .tw-card-text {
+  font-size: 1.08em; font-weight: 600; line-height: 1.5;
+}
+.tw-canvas.tw-mode-write .tw-card[data-level="h6"] .tw-card-text {
+  font-size: 1em; font-weight: 600; line-height: 1.5;
+}
+/* 引用：不用斜体（中文斜体是合成字形，很难看），改用略弱的墨色与略松的行高，
+   读起来像「旁白」；导出时逐行加 > 前缀才是它真正的身份标识。 */
+.tw-canvas.tw-mode-write .tw-card[data-level="quote"] .tw-card-text {
+  font-weight: 400; line-height: 1.75; opacity: 0.82;
+}
+/* ---- 层级配色 ----
+   H1–H6 走靛蓝「有序色阶」：越深层级越高，扫一眼就能看出文档骨架（层级本质是序数，
+   若用 6 个无关色相会丢掉这份顺序信息）。
+   其余类型各给一个独立色相；正文例外——它是「无结构」的基底，保持中性，不参与配色竞争。
+   【颜色由层级派生】用户只能改类型、不能单独调色，避免出现「这卡是 H1 但我刷成了正文灰」
+   这种颜色与结构两个真值打架的情况。 */
+/* 色板只在 :host 定义一次：卡片（--lv-color）与菜单圆点都引用这些变量。
+   刻意不在 JS 里再存一份色值 —— 两处各存一份迟早改漏一处，颜色就开始说谎。 */
+:host {
+  /* --lv-src-* 是色阶【唯一真源】：只在这里定义一次，且永不覆盖。
+     亮/暗两套 --lv-* 都从它派生。必须多这一层间接，是因为暗色要取亮色阶的「倒序」，
+     若照直觉写 var(--lv-h6)，它指向的是同元素上被暗色块自己重写的 --lv-h6 ——
+     h2↔h6、h3↔h5 立刻自引用成环，按 CSS 变量规范整组解析为 invalid，
+     暗色下 H1–H3/H5/H6 的徽章底、描边、文字色与菜单圆点会一起失效。 */
+  --lv-src-1: #3730A3;
+  --lv-src-2: #4338CA;
+  --lv-src-3: #4F46E5;
+  --lv-src-4: #6366F1;
+  --lv-src-5: #818CF8;
+  --lv-src-6: #A5B4FC;
+  --lv-h1: var(--lv-src-1);
+  --lv-h2: var(--lv-src-2);
+  --lv-h3: var(--lv-src-3);
+  --lv-h4: var(--lv-src-4);
+  --lv-h5: var(--lv-src-5);
+  --lv-h6: var(--lv-src-6);
+  --lv-p: #94A3B8;
+  --lv-quote: #D97706;
+  --lv-ul: #0D9488;
+  --lv-ol: #0284C7;
+  --lv-task: #16A34A;
+}
+.tw-canvas.tw-mode-write .tw-card { --lv-color: var(--lv-p); }   /* 兜底 = 正文的中性灰 */
+.tw-canvas.tw-mode-write .tw-card[data-level="h1"] { --lv-color: var(--lv-h1); }
+.tw-canvas.tw-mode-write .tw-card[data-level="h2"] { --lv-color: var(--lv-h2); }
+.tw-canvas.tw-mode-write .tw-card[data-level="h3"] { --lv-color: var(--lv-h3); }
+.tw-canvas.tw-mode-write .tw-card[data-level="h4"] { --lv-color: var(--lv-h4); }
+.tw-canvas.tw-mode-write .tw-card[data-level="h5"] { --lv-color: var(--lv-h5); }
+.tw-canvas.tw-mode-write .tw-card[data-level="h6"] { --lv-color: var(--lv-h6); }
+.tw-canvas.tw-mode-write .tw-card[data-level="quote"] { --lv-color: var(--lv-quote); }
+.tw-canvas.tw-mode-write .tw-card[data-level="ul"] { --lv-color: var(--lv-ul); }
+.tw-canvas.tw-mode-write .tw-card[data-level="ol"] { --lv-color: var(--lv-ol); }
+.tw-canvas.tw-mode-write .tw-card[data-level="task"] { --lv-color: var(--lv-task); }
+/* 【已废弃·勿再加回】原先这里是「左侧 3px 色条 + 整卡 8% 同色底纹」。
+   实测观感廉价：3px 边框渲染在 14px 圆角上会变成一段孤立的弯条，像贴上去的异物；
+   8% 整卡铺色又把白卡糊成淡紫。层级色的表达方式改为只落在小范围元素上，
+   卡片本体保持纯净白面（见下方 .tw-card-level 与类型菜单圆点）。 */
+.tw-canvas.tw-mode-write .tw-card-level {
+  color: var(--lv-color);
+  border-color: color-mix(in srgb, var(--lv-color) 45%, transparent);
+}
+.tw-canvas.tw-mode-write .tw-card-level:hover {
+  background: color-mix(in srgb, var(--lv-color) 26%, var(--surface-solid));
+  color: var(--lv-color);
+}
+
+/* 写作档：H1 徽章常驻浮在卡片上方左端，工具条默认也浮在上方居中 ——
+   卡片一窄（或被缩放）两者必然叠在一起互相挡点击，而徽章 z-index(61) 更高，会压住工具条。
+   让工具条整体上抬一个徽章的高度，形成「卡片 → 徽章 → 工具条」两行，横向再宽也撞不上。
+   :not(.tw-tools-below) 必需：卡片贴顶时工具条会翻到卡片下方，那时它与徽章分处卡片两侧，
+   再上抬反而把它推离卡片（且该规则里的 bottom:auto 不能被本条覆盖）。 */
+.tw-canvas.tw-mode-write .tw-card:not(.tw-tools-below) .tw-card-tools {
+  bottom: calc(100% + 8px + var(--tw-tools-size));
+}
+
+/* 暗色：徽章浮在暗画布上，亮色那套「14% 淡底 + 深色投影」会糊成一片、失去「片」的轮廓 ——
+   提高同色底占比，并把为亮底调的深色投影换成暗底投影，描边也加重一点。 */
+:host(.dark) .tw-canvas.tw-mode-write .tw-card-level {
+  background: color-mix(in srgb, var(--lv-color) 22%, var(--surface-solid));
+  border-color: color-mix(in srgb, var(--lv-color) 55%, transparent);
+  box-shadow: var(--shadow-surface);   /* 主题自适应：暗色版自动切 --black-rgb */
+}
+:host(.dark) .tw-canvas.tw-mode-write .tw-card-level:hover {
+  background: color-mix(in srgb, var(--lv-color) 38%, var(--surface-solid));
+  color: var(--lv-color);
+}
+
+/* ===== 写作档：卡片宽度贴合内容（不按级别一刀切）=====
+   基础 .tw-card 对所有级别一律 min-width: 300px —— 于是「测试」这种两字标题、
+   「哈哈哈」这种三字正文也被撑成大卡，右侧大片留白。
+   写作档下放开这个下限：卡片按「最长一行」自适应收缩，内容真的长了才长到上限。
+   便签档（无 .tw-mode-write）保持原 300px 下限，不动既有便签观感。 */
+.tw-canvas.tw-mode-write .tw-card {
+  min-width: min(calc(88px * var(--tw-card-zoom, 1)), calc(100% - 16px));
+}
+
+/* ===== 标题卡（H1–H6）：更像「标签」=====
+   宽度：上限比正文更窄（300 vs 400），长标题也不铺开。
+   视觉：更小圆角 + 层级色描边 + 收紧内边距 + 卸掉抬升阴影 —— 与正文的「纸片」明确区分。
+   刻意不改底色：「整卡同色底纹」此前实测观感廉价，已废弃（见上方注释，勿加回）。
+   层级的主信号仍然是字号/字重（见「字阶」段），这里只做形状上的辅助区分。 */
+.tw-canvas.tw-mode-write .tw-card[data-level^="h"] {
+  max-width: min(calc(300px * var(--tw-card-zoom, 1)), calc(100% - 16px));
+}
+.tw-canvas.tw-mode-write .tw-card[data-level^="h"] .tw-card-main {
+  /* 对称内边距即可保证上下等距：之前"上下不等距"的真凶是 plain 纸样给文本加了
+     margin-bottom(≈16px)，现已在根上解耦（写作档不进该纸样规则），无需兜底。
+     标题卡做成"标签"而非又一张白卡：更实的层级色描边（加粗 + 提高色量），
+     与纯白正文卡拉开身份。刻意不铺整卡底纹（此前实测廉价，已废弃，勿加回）。 */
+  padding: 0.6em 0.85em;
+  min-height: 0;
+  border-radius: 9px;
+  border-width: 1.5px;
+  border-color: color-mix(in srgb, var(--lv-color) 55%, transparent);
+  box-shadow: none;
+}
+/* 垂直空白的真正大头是「行高」：标题字号大（H1 1.75em），基础行高 1.65 / 各档 1.25–1.5
+   会在上下各留半行距 —— 视觉上就是"文字下面空一截"。标题只当一行读，压到 1.12。
+   （本规则与上方 per 级 .tw-card[data-level="h1"] 的 line-height 同特异度，靠源码顺序居后覆盖。） */
+.tw-canvas.tw-mode-write .tw-card[data-level^="h"] .tw-card-text {
+  line-height: 1.12;
+}
+.tw-canvas.tw-mode-write .tw-card[data-level^="h"]:hover .tw-card-main {
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.10);
+}
+
+/* 【解耦·治本】便签档"至少两行高"的体量感由下方 :not(.tw-mode-write) 规则提供，
+   写作档不再继承，故此处无需再"清零"——之前那两行 min-height:0 / margin-bottom:0
+   正是为抵消基础规则而堆的覆盖补丁，现已从根上消除。 */
+.tw-canvas:not(.tw-mode-write) .tw-card-text {
+  min-height: calc(var(--tw-grid) * 2);
+}
+
+/* 写作档顺序徽标：按 _orderCards() 的连线/阅读顺序，在每张卡左上角贴一个编号，
+   让"文章顺序"可见（否则只能靠拖动位置猜）。便签/导图档不显示。 */
+.tw-canvas.tw-mode-write .tw-card-order {
+  position: absolute;
+  bottom: -8px; left: -8px;
+  z-index: 30;
+  min-width: 18px; height: 18px;
+  padding: 0 5px;
+  display: inline-flex; align-items: center; justify-content: center;
+  font: 600 11px/1 var(--tw-font-global, sans-serif);
+  color: #fff;
+  background: var(--lv-color, #94A3B8);
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.30);
+  pointer-events: none;
+}
+
+/* 暗色：换一套中性墨色与描边，表面仍随 --surface-solid 走主题 */
+:host(.dark) .tw-canvas.tw-mode-write {
+  --tw-write-ink: #E6EAF2;
+  --tw-write-line: rgba(255, 255, 255, 0.12);
+}
+:host(.dark) .tw-canvas.tw-mode-write .tw-card-main {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.30), 0 10px 24px -8px rgba(0, 0, 0, 0.45);
+}
+/* 暗色色板【唯一真源 = --lv-src-* 亮色阶】：标题色阶在暗底上「越亮 = 越重」，故取亮色阶的
+   【倒序】派生（H1←src6 · H2←src6 · H3←src5 · H4←src4 · H5←src3 · H6←src2），改亮色一处即亮暗
+   同步，不再两份字面量各写各的、改漏一处就脱节。
+   【必须引用 --lv-src-*，不能引用 --lv-h*】后者的胜出声明就是本块自己，会自引用成环
+   （h2↔h6 / h3↔h5）→ 整组 invalid。非标题色是暗底上手挑的亮色相（与亮色不同族、
+   无法推导），保留显式；--lv-p 沿用亮色灰，无需重设（不声明即继承）。 */
+:host(.dark) {
+  --lv-h1: color-mix(in srgb, var(--lv-src-6) 72%, white);  /* 最亮 = 最醒目 */
+  --lv-h2: var(--lv-src-6);
+  --lv-h3: var(--lv-src-5);
+  /* --lv-h4 不声明 → 继承亮色 #6366F1（暗底上恰为中等权重，与亮色 H4 同值） */
+  --lv-h5: var(--lv-src-3);
+  --lv-h6: var(--lv-src-2);
+  --lv-quote: #F59E0B;
+  --lv-ul: #2DD4BF;
+  --lv-ol: #38BDF8;
+  --lv-task: #4ADE80;
+}
+
+/* ---- 类型选择弹出菜单 ----
+   挂在功能根元素、用 absolute 定位：卡片在画布里带 transform、且 .tw-card-main 有
+   overflow:hidden，浮层若塞进卡片会被裁掉，也会被 z-index 更高的邻卡盖住。 */
+.tw-level-menu {
+  position: absolute;
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px;
+  min-width: 128px;
+  background: #FFFFFF;
+  border: 1px solid rgba(16, 24, 40, 0.12);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px -6px rgba(16, 24, 40, 0.28), 0 2px 6px rgba(16, 24, 40, 0.10);
+  color: #1F2430;
+  font-size: 12px;
+}
+.tw-level-menu[hidden] { display: none; }
+.tw-level-menu-group { display: flex; flex-direction: column; gap: 2px; }
+.tw-level-menu-cap {
+  padding: 2px 6px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  opacity: 0.6;
+}
+.tw-level-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  padding: 5px 6px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+.tw-level-menu-item:hover { background: rgba(16, 24, 40, 0.06); }
+.tw-level-menu-item.is-on { background: rgba(16, 24, 40, 0.10); font-weight: 600; }
+.tw-level-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+/* 圆点复用 :host 上的 --lv-* 色板，与卡片左侧色条同源，改一处两边一起变 */
+.tw-level-dot[data-level="h1"] { background: var(--lv-h1); }
+.tw-level-dot[data-level="h2"] { background: var(--lv-h2); }
+.tw-level-dot[data-level="h3"] { background: var(--lv-h3); }
+.tw-level-dot[data-level="h4"] { background: var(--lv-h4); }
+.tw-level-dot[data-level="h5"] { background: var(--lv-h5); }
+.tw-level-dot[data-level="h6"] { background: var(--lv-h6); }
+.tw-level-dot[data-level="p"] { background: var(--lv-p); }
+.tw-level-dot[data-level="quote"] { background: var(--lv-quote); }
+.tw-level-dot[data-level="ul"] { background: var(--lv-ul); }
+.tw-level-dot[data-level="ol"] { background: var(--lv-ol); }
+.tw-level-dot[data-level="task"] { background: var(--lv-task); }
+:host(.dark) .tw-level-menu {
+  background: #232A33;
+  border-color: rgba(255, 255, 255, 0.14);
+  color: #E6EAF2;
+}
+:host(.dark) .tw-level-menu-item:hover { background: rgba(255, 255, 255, 0.08); }
+:host(.dark) .tw-level-menu-item.is-on { background: rgba(255, 255, 255, 0.12); }
+
+/* ---- 写作卡片组切换面板（复用 level-menu 的浮层范式：挂在功能根、absolute 定位）---- */
+.tw-doc-panel {
+  position: absolute;
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  min-width: 180px;
+  max-width: 240px;
+  background: #FFFFFF;
+  border: 1px solid rgba(16, 24, 40, 0.12);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px -6px rgba(16, 24, 40, 0.28), 0 2px 6px rgba(16, 24, 40, 0.10);
+  color: #1F2430;
+  font-size: 12px;
+}
+.tw-doc-panel[hidden] { display: none; }
+.tw-doc-head { display: flex; justify-content: space-between; align-items: center; padding: 0 4px; font-size: 10px; letter-spacing: 0.08em; opacity: 0.6; }
+.tw-doc-count { opacity: 0.7; }
+.tw-doc-list { display: flex; flex-direction: column; gap: 2px; max-height: 40vh; overflow: auto; }
+.tw-doc-row { display: flex; }
+.tw-doc-row.is-on .tw-doc-name { background: rgba(16, 24, 40, 0.10); font-weight: 600; }
+.tw-doc-name {
+  flex: 1 1 auto;
+  text-align: left;
+  border: none;
+  background: transparent;
+  color: inherit;
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tw-doc-name:hover { background: rgba(16, 24, 40, 0.06); }
+/* 行内编辑图标：平时半透明，行 hover 时显形，点击即改名 */
+.tw-doc-edit {
+  flex: none;
+  width: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: inherit;
+  opacity: 0.4;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+}
+.tw-doc-row:hover .tw-doc-edit { opacity: 0.7; }
+.tw-doc-edit:hover { opacity: 1; background: rgba(16, 24, 40, 0.08); }
+:host(.dark) .tw-doc-edit:hover { background: rgba(255, 255, 255, 0.10); }
+/* 行内删除图标：红调，平时半透明，hover 显形；与编辑图标同宽对齐 */
+.tw-doc-del {
+  flex: none;
+  width: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: inherit;
+  opacity: 0.35;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+}
+.tw-doc-row:hover .tw-doc-del { opacity: 0.65; }
+.tw-doc-del:hover { opacity: 1; background: rgba(200, 40, 40, 0.12); color: #C0392B; }
+:host(.dark) .tw-doc-del:hover { background: rgba(255, 90, 90, 0.16); color: #FF8A8A; }
+.tw-doc-rename-input {
+  flex: 1 1 auto;
+  margin: 1px 0;
+  padding: 5px 7px;
+  border: 1px solid rgba(16, 24, 40, 0.25);
+  border-radius: 6px;
+  font-size: 12px;
+  color: inherit;
+  background: #fff;
+}
+.tw-doc-foot { border-top: 1px solid rgba(16, 24, 40, 0.08); padding-top: 6px; }
+.tw-doc-add {
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: inherit;
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  text-align: left;
+}
+.tw-doc-add:hover { background: rgba(16, 24, 40, 0.06); }
+:host(.dark) .tw-doc-panel { background: #232A33; border-color: rgba(255, 255, 255, 0.14); color: #E6EAF2; }
+:host(.dark) .tw-doc-name:hover { background: rgba(255, 255, 255, 0.08); }
+:host(.dark) .tw-doc-row.is-on .tw-doc-name { background: rgba(255, 255, 255, 0.12); }
+:host(.dark) .tw-doc-add:hover { background: rgba(255, 255, 255, 0.08); }
+:host(.dark) .tw-doc-rename-input { background: #1A2029; border-color: rgba(255, 255, 255, 0.25); color: #E6EAF2; }
+:host(.dark) .tw-doc-foot { border-color: rgba(255, 255, 255, 0.12); }
+
+/* ---- 写作卡片组切换控件：浮于写作画布右上角（仅写作模式显示）----
+   无胶囊底：只保留「组名 + ▾」，融入画布；仅 hover 给一层极淡底提示可点 */
+.tw-doc-corner {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 60;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 220px;
+  padding: 4px 6px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #1F2430;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  pointer-events: auto;
+}
+/* 组名文本：过长才省略，箭头 ▾ 始终显示在按钮内、不被裁切 */
+.tw-doc-corner-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tw-doc-corner::after { content: "▾"; font-size: 9px; opacity: 0.6; flex: none; }
+.tw-doc-corner:hover { background: rgba(16, 24, 40, 0.08); }
+.tw-doc-corner[hidden] { display: none; }
+:host(.dark) .tw-doc-corner { color: #E6EAF2; }
+:host(.dark) .tw-doc-corner:hover { background: rgba(255, 255, 255, 0.10); }
+
+:host(.dark) .tw-links,
+:host(.dark) .tw-links-ctl {
   --tw-link-stroke: rgba(206, 220, 190, 0.4);
   --tw-link-stroke-hi: rgba(206, 220, 190, 0.85);
 }
@@ -941,9 +1481,44 @@
 :host(.dark) .tw-card-paper,
 :host(.dark) .tw-card-font,
 :host(.dark) .tw-card-zoom-out,
-:host(.dark) .tw-card-zoom-in { color: #cdc8bb; }
+:host(.dark) .tw-card-zoom-in,
+:host(.dark) .tw-card-move,
+:host(.dark) .tw-card-lv { color: #cdc8bb; }
 :host(.dark) .tw-card-paper:hover,
 :host(.dark) .tw-card-font:hover,
 :host(.dark) .tw-card-zoom-out:hover,
 :host(.dark) .tw-card-zoom-in:hover { color: #f2efe6; }
+
+/* ===== LOD（Level of Detail）分级渲染 =====
+   对标 tldraw 的 Level of Detail / built-in shape simplifications。
+   本应用画布固定 100% 不缩放（无相机 zoom，_applyCanvasTransform 仅 translate），
+   故 LOD 不按「缩放档位」触发，而按「交互态 + 可见密度」触发 ——
+   档位由 JS 写到 .tw-canvas 上：
+     .tw-lod-drag  —— 画布平移拖拽期间：最高降级，松手即恢复；
+     .tw-lod-dense —— 在屏卡数超阈值（LOD_DENSITY）：常驻降级。
+   【铁律】只关不参与布局的装饰：纸纹(absolute) / 工具条(absolute) / 投影(纯绘制)。
+   齿边 .tw-card-edge（position:relative + 0.89em 高）与 .tw-card-head/.tw-card-meta 在流内，
+   隐藏会改卡片高度 → _geo 缓存失效、连线端点与命中测试错位，故一律不碰。
+   正文 .tw-card-text 永远保留：LOD 不得造成任何内容丢失。 */
+
+/* 纸纹：每卡一张 repeating-linear-gradient 叠加层，密集时是纯绘制负担 */
+.tw-canvas.tw-lod-dense .tw-card-noise,
+.tw-canvas.tw-lod-drag  .tw-card-noise { display: none; }
+
+/* 投影：每卡两层大范围 box-shadow，百级卡片时是合成器的主要开销。
+   选择器特意带上 :hover 与 :host(.dark) 变体，以压过 .tw-mode-write 下的同名规则
+   （同特异度靠源码顺序取胜，故本块必须留在文件末尾）。 */
+.tw-canvas.tw-lod-dense .tw-card-main,
+.tw-canvas.tw-lod-dense .tw-card:hover .tw-card-main,
+.tw-canvas.tw-lod-drag  .tw-card-main,
+.tw-canvas.tw-lod-drag  .tw-card:hover .tw-card-main,
+:host(.dark) .tw-canvas.tw-lod-dense .tw-card-main,
+:host(.dark) .tw-canvas.tw-lod-drag  .tw-card-main {
+  box-shadow: none;
+  transition: none;
+}
+
+/* 工具条：每卡 10 个按钮 + 10 个内联 SVG，平移期间无人操作 → 整条摘掉。
+   只在 drag 档摘（dense 档保留 hover 可用，否则密集时用户将拿不到卡片操作入口）。 */
+.tw-canvas.tw-lod-drag .tw-card-tools { display: none; }
 

@@ -31,6 +31,7 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
+  position: relative;   /* 建立定位上下文：机身/画布内的绝对定位浮层以此为参照 */
   cursor: grab;          /* 全局可拖动画布：机身区空白处也触发平移 */
   touch-action: none;
   /* 无论侧栏多宽，左右都保留安全间距（避免设备/纸条贴边）
@@ -53,7 +54,7 @@
   --tw-font-screen:  var(--tw-font-mono);
 }
 
-/* 画布（桌面）：淡网格底，呼应 pager 的复古纸感 */
+/* 画布（桌面）：便签摆放区。背景继承首页主题渐变，不叠加网格纹理（网格方案已废弃） */
 .tw-canvas {
   position: relative;
   flex: 1;
@@ -61,20 +62,43 @@
   overflow: visible;   /* 允许便签拖出画布到机身区域，否则 overflow:hidden 会把超出画布的部分裁掉 */
   /* 不提升层叠：保留打字机机身(.tw-beeper z:30)在最前；
      便签拖到机身区时落在机身后方(出纸口吐纸的视觉)，不被裁切即可 */
-  /* 背景透明：直接继承首页（工作台）的同款主题渐变，亮暗随 --bg-gradient-* 自动切换；
-     此处只叠加淡网格纹理，不再覆盖中性底色，保证与首页背景统一 */
+  /* 背景透明：直接继承首页（工作台）的同款主题渐变，亮暗随 --bg-gradient-* 自动切换，
+     不再覆盖中性底色，保证与首页背景统一 */
   background: transparent;
   /* 单一容器：机身与卡片的所有根字号都用本画布宽度的 cqi 驱动 */
   container-type: inline-size;
   cursor: grab;        /* 画布桌面可整体拖动（机身固定） */
   touch-action: none;
-  will-change: transform;
+  /* 注意：不要在此常驻 will-change:transform。
+     画布 overflow:visible 且卡片绝对定位会溢出到数千像素外，常驻会把整块（含溢出）
+     永久提升为巨型合成层，导入越多越大，最终超出 GPU 纹理上限 → 整页（含背后首页）
+     合成器掉帧闪烁、层被丢弃显示不全。改为仅在平移拖拽时由 JS 临时开启（见 _makeCanvasDraggable）。 */
 }
 .scroll-typewriter-feature.dragging { cursor: grabbing; }
+
+/* ===== 多选 / 框选 ===== */
+
+/* 多选高亮 */
+.tw-card.selected {
+  outline: 2px solid #c9a24a;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(201,162,74,0.18);
+  z-index: 50;
+}
+
+/* 框选矩形 */
+.tw-marquee {
+  position: absolute;
+  border: 1px solid #c9a24a;
+  background: rgba(201,162,74,0.12);
+  pointer-events: none;
+  z-index: 4000;
+}
 
 /* ===== 寻呼机外壳（绿壳） ===== */
 .tw-beeper {
   flex: none;
+  margin-top: auto;   /* 思维子弹画布改为绝对定位后脱离 flex 流，用 auto 外边距把机身推回列向底部 */
   display: flex;
   justify-content: center;
   position: relative;
@@ -523,7 +547,13 @@ body:not(.dark) .tw-case-right {
 }
 .tw-rbtn svg { width: 0.55em; height: 0.55em; }
 .tw-rbtn:hover { color: #fff; }
+/* 导图模式下纸样/字体/排版只对便签有意义 → 置灰；hover/active 一并压掉，
+   否则鼠标扫过还会变色、看起来「能点」。title 会说明原因，所以保留指针事件。 */
+.tw-rbtn:disabled { opacity: 0.34; cursor: not-allowed; filter: grayscale(0.35); }
+.tw-rbtn:disabled:hover { color: inherit; }
+.tw-rbtn:disabled:active { transform: none; box-shadow: none; }
 .tw-rbtn:active { transform: translateY(0.13em); box-shadow: 0 0 0 0.07em rgba(var(--deep-rgb), 0.82), 0 0 0 0.11em rgba(var(--deep-rgb), 0.42), 0 0 0.18em rgba(var(--black-rgb), 0.30), inset 0 0.18em 0.4em rgba(var(--deep-rgb), 0.5); }
+
 #twPaper:hover { color: rgb(var(--pale-rgb)); }
 #twFont:hover { color: #fff; }
 #twClear:hover { color: rgb(var(--danger-rgb)); }
@@ -711,6 +741,294 @@ body.dark .tw-print,
     inset 0 3px 4px rgba(0, 0, 0, 0.75),
     inset 0 -1px 1px rgba(255, 255, 255, 0.12);
 }
+/* ===== 机身明暗开关（控制 Obsidian 亮/暗，紧邻「竹林中国」品牌标）=====
+   对齐准则：与 .tw-brand 取**同一套度量**，让它视觉上是「同一枚铭牌的延伸」——
+     · font-size 同为 0.82em  → em 基准与品牌牌一致（原先用 inherit 取标签行的
+       0.6em，基准一错，圆角/边框/高度全都对不上）；
+     · 高度 calc(1.32em + 2px) = 行高 1em + 上下内距合计 0.32em + 上下边框 2px，
+       与 .tw-brand 的外沿高度严格相等；
+     · 1px 边框及其色系、背模糊、内凹阴影沿用品牌牌；圆角改为**全圆跑道（胶囊）**，
+       以「一眼是可拨动的开关」优先，不再跟随药丸的小圆角；
+     · knob 尺寸与行程由内容盒反推：contentH = 1.32em，contentW = 2.6em - 2px。 */
+.tw-theme-switch {
+  position: relative;
+  display: inline-block;
+  vertical-align: middle;
+  /* 与 .tw-brand 同字号基准：后续 em 尺寸才能与品牌牌严格对应 */
+  font-size: 0.82em;
+  line-height: 1;
+  box-sizing: border-box;
+  margin-left: 0.7em;
+  width: 2.6em;
+  /* 1em(行高) + 0.32em(上下内距合计) + 2px(上下边框) = 品牌牌外沿高度 */
+  height: calc(1.32em + 2px);
+  padding: 0;
+  border: 1px solid rgba(var(--bamboo-deep-rgb), 0.28);
+  /* 全圆跑道（胶囊）：半径给到远超半高，由浏览器钳制成「高度的一半」= 正半圆端头。
+     写成 999em 而非 calc(0.66em + 1px)，是为了不引入裸 px（R1 令牌规则）；
+     钳制后端头圆心恰好落在 knob 中心，两者同心，是标准拨动开关的比例。 */
+  border-radius: 999em;
+  background: rgba(var(--primary-rgb), 0.20);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  box-shadow: inset 0 1px 2px rgba(var(--black-rgb), 0.12);
+  cursor: pointer;
+  /* 裸 <button> 会命中全局 min-touch-target(48px)，必须清零，否则撑破标签行 */
+  min-width: 0;
+  min-height: 0;
+  transition: background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+  -webkit-tap-highlight-color: transparent;
+  pointer-events: auto;   /* .tw-beeper 整体 pointer-events:none，开关需单独放行 */
+}
+.tw-theme-switch-knob {
+  position: absolute;
+  /* 内容盒高 1.32em → (1.32 - 0.94) / 2 = 0.19em，上下留白对称 */
+  top: 0.19em;
+  left: 0.19em;
+  width: 0.94em;
+  height: 0.94em;
+  border-radius: 50%;
+  background: rgb(var(--bamboo-deep-rgb));
+  box-shadow: 0 1px 2px rgba(var(--black-rgb), 0.35);
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), background 0.18s ease;
+}
+/* 打开（暗色）：沿用品牌牌的凹刻深底 + 荧光绿边，knob 滑到右侧并点亮 */
+.tw-theme-switch[aria-checked="true"] {
+  border-color: rgba(var(--green-very-bright-rgb), 0.32);
+  background: linear-gradient(
+    180deg,
+    rgba(var(--black-rgb), 0.55) 0%,
+    rgba(var(--black-rgb), 0.35) 55%,
+    rgba(var(--black-rgb), 0.22) 100%
+  );
+  box-shadow:
+    inset 0 3px 4px rgba(var(--black-rgb), 0.55),
+    inset 0 -1px 1px rgba(var(--green-very-bright-rgb), 0.12);
+}
+.tw-theme-switch[aria-checked="true"] .tw-theme-switch-knob {
+  /* 行程 = 内容宽(2.6em - 2px) - knob(0.94em) - 左右留白(0.38em) = 1.28em - 2px */
+  transform: translateX(calc(1.28em - 2px));
+  background: rgb(var(--green-very-bright-rgb));
+  box-shadow: 0 0 0.3em rgba(var(--green-very-bright-rgb), 0.6);
+}
+.tw-theme-switch:focus-visible {
+  outline: 0.12em solid rgb(var(--primary-rgb));
+  outline-offset: 0.14em;
+}
+
+/* ---- 命中区（好点面积）----
+   跑道必须保持小巧才能与品牌牌对齐，可见尺寸只有约 18×11px，远低于舒适命中标准。
+   因此把「可点面积」交给这个透明伪元素承担，视觉尺寸一个像素都不变。
+   刻意用 px 而非 em：机身整体会随机身宽度缩放，热区若跟着等比缩小，
+   本就小的目标只会更难命中——固定 px 反而在机身缩小时让热区相对更宽裕。
+   边界取值受限于真实布局：
+     · 上 10px —— .tw-case 上方有 1.07em 机身留白，区域内没有任何控件；
+     · 下  6px —— 标签行 margin-bottom 0.8em(约 7px) 之后就是 .tw-screen，
+                   再往下会吞掉输入框的点击；
+     · 左右 9px —— 相邻的品牌牌与 BAMBOO IMMORTALS 都不可点，扩展过去只增面积不误伤。
+   命中面积约 36×27px，约为可见跑道的 4.7 倍。 */
+.tw-theme-switch::after {
+  content: "";
+  position: absolute;
+  top: -10px;
+  right: -9px;
+  bottom: -6px;
+  left: -9px;
+  border-radius: 999em;
+}
+
+/* ---- 瞄准反馈 ----
+   热区远大于可见跑道，若没有悬停反馈，用户无法判断自己有没有瞄准——
+   「看着像没中却能点」或「看着像中了却没反应」都会让开关显得不好点。
+   顺序很重要：:hover 必须排在 [aria-checked] 之后。两者特异性同为 (0,2,0)，
+   后写者胜，故 :hover 能覆盖亮态；暗态再靠更高特异性的
+   [aria-checked="true"]:hover 收尾，避免暗色下被亮态配色洗掉。 */
+.tw-theme-switch:hover {
+  border-color: rgba(var(--bamboo-deep-rgb), 0.55);
+  background: rgba(var(--primary-rgb), 0.34);
+}
+.tw-theme-switch[aria-checked="true"]:hover {
+  border-color: rgba(var(--green-very-bright-rgb), 0.62);
+  background: linear-gradient(
+    180deg,
+    rgba(var(--black-rgb), 0.62) 0%,
+    rgba(var(--black-rgb), 0.42) 55%,
+    rgba(var(--black-rgb), 0.28) 100%
+  );
+}
+/* 按下反馈走 filter：不与 knob 的 transform（行程）和自身的 box-shadow 抢夺同一属性 */
+.tw-theme-switch:active { filter: brightness(1.06); }
+.tw-theme-switch[aria-checked="true"]:active { filter: brightness(1.14); }
+
+/* ===== 红色齿轮旋钮（模式切换：自由画布 ↔ 思维子弹） =====
+   机身是「绿玻璃功能键 + 琥珀金 PRINT」两个色调，这里引入第三种信号色承载
+   「切换整个模式」的语义；取暗朱红 + 金属滚花，避免与柔绿玻璃撞色。
+   形态：**贴着机身右缘的竖齿轮**（轮缘朝前、轮面朝右），像老机器侧面的手轮 /
+   对讲机频道轮。不做轴座、销轴等安装件：齿轮左缘与机身外缘相切，直接「坐」在
+   机身侧面 —— 少一层五金件，视线不做二次停靠。
+   为什么不做成平放的圆盘：平盘被机身右缘的直线切一半，现实里没有这种装法；
+   而齿轮从壳体边缘露出，本来就该是轮缘朝前的竖轮 —— 直线切过圆柱侧面是真实的
+   机械截面，违和感为零。
+   附带好处：整套外挂件都在机身轮廓之外，不再需要任何 clip-path 裁剪，
+   「切口与机身内缘对齐」这一类问题从根上消失（旧平盘的裁剪逻辑已随之删除）。 */
+.tw-knob {
+  position: absolute;
+  top: 50%;                  /* 机身垂直居中（介于屏幕与按键之间） */
+  /* button 不继承 font-size（UA 默认 13.333px），必须显式继承机身字号，
+     否则 em 基准错、齿轮尺寸对不上 */
+  font-size: inherit;
+  /* 盒宽 2.3em：右段 1.1em 装齿轮（左缘恰好落在机身外缘）、左段 1.2em 铺在机身绿面上
+     只当点击热区（不可见），这样齿轮本身不必为了好点而做胖 */
+  right: -1.1em;
+  transform: translateY(-50%);
+  width: 2.3em; height: 3em;
+  /* 【尺寸·必留】本元素是裸 <button>，会命中 components-interaction.css 的全局触控规则
+     `button, .btn, … { min-width/min-height: var(--min-touch-target) }`（= 48px）；
+     min-* 恒压过 width/height，会把整组外挂件撑大、轴座与齿轮的相对位置全乱。
+     （与同机身的 .tw-rbtn / .tw-print 同款处理） */
+  min-width: 0; min-height: 0;
+  padding: 0; border: 0;
+  background: transparent;
+  cursor: pointer;
+  pointer-events: auto;      /* .tw-beeper 整体 pointer-events:none，旋钮要单独放行 */
+  -webkit-tap-highlight-color: transparent;
+}
+/* 贴合影：齿轮左缘压住机身边缘处的一小片暗影，交代它是「装在机身侧面」而不是飘着 */
+.tw-knob::before {
+  content: "";
+  position: absolute;
+  left: 0.82em; top: 50%;
+  width: 0.6em; height: 2.3em;
+  transform: translateY(-50%);
+  background: radial-gradient(ellipse 48% 50% at 80% 50%, rgba(24, 6, 4, .45), transparent 76%);
+  pointer-events: none;
+}
+/* 按下反馈：模式切换拨轮不需要 scale 缩放（缩放会导致镜面高光带跳位，且拨轮不是按压键）。
+   保留纯净的定位 transform，不做视觉形变。 */
+/* 竖齿轮本体：立着的轮（轮缘朝前），直径 2.7em、轮厚 1.05em
+   left 1.2em = 机身外缘（见 .tw-knob 的盒宽拆分），左缘与机身相切，不做安装件 */
+.tw-knob-wheel {
+  position: absolute;
+  left: 1.2em; top: 50%;
+  transform: translateY(-50%);
+  width: 1.05em; height: 2.7em;
+  border-radius: 0.52em;             /* 胶囊：上下即圆柱端头 */
+  overflow: hidden;                  /* 齿脊层滚动时不越界 */
+  /* 胶木旋钮：去掉玻璃感镜面高光带，圆柱体积完全交给下方红渐变 + ::after 横向收边承担，
+     避免亮色下高光发灰显脏。暗部一律用饱和红（#8d2413 / rgba(88,14,6)），不用黑。 */
+  background:
+    linear-gradient(180deg,
+      #a92e19 0%, #c7482b 14%, #e4653f 34%, #ef7c56 46%,
+      #dd5737 62%, #b93620 86%, #8d2413 100%);
+  box-shadow:
+    inset 0 0 0 0.03em rgba(255, 232, 216, .38),      /* 玻璃边缘的一线亮边 */
+    inset 0 0.05em 0.06em rgba(255, 240, 228, .45),
+    inset 0 -0.06em 0.12em rgba(88, 14, 6, .45),      /* 底部收暗走饱和红 */
+    0 0.025em 0.05em rgba(20, 4, 2, .5), 0 0.16em 0.3em rgba(var(--black-rgb), .42);
+  transition: box-shadow .25s, filter .18s;
+}
+/* 胶木质感叠加层：① 横向收边让圆柱真正「圆」起来；② 外缘倒角高光像凸起的烤漆一圈。
+   覆盖在正常态与导图点亮态之上，无需在两处各写一遍。 */
+.tw-knob-wheel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  /* ① 横向收边：亮色下用「饱和深红」而非近黑，读成红在阴影里；近黑边在亮红面上会显脏 */
+  background: linear-gradient(90deg,
+    rgba(122, 26, 14, .50) 0%, rgba(122, 26, 14, .10) 14%,
+    rgba(255, 244, 234, .08) 50%,
+    rgba(122, 26, 14, .10) 86%, rgba(122, 26, 14, .50) 100%);
+  /* ② 外缘倒角：顶部一线亮边 + 底部一线暗边（同样走饱和红，不发黑），给出「凸起胶木」的圈边体积 */
+  box-shadow:
+    inset 0 0.045em 0.02em rgba(255, 246, 236, .55),
+    inset 0 -0.05em 0.045em rgba(120, 24, 12, .42);
+}
+/* 暗色模式：胶木叠层换回更深的近黑边——亮色下那种饱和红边会显脏，暗底上近黑边正好压住体积。
+   此覆盖层确保暗色模式外观与之前完全一致（未引入脏感时的样子）。 */
+.theme-dark .tw-knob-wheel::after,
+:host(.dark) .tw-knob-wheel::after {
+  background: linear-gradient(90deg,
+    rgba(54, 6, 2, .55) 0%, rgba(54, 6, 2, .12) 14%,
+    rgba(255, 244, 234, .10) 50%,
+    rgba(54, 6, 2, .12) 86%, rgba(54, 6, 2, .55) 100%);
+  box-shadow:
+    inset 0 0.045em 0.02em rgba(255, 246, 236, .55),
+    inset 0 -0.05em 0.045em rgba(54, 6, 2, .55);
+}
+/* 齿脊：轮缘上一圈圈平行于轮轴的凸棱 —— 轮轴指向右、正视时凸棱投影成**横线**，
+   所以这里是横条纹而非径向齿（径向齿只有「看到轮面」时才成立，那会把视点挪到右侧，
+   与整机正视 + 左侧来光矛盾）。左右对称，不再有只在一侧的纹路。
+   平移量必须正好一个周期（0.28em），否则接缝会跳；轮在转、外观无缝，
+   这正是「整周滚花」错觉的来源。 */
+.tw-knob-rim {
+  position: absolute;
+  left: 0; right: 0; top: -50%; height: 200%;
+  background: repeating-linear-gradient(180deg,
+    rgba(255, 230, 212, .38) 0 0.055em, rgba(150, 30, 14, .34) 0.055em 0.28em);
+  transition: transform .5s cubic-bezier(.34, 1.42, .5, 1);
+}
+.tw-knob.is-on .tw-knob-rim { transform: translateY(0.28em); }
+/* 档位标记：作为齿轮面的静态高光/反光条，不随模式切换位移（位移会让人误以为是反光在跳）。
+   模式状态改由「齿脊滚动 .tw-knob-rim」+「红色外发光 .tw-knob.is-on .tw-knob-wheel」表达。 */
+/* 档位指示条：横向满条（原样），但不再左右切档 —— 而是随齿轮「滚一齿」一起纵向滚动，
+   像刻在轮面上的参考线。复用 is-on 状态类，与 .tw-knob-rim 同节奏（同曲线、同 0.28em 一齿）。 */
+.tw-knob-mark {
+  position: absolute;
+  left: 0.16em; right: 0.16em; top: 50%;
+  transform: translateY(-50%);
+  height: 0.12em;
+  border-radius: 0.06em;
+  background: rgba(255, 246, 236, .92);
+  box-shadow: 0 0 0.16em rgba(255, 224, 196, .72);
+  transition: transform .5s cubic-bezier(.34, 1.42, .5, 1), background .25s;
+}
+.tw-knob.is-on .tw-knob-mark {
+  transform: translateY(calc(-50% + 0.28em));   /* 随齿轮滚动一齿，而非左右切档 */
+  background: rgba(255, 236, 214, .96);
+}
+.tw-knob:hover .tw-knob-wheel { filter: brightness(1.12); }
+/* 导图模式：齿轮点亮 */
+.tw-knob.is-on .tw-knob-wheel {
+  box-shadow:
+    inset 0 0 0 0.03em rgba(255, 240, 226, .5),
+    inset 0 0.05em 0.06em rgba(255, 244, 234, .5),
+    0 0 0.5em rgba(226, 88, 54, .72),
+    0 0.025em 0.05em rgba(20, 4, 2, .5), 0 0.16em 0.3em rgba(var(--black-rgb), .42);
+}
+/* 旋钮三档刻度：便签(0) / MD可视化写作(一齿) / 思维子弹(两齿)。
+   与齿脊 .tw-knob-rim 同一节奏（一齿 0.28em），三档读起来是连续的「咔、咔」。
+   刻意放在 .tw-knob.is-on 规则之后：两者特异度同为 0-3-0，后写的胜出，
+   于是 data-mode 成为档位的唯一真值，is-on 只留作导图档的强发光。 */
+.tw-knob[data-mode="write"] .tw-knob-rim { transform: translateY(0.28em); }
+.tw-knob[data-mode="mindmap"] .tw-knob-rim { transform: translateY(0.56em); }
+.tw-knob[data-mode="write"] .tw-knob-mark {
+  transform: translateY(calc(-50% + 0.28em));
+  background: rgba(255, 236, 214, 0.96);
+}
+.tw-knob[data-mode="mindmap"] .tw-knob-mark {
+  transform: translateY(calc(-50% + 0.56em));
+  background: rgba(255, 236, 214, 0.96);
+}
+/* 写作档给一档朱红微光：介于便签档的熄灭与导图档的强发光之间，三档光强递进可辨 */
+.tw-knob[data-mode="write"] .tw-knob-wheel {
+  box-shadow:
+    inset 0 0 0 0.03em rgba(255, 240, 226, 0.5),
+    inset 0 0.05em 0.06em rgba(255, 244, 234, 0.5),
+    0 0 0.28em rgba(226, 88, 54, 0.45),
+    0 0.025em 0.05em rgba(20, 4, 2, 0.5), 0 0.16em 0.3em rgba(var(--black-rgb), 0.42);
+}
+.tw-knob:focus-visible { outline: 2px solid #c9a24a; outline-offset: 2px; }
+/* 暗色下齿轮压暗一档（同样只收暗不发黑，镜面高光带保留），保持与机身玻璃的明度关系 */
+.theme-dark .tw-knob-wheel,
+:host(.dark) .tw-knob-wheel {
+  background:
+    linear-gradient(180deg,
+      #8d2412 0%, #a93a22 14%, #c45734 34%, #d06845 46%,
+      #bd4a2e 62%, #9a2c18 86%, #731c0e 100%);
+}
+
 /* 桌面阴影/反射 */
 .tw-desk-shadow {
   position: absolute;
@@ -742,4 +1060,89 @@ body.dark .tw-print,
     radial-gradient(ellipse 45% 55% at 70% 50%, rgba(var(--green-very-bright-rgb), 0.05), transparent 70%),
     radial-gradient(ellipse at center, rgba(var(--black-rgb), 0.22), transparent 75%);
 }
+
+/* ===== 整篇预览弹窗（写作档专用，#twPaper 触发）=====
+   【跟随主题】与类型菜单 .tw-level-menu 同一套 house style：浅色=浅色纸面+深墨字，
+   暗色=深色面+浅字。此前是固定的「黑屏荧光绿终端」（--black-rgb .86 底 + 荧光绿字），
+   浅色主题下会弹出近纯黑的 640px 阅读面、与整体观感割裂，且它是全设备唯一没有
+   :host(.dark) 覆盖的浮动面。终端识别度只保留在等宽字体上。 */
+.tw-preview-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.2em;
+  /* 故意不用 backdrop-filter：全屏模糊在 iframe 内会逐帧重采样，容易让整页（含背后首页）
+     反复重模糊→闪烁。遮罩深浅随主题：浅色只需压暗一档，暗色才压到 .62。 */
+  background: rgba(var(--deep-rgb), 0.38);
+  pointer-events: auto;
+}
+:host(.dark) .tw-preview-modal { background: rgba(var(--black-rgb), 0.62); }
+.tw-preview-modal[hidden] { display: none; }
+.tw-preview-panel {
+  width: min(640px, 100%);
+  max-height: 86vh;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8em;
+  padding: 1.1em 1.2em 1.2em;
+  border-radius: 0.9em;
+  border: 1px solid var(--border-light);
+  background: var(--surface-solid);
+  box-shadow: var(--shadow-floating);
+  color: var(--text-primary);
+}
+.tw-preview-head {
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+/* 结构概览（N 张 · N 字）：与主标题同行，弱化呈现 */
+.tw-preview-stat {
+  margin-left: 0.6em;
+  font-weight: 400;
+  font-size: 0.85em;
+  letter-spacing: 0;
+  color: var(--text-tertiary);
+}
+.tw-preview-hint {
+  margin: 0;
+  font-size: 0.82em;
+  line-height: 1.55;
+  color: var(--text-tertiary);
+}
+.tw-preview-body {
+  flex: 1 1 auto;
+  min-height: 46vh;
+  resize: vertical;
+  padding: 0.8em;
+  border-radius: 0.5em;
+  border: 1px solid var(--border-light);
+  background: rgba(var(--deep-rgb), 0.05);
+  color: var(--text-primary);
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 0.9em;
+  line-height: 1.5;
+  overflow: auto;
+}
+:host(.dark) .tw-preview-body { background: rgba(var(--black-rgb), 0.30); }
+.tw-preview-body:focus-visible { outline: 0.12em solid rgb(var(--primary-rgb)); outline-offset: 0.1em; }
+.tw-preview-actions { display: flex; justify-content: flex-end; gap: 0.7em; }
+.tw-preview-btn {
+  font: inherit;
+  font-size: 0.9em;
+  padding: 0.5em 1.1em;
+  border-radius: 0.5em;
+  cursor: pointer;
+  border: 1px solid var(--border-light);
+  min-width: 0; min-height: 0;
+  background: transparent;
+  color: var(--text-primary);
+}
+/* 主按钮取主题强调色：浅色深竹绿底+白字，暗色亮竹绿底+深字 —— 两档对比度都够 */
+.tw-preview-btn-go { font-weight: 700; background: rgb(var(--deep-rgb)); color: rgb(var(--white-rgb)); }
+:host(.dark) .tw-preview-btn-go { background: rgb(var(--primary-rgb)); color: rgb(var(--black-rgb)); }
+.tw-preview-btn-go:hover { filter: brightness(1.08); }
+.tw-preview-btn:focus-visible { outline: 0.12em solid rgb(var(--primary-rgb)); outline-offset: 0.14em; }
 

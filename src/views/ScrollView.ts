@@ -89,6 +89,20 @@ export class ScrollView extends ItemView {
     container.empty();
     container.addClass('bamboo-scroll-container');
 
+    // 隐藏 Obsidian 视图自带的标题栏（「画中卷」+ < > 导航 + … 菜单）：
+    // 画中卷是全屏沉浸式视图，这个面包屑导航栏没有实际用途（用户不会在画中卷里前后翻页），
+    // 反而白白占掉约 36px 高度，压缩了 iframe 的可用空间。
+    // 注意：.view-header 是 .view-content 的【兄弟】节点（同挂在 .workspace-leaf 下），
+    // 不在 container 内部，故必须先上溯 parentElement 再 querySelector。
+    // onOpen 时 header 可能尚未挂载，用 rAF 兜底重试一次，确保万无一失。
+    const hideHeader = () => {
+      const leafRoot = container.parentElement;
+      const vh = leafRoot ? leafRoot.querySelector('.view-header') as HTMLElement | null : null;
+      if (vh) { vh.style.display = 'none'; return true; }
+      return false;
+    };
+    if (!hideHeader()) requestAnimationFrame(() => { hideHeader(); });
+
     if (!this.pluginDir) {
       container.createDiv({
         text: '竹林修仙传: 无法定位插件目录',

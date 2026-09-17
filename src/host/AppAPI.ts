@@ -223,6 +223,13 @@ export class AppAPI {
   onThemeChanged(followObsidianTheme: boolean): void {
     this.settings.followObsidianTheme = followObsidianTheme;
     this.themeBridge.pushTheme(followObsidianTheme);
+    // 若开「将调色同步到 Obsidian」，随 Obsidian 明暗重算行内调色变量，
+    // 避免旧模式算出的颜色残留覆盖新主题（applyPalette 写的是行内样式，优先级高于主题 CSS）。
+    if (this.settings.syncPaletteToObsidian) {
+      this.themeBridge.reapplyOnThemeChange(
+        activeDocument.body.classList.contains('theme-dark')
+      );
+    }
     void this.saveSettings(); // 与 saveSectionConfig/saveCustomNoises 一致，持久化主题跟随开关
   }
 
@@ -458,6 +465,48 @@ export class AppAPI {
       return;
     }
 
+    // ---- 画中卷·打字机机身明暗开关：切换 Obsidian 基础主题 ----
+    // 该开关语义是「控制 Obsidian 外观明暗」（不是 webapp 内部夜间模式）：
+    // 宿主切换 moonstone(亮) / obsidian(暗) 后显式重放 css-change，
+    // 驱动既有主题管线（各视图 css-change → onThemeChanged → pushTheme → theme:changed）即时跟随。
+    if (type === 'app:toggleObsidianTheme') {
+      const wanted = (payload as { isDark?: boolean } | null)?.isDark;
+      const currentlyDark = activeDocument.body.classList.contains('theme-dark');
+      const targetIsDark = typeof wanted === 'boolean' ? wanted : !currentlyDark;
+      const targetMode = targetIsDark ? 'obsidian' : 'moonstone';
+      // Obsidian 未在公开类型中暴露「切基础主题」API：优先用运行时存在的 App.changeTheme，
+      // 回退到 Vault.setConfig('theme', mode)。两者都以受限接口探测，避免 any 回潮。
+      const appUnsafe = this.app as unknown as {
+        changeTheme?: (theme: string) => void;
+        vault?: { setConfig?: (key: string, value: unknown) => void };
+      };
+      let switched = false;
+      try {
+        if (typeof appUnsafe.changeTheme === 'function') {
+          appUnsafe.changeTheme(targetMode);
+          switched = true;
+        } else if (appUnsafe.vault && typeof appUnsafe.vault.setConfig === 'function') {
+          appUnsafe.vault.setConfig('theme', targetMode);
+          switched = true;
+        }
+      } catch {
+        /* 落到下方「不支持」分支统一响应 */
+      }
+      if (!switched) {
+        this.respondError(id, '当前 Obsidian 版本不支持切换明暗主题');
+        return;
+      }
+      // 显式重放主题管线：即便 changeTheme/setConfig 已自行派发 css-change，
+      // 再触发一次也幂等（pushTheme 有签名缓存），却可兜住「配置已改但事件未派发」的情况。
+      try {
+        this.app.workspace.trigger('css-change');
+      } catch {
+        /* 触发失败不影响切换结果：下一次任意主题事件仍会同步 */
+      }
+      this.respond(id, { ok: true, isDark: targetIsDark });
+      return;
+    }
+
     // ---- 重新开启主题跟随（webapp → Obsidian）----
     if (type === 'app:theme:sync') {
       this.themeBridge.pushTheme(this.settings.followObsidianTheme);
@@ -570,6 +619,25 @@ export class AppAPI {
         this.respond(id, { ok: true });
       } catch (e) {
         this.respondError(id, e instanceof Error ? e.message : '打开文件失败');
+      }
+      return;
+    }
+
+    // ---- 思维子弹导出为 Markdown：写入 Vault 任意相对路径（不受画中卷目录限制）----
+    if (type === 'app:exportMindmap') {
+      try {
+        const p = payload as { path?: string; content?: string } | null;
+        const raw = typeof p?.path === 'string' ? p.path.trim() : '';
+        if (!raw) throw new Error('未提供文件路径');
+        if (raw.includes('..')) throw new Error('路径遍历禁止');
+        const full = normalizePath(raw);
+        const content = typeof p?.content === 'string' ? p.content : '';
+        const parent = full.substring(0, full.lastIndexOf('/'));
+        if (parent) { try { await this.vaultAdapter.mkdir(parent); } catch { /* 已存在忽略 */ } }
+        await this.vaultAdapter.write(full, content);
+        this.respond(id, { ok: true, path: full });
+      } catch (e) {
+        this.respondError(id, e instanceof Error ? e.message : '导出失败');
       }
       return;
     }
@@ -705,6 +773,22 @@ export class AppAPI {
         return await this.storage.getTypewriterNotes();
       case 'storage:putTypewriterNotes':
         return await this.storage.putTypewriterNotes(p.notes);
+      case 'storage:getTypewriterWritingIndex':
+        return await this.storage.getTypewriterWritingIndex();
+      case 'storage:putTypewriterWritingIndex':
+        return await this.storage.putTypewriterWritingIndex(p.idx);
+      case 'storage:getTypewriterWritingDoc':
+        return await this.storage.getTypewriterWritingDoc(p.id as string);
+      case 'storage:putTypewriterWritingDoc':
+        return await this.storage.putTypewriterWritingDoc(p.id as string, p.doc);
+      case 'storage:deleteTypewriterWritingDoc':
+        return await this.storage.deleteTypewriterWritingDoc(p.id as string);
+      case 'storage:getTypewriterMindmapDoc':
+        return await this.storage.getTypewriterMindmapDoc(p.id as string);
+      case 'storage:putTypewriterMindmapDoc':
+        return await this.storage.putTypewriterMindmapDoc(p.id as string, p.doc);
+      case 'storage:deleteTypewriterMindmapDoc':
+        return await this.storage.deleteTypewriterMindmapDoc(p.id as string);
       default:
         throw new Error(`Unknown storage message type: ${type}`);
     }

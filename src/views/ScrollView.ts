@@ -97,11 +97,13 @@ export class ScrollView extends ItemView {
     // onOpen 时 header 可能尚未挂载，用 rAF 兜底重试一次，确保万无一失。
     const hideHeader = () => {
       const leafRoot = container.parentElement;
-      const vh = leafRoot ? leafRoot.querySelector('.view-header') as HTMLElement | null : null;
-      if (vh) { vh.style.display = 'none'; return true; }
+      const vh = leafRoot ? leafRoot.querySelector<HTMLElement>('.view-header') : null;
+      // setCssStyles 而非直接写 style：符合 obsidianmd/no-static-styles-assignment
+      if (vh) { vh.setCssStyles({ display: 'none' }); return true; }
       return false;
     };
-    if (!hideHeader()) requestAnimationFrame(() => { hideHeader(); });
+    // window.requestAnimationFrame：弹出窗口（popout）中裸 rAF 指向的是主窗口，须显式取 window
+    if (!hideHeader()) window.requestAnimationFrame(() => { hideHeader(); });
 
     if (!this.pluginDir) {
       container.createDiv({
@@ -140,7 +142,10 @@ export class ScrollView extends ItemView {
 
     try {
       this.appAPI?.startListening();
-      const blobUrl = await this.appHost!.buildBlobUrl('scroll.html');
+      // 显式守卫取代非空断言：未初始化时抛可读错误（由下方 catch 渲染成提示），而非空指针崩溃
+      const appHost = this.appHost;
+      if (!appHost) throw new Error('AppHost 未初始化');
+      const blobUrl = await appHost.buildBlobUrl('scroll.html');
 
       // 视图可能已在加载期间被关闭
       if (!container.isConnected) {

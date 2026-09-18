@@ -1121,7 +1121,8 @@ export default class BambooReviewPlugin extends Plugin {
     // 捕获「本次打开前」该 leaf 已挂载视图的功能：setViewState 会经 setState 立即把
     // _feature 改成 incomingFeature，故重载判定必须用「改之前」的旧值，否则已挂载视图换功能时
     //（同类型视图被复用、iframe 不重载）会判成「已一致」而漏掉 reloadWebapp，旧功能赖着不走。
-    const prevFeature = (target.view instanceof ScrollView) ? (target.view as ScrollView).getFeature() : null;
+    // instanceof 已把 target.view 窄化为 ScrollView，无需再断言
+    const prevFeature = (target.view instanceof ScrollView) ? target.view.getFeature() : null;
 
     if (wasReused) {
       // 已挂载且功能/位置一致：仅把视图带到前台（选中其 tab），不重建、也不抢键盘焦点。
@@ -1163,7 +1164,8 @@ export default class BambooReviewPlugin extends Plugin {
     // 全新 leaf（prevFeature=null）靠 load handler 注入即可，不必重载。
     const newView = target.view;
     if (prevFeature !== null && prevFeature !== incomingFeature && newView instanceof ScrollView) {
-      await (newView as ScrollView).reloadWebapp();
+      // 条件里已有 newView instanceof ScrollView，此处已被窄化，无需断言
+      await newView.reloadWebapp();
     }
 
     existing.forEach((l) => {

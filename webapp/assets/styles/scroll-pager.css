@@ -44,7 +44,7 @@
   --tw-font-sans: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
                   "Noto Sans SC", "Source Han Sans SC", sans-serif;
   --tw-font-serif: "Songti SC", "STSong", "SimSun", "Noto Serif SC", serif;
-  --tw-font-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas,
+  --tw-font-mono: "SFMono-Regular", Menlo, Consolas,
                   "Courier New", monospace;
   --tw-font-kai: "Kaiti SC", "STKaiti", "KaiTi", "楷体", "Noto Serif SC", serif;
   /* 便签三款风格全部落在系统字体上（已移除书法体与网络字体）：
@@ -1121,7 +1121,7 @@ body.dark .tw-print,
   border: 1px solid var(--border-light);
   background: rgba(var(--deep-rgb), 0.05);
   color: var(--text-primary);
-  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+  font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
   font-size: 0.9em;
   line-height: 1.5;
   overflow: auto;

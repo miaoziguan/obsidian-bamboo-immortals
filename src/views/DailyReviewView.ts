@@ -269,7 +269,10 @@ export class DailyReviewView extends ItemView {
 
     try {
       this.appAPI?.startListening();
-      const blobUrl = await this.appHost!.buildBlobUrl();
+      // 显式守卫取代非空断言：未初始化时抛可读错误（由下方 catch 渲染成提示），而非空指针崩溃
+      const appHost = this.appHost;
+      if (!appHost) throw new Error('AppHost 未初始化');
+      const blobUrl = await appHost.buildBlobUrl();
 
       // 视图可能已在加载期间被关闭
       if (!container.isConnected) {

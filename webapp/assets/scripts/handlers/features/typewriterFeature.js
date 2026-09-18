@@ -942,6 +942,7 @@ export const TypewriterFeature = {
       y += (h || 200) + GAP;                        // 按各卡实际高度累计，竖向顺流
     });
 
+    this._syncLayoutGeo();                          // 位置已改写 → 几何缓存/空间索引同步（否则连线端点指向重排前的幽灵位置）
     this._scheduleRenderLinks();                    // 连线端点随位置更新（原有连线保留）
     this._scheduleSave();                           // 持久化新位置
     this._refreshWriteOrder();                      // 顺序徽标随新位置刷新
@@ -1819,6 +1820,7 @@ export const TypewriterFeature = {
       }
     });
 
+    this._syncLayoutGeo();                          // 网格位置已改写 → 几何缓存/空间索引同步（否则连线端点指向幽灵位置）
     this._scheduleRenderLinks();                            // 连线端点随位置更新
     this._scheduleSave();                                  // 持久化新位置
     this._scheduleCull();                                  // 网格排版后重算挂载：移出视野的卡卸载
@@ -2266,7 +2268,8 @@ export const TypewriterFeature = {
     // 连续编辑改走 WritingDoc 原语：上移/下移即交换两张卡在模型里的坐标
     this._notes = WritingDoc.setPos(this._notes, a.dataset.id, parseFloat(a.style.left) || 0, parseFloat(a.style.top) || 0);
     this._notes = WritingDoc.setPos(this._notes, b.dataset.id, parseFloat(b.style.left) || 0, parseFloat(b.style.top) || 0);
-    this._rewireChain(next);
+    this._syncLayoutGeo();                          // 两张卡位置互换 → 几何缓存/空间索引同步（否则连线端点指向幽灵位置）
+    _rewireChain(next);
     this._scheduleRenderLinks();
     this._scheduleSave();
     this._refreshWriteOrder();                // 徽标 + 上移/下移可用态
@@ -3468,6 +3471,35 @@ export const TypewriterFeature = {
     const g = this._geo.get(id);
     if (g) return { cx: g.x + g.w / 2, cy: g.y + g.h / 2, hw: g.w / 2 || 1, hh: g.h / 2 || 1, rot: g.rot || 0 };
     return null;
+  },
+
+  /** 重排 / 排版 / 上移下移后同步几何缓存与空间索引（【P8 几何缓存】失效完备性补齐）。
+   *  这类布局写操作只改了 style.left/top（在屏）与模型（全部），却没走 _measureCard / _invalidateGeo，
+   *  导致 _geo 与空间索引停在旧位置。_geo 是空间索引（剔除据它决定挂/卸谁）与连线端点
+   *  （_getGeom 给离屏卡用）的真源 —— 不刷新会让剔除按旧位置挂载、连线端点指向重排前的幽灵位置
+   *  （视觉上「线断在半空」）。故这里统一补齐：
+   *   · 在屏卡走纯几何的 _measureCard 重测（坐标取最新 style.left/top、尺寸取 offset*，
+   *     无 z-index / textContent / 挂载副作用）；
+   *   · 离屏卡无 DOM 可测，按重排已写回模型的 x/y 刷新 _geo，并同步进空间索引（尺寸沿用最后测量值）。
+   *  与拖拽结束的 _measureCard、缩放/字级/级别/纸样/根字号变化的 _invalidateGeo 同一职责：
+   *  凡是改写卡片位置（left/top）的入口都必须让 _geo 与 _spatial 跟上。 */
+  _syncLayoutGeo() {
+    if (!this._geo) this._geo = new Map();
+    if (!this._spatial) this._spatial = new SpatialIndex(512);
+    const noteIdx = this._noteIndex();
+    // 在屏卡：纯几何重测（_measureCard 只读 left/top + offset*，无副作用）
+    if (this._mountedCards) {
+      this._mountedCards.forEach((el) => this._measureCard(el));
+    }
+    // 离屏卡：位置取自模型（重排已 setPos），尺寸沿用旧缓存，仅刷新坐标 + 索引
+    noteIdx.forEach((note, id) => {
+      if (this._mountedCards && this._mountedCards.has(id)) return; // 已在屏，已重测
+      const g = this._geo.get(id);
+      if (!g) return;
+      g.x = typeof note.x === 'number' ? note.x : 0;
+      g.y = typeof note.y === 'number' ? note.y : 0;
+      this._spatial.update(id, g.x, g.y, g.w, g.h, g.rot);
+    });
   },
 
   /** 把一张模型卡建回 DOM 并挂进挂载表 + 量几何。culling 进屏时调用。 */

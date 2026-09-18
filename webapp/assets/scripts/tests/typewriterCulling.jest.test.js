@@ -13,9 +13,15 @@ const { TypewriterFeature: feature } = loadModule('handlers/features/typewriterF
 // WritingDoc 被 loadModule 剥离了 import，但 reflow/arrange 内部调用 WritingDoc.* —— 注入全局供其解析
 const { WritingDoc } = loadModule('handlers/features/writingDoc.js', ['WritingDoc']);
 global.WritingDoc = WritingDoc;
+// 同 WritingDoc：loadModule 剥离了 import，_syncLayoutGeo 等新路径会 new SpatialIndex()，
+// 注入全局供测试环境解析（生产环境由模块 import 提供）。
+const { SpatialIndex } = loadModule('services/SpatialIndex.js', ['SpatialIndex']);
+global.SpatialIndex = SpatialIndex;
 // feature 是模块单例，帧预算用例会把 _applyZoom 换成 jest.fn()。几何用例要调真方法，
 // 故在此存一份真身供其还原（否则打不上失效标记，且会误判为「已合帧」）。
 const REAL_APPLY_ZOOM = feature._applyZoom;
+// 真身 _measureCard（纯几何重测，_syncLayoutGeo 复用）；前序用例可能把它换成 mock，几何回归用例需还原。
+const REAL_MEASURE = feature._measureCard;
 
 // 造一个「全离屏」现场：_mountedCards 空、_geo 空 → 所有卡 c.el 为 null
 function culledFixture() {
@@ -381,5 +387,81 @@ describe('性能埋点（对标 tldraw PerformanceManager）', () => {
     expect(typeof feature._setPerf).toBe('function');
     expect(typeof feature._perfReport).toBe('function');
     expect(typeof feature._perfReset).toBe('function');
+  });
+});
+
+describe('几何缓存：重排/排版后必须刷新（修复「线断在半空」）', () => {
+  // 复现卡片写作模式顺流重排（_reflowWriteOrder）/ 一键排版（_arrangeNotes）/ 上移下移（_moveCardInOrder）后，
+  // 连线端点在视觉上「断在半空」的根因：布局写操作只改了 style.left/top（在屏）与模型（全部），
+  // 却漏刷 _geo 与空间索引，导致剔除按旧位置挂载、连线端点指向重排前的幽灵位置。
+  // 这三类入口都在 _syncLayoutGeo 补齐：在屏卡纯几何重测、离屏卡按模型刷新 x/y。本组把回归锁死。
+
+  test('_reflowWriteOrder 后：离屏卡几何缓存刷新到新竖排位置（端点不再指向幽灵位）', () => {
+    culledFixture();
+    feature._measureCard = REAL_MEASURE;             // 还原真方法（前序用例可能留 mock）
+    // 模拟卡片先前已在屏、测量过，缓存里是「重排前」的散乱位置（剔除态：后被卸载）
+    feature._geo.set('a', { x: 0, y: 0, w: 300, h: 120, rot: 0 });
+    feature._geo.set('b', { x: 800, y: 5000, w: 300, h: 120, rot: 0 });
+    feature._geo.set('c', { x: -200, y: 10000, w: 300, h: 120, rot: 0 });
+    feature._spatial.update('a', 0, 0, 300, 120, 0);
+    feature._spatial.update('b', 800, 5000, 300, 120, 0);
+    feature._spatial.update('c', -200, 10000, 300, 120, 0);
+
+    feature._reflowWriteOrder();
+
+    // 缓存必须反映重排后的竖排：x 收拢到 0、y 递增
+    const ga = feature._geo.get('a'), gb = feature._geo.get('b'), gc = feature._geo.get('c');
+    expect(ga.x).toBe(0); expect(ga.y).toBe(0);
+    expect(gb.x).toBe(0); expect(gb.y).toBeGreaterThan(ga.y);   // b 在 a 下方
+    expect(gc.x).toBe(0); expect(gc.y).toBeGreaterThan(gb.y);   // c 在 b 下方
+    // 空间索引同步：按新位置查询三张都在；旧散乱位置(800,5000)不再有卡
+    const nowVisible = feature._spatial.queryRect(-300, -300, 300, 15000);
+    expect(nowVisible.has('a')).toBe(true);
+    expect(nowVisible.has('b')).toBe(true);
+    expect(nowVisible.has('c')).toBe(true);
+    const staleBucket = feature._spatial.queryRect(700, 4900, 900, 5100);
+    expect(staleBucket.has('b')).toBe(false);
+  });
+
+  test('_reflowWriteOrder 后：在屏卡几何缓存重写 left/top（端点跟真位置）', () => {
+    culledFixture();
+    feature._measureCard = REAL_MEASURE;
+    const elA = document.createElement('div'); elA.dataset.id = 'a'; elA.style.left = '1000px'; elA.style.top = '7000px';
+    const elB = document.createElement('div'); elB.dataset.id = 'b'; elB.style.left = '-500px'; elB.style.top = '3000px';
+    feature._mountedCards.set('a', elA);
+    feature._mountedCards.set('b', elB);
+    feature._geo.set('a', { x: 1000, y: 7000, w: 300, h: 120, rot: 0 });
+    feature._geo.set('b', { x: -500, y: 3000, w: 300, h: 120, rot: 0 });
+    feature._spatial.update('a', 1000, 7000, 300, 120, 0);
+    feature._spatial.update('b', -500, 3000, 300, 120, 0);
+
+    feature._reflowWriteOrder();
+
+    expect(feature._geo.get('a').x).toBe(0);  // 重排后竖排 x=0
+    expect(feature._geo.get('a').y).toBe(0);
+    expect(feature._geo.get('b').x).toBe(0);
+    expect(feature._geo.get('b').y).toBeGreaterThan(0);
+    expect(feature._spatial.queryRect(-50, -50, 350, 100000).has('a')).toBe(true);
+    expect(feature._spatial.queryRect(-50, -50, 350, 100000).has('b')).toBe(true);
+  });
+
+  test('_arrangeNotes 后：几何缓存/空间索引刷新到网格位置', () => {
+    culledFixture();
+    feature._measureCard = REAL_MEASURE;
+    feature._geo.set('a', { x: 999, y: 0, w: 300, h: 120, rot: 0 });
+    feature._geo.set('b', { x: 0, y: 8888, w: 300, h: 120, rot: 0 });
+    feature._spatial.update('a', 999, 0, 300, 120, 0);
+    feature._spatial.update('b', 0, 8888, 300, 120, 0);
+
+    feature._arrangeNotes();
+
+    // 两张卡进网格后，x/y 必须被改写为网格坐标（不再停在 999 / 8888 散乱位）
+    expect(feature._geo.get('a').x).not.toBe(999);
+    expect(feature._geo.get('b').y).not.toBe(8888);
+    const nowVisible = feature._spatial.queryRect(-1000, -1000, 5000, 5000);
+    expect(nowVisible.has('a')).toBe(true);
+    expect(nowVisible.has('b')).toBe(true);
+    // 旧的散乱位(999,0)不应再命中
+    expect(feature._spatial.queryRect(900, -50, 1100, 50).has('a')).toBe(false);
   });
 });

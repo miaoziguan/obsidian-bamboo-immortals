@@ -1946,14 +1946,21 @@ export const TypewriterFeature = {
     if (!this._selected) this._selected = new Set();
     this._selected.forEach((c) => { if (c !== card) c.classList.remove('selected'); });
     this._selected.clear();
-    if (card) { this._selected.add(card); card.classList.add('selected'); }
+    if (card) { this._selected.add(card); card.classList.add('selected'); this._blurInput(); }
   },
 
   /** Shift 点击：在选中集合里切换该卡 */
   _toggleSelect(card) {
     if (!this._selected) this._selected = new Set();
     if (this._selected.has(card)) { this._selected.delete(card); card.classList.remove('selected'); }
-    else { this._selected.add(card); card.classList.add('selected'); }
+    else { this._selected.add(card); card.classList.add('selected'); this._blurInput(); }
+  },
+
+  /** 选中卡片后把全局打印框（twInput）交还焦点：避免随后按 Delete/Backspace 时
+   *  isFromTextEntry 把事件判定成「在输入框删字」而删不掉卡片。
+   *  仅当焦点确实停在打印框才 blur，绝不误伤卡片内编辑（contentEditable）等真实焦点。 */
+  _blurInput() {
+    if (this._input && document.activeElement === this._input) this._input.blur();
   },
 
   /** 清空全部选中 */
@@ -2065,7 +2072,18 @@ export const TypewriterFeature = {
       // 不能直接判 e.target.tagName：机身输入框在 shadow 树内，事件穿出 shadow 边界后
       // target 会被重定向成 host(div)，该守卫会失效 → 在输入框里按退格会误删选中的便签、
       // 按 F 会触发归位。改用 composedPath() 取真实路径判定。
-      if (isFromTextEntry(e)) return;
+      if (isFromTextEntry(e)) {
+        // 例外：焦点在全局打印框（twInput）且已选中卡片、且打印框为空时，
+        // Delete/Backspace 视作「删卡」指令（空打印框退格本无意义）。
+        // 打印框非空（正在打字）则保留原意：拦掉、让浏览器删字，避免误删选中的卡。
+        // 主路径由「选中卡片时 _blurInput 让打印框失焦」保证，这里只是兜底。
+        if ((e.key === 'Delete' || e.key === 'Backspace') && this._selected && this._selected.size) {
+          const inp = this._input;
+          const inPrint = inp && e.composedPath && e.composedPath().some((n) => n === inp);
+          if (inPrint && !inp.value) { e.preventDefault(); this._deleteSelected(); }
+        }
+        return;
+      }
       // 撤销 / 重做：Cmd/Ctrl+Z、Cmd/Ctrl+Shift+Z。
       // 导图模式下让位给 MindmapFeature（它有自己的文档与历史），否则一次按键会被两边各撤一次。
       if ((e.metaKey || e.ctrlKey) && (e.key === 'z' || e.key === 'Z')) {
@@ -3262,7 +3280,10 @@ export const TypewriterFeature = {
 
   _ensureLinkLayer() { return this._linkLayer.ensureLayer(); },
   _scheduleRenderLinks() {
-    if (this._mode === 'write') this._refreshWriteOrder();
+    if (this._mode === 'write') {
+      // 顺序徽标刷新异常绝不应阻断连线重绘：用 try 兜底，确保拖动时连线端点始终跟随
+      try { this._refreshWriteOrder(); } catch (_) { /* 顺序徽标失败不影响连线 */ }
+    }
     this._linkLayer.scheduleRender();
   },
   _edgePoint(c, tx, ty) { return this._linkLayer.edgePoint(c, tx, ty); },
@@ -3460,6 +3481,24 @@ export const TypewriterFeature = {
     if (!this._mountedCards || !this._geo) return null;
     const card = this._mountedCards.get(id);
     if (card) {
+      // 活卡：用视觉盒相对画布换算回画布局部坐标（连线层 .tw-links 挂在 canvas 内，同一坐标系）。
+      // 比 offsetLeft/offsetTop 更鲁棒 —— offsetLeft 依赖 offsetParent 正好是 canvas，一旦卡片被
+      // 包进中间容器 / 受变换或画布缩放影响，offsetLeft 与连线层坐标系就会脱节，导致「拖动卡片时
+      // 连线端点不跟随、停在原地」（写作档尤其易触发）。视觉盒换算不受 offsetParent 与缩放影响，
+      // 便签档因 offsetParent 本就为 canvas，数学上与此前行为等价，无回归。
+      if (this._canvas) {
+        const cr = this._canvas.getBoundingClientRect();
+        const r = card.getBoundingClientRect();
+        const sx = (cr.width && this._canvas.offsetWidth) ? cr.width / this._canvas.offsetWidth : 1;
+        const hw = (r.width / sx) / 2 || 1;
+        const hh = (r.height / sx) / 2 || 1;
+        return {
+          cx: (r.left + r.width / 2 - cr.left) / sx,
+          cy: (r.top + r.height / 2 - cr.top) / sx,
+          hw, hh,
+          rot: Number(card.dataset.rot) || 0,
+        };
+      }
       return {
         cx: card.offsetLeft + card.offsetWidth / 2,
         cy: card.offsetTop + card.offsetHeight / 2,

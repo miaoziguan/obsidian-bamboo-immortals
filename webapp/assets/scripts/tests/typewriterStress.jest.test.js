@@ -11,8 +11,31 @@ global.MindmapFeature = { isActive: () => false, stats: () => ({ count: 0, depth
 const { TypewriterFeature: feature } = loadModule('handlers/features/typewriterFeature.js', ['TypewriterFeature']);
 const { WritingDoc } = loadModule('handlers/features/writingDoc.js', ['WritingDoc']);
 const { SpatialIndex } = loadModule('services/SpatialIndex.js', ['SpatialIndex']);
+const { GeoCache } = loadModule('services/GeoCache.js', ['GeoCache']);
 global.WritingDoc = WritingDoc;
 global.SpatialIndex = SpatialIndex;
+global.GeoCache = GeoCache;
+// B1 抽取债：ViewportCuller 从 feature 抽出，import 被 loadModule 剥离，需注入全局供 feature 委托调用解析
+const { ViewportCuller } = loadModule('services/ViewportCuller.js', ['ViewportCuller']);
+global.ViewportCuller = ViewportCuller;
+// B1 抽取债（综合）：feature 把 4 个子系统委托给 CardViewManager/CardInteractions/
+// ModeController/PersistenceCoordinator；这些子系统方法体内引用的共享常量（twConfig 加载时挂
+// globalThis）与服务在 loadModule 剥离 import 后需从全局解析。
+loadModule('handlers/features/twConfig.js', []); // 副作用：把全部共享常量挂到 globalThis
+const _b1mod = (p, n) => { const m = loadModule(p, [n]); if (!global[n]) global[n] = m[n]; };
+_b1mod('handlers/features/CardViewManager.js', 'CardViewManager');
+_b1mod('handlers/features/CardInteractions.js', 'CardInteractions');
+_b1mod('handlers/features/ModeController.js', 'ModeController');
+_b1mod('handlers/features/PersistenceCoordinator.js', 'PersistenceCoordinator');
+_b1mod('services/TypewriterStore.js', 'TypewriterStore');
+_b1mod('services/SpatialIndex.js', 'SpatialIndex');
+_b1mod('services/GeoCache.js', 'GeoCache');
+_b1mod('services/undoStack.js', 'UndoStack');
+_b1mod('handlers/features/writingDoc.js', 'WritingDoc');
+_b1mod('handlers/features/mindmapFeature.js', 'MindmapFeature');
+_b1mod('services/LinkLayer.js', 'LinkLayer');
+_b1mod('services/ViewportCuller.js', 'ViewportCuller');
+_b1mod('utils/domRef.js', 'isFromTextEntry');
 
 const N = 1000;      // 模拟便签总数
 const COLS = 40;     // 网格列数 → 卡间距 400×300 px
@@ -29,7 +52,7 @@ function stressSetup() {
   feature._el = document.createElement('div');
   feature._restored = true;
   feature._mountedCards = new Map();
-  feature._geo = new Map();
+  feature._geo = new GeoCache();
   feature._spatial = new SpatialIndex(512);
   feature._CULL_MARGIN = MARGIN;
   feature._zTop = 0;

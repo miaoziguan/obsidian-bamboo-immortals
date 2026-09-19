@@ -6,6 +6,14 @@
 // 对应连线的 .tw-link path 应在 is-dashed 类之间正确切换，且状态随 _links 持久化。
 const { loadModule } = require('./__helpers__/testUtils');
 const { LinkLayer } = loadModule('services/LinkLayer.js', ['LinkLayer']);
+// B1 抽取债：feature 把视口/几何逻辑委托给 ViewportCuller（loadModule 剥离了 import）；
+// 其方法体内 new GeoCache()/new SpatialIndex() 与 ViewportCuller 本身都需从全局解析。
+const { GeoCache } = loadModule('services/GeoCache.js', ['GeoCache']);
+global.GeoCache = GeoCache;
+const { SpatialIndex } = loadModule('services/SpatialIndex.js', ['SpatialIndex']);
+global.SpatialIndex = SpatialIndex;
+const { ViewportCuller } = loadModule('services/ViewportCuller.js', ['ViewportCuller']);
+global.ViewportCuller = ViewportCuller;
 
 // jsdom 不实现 SVG 几何方法，桩掉
 beforeAll(() => {
@@ -19,6 +27,26 @@ const TypewriterStoreMock = {
   save: jest.fn().mockResolvedValue(undefined),
   _sanitizeLinks: (l) => l,
 };
+// B1 抽取债（综合）：feature 把 4 个子系统委托给 CardViewManager/CardInteractions/
+// ModeController/PersistenceCoordinator；这些子系统方法体内引用的共享常量（twConfig 加载时挂
+// globalThis）与服务在 loadModule 剥离 import 后需从全局解析。
+// 注意：feature 以 { TypewriterStore: TypewriterStoreMock } 注入 mock，子模块经全局解析，故此处同步挂全局。
+global.TypewriterStore = TypewriterStoreMock;
+loadModule('handlers/features/twConfig.js', []); // 副作用：把全部共享常量挂到 globalThis
+const _b1mod = (p, n) => { const m = loadModule(p, [n]); if (!global[n]) global[n] = m[n]; };
+_b1mod('handlers/features/CardViewManager.js', 'CardViewManager');
+_b1mod('handlers/features/CardInteractions.js', 'CardInteractions');
+_b1mod('handlers/features/ModeController.js', 'ModeController');
+_b1mod('handlers/features/PersistenceCoordinator.js', 'PersistenceCoordinator');
+_b1mod('services/TypewriterStore.js', 'TypewriterStore');
+_b1mod('services/SpatialIndex.js', 'SpatialIndex');
+_b1mod('services/GeoCache.js', 'GeoCache');
+_b1mod('services/undoStack.js', 'UndoStack');
+_b1mod('handlers/features/writingDoc.js', 'WritingDoc');
+_b1mod('handlers/features/mindmapFeature.js', 'MindmapFeature');
+_b1mod('services/LinkLayer.js', 'LinkLayer');
+_b1mod('services/ViewportCuller.js', 'ViewportCuller');
+_b1mod('utils/domRef.js', 'isFromTextEntry');
 
 function makeCard(id, x, y) {
   const c = document.createElement('div');

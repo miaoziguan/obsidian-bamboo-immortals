@@ -9,6 +9,15 @@ const { loadModule } = require('./__helpers__/testUtils');
 // 需注入全局供其解析（否则抛 ReferenceError: WritingDoc is not defined）。
 const { WritingDoc } = loadModule('handlers/features/writingDoc.js', ['WritingDoc']);
 global.WritingDoc = WritingDoc;
+// GeoCache 被 loadModule 剥离了 import，feature 体内 new GeoCache() 需从全局解析（与 SpatialIndex 同处理）
+const { GeoCache } = loadModule('services/GeoCache.js', ['GeoCache']);
+global.GeoCache = GeoCache;
+// B1 抽取债：feature 把视口/几何逻辑委托给 ViewportCuller（loadModule 剥离了 import）；
+// 其方法体内 new SpatialIndex() 同样走全局解析，故此处一并注入 SpatialIndex 与 ViewportCuller。
+const { SpatialIndex } = loadModule('services/SpatialIndex.js', ['SpatialIndex']);
+global.SpatialIndex = SpatialIndex;
+const { ViewportCuller } = loadModule('services/ViewportCuller.js', ['ViewportCuller']);
+global.ViewportCuller = ViewportCuller;
 
 const StoreMock = {
   KEY_LINKS: 'typewriter:links',
@@ -16,6 +25,26 @@ const StoreMock = {
   save: jest.fn().mockResolvedValue(undefined),
   _sanitizeLinks: (l) => l,
 };
+// B1 抽取债（综合）：feature 把 4 个子系统委托给 CardViewManager/CardInteractions/
+// ModeController/PersistenceCoordinator；这些子系统方法体内引用的共享常量（twConfig 加载时挂
+// globalThis）与服务在 loadModule 剥离 import 后需从全局解析。
+// 注意：feature 以 { TypewriterStore: StoreMock } 注入 mock，子模块经全局解析，故此处同步挂全局。
+global.TypewriterStore = StoreMock;
+loadModule('handlers/features/twConfig.js', []); // 副作用：把全部共享常量挂到 globalThis
+const _b1mod = (p, n) => { const m = loadModule(p, [n]); if (!global[n]) global[n] = m[n]; };
+_b1mod('handlers/features/CardViewManager.js', 'CardViewManager');
+_b1mod('handlers/features/CardInteractions.js', 'CardInteractions');
+_b1mod('handlers/features/ModeController.js', 'ModeController');
+_b1mod('handlers/features/PersistenceCoordinator.js', 'PersistenceCoordinator');
+_b1mod('services/TypewriterStore.js', 'TypewriterStore');
+_b1mod('services/SpatialIndex.js', 'SpatialIndex');
+_b1mod('services/GeoCache.js', 'GeoCache');
+_b1mod('services/undoStack.js', 'UndoStack');
+_b1mod('handlers/features/writingDoc.js', 'WritingDoc');
+_b1mod('handlers/features/mindmapFeature.js', 'MindmapFeature');
+_b1mod('services/LinkLayer.js', 'LinkLayer');
+_b1mod('services/ViewportCuller.js', 'ViewportCuller');
+_b1mod('utils/domRef.js', 'isFromTextEntry');
 
 function makeCard(id) {
   const c = document.createElement('div');

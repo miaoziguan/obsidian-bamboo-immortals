@@ -8,6 +8,8 @@
  *     从根上杜绝「结构不匹配 → 静默清空」；
  *  3. 自带 schema 校验 + 版本号 + 写前备份 + read-after-write，损坏可感知、可回滚。
  */
+// 写作文档 schema 版本：单一真源在 twConfig.WRITING_SCHEMA_VERSION（与 WritingDoc.VERSION 同值）。
+import { WRITING_SCHEMA_VERSION } from '../handlers/features/twConfig.js';
 export const TypewriterStore = {
   KEY_NOTES: 'typewriter:notes',         // 新格式：{ version, notes }
   KEY_CANVAS: 'typewriterCanvas',        // 画布平移偏移（独立 key，绝不混入便签数组）
@@ -29,7 +31,7 @@ export const TypewriterStore = {
   KEY_WRITING_BAK: 'typewriter:writing:bak',
   KEY_WRITING_LINKS: 'typewriter:writing:links',
   KEY_WRITING_CANVAS: 'typewriter:writing:canvas',
-  WRITING_VERSION: 2,
+  WRITING_VERSION: WRITING_SCHEMA_VERSION,
   // 【性能】写作索引「刷新 updatedAt」的节流窗口(ms)。纯内容保存（拖卡/打字，防抖 350ms 一次）
   // 若每次都刷 updatedAt，就变成每 350ms 一次 settings.json 整文件 read-modify-write，
   // 只为更新时间戳，得不偿失 —— 故只在窗口到期 / 新建组 / current 变化时才写一次索引。

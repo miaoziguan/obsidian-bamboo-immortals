@@ -1,5 +1,7 @@
 import { TypewriterStore } from '../../services/TypewriterStore.js';
 import { MindmapDoc } from './mindmapDoc.js';
+import { MindmapLayout } from './mindmapLayout.js';
+import { MindmapExport } from './mindmapExport.js';
 import { LinkLayer } from '../../services/LinkLayer.js';
 // 文本输入来源判定（Shadow DOM 安全）：见 utils/domRef 的 isFromTextEntry 注释
 import { isFromTextEntry } from '../../utils/domRef.js';
@@ -42,6 +44,14 @@ export const MindmapFeature = {
   MM_COLORS: ['', '#e6b450', '#5ec8a0', '#5b9bff', '#ef8a9c', '#b58cff', '#8fd0e8'],
   SAVE_DEBOUNCE: 400,
 
+  // ── 状态归属（D3 定界）──
+  // 思维子弹模式是一个「独立文档子系统」：其文档状态（_nodes/_links/_view/_sel*/_style/_groupId）
+  // 刻意不并入便签的 NotesState，而是自持于本单例。原因：
+  //   ① 它经 ctx 边界对齐宿主，但只取 ctx.ctrl 的宿主行为（_refreshScreenMeta / getSeedSource / _showScreenMsg），
+  //      自身数据真源即此处，不依赖 NotesState；
+  //   ② 导出/布局这类纯逻辑又进一步抽离到独立纯模块 MindmapLayout / MindmapExport（见 D2），
+  //      本文件只持有「状态 + DOM + 交互」。
+  // 因此「模块接收 state」解耦在导图侧表现为：边界用 ctx（仅收 ctrl），内部文档状态自治。
   _active: false,
   _groupId: null,          // 当前思维导图组 id（对应 typewriter:mindmap-index.current）
   _nodes: [],
@@ -50,14 +60,13 @@ export const MindmapFeature = {
   style: 0,                // 子弹样式索引（0..5）：导图模式下第一个机身按钮循环切换
   _selId: null,
   _selLinkIdx: null,
-  _connectFrom: null,       // 连线模式：点「连线」后，下一次点别的子弹即连（Esc 取消）
   _els: null,               // Map<id, el>
   _selSet: null,            // 框选多选集合：Set<id>（思维子弹模式框选删除用）
   _marquee: null,           // 框选矩形 DOM
   _marqueeRect: null,       // 框选矩形几何（画布局部 px）
   _editId: null,
   _undoStack: null,         // 撤销/重做栈（仅导图文档；便签那份在 TypewriterFeature）
-  _host: null,              // 宿主（便签功能实例），用于提示条与种子数据
+  _ctrl: null,              // 宿主（便签功能实例），经 ctx.ctrl 注入，用于提示条与种子数据
   _layoutIdx: 0,            // 当前自动布局模式索引（循环用）
   LAYOUT_MODES: [           // 一键自动布局的可用模式（循环顺序）
     { id: 'tree', label: '树状 ↓' },
@@ -68,9 +77,10 @@ export const MindmapFeature = {
   // ===== 生命周期 =====
 
   /** 在宿主 wrap 内建层（默认隐藏），并绑定一次全局监听 */
-  mount(wrapEl, host) {
+  mount(ctx, wrapEl) {
     if (this._el) return;
-    this._host = host || null;
+    const { ctrl } = ctx;
+    this._ctrl = ctrl || null;
     const layer = document.createElement('div');
     layer.className = 'tw-mm';
     layer.setAttribute('role', 'region');
@@ -102,8 +112,13 @@ export const MindmapFeature = {
       getNodeMap: () => this._els,
       getLinks: () => this._links,
       setLinks: (a) => { this._links = a; },
-      addLink: (f, t) => { const next = MindmapDoc.addLink(this._nodes, this._links, f, t); if (next) { this._links = next; return true; } return false; },
-      removeLink: (f, t) => { this._links = MindmapDoc.removeLink(this._links, f, t); },
+      addLink: (f, t) => {
+        const next = MindmapDoc.addLink(this._nodes, this._links, f, t);
+        if (!next) return false;
+        this._mutate(() => { this._links = next; });   // 连线可撤销（B1）
+        return true;
+      },
+      removeLink: (f, t) => { let r; this._mutate(() => { r = MindmapDoc.removeLink(this._links, f, t); this._links = r; }); },  // 删线可撤销（B1）
       removeLinksOf: (id) => { this._links = this._links.filter((l) => l.from !== id && l.to !== id); },
       onChange: () => this._scheduleSave(),
       anchorClass: 'tw-link-anchor',
@@ -322,7 +337,7 @@ export const MindmapFeature = {
   isActive() { return !!this._active; },
 
   /** 规模（回显到机身屏幕）：子弹数 + 连线数 */
-  stats() { return { count: this._nodes.length, depth: this._links.length }; },
+  stats() { return { count: this._nodes.length, links: this._links.length }; },
 
   /**
    * 把当前思维子弹图导出为 Markdown：按连线结构生成大纲（from→to 视为父子），
@@ -330,71 +345,8 @@ export const MindmapFeature = {
    * 返回 { content, title }：content 为完整 .md 正文，title 为建议文件名（首颗根子弹首句）。
    */
   buildMarkdown(selIds) {
-    const nodes = this._nodes || [];
-    const links = this._links || [];
-    if (!nodes.length) return { content: '', title: '' };
-    // 可选 ids：仅导出选中分支（单选/框选）。传数组或 Set；为空则导出整图。
-    const idSet = (selIds && (Array.isArray(selIds) ? selIds.length : selIds.size))
-      ? new Set(Array.isArray(selIds) ? selIds : Array.from(selIds))
-      : null;
-    const inScope = (id) => !idSet || idSet.has(id);
-    const byId = new Map();
-    nodes.forEach((n) => byId.set(n.id, n));
-    const childrenOf = new Map();
-    const indeg = new Map();
-    nodes.forEach((n) => { childrenOf.set(n.id, []); indeg.set(n.id, 0); });
-    let linkCount = 0;
-    links.forEach((l) => {
-      if (!byId.has(l.from) || !byId.has(l.to)) return;
-      if (idSet && (!inScope(l.from) || !inScope(l.to))) return;   // 只统计选择范围内的连线
-      childrenOf.get(l.from).push(l.to);
-      indeg.set(l.to, (indeg.get(l.to) || 0) + 1);
-      linkCount++;
-    });
-    const oneLine = (n) => {
-      const t = (n && n.text ? String(n.text) : '').replace(/\r?\n/g, ' ').trim();
-      return t || '（未填）';
-    };
-    const visited = new Set();
-    const lines = [];
-    const renderNode = (id, depth) => {
-      if (visited.has(id) || !inScope(id)) return;
-      visited.add(id);
-      lines.push('  '.repeat(depth) + '- ' + oneLine(byId.get(id)));
-      (childrenOf.get(id) || []).forEach((c) => renderNode(c, depth + 1));
-    };
-    const scopeNodes = idSet ? nodes.filter((n) => idSet.has(n.id)) : nodes;
-    let roots = scopeNodes.filter((n) => (indeg.get(n.id) || 0) === 0).map((n) => n.id);
-    if (!roots.length && scopeNodes.length) {
-      // 纯环图（无入度为 0 的节点）：兜底以任意未访问节点为根，靠 visited 去重防死循环
-      roots = [scopeNodes[0].id];
-    }
-    roots.forEach((r) => renderNode(r, 0));
-    const orphans = scopeNodes.filter((n) => !visited.has(n.id)).map((n) => n.id);
-    if (orphans.length) {
-      lines.push('', '## 未连接');
-      orphans.forEach((id) => lines.push('- ' + oneLine(byId.get(id))));
-    }
-    const d = new Date();
-    const pad = (x) => String(x).padStart(2, '0');
-    const stamp = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-    const title = (roots.length ? oneLine(byId.get(roots[0]))
-      : (scopeNodes[0] ? oneLine(scopeNodes[0]) : '')).slice(0, 24) || '思维子弹';
-    const scopeCnt = idSet ? scopeNodes.length : nodes.length;
-    // 元信息改用 YAML frontmatter：Obsidian 会把它解析成文档属性（Properties），
-    // 可检索、可排序；原来那行 blockquote 只是普通正文，无法被当作数据使用。
-    // frontmatter 必须在文件第一行，故整体挪到标题之前。
-    // 时间戳加引号锁定为字符串：避免被 YAML 的「时间戳」类型规则改写格式。
-    const front = [
-      '---',
-      `导出时间: "${stamp}"`,
-      `子弹数: ${scopeCnt}`,
-      `连线数: ${linkCount}`,
-    ];
-    if (idSet) front.push('导出范围: 仅选中分支');
-    front.push('---', '');
-    const header = ['# 思维子弹导图大纲', ''];
-    return { content: front.concat(header, lines).join('\n'), title };
+    // 逻辑已抽离到纯模块 MindmapExport.build（见 mindmapExport.js）：此处仅作公开 API 委托壳
+    return MindmapExport.build(this._nodes, this._links, selIds);
   },
 
   /** 返回当前选中的子弹 id 数组（单选 _selId 与框选 _selSet 的并集）；无选中返回 []。 */
@@ -428,7 +380,7 @@ export const MindmapFeature = {
       };
     }
     const spot = MindmapDoc.freeSpot(this._nodes, anchor);
-    this._nodes = MindmapDoc.addNode(this._nodes, t, spot.x, spot.y);
+    _mutate(() => { this._nodes = MindmapDoc.addNode(this._nodes, t, spot.x, spot.y); });
     const id = this._nodes[this._nodes.length - 1].id;
     this._mountNode(this._nodes[this._nodes.length - 1]);  // 只挂这一颗，不重画整图
     this._refreshEmpty();
@@ -586,7 +538,7 @@ export const MindmapFeature = {
     this._linkLayer.render();
     this._paintSelection();
     this._updateToolbar();
-    if (this._host && typeof this._host._refreshScreenMeta === 'function') this._host._refreshScreenMeta();
+    if (this._ctrl && typeof this._ctrl._refreshScreenMeta === 'function') this._ctrl._refreshScreenMeta();
   },
 
   /** 增量刷新：只重画指定的若干颗子弹，再重画连线 / 选中态 / 工具条。
@@ -607,7 +559,7 @@ export const MindmapFeature = {
     this._linkLayer.render();
     this._paintSelection();
     this._updateToolbar();
-    if (this._host && typeof this._host._refreshScreenMeta === 'function') this._host._refreshScreenMeta();
+    if (this._ctrl && typeof this._ctrl._refreshScreenMeta === 'function') this._ctrl._refreshScreenMeta();
   },
 
   _applyView() {
@@ -687,15 +639,6 @@ export const MindmapFeature = {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     if (e.target.closest('.tw-links, .tw-links-ctl')) return;   // 点连线或控件不触发平移（交给 LinkLayer）
     if (e.target.closest('button, .tw-mm-search, .tw-mm-toolbar')) return;
-    // 连线模式：点另一颗子弹即连（Esc 取消）；落空则退出模式
-    if (this._connectFrom) {
-      const nodeEl = e.target.closest('.tw-mm-node');
-      const tid = nodeEl && nodeEl.dataset.id;
-      if (tid && tid !== this._connectFrom) this._linkLayer.addLink(this._connectFrom, tid);
-      this._exitConnectMode();
-      e.preventDefault();
-      return;
-    }
     // 双击检测：pointerdown 上的 preventDefault（平移/拖拽）会抑制原生 dblclick（兼容性鼠标事件），
     // 故在此手动判定。命中则走「双击」语义并直接返回，不再启动平移/拖拽。
     const now = (typeof performance !== 'undefined') ? performance.now() : Date.now();
@@ -810,23 +753,29 @@ export const MindmapFeature = {
         const tgt = under && under.closest('.tw-mm-node');
         const tid = tgt && tgt.dataset.id;
         if (tid && tid !== id) {
-          const next = MindmapDoc.addLink(this._nodes, this._links, id, tid);
           const s0 = starts.get(id);
-          this._nodes = MindmapDoc.setPos(this._nodes, id, s0.left, s0.top);  // 弹回原位，避免叠在目标上
-          if (next) this._links = next;
+          if (s0) s0.el.classList.remove('is-dragging');   // B4：本分支提前 return，会漏清拖拽态类
+          let added = false;
+          this._mutate(() => {   // 连线 + 弹回原位 一并留档（B1）
+            const next = MindmapDoc.addLink(this._nodes, this._links, id, tid);
+            this._nodes = MindmapDoc.setPos(this._nodes, id, s0.left, s0.top);  // 弹回原位，避免叠在目标上
+            if (next) { this._links = next; added = true; }
+          });
           this._scheduleSave();
           this.renderNodes([id]);
           this._updateToolbar();
-          this._msg(next ? '已连线' : '已相连');
+          this._msg(added ? '已连线' : '已相连');
           return;
         }
       }
-      starts.forEach((s, nid) => {
-        s.el.classList.remove('is-dragging');
-        if (moved) {
-          this._nodes = MindmapDoc.setPos(this._nodes, nid,
-            parseFloat(s.el.style.left) || 0, parseFloat(s.el.style.top) || 0);
-        }
+      this._mutate(() => {
+        starts.forEach((s, nid) => {
+          s.el.classList.remove('is-dragging');
+          if (moved) {
+            this._nodes = MindmapDoc.setPos(this._nodes, nid,
+              parseFloat(s.el.style.left) || 0, parseFloat(s.el.style.top) || 0);
+          }
+        });
       });
       if (moved) { this._scheduleSave(); this.renderNodes(Array.from(starts.keys())); }
       this._updateToolbar();   // 无论是否拖动都刷新：纯点击选中也要显示工具条（否则 moved=false 时工具条被拖拽前收起后再不出现）
@@ -876,12 +825,15 @@ export const MindmapFeature = {
     }
     const p = this._clientToCanvas(clientX, clientY);
     const spot = { x: p.x - MindmapDoc.EST_W / 2, y: p.y - MindmapDoc.EST_H / 2 };
-    this._nodes = MindmapDoc.addNode(this._nodes, '', spot.x, spot.y);
-    const id = this._nodes[this._nodes.length - 1].id;
-    this._mountNode(this._nodes[this._nodes.length - 1]);
-    this._refreshEmpty();
-    this._scheduleSave();
-    this._select(id);
+    let id = null;
+    this._mutate(() => {
+      this._nodes = MindmapDoc.addNode(this._nodes, '', spot.x, spot.y);
+      id = this._nodes[this._nodes.length - 1].id;
+      this._mountNode(this._nodes[this._nodes.length - 1]);
+      this._refreshEmpty();
+      this._scheduleSave();
+      this._select(id);
+    });
     // 延迟到事件序列结束后再聚焦：Shift+双击空白走 pointerdown 的「双击检测」分支，比原生 dblclick 默认动作
     // （页面选词）更早同步 focus()，会被后者抢走焦点 → 编辑态瞬间被关掉、无法键入。延后到下一 tick 让默认动作先执行完。
     setTimeout(() => this._enterEdit(id), 0);
@@ -891,6 +843,8 @@ export const MindmapFeature = {
 
   _select(id) {
     if (this._editId && this._editId !== id) this._commitEdit();
+    // 单选新节点即取消多选；但拖动「已在多选集合内」的节点时保留整组（否则多拖退化成单拖）
+    if (!(this._selSet && this._selSet.has(id))) this._clearMultiSel();
     this._selId = id || null;
     this._selLinkIdx = null;
     this._paintSelection();   // 仅切换受影响节点的高亮（见 _paintSelection 的增量判定）
@@ -957,8 +911,6 @@ export const MindmapFeature = {
     // 表现为：在输入框里打完字按回车，除了正常建出那颗带文字的子弹，
     // 这里还会把它当成「画布上的回车」（case 'Enter' → _addNear）再补一颗**空**子弹。
     if (isFromTextEntry(e)) return;
-    // 连线模式进行中：Esc 先取消连线，不触发其它
-    if (this._connectFrom && e.key === 'Escape') { this._exitConnectMode(); return; }
     // Cmd/Ctrl+F：唤起子弹搜索（与便签模式的查找一致）
     if ((e.metaKey || e.ctrlKey) && (e.key === 'f' || e.key === 'F')) { e.preventDefault(); this._openSearch(); return; }
     // 撤销 / 重做：Cmd/Ctrl+Z、Cmd/Ctrl+Shift+Z（不要求有选中，空画布也能撤）
@@ -1004,17 +956,19 @@ export const MindmapFeature = {
         ? { x: -this._view.x + this._canvas.clientWidth / 2, y: -this._view.y + this._canvas.clientHeight / 2 }
         : { x: 0, y: 0 });
     const spot = MindmapDoc.freeSpot(this._nodes, { x: anchor.x + 40, y: anchor.y + 30 });
-    this._nodes = MindmapDoc.addNode(this._nodes, '', spot.x, spot.y);
-    const id = this._nodes[this._nodes.length - 1].id;
-    this._mountNode(this._nodes[this._nodes.length - 1]);
-    this._refreshEmpty();
-    let linked = false;
-    if (withLink && selId) {
-      const next = MindmapDoc.addLink(this._nodes, this._links, selId, id);
-      if (next) { this._links = next; linked = true; }
-    }
-    this._scheduleSave();
-    this._select(id);
+    let id = null, linked = false;
+    this._mutate(() => {
+      this._nodes = MindmapDoc.addNode(this._nodes, '', spot.x, spot.y);
+      id = this._nodes[this._nodes.length - 1].id;
+      this._mountNode(this._nodes[this._nodes.length - 1]);
+      this._refreshEmpty();
+      if (withLink && selId) {
+        const next = MindmapDoc.addLink(this._nodes, this._links, selId, id);
+        if (next) { this._links = next; linked = true; }
+      }
+      this._scheduleSave();
+      this._select(id);
+    });
     if (linked) this._linkLayer.render();   // 只有新增了连线才需要重画连线
     setTimeout(() => this._enterEdit(id), 0);   // 延后聚焦，避免同步 focus 被后续默认动作抢走
   },
@@ -1063,6 +1017,17 @@ export const MindmapFeature = {
   },
 
   /**
+   * 包裹一次「离散用户变更」：在变更**前**留档（Ctrl+Z 可回退）。
+   * 仅负责「快照时机」，保存由调用方在 fn 内负责（保持现有时机/频率）。
+   * 修复：此前新建 / 移动 / 连线 / 删线 / 播种等路径漏调用 push，
+   * 导致这些最核心的编辑不可撤销（与 _initUndo 注释声明的契约相悖）。
+   */
+  _mutate(fn) {
+    if (this._undoStack) this._undoStack.push();
+    fn();
+  },
+
+  /**
    * 执行撤销 / 重做。
    * @param {'undo'|'redo'} kind
    */
@@ -1080,17 +1045,18 @@ export const MindmapFeature = {
     const id = this._selId;
     if (!id) return;
     this._exitConnectMode();
-    if (this._undoStack) this._undoStack.push();   // 删除前留档：Cmd+Z 可找回
-    const { nodes, links } = MindmapDoc.removeNode(this._nodes, this._links, id);
-    this._nodes = nodes;
-    this._links = links;
-    this._unmountNode(id);          // 只摘掉这一颗，不重画整图
-    this._selId = null;
-    this._refreshEmpty();
-    this._scheduleSave();
-    this._linkLayer.render();       // 移除与该子弹相关的连线元素
-    this._paintSelection();
-    this._msg('已删除该子弹，其连线一并移除');
+    _mutate(() => {
+      const { nodes, links } = MindmapDoc.removeNode(this._nodes, this._links, id);
+      this._nodes = nodes;
+      this._links = links;
+      this._unmountNode(id);          // 只摘掉这一颗，不重画整图
+      this._selId = null;
+      this._refreshEmpty();
+      this._scheduleSave();
+      this._linkLayer.render();       // 移除与该子弹相关的连线元素
+      this._paintSelection();
+      this._msg('已删除该子弹，其连线一并移除');
+    });
   },
 
   /** 清空框选集合（移除高亮类） */
@@ -1106,22 +1072,23 @@ export const MindmapFeature = {
   /** 删除框选的全部子弹（连带各自连线） */
   _deleteMulSel() {
     if (!this._selSet || !this._selSet.size) return;
-    if (this._undoStack) this._undoStack.push();   // 批量删除整批可找回
     const ids = Array.from(this._selSet);
-    let nodes = this._nodes, links = this._links;
-    ids.forEach((id) => {
-      const r = MindmapDoc.removeNode(nodes, links, id);
-      nodes = r.nodes; links = r.links;
-      this._unmountNode(id);       // 逐颗摘 DOM
+    _mutate(() => {
+      let nodes = this._nodes, links = this._links;
+      ids.forEach((id) => {
+        const r = MindmapDoc.removeNode(nodes, links, id);
+        nodes = r.nodes; links = r.links;
+        this._unmountNode(id);       // 逐颗摘 DOM
+      });
+      this._nodes = nodes;
+      this._links = links;
+      this._selSet.clear();
+      this._selId = null;
+      this._refreshEmpty();
+      this._scheduleSave();
+      this._linkLayer.render();       // 一次性重画剩余连线
+      this._msg(`已删除 ${ids.length} 颗子弹，其连线一并移除`);
     });
-    this._nodes = nodes;
-    this._links = links;
-    this._selSet.clear();
-    this._selId = null;
-    this._refreshEmpty();
-    this._scheduleSave();
-    this._linkLayer.render();       // 一次性重画剩余连线
-    this._msg(`已删除 ${ids.length} 颗子弹，其连线一并移除`);
   },
 
   // ===== 浮动工具条 / 改色 / 连线模式 =====
@@ -1172,10 +1139,11 @@ export const MindmapFeature = {
   _setColorForSelection(color) {
     const ids = this.getSelectedIds();
     if (!ids.length) return;
-    if (this._undoStack) this._undoStack.push();
-    ids.forEach((id) => this._setNodeColor(id, color));
-    this._scheduleSave();
-    this._msg(color ? '已改色' : '已恢复默认色');
+    _mutate(() => {
+      ids.forEach((id) => this._setNodeColor(id, color));
+      this._scheduleSave();
+      this._msg(color ? '已改色' : '已恢复默认色');
+    });
   },
 
   _setNodeColor(id, color) {
@@ -1188,24 +1156,8 @@ export const MindmapFeature = {
     }
   },
 
-  /** 连线模式：点「连线」后，下一次点别的子弹即建立连线（落空则取消） */
-  _beginConnectMode(id) {
-    if (!id) return;
-    this._exitConnectMode();
-    this._connectFrom = id;
-    const el = this._els.get(id);
-    if (el) el.classList.add('is-connect-src');
-    this._updateToolbar();
-    this._msg('点另一颗子弹完成连线（Esc 取消）');
-  },
-
   _exitConnectMode() {
-    if (this._connectFrom) {
-      const el = this._els.get(this._connectFrom);
-      if (el) el.classList.remove('is-connect-src');
-      this._connectFrom = null;
-      this._updateToolbar();
-    }
+    // 点击连线模式已移除（原 _beginConnectMode 为死代码，见 B2）：保留空壳，仅供其它路径安全调用，避免串联改多处
   },
 
   // ===== 复制（Cmd/Ctrl+D）：单/多选复制，并复制涉及选中集合的连线 =====
@@ -1217,30 +1169,31 @@ export const MindmapFeature = {
       this._msg('复制后超过上限（' + this.NODE_CAP + '）');
       return;
     }
-    if (this._undoStack) this._undoStack.push();
-    const map = new Map();          // oldId → newId
     const newIds = [];
-    ids.forEach((oid) => {
-      const on = this._nodes.find((n) => n.id === oid);
-      if (!on) return;
-      this._nodes = MindmapDoc.addNode(this._nodes, on.text || '', on.x + 30, on.y + 36, on.color || '');
-      const nid = this._nodes[this._nodes.length - 1].id;
-      map.set(oid, nid);
-      newIds.push(nid);
-      this._mountNode(this._nodes[this._nodes.length - 1]);
+    const map = new Map();          // oldId → newId
+    _mutate(() => {
+      ids.forEach((oid) => {
+        const on = this._nodes.find((n) => n.id === oid);
+        if (!on) return;
+        this._nodes = MindmapDoc.addNode(this._nodes, on.text || '', on.x + 30, on.y + 36, on.color || '');
+        const nid = this._nodes[this._nodes.length - 1].id;
+        map.set(oid, nid);
+        newIds.push(nid);
+        this._mountNode(this._nodes[this._nodes.length - 1]);
+      });
+      // 复制连线：涉及选中集合的连线，选中端映射到新 id；外部端保持
+      this._links.slice().forEach((l) => {
+        if (l.from === l.to) return;
+        const fNew = map.get(l.from), tNew = map.get(l.to);
+        if (!fNew && !tNew) return;   // 与选中集合无关
+        const f = fNew || l.from, t = tNew || l.to;
+        const next = MindmapDoc.addLink(this._nodes, this._links, f, t);
+        if (next) this._links = next;
+      });
+      this._refreshEmpty();
+      this._scheduleSave();
+      this._linkLayer.render();
     });
-    // 复制连线：涉及选中集合的连线，选中端映射到新 id；外部端保持
-    this._links.slice().forEach((l) => {
-      if (l.from === l.to) return;
-      const fNew = map.get(l.from), tNew = map.get(l.to);
-      if (!fNew && !tNew) return;   // 与选中集合无关
-      const f = fNew || l.from, t = tNew || l.to;
-      const next = MindmapDoc.addLink(this._nodes, this._links, f, t);
-      if (next) this._links = next;
-    });
-    this._refreshEmpty();
-    this._scheduleSave();
-    this._linkLayer.render();
     // 选中新副本
     if (newIds.length === 1) {
       this._select(newIds[0]);
@@ -1376,6 +1329,7 @@ export const MindmapFeature = {
     });
     if (this._selSet.size) this._selId = null;   // 框选优先：清掉单选高亮，避免两套高亮混叠
     this._paintSelection();
+    this._updateToolbar();    // 框选后也要刷新浮动工具条（否则删除/复制/改色工具条不出现，见 B3）
   },
 
 
@@ -1398,100 +1352,6 @@ export const MindmapFeature = {
   // 模式在 LAYOUT_MODES 里循环：树状(下) / 横向(右) / 放射(环绕)。
 
   /** 按模式计算每颗子弹的新坐标（返回 Map<id,{x,y}>）；画布为空返回 null。 */
-  _computeLayout(mode, nodes, links) {
-    const byId = new Map();
-    nodes.forEach((n) => byId.set(n.id, n));
-    const childrenOf = new Map();
-    const indeg = new Map();
-    nodes.forEach((n) => { childrenOf.set(n.id, []); indeg.set(n.id, 0); });
-    links.forEach((l) => {
-      if (!byId.has(l.from) || !byId.has(l.to)) return;
-      childrenOf.get(l.from).push(l.to);
-      indeg.set(l.to, (indeg.get(l.to) || 0) + 1);
-    });
-    let roots = nodes.filter((n) => (indeg.get(n.id) || 0) === 0).map((n) => n.id);
-    if (!roots.length && nodes.length) roots = [nodes[0].id];   // 纯环图兜底取首节点
-
-    const NW = 180, NH = 64, HGAP = 28, VGAP = 46;
-    const placed = new Set();
-    const xOf = new Map(), yOf = new Map();
-
-    if (mode === 'radial') {
-      const leafCursor = { i: 0 };
-      let leafCount = 0;
-      const markLeaves = (id) => {
-        if (placed.has(id)) return;
-        placed.add(id);
-        const ch = childrenOf.get(id) || [];
-        if (!ch.length) leafCount++;
-        else ch.forEach(markLeaves);
-      };
-      roots.forEach((r) => { placed.clear(); markLeaves(r); });
-      placed.clear();
-      const RING = 190;
-      const angleOf = new Map();
-      const assign = (id, depth, a0, a1) => {
-        if (placed.has(id)) return;
-        placed.add(id);
-        const ch = (childrenOf.get(id) || []).filter((c) => byId.has(c));
-        const span = (a1 - a0) / Math.max(1, ch.length);
-        let a;
-        if (!ch.length) {
-          a = ((leafCursor.i + 0.5) / Math.max(1, leafCount)) * Math.PI * 2;
-          leafCursor.i++;
-        } else {
-          ch.forEach((c, i) => assign(c, depth + 1, a0 + i * span, a0 + (i + 1) * span));
-          let sa = Infinity, ea = -Infinity;
-          ch.forEach((c) => { const v = angleOf.get(c); if (v != null) { sa = Math.min(sa, v); ea = Math.max(ea, v); } });
-          a = (sa === Infinity) ? (a0 + a1) / 2 : (sa + ea) / 2;
-        }
-        angleOf.set(id, a);
-        const r = depth * RING;
-        xOf.set(id, Math.round(r * Math.cos(a)));
-        yOf.set(id, Math.round(r * Math.sin(a)));
-      };
-      roots.forEach((r) => assign(r, 0, 0, Math.PI * 2));
-    } else {
-      let cursor = 0;
-      const place = (id, depth) => {
-        if (placed.has(id)) return;
-        placed.add(id);
-        const ch = (childrenOf.get(id) || []).filter((c) => byId.has(c) && !placed.has(c));
-        let x;
-        if (!ch.length) { x = cursor; cursor += NW + HGAP; }
-        else {
-          ch.forEach((c) => place(c, depth + 1));
-          const xs = ch.map((c) => xOf.get(c)).filter((v) => v != null);
-          x = xs.length ? (xs[0] + xs[xs.length - 1]) / 2 : cursor;
-        }
-        if (mode === 'horizontal') { xOf.set(id, depth * (NW + VGAP)); yOf.set(id, x); }
-        else { xOf.set(id, x); yOf.set(id, depth * (NH + VGAP)); }
-      };
-      roots.forEach((r) => place(r, 0));
-    }
-
-    // 归一化到原点附近
-    let minX = Infinity, minY = Infinity;
-    xOf.forEach((v) => { if (v < minX) minX = v; });
-    yOf.forEach((v) => { if (v < minY) minY = v; });
-    if (!isFinite(minX)) minX = 0;
-    if (!isFinite(minY)) minY = 0;
-    const M = 40;
-    const out = new Map();
-    xOf.forEach((v, k) => out.set(k, { x: Math.round(v - minX + M), y: Math.round((yOf.get(k) || 0) - minY + M) }));
-
-    // 兜底：任何未落位节点（极端环图）按序号排在圆周
-    const missing = nodes.filter((n) => !out.has(n.id));
-    if (missing.length) {
-      const R = 240;
-      missing.forEach((n, i) => {
-        const a = (i / missing.length) * Math.PI * 2;
-        out.set(n.id, { x: Math.round(R * Math.cos(a)) + 320, y: Math.round(R * Math.sin(a)) + 320 });
-      });
-    }
-    return out;
-  },
-
   /** 当前选区：框选集合 ∪ 单选。供「对选择部分排版」使用。 */
   _getLayoutScope() {
     const ids = new Set();
@@ -1525,7 +1385,7 @@ export const MindmapFeature = {
     const targetSet = targetIds ? new Set(targetIds) : null;
     const subNodes = targetSet ? nodes.filter((n) => targetSet.has(n.id)) : nodes;
     const subLinks = targetSet ? links.filter((l) => targetSet.has(l.from) && targetSet.has(l.to)) : links;
-    const pos = this._computeLayout(mode, subNodes, subLinks);
+    const pos = MindmapLayout.compute(mode, subNodes, subLinks);
     if (!pos || !pos.size) return '';
     if (targetSet) {
       // 锚定：保持选中集合在原位置附近（质心对齐），未选中节点不动
@@ -1562,8 +1422,8 @@ export const MindmapFeature = {
     const scope = this._getLayoutScope();
     const partial = scope.size > 0;
     // 自动布局会重写所有（或选区）子弹的坐标、并可能重新居中视野，不可逆 —— 变更留档
-    if (this._undoStack && this._nodes.length) this._undoStack.push();
-    const label = this.autoLayout(modes[idx].id, partial ? scope : null);
+    let label = '';
+    if (this._nodes.length) _mutate(() => { label = this.autoLayout(modes[idx].id, partial ? scope : null); });
     this._layoutIdx = (idx + 1) % modes.length;
     return label ? (partial ? '选区 ' + label : label) : '';
   },
@@ -1573,7 +1433,7 @@ export const MindmapFeature = {
   _syncSeedButton() {
     const btn = this._empty.querySelector('.tw-mm-seed');
     const note = this._empty.querySelector('.tw-mm-empty-note');
-    const src = this._host && this._host.getSeedSource ? this._host.getSeedSource() : null;
+    const src = this._ctrl && this._ctrl.getSeedSource ? this._ctrl.getSeedSource() : null;
     const cards = (src && src.cards) || [];
     const show = cards.length > 0;
     btn.hidden = !show;
@@ -1587,17 +1447,15 @@ export const MindmapFeature = {
   _seedFromNotes(src) {
     const { nodes, links } = MindmapDoc.seedFromCards(src.cards, src.links);
     if (!nodes.length) { this._msg('便签为空，无法生成'); return; }
-    this._nodes = nodes;
-    this._links = links;
-    this._view = null;
+    this._mutate(() => { this._nodes = nodes; this._links = links; this._view = null; });  // 播种可撤销（B1）
     this._scheduleSave();
     this.render();
     this._msg('已沿便签连线生成子弹（此后两边互不影响）');
   },
 
   _msg(text) {
-    if (this._host && typeof this._host._showScreenMsg === 'function') {
-      this._host._showScreenMsg(text, 1200);
+    if (this._ctrl && typeof this._ctrl._showScreenMsg === 'function') {
+      this._ctrl._showScreenMsg(text, 1200);
     }
   },
 
@@ -1620,7 +1478,6 @@ export const MindmapFeature = {
     this._searchBox = null;
     this._searchInput = null;
     this._searchCount = null;
-    this._connectFrom = null;
     this._els = new Map();
     this._nodes = [];
     this._links = [];

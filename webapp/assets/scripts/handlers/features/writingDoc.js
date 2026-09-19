@@ -15,14 +15,15 @@
  * 全部不可变：增改返回新数组/新对象，绝不就地改（与 MindmapDoc 同一不变量——将来若接撤销栈、
  * 或做「屏外卡片卸载」的视口剔除，就不需要担心 DOM 把数据带偏，几何缓存也才有唯一真源）。
  */
+import { FONTS, PAPERS, LEVELS, ZOOM_MIN, ZOOM_MAX, MAX_LEN, WRITING_SCHEMA_VERSION } from './twConfig.js';
 export const WritingDoc = {
-  VERSION: 2,                 // 与 TypewriterStore.WRITING_VERSION 对齐：v2 = x/y/canvasOffset 统一绝对 px
-  ZOOM_MIN: 0.6,              // 与 typewriterFeature 一致：手动缩放下界（小签 ~180px 宽）
-  ZOOM_MAX: 2.4,              // 上界（铺满画布的大签）
-  MAX_LEN: 500,              // 单卡最大字数（与 typewriterFeature.MAX_LEN 一致；模型层只导出，截断由输入层负责）
-  FONTS: ['classic', 'modern', 'kai'],
-  PAPERS: ['plain', 'night', 'shuyan', 'redsilk', 'ruoshui', 'tengyun', 'juhuo', 'yingyue'],
-  LEVELS: ['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'quote', 'ul', 'ol', 'task'],
+  VERSION: WRITING_SCHEMA_VERSION,     // v2 = x/y/canvasOffset 统一绝对 px（与 TypewriterStore.WRITING_VERSION 同值，单一真源在 twConfig）
+  ZOOM_MIN,                           // 手动缩放下界（小签 ~180px 宽）
+  ZOOM_MAX,                           // 上界（铺满画布的大签）
+  MAX_LEN,                            // 单卡最大字数（截断由输入层负责，模型层只导出）
+  FONTS,
+  PAPERS,
+  LEVELS,
   EST_W: 200,                // 估算宽（只用于 freeSpot，真实尺寸由 DOM 量）
   EST_H: 120,                // 估算高
   GAP: 18,
@@ -36,7 +37,7 @@ export const WritingDoc = {
   _clampZoom(z) {
     const n = Number(z);
     if (!isFinite(n) || n <= 0) return 1;
-    return Math.min(this.ZOOM_MAX, Math.max(this.ZOOM_MIN, n));
+    return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, n));
   },
 
   /** 旋转角归一到 (-180, 180]（与 _applyRot 一致） */

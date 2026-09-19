@@ -16,7 +16,30 @@ global.WritingDoc = WritingDoc;
 // 同 WritingDoc：loadModule 剥离了 import，_syncLayoutGeo 等新路径会 new SpatialIndex()，
 // 注入全局供测试环境解析（生产环境由模块 import 提供）。
 const { SpatialIndex } = loadModule('services/SpatialIndex.js', ['SpatialIndex']);
+const { GeoCache } = loadModule('services/GeoCache.js', ['GeoCache']);
 global.SpatialIndex = SpatialIndex;
+global.GeoCache = GeoCache;
+// B1 抽取债：ViewportCuller 从 feature 抽出，import 被 loadModule 剥离，需注入全局供 feature 委托调用解析
+const { ViewportCuller } = loadModule('services/ViewportCuller.js', ['ViewportCuller']);
+global.ViewportCuller = ViewportCuller;
+// B1 抽取债（综合）：feature 把 4 个子系统委托给 CardViewManager/CardInteractions/
+// ModeController/PersistenceCoordinator；这些子系统方法体内引用的共享常量（twConfig 加载时挂
+// globalThis）与服务在 loadModule 剥离 import 后需从全局解析。
+loadModule('handlers/features/twConfig.js', []); // 副作用：把全部共享常量挂到 globalThis
+const _b1mod = (p, n) => { const m = loadModule(p, [n]); if (!global[n]) global[n] = m[n]; };
+_b1mod('handlers/features/CardViewManager.js', 'CardViewManager');
+_b1mod('handlers/features/CardInteractions.js', 'CardInteractions');
+_b1mod('handlers/features/ModeController.js', 'ModeController');
+_b1mod('handlers/features/PersistenceCoordinator.js', 'PersistenceCoordinator');
+_b1mod('services/TypewriterStore.js', 'TypewriterStore');
+_b1mod('services/SpatialIndex.js', 'SpatialIndex');
+_b1mod('services/GeoCache.js', 'GeoCache');
+_b1mod('services/undoStack.js', 'UndoStack');
+_b1mod('handlers/features/writingDoc.js', 'WritingDoc');
+_b1mod('handlers/features/mindmapFeature.js', 'MindmapFeature');
+_b1mod('services/LinkLayer.js', 'LinkLayer');
+_b1mod('services/ViewportCuller.js', 'ViewportCuller');
+_b1mod('utils/domRef.js', 'isFromTextEntry');
 // feature 是模块单例，帧预算用例会把 _applyZoom 换成 jest.fn()。几何用例要调真方法，
 // 故在此存一份真身供其还原（否则打不上失效标记，且会误判为「已合帧」）。
 const REAL_APPLY_ZOOM = feature._applyZoom;
@@ -35,7 +58,7 @@ function culledFixture() {
   ];
   feature._links = [];
   feature._selected = new Set();
-  feature._geo = new Map();
+  feature._geo = new GeoCache();
   feature._mountedCards = new Map(); // 空 → 全部离屏
   feature._undoStack = null;
   // 桩掉会触碰其它子系统（连线层/落盘/重挂载）的调度，隔离本次断言
@@ -273,8 +296,6 @@ describe('几何缓存失效系统化（对标 tldraw geometry caching）', () =
     rafQueue = [];
     global.requestAnimationFrame = (cb) => { rafQueue.push(cb); return rafQueue.length; };
     global.cancelAnimationFrame = () => {};
-    feature._geoDirty = null;
-    feature._geoFlushRaf = 0;
     feature._applyZoom = REAL_APPLY_ZOOM;      // 还原真身（帧预算用例可能留了 mock）
     feature._measureCard = jest.fn();          // 只数重测次数，不做真测量
     feature._scheduleRenderLinks = () => {};
@@ -326,8 +347,8 @@ describe('几何缓存失效系统化（对标 tldraw geometry caching）', () =
     feature._mountedCards.set('a', card);
     feature._geo.set('b', { x: 0, y: 0, w: 10, h: 10, rot: 0 });   // 离屏卡
     feature._invalidateGeoAll();
-    expect(feature._geoDirty.has('a')).toBe(true);
-    expect(feature._geoDirty.has('b')).toBe(true);
+    expect(feature._geo._dirty.has('a')).toBe(true);
+    expect(feature._geo._dirty.has('b')).toBe(true);
     flush();
     expect(feature._measureCard).toHaveBeenCalledTimes(1);   // 只有 a 在屏
   });
@@ -370,7 +391,7 @@ describe('性能埋点（对标 tldraw PerformanceManager）', () => {
   test('_flushGeo 计入独立样本', () => {
     perfFixture();
     feature._setPerf(true);
-    feature._geoDirty = new Set(['a']);
+    feature._geo.markAllDirty(['a']);
     feature._mountedCards.set('a', document.createElement('div'));
     feature._flushGeo();
     expect(feature._perfReport().geoFlush.n).toBe(1);
@@ -463,5 +484,218 @@ describe('几何缓存：重排/排版后必须刷新（修复「线断在半空
     expect(nowVisible.has('b')).toBe(true);
     // 旧的散乱位(999,0)不应再命中
     expect(feature._spatial.queryRect(900, -50, 1100, 50).has('a')).toBe(false);
+  });
+});
+
+describe('导出编号回归（修复 #A：ol 有序列表错位）', () => {
+  test('ol 用跨卡连续序号，不取全局阅读序下标', () => {
+    culledFixture();
+    // 模型：一张 p、一张 ol(三行)、一张 h2、一张 ol(两行)。
+    // 旧 bug：编号取卡的全局阅读序下标 i → o1(第2张)三行全是 "2."、o2(第4张)两行全是 "4."。
+    feature._notes = [
+      { id: 'p1', x: 0, y: 0, text: '普通段落', level: 'p' },
+      { id: 'o1', x: 0, y: 100, text: '甲\n乙\n丙', level: 'ol' },
+      { id: 'h1', x: 0, y: 200, text: '小标题', level: 'h2' },
+      { id: 'o2', x: 0, y: 300, text: '丁\n戊', level: 'ol' },
+    ];
+    const ordered = feature._orderCards();          // 阅读序 p1,o1,h1,o2（全部 el=null，走模型真源）
+    const out = feature._buildCardsMarkdown(ordered);
+    // 修复后：o1 → 1. 2. 3.，o2 跨卡续 4. 5.
+    expect(out).toMatch(/1\. 甲/);
+    expect(out).toMatch(/3\. 丙/);
+    expect(out).toMatch(/5\. 戊/);
+    // 严格排除旧 bug 的错位写法（bug 下才是这些）
+    expect(out).not.toMatch(/2\. 甲/);   // bug: o1 三行全是 "2."
+    expect(out).not.toMatch(/4\. 戊/);   // bug: o2 两行全是 "4."
+  });
+});
+
+describe('监听器生命周期回归（修复 #B：_levelKeyHandler 泄漏）', () => {
+  test('unmount 对称移除 _levelKeyHandler（每次开关视图不再堆叠 document keydown 监听）', () => {
+    // 桩掉 unmount 里会触碰其它子系统/DOM 的副作用，聚焦「文档级监听移除」契约
+    const realHide = feature._hideLevelMenu;
+    feature._hideLevelMenu = () => {};
+    const realTeardown = global.MindmapFeature && global.MindmapFeature.teardown;
+    if (global.MindmapFeature) global.MindmapFeature.teardown = () => {};
+    const realSaveNow = feature._saveNow;
+    feature._saveNow = () => {};
+    const realInv = global.TypewriterStore && global.TypewriterStore.invalidateWritingIndex;
+    if (global.TypewriterStore) global.TypewriterStore.invalidateWritingIndex = () => {};
+
+    const handler = () => {};
+    feature._levelKeyHandler = handler;   // 模拟 mount 时 _bindLevelKeys 挂上的监听
+    feature._selKeyHandler = null;        // 隔离：只验证 levelKeyHandler 分支
+    feature._marquee = null;
+
+    const removed = [];
+    const realRemove = document.removeEventListener.bind(document);
+    document.removeEventListener = (type, fn) => {
+      if (type === 'keydown') removed.push(fn);
+      return realRemove(type, fn);
+    };
+    try {
+      feature.unmount();
+    } finally {
+      document.removeEventListener = realRemove;
+      feature._hideLevelMenu = realHide;
+      if (global.MindmapFeature) global.MindmapFeature.teardown = realTeardown;
+      feature._saveNow = realSaveNow;
+      if (global.TypewriterStore) global.TypewriterStore.invalidateWritingIndex = realInv;
+    }
+    expect(removed).toContain(handler);   // 修复点：unmount 必须摘掉 _levelKeyHandler
+  });
+});
+
+describe('切档空窗期不得露出上一份文档的旧卡（修复：导图→卡片档闪档）', () => {
+  test('_loadDoc 被同步调用时画布已清空（异步载入期间不闪旧档卡片）', async () => {
+    // 现场：当前在导图档，画布里残留着「上一次载入的写作档」卡片（含 .tw-card-order 顺序徽标）
+    culledFixture();
+    const mmPrev = global.MindmapFeature;
+    global.MindmapFeature = {
+      isActive: () => false, stats: () => ({ count: 0, links: 0 }),
+      deactivate: () => {}, activate: () => {},
+    };
+
+    feature._mode = 'mindmap';
+    feature._canvas.hidden = true;
+    // 造两张写作档旧卡（带 .tw-card-order 徽标 = 写作模式专属 DOM，视觉上就是「闪回写作模式」的来源）
+    ['w1', 'w2'].forEach((id) => {
+      const card = document.createElement('div');
+      card.className = 'tw-card';
+      card.dataset.id = id;
+      const badge = document.createElement('span');
+      badge.className = 'tw-card-order';
+      card.appendChild(badge);
+      feature._canvas.appendChild(card);
+      feature._mountedCards.set(id, card);
+    });
+    expect(feature._canvas.querySelectorAll('.tw-card').length).toBe(2);   // 前置：确实有残留旧卡
+
+    // 桩掉切档流程里与本次断言无关的副作用
+    feature._ensureAudio = () => {};
+    feature._playGearSound = () => {};
+    feature._persistDoc = async () => {};
+    feature._exitAllEdits = () => {};
+    feature._clearSelection = () => {};
+    feature._applyModeChrome = jest.fn();
+    feature._scheduleRenderLinks = () => {};
+    feature._showScreenMsg = () => {};
+    feature._switching = false;
+    feature._undoStack = null;
+
+    // 关键探针：_loadDoc 被同步调用的那一刻（= 异步空窗期开始）画布上还剩几张卡
+    let cardsAtLoadTime = -1;
+    let chromeCallsAtLoad = -1;
+    feature._loadDoc = jest.fn(async () => {
+      cardsAtLoadTime = feature._canvas.querySelectorAll('.tw-card').length;
+      chromeCallsAtLoad = feature._applyModeChrome.mock.calls.length;
+    });
+
+    try {
+      await feature._setMode('notes');
+    } finally {
+      global.MindmapFeature = mmPrev;
+    }
+
+    expect(feature._loadDoc).toHaveBeenCalledWith('notes');
+    // 修复点：载入前已清空 → 空窗期露的是空画布，而不是上一份文档（写作档）的卡片
+    expect(cardsAtLoadTime).toBe(0);
+    // 增益：语义在 await 之前已换过一次（不再出现「导图外壳 + 空画布」），载入后再刷一次取新文档真值
+    expect(chromeCallsAtLoad).toBe(1);
+    expect(feature._applyModeChrome.mock.calls.length).toBe(2);
+  });
+
+  test('切档窗口内剔除不得按旧模型把上一份文档的卡回填', async () => {
+    culledFixture();
+    const mmPrev = global.MindmapFeature;
+    global.MindmapFeature = {
+      isActive: () => false, stats: () => ({ count: 0, links: 0 }),
+      deactivate: () => {}, activate: () => {},
+    };
+    feature._mode = 'mindmap';
+    feature._canvas.hidden = true;
+    // 卡片创建会用到连线层（_makeLinkable / _watchCardSize），本 fixture 无真实 LinkLayer，桩掉以便挂卡能走完
+    feature._linkLayer = {
+      makeLinkable: () => {}, watchSize: () => {}, highlightFor: () => {},
+      clearControls: () => {}, render: () => {}, scheduleRender: () => {}, removeLinksOf: () => {},
+    };
+    // 画布必须可测量：jsdom 默认 rect 全 0，会让 _buildCards / updateCulling 提前 return
+    feature._canvas.getBoundingClientRect = () => ({
+      width: 800, height: 600, left: 0, top: 0, right: 800, bottom: 600,
+    });
+    feature._restored = true;
+    // 上一份载入的文档 = 写作档（真实闪现的场景：便签→写作→导图→便签）
+    feature._notes = [
+      { id: 'w1', x: 0, y: 0, text: '写作档甲', level: 'h2' },
+      { id: 'w2', x: 0, y: 300, text: '写作档乙', level: 'ol' },
+    ];
+    feature._seedSpatial();          // 空间索引同样是写作档的（_buildCards([]) 不清它）
+    feature._notes.forEach((n) => {
+      const card = document.createElement('div');
+      card.className = 'tw-card';
+      card.dataset.id = n.id;
+      feature._canvas.appendChild(card);
+      feature._mountedCards.set(n.id, card);
+    });
+    feature._ensureAudio = () => {};
+    feature._playGearSound = () => {};
+    feature._persistDoc = async () => {};
+    feature._exitAllEdits = () => {};
+    feature._clearSelection = () => {};
+    feature._applyModeChrome = () => {};
+    feature._scheduleRenderLinks = () => {};
+    feature._showScreenMsg = () => {};
+    feature._switching = false;
+    feature._undoStack = null;
+
+    let cardsAfterCull = -1;
+    feature._loadDoc = jest.fn(async () => {
+      // 复现真实触发源：画布 hidden→可见使尺寸 0→非零，观察到画布的 ResizeObserver(_cullRo)
+      // → _scheduleCull → rAF 恰在 await 期间到点，执行 _updateCulling 并按旧模型尝试挂卡
+      feature._updateCulling();
+      cardsAfterCull = feature._canvas.querySelectorAll('.tw-card').length;
+    });
+
+    try { await feature._setMode('notes'); } finally { global.MindmapFeature = mmPrev; }
+    // 修复点：_switching 窗口内禁止重挂载 → 画布保持空，不会闪出上一份文档(写作档)的卡片
+    expect(cardsAfterCull).toBe(0);
+  });
+
+  test('空窗期不得残留上一份文档的连线层（连接线/端点圆点/箭头等小元件）', async () => {
+    culledFixture();
+    const mmPrev = global.MindmapFeature;
+    global.MindmapFeature = {
+      isActive: () => false, stats: () => ({ count: 0, links: 0 }),
+      deactivate: () => {}, activate: () => {},
+    };
+    feature._mode = 'mindmap';
+    feature._canvas.hidden = true;
+    feature._linkLayer = { clearControls: () => {}, render: () => {}, scheduleRender: () => {} };
+    // 上一份文档留在画布里的连线层：_buildCards 只清 .tw-card，够不到这个 SVG
+    const SVGNS = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(SVGNS, 'svg');
+    svg.setAttribute('class', 'tw-links');
+    const path = document.createElementNS(SVGNS, 'path');
+    path.setAttribute('class', 'tw-link');
+    svg.appendChild(path);
+    feature._canvas.appendChild(svg);
+    feature._ensureAudio = () => {};
+    feature._playGearSound = () => {};
+    feature._persistDoc = async () => {};
+    feature._exitAllEdits = () => {};
+    feature._clearSelection = () => {};
+    feature._applyModeChrome = () => {};
+    feature._scheduleRenderLinks = () => {};
+    feature._showScreenMsg = () => {};
+    feature._switching = false;
+    feature._undoStack = null;
+
+    let svgAtLoad = -1;
+    feature._loadDoc = jest.fn(async () => {
+      svgAtLoad = feature._canvas.querySelectorAll('svg').length;
+    });
+    try { await feature._setMode('notes'); } finally { global.MindmapFeature = mmPrev; }
+    // 修复点：载入前连线层已摘掉 → 不会闪出上一份文档的连线/圆点/箭头
+    expect(svgAtLoad).toBe(0);
   });
 });

@@ -8,6 +8,91 @@ const { loadModule } = require('./__helpers__/testUtils');
 
 const { WritingDoc } = loadModule('handlers/features/writingDoc.js', ['WritingDoc']);
 
+describe('WritingDoc 顺序一等数据（seq）', () => {
+  // 旧数据形态：只有坐标（+可选连线），没有 seq —— 即升维要处理的输入
+  const legacyNotes = () => ([
+    { id: 'a', x: 0, y: 0 },
+    { id: 'b', x: 0, y: 100 },
+    { id: 'c', x: 50, y: 200 },
+  ]);
+
+  test('orderIds：无连线 → 阅读顺序（先 y 后 x）', () => {
+    expect(WritingDoc.orderIds(legacyNotes(), [])).toEqual(['a', 'b', 'c']);
+  });
+
+  test('orderIds：有连线 → 连线优先（DFS），坐标只用于稳定多分支', () => {
+    // c 在最下方，但 a→c→b 的连线决定了顺序
+    expect(WritingDoc.orderIds(legacyNotes(), [
+      { from: 'a', to: 'c' }, { from: 'c', to: 'b' },
+    ])).toEqual(['a', 'c', 'b']);
+  });
+
+  test('orderIds：成环不死循环、孤立卡补尾', () => {
+    const ids = WritingDoc.orderIds(
+      [{ id: 'a', x: 0, y: 0 }, { id: 'b', x: 0, y: 10 }, { id: 'z', x: 999, y: 999 }],
+      [{ from: 'a', to: 'b' }, { from: 'b', to: 'a' }]
+    );
+    expect(ids).toHaveLength(3);
+    expect(new Set(ids).size).toBe(3);        // 全部卡都在，且无重复
+  });
+
+  test('normalize 升维：旧数据（无 seq）读出连续唯一的 seq，且顺序与旧推导一致', () => {
+    const out = WritingDoc.normalize(legacyNotes(), [{ from: 'a', to: 'c' }, { from: 'c', to: 'b' }]);
+    const byId = new Map(out.notes.map((n) => [n.id, n]));
+    // 升维结果必须与 orderIds 逐字一致 —— 这是「用户感知顺序不变」的硬保证
+    expect(out.notes.slice().sort((p, q) => p.seq - q.seq).map((n) => n.id))
+      .toEqual(WritingDoc.orderIds(legacyNotes(), [{ from: 'a', to: 'c' }, { from: 'c', to: 'b' }]));
+    expect(byId.get('a').seq).toBe(0);
+    expect(byId.get('c').seq).toBe(1);
+    expect(byId.get('b').seq).toBe(2);
+  });
+
+  test('seq 唯一且连续 0..N-1（normalizeSeq 压紧空档）', () => {
+    const messy = [
+      { id: 'a', seq: 7, x: 0, y: 0 },
+      { id: 'b', seq: 3, x: 0, y: 10 },
+      { id: 'c', seq: 99, x: 0, y: 20 },
+    ];
+    const out = WritingDoc.normalizeSeq(messy, []);
+    const seqs = out.map((n) => n.seq).sort((p, q) => p - q);
+    expect(seqs).toEqual([0, 1, 2]);
+    // 以 seq 为准（而非坐标）：b(3) < a(7) < c(99)
+    expect(out.slice().sort((p, q) => p.seq - q.seq).map((n) => n.id)).toEqual(['b', 'a', 'c']);
+  });
+
+  test('normalizeSeq 幂等：对已规范输入重复调用结果不变', () => {
+    const once = WritingDoc.normalize(legacyNotes(), []);
+    const twice = WritingDoc.normalizeSeq(once.notes, once.links);
+    expect(twice.map((n) => n.seq)).toEqual(once.notes.map((n) => n.seq));
+  });
+
+  test('坐标不再参与语义：改坐标不改 seq（顺序真值稳定）', () => {
+    const base = WritingDoc.normalize(legacyNotes(), []);
+    const moved = base.notes.map((n) => (n.id === 'c' ? Object.assign({}, n, { y: -500 }) : n));
+    const after = WritingDoc.normalizeSeq(moved, []);
+    const rankBefore = new Map(base.notes.map((n) => [n.id, n.seq]));
+    const rankAfter = new Map(after.map((n) => [n.id, n.seq]));
+    expect([...rankBefore.entries()].sort()).toEqual([...rankAfter.entries()].sort());
+  });
+
+  test('setOrder：显式重排按给定 id 序列重写 seq', () => {
+    const notes = WritingDoc.normalize(legacyNotes(), []).notes;   // a0 b1 c2
+    const out = WritingDoc.setOrder(notes, ['c', 'a', 'b']);
+    expect(out.slice().sort((p, q) => p.seq - q.seq).map((n) => n.id)).toEqual(['c', 'a', 'b']);
+  });
+
+  test('addNote 接文末（seq = max+1）；removeNote 压紧空档', () => {
+    let notes = WritingDoc.normalize(legacyNotes(), []).notes;     // a0 b1 c2
+    notes = WritingDoc.addNote(notes, '丁', 0, 300);
+    const added = notes.find((n) => n.text === '丁');
+    expect(added.seq).toBe(3);                                     // 接在文末
+
+    const after = WritingDoc.removeNote(notes, [], 'a');           // 删掉 seq=0 那张
+    const seqs = after.notes.map((n) => n.seq).sort((p, q) => p - q);
+    expect(seqs).toEqual([0, 1, 2]);                               // 空档被压紧
+  });
+});
+
 describe('WritingDoc 纯逻辑（自由模型）', () => {
   describe('normalize：形状修复、绝不整体清空', () => {
     test('补齐缺省、按枚举校正非法字段、过滤非法项', () => {

@@ -20,6 +20,7 @@
  */
 import { GeoCache } from './GeoCache.js';
 import { SpatialIndex } from './SpatialIndex.js';
+import { WRITE_NO_CULL_MAX } from '../handlers/features/twConfig.js';
 
 export const ViewportCuller = {
   /** 连线层取端点的几何源：挂载卡读活 DOM（与旧行为一致），离屏卡读几何缓存（最后测量值）。 */
@@ -222,7 +223,15 @@ export const ViewportCuller = {
   },
 
   scheduleCull(ctx) {
-    const { ctrl } = ctx;
+    const { state, ctrl } = ctx;
+    // 【写作档不做视口剔除】文章是线性文档、规模有限（几十~几百块），
+    // 而剔除会随「新建卡自动归位」/ 画布平移把卡片 DOM 反复销毁又重建 —— 这是可视化写作
+    // 闪烁的根因：卡片甚至不到 20 张就开始闪，且与拖动无关（新建卡即触发）。
+    // 文章块既少又便宜，虚拟化零收益、纯属负担；超阈值才回退剔除作安全兜底。
+    // 常驻挂载不丢功能：卡片由 _buildCards / _mountCard 全量建立，删除走 _removeCard，
+    // 几何缓存与连线端点照常工作（离屏卡仍可从 geo 取几何画连线）。
+    if (state.mode === 'write'
+      && (state.notes ? state.notes.length : 0) <= WRITE_NO_CULL_MAX) return;
     if (ctrl._cullRaf) return;
     ctrl._cullRaf = requestAnimationFrame(() => {
       ctrl._cullRaf = 0;

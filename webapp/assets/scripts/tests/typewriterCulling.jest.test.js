@@ -546,6 +546,342 @@ describe('监听器生命周期回归（修复 #B：_levelKeyHandler 泄漏）',
   });
 });
 
+describe('顺序一等数据（seq）：写入档规模稳定性', () => {
+  test('orderCards 按 seq 排序，不再由连线/坐标现推（升维后顺序冻结）', () => {
+    culledFixture();
+    feature._mode = 'write';
+    // 造一份「已升维」的数据：seq 已定，坐标与连线故意与之矛盾
+    feature._notes = [
+      { id: 'a', seq: 2, x: 0, y: 999 },
+      { id: 'b', seq: 0, x: 500, y: 0 },
+      { id: 'c', seq: 1, x: 0, y: 500 },
+    ];
+    feature._links = [];
+    expect(feature._orderCards().map((c) => c.id)).toEqual(['b', 'c', 'a']);   // 只认 seq
+  });
+
+  test('新建卡接文末：走真实建卡路径（_spawn），seq = max+1（修复「新卡序号显示 1」）', () => {
+    culledFixture();
+    feature._mode = 'write';
+    feature._linkLayer = {
+      makeLinkable: () => {}, watchSize: () => {}, highlightFor: () => {},
+      clearControls: () => {}, render: () => {}, scheduleRender: () => {}, removeLinksOf: () => {},
+    };
+    // 前面有用例把 _createCardEl 换成了桩（单例污染）→ 还原真身
+    feature._createCardEl = (note) => CardViewManager.createCardEl({ state: feature._state, ctrl: feature }, note);
+    feature._ensureAudio = () => {};
+    feature._playFeedSound = () => {};
+    feature._showScreenMsg = () => {};
+    feature._measureCard = () => {};
+    feature._scheduleSave = () => {};
+    feature._ensureCardVisible = () => {};
+    feature._enforceCap = () => {};
+    feature._input = { value: '', focus: () => {} };
+    feature._el.innerHTML += '<div class="tw-beeper"></div>';   // 无锚点时落点会读它
+    feature._links = [];
+    // 已有 15 张（seq 0..14）——复现用户现场：新建应为「第 16 位」
+    feature._notes = Array.from({ length: 15 }, (_, i) => ({
+      id: 'c' + i, seq: i, x: 0, y: i * 100, text: 't' + i, level: 'p',
+    }));
+
+    feature._spawn('新卡', 'p');
+
+    const added = feature._notes.find((n) => n.text === '新卡');
+    expect(added).toBeTruthy();
+    // 修复点：手写建卡字面量补了 seq = max+1（旧 bug：无 seq → 被当作最前，徽标显示 1 而非 16）
+    expect(added.seq).toBe(15);
+  });
+
+  test('防御：模型里缺 seq 的卡排序到末尾（绝不会顶到第 1 位）', () => {
+    culledFixture();
+    feature._mode = 'write';
+    feature._links = [];
+    feature._notes = [
+      { id: 'a', seq: 0, x: 0, y: 0 },
+      { id: 'nos', x: 0, y: 50 },      // 缺 seq（模拟上游漏写）
+      { id: 'b', seq: 1, x: 0, y: 100 },
+    ];
+    const ids = feature._orderCards().map((c) => c.id);
+    expect(ids[0]).not.toBe('nos');    // 不排最前
+    expect(ids[ids.length - 1]).toBe('nos');   // 排末尾（最小伤害）
+  });
+
+  test('连线定序：新增连线后 seq 按「连线优先」重算（B 接到 A 之后）', () => {
+    culledFixture();
+    feature._mode = 'write';
+    feature._links = [];
+    // 初始顺序 = 阅读序（按 y）：a0 b1 c2
+    feature._notes = [
+      { id: 'a', seq: 0, x: 0, y: 0 },
+      { id: 'b', seq: 1, x: 0, y: 100 },
+      { id: 'c', seq: 2, x: 0, y: 200 },
+    ];
+    // 连 b→a：等价于「a 紧跟 b」，重算后 a 应排到 b 之后
+    feature._addLink('b', 'a');
+    const ids = feature._orderCards().map((c) => c.id);
+    expect(ids.indexOf('a')).toBe(ids.indexOf('b') + 1);
+  });
+
+  test('拖动不改顺序：只改坐标，seq 与顺序不变', () => {
+    culledFixture();
+    feature._mode = 'write';
+    feature._links = [];
+    feature._notes = [
+      { id: 'a', seq: 0, x: 0, y: 0 },
+      { id: 'b', seq: 1, x: 0, y: 100 },
+    ];
+    const before = feature._orderCards().map((c) => c.id);
+    // 模拟拖动：把 a 拖到很下方（坐标剧变）
+    feature._notes = WritingDoc.setPos(feature._notes, 'a', 900, 9000);
+    const after = feature._orderCards().map((c) => c.id);
+    expect(after).toEqual(before);   // 顺序不受坐标影响
+  });
+
+  test('文末卡被剔除时仍能接续文章流（不再跳到出纸口）', () => {
+    culledFixture();
+    feature._mode = 'write';
+    // 文末卡 b 离屏（未挂载，el === null），但其模型坐标 known
+    feature._notes = [
+      { id: 'a', seq: 0, x: 0, y: 0 },
+      { id: 'b', seq: 1, x: 0, y: 500 },
+    ];
+    feature._geo.set('b', { x: 0, y: 500, w: 340, h: 160, rot: 0 });
+    // exclude 是「刚 append 进 DOM 的新卡」元素（真实流程中非 null）
+    const newCard = document.createElement('div');
+    newCard.className = 'tw-card';
+    newCard.dataset.id = 'new';
+    feature._canvas.appendChild(newCard);
+    const anchor = feature._spawnAnchorCard(newCard);
+    expect(anchor).not.toBeNull();
+    // 旧实现此处返回 null（el 为 null）→ 新卡落到出纸口；修复后按模型坐标接续
+    expect(anchor.x).toBe(0);
+    expect(anchor.y).toBe(500);
+    expect(anchor.h).toBe(160);   // 高度取自几何缓存
+  });
+
+  test('剔除后刷新徽标：序号未变则不写 DOM（卡片多时不再每帧 O(N) 写）', () => {
+    culledFixture();
+    feature._mode = 'write';
+    feature._notes = [
+      { id: 'a', seq: 0, x: 0, y: 0 },
+      { id: 'b', seq: 1, x: 0, y: 300 },
+    ];
+    const mkCard = (id) => {
+      const el = document.createElement('div');
+      el.className = 'tw-card';
+      el.dataset.id = id;
+      feature._canvas.appendChild(el);
+      feature._mountedCards.set(id, el);
+      return el;
+    };
+    const ea = mkCard('a');
+    // culledFixture 把 _refreshWriteOrder 桩成了空函数，而本测试要验证的正是它 → 还原真身
+    feature._refreshWriteOrder = () =>
+      PersistenceCoordinator.refreshWriteOrder({ state: feature._state, ctrl: feature });
+    feature._refreshWriteOrder();
+    const badgeA = ea.querySelector('.tw-card-order');
+    expect(badgeA.textContent).toBe('1');
+    // 给徽标装一个写入探针：第二次刷新若序号未变，不应再写 textContent
+    let writes = 0;
+    Object.defineProperty(badgeA, 'textContent', {
+      set() { writes++; }, get() { return '1'; }, configurable: true,
+    });
+    feature._refreshWriteOrder();          // 模拟剔除触发的重复刷新
+    expect(writes).toBe(0);                // 修复点：未变则零写入
+  });
+});
+
+describe('写作档不做视口剔除（根因：卡片 DOM 反复重建导致闪烁）', () => {
+  // culledFixture 把 _scheduleCull 桩成了空函数（会让本组用例假绿）→ 还原真身
+  const realCull = () => ViewportCuller.scheduleCull({ state: feature._state, ctrl: feature });
+
+  test('写入档且规模在阈值内：不排剔除帧（卡片常驻，不再销毁重建）', () => {
+    culledFixture();
+    feature._scheduleCull = realCull;
+    feature._mode = 'write';
+    feature._notes = Array.from({ length: 20 }, (_, i) => ({ id: 'c' + i, seq: i, x: 0, y: i * 100 }));
+    let raf = 0;
+    global.requestAnimationFrame = () => { raf += 1; return raf; };
+    feature._cullRaf = 0;
+    feature._scheduleCull();
+    expect(raf).toBe(0);            // 修复点：写作档不排帧
+    expect(feature._cullRaf).toBe(0);
+  });
+
+  test('便签档仍照常剔除（不能误伤虚拟化本来的收益）', () => {
+    culledFixture();
+    feature._scheduleCull = realCull;
+    feature._mode = 'notes';
+    let raf = 0;
+    global.requestAnimationFrame = () => { raf += 1; return raf; };
+    feature._cullRaf = 0;
+    feature._scheduleCull();
+    expect(raf).toBe(1);            // 便签档保持原行为
+  });
+
+  test('写入档超阈值时回退剔除（安全兜底，防超长文档拖垮）', () => {
+    culledFixture();
+    feature._scheduleCull = realCull;
+    feature._mode = 'write';
+    feature._notes = Array.from({ length: 301 }, (_, i) => ({ id: 'c' + i, seq: i, x: 0, y: i * 100 }));
+    let raf = 0;
+    global.requestAnimationFrame = () => { raf += 1; return raf; };
+    feature._cullRaf = 0;
+    feature._scheduleCull();
+    expect(raf).toBe(1);            // 超阈值 → 回退剔除
+  });
+});
+
+describe('拖动画布不闪烁（每帧路径的两处治理）', () => {
+  test('LOD 滞回：在屏卡数在阈值附近波动，dense 档位不翻转', () => {
+    culledFixture();
+    feature._lodDense = false;
+    feature._lodDrag = false;
+    feature._lodDragging = false;
+    const mk = (n) => {
+      const m = new Map();
+      for (let i = 0; i < n; i += 1) m.set('n' + i, document.createElement('div'));
+      return m;
+    };
+    const has = () => feature._canvas.classList.contains('tw-lod-dense');
+
+    feature._mountedCards = mk(121);
+    feature._applyLod();
+    expect(has()).toBe(true);                 // 超 120 → 进入
+
+    // 在 120/121 之间反复抖动（拖动画布时卡片进出视口的真实形态）
+    feature._mountedCards = mk(118);
+    feature._applyLod();
+    expect(has()).toBe(true);                 // 滞回带内：保持（旧实现会翻回 false = 闪烁）
+    feature._mountedCards = mk(121);
+    feature._applyLod();
+    expect(has()).toBe(true);
+
+    // 掉到退出阈值以下才退出
+    feature._mountedCards = mk(99);
+    feature._applyLod();
+    expect(has()).toBe(false);
+  });
+
+  test('徽标刷新完全幂等：值未变时零写入（含 disabled / _tipText）', () => {
+    culledFixture();
+    feature._mode = 'write';
+    feature._linkLayer = {
+      makeLinkable: () => {}, watchSize: () => {}, highlightFor: () => {},
+      clearControls: () => {}, render: () => {}, scheduleRender: () => {}, removeLinksOf: () => {},
+    };
+    feature._createCardEl = (note) => CardViewManager.createCardEl({ state: feature._state, ctrl: feature }, note);
+    feature._notes = [
+      { id: 'a', seq: 0, x: 0, y: 0 },
+      { id: 'b', seq: 1, x: 0, y: 300 },
+    ];
+    ['a', 'b'].forEach((id) => {
+      const card = feature._createCardEl({ id, font: 'classic', paper: 'plain', date: '', zoom: 1, fontScale: 1, level: 'p' });
+      feature._canvas.appendChild(card);
+      feature._mountedCards.set(id, card);
+    });
+    feature._refreshWriteOrder = () =>
+      PersistenceCoordinator.refreshWriteOrder({ state: feature._state, ctrl: feature });
+    feature._refreshWriteOrder();   // 首次：建徽标 + 写按钮态
+
+    // 给两张卡的按钮装写入探针（disabled 是 accessor，用 defineProperty 计数）
+    let writes = 0;
+    ['a', 'b'].forEach((id) => {
+      const card = feature._mountedCards.get(id);
+      ['up', 'down'].forEach((d) => {
+        const btn = card.querySelector('.tw-card-move-' + d);
+        if (!btn) return;
+        let v = btn.disabled;
+        Object.defineProperty(btn, 'disabled', {
+          get: () => v,
+          set: (nv) => { writes += 1; v = nv; },
+          configurable: true,
+        });
+      });
+    });
+
+    feature._refreshWriteOrder();   // 第二次：值未变
+    expect(writes).toBe(0);         // 修复点：零写入（旧实现无条件全量写）
+  });
+});
+
+describe('语义与呈现解耦：渲染路径不得触发顺序徽标刷新', () => {
+  test('_scheduleRenderLinks 不再顺带刷新徽标（拖拽/尺寸变化的高频路径已解耦）', () => {
+    culledFixture();
+    feature._mode = 'write';
+    feature._linkLayer = { scheduleRender: () => {}, render: () => {}, makeLinkable: () => {}, watchSize: () => {} };
+    let calls = 0;
+    feature._refreshWriteOrder = () => { calls += 1; };
+    // 模拟高频渲染入口被连打 10 次（拖拽 pointermove / 卡片 ResizeObserver 的真实频率）
+    for (let i = 0; i < 10; i += 1) feature._scheduleRenderLinks();
+    expect(calls).toBe(0);   // 修复点：语义不再被渲染拖着跑
+  });
+
+  test('顺序真变时仍会刷新徽标（加/删连线走显式调用，不依赖渲染路径）', () => {
+    culledFixture();
+    feature._mode = 'write';
+    feature._links = [];
+    feature._notes = [
+      { id: 'a', seq: 0, x: 0, y: 0 },
+      { id: 'b', seq: 1, x: 0, y: 100 },
+    ];
+    let calls = 0;
+    feature._refreshWriteOrder = () => { calls += 1; };
+    feature._addLink('b', 'a');          // 连线定序 → 顺序真变
+    expect(calls).toBeGreaterThan(0);
+  });
+});
+
+describe('P4 写入档画布降级为纯视图（禁用旋转 / 纸样 / 吐纸错位）', () => {
+  const mkCard = (mode) => {
+    culledFixture();
+    feature._mode = mode;
+    // 建卡会用到连线层（_makeLinkable / _watchCardSize），本 fixture 无真实 LinkLayer，桩掉
+    feature._linkLayer = {
+      makeLinkable: () => {}, watchSize: () => {}, highlightFor: () => {},
+      clearControls: () => {}, render: () => {}, scheduleRender: () => {}, removeLinksOf: () => {},
+    };
+    // 直接调真实模块方法：本文件前面有用例把 feature._createCardEl 换成了桩（单例污染会延续到后面）
+    return CardViewManager.createCardEl(
+      { state: feature._state, ctrl: feature },
+      { id: 'x', font: 'classic', paper: 'plain', date: '', zoom: 1, fontScale: 1, rot: 30, level: 'p' }
+    );
+  };
+
+  test('写入档：不建旋转手柄、角度归零、纸样钮隐藏', () => {
+    const card = mkCard('write');
+    expect(card.querySelector('.tw-card-rotate')).toBeNull();     // 无旋转手柄
+    expect(Number(card.dataset.rot || 0)).toBe(0);                 // 文章里没有斜放的段落
+    const pb = card.querySelector('.tw-card-paper');
+    expect(pb).not.toBeNull();
+    expect(pb.hidden).toBe(true);                                  // 纸样钮隐藏（非删除，模型值保留）
+  });
+
+  test('便签档不受影响：旋转手柄仍在、纸样钮可见（防止过度禁用）', () => {
+    const card = mkCard('notes');
+    expect(card.querySelector('.tw-card-rotate')).not.toBeNull();
+    const pb = card.querySelector('.tw-card-paper');
+    expect(pb && pb.hidden).toBe(false);
+  });
+
+  test('只关呈现不动模型：写入档渲染归零，但 note.rot / note.paper 原值保留', () => {
+    culledFixture();
+    feature._mode = 'write';
+    feature._linkLayer = {
+      makeLinkable: () => {}, watchSize: () => {}, highlightFor: () => {},
+      clearControls: () => {}, render: () => {}, scheduleRender: () => {}, removeLinksOf: () => {},
+    };
+    // 模型里这张卡是「旋转 30° + 夜航纸」
+    const note = { id: 'x', x: 0, y: 0, text: 't', rot: 30, paper: 'night' };
+    feature._notes = [note];                 // 模型由调用方维护（_mountCard 只建 DOM）
+    const card = feature._mountCard(note);
+    expect(Number(card.dataset.rot || 0)).toBe(0);        // 呈现：归零
+    const inModel = feature._notes.find((n) => n.id === 'x');
+    expect(inModel.rot).toBe(30);                          // 模型：原值未被动
+    expect(inModel.paper).toBe('night');
+  });
+});
+
 describe('切档空窗期不得露出上一份文档的旧卡（修复：导图→卡片档闪档）', () => {
   test('_loadDoc 被同步调用时画布已清空（异步载入期间不闪旧档卡片）', async () => {
     // 现场：当前在导图档，画布里残留着「上一次载入的写作档」卡片（含 .tw-card-order 顺序徽标）

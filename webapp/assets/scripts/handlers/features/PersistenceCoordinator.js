@@ -315,7 +315,10 @@ export const PersistenceCoordinator = {
         badge.className = 'tw-card-order';
         c.el.appendChild(badge);
       }
-      badge.textContent = String(i + 1);
+      // 【性能】序号未变则不写 DOM：本函数在剔除/挂载时被高频调用（见 ViewportCuller），
+      // 无条件全量写 textContent 会造成 O(N) 次 DOM 写 + 随后的强制重排 → 卡片一多就跳动闪烁。
+      const txt = String(i + 1);
+      if (badge.textContent !== txt) badge.textContent = txt;
       placed.add(c.el);
     });
     // 兜底：清掉不在序列里的（极端时序保护，正常不会进 here）
@@ -325,16 +328,29 @@ export const PersistenceCoordinator = {
     // 上移/下移的可用态跟着顺序走：首位不能上移、末位不能下移。
     // 放在这里统一刷 —— _refreshWriteOrder 已覆盖增删卡/连线/拖动/切档全部时机。
     ordered.forEach((c, k) => {
+      // 【P0 修复】此处原本漏了 el 空值守卫，而上面那个循环有。结果：写入档一旦有卡片被
+      // 视口剔除（el === null），本函数即抛异常；ViewportCuller 在剔除变化后无 try/catch 调用它，
+      // 异常冲出 updateCulling，致其后的 _applyLod/_perfEnd 被跳过、剔除 pass 半途而废 ——
+      // 表现为「卡片建多了就开始跳动闪烁」（卡片少时全在屏不崩，多到开始剔除就每帧崩）。
+      // 此前 typewriterFeature 有一处调用被 try/catch 包住，是本崩溃的先兆，今从根上修掉。
+      if (!c.el) return;   // 离屏（被剔）卡片无 DOM：跳过，与上面循环同一守卫
       const pos = `（文章顺序，当前第 ${k + 1} 位）`;
       const up = c.el.querySelector('.tw-card-move-up');
       const dn = c.el.querySelector('.tw-card-move-down');
+      const wantUp = (k === 0);
+      const wantDn = (k === ordered.length - 1);
+      // 【完全幂等】只在值真的变了才写。拖动画布会让卡不断进出视口 → 剔除变化 → 本函数被
+      // 逐帧调用；若无条件全量写 disabled/_tipText，等于每帧对 N 张卡做数百次属性写并触发
+      // 样式失效重算，直接表现为拖动画布时的闪烁/卡顿。值未变则零写入。
       if (up) {
-        up.disabled = k === 0;
-        up._tipText = k === 0 ? '已在最前' : '上移' + pos;
+        if (up.disabled !== wantUp) up.disabled = wantUp;
+        const tu = wantUp ? '已在最前' : '上移' + pos;
+        if (up._tipText !== tu) up._tipText = tu;
       }
       if (dn) {
-        dn.disabled = k === ordered.length - 1;
-        dn._tipText = k === ordered.length - 1 ? '已在最后' : '下移' + pos;
+        if (dn.disabled !== wantDn) dn.disabled = wantDn;
+        const td = wantDn ? '已在最后' : '下移' + pos;
+        if (dn._tipText !== td) dn._tipText = td;
       }
     });
     ctrl._refreshScreenMeta();   // 右上角「卡片 N · 连线 M」随之刷新
@@ -346,45 +362,28 @@ export const PersistenceCoordinator = {
     // 【P8】离屏卡已被剔除（不在 DOM），顺序必须改从模型派生：x/y 取模型真值，
     // el 解析自挂载表（离屏卡为 null，但顺序计算不受其影响）。
     if (!ctrl._notes || !ctrl._notes.length) return [];
+    // 【顺序一等数据】一律按 seq 排序（真值）；x/y 仅在「尚未升维」的旧数据上作兜底。
+    // 缺 seq 者排序到**末尾**（而非 0/最前）：缺 seq 永远是上游漏写，排到第 1 位会把新卡
+    // 顶到文章开头、破坏顺序最严重（曾因手写建卡漏 seq 导致新卡徽标显示 1）。排末尾是最小伤害。
+    // 正常路径不会有缺 seq：读档必过 WritingDoc.normalize → normalizeSeq 全量补齐。
     return ctrl._notes.map((n) => ({
       el: ctrl._mountedCards ? ctrl._mountedCards.get(n.id) || null : null,
       id: n.id,
+      seq: Number.isFinite(n.seq) ? n.seq : Number.MAX_SAFE_INTEGER,
       x: (typeof n.x === 'number') ? n.x : 0,
       y: (typeof n.y === 'number') ? n.y : 0,
-    })).sort((a, b) => (a.y - b.y) || (a.x - b.x));
+    })).sort((a, b) => (a.seq - b.seq) || (a.y - b.y) || (a.x - b.x));
   
   },
   // (was _orderCards)
   orderCards(ctx) {
     const { state, ctrl } = ctx;
-    const cards = ctrl._cardsByReadingOrder();
-    if (!cards.length) return [];
-    const byPos = (a, b) => (a.y - b.y) || (a.x - b.x);
-    const byId = new Map(cards.map((c) => [c.id, c]));
-    const links = (ctrl._links || []).filter((l) => byId.has(l.from) && byId.has(l.to));
-    if (!links.length) return cards;   // 无连线：退化为阅读顺序
-
-    const adj = new Map();
-    const indeg = new Map(cards.map((c) => [c.id, 0]));
-    links.forEach((l) => {
-      if (!adj.has(l.from)) adj.set(l.from, []);
-      adj.get(l.from).push(l.to);
-      indeg.set(l.to, (indeg.get(l.to) || 0) + 1);
-    });
-    // 同一出边按目标位置排序：多分支顺序稳定，不随连线建立的先后而变
-    adj.forEach((list) => list.sort((a, b) => byPos(byId.get(a), byId.get(b))));
-
-    const seen = new Set();
-    const out = [];
-    const walk = (id) => {
-      if (seen.has(id)) return;                 // 成环：走到过就不再进，避免死循环
-      seen.add(id);
-      out.push(byId.get(id));
-      (adj.get(id) || []).forEach(walk);
-    };
-    cards.filter((c) => !indeg.get(c.id)).forEach((c) => walk(c.id));  // 入度为 0 的即开头
-    cards.filter((c) => !seen.has(c.id)).forEach((c) => walk(c.id));   // 环内残留：按阅读顺序补尾
-    return out;
+    // 【顺序一等数据】文章顺序的真值是 seq，不再由连线/坐标现推。
+    // 推导只发生在「升维」那一次（WritingDoc.normalize → normalizeSeq 按 orderIds 冻结：
+    // 连线优先 → 回退阅读序），故既有文章的顺序在升维瞬间被完整保留、此后不再漂移。
+    // 收益：读取退化为一次按 seq 的排序，剔除/挂载不再触发全量重排 ——
+    // 这正是「卡片建多了就跳动闪烁」的根治点（ViewportCuller 每次 cull 变化都会调本函数）。
+    return ctrl._cardsByReadingOrder();
   
   },
 };

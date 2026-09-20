@@ -4747,9 +4747,14 @@ body.dark .tw-print,
   min-height: 26px;
   transform: translate(0, -50%);
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.9);
-  -webkit-backdrop-filter: blur(12px) saturate(1.4);
-  backdrop-filter: blur(12px) saturate(1.4);
+  background: rgba(255, 255, 255, 0.94);   /* 提至 94% 不透明，补偿去掉的 backdrop-blur */
+  /* 【性能·根因】原为 blur(12px) saturate(1.4)：每个钮都要采样并模糊背景、单独提升为合成层，
+     卡片常驻后 N 张卡即 2N 个模糊层 → 明显卡顿；且它们位于带 transform 的画布内，
+     Chromium/Electron 下 backdrop-filter 嵌在变换容器里是已知的闪烁源。
+     本钮背景本就接近不透明（原 0.9），那层模糊几乎不可见 —— 去掉它、背景提至 0.94 补偿，
+     观感基本无损、开销归零。 */
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
   border: 1.5px solid rgba(16, 24, 40, 0.16);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.7),
@@ -4926,9 +4931,14 @@ body.dark .tw-print,
   min-height: 26px;
   transform: translate(0, -50%);
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.9);
-  -webkit-backdrop-filter: blur(12px) saturate(1.4);
-  backdrop-filter: blur(12px) saturate(1.4);
+  background: rgba(255, 255, 255, 0.94);   /* 提至 94% 不透明，补偿去掉的 backdrop-blur */
+  /* 【性能·根因】原为 blur(12px) saturate(1.4)：每个钮都要采样并模糊背景、单独提升为合成层，
+     卡片常驻后 N 张卡即 2N 个模糊层 → 明显卡顿；且它们位于带 transform 的画布内，
+     Chromium/Electron 下 backdrop-filter 嵌在变换容器里是已知的闪烁源。
+     本钮背景本就接近不透明（原 0.9），那层模糊几乎不可见 —— 去掉它、背景提至 0.94 补偿，
+     观感基本无损、开销归零。 */
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
   border: 1.5px solid rgba(16, 24, 40, 0.16);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.7),
@@ -4965,7 +4975,7 @@ body.dark .tw-print,
    `.tw-card[data-paper="plain"] .tw-card-main`（0-3-0）与本段同特异度，靠源码顺序决胜。 */
 .tw-canvas.tw-mode-write {
   --tw-write-ink: #1F2430;
-  --tw-write-line: rgba(16, 24, 40, 0.10);
+  --tw-write-line: rgba(16, 24, 40, 0.14);   /* 去阴影后由边框承担分隔，故略微加深 */
   /* 拉丁优先的国际化字体栈：拉丁文走各系统 UI 字体（SF / Segoe UI / Roboto），
      中文再回落苹方 / 思源。便签的 --tw-font-sans 是中文优先栈，会把英文也渲染成中文字形。 */
   --tw-font-global: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
@@ -4983,15 +4993,25 @@ body.dark .tw-print,
   border-radius: 14px;                   /* 圆角基准：克制耐看，接近 Apple / Notion */
   overflow: hidden;                      /* 只裁 main 内部，工具条在它之外不受影响 */
   padding: 0.9em 1.15em 1.15em;          /* 用 em：随卡片缩放联动 */
-  box-shadow:
-    0 1px 2px rgba(16, 24, 40, 0.06),
-    0 8px 20px -6px rgba(16, 24, 40, 0.14);
-  transition: box-shadow 0.18s ease;
+  /* 【去阴影】写入档彻底不要投影。
+     ① 语义 —— 阴影是「便签纸浮在板上」的隐喻；写入档的卡是「文章的块」，
+        Notion / Apple Notes / Linear 的 block 都不带投影，靠边框 + 背景对比分隔。
+        且本档已卸掉齿边/纸纹/抬头/纸样钮/旋转，投影是最后一件便签资产，去掉才算闭环。
+     ② 性能 —— box-shadow 无法被合成器接管，两层大范围模糊是逐卡常驻的绘制成本
+        （写入档卡片常驻、不做剔除）。去掉后：拖拽 LOD 的 box-shadow:none 变为 no-op，
+        「起拖/松手阴影突跳」自动消失；hover 过渡也不再需要；整层栅格化成本大幅下降。
+        分隔职责改由 border 承担（--tw-write-line 已相应加深）。 */
+  /* 【性能·根因】原为 transition: box-shadow .18s + hover 换成 26px 大模糊阴影。
+     box-shadow 无法被合成器接管：带大半径模糊的阴影在过渡的**每一帧**都要重绘并重新栅格化；
+     而所有卡片同处一个 transform 画布层内 → 一次 hover 会带动**整层重新栅格化**，
+     表现为「鼠标移到一张卡上，所有卡片一起闪」。写入档卡片常驻（不做剔除）后尤其明显。
+     便签档没有这条 hover 阴影规则，故从未卡顿 —— 与用户观察完全吻合。
+     改为只过渡 border-color（无模糊、极廉价），悬停的缩放反馈已由 .tw-card:hover 的
+     transform: scale(1.01) 提供（transform 可合成，零重绘）。 */
+  transition: border-color 0.18s ease;
 }
 .tw-canvas.tw-mode-write .tw-card:hover .tw-card-main {
-  box-shadow:
-    0 1px 2px rgba(16, 24, 40, 0.08),
-    0 12px 26px -8px rgba(16, 24, 40, 0.18);
+  border-color: rgba(16, 24, 40, 0.22);
 }
 /* 卸掉便签的装饰资产：上下齿边与纸纹 */
 .tw-canvas.tw-mode-write .tw-card-edge,
@@ -5164,9 +5184,11 @@ body.dark .tw-print,
 .tw-canvas.tw-mode-write .tw-card[data-level^="h"] .tw-card-text {
   line-height: 1.12;
 }
+/* 标题卡原本在这里再加一层 hover 投影 —— 与上面同一类问题（hover 触发 box-shadow 重绘），
+   且写入档已决定不要投影。标题的悬停反馈统一交给通用规则（border-color），此处不再特例。
 .tw-canvas.tw-mode-write .tw-card[data-level^="h"]:hover .tw-card-main {
   box-shadow: 0 1px 2px rgba(16, 24, 40, 0.10);
-}
+} */
 
 /* 【解耦·治本】便签档"至少两行高"的体量感由下方 :not(.tw-mode-write) 规则提供，
    写作档不再继承，故此处无需再"清零"——之前那两行 min-height:0 / margin-bottom:0
@@ -5195,11 +5217,14 @@ body.dark .tw-print,
 /* 暗色：换一套中性墨色与描边，表面仍随 --surface-solid 走主题 */
 :host(.dark) .tw-canvas.tw-mode-write {
   --tw-write-ink: #E6EAF2;
-  --tw-write-line: rgba(255, 255, 255, 0.12);
+  --tw-write-line: rgba(255, 255, 255, 0.16);   /* 去阴影后由边框承担分隔，故略微加深 */
 }
-:host(.dark) .tw-canvas.tw-mode-write .tw-card-main {
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.30), 0 10px 24px -8px rgba(0, 0, 0, 0.45);
-}
+/* 【去阴影·暗色】此处原有一条更重的暗色专属投影：
+     box-shadow: 0 1px 2px rgba(0,0,0,.30), 0 10px 24px -8px rgba(0,0,0,.45);
+   亮色那条通用投影已在上一步删除，本条是暗色覆盖，删除不彻底就会「亮色没影、暗色有影」。
+   且这层是纯黑 24px 模糊、alpha .45 —— 在暗底上既是最贵的绘制、也是最"跳"的一种。
+   写入档统一不要投影（理由见亮色处注释：语义上卡是文章块而非浮起的便签纸；
+   性能上 box-shadow 无法被合成器接管）。暗底下的分隔同样交给 border。 */
 /* 暗色色板【唯一真源 = --lv-src-* 亮色阶】：标题色阶在暗底上「越亮 = 越重」，故取亮色阶的
    【倒序】派生（H1←src6 · H2←src6 · H3←src5 · H4←src4 · H5←src3 · H6←src2），改亮色一处即亮暗
    同步，不再两份字面量各写各的、改漏一处就脱节。

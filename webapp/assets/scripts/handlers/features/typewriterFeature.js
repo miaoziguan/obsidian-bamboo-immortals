@@ -47,7 +47,7 @@ import { UndoStack } from '../../services/undoStack.js';
 
 // B1 单一真源：原内联常量（图标/堆叠/缩放/字级/纸样/级别）收敛到 twConfig.js，本文件改为导入，不再重复定义
 import { ICON_LAYERS, ICON_FONT, ICON_GRID, ICON_PRINT, ICON_X, ICON_FONT_DOWN, ICON_FONT_UP, ICON_ZOOM_OUT, ICON_ZOOM_IN, ICON_PAPER, ICON_EXPORT, ICON_PREVIEW, ICON_MOVE_UP, ICON_MOVE_DOWN, ICON_LV_UP, ICON_LV_DOWN, ICON_ROTATE } from './twConfig.js';
-import { STACK_STEP, STACK_LEVELS, TYPE_SPEED, MAX_LEN, NOTE_CAP, WRITE_FLOW_GAP, SAVE_DEBOUNCE, LOD_DENSITY, ZOOM_MIN, ZOOM_MAX, ZOOM_STEP } from './twConfig.js';
+import { STACK_STEP, STACK_LEVELS, TYPE_SPEED, MAX_LEN, NOTE_CAP, WRITE_FLOW_GAP, SAVE_DEBOUNCE, LOD_DENSITY, LOD_DENSITY_EXIT, ZOOM_MIN, ZOOM_MAX, ZOOM_STEP } from './twConfig.js';
 import { FONT_SCALES, FONT_SCALE_DEFAULT_IDX, FONT_SCALE_LABELS, CARD_SCALES, CARD_SCALE_LABELS, CARD_SCALE_DEFAULT_IDX } from './twConfig.js';
 import { FONTS, FONT_LABELS, FONT_FEEDBACK } from './twConfig.js';
 import { PAPERS, PAPER_LABELS, PAPER_FEEDBACK, PAPER_TITLES } from './twConfig.js';
@@ -647,10 +647,9 @@ export const TypewriterFeature = {
     if (anchor) {
       // 文章流：与锚点卡左对齐、落在其下方 WRITE_FLOW_GAP 处（与顺流重排同一间距）。
       // 刻意不做吐纸堆叠错位：那是为了「看见下面压着纸」，文章里没有这个语义。
-      const ax = parseFloat(anchor.style.left) || 0;
-      const ay = parseFloat(anchor.style.top) || 0;
-      card.style.left = ax + 'px';
-      card.style.top = (ay + (anchor.offsetHeight || 0) + WRITE_FLOW_GAP) + 'px';
+      // 锚点信息由 _spawnAnchorCard 给出：在屏取 DOM 实测值，离屏（被剔）取模型坐标 + 几何缓存高度。
+      card.style.left = anchor.x + 'px';
+      card.style.top = (anchor.y + (anchor.h || 0) + WRITE_FLOW_GAP) + 'px';
       card.style.bottom = 'auto';
     } else {
       const beeperEl = this._el.querySelector('.tw-beeper');
@@ -661,15 +660,25 @@ export const TypewriterFeature = {
       // 刻意不做「互不重叠」的搬移：那样纸就不是从打印机吐出来的了，
       // 且画布下方紧邻机身（机身 z-index 30 > 便签 20），往下搬会被机身挡住。
       const stackIdx = this._spawnIdx++ % STACK_LEVELS;
-      const stackOffset = ((STACK_LEVELS - 1) / 2 - stackIdx) * STACK_STEP;  // 新纸逐张上叠
+      // 【P4】吐纸错位堆叠是「看见下面压着纸」的便签隐喻，文章里没有这个语义 ——
+      // 写入档不做错位，新卡从文章流起点（或锚点）干净接续。
+      const stackOffset = (this._mode === 'write')
+        ? 0
+        : ((STACK_LEVELS - 1) / 2 - stackIdx) * STACK_STEP;  // 新纸逐张上叠
       card.style.left = (deviceCenterX - cw / 2) + 'px';
       card.style.top = ((cr.height - ch) / 2 - 24 + stackOffset) + 'px';
       card.style.bottom = 'auto';
     }
     // 连续编辑改走 WritingDoc 原语：新卡即时进入规范模型（x/y 取刚算出的落点、
     // 视觉属性取卡片实际应用的 dataset 值），保存/撤销/导出自此同源。
+    // 【顺序一等数据】必须带 seq = 当前最大 + 1（接文末）。
+    //  漏掉会让新卡 seq === undefined，被 cardsByReadingOrder 按 0 参与排序 → 新卡被排到最前、
+    //  徽标显示 1（而非应得的文末序号），这正是「新建卡序号不对」的根因。
+    //  此处是手写对象字面量建卡，未走 WritingDoc.addNote，故 seq 必须在本地补上。
+    const maxSeq = this._notes.reduce((m, n) => (Number.isFinite(n.seq) && n.seq > m ? n.seq : m), -1);
     this._notes = this._notes.concat([{
       id,
+      seq: maxSeq + 1,
       text: text || '',
       x: parseFloat(card.style.left) || 0,
       y: parseFloat(card.style.top) || 0,
@@ -1237,10 +1246,14 @@ export const TypewriterFeature = {
 
   _ensureLinkLayer() { return this._linkLayer.ensureLayer(); },
   _scheduleRenderLinks() {
-    if (this._mode === 'write') {
-      // 顺序徽标刷新异常绝不应阻断连线重绘：用 try 兜底，确保拖动时连线端点始终跟随
-      try { this._refreshWriteOrder(); } catch (_) { /* 顺序徽标失败不影响连线 */ }
-    }
+    // 【P0 解耦】此处原本在写入档顺带调 _refreshWriteOrder()，把「语义更新」焊死在「渲染路径」上，
+    // 后果严重：本函数是极高频渲染入口 —— 拖拽时每次 pointermove 都调、卡片尺寸变化经
+    // _linkRo(ResizeObserver 观察每张卡) 也调、挂载/卸载/缩放/旋转都调。于是写入档每帧都要跑
+    // 一次全量 _refreshWriteOrder（O(N) 排序 + N 次 querySelector + 2N 次按钮属性写），
+    // 卡片一多必然打爆帧预算 → 表现为「跳动闪烁」。（原先那句 try/catch 也是旁证：它被触发到
+    // 需要兜底崩溃，说明调用频率极高。）
+    // 徽标是语义（仅 seq 变化才需更新），连线重绘是呈现（几何变化才需更新），二者不应耦合。
+    // 顺序真变的当事处（加卡/删卡/调序/增删连线/顺流重排/切档/挂载新卡）各自显式刷新即可。
     this._linkLayer.scheduleRender();
   },
   _edgePoint(c, tx, ty) { return this._linkLayer.edgePoint(c, tx, ty); },
@@ -1398,7 +1411,11 @@ export const TypewriterFeature = {
    *  幂等：档位未变则不碰 DOM，避免每帧 classList 抖动。 */
   _applyLod() {
     if (!this._canvas) return;
-    const dense = (this._mountedCards ? this._mountedCards.size : 0) > LOD_DENSITY;
+    // 【滞回】在屏卡数在阈值附近波动时（拖动画布会让卡不断进出视口，计数逐帧变化），
+    // 单一阈值会让 tw-lod-dense 每帧翻转 → 装饰（纸纹/工具条/投影）反复显隐 = 肉眼可见的闪烁。
+    // 故用双阈值：未降级时超过 120 才进；已降级时要掉到 100 以下才退 —— 中间 20 张的滞回带内保持不变。
+    const n = this._mountedCards ? this._mountedCards.size : 0;
+    const dense = this._lodDense ? (n > LOD_DENSITY_EXIT) : (n > LOD_DENSITY);
     const drag = !!this._lodDragging;
     if (dense !== this._lodDense) {
       this._lodDense = dense;

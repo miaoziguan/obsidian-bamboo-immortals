@@ -37,8 +37,14 @@ export const NOTE_CAP = 50;       // 便签上限：防 vault 文件无限膨胀
 export const WRITE_FLOW_GAP = 24; // 写作档「文章流」卡片间距
 export const SAVE_DEBOUNCE = 350; // 写盘防抖(ms)，合并拖拽/删除等连续操作
 
-// LOD 分级渲染阈值
-export const LOD_DENSITY = 120;   // 在屏卡数超过此值即常驻 dense 降级
+// LOD 分级渲染阈值（带滞回，见 LOD_DENSITY_EXIT）
+export const LOD_DENSITY = 120;       // 在屏卡数超过此值 → 进入 dense 降级
+export const LOD_DENSITY_EXIT = 100;  // 已降级时，低于此值才退出（滞回带 = 20 张）
+// 【写作档不做视口剔除】文章是线性文档、规模有限（通常几十~几百块），
+// 而剔除会随「新建卡自动归位」/ 画布平移不断销毁重建卡片 DOM —— 这是可视化写作闪烁的根因
+// （卡片甚至不到 20 张就开始闪）。文章块既少又便宜，虚拟化零收益、纯属负担。
+// 故写作档在卡片数不超过此值时一律常驻挂载；超过才回退剔除，作安全兜底。
+export const WRITE_NO_CULL_MAX = 300;
 // 手动缩放范围
 export const ZOOM_MIN = 0.6;
 export const ZOOM_MAX = 2.4;
@@ -84,7 +90,11 @@ export const FLOWING_PAPER_SET = new Set(['plain', 'night']);
 export const FONT_MAX_IDX_FIXED = 5;   // 定版纸样字级封顶档位（对应 FONT_SCALES[5] = 很大 140%）
 
 // MD可视化写作文档 schema 版本（与 TypewriterStore.WRITING_VERSION / WritingDoc.VERSION 同值，单一真源在此）
-export const WRITING_SCHEMA_VERSION = 2;
+// v2 = x/y 与画布偏移统一绝对 px
+// v3 = 引入 seq（顺序一等数据，唯一且连续 0..N-1）；x/y 自此退化为纯呈现。
+//      迁移是**惰性**的：旧档无 seq，由 WritingDoc.normalize → normalizeSeq 按 orderIds
+//      推导补齐（读档即升维、幂等、无需独立迁移脚本；_sanitizeNotes 透传新字段，落盘无损）。
+export const WRITING_SCHEMA_VERSION = 3;
 
 // 测试 harness（loadModule 剥离 import）兼容：把常量挂到 globalThis，
 // 使剥离 import 后的子模块体内裸名引用仍可经全局解析。
@@ -114,6 +124,8 @@ if (typeof globalThis !== 'undefined') {
   globalThis.WRITE_FLOW_GAP = WRITE_FLOW_GAP;
   globalThis.SAVE_DEBOUNCE = SAVE_DEBOUNCE;
   globalThis.LOD_DENSITY = LOD_DENSITY;
+  globalThis.LOD_DENSITY_EXIT = LOD_DENSITY_EXIT;
+  globalThis.WRITE_NO_CULL_MAX = WRITE_NO_CULL_MAX;
   globalThis.ZOOM_MIN = ZOOM_MIN;
   globalThis.ZOOM_MAX = ZOOM_MAX;
   globalThis.ZOOM_STEP = ZOOM_STEP;

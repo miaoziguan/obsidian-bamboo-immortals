@@ -658,6 +658,12 @@ export const CardInteractions = {
       (l.from === fromId && l.to === toId) || (l.from === toId && l.to === fromId));
     if (dup) return false;
     ctrl._links.push({ from: fromId, to: toId, route: 'bezier', bend: 0, dash: 'solid' });
+    // 【连线定序】连线是文章顺序的输入之一：增/删连线后按 orderIds（连线优先 → 回退阅读序）
+    // 重算一次 seq。真值仍落在 seq 上（读取方 O(1)、不每帧现推），连线只在变更瞬间参与推导。
+    if (ctrl._mode === 'write') {
+      ctrl._notes = WritingDoc.setOrder(ctrl._notes, WritingDoc.orderIds(ctrl._notes, ctrl._links));
+      ctrl._refreshWriteOrder();   // 顺序真变了（连线定序）→ 显式刷徽标（已从渲染路径解耦）
+    }
     return true;
   
   },
@@ -666,6 +672,11 @@ export const CardInteractions = {
     const { state, ctrl } = ctx;
     ctrl._links = ctrl._links.filter((l) =>
       !((l.from === fromId && l.to === toId) || (l.from === toId && l.to === fromId)));
+    // 【连线定序】删连线同样要重算 seq（连线是顺序输入之一），与 addLink 同一处理
+    if (ctrl._mode === 'write') {
+      ctrl._notes = WritingDoc.setOrder(ctrl._notes, WritingDoc.orderIds(ctrl._notes, ctrl._links));
+      ctrl._refreshWriteOrder();
+    }
   
   },
   // (was _removeLinksOfData)
@@ -673,6 +684,11 @@ export const CardInteractions = {
     const { state, ctrl } = ctx;
     if (!cardId) return;
     ctrl._links = ctrl._links.filter((l) => l.from !== cardId && l.to !== cardId);
+    // 【连线定序】级联删线同样重算 seq，与 addLink / removeLink 保持一致
+    if (ctrl._mode === 'write') {
+      ctrl._notes = WritingDoc.setOrder(ctrl._notes, WritingDoc.orderIds(ctrl._notes, ctrl._links));
+      ctrl._refreshWriteOrder();
+    }
   
   },
   // (was _ensureNotesVisible)
@@ -822,6 +838,9 @@ export const CardInteractions = {
     // 在屏卡再同步 DOM；离屏卡交由剔除按新模型坐标挂回，绝不手工搬（原代码直接读 b.style 会空指针崩溃）。
     const next = seq.slice();
     next[i] = seq[j]; next[j] = seq[i];       // 新顺序 = 相邻两位互换（供 _rewireChain 重接整条链）
+    // 【顺序一等数据】顺序真值是 seq：坐标已退化为纯呈现，只换坐标不足以改变顺序，
+    // 必须显式重写 seq，否则徽标 / 导出 / 预览仍按旧顺序（_orderCards 现按 seq 排序）。
+    ctrl._notes = WritingDoc.setOrder(ctrl._notes, next.map((c) => c.id));
     const ax = a.x, ay = a.y, bx = b.x, by = b.y;
     ctrl._notes = WritingDoc.setPos(ctrl._notes, a.id, bx, by);
     ctrl._notes = WritingDoc.setPos(ctrl._notes, b.id, ax, ay);

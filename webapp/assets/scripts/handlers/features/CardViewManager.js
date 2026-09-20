@@ -34,9 +34,21 @@ export const CardViewManager = {
     card.dataset.paper = paper;
     card.dataset.date = date;
     card.dataset.level = level;
+    // 【P4】写入档（MD可视化写作）是「文章视图」：画布自此降级为纯呈现层，
+    // 旋转 / 纸样切换这些源于便签、与文章语义无关的维度一律禁用。
+    // 只关呈现、不动模型（rot / paper 仍存原值），故切回便签档会各自恢复，绝不丢数据。
+    const isWrite = ctrl._mode === 'write';
     // 手动缩放：读落盘值（旧数据无 zoom → 默认 1，观感与历史便签一致）
     ctrl._applyZoom(card, note.zoom);
-    ctrl._applyRot(card, note.rot);
+    if (isWrite) {
+      // 文章里没有「斜放的段落」：呈现上归零。
+      // 注意不能走 _applyRot —— 它会把角度回写进模型（WritingDoc.setRot），
+      // 那样等于把用户存档的角度抹掉，违背「只关呈现、不动模型」。故此处只设呈现。
+      card.dataset.rot = '0';
+      card.style.setProperty('--tw-card-rot', '0deg');
+    } else {
+      ctrl._applyRot(card, note.rot);
+    }
     card.innerHTML = `
       <div class="tw-card-edge tw-card-edge-top" aria-hidden="true"></div>
       <div class="tw-card-main">
@@ -79,6 +91,12 @@ export const CardViewManager = {
     });
 
     card.querySelector('.tw-card-date').textContent = date;
+    // 【P4】纸样是便签维度（「信笺 / 夜航」等），文章里没有这个语义 → 写入档隐藏切换钮。
+    // 隐藏而非删除：模型值保留，切回便签档按钮自然回来、纸样如旧。
+    if (isWrite) {
+      const pb = card.querySelector('.tw-card-paper');
+      if (pb) pb.hidden = true;
+    }
 
     // 纸样：写入抬头与按钮提示（显示当前纸样名）
     ctrl._applyPaper(card, paper);
@@ -105,7 +123,7 @@ export const CardViewManager = {
     });
     ctrl._makeDraggable(card);
     ctrl._makeResizable(card);
-    ctrl._makeRotatable(card);
+    if (!isWrite) ctrl._makeRotatable(card);   // 【P4】写入档不提供旋转手柄
     ctrl._makeLinkable(card);
     ctrl._watchCardSize(card);
     return card;
@@ -637,12 +655,26 @@ export const CardViewManager = {
     const seq = ctrl._orderCards().filter((c) => c.el !== exclude);
     if (!seq.length) return null;
     const sel = ctrl._selected;
+    let pick = null;
     if (sel && sel.size) {
       for (let i = seq.length - 1; i >= 0; i -= 1) {
-        if (sel.has(seq[i].el)) return seq[i].el;   // 选中组里最靠后的那张
+        // 注意排除 el 为 null（被剔除）的项：sel 是元素集合，null 永远不命中
+        if (seq[i].el && sel.has(seq[i].el)) { pick = seq[i]; break; }   // 选中组里最靠后的那张
       }
     }
-    return seq[seq.length - 1].el;
-  
+    if (!pick) pick = seq[seq.length - 1];
+    // 【修复「跳动」】文末卡很可能已被视口剔除（el === null）。旧实现直接 `return ...el`，
+    // 于是返回 null → 调用方退化成「落到出纸口（画布中央）」，新卡凭空出现在视野中央，
+    // 随后被 _ensureCardVisible 滚过去 —— 这就是卡片一多就「跳一下」的来源。
+    // 现在即使没有 DOM，也按**模型坐标 + 几何缓存高度**接续文章流，成文流不再断。
+    const el = pick.el;
+    const g = ctrl._geo ? ctrl._geo.get(pick.id) : null;
+    return {
+      el,
+      x: el ? (parseFloat(el.style.left) || 0) : (typeof pick.x === 'number' ? pick.x : 0),
+      y: el ? (parseFloat(el.style.top) || 0) : (typeof pick.y === 'number' ? pick.y : 0),
+      h: el ? (el.offsetHeight || 0) : (g ? (g.h || 0) : 0),
+    };
+
   },
 };

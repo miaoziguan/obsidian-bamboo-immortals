@@ -5013,6 +5013,15 @@ body.dark .tw-print,
 .tw-canvas.tw-mode-write .tw-card:hover .tw-card-main {
   border-color: rgba(16, 24, 40, 0.22);
 }
+/* 分幕：交替明暗标出「幕」的边界。
+   只靠 JS 写入的 data-act 属性（0/1）驱动，零新增 DOM、零额外元素 —— 幕的标题天然就是
+   那张 H1/H2 卡本身，无需另做标题条。
+   用 color-mix 混 --tw-write-ink（亮色=墨黑 / 暗色=亮灰），故亮暗两主题都得到
+   「同向的细微深浅差」，不会像硬编码底色那样在暗色下翻车。 */
+.tw-canvas.tw-mode-write .tw-card[data-act="1"] .tw-card-main {
+  background: color-mix(in srgb, var(--surface-solid) 95%, var(--tw-write-ink));
+}
+
 /* 卸掉便签的装饰资产：上下齿边与纸纹 */
 .tw-canvas.tw-mode-write .tw-card-edge,
 .tw-canvas.tw-mode-write .tw-card-noise { display: none; }

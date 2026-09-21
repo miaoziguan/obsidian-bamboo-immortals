@@ -270,17 +270,75 @@ export const PersistenceCoordinator = {
     // 【P8 视口剔除】重排必须作用于全部卡（含离屏），不能只排可见 DOM：模型位置对所有卡更新，
     // 在屏卡再同步 DOM；离屏卡用几何缓存尺寸累计高度（未测量回退默认），保证整列顺序与高度正确。
     const GAP = WRITE_FLOW_GAP;                     // 与新卡落点同一间距，重排后接着打也不错位
-    let y = 0, maxW = 0;
-    target.forEach((c) => {
-      ctrl._notes = WritingDoc.setPos(ctrl._notes, c.id, 0, y);   // 位置即数据：同步模型（含离屏卡）
+    // 尺寸读取统一走「几何缓存 → DOM 实测 → 默认」，且**只改位置不改尺寸**，
+    // 故几何缓存全程有效、连线端点不会漂移。
+    const sizeOf = (c) => {
       const el = c.el;
-      if (el) { el.style.left = '0px'; el.style.top = y + 'px'; }  // 在屏卡同步 DOM
       const g = ctrl._geo ? ctrl._geo.get(c.id) : null;
-      const w = g ? g.w : (el ? el.offsetWidth : 340);
-      const h = g ? g.h : (el ? el.offsetHeight : 200);
-      maxW = Math.max(maxW, w);
-      y += (h || 200) + GAP;                        // 按各卡实际高度累计，竖向顺流
-    });
+      return {
+        w: (g ? g.w : (el ? el.offsetWidth : 0)) || 340,
+        h: (g ? g.h : (el ? el.offsetHeight : 0)) || 200,
+      };
+    };
+
+    // ===== 分幕：先按标题层级把序列切成「幕」，再对每幕分别布列 =====
+    const acts = this.splitActs(ctx, target);
+    const useActs = (ctrl._layoutMode === 'acts') && acts && acts.level > 0;
+    let totalW = 0, totalH = 0;
+
+    if (!useActs) {
+      // ① 顺流竖排：左对齐 x=0，y 按各卡实际高度累加
+      let y = 0, maxW = 0;
+      target.forEach((c) => {
+        const s = sizeOf(c);
+        ctrl._notes = WritingDoc.setPos(ctrl._notes, c.id, 0, y);   // 位置即数据：同步模型（含离屏卡）
+        const el = c.el;
+        if (el) {
+          el.style.left = '0px'; el.style.top = y + 'px';            // 在屏卡同步 DOM
+          if (el.dataset) el.dataset.act = '0';                      // 单幕：清掉分幕底色
+        }
+        maxW = Math.max(maxW, s.w);
+        y += s.h + GAP;
+      });
+      totalW = maxW; totalH = y - GAP;
+    } else {
+      // ② 分幕：每幕先量块宽/块高 → 网格换行 → 幕内竖流（y 仍按 seq 累加，顺序不破）
+      acts.groups.forEach((a) => {
+        let w = 0, h = 0;
+        a.cards.forEach((c) => { const s = sizeOf(c); w = Math.max(w, s.w); h += s.h + GAP; });
+        a.w = w; a.h = Math.max(0, h - GAP);
+      });
+      const ACT_GAP = 48;                                   // 幕间距（明显大于卡间距，形成模块感）
+      const blockW = Math.max(...acts.groups.map((a) => a.w));   // 等宽列，便于并排比较体量
+      const availW = ctrl._canvas.clientWidth || 1200;
+      const cols = Math.max(1, Math.floor((availW + ACT_GAP) / (blockW + ACT_GAP)));
+      let x = 0, y = 0, rowH = 0, col = 0;
+      acts.groups.forEach((a) => {
+        a.x = x; a.y = y;
+        rowH = Math.max(rowH, a.h);                          // 行高取该行最高幕
+        col += 1;
+        if (col >= cols) { col = 0; x = 0; y += rowH + ACT_GAP; rowH = 0; }
+        else { x += blockW + ACT_GAP; }
+      });
+      const usedCols = Math.min(cols, acts.groups.length);
+      totalW = usedCols * blockW + (usedCols - 1) * ACT_GAP;
+      totalH = y + rowH;
+
+      acts.groups.forEach((a, ai) => {
+        let cy = a.y;
+        a.cards.forEach((c) => {
+          const s = sizeOf(c);
+          ctrl._notes = WritingDoc.setPos(ctrl._notes, c.id, a.x, cy);
+          const el = c.el;
+          if (el) {
+            el.style.left = a.x + 'px'; el.style.top = cy + 'px';
+            // 交替明暗：只加一个 data-act 属性标出幕的边界，零新增 DOM（见 notes.css）
+            if (el.dataset) el.dataset.act = String(ai % 2);
+          }
+          cy += s.h + GAP;
+        });
+      });
+    }
 
     ctrl._syncLayoutGeo();                          // 位置已改写 → 几何缓存/空间索引同步（否则连线端点指向重排前的幽灵位置）
     ctrl._scheduleRenderLinks();                    // 连线端点随位置更新（原有连线保留）
@@ -288,14 +346,58 @@ export const PersistenceCoordinator = {
     ctrl._refreshWriteOrder();                      // 顺序徽标随新位置刷新
     ctrl._scheduleCull();                           // 重排后重算挂载：移出视野的卡卸载
 
-    // 居中到顺流后的卡片列：左对齐 x=0，仅垂直堆叠，故只取最大宽与总高做居中
-    const totalH = y - GAP;
     const VW = ctrl._canvas.clientWidth, VH = ctrl._canvas.clientHeight;
-    ctrl._setCanvasOffset(VW / 2 - maxW / 2, VH / 2 - totalH / 2);
+    ctrl._setCanvasOffset(VW / 2 - totalW / 2, VH / 2 - totalH / 2);
 
     const scope = selCount >= 2 ? '选中的 ' : '全部 ';
-    ctrl._showScreenMsg('已顺流重排' + scope + target.length + ' 张（文章顺序，尺寸不变）', 1800);
+    if (useActs) {
+      // 幕计数只数「以幕级标题起头的真幕」，把首个幕级标题之前的「引子」块排除在外
+      // （引子通常无标题、语义上不属于任何一幕，见 splitActs 的 !cur 首块）。
+      const { actCount, hasIntro } = this.actCountInfo(acts);
+      const tail = (hasIntro ? `（含引子共 ${acts.groups.length} 块）` : '') + `（${scope}${target.length} 张，文章顺序不变）`;
+      ctrl._showScreenMsg(`已分幕排版：按 H${acts.level} 分为 ${actCount} 幕${tail}`, 2200);
+    } else if (ctrl._layoutMode === 'acts') {
+      ctrl._showScreenMsg('未检测到 2 个以上同级标题，暂用顺流竖排', 2000);
+    } else {
+      ctrl._showScreenMsg('已顺流重排' + scope + target.length + ' 张（文章顺序，尺寸不变）', 1800);
+    }
   
+  },
+
+  /** 分幕切分：取「出现次数 ≥2 的**最浅**标题层级」作为幕层级。
+   *  为什么不是固定 H1：多数文章只有一个 H1（标题），按 H1 分会得到「一整幕」= 没分。
+   *  自动探测能自适应（1 个 H1 + 若干 H2 → 用 H2；若干 H1 → 用 H1）。
+   *  首个幕级标题之前的卡归入「引子」块（通常是没有标题的开头/前言）。
+   *  @returns {{level:number, groups:Array<{cards:Array}>}} level=0 表示无可分层级 */
+  splitActs(ctx, target) {
+    const { ctrl } = ctx;
+    const noteIdx = ctrl._noteIndex();
+    const levelOf = (lv) => (/^h([1-6])$/.test(lv) ? Number(lv.slice(1)) : 0);
+    const counts = new Map();
+    target.forEach((c) => {
+      const n = noteIdx.get(c.id);
+      const k = n ? levelOf(n.level) : 0;
+      if (k) counts.set(k, (counts.get(k) || 0) + 1);
+    });
+    let level = 0;
+    for (let n = 1; n <= 6; n += 1) { if ((counts.get(n) || 0) >= 2) { level = n; break; } }
+    if (!level) return { level: 0, groups: [] };
+    const groups = [];
+    let cur = null;
+    target.forEach((c) => {
+      const n = noteIdx.get(c.id);
+      const k = n ? levelOf(n.level) : 0;
+      if (k === level || !cur) { cur = { cards: [c] }; groups.push(cur); }   // 新幕（或首个引子块）
+      else { cur.cards.push(c); }                                            // 归入当前幕
+    });
+    return { level, groups };
+  },
+
+  /** 幕计数：只数「以幕级标题起头的真幕」，把首个幕级标题之前的「引子」块排除在幕数之外。
+   *  @returns {{actCount:number, hasIntro:boolean}} */
+  actCountInfo(acts) {
+    const actCount = acts.groups.filter((g) => g.cards[0].level === ('h' + acts.level)).length;
+    return { actCount, hasIntro: actCount < acts.groups.length };
   },
   // (was _refreshWriteOrder)
   refreshWriteOrder(ctx) {

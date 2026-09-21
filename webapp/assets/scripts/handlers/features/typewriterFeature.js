@@ -69,6 +69,7 @@ export const TypewriterFeature = {
     this._fontIdx = 0;
     this._paperIdx = 0;
     this._mode = 'notes';              // 红色齿轮旋钮三档权威状态（见 _setMode）
+    this._layoutMode = 'flow';         // 写作档排版档位：'flow' 顺流竖排 / 'acts' 分幕（点 #twArrange 轮换）
     this._switching = false;           // 切档重入锁
     this._levelMenu = null;            // 类型选择浮层（全画布共用一个，按需创建）
     this._levelMenuCard = null;        // 浮层当前作用于哪张卡
@@ -459,8 +460,8 @@ export const TypewriterFeature = {
         this._showScreenMsg(label ? ('LAYOUT: ' + label) : '画布为空', 1400);
         return;
       }
-      // MD可视化写作模式：第三个键 = 按文章顺序把卡片顺成竖向阅读流（画布即文章骨架）
-      if (this._mode === 'write') { this._reflowWriteOrder(); return; }
+      // MD可视化写作模式：第三个键 = 排版轮换（顺流竖排 ⇄ 分幕），画布即文章骨架
+      if (this._mode === 'write') { this._cycleWriteLayout(); return; }
       this._arrangeNotes();
     });
 
@@ -556,6 +557,13 @@ export const TypewriterFeature = {
    *  只改位置、不动卡片尺寸/旋转（非破坏性），原有连线保留（端点随位置更新）。
    *  与便签模式的「网格排版」区分：那边是无序网格，这边是有序竖列（顺序即文章顺序）。 */
     _reflowWriteOrder() { return PersistenceCoordinator.reflowWriteOrder({ state: this._state, ctrl: this }); },
+
+  /** 写作档排版轮换：顺流竖排 ⇄ 分幕。只切档位，实际布局仍由 _reflowWriteOrder 统一执行，
+   *  故撤销 / 落盘 / 几何同步 / 居中 / 提示等收尾动作只有一份实现。 */
+  _cycleWriteLayout() {
+    this._layoutMode = (this._layoutMode === 'acts') ? 'flow' : 'acts';
+    this._reflowWriteOrder();
+  },
 
   /** 兜底：把 Markdown 作为 .md 文件下载到本地（桥不可用环境） */
     _downloadMarkdown(filename, content) { return ModeController.downloadMarkdown({ state: this._state, ctrl: this }, filename, content); },

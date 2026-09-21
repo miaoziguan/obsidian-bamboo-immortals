@@ -564,8 +564,8 @@ export const ModeController = {
         el.setAttribute('aria-label', '一键自动布局');
         el.innerHTML = ICON_LAYERS;
       } else if (ctrl._mode === 'write') {
-        el.title = '顺流重排：按文章顺序把卡片排成竖向阅读流（选中≥2张时只排选中组）';
-        el.setAttribute('aria-label', '顺流重排卡片');
+        el.title = '排版轮换：顺流竖排 ⇄ 分幕（按同级标题切块并网格排布；点击切换，选中≥2张时只排选中组）';
+        el.setAttribute('aria-label', '排版轮换（顺流竖排 / 分幕）');
         el.innerHTML = ICON_GRID;
       } else {
         el.title = '一键排版：便签排成整齐网格（选中≥2张时只排选中组）';

@@ -691,6 +691,93 @@ describe('顺序一等数据（seq）：写入档规模稳定性', () => {
   });
 });
 
+describe('框选覆盖视口之外（离屏卡按需挂载并选中）', () => {
+  test('selectInRect 选中离屏卡（不在 mountedCards，但在 spatial/noteIndex），挂载后进入 _selected', () => {
+    const spatial = new global.SpatialIndex(512);
+    const geo = new global.GeoCache();
+    const mountedCards = new Map();
+    const noteIndex = new Map();
+
+    // 可见卡：已挂载
+    const vis = document.createElement('div');
+    vis.dataset.id = 'vis';
+    vis.style.left = '10px'; vis.style.top = '10px';
+    mountedCards.set('vis', vis);
+    spatial.insert('vis', 10, 10, 200, 100);
+    geo.set('vis', { x: 10, y: 10, w: 200, h: 100, rot: 0 });
+
+    // 离屏卡：索引里有，但未挂载
+    const OX = 5000, OY = 5000, OW = 200, OH = 100;
+    spatial.insert('off', OX, OY, OW, OH);
+    geo.set('off', { x: OX, y: OY, w: OW, h: OH, rot: 0 });
+    noteIndex.set('off', { id: 'off', x: OX, y: OY, text: '离屏', level: 'p' });
+
+    // 框选矩形覆盖两张卡（含视口外）
+    const r = { x: 0, y: 0, w: OX + OW, h: OY + OH };
+
+    const selected = new Set();
+    let mountedOff = false;
+    const ctrl = {
+      _spatial: spatial,
+      _mountedCards: mountedCards,
+      _geo: geo,
+      _selected: selected,
+      _clearSelection() { selected.clear(); },
+      _noteIndex() { return noteIndex; },
+      _mountCard(note) {
+        mountedOff = true;
+        const el = document.createElement('div');
+        el.dataset.id = note.id;
+        el.style.left = note.x + 'px';
+        el.style.top = note.y + 'px';
+        mountedCards.set(note.id, el);
+        geo.set(note.id, { x: note.x, y: note.y, w: OW, h: OH, rot: 0 });
+        return el;
+      },
+      _updateSelBar() {},
+    };
+
+    global.CardInteractions.selectInRect({ state: {}, ctrl }, r);
+
+    expect(mountedOff).toBe(true);                              // 离屏卡被按需挂载
+    expect(mountedCards.has('off')).toBe(true);                 // 已进挂载表
+    expect(selected.has(mountedCards.get('off'))).toBe(true);   // 已进入选中集
+    expect(selected.has(vis)).toBe(true);                      // 可见卡照常选中
+  });
+
+  test('selectInRect 不选中矩形外的卡（即使它离屏且在索引里）', () => {
+    const spatial = new global.SpatialIndex(512);
+    const geo = new global.GeoCache();
+    const mountedCards = new Map();
+    const noteIndex = new Map();
+
+    const OX = 5000, OY = 5000;
+    spatial.insert('off', OX, OY, 200, 100);
+    geo.set('off', { x: OX, y: OY, w: 200, h: 100, rot: 0 });
+    noteIndex.set('off', { id: 'off', x: OX, y: OY, text: '离屏', level: 'p' });
+
+    // 矩形只在可见区，够不到离屏卡
+    const r = { x: 0, y: 0, w: 300, h: 300 };
+
+    const selected = new Set();
+    const ctrl = {
+      _spatial: spatial, _mountedCards: mountedCards, _geo: geo, _selected: selected,
+      _clearSelection() { selected.clear(); },
+      _noteIndex() { return noteIndex; },
+      _mountCard(note) {
+        const el = document.createElement('div');
+        el.dataset.id = note.id; el.style.left = note.x + 'px'; el.style.top = note.y + 'px';
+        mountedCards.set(note.id, el); return el;
+      },
+      _updateSelBar() {},
+    };
+
+    global.CardInteractions.selectInRect({ state: {}, ctrl }, r);
+    expect(selected.size).toBe(0);                  // 矩形外的离屏卡不应被挂载/选中
+    expect(mountedCards.has('off')).toBe(false);
+  });
+});
+
 describe('写作档不做视口剔除（根因：卡片 DOM 反复重建导致闪烁）', () => {
   // culledFixture 把 _scheduleCull 桩成了空函数（会让本组用例假绿）→ 还原真身
   const realCull = () => ViewportCuller.scheduleCull({ state: feature._state, ctrl: feature });

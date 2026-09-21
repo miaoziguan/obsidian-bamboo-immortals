@@ -272,13 +272,21 @@ export const CardInteractions = {
   selectInRect(ctx, r) {
     const { state, ctrl } = ctx;
     if (!ctrl._spatial) ctrl._spatial = new SpatialIndex(512);
-    // 【P8 空间索引】框选候选由索引 queryRect 给出（O(可视)），不再 querySelectorAll 全量读 DOM；
-    // 离屏卡未进 DOM，虚拟化下框选只选可见卡（合理行为：与原「全量挂载」等价地不漏选可见卡）。
+    // 候选由空间索引 queryRect 给出（O(命中)），不再全量读 DOM。关键点：空间索引在剔除卸载时
+    // 不清空，故**候选含离屏卡**。离屏卡无 DOM，无法被选中 —— 先按需挂载（进入 _selected 后即被
+    // pinnedIds 钉住，后续剔除不会再卸载它），再判相交选中。这样 Shift 框选就能覆盖视口之外的内容。
     const hits = ctrl._spatial.queryRect(r.x, r.y, r.x + r.w, r.y + r.h);
     ctrl._clearSelection();
     if (!ctrl._mountedCards) return;
+    const noteIdx = ctrl._noteIndex ? ctrl._noteIndex() : null;
     hits.forEach((id) => {
-      const card = ctrl._mountedCards.get(id);
+      let card = ctrl._mountedCards.get(id);
+      if (!card && noteIdx) {
+        const note = noteIdx.get(id);
+        if (!note) return;
+        card = ctrl._mountCard ? ctrl._mountCard(note) : null;   // 离屏卡按需挂载，使其可被选中
+        if (!card) return;
+      }
       if (!card) return;
       const g = ctrl._geo ? ctrl._geo.get(id) : null;
       const lx = g ? g.x : (parseFloat(card.style.left) || 0);

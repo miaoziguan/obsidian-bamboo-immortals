@@ -3838,7 +3838,9 @@ body.dark .tw-print,
     0 0 0.28em rgba(226, 88, 54, 0.45),
     0 0.025em 0.05em rgba(20, 4, 2, 0.5), 0 0.16em 0.3em rgba(var(--black-rgb), 0.42);
 }
-.tw-knob:focus-visible { outline: 2px solid #c9a24a; outline-offset: 2px; }
+/* 焦点框改站内角（rgb(var(--primary-rgb))），与同文件 .tw-rbtn/.tw-print 等控件统一，
+   不再挪用「搜索高亮」的金色 #c9a24a；且配合 JS 点击后 blur，鼠标流程不再显形。 */
+.tw-knob:focus-visible { outline: 2px solid rgb(var(--primary-rgb)); outline-offset: 2px; }
 /* 暗色下齿轮压暗一档（同样只收暗不发黑，镜面高光带保留），保持与机身玻璃的明度关系 */
 .theme-dark .tw-knob-wheel,
 :host(.dark) .tw-knob-wheel {
@@ -5533,6 +5535,58 @@ body.dark .tw-print,
 /* 工具条：每卡 10 个按钮 + 10 个内联 SVG，平移期间无人操作 → 整条摘掉。
    只在 drag 档摘（dense 档保留 hover 可用，否则密集时用户将拿不到卡片操作入口）。 */
 .tw-canvas.tw-lod-drag .tw-card-tools { display: none; }
+
+/* 多选浮动操作条：选中 ≥2 张时浮在选框上方，提供「合并 N 张 / 删除」批量入口。
+   避免去追单卡的 hover 工具条（易隐藏、难点击）。rAF 跟随选区/平移/缩放实时定位。 */
+.tw-sel-bar {
+  position: absolute;
+  z-index: 9000;
+  display: none;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 6px;
+  border-radius: 10px;
+  background: var(--surface-solid, #fff);
+  border: 1px solid rgba(16, 24, 40, 0.12);
+  box-shadow: 0 6px 18px rgba(16, 24, 40, 0.18);
+  transform: translateX(-50%);          /* 以选区中点为锚居中 */
+  pointer-events: auto;
+  font-family: inherit;
+}
+.tw-sel-bar.is-on { display: flex; }
+.tw-sel-bar button {
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1;
+  border: none;
+  border-radius: 6px;
+  padding: 7px 10px;
+  cursor: pointer;
+  color: #2f3a2c;
+  background: transparent;
+  transition: background 0.12s ease, color 0.12s ease, transform 0.08s ease;
+}
+.tw-sel-bar .tw-sel-merge {
+  font-weight: 600;
+  background: rgba(var(--primary-rgb, 80, 120, 90), 0.14);
+  color: rgb(var(--primary-rgb, 80, 120, 90));
+}
+.tw-sel-bar .tw-sel-merge:hover { background: rgba(var(--primary-rgb, 80, 120, 90), 0.24); }
+.tw-sel-bar .tw-sel-del:hover {
+  color: rgb(var(--danger-rgb, 178, 78, 58));
+  background: rgba(var(--danger-rgb, 178, 78, 58), 0.12);
+}
+.tw-sel-bar button:active { transform: scale(0.96); }
+.tw-sel-bar button:focus-visible { outline: 2px solid rgb(var(--primary-rgb, 80, 120, 90)); outline-offset: 1px; }
+:host(.dark) .tw-sel-bar {
+  background: #1c1f1a;
+  border-color: rgba(255, 255, 255, 0.14);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+}
+:host(.dark) .tw-sel-bar button { color: #cdc8bb; }
+:host(.dark) .tw-sel-merge { background: rgba(206, 220, 190, 0.16); color: #d8e3c6; }
+:host(.dark) .tw-sel-merge:hover { background: rgba(206, 220, 190, 0.28); }
+:host(.dark) .tw-sel-del:hover { color: #e09a86; background: rgba(214, 120, 96, 0.16); }
 
 
 </style>

@@ -272,13 +272,10 @@ export const TypewriterFeature = {
     });
     this._input = wrap.querySelector('.tw-input');
     this._case = wrap.querySelector('.tw-case');
-    // 点画布空白处取消钉住（工具条收起）；点在便签上由各自的拖拽逻辑处理
-    this._canvas.addEventListener('pointerdown', (e) => {
-      if (e.target.closest('.tw-card')) return;
-      this._pinOnly(null);
-      this._clearSelection();   // 点空白：清空多选
-      this._exitAllEdits(); // 点空白：退出正在编辑的便签并落盘
-    });
+    // 「点空白取消选中 / 取消钉住」不在这里挂 .tw-canvas —— canvas 只是一小块 flex:1、
+    // overflow:visible，机身区等大片空白的命中目标是 wrap，挂在 canvas 上收不到事件。
+    // 已统一挪到 CardInteractions.makeCanvasDraggable 的 root 级 onDown（详见其注释）；
+    // 「点空白退出编辑」则由下方 makeCanvasDraggable 的 root 捕获阶段监听负责。
     // 导图层与便签画布互斥显示：同挂在 wrap 下、同为 flex:1，机身仍是底部那一项
     MindmapFeature.mount({ state: this._state, ctrl: this }, wrap);
     this._applyModeChrome();   // 首次挂载即把面板语义对齐（默认便签模式）

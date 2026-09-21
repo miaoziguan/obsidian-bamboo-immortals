@@ -136,6 +136,13 @@ export const CardInteractions = {
       if (e.target.closest('.tw-card')) return;   // 点便签：交给便签拖拽
       // 交互控件不触发画布拖动，其余整块区域全局可平移画布
       if (e.target.closest('button, .tw-card-resize, .tw-card-rotate, .tw-card-link, input, textarea')) return;
+      // 【点空白取消选中】必须挂在功能根(root)而非 .tw-canvas —— 与「点外面退不出编辑态」同一个坑：
+      // .tw-canvas 只是 root 里 flex:1 的一小块且 overflow:visible（卡片会溢出到机身区显示），
+      // 机身 .tw-beeper 又整体 pointer-events:none（仅开关/输入框单独放行），
+      // 这些区域的命中目标实际是 root/wrap；监听挂在 canvas 上时点它们收不到事件，
+      // 于是框选后点「画布外那圈空白」永远取消不掉选中态。
+      if (ctrl._pinOnly) ctrl._pinOnly(null);
+      if (ctrl._clearSelection) ctrl._clearSelection();
       // Shift + 空白拖拽 = 框选（替代平移）；其余空白拖拽 = 平移画布
       if (e.shiftKey) { ctrl._startMarquee(e); return; }
       dragging = true;

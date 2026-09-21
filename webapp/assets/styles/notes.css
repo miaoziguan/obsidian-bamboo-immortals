@@ -176,7 +176,8 @@
 .tw-card-zoom-out,
 .tw-card-zoom-in,
 .tw-card-move,
-.tw-card-lv {
+.tw-card-lv,
+.tw-card-split {
   
   width: clamp(18px, calc(20px * var(--tw-scale, 1)), 24px);
   height: clamp(18px, calc(20px * var(--tw-scale, 1)), 24px);
@@ -204,7 +205,8 @@
 .tw-card-zoom-out svg,
 .tw-card-zoom-in svg,
 .tw-card-move svg,
-.tw-card-lv svg {
+.tw-card-lv svg,
+.tw-card-split svg {
   width: clamp(16px, calc(18px * var(--tw-scale, 1)), 22px);
   height: clamp(16px, calc(18px * var(--tw-scale, 1)), 22px);
   flex: none;
@@ -256,13 +258,15 @@
 .tw-card-font:hover,
 .tw-card-paper:hover,
 .tw-card-zoom-out:hover,
-.tw-card-zoom-in:hover { color: #2f3a2c; }
+.tw-card-zoom-in:hover,
+.tw-card-split:hover { color: #2f3a2c; }
 
 .tw-card-del:active,
 .tw-card-paper:active,
 .tw-card-font:active,
 .tw-card-zoom-out:active,
-.tw-card-zoom-in:active { transform: scale(0.92); }
+.tw-card-zoom-in:active,
+.tw-card-split:active { transform: scale(0.92); }
 .tw-card-font:disabled,
 .tw-card-zoom-out:disabled,
 .tw-card-zoom-in:disabled {
@@ -275,7 +279,10 @@
 .tw-card-paper:focus-visible,
 .tw-card-font:focus-visible,
 .tw-card-zoom-out:focus-visible,
-.tw-card-zoom-in:focus-visible {
+.tw-card-zoom-in:focus-visible,
+.tw-card-move:focus-visible,
+.tw-card-lv:focus-visible,
+.tw-card-split:focus-visible {
   outline: 2px solid rgb(var(--primary-rgb));
   outline-offset: 1px;
 }
@@ -1517,7 +1524,8 @@
 :host(.dark) .tw-card-zoom-out,
 :host(.dark) .tw-card-zoom-in,
 :host(.dark) .tw-card-move,
-:host(.dark) .tw-card-lv { color: #cdc8bb; }
+:host(.dark) .tw-card-lv,
+:host(.dark) .tw-card-split { color: #cdc8bb; }
 :host(.dark) .tw-card-paper:hover,
 :host(.dark) .tw-card-font:hover,
 :host(.dark) .tw-card-zoom-out:hover,

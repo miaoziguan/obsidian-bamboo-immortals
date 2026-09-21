@@ -251,6 +251,31 @@ export const WritingDoc = {
     return this.setOrder(out, out.map((n) => n.id));     // 重排 seq 为唯一且连续
   },
 
+  /**
+   * 拆卡时把拆出的片段「顺连」成链（按段落顺序首尾相接，符合文章逻辑流）。
+   *  原卡是首段、id 不变 → 其原有外部连线（x→A / B→x）全部保留在首段上不动；
+   *  此处只在拆出的序列 [首段, 新段1, 新段2, …] 上补「每段 → 下一段」的顺连边，
+   *  即 首段→新段1、新段1→新段2 … 使段落按文章顺序相连。去重避免已存在的相邻边。
+   *  @param {Array} links    原连线数组 [{from,to,...}]
+   *  @param {string} origId 首段（原卡）的 id
+   *  @param {Array<string>} newIds 拆出的新段 id 列表（按段落顺序）
+   *  @returns {Array} 含顺连链边的数组（原边全部保留；无新段时原样返回）
+   */
+  chainSplitChunks(links, origId, newIds) {
+    const list = Array.isArray(links) ? links : [];
+    if (!Array.isArray(newIds) || !newIds.length) return list;   // 无新段（未拆）：不改动
+    const seen = new Set(list.map((l) => l.from + '>' + l.to));
+    const out = list.slice();
+    const seq = [origId].concat(newIds);                         // 段落顺序链
+    for (let i = 0; i + 1 < seq.length; i += 1) {
+      const sig = seq[i] + '>' + seq[i + 1];
+      if (seen.has(sig)) continue;                             // 去重：相邻已连
+      seen.add(sig);
+      out.push({ from: seq[i], to: seq[i + 1] });             // 顺连：上一段 → 下一段
+    }
+    return out;
+  },
+
   setFont(notes, id, font) {
     const f = this.FONTS.indexOf(font) >= 0 ? font : 'classic';
     return notes.map((n) => (n.id === id ? Object.assign({}, n, { font: f }) : n));

@@ -1076,6 +1076,15 @@ export const TypewriterFeature = {
     // ② 新卡必须显式建 DOM：写作档不做视口剔除（scheduleCull 在 write 档空转），
     //    只改模型不会有任何画面变化 —— 这正是「点了没反应」的根因。
     added.forEach((n) => { if (!this._mountedCards.has(n.id)) this._mountCard(n); });
+    // ②bis 顺连（拆出的片段按段落顺序首尾相接：首段→新段1→新段2…；
+    //    外部连线天然留在首段，不向外蔓延）
+    if (added.length && Array.isArray(this._links)) {
+      const nextLinks = WritingDoc.chainSplitChunks(this._links, id, added.map((n) => n.id));
+      if (nextLinks.length !== this._links.length) {
+        this._links = nextLinks;
+        this._scheduleRenderLinks();   // 连线实时重绘（端点在 reflow/建卡后已就位）
+      }
+    }
     if (this._mode === 'write') {
       // 写作档：按新 seq 顺流/分幕重排（skipUndo 避免重复入栈，撤销点唯一）
       PersistenceCoordinator.reflowWriteOrder({ state: this._state, ctrl: this }, { skipUndo: true });

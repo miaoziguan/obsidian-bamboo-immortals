@@ -35,14 +35,20 @@ function setup(startStyle) {
   return { MM: MindmapFeature, el };
 }
 
-test('循环切换永不落在已下架的档位（0 经典 / 4 草图 / 5 玻璃）', () => {
+test('循环切换永不落在已下架的档位（0 经典 / 2 终端 / 4 草图 / 5 玻璃）', () => {
   const { MM } = setup(1);
   const seen = [];
   for (let i = 0; i < 12; i++) { MM.cycleStyle(); seen.push(MM._style); }
-  expect(seen).not.toContain(0);
-  expect(seen).not.toContain(4);
-  expect(seen).not.toContain(5);
-  expect(new Set(seen)).toEqual(new Set([1, 2, 3]));   // 在售只有方角/终端/胶囊点
+  [0, 2, 4, 5].forEach((retired) => expect(seen).not.toContain(retired));
+  expect(new Set(seen)).toEqual(new Set([1, 3]));   // 在售只有方角/胶囊点
+});
+
+test('在售两档可互相切换（方角 ⇄ 胶囊点）', () => {
+  const { MM } = setup(1);
+  MM.cycleStyle();
+  expect(MM._style).toBe(3);
+  MM.cycleStyle();
+  expect(MM._style).toBe(1);
 });
 
 test('老文档停在经典(0)时，切一次即落到首档（方角）', () => {
@@ -51,13 +57,12 @@ test('老文档停在经典(0)时，切一次即落到首档（方角）', () =>
   expect(MM._style).toBe(1);
 });
 
-test('老文档停在已下架的草图(4)/玻璃(5)时，切一次即落到首档', () => {
-  const { MM } = setup(4);
-  MM.cycleStyle();
-  expect(MM._style).toBe(1);
-  const { MM: MM2 } = setup(5);
-  MM2.cycleStyle();
-  expect(MM2._style).toBe(1);
+test('老文档停在已下架的终端(2)/草图(4)/玻璃(5)时，切一次即落到首档', () => {
+  for (const retired of [2, 4, 5]) {
+    const { MM } = setup(retired);
+    MM.cycleStyle();
+    expect(MM._style).toBe(1);
+  }
 });
 
 test('load 把停在下架经典的老文档迁到首档', async () => {
@@ -67,9 +72,9 @@ test('load 把停在下架经典的老文档迁到首档', async () => {
   expect(MM._style).toBe(1);       // 不再是 0（已下架）
 });
 
-test('load 把停在下架的草图(4)/玻璃(5)也迁到首档', async () => {
+test('load 把所有下架档位（0 经典 / 2 终端 / 4 草图 / 5 玻璃）都迁到首档', async () => {
   const { MM } = setup(0);
-  for (const retired of [0, 4, 5]) {
+  for (const retired of [0, 2, 4, 5]) {
     STORE.loadMindmapGroupDoc.mockResolvedValue({ nodes: [], links: [], style: retired });
     await MM.load();
     expect(MM._style).toBe(1);
@@ -78,7 +83,7 @@ test('load 把停在下架的草图(4)/玻璃(5)也迁到首档', async () => {
 
 test('load 不误迁：在售档位原样保留（索引↔视觉映射冻结）', async () => {
   const { MM } = setup(0);
-  for (const s of [1, 2, 3]) {
+  for (const s of [1, 3]) {
     STORE.loadMindmapGroupDoc.mockResolvedValue({ nodes: [], links: [], style: s });
     await MM.load();
     expect(MM._style).toBe(s);     // 重编号会让这里错位，是必须防的回归

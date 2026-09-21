@@ -34,12 +34,12 @@ import { UndoStack } from '../../services/undoStack.js';
  *   第三个机身键   一键自动布局（树状 ↓ / 横向 → / 放射 ◎ 循环；主动触发才重排，不改变自由拖拽模型）
  */
 // 子弹样式：由导图模式下第一个机身按钮循环切换；索引存进导图文档（与便签零耦合）。
-// 【已下架】0 经典 / 4 草图 / 5 玻璃。但「索引 ↔ 视觉」映射必须冻结：样式索引随文档落盘，
+// 【已下架】0 经典 / 2 终端 / 4 草图 / 5 玻璃。但「索引 ↔ 视觉」映射必须冻结：样式索引随文档落盘，
 // 一旦重编号，老文档的子弹样式会整体错位变样。故只从可切换列表 MM_STYLE_AVAILABLE 里剔除，
 // 索引号原样保留（load 时把下架档位统一迁到首档，见下）。
 const MM_STYLE_NAMES = ['经典', '方角', '终端', '胶囊点', '草图', '玻璃'];
 const MM_STYLE_COUNT = MM_STYLE_NAMES.length;
-const MM_STYLE_AVAILABLE = [1, 2, 3];   // 在售档位：方角 / 终端 / 胶囊点
+const MM_STYLE_AVAILABLE = [1, 3];   // 在售档位：方角 / 胶囊点
 
 export const MindmapFeature = {
   NODE_MAX_W: 220,          // 子弹最大宽度（px，超长文本换行）

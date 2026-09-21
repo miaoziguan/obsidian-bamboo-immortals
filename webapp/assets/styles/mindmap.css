@@ -172,9 +172,9 @@
   box-shadow: 0 0 0 1px rgba(var(--primary-rgb), 0.4);
 }
 
-/* 子弹样式：由 .tw-mm 根上的 .tw-mm-style-1..3 切换（导图模式下第一个机身按钮循环）。
-   在售 3 种：1 方角 / 2 终端 / 3 胶囊点，各一套边框/底色/阴影，均基于主题变量以适配明暗。
-   【已下架】0 经典 / 4 草图 / 5 玻璃 —— 索引号必须保留、绝不重编号：样式索引随导图文档落盘，
+/* 子弹样式：由 .tw-mm 根上的 .tw-mm-style-1 / .tw-mm-style-3 切换（导图模式下第一个机身按钮循环）。
+   在售 2 种：1 方角 / 3 胶囊点，各一套边框/底色/阴影，均基于主题变量以适配明暗。
+   【已下架】0 经典 / 2 终端 / 4 草图 / 5 玻璃 —— 索引号必须保留、绝不重编号：样式索引随导图文档落盘，
    重编号会让老文档的子弹样式整体错位变样。下架档位在 load 时统一迁到首档（见 MM_STYLE_AVAILABLE），
    不会再命中，故其 CSS 一并移除。 */
 .tw-mm.tw-mm-style-1 .tw-mm-node {            /* 方角便签 */
@@ -182,16 +182,6 @@
   border: 1.5px solid var(--border-strong, var(--border-light));
   box-shadow: var(--shadow-card);
 }
-.tw-mm.tw-mm-style-2 .tw-mm-node {            /* 霓虹终端 */
-  border-radius: var(--radius-pill);
-  background: #0a1205;
-  border: 1.5px solid #33ff00;
-  color: #33ff00;
-  text-shadow: 0 0 0.2em rgba(51, 255, 0, 0.5);
-  box-shadow: 0 0 0.5em rgba(51, 255, 0, 0.35), 0 0.1em 0.3em rgba(0, 0, 0, 0.4);
-}
-.tw-mm.tw-mm-style-2 .tw-mm-node .tw-mm-text.is-placeholder { color: rgba(51, 255, 0, 0.5); }
-.tw-mm.tw-mm-style-2 .tw-mm-node .tw-link-anchor { background: #0a1205; border-color: rgba(51, 255, 0, 0.6); }
 .tw-mm.tw-mm-style-3 .tw-mm-node {            /* 胶囊点（左侧强调点） */
   padding-left: 1.7em;
 }

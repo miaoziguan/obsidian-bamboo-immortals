@@ -251,7 +251,7 @@ export const PersistenceCoordinator = {
   
   },
   // (was _reflowWriteOrder)
-  reflowWriteOrder(ctx) {
+  reflowWriteOrder(ctx, opts) {
     const { state, ctrl } = ctx;
     if (!ctrl._canvas) return;
     const seq = ctrl._orderCards();                 // 全部卡（模型派生，剔除态也完整）
@@ -265,7 +265,7 @@ export const PersistenceCoordinator = {
     const target = (selCount >= 2) ? seq.filter((c) => selIds.has(c.id)) : seq;
     if (target.length < 2) { ctrl._showScreenMsg('至少两张卡片才能顺流', 1500); return; }
 
-    if (ctrl._undoStack) ctrl._undoStack.push();   // 重排覆盖手工布局，提前留档（撤销可还原）
+    if (ctrl._undoStack && !(opts && opts.skipUndo)) ctrl._undoStack.push();   // 重排覆盖手工布局，提前留档（撤销可还原）；拆卡等已自行留档的调用方传 skipUndo 避免重复入栈
 
     // 【P8 视口剔除】重排必须作用于全部卡（含离屏），不能只排可见 DOM：模型位置对所有卡更新，
     // 在屏卡再同步 DOM；离屏卡用几何缓存尺寸累计高度（未测量回退默认），保证整列顺序与高度正确。

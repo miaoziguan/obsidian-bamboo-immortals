@@ -93,6 +93,21 @@ describe('WritingDoc.splitNote 纯数据契约', () => {
     expect(WritingDoc.splitNote(notes, 'a').length).toBe(1);
   });
 
+  test('回归：仅用单个换行分段（打字机输入框回车即新段）也要拆开', () => {
+    const notes = [{ id: 'a', seq: 0, level: 'p', text: '甲\n乙\n丙' }];
+    const out = WritingDoc.splitNote(notes, 'a');
+    expect(out.length).toBe(3);                        // 无空行也应按换行拆
+    expect(out.map((n) => n.text)).toEqual(['甲', '乙', '丙']);
+    expect(out.map((n) => n.seq)).toEqual([0, 1, 2]);
+  });
+
+  test('回归：CRLF(\\r\\n) 段落分隔同样识别', () => {
+    const notes = [{ id: 'a', seq: 0, level: 'p', text: '甲\r\n\r\n乙' }];
+    const out = WritingDoc.splitNote(notes, 'a');
+    expect(out.length).toBe(2);
+    expect(out[1].text).toBe('乙');
+  });
+
   test('段内多行折叠为单一换行、首尾空白被裁掉', () => {
     const notes = [{ id: 'a', seq: 0, level: 'p', text: '  前导空格段  \n\n  第二段首行\n  第二段次行  ' }];
     const out = WritingDoc.splitNote(notes, 'a');
@@ -108,11 +123,13 @@ describe('WritingDoc.splitNote 纯数据契约', () => {
 });
 
 describe('写作档 _splitCard 端到端', () => {
-  test('多段落卡拆后 _notes 增长、seq 连续、新卡紧接原卡之后', () => {
+  test('多段落卡拆后 _notes 增长、seq 连续、新卡紧接原卡之后并显式挂载', () => {
     splitFixture([
       { id: 'x', seq: 0, level: 'p', text: '甲\n\n乙\n\n丙', x: 0, y: 0 },
       { id: 'y', seq: 1, level: 'p', text: '尾卡', x: 0, y: 100 },
     ]);
+    const mounted = [];
+    feature._mountCard = (n) => { mounted.push(n.id); };   // 写作档无剔除，新卡必须显式建 DOM
     feature._splitCard(feature._mountedCards.get('x'));
     expect(feature._notes.length).toBe(4);             // 原 2 → x 拆出 3 + y = 4
     expect(feature._notes.map((n) => n.seq)).toEqual([0, 1, 2, 3]);
@@ -120,6 +137,7 @@ describe('写作档 _splitCard 端到端', () => {
     expect(feature._notes[1].text).toBe('乙');
     expect(feature._notes[2].text).toBe('丙');
     expect(feature._notes[3].id).toBe('y');
+    expect(mounted).toEqual([feature._notes[1].id, feature._notes[2].id]);   // 两个新段都挂了 DOM
   });
 
   test('单段落卡不拆、不进撤销栈', () => {

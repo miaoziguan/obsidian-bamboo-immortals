@@ -214,9 +214,11 @@ export const WritingDoc = {
 
   /**
    * 按段落拆分一张卡（纯函数，返回新数组，调用方负责落盘）。
-   *  text 以空行（连续换行）切分为若干段；首段留在原卡（保留其 level 与全部视觉属性），
-   *  其余段各成一张 level:'p' 的新卡、紧随其后插入；seq 由 setOrder 重写为唯一且连续。
-   *  无空行可拆（段数 ≤ 1）时原样返回 —— 调用方据此判定「无需拆分」。
+   *   · 优先以空行（连续换行）分段 —— Markdown 段落语义；
+   *   · 若无空行但有多行，则退化为按单个换行分段 —— 打字机输入框里回车即新段，用户不会敲两个回车；
+   *   · 首段留在原卡（保留其 level 与全部视觉属性），其余段各成一张 level:'p' 的新卡、紧随其后插入；
+   *   · seq 由 setOrder 重写为唯一且连续（红线不破）。
+   *  段数 ≤ 1（无换行可拆）时原样返回 —— 调用方据此判定「无需拆分」。
    *  @returns {Array} 拆后（或原样）的 notes 数组
    */
   splitNote(notes, id) {
@@ -224,11 +226,11 @@ export const WritingDoc = {
     const idx = list.findIndex((n) => n.id === id);
     if (idx < 0) return notes;
     const orig = list[idx];
-    const chunks = (orig.text || '')
-      .split(/\n[ \t]*\n+/)
-      .map((s) => s.replace(/^\s+|\s+$/g, '').replace(/[ \t]*\n[ \t]*/g, '\n'))
-      .filter((s) => s.length);
-    if (chunks.length <= 1) return notes;                 // 没有可拆的段落
+    const raw = (orig.text || '').replace(/\r\n?/g, '\n');
+    const clean = (arr) => arr.map((s) => s.replace(/^[ \t]+/gm, '').replace(/[ \t]+$/gm, '').trim()).filter((s) => s.length);
+    let chunks = clean(raw.split(/\n[ \t]*\n+/));   // ① 空行分段
+    if (chunks.length <= 1) chunks = clean(raw.split(/\n+/));   // ② 退化为按换行分段
+    if (chunks.length <= 1) return notes;           // 没有可拆的段落
     const updated = Object.assign({}, orig, { text: chunks[0] });
     const inserts = chunks.slice(1).map((t, k) => ({
       id: this.newId(),

@@ -1056,20 +1056,36 @@ export const TypewriterFeature = {
   _splitCard(card) {
     const id = card && card.dataset && card.dataset.id;
     if (!id) return;
-    const before = this._notes.length;
+    // 以 DOM 当前文本为准（连续编辑时模型可能滞后一帧），先同步回模型再拆，保证拆的就是所见内容
+    const textEl = card.querySelector ? card.querySelector('.tw-card-text') : null;
+    if (textEl && typeof textEl.innerText === 'string') {
+      this._notes = WritingDoc.setText(this._notes, id, textEl.innerText);
+    }
+    const seen = new Set(this._notes.map((n) => n.id));
     const next = WritingDoc.splitNote(this._notes, id);
-    if (next.length === before) { this._showScreenMsg('这张卡没有可拆的段落', 1400); return; }
-    if (this._undoStack) this._undoStack.push();   // 拆卡留档：Cmd+Z 可还原
+    if (next.length === this._notes.length) { this._showScreenMsg('这张卡没有可拆的段落', 1400); return; }
+    if (this._undoStack) this._undoStack.push();   // 变更前留档：Cmd+Z 一步还原（reflow 跳过它自己的 push）
     this._notes = next;
+    const updated = next.find((n) => n.id === id);
+    const added = next.filter((n) => !seen.has(n.id));
+    // ① 原卡 DOM 文本同步为拆出的首段（否则画面看似「没反应」——模型变了但 DOM 还是全文）
+    if (card) {
+      const t = card.querySelector ? card.querySelector('.tw-card-text') : null;
+      if (t && updated) { t.textContent = updated.text; this._measureCard(card); }
+    }
+    // ② 新卡必须显式建 DOM：写作档不做视口剔除（scheduleCull 在 write 档空转），
+    //    只改模型不会有任何画面变化 —— 这正是「点了没反应」的根因。
+    added.forEach((n) => { if (!this._mountedCards.has(n.id)) this._mountCard(n); });
     if (this._mode === 'write') {
-      this._reflowWriteOrder();                     // 写作档：按新 seq 顺流/分幕重排
+      // 写作档：按新 seq 顺流/分幕重排（skipUndo 避免重复入栈，撤销点唯一）
+      PersistenceCoordinator.reflowWriteOrder({ state: this._state, ctrl: this }, { skipUndo: true });
     } else {
       this._seedSpatial();
       this._updateCulling();                        // 便签档：新卡以级联位置进屏
       this._refreshWriteOrder();
       this._scheduleSave();
     }
-    this._showScreenMsg('已按段落拆分为 ' + (next.length - before + 1) + ' 张卡', 1500);
+    this._showScreenMsg('已按段落拆分为 ' + (added.length + 1) + ' 张卡', 1500);
   },
 
 

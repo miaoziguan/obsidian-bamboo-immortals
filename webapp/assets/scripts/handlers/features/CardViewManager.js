@@ -1,7 +1,7 @@
 // CardViewManager — 从 typewriterFeature 巨型单例（B1 解耦）抽出的子系统。
 // 方法体逐字搬运，所有内部调用经 ctrl._xxx 由 feature 委托壳自动解析回原对象。
 // 共享常量（裸名引用由本 import 提供；测试 harness 剥离 import 时由 twConfig 挂 globalThis 兜底）
-import { ICON_LAYERS, ICON_FONT, ICON_GRID, ICON_PRINT, ICON_X, ICON_FONT_DOWN, ICON_FONT_UP, ICON_ZOOM_OUT, ICON_ZOOM_IN, ICON_PAPER, ICON_EXPORT, ICON_PREVIEW, ICON_MOVE_UP, ICON_MOVE_DOWN, ICON_LV_UP, ICON_LV_DOWN, ICON_ROTATE, ICON_SPLIT } from './twConfig.js';
+import { ICON_LAYERS, ICON_FONT, ICON_GRID, ICON_PRINT, ICON_X, ICON_FONT_DOWN, ICON_FONT_UP, ICON_ZOOM_OUT, ICON_ZOOM_IN, ICON_PAPER, ICON_EXPORT, ICON_PREVIEW, ICON_MOVE_UP, ICON_MOVE_DOWN, ICON_LV_UP, ICON_LV_DOWN, ICON_ROTATE, ICON_SPLIT, ICON_MERGE } from './twConfig.js';
 import { STACK_STEP, STACK_LEVELS, TYPE_SPEED, MAX_LEN, NOTE_CAP, WRITE_FLOW_GAP, SAVE_DEBOUNCE, LOD_DENSITY, ZOOM_MIN, ZOOM_MAX, ZOOM_STEP } from './twConfig.js';
 import { FONT_SCALES, FONT_SCALE_DEFAULT_IDX, FONT_SCALE_LABELS, CARD_SCALES, CARD_SCALE_LABELS, CARD_SCALE_DEFAULT_IDX } from './twConfig.js';
 import { FONTS, FONT_LABELS, FONT_FEEDBACK } from './twConfig.js';
@@ -74,6 +74,7 @@ export const CardViewManager = {
         <button type="button" class="tw-card-zoom-out" aria-label="缩小便签">${ICON_ZOOM_OUT}</button>
         <button type="button" class="tw-card-zoom-in" aria-label="放大便签">${ICON_ZOOM_IN}</button>
         <button type="button" class="tw-card-split" aria-label="按段落拆分">${ICON_SPLIT}</button>
+        <button type="button" class="tw-card-merge" aria-label="合并选中卡片">${ICON_MERGE}</button>
         <button type="button" class="tw-card-del" aria-label="移除卡片">${ICON_X}</button>
       </div>`;
 
@@ -127,6 +128,12 @@ export const CardViewManager = {
       e.stopPropagation();
       // 留档逻辑收口在 _splitCard 内（仅真正拆开时才 push，单段落卡不进撤销栈）
       ctrl._splitCard(card);
+    });
+    const mergeBtn = card.querySelector('.tw-card-merge');
+    if (mergeBtn) mergeBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      // 合并作用于「当前多选集」；留档逻辑收口在 _mergeSelected 内（<2 张不进撤销栈）
+      ctrl._mergeSelected(card);
     });
     ctrl._makeDraggable(card);
     ctrl._makeResizable(card);
@@ -622,6 +629,7 @@ export const CardViewManager = {
       [card.querySelector('.tw-card-zoom-out'), '缩小便签'],
       [card.querySelector('.tw-card-zoom-in'), '放大便签'],
       [card.querySelector('.tw-card-split'), '按段落拆分'],
+      [card.querySelector('.tw-card-merge'), '合并选中卡片'],
       [card.querySelector('.tw-card-del'), '移除便签'],
     ];
     targets.forEach(([el, fallback]) => {

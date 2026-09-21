@@ -1098,6 +1098,50 @@ export const TypewriterFeature = {
   },
 
 
+  /**
+   * 合并当前选中的多张卡为一张（手动触发，可撤销；splitNote 的自然逆操作）。
+   *  锚 = 选中里 seq 最小者（读序最前），其余并入；正文按读序 \n\n 拼接；
+   *  连线端点改写到锚、去重、自环丢弃（详见 WritingDoc.mergeNotes）。
+   *  少于 2 张仅提示、不改动、不进撤销栈。锚卡保留 DOM 并刷新文本；被并卡清 DOM/几何/选中。
+   */
+  _mergeSelected() {
+    const cards = (this._selected && this._selected.size) ? Array.from(this._selected) : [];
+    if (cards.length < 2) { this._showScreenMsg('至少选中 2 张才能合并', 1200); return; }
+    const ids = cards.map((c) => c.dataset && c.dataset.id).filter(Boolean);
+    const r = WritingDoc.mergeNotes(this._notes, this._links, ids);
+    if (!r.anchorId) return;                              // 无变化（不应发生）
+    if (this._undoStack) this._undoStack.push();         // 变更前留档：Cmd+Z 一步还原
+    this._notes = r.notes;
+    this._links = r.links;
+    // 移除被并卡的 DOM / 几何 / 选中态（锚卡保留）
+    const anchorEl = this._mountedCards && this._mountedCards.get(r.anchorId);
+    cards.forEach((c) => {
+      const id = c.dataset && c.dataset.id;
+      if (!id || id === r.anchorId) return;
+      ViewportCuller.removeGeom({ state: this._state, ctrl: this }, id);
+      this._disposeCard(c);
+      if (this._mountedCards) this._mountedCards.delete(id);
+      if (c.parentNode) c.parentNode.removeChild(c);
+      if (this._selected) { c.classList.remove('selected'); this._selected.delete(c); }
+    });
+    // 刷新锚卡文本
+    const anchorNote = this._notes.find((n) => n.id === r.anchorId);
+    if (anchorEl && anchorNote) {
+      const t = anchorEl.querySelector ? anchorEl.querySelector('.tw-card-text') : null;
+      if (t) { t.textContent = anchorNote.text; this._measureCard(anchorEl); }
+    }
+    if (this._mode === 'write') {
+      PersistenceCoordinator.reflowWriteOrder({ state: this._state, ctrl: this }, { skipUndo: true });
+    } else {
+      this._seedSpatial();
+      this._updateCulling();                        // 便签档：移除后重排进屏
+      this._refreshWriteOrder();
+      this._scheduleSave();
+    }
+    this._scheduleRenderLinks();
+    this._showScreenMsg('已合并 ' + cards.length + ' 张为 1 张', 1400);
+  },
+
   /** 删除当前选中的所有便签（级联删连线） */
     _deleteSelected() { return CardInteractions.deleteSelected({ state: this._state, ctrl: this }); },
 

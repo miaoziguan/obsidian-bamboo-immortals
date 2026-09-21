@@ -276,6 +276,47 @@ export const WritingDoc = {
     return out;
   },
 
+  /**
+   * 合并多张卡为一张（纯函数，与 splitNote 互逆，调用方负责落盘/重绘）。
+   *  锚 = 选中里 seq 最小者（读序最前）；其余被并卡移除。
+   *  正文 = 按 seq 顺序把所有选中卡 text 用 \n\n 拼接（保段落边界，将来可再拆）。
+   *  连线：被并卡(非锚)在连线里的端点改写为锚 id；两端都被并 → 自环 → 丢弃；去重。
+   *  锚卡自身连线原样保留。seq 由 setOrder 压紧为唯一且连续（红线不破）。
+   *  @param {Array} notes  规范卡片数组
+   *  @param {Array} links  连线数组 [{from,to,...}]
+   *  @param {Array<string>} ids 要合并的卡 id 列表
+   *  @returns {{notes:Array, links:Array, anchorId:?string}} 合并后数据；不足以合并时原样返回、anchorId 为 null
+   */
+  mergeNotes(notes, links, ids) {
+    const set = new Set(ids || []);
+    const list = Array.isArray(notes) ? notes : [];
+    const picked = list.filter((n) => set.has(n.id));
+    if (picked.length < 2) return { notes: list, links: Array.isArray(links) ? links : [], anchorId: null };
+    const ordered = picked.slice().sort((a, b) => (Number.isFinite(a.seq) ? a.seq : 0) - (Number.isFinite(b.seq) ? b.seq : 0));
+    const anchor = ordered[0];
+    const text = ordered
+      .map((n) => (n.text || '').replace(/\s+$/g, '').replace(/^\s+/g, ''))
+      .filter((s) => s.length)
+      .join('\n\n');
+    const merged = Object.assign({}, anchor, { text });
+    // 连线端点改写：被并卡(非锚)→ 锚；自环丢弃；去重
+    const seen = new Set();
+    const outLinks = [];
+    (Array.isArray(links) ? links : []).forEach((l) => {
+      const f = set.has(l.from) && l.from !== anchor.id ? anchor.id : l.from;
+      const t = set.has(l.to) && l.to !== anchor.id ? anchor.id : l.to;
+      if (f === t) return;                              // 自环（两端都被并）→ 丢弃
+      const sig = f + '>' + t;
+      if (seen.has(sig)) return;
+      seen.add(sig);
+      outLinks.push({ from: f, to: t, route: l.route, bend: l.bend, dash: l.dash });
+    });
+    const kept = list
+      .filter((n) => !set.has(n.id) || n.id === anchor.id)
+      .map((n) => (n.id === anchor.id ? merged : n));
+    return { notes: this.setOrder(kept, kept.map((n) => n.id)), links: outLinks, anchorId: anchor.id };
+  },
+
   setFont(notes, id, font) {
     const f = this.FONTS.indexOf(font) >= 0 ? font : 'classic';
     return notes.map((n) => (n.id === id ? Object.assign({}, n, { font: f }) : n));

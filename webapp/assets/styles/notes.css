@@ -4,8 +4,13 @@
   z-index: 20;
   width: auto;
   
-  min-width: min(calc(300px * var(--tw-card-zoom, 1)), calc(100% - 16px));
-  max-width: min(calc(400px * var(--tw-card-zoom, 1)), calc(100% - 16px));
+  /* 关键修复：分幕/写作档把卡片排到 left 很大的列时，width:auto 的绝对定位元素走
+     shrink-to-fit，可用宽度 = 包含块宽 − left 会变负 → 退化成 min-content（中文=单字宽）→ 一字一行。
+     原 min/max-width 含 calc(100% - 16px)，而 100% 解析的是包含块(.tw-canvas)宽，分幕时会被算成
+     极小值 → min/max 双双塌成 ~16px → 整卡压成单列。这里钉成「与画布宽无关的定宽」，
+     min-width 作为硬下限保证无论 left 多大都不会塌缩，同时保留内容自适应(280–400)。 */
+  min-width: calc(280px * var(--tw-card-zoom, 1));
+  max-width: calc(400px * var(--tw-card-zoom, 1));
   
   --tw-card-zoom: 1;
   

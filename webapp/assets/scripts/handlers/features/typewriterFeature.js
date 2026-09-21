@@ -64,6 +64,8 @@ export const TypewriterFeature = {
     this._input = null;
     this._case = null;
     this._timers = [];                 // 所有卡片打字计时器，供 unmount 精确清理
+    this._selBarEl = null;             // 多选浮动操作条（≥2 张时浮出）
+    this._selBarRAF = 0;               // 操作条跟随定位的 rAF 句柄
     this._zTop = 10;
     this._spawnIdx = 0;
     this._fontIdx = 0;
@@ -1140,10 +1142,88 @@ export const TypewriterFeature = {
     }
     this._scheduleRenderLinks();
     this._showScreenMsg('已合并 ' + cards.length + ' 张为 1 张', 1400);
+    this._updateSelBar();             // 合并后选中<2，浮动条自动收起
   },
 
   /** 删除当前选中的所有便签（级联删连线） */
-    _deleteSelected() { return CardInteractions.deleteSelected({ state: this._state, ctrl: this }); },
+    _deleteSelected() { const r = CardInteractions.deleteSelected({ state: this._state, ctrl: this }); this._updateSelBar(); return r; },
+
+  /**
+   * 多选浮动操作条：选中 ≥2 张时浮在选框上方，提供「合并 N 张 / 删除」批量入口。
+   * 动机：合并是针对整个选中集的批量操作，却原本挂在单卡 hover 才显形的工具条里，
+   * 导致多选后要追着某张卡的悬浮条、鼠标一离就缩。改为此常驻浮动条，rAF 跟随选区/平移/缩放。
+   */
+  _ensureSelBar() {
+    if (this._selBarEl) {
+      if (this._selBarEl.parentNode !== this._canvas) this._canvas.appendChild(this._selBarEl);
+      return this._selBarEl;
+    }
+    if (!this._canvas) return null;
+    const bar = document.createElement('div');
+    bar.className = 'tw-sel-bar';
+    bar.setAttribute('role', 'toolbar');
+    bar.setAttribute('aria-label', '多选操作');
+    bar.innerHTML =
+      '<button type="button" class="tw-sel-merge" aria-label="合并选中卡片"></button>' +
+      '<button type="button" class="tw-sel-del" aria-label="删除选中卡片">删除</button>';
+    bar.querySelector('.tw-sel-merge').addEventListener('click', (e) => { e.stopPropagation(); this._mergeSelected(); });
+    bar.querySelector('.tw-sel-del').addEventListener('click', (e) => { e.stopPropagation(); this._deleteSelected(); });
+    bar.addEventListener('pointerdown', (e) => e.stopPropagation());   // 条内操作不触发画布平移/取消选择
+    this._canvas.appendChild(bar);
+    this._selBarEl = bar;
+    return bar;
+  },
+
+  /** 选中集变化时刷新：≥2 张浮出并显示实时数量，<2 张收起 */
+  _updateSelBar() {
+    const bar = this._ensureSelBar();
+    if (!bar) return;
+    const n = this._selected ? this._selected.size : 0;
+    if (n >= 2) {
+      bar.querySelector('.tw-sel-merge').textContent = '合并 ' + n + ' 张';
+      bar.classList.add('is-on');
+      this._scheduleSelBarTick();
+    } else {
+      bar.classList.remove('is-on');
+      this._cancelSelBarTick();
+    }
+  },
+
+  _scheduleSelBarTick() {
+    if (this._selBarRAF) return;
+    if (typeof requestAnimationFrame !== 'function') { this._tickSelBar(true); return; }  // 无 rAF（headless）：定位一次不循环
+    this._selBarRAF = requestAnimationFrame(() => { this._selBarRAF = 0; this._tickSelBar(false); });
+  },
+
+  _cancelSelBarTick() {
+    if (!this._selBarRAF) return;
+    if (typeof cancelAnimationFrame === 'function') cancelAnimationFrame(this._selBarRAF);
+    else if (typeof clearTimeout === 'function') clearTimeout(this._selBarRAF);
+    this._selBarRAF = 0;
+  },
+
+  /** 按当前选区的屏幕包围盒定位浮动条（canvas 局部坐标，随画布平移/缩放自动跟随） */
+  _tickSelBar(once) {
+    const bar = this._selBarEl;
+    if (!bar || !bar.classList.contains('is-on') || !this._canvas) { this._selBarRAF = 0; return; }
+    if (!this._selected || this._selected.size < 2) { this._updateSelBar(); return; }
+    if (!this._canvas.isConnected) { this._selBarRAF = 0; return; }
+    const cr = this._canvas.getBoundingClientRect();
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    this._selected.forEach((c) => {
+      const r = c.getBoundingClientRect();
+      if (r.left < minX) minX = r.left;
+      if (r.top < minY) minY = r.top;
+      if (r.right > maxX) maxX = r.right;
+      if (r.bottom > maxY) maxY = r.bottom;
+    });
+    const cx = (minX + maxX) / 2 - cr.left;            // canvas 局部坐标（其 rect 已含平移）
+    let topY = minY - cr.top - bar.offsetHeight - 10;  // 浮在选框上方
+    if (topY < 2) topY = maxY - cr.top + 10;           // 贴顶则翻到下方，避免被裁
+    bar.style.left = cx + 'px';
+    bar.style.top = topY + 'px';
+    if (!once) this._scheduleSelBarTick();
+  },
 
   /** 在画布上拉出框选矩形（Shift+空白拖拽触发） */
     _startMarquee(e) { return CardInteractions.startMarquee({ state: this._state, ctrl: this }, e); },

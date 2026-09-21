@@ -187,7 +187,8 @@ export const CardInteractions = {
     ctrl._selected.forEach((c) => { if (c !== card) c.classList.remove('selected'); });
     ctrl._selected.clear();
     if (card) { ctrl._selected.add(card); card.classList.add('selected'); ctrl._blurInput(); }
-  
+    if (ctrl._updateSelBar) ctrl._updateSelBar();
+
   },
   // (was _toggleSelect)
   toggleSelect(ctx, card) {
@@ -195,7 +196,8 @@ export const CardInteractions = {
     if (!ctrl._selected) ctrl._selected = new Set();
     if (ctrl._selected.has(card)) { ctrl._selected.delete(card); card.classList.remove('selected'); }
     else { ctrl._selected.add(card); card.classList.add('selected'); ctrl._blurInput(); }
-  
+    if (ctrl._updateSelBar) ctrl._updateSelBar();
+
   },
   // (was _blurInput)
   blurInput(ctx) {
@@ -209,7 +211,8 @@ export const CardInteractions = {
     if (!ctrl._selected) return;
     ctrl._selected.forEach((c) => c.classList.remove('selected'));
     ctrl._selected.clear();
-  
+    if (ctrl._updateSelBar) ctrl._updateSelBar();
+
   },
   // (was _removeCard)
   removeCard(ctx, card) {
@@ -288,6 +291,7 @@ export const CardInteractions = {
         card.classList.add('selected');
       }
     });
+    if (ctrl._updateSelBar) ctrl._updateSelBar();
   
   },
   // (was _bindSelectionKeys)

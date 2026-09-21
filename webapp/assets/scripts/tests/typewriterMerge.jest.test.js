@@ -174,3 +174,34 @@ describe('多选合并 _mergeSelected 端到端', () => {
     expect(has('b', 'Q')).toBe(false);
   });
 });
+
+describe('多选浮动操作条 _updateSelBar', () => {
+  test('选中 ≥2 张：浮出、显示实时数量、挂在 canvas 内', () => {
+    mergeFixture([{ id: 'a', seq: 0, text: 'A' }, { id: 'b', seq: 1, text: 'B' }]);
+    feature._selected.add(feature._mountedCards.get('a'));
+    feature._selected.add(feature._mountedCards.get('b'));
+    feature._updateSelBar();
+    const bar = feature._canvas.querySelector('.tw-sel-bar');
+    expect(bar).not.toBeNull();
+    expect(bar.classList.contains('is-on')).toBe(true);
+    expect(bar.querySelector('.tw-sel-merge').textContent).toBe('合并 2 张');
+  });
+
+  test('仅 1 张：不浮出', () => {
+    mergeFixture([{ id: 'a', seq: 0, text: 'A' }, { id: 'b', seq: 1, text: 'B' }]);
+    feature._selected.add(feature._mountedCards.get('a'));
+    feature._updateSelBar();
+    const bar = feature._canvas.querySelector('.tw-sel-bar');
+    expect(bar.classList.contains('is-on')).toBe(false);
+  });
+
+  test('合并后选中<2：浮动条收起', () => {
+    mergeFixture([{ id: 'a', seq: 0, text: 'A' }, { id: 'b', seq: 1, text: 'B' }]);
+    feature._selected.add(feature._mountedCards.get('a'));
+    feature._selected.add(feature._mountedCards.get('b'));
+    feature._mergeSelected();
+    const bar = feature._canvas.querySelector('.tw-sel-bar');
+    expect(bar.classList.contains('is-on')).toBe(false);
+  });
+
+});

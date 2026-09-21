@@ -262,6 +262,7 @@ export const CardInteractions = {
       if (ctrl._marquee) { ctrl._marquee.remove(); ctrl._marquee = null; }
       ctrl._selectInRect(ctrl._marqueeRect || { x: sx0, y: sy0, w: 0, h: 0 });
       ctrl._marqueeRect = null;
+      if (ctrl._revealSelection) ctrl._revealSelection();   // 选区超出视口则平移露出
     };
     document.addEventListener('pointermove', move);
     document.addEventListener('pointerup', up);
@@ -301,6 +302,37 @@ export const CardInteractions = {
     });
     if (ctrl._updateSelBar) ctrl._updateSelBar();
   
+  },
+  // (was _revealSelection)
+  revealSelection(ctx) {
+    const { state, ctrl } = ctx;
+    const sel = ctrl._selected;
+    const canvas = ctrl._canvas;
+    if (!sel || !sel.size || !canvas) return;
+    const VW = canvas.clientWidth, VH = canvas.clientHeight;
+    if (VW < 2 || VH < 2) return;
+    const off = (state && state.canvasOffset) || { x: 0, y: 0 };
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity, any = false;
+    sel.forEach((card) => {
+      const id = card.dataset && card.dataset.id;
+      const g = ctrl._geo ? ctrl._geo.get(id) : null;
+      const lx = g ? g.x : (parseFloat(card.style.left) || 0);
+      const ly = g ? g.y : (parseFloat(card.style.top) || 0);
+      const w = g ? g.w : (card.offsetWidth || 0);
+      const h = g ? g.h : (card.offsetHeight || 0);
+      minX = Math.min(minX, lx); minY = Math.min(minY, ly);
+      maxX = Math.max(maxX, lx + w); maxY = Math.max(maxY, ly + h);
+      any = true;
+    });
+    if (!any) return;
+    // 选区完全在视口内：不动（避免无谓平移打断视线）
+    const outX = minX < -off.x || maxX > VW - off.x;
+    const outY = minY < -off.y || maxY > VH - off.y;
+    if (outX || outY) {
+      const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
+      ctrl._setCanvasOffset(VW / 2 - cx, VH / 2 - cy);   // 平移到选区中心（不缩放）
+      if (ctrl._updateSelBar) ctrl._updateSelBar();        // 选区工具条跟随新视口重定位
+    }
   },
   // (was _bindSelectionKeys)
   bindSelectionKeys(ctx) {

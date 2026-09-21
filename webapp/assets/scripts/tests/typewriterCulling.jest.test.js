@@ -1122,3 +1122,57 @@ describe('切档空窗期不得露出上一份文档的旧卡（修复：导图�
     expect(svgAtLoad).toBe(0);
   });
 });
+
+describe('框选后自动平移露出选区（视口外选中内容也看得见）', () => {
+  function fakeCanvas(w, h) {
+    const c = document.createElement('div');
+    Object.defineProperty(c, 'clientWidth', { value: w, configurable: true });
+    Object.defineProperty(c, 'clientHeight', { value: h, configurable: true });
+    return c;
+  }
+
+  test('选区超出视口 → 平移画布到选区中心（不缩放）', () => {
+    const geo = new global.GeoCache();
+    geo.set('off', { x: 5000, y: 5000, w: 200, h: 100, rot: 0 });   // 视口外
+    const sel = new Set();
+    const card = document.createElement('div');
+    card.dataset.id = 'off';
+    sel.add(card);
+    const setOffset = jest.fn();
+    const ctrl = {
+      _selected: sel, _geo: geo, _canvas: fakeCanvas(1000, 800),
+      _setCanvasOffset: setOffset, _updateSelBar: () => {},
+    };
+    const state = { canvasOffset: { x: 0, y: 0 } };
+    global.CardInteractions.revealSelection({ state, ctrl });
+    // 选区中心 = (5100, 5050)；视口中心 = (500, 400) → 期望偏移 = (500-5100, 400-5050)
+    expect(setOffset).toHaveBeenCalledWith(-4600, -4650);
+  });
+
+  test('选区完全在视口内 → 不平移（不打断视线）', () => {
+    const geo = new global.GeoCache();
+    geo.set('in', { x: 10, y: 10, w: 200, h: 100, rot: 0 });
+    const sel = new Set();
+    const card = document.createElement('div');
+    card.dataset.id = 'in';
+    sel.add(card);
+    const setOffset = jest.fn();
+    const ctrl = {
+      _selected: sel, _geo: geo, _canvas: fakeCanvas(1000, 800),
+      _setCanvasOffset: setOffset, _updateSelBar: () => {},
+    };
+    const state = { canvasOffset: { x: 0, y: 0 } };
+    global.CardInteractions.revealSelection({ state, ctrl });
+    expect(setOffset).not.toHaveBeenCalled();
+  });
+
+  test('无选中 → 不平移', () => {
+    const setOffset = jest.fn();
+    const ctrl = {
+      _selected: new Set(), _geo: new global.GeoCache(),
+      _canvas: fakeCanvas(1000, 800), _setCanvasOffset: setOffset, _updateSelBar: () => {},
+    };
+    global.CardInteractions.revealSelection({ state: { canvasOffset: { x: 0, y: 0 } }, ctrl });
+    expect(setOffset).not.toHaveBeenCalled();
+  });
+});

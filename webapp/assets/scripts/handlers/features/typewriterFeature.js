@@ -1277,6 +1277,9 @@ export const TypewriterFeature = {
   /** 框选矩形与卡片求交，选中相交者（矩形与卡片任一角落入或相互包含即算） */
     _selectInRect(r) { return CardInteractions.selectInRect({ state: this._state, ctrl: this }, r); },
 
+  /** 框选后若选区超出视口，平移画布把选区带入视野（不缩放），让用户看到选了哪些 */
+    _revealSelection() { return CardInteractions.revealSelection({ state: this._state, ctrl: this }); },
+
   /** 绑定快捷键：Delete/Backspace 删选中；F 将便签重新归位到视野中心 */
     _bindSelectionKeys() { return CardInteractions.bindSelectionKeys({ state: this._state, ctrl: this }); },
 

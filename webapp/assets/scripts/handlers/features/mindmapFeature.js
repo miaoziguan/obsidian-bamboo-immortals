@@ -33,9 +33,13 @@ import { UndoStack } from '../../services/undoStack.js';
  *   F 居中 / 拖动空白平移 / Esc 取消选中
  *   第三个机身键   一键自动布局（树状 ↓ / 横向 → / 放射 ◎ 循环；主动触发才重排，不改变自由拖拽模型）
  */
-// 子弹样式：6 种，由导图模式下第一个机身按钮循环切换；索引存进导图文档（与便签零耦合）
+// 子弹样式：由导图模式下第一个机身按钮循环切换；索引存进导图文档（与便签零耦合）。
+// 【经典已下架】索引 0（经典）不再参与循环。但「索引 ↔ 视觉」映射必须冻结：样式索引随文档落盘，
+// 一旦重编号，老文档的子弹样式会整体错位变样。故保留 0 号位（它同时也是无 CSS 覆盖的基础外观），
+// 只在可切换列表 MM_STYLE_AVAILABLE 里剔除它。
 const MM_STYLE_NAMES = ['经典', '方角', '终端', '胶囊点', '草图', '玻璃'];
 const MM_STYLE_COUNT = MM_STYLE_NAMES.length;
+const MM_STYLE_AVAILABLE = [1, 2, 3, 4, 5];   // 在售档位（不含已下架的经典）
 
 export const MindmapFeature = {
   NODE_MAX_W: 220,          // 子弹最大宽度（px，超长文本换行）
@@ -57,7 +61,7 @@ export const MindmapFeature = {
   _nodes: [],
   _links: [],
   _view: null,
-  style: 0,                // 子弹样式索引（0..5）：导图模式下第一个机身按钮循环切换
+  _style: MM_STYLE_AVAILABLE[0],   // 子弹样式索引：导图模式下第一个机身按钮在在售档位内循环切换
   _selId: null,
   _selLinkIdx: null,
   _els: null,               // Map<id, el>
@@ -261,7 +265,9 @@ export const MindmapFeature = {
     this._nodes = norm.nodes;
     this._links = norm.links;
     this._view = doc.view ? { x: doc.view.x, y: doc.view.y } : null;
-    this._style = (((typeof doc.style === 'number') ? doc.style : 0) % MM_STYLE_COUNT + MM_STYLE_COUNT) % MM_STYLE_COUNT;
+    // 老文档可能停在下架的「经典」(0) 或索引越界 → 一律落到首档，避免困在不再提供的样式上
+    const rawStyle = (typeof doc.style === 'number') ? doc.style : MM_STYLE_AVAILABLE[0];
+    this._style = MM_STYLE_AVAILABLE.indexOf(rawStyle) >= 0 ? rawStyle : MM_STYLE_AVAILABLE[0];
   },
 
   /** 防抖落盘（拖动/编辑时高频触发，只在停手后写一次） */
@@ -281,7 +287,8 @@ export const MindmapFeature = {
     });
   },
 
-  /** 把当前子弹样式落到根元素 class（.tw-mm-style-0..5，CSS 据此切换 6 种视觉） */
+  /** 把当前子弹样式落到根元素 class（.tw-mm-style-0..5，CSS 据此切换视觉）。
+   *  仍按 MM_STYLE_COUNT 清掉全部 0..5 —— 万一老文档带着下架的 0 号残留也能清干净。 */
   _applyStyleClass() {
     if (!this._el) return;
     const s = ((this._style % MM_STYLE_COUNT) + MM_STYLE_COUNT) % MM_STYLE_COUNT;
@@ -305,7 +312,7 @@ export const MindmapFeature = {
     this._saveNow();
     const g = await TypewriterStore.createMindmapGroup('未命名思维导图');
     this._groupId = g.id;
-    this._nodes = []; this._links = []; this._view = null; this._style = 0;
+    this._nodes = []; this._links = []; this._view = null; this._style = MM_STYLE_AVAILABLE[0];
     this.render();
     this._applyStyleClass();
   },
@@ -324,10 +331,12 @@ export const MindmapFeature = {
     await TypewriterStore.renameMindmapGroup(id, title);
   },
 
-  /** 第一个机身按钮在导图模式下调用：循环切换子弹样式（共 MM_STYLE_COUNT 种），落盘并提示 */
+  /** 第一个机身按钮在导图模式下调用：循环切换子弹样式（只在 MM_STYLE_AVAILABLE 在售档位内），落盘并提示 */
   cycleStyle() {
     if (!this._active) return;
-    this._style = (this._style + 1) % MM_STYLE_COUNT;
+    // 只在在售档位里循环；indexOf 为 -1（老文档还停在下架的经典、或索引越界）时 (-1+1)=0 → 落到首档
+    const at = MM_STYLE_AVAILABLE.indexOf(this._style);
+    this._style = MM_STYLE_AVAILABLE[(at + 1) % MM_STYLE_AVAILABLE.length];
     this._applyStyleClass();
     this._scheduleSave();
     this._msg('子弹样式：' + MM_STYLE_NAMES[this._style]);

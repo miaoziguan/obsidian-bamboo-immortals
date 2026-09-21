@@ -470,7 +470,13 @@ export const TypewriterFeature = {
     // 红色齿轮旋钮：三档循环。点一下拨一齿；在旋钮上滚轮同样拨齿（上滚=后退，下滚=前进），
     // 滚轮方向即拨动方向 —— 与真实旋钮一致，也顺手给了键盘/触控板之外的第三种拨法。
     const knobEl = this._el.querySelector('#twKnob');
-    knobEl.addEventListener('click', () => { this._cycleMode(1); });
+    knobEl.addEventListener('click', (e) => {
+      this._cycleMode(1);
+      // 鼠标/触控点击后交还焦点：否则按钮仍持有焦点，之后按空格会误触发切档，
+      // 且浏览器切回键盘态时会冒出焦点框。键盘激活（Enter/空格，detail=0）不 blur，
+      // 以保留键盘用户连续拨档的能力。
+      if (e.detail > 0) knobEl.blur();
+    });
     knobEl.addEventListener('wheel', (e) => {
       e.preventDefault();                       // 阻止页面随之滚动（旋钮是控件，不是滚动区）
       this._cycleMode(e.deltaY > 0 ? 1 : -1);

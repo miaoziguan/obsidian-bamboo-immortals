@@ -1019,7 +1019,9 @@ body.dark .tw-print,
     0 0 0.28em rgba(226, 88, 54, 0.45),
     0 0.025em 0.05em rgba(20, 4, 2, 0.5), 0 0.16em 0.3em rgba(var(--black-rgb), 0.42);
 }
-.tw-knob:focus-visible { outline: 2px solid #c9a24a; outline-offset: 2px; }
+/* 焦点框改站内角（rgb(var(--primary-rgb))），与同文件 .tw-rbtn/.tw-print 等控件统一，
+   不再挪用「搜索高亮」的金色 #c9a24a；且配合 JS 点击后 blur，鼠标流程不再显形。 */
+.tw-knob:focus-visible { outline: 2px solid rgb(var(--primary-rgb)); outline-offset: 2px; }
 /* 暗色下齿轮压暗一档（同样只收暗不发黑，镜面高光带保留），保持与机身玻璃的明度关系 */
 .theme-dark .tw-knob-wheel,
 :host(.dark) .tw-knob-wheel {

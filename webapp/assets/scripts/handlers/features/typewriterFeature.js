@@ -618,13 +618,32 @@ export const TypewriterFeature = {
   _importDraft(chunks) {
     if (!chunks || chunks.length < 2) return;
     if (this._undoStack) this._undoStack.push();   // 整篇导入作为一步撤销，避免逐块撤销
-    let firstCard = null;
+    // 捕获「导入前的文末卡」，导入后把新块接在它后面，形成连续连线链
+    let prevLast = null;
+    this._notes.forEach((n) => {
+      if (Number.isFinite(n.seq) && (!prevLast || n.seq > prevLast.seq)) prevLast = n;
+    });
+    const ids = [];
     chunks.forEach((c) => {
       const card = this._spawn(c.text, c.level, { skipEnsureVisible: true });
-      if (!firstCard && card) firstCard = card;
+      if (card && card.dataset && card.dataset.id) ids.push(card.dataset.id);
     });
+    // 默认进入「连线状态」：导入块按顺序连成链（含与上文的衔接），文章顺序即连线顺序。
+    // 去重后整批写入 _links，由后续 reflowWriteOrder 统一渲染连线 + 刷新顺序徽标（只算一次，
+    // 避免逐条 _addLink 触发 N 次定序刷新；连线定序的幂等性由 seen 去重兜底）。
+    const seen = new Set(this._links.map((l) => l.from + '>' + l.to));
+    const chainOnce = (f, t) => {
+      if (!f || !t || f === t) return;
+      const key = f + '>' + t;
+      if (seen.has(key)) return;
+      seen.add(key);
+      this._links.push({ from: f, to: t, route: 'bezier', bend: 0, dash: 'solid' });
+    };
+    if (prevLast && prevLast.id) chainOnce(prevLast.id, ids[0]);
+    for (let i = 1; i < ids.length; i += 1) chainOnce(ids[i - 1], ids[i]);
     // 顺流/分幕重排（skipUndo：撤销点已在上面留过，避免两步撤销）
     PersistenceCoordinator.reflowWriteOrder({ state: this._state, ctrl: this }, { skipUndo: true });
+    const firstCard = ids.length ? (this._mountedCards && this._mountedCards.get(ids[0])) : null;
     if (firstCard) this._ensureCardVisible(firstCard);   // 只把首块带进视野，避免逐张校正导致画布乱跳
     this._showScreenMsg('IMPORTED ' + chunks.length + ' BLOCKS', 2200);
   },

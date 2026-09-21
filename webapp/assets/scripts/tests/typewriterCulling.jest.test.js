@@ -1203,3 +1203,30 @@ describe('框选实时数量 countInRect（含画布外）', () => {
     expect(global.CardInteractions.countInRect({ state: {}, ctrl }, r2)).toBe(1);
   });
 });
+
+describe('框选边缘判定 marqueeEdgeDir（基于固定视口，不随画布平移漂移）', () => {
+  const vp = { left: 0, top: 0, width: 1000, height: 800 };
+  const EDGE = 48;
+  test('视口中部 → 不触发自动平移', () => {
+    expect(global.CardInteractions.marqueeEdgeDir(500, 400, vp, EDGE)).toBeNull();
+  });
+  test('贴左/右/上/下缘 → 对应方向', () => {
+    expect(global.CardInteractions.marqueeEdgeDir(20, 400, vp, EDGE)).toEqual({ dx: 1, dy: 0 });
+    expect(global.CardInteractions.marqueeEdgeDir(980, 400, vp, EDGE)).toEqual({ dx: -1, dy: 0 });
+    expect(global.CardInteractions.marqueeEdgeDir(500, 20, vp, EDGE)).toEqual({ dx: 0, dy: 1 });
+    expect(global.CardInteractions.marqueeEdgeDir(500, 780, vp, EDGE)).toEqual({ dx: 0, dy: -1 });
+  });
+  test('左上角同时贴两边 → 双向', () => {
+    expect(global.CardInteractions.marqueeEdgeDir(10, 10, vp, EDGE)).toEqual({ dx: 1, dy: 1 });
+  });
+  test('恰好在边缘阈值外 → 不触发（避免抖动）', () => {
+    expect(global.CardInteractions.marqueeEdgeDir(48, 400, vp, EDGE)).toBeNull();   // lx==EDGE 不算贴边
+    expect(global.CardInteractions.marqueeEdgeDir(952, 400, vp, EDGE)).toBeNull();  // lx==width-EDGE 不算
+  });
+  test('回归：画布被大幅平移(canvasOffset 为负)后，视口右中部不误触发', () => {
+    // 旧实现用画布 rect（含偏移）判边：canvasOffset=-3000 时画布 left=-3000，
+    // 指针在视口右中部 clientX=900 → 内容坐标 lx=900-(-3000)=3900 > 1000-48 → 误触发漂移。
+    // 新实现只看固定视口，clientX=900 落在视口内 → null（不漂移）。
+    expect(global.CardInteractions.marqueeEdgeDir(900, 400, vp, EDGE)).toBeNull();
+  });
+});

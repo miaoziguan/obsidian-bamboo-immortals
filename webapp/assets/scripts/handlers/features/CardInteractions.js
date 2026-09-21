@@ -233,6 +233,16 @@ export const CardInteractions = {
     return true;
   
   },
+  // (was _marqueeEdgeDir) 框选时指针相对「视口(固定、不随画布平移)」的边缘方向（Figma 式自动平移触发）
+  //   ⚠️ 必须用视口 rect，绝不能用被 transform 的画布 rect：画布 rect 含 canvasOffset 偏移，
+  //      偏移一偏触发区就错位 → 拖到视口内就误触发、且越平移越靠内 → 整块画布失控漂移。
+  marqueeEdgeDir(clientX, clientY, vp, edge) {
+    const lx = clientX - vp.left, ly = clientY - vp.top;
+    let dx = 0, dy = 0;
+    if (lx < edge) dx = 1; else if (lx > vp.width - edge) dx = -1;
+    if (ly < edge) dy = 1; else if (ly > vp.height - edge) dy = -1;
+    return (dx || dy) ? { dx, dy } : null;
+  },
   // (was _startMarquee)
   startMarquee(ctx, e) {
     const { state, ctrl } = ctx;
@@ -251,6 +261,8 @@ export const CardInteractions = {
     const rect0 = canvas.getBoundingClientRect();
     const sx0 = e.clientX - rect0.left;   // 框选起点（画布内容坐标，恒定）
     const sy0 = e.clientY - rect0.top;
+    // 视口（固定、不随画布平移）：边缘判定必须基于它，不能用被 transform 的画布 rect
+    const vpRect = (canvas.parentElement || canvas).getBoundingClientRect();
     let lastX = e.clientX, lastY = e.clientY;
     let rafId = 0;
 
@@ -270,15 +282,8 @@ export const CardInteractions = {
       badge.textContent = (ctrl._countInRect ? ctrl._countInRect(r) : 0) + '';
     };
 
-    // 指针是否贴边 → 自动平移方向（在左/上缘往对应方向平移露出那侧内容）
-    const edgeDir = () => {
-      const cr = canvas.getBoundingClientRect();
-      const lx = lastX - cr.left, ly = lastY - cr.top;
-      let dx = 0, dy = 0;
-      if (lx < EDGE) dx = 1; else if (lx > cr.width - EDGE) dx = -1;
-      if (ly < EDGE) dy = 1; else if (ly > cr.height - EDGE) dy = -1;
-      return (dx || dy) ? { dx, dy } : null;
-    };
+    // 指针是否贴「视口」边缘 → 自动平移方向（在左/上缘往对应方向平移露出那侧内容）
+    const edgeDir = () => CardInteractions.marqueeEdgeDir(lastX, lastY, vpRect, EDGE);
 
     // 贴边时持续平移（Figma 式）：画布滚动、矩形内容坐标外扩，松手即选中画布外那片
     const tick = () => {

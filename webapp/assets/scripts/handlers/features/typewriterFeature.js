@@ -1050,6 +1050,29 @@ export const TypewriterFeature = {
     this._refreshWriteOrder();   // 卡片减少/重排：刷新写作档顺序徽标
   },
 
+  /** 按段落拆分当前卡（手动触发，可撤销）：纯数据走 WritingDoc.splitNote，随后按模式刷新布局。
+   *  写作档 → 顺流/分幕重排（reflowWriteOrder 内部已落盘+刷新+剔除）；便签档 → 新卡以级联偏移进屏。
+   *  单段落卡（无空行可拆）仅提示、不改动、不进撤销栈。 */
+  _splitCard(card) {
+    const id = card && card.dataset && card.dataset.id;
+    if (!id) return;
+    const before = this._notes.length;
+    const next = WritingDoc.splitNote(this._notes, id);
+    if (next.length === before) { this._showScreenMsg('这张卡没有可拆的段落', 1400); return; }
+    if (this._undoStack) this._undoStack.push();   // 拆卡留档：Cmd+Z 可还原
+    this._notes = next;
+    if (this._mode === 'write') {
+      this._reflowWriteOrder();                     // 写作档：按新 seq 顺流/分幕重排
+    } else {
+      this._seedSpatial();
+      this._updateCulling();                        // 便签档：新卡以级联位置进屏
+      this._refreshWriteOrder();
+      this._scheduleSave();
+    }
+    this._showScreenMsg('已按段落拆分为 ' + (next.length - before + 1) + ' 张卡', 1500);
+  },
+
+
   /** 删除当前选中的所有便签（级联删连线） */
     _deleteSelected() { return CardInteractions.deleteSelected({ state: this._state, ctrl: this }); },
 

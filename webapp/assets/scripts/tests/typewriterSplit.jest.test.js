@@ -1,0 +1,133 @@
+/**
+ * @jest-environment jsdom
+ */
+// 按段落拆卡回归锁：WritingDoc.splitNote 的纯数据契约 + 写作档 _splitCard 端到端。
+// 设计要点（方案 A：物理拆卡 + 手动触发 + 标题独占一张卡）：
+//   · 以空行切分 text，首段留在原卡（保留其 level），其余段各成一张 level:'p' 新卡、紧随其后；
+//   · seq 由 setOrder 重写为唯一且连续（红线不破）；
+//   · 单段落卡（无空行可拆）原样返回，调用方据此不进撤销栈。
+const { loadModule } = require('./__helpers__/testUtils');
+
+global.MindmapFeature = { isActive: () => false, stats: () => ({ count: 0, depth: 0 }) };
+
+const { TypewriterFeature: feature } = loadModule('handlers/features/typewriterFeature.js', ['TypewriterFeature']);
+const { WritingDoc } = loadModule('handlers/features/writingDoc.js', ['WritingDoc']);
+global.WritingDoc = WritingDoc;
+const { SpatialIndex } = loadModule('services/SpatialIndex.js', ['SpatialIndex']);
+const { GeoCache } = loadModule('services/GeoCache.js', ['GeoCache']);
+global.SpatialIndex = SpatialIndex;
+global.GeoCache = GeoCache;
+const { ViewportCuller } = loadModule('services/ViewportCuller.js', ['ViewportCuller']);
+global.ViewportCuller = ViewportCuller;
+loadModule('handlers/features/twConfig.js', []);
+const _b1mod = (p, n) => { const m = loadModule(p, [n]); if (!global[n]) global[n] = m[n]; };
+_b1mod('handlers/features/CardViewManager.js', 'CardViewManager');
+_b1mod('handlers/features/CardInteractions.js', 'CardInteractions');
+_b1mod('handlers/features/ModeController.js', 'ModeController');
+_b1mod('handlers/features/PersistenceCoordinator.js', 'PersistenceCoordinator');
+_b1mod('services/TypewriterStore.js', 'TypewriterStore');
+_b1mod('services/SpatialIndex.js', 'SpatialIndex');
+_b1mod('services/GeoCache.js', 'GeoCache');
+_b1mod('services/undoStack.js', 'UndoStack');
+_b1mod('handlers/features/writingDoc.js', 'WritingDoc');
+_b1mod('handlers/features/mindmapFeature.js', 'MindmapFeature');
+_b1mod('services/LinkLayer.js', 'LinkLayer');
+_b1mod('services/ViewportCuller.js', 'ViewportCuller');
+_b1mod('utils/domRef.js', 'isFromTextEntry');
+
+function splitFixture(notes, mode = 'write') {
+  feature._canvas = document.createElement('div');
+  Object.defineProperty(feature._canvas, 'clientWidth', { value: 400, configurable: true });
+  Object.defineProperty(feature._canvas, 'clientHeight', { value: 800, configurable: true });
+  feature._el = document.createElement('div');
+  feature._notes = notes;
+  feature._state = { notes };
+  feature._links = [];
+  feature._selected = new Set();
+  feature._geo = new GeoCache();
+  feature._mountedCards = new Map();
+  notes.forEach((n) => {
+    const el = document.createElement('div');
+    el.dataset.id = n.id;
+    feature._mountedCards.set(n.id, el);
+  });
+  feature._undoStack = { push: () => {} };
+  feature._mode = mode;
+  feature._layoutMode = 'flow';
+  feature._syncLayoutGeo = () => {};
+  feature._scheduleRenderLinks = () => {};
+  feature._scheduleSave = () => {};
+  feature._scheduleCull = () => {};
+  feature._refreshWriteOrder = () => {};
+  feature._setCanvasOffset = () => {};
+  feature._showScreenMsg = () => {};
+}
+
+describe('WritingDoc.splitNote 纯数据契约', () => {
+  test('一段卡按空行拆成三张：seq 连续、原卡留首段、新卡 level=p', () => {
+    const notes = [{ id: 'a', seq: 0, level: 'p', text: '段一\n\n段二\n\n段三', x: 0, y: 0, font: 'classic', paper: 'plain', zoom: 1, fontScale: 1, rot: 0 }];
+    const out = WritingDoc.splitNote(notes, 'a');
+    expect(out.length).toBe(3);
+    expect(out.map((n) => n.seq)).toEqual([0, 1, 2]);   // 唯一且连续
+    expect(out[0].id).toBe('a');
+    expect(out[0].text).toBe('段一');
+    expect(out[0].level).toBe('p');
+    expect(out[1].text).toBe('段二');
+    expect(out[1].level).toBe('p');
+    expect(out[2].text).toBe('段三');
+  });
+
+  test('原卡若是标题卡(h2)，拆后仍是标题卡，段卡并入其下（方案A：标题独占一张卡）', () => {
+    const notes = [{ id: 'h', seq: 0, level: 'h2', text: '标题\n\n正文一\n\n正文二', x: 0, y: 0 }];
+    const out = WritingDoc.splitNote(notes, 'h');
+    expect(out.length).toBe(3);
+    expect(out[0].id).toBe('h');
+    expect(out[0].level).toBe('h2');                    // 标题卡保级
+    expect(out[0].text).toBe('标题');
+    expect(out[1].level).toBe('p');
+    expect(out[2].level).toBe('p');
+  });
+
+  test('单段落卡（无空行）原样返回，不拆', () => {
+    const notes = [{ id: 'a', seq: 0, level: 'p', text: '只有一段' }];
+    expect(WritingDoc.splitNote(notes, 'a').length).toBe(1);
+  });
+
+  test('段内多行折叠为单一换行、首尾空白被裁掉', () => {
+    const notes = [{ id: 'a', seq: 0, level: 'p', text: '  前导空格段  \n\n  第二段首行\n  第二段次行  ' }];
+    const out = WritingDoc.splitNote(notes, 'a');
+    expect(out.length).toBe(2);
+    expect(out[0].text).toBe('前导空格段');
+    expect(out[1].text).toBe('第二段首行\n第二段次行');
+  });
+
+  test('不存在的 id 原样返回', () => {
+    const notes = [{ id: 'a', seq: 0, level: 'p', text: 'x\n\ny' }];
+    expect(WritingDoc.splitNote(notes, 'zzz')).toBe(notes);
+  });
+});
+
+describe('写作档 _splitCard 端到端', () => {
+  test('多段落卡拆后 _notes 增长、seq 连续、新卡紧接原卡之后', () => {
+    splitFixture([
+      { id: 'x', seq: 0, level: 'p', text: '甲\n\n乙\n\n丙', x: 0, y: 0 },
+      { id: 'y', seq: 1, level: 'p', text: '尾卡', x: 0, y: 100 },
+    ]);
+    feature._splitCard(feature._mountedCards.get('x'));
+    expect(feature._notes.length).toBe(4);             // 原 2 → x 拆出 3 + y = 4
+    expect(feature._notes.map((n) => n.seq)).toEqual([0, 1, 2, 3]);
+    expect(feature._notes[0].text).toBe('甲');
+    expect(feature._notes[1].text).toBe('乙');
+    expect(feature._notes[2].text).toBe('丙');
+    expect(feature._notes[3].id).toBe('y');
+  });
+
+  test('单段落卡不拆、不进撤销栈', () => {
+    let pushed = 0;
+    splitFixture([{ id: 's', seq: 0, level: 'p', text: '只有一段', x: 0, y: 0 }]);
+    feature._undoStack = { push: () => { pushed += 1; } };
+    feature._splitCard(feature._mountedCards.get('s'));
+    expect(feature._notes.length).toBe(1);             // 未拆
+    expect(pushed).toBe(0);                            // 未留档
+  });
+});

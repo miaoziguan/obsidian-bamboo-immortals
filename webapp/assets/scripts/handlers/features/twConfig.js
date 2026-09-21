@@ -27,6 +27,7 @@ export const ICON_MOVE_DOWN = `<svg viewBox="0 0 24 24" fill="none" stroke="curr
 export const ICON_LV_UP = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 13 6-6 6 6"/><path d="m6 19 6-6 6 6"/></svg>`;
 export const ICON_LV_DOWN = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 5 6 6 6-6"/><path d="m6 11 6 6 6-6"/></svg>`;
 export const ICON_ROTATE = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="m21 4-4 1.6L19.5 9"/></svg>`;
+export const ICON_SPLIT = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="7" height="14" rx="1.5"/><rect x="14" y="5" width="7" height="14" rx="1.5"/></svg>`;
 
 // 吐纸位叠放：新纸一律落在出纸口正上方，只做小幅纵向错位，像纸一张张叠出来。
 export const STACK_STEP = 24;     // 每张新纸相对上一张的上移错位量(px)
@@ -116,6 +117,7 @@ if (typeof globalThis !== 'undefined') {
   globalThis.ICON_LV_UP = ICON_LV_UP;
   globalThis.ICON_LV_DOWN = ICON_LV_DOWN;
   globalThis.ICON_ROTATE = ICON_ROTATE;
+  globalThis.ICON_SPLIT = ICON_SPLIT;
   globalThis.STACK_STEP = STACK_STEP;
   globalThis.STACK_LEVELS = STACK_LEVELS;
   globalThis.TYPE_SPEED = TYPE_SPEED;

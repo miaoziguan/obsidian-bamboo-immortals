@@ -212,6 +212,43 @@ export const WritingDoc = {
     return notes.map((n) => (n.id === id ? Object.assign({}, n, { text: (text && String(text)) || '' }) : n));
   },
 
+  /**
+   * 按段落拆分一张卡（纯函数，返回新数组，调用方负责落盘）。
+   *  text 以空行（连续换行）切分为若干段；首段留在原卡（保留其 level 与全部视觉属性），
+   *  其余段各成一张 level:'p' 的新卡、紧随其后插入；seq 由 setOrder 重写为唯一且连续。
+   *  无空行可拆（段数 ≤ 1）时原样返回 —— 调用方据此判定「无需拆分」。
+   *  @returns {Array} 拆后（或原样）的 notes 数组
+   */
+  splitNote(notes, id) {
+    const list = Array.isArray(notes) ? notes : [];
+    const idx = list.findIndex((n) => n.id === id);
+    if (idx < 0) return notes;
+    const orig = list[idx];
+    const chunks = (orig.text || '')
+      .split(/\n[ \t]*\n+/)
+      .map((s) => s.replace(/^\s+|\s+$/g, '').replace(/[ \t]*\n[ \t]*/g, '\n'))
+      .filter((s) => s.length);
+    if (chunks.length <= 1) return notes;                 // 没有可拆的段落
+    const updated = Object.assign({}, orig, { text: chunks[0] });
+    const inserts = chunks.slice(1).map((t, k) => ({
+      id: this.newId(),
+      seq: 0,                                            // 占位；下方 setOrder 按数组序重写
+      text: t,
+      x: (Number.isFinite(orig.x) ? orig.x : 0) + (k + 1) * 24,   // 便签档级联偏移，避免与原文完全重叠
+      y: (Number.isFinite(orig.y) ? orig.y : 0) + (k + 1) * 24,
+      font: orig.font || 'classic',
+      paper: orig.paper || 'plain',
+      level: 'p',                                        // 拆出的段一律为段落级
+      date: orig.date || '',
+      zoom: Number.isFinite(orig.zoom) ? orig.zoom : 1,
+      fontScale: (Number.isFinite(orig.fontScale) && orig.fontScale > 0) ? orig.fontScale : 1,
+      rot: orig.rot || 0,
+    }));
+    const out = [];
+    list.forEach((n, i) => { if (i === idx) out.push(updated, ...inserts); else out.push(n); });
+    return this.setOrder(out, out.map((n) => n.id));     // 重排 seq 为唯一且连续
+  },
+
   setFont(notes, id, font) {
     const f = this.FONTS.indexOf(font) >= 0 ? font : 'classic';
     return notes.map((n) => (n.id === id ? Object.assign({}, n, { font: f }) : n));

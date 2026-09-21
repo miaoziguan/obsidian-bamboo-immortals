@@ -5173,6 +5173,11 @@ body.dark .tw-print,
    写作档下放开这个下限：卡片按「最长一行」自适应收缩，内容真的长了才长到上限。
    便签档（无 .tw-mode-write）保持原 300px 下限，不动既有便签观感。 */
 .tw-canvas.tw-mode-write .tw-card {
+  /* 无限画布 + 绝对定位：`width:auto` 的绝对定位元素按「包含块宽 − left」算可用宽度，
+     分幕把右侧列的 left 排到画布可见宽度之外后，可用宽度变负 → shrink-to-fit 塌到
+     min-content（中文逐字断行＝一字一行），只剩 min-width 兜底。改用 max-content
+     （内在宽度，与 left/可用宽度无关），排到多右都贴合内容；上限仍由 max-width 封顶换行。 */
+  width: max-content;
   min-width: min(calc(88px * var(--tw-card-zoom, 1)), calc(100% - 16px));
 }
 

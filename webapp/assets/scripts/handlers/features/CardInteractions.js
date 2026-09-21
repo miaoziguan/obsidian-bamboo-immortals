@@ -241,33 +241,92 @@ export const CardInteractions = {
     if (ctrl._marquee) ctrl._marquee.remove();
     const m = document.createElement('div');
     m.className = 'tw-marquee';
+    const badge = document.createElement('span');
+    badge.className = 'tw-marquee-count';
+    m.appendChild(badge);
     canvas.appendChild(m);
     ctrl._marquee = m;
     ctrl._marqueeRect = null;
-    const cr = canvas.getBoundingClientRect();
-    const sx0 = e.clientX - cr.left;   // 画布局部坐标（画布只平移不缩放，屏幕位移即局部位移）
-    const sy0 = e.clientY - cr.top;
-    const move = (ev) => {
-      const sx1 = ev.clientX - cr.left;
-      const sy1 = ev.clientY - cr.top;
+
+    const rect0 = canvas.getBoundingClientRect();
+    const sx0 = e.clientX - rect0.left;   // 框选起点（画布内容坐标，恒定）
+    const sy0 = e.clientY - rect0.top;
+    let lastX = e.clientX, lastY = e.clientY;
+    let rafId = 0;
+
+    const EDGE = 48;   // 距视口边缘多近开始自动平移
+    const MAX = 26;    // 每帧最大平移像素
+
+    // 用当前屏幕坐标刷新框选矩形：画布随平移移动后，内容坐标会自然外扩 → 框得够画布外
+    const refresh = () => {
+      const cr = canvas.getBoundingClientRect();
+      const sx1 = lastX - cr.left, sy1 = lastY - cr.top;   // 终点内容坐标
       const x = Math.min(sx0, sx1), y = Math.min(sy0, sy1);
       const w = Math.abs(sx1 - sx0), h = Math.abs(sy1 - sy0);
       m.style.left = x + 'px'; m.style.top = y + 'px';
       m.style.width = w + 'px'; m.style.height = h + 'px';
-      ctrl._marqueeRect = { x, y, w, h };
+      const r = { x, y, w, h };
+      ctrl._marqueeRect = r;
+      badge.textContent = (ctrl._countInRect ? ctrl._countInRect(r) : 0) + '';
+    };
+
+    // 指针是否贴边 → 自动平移方向（在左/上缘往对应方向平移露出那侧内容）
+    const edgeDir = () => {
+      const cr = canvas.getBoundingClientRect();
+      const lx = lastX - cr.left, ly = lastY - cr.top;
+      let dx = 0, dy = 0;
+      if (lx < EDGE) dx = 1; else if (lx > cr.width - EDGE) dx = -1;
+      if (ly < EDGE) dy = 1; else if (ly > cr.height - EDGE) dy = -1;
+      return (dx || dy) ? { dx, dy } : null;
+    };
+
+    // 贴边时持续平移（Figma 式）：画布滚动、矩形内容坐标外扩，松手即选中画布外那片
+    const tick = () => {
+      rafId = 0;
+      const d = edgeDir();
+      if (d) {
+        const off = (state && state.canvasOffset) || { x: 0, y: 0 };
+        ctrl._setCanvasOffset(off.x + d.dx * MAX, off.y + d.dy * MAX);
+        refresh();
+      }
+      if (d) rafId = requestAnimationFrame(tick);
+    };
+
+    const move = (ev) => {
+      lastX = ev.clientX; lastY = ev.clientY;
+      refresh();
+      if (edgeDir() && !rafId) rafId = requestAnimationFrame(tick);
     };
     const up = () => {
       document.removeEventListener('pointermove', move);
       document.removeEventListener('pointerup', up);
+      if (rafId) cancelAnimationFrame(rafId);
       if (ctrl._marquee) { ctrl._marquee.remove(); ctrl._marquee = null; }
       ctrl._selectInRect(ctrl._marqueeRect || { x: sx0, y: sy0, w: 0, h: 0 });
       ctrl._marqueeRect = null;
-      if (ctrl._revealSelection) ctrl._revealSelection();   // 选区超出视口则平移露出
+      if (ctrl._revealSelection) ctrl._revealSelection();   // 兜底：选区超视口则平移露出
     };
     document.addEventListener('pointermove', move);
     document.addEventListener('pointerup', up);
-    move(e);
-  
+    refresh();
+  },
+  // (was _countInRect) 统计落在矩形内（含画布外）的卡片数，供框选实时数量提示（不挂载、不选中）
+  countInRect(ctx, r) {
+    const { state, ctrl } = ctx;
+    const sp = ctrl._spatial;
+    const hits = sp ? sp.queryRect(r.x, r.y, r.x + r.w, r.y + r.h) : [];
+    const noteIdx = ctrl._noteIndex ? ctrl._noteIndex() : null;
+    let n = 0;
+    hits.forEach((id) => {
+      const g = ctrl._geo ? ctrl._geo.get(id) : null;
+      const note = noteIdx ? noteIdx.get(id) : null;
+      const lx = g ? g.x : (note ? note.x : 0);
+      const ly = g ? g.y : (note ? note.y : 0);
+      const w = g ? g.w : (note && note.w ? note.w : 340);
+      const h = g ? g.h : (note && note.h ? note.h : 120);
+      if (lx + w >= r.x && lx <= r.x + r.w && ly + h >= r.y && ly <= r.y + r.h) n++;
+    });
+    return n;
   },
   // (was _selectInRect)
   selectInRect(ctx, r) {

@@ -2913,6 +2913,19 @@ textarea:focus-visible) {
   pointer-events: none;
   z-index: 4000;
 }
+/* 框选实时数量（贴着选框右下角，随画布平移实时更新，让你知道框到了多少张） */
+.tw-marquee-count {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  background: #c9a24a;
+  color: #1b1b1b;
+  font: 11px/1.4 -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+  padding: 1px 6px;
+  border-radius: 8px;
+  pointer-events: none;
+  white-space: nowrap;
+}
 
 /* ===== 寻呼机外壳（绿壳） ===== */
 .tw-beeper {

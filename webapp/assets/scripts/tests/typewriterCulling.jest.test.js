@@ -1176,3 +1176,30 @@ describe('框选后自动平移露出选区（视口外选中内容也看得见�
     expect(setOffset).not.toHaveBeenCalled();
   });
 });
+
+describe('框选实时数量 countInRect（含画布外）', () => {
+  test('统计矩形覆盖到的卡片数，包括画布外（供拖拽中实时提示）', () => {
+    const sp = new global.SpatialIndex(512);
+    const geo = new global.GeoCache();
+    const noteIndex = new Map();
+
+    sp.insert('a', 50, 50, 200, 100);
+    geo.set('a', { x: 50, y: 50, w: 200, h: 100, rot: 0 });
+    noteIndex.set('a', { id: 'a', x: 50, y: 50 });
+
+    const OX = 5000, OY = 5000, OW = 200, OH = 100;   // 画布外，但矩形够得到
+    sp.insert('off', OX, OY, OW, OH);
+    geo.set('off', { x: OX, y: OY, w: OW, h: OH, rot: 0 });
+    noteIndex.set('off', { id: 'off', x: OX, y: OY });
+
+    sp.insert('out', 9000, 9000, 100, 100);            // 完全在矩形外
+    geo.set('out', { x: 9000, y: 9000, w: 100, h: 100, rot: 0 });
+    noteIndex.set('out', { id: 'out', x: 9000, y: 9000 });
+
+    const ctrl = { _spatial: sp, _geo: geo, _noteIndex: () => noteIndex };
+    const r = { x: 0, y: 0, w: OX + OW, h: OY + OH };  // 覆盖 a 与 off
+    expect(global.CardInteractions.countInRect({ state: {}, ctrl }, r)).toBe(2);
+    const r2 = { x: 0, y: 0, w: 300, h: 300 };          // 只覆盖 a
+    expect(global.CardInteractions.countInRect({ state: {}, ctrl }, r2)).toBe(1);
+  });
+});

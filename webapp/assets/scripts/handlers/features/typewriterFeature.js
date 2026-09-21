@@ -1280,6 +1280,9 @@ export const TypewriterFeature = {
   /** 框选后若选区超出视口，平移画布把选区带入视野（不缩放），让用户看到选了哪些 */
     _revealSelection() { return CardInteractions.revealSelection({ state: this._state, ctrl: this }); },
 
+  /** 统计落在矩形内（含画布外）的卡片数，供框选实时数量提示 */
+    _countInRect(r) { return CardInteractions.countInRect({ state: this._state, ctrl: this }, r); },
+
   /** 绑定快捷键：Delete/Backspace 删选中；F 将便签重新归位到视野中心 */
     _bindSelectionKeys() { return CardInteractions.bindSelectionKeys({ state: this._state, ctrl: this }); },
 

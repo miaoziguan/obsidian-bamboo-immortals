@@ -310,7 +310,9 @@ export const PersistenceCoordinator = {
       });
       const ACT_GAP = 48;                                   // 幕间距（明显大于卡间距，形成模块感）
       const blockW = Math.max(...acts.groups.map((a) => a.w));   // 等宽列，便于并排比较体量
-      const availW = ctrl._canvas.clientWidth || 1200;
+      // 无限画布：分幕网格不该被「可见视口」宽度钉死（寻呼机屏 ~400px → 永远只有 1–2 列）。
+      // 改用「舒适参考页宽」定每行列数：内容自适应卡宽下能铺成真正的多列网格，超宽部分靠平移浏览。
+      const availW = Math.max(ctrl._canvas.clientWidth || 1200, 1200);
       const cols = Math.max(1, Math.floor((availW + ACT_GAP) / (blockW + ACT_GAP)));
       let x = 0, y = 0, rowH = 0, col = 0;
       acts.groups.forEach((a) => {
@@ -347,7 +349,8 @@ export const PersistenceCoordinator = {
     ctrl._scheduleCull();                           // 重排后重算挂载：移出视野的卡卸载
 
     const VW = ctrl._canvas.clientWidth, VH = ctrl._canvas.clientHeight;
-    ctrl._setCanvasOffset(VW / 2 - totalW / 2, VH / 2 - totalH / 2);
+    // 内容比视口宽/高时，从原点(0,0)起排，避免把开头推到屏外（平移去探索其余部分），与顺流竖排一致
+    ctrl._setCanvasOffset(Math.max(0, VW / 2 - totalW / 2), Math.max(0, VH / 2 - totalH / 2));
 
     const scope = selCount >= 2 ? '选中的 ' : '全部 ';
     if (useActs) {

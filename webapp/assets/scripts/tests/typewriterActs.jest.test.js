@@ -114,17 +114,17 @@ describe('分幕：reflowWriteOrder acts 分支布局', () => {
     { id: 'd', level: 'p' },
   ];
 
-  test('窄画布单列：文章顺序保持（y 严格递增）+ 交替 data-act', () => {
+  test('窄可见视口：分幕仍铺成多列网格（不卡死单列），同幕同列 + 顺序/幕标正确', () => {
     actsFixture(notes4, 'acts', 400);
     feature._reflowWriteOrder();
-    ['a', 'b', 'c', 'd'].forEach((id) => expect(pos(id).x).toBe(0));   // 单列全左对齐
-    expect(pos('a').y).toBeLessThan(pos('b').y);
-    expect(pos('b').y).toBeLessThan(pos('c').y);
+    expect(pos('a').x).toBe(0);                 // 第 1 幕在首列
+    expect(pos('c').x).toBeGreaterThan(0);      // 第 2 幕移到右列
+    expect(pos('a').x).toBe(pos('b').x);        // 同幕同列
+    expect(pos('c').x).toBe(pos('d').x);
+    expect(pos('a').y).toBeLessThan(pos('b').y); // 同幕内顺序保持（y 单调递增）
     expect(pos('c').y).toBeLessThan(pos('d').y);
     expect(elOf('a').dataset.act).toBe('0');
-    expect(elOf('b').dataset.act).toBe('0');
-    expect(elOf('c').dataset.act).toBe('1');   // 第 2 幕交替明暗
-    expect(elOf('d').dataset.act).toBe('1');
+    expect(elOf('c').dataset.act).toBe('1');    // 第 2 幕交替明暗
   });
 
   test('宽画布多列：第 2 幕换到右列（x 偏移），同幕同列', () => {
@@ -178,7 +178,7 @@ describe('分幕：reflowWriteOrder acts 分支布局', () => {
     expect(PersistenceCoordinator.actCountInfo(r2)).toEqual({ actCount: 3, hasIntro: false });
   });
 
-  test('引子块存在时 reflow 不崩且正常落位', () => {
+  test('引子块存在时 reflow 不崩且正常落位（同幕同列、幕内顺序保持）', () => {
     actsFixture([
       { id: 'p', level: 'p' },
       { id: 'a', level: 'h2', text: '第一章' },
@@ -187,7 +187,9 @@ describe('分幕：reflowWriteOrder acts 分支布局', () => {
       { id: 'd', level: 'p' },
     ], 'acts');
     expect(() => feature._reflowWriteOrder()).not.toThrow();
-    expect(pos('a').x).toBe(0);                 // 引子与第 1 幕同列首排
-    expect(pos('a').y).toBeLessThan(pos('c').y);
+    expect(pos('a').x).toBe(pos('b').x);        // 同幕同列
+    expect(pos('a').y).toBeLessThan(pos('b').y);
+    expect(pos('c').x).toBe(pos('d').x);
+    expect(pos('c').y).toBeLessThan(pos('d').y);
   });
 });

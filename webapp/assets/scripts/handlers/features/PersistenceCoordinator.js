@@ -310,10 +310,9 @@ export const PersistenceCoordinator = {
       });
       const ACT_GAP = 48;                                   // 幕间距（明显大于卡间距，形成模块感）
       const blockW = Math.max(...acts.groups.map((a) => a.w));   // 等宽列，便于并排比较体量
-      // 无限画布：分幕网格不该被「可见视口」宽度钉死（寻呼机屏 ~400px → 永远只有 1–2 列）。
-      // 改用「舒适参考页宽」定每行列数：内容自适应卡宽下能铺成真正的多列网格，超宽部分靠平移浏览。
-      const availW = Math.max(ctrl._canvas.clientWidth || 1200, 1200);
-      const cols = Math.max(1, Math.floor((availW + ACT_GAP) / (blockW + ACT_GAP)));
+      // 无限画布：分幕列数完全由「幕数」决定，与可见视口无关 —— 一幕一列、自上而下成块，
+      // 整排向右铺开，超宽部分靠平移浏览（画布本就可移动，无需为视口宽度妥协）。
+      const cols = Math.max(1, acts.groups.length);
       let x = 0, y = 0, rowH = 0, col = 0;
       acts.groups.forEach((a) => {
         a.x = x; a.y = y;

@@ -2,7 +2,7 @@
 // 方法体逐字搬运，所有内部调用经 ctrl._xxx 由 feature 委托壳自动解析回原对象。
 // 共享常量（裸名引用由本 import 提供；测试 harness 剥离 import 时由 twConfig 挂 globalThis 兜底）
 import { ICON_LAYERS, ICON_FONT, ICON_GRID, ICON_PRINT, ICON_X, ICON_FONT_DOWN, ICON_FONT_UP, ICON_ZOOM_OUT, ICON_ZOOM_IN, ICON_PAPER, ICON_EXPORT, ICON_PREVIEW, ICON_MOVE_UP, ICON_MOVE_DOWN, ICON_LV_UP, ICON_LV_DOWN, ICON_ROTATE } from './twConfig.js';
-import { STACK_STEP, STACK_LEVELS, TYPE_SPEED, MAX_LEN, NOTE_CAP, WRITE_FLOW_GAP, SAVE_DEBOUNCE, LOD_DENSITY, ZOOM_MIN, ZOOM_MAX, ZOOM_STEP } from './twConfig.js';
+import { STACK_STEP, STACK_LEVELS, TYPE_SPEED, MAX_LEN, DRAFT_MAX_LEN, NOTE_CAP, WRITE_FLOW_GAP, SAVE_DEBOUNCE, LOD_DENSITY, ZOOM_MIN, ZOOM_MAX, ZOOM_STEP } from './twConfig.js';
 import { FONT_SCALES, FONT_SCALE_DEFAULT_IDX, FONT_SCALE_LABELS, CARD_SCALES, CARD_SCALE_LABELS, CARD_SCALE_DEFAULT_IDX } from './twConfig.js';
 import { FONTS, FONT_LABELS, FONT_FEEDBACK } from './twConfig.js';
 import { PAPERS, PAPER_LABELS, PAPER_FEEDBACK, PAPER_TITLES } from './twConfig.js';
@@ -517,6 +517,9 @@ export const ModeController = {
     set('#twMetaMindmap', (el) => { el.hidden = !mm; });
     const input = ctrl._input;
     if (input) {
+      // 输入框上限按档位切换：便签档 = 单卡上限 500（写不下即截）；写作档 = 草稿箱上限，
+      // 允许整篇长文粘进来，打印时再由 splitDraft 拆成多块（单卡仍 ≤ MAX_LEN）。
+      input.maxLength = wr ? DRAFT_MAX_LEN : MAX_LEN;
       input.placeholder = T.ph;
       input.setAttribute('aria-label', T.ph.replace('...', ''));
       input.value = (ctrl._draft && ctrl._draft[ctrl._mode]) || '';

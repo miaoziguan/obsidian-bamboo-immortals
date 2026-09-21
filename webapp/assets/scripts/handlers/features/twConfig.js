@@ -33,7 +33,8 @@ export const ICON_SPLIT = `<svg viewBox="0 0 24 24" fill="none" stroke="currentC
 export const STACK_STEP = 24;     // 每张新纸相对上一张的上移错位量(px)
 export const STACK_LEVELS = 6;    // 叠放档位数：超过后回到最底层重新叠
 export const TYPE_SPEED = 50;     // 每字间隔(ms)：缓慢打出的节奏（对齐 pager 原版）
-export const MAX_LEN = 500;       // 单卡最大字数
+export const MAX_LEN = 500;       // 单卡最大字数（便签档输入框上限同此值）
+export const DRAFT_MAX_LEN = 20000; // 写作档输入框「草稿箱」上限：整篇长文可粘进来，打印时再由 splitDraft 拆成多块（单卡仍 ≤ MAX_LEN）
 export const NOTE_CAP = 50;       // 便签上限：防 vault 文件无限膨胀（超出删最早）
 export const WRITE_FLOW_GAP = 24; // 写作档「文章流」卡片间距
 export const SAVE_DEBOUNCE = 350; // 写盘防抖(ms)，合并拖拽/删除等连续操作
@@ -122,6 +123,7 @@ if (typeof globalThis !== 'undefined') {
   globalThis.STACK_LEVELS = STACK_LEVELS;
   globalThis.TYPE_SPEED = TYPE_SPEED;
   globalThis.MAX_LEN = MAX_LEN;
+  globalThis.DRAFT_MAX_LEN = DRAFT_MAX_LEN;
   globalThis.NOTE_CAP = NOTE_CAP;
   globalThis.WRITE_FLOW_GAP = WRITE_FLOW_GAP;
   globalThis.SAVE_DEBOUNCE = SAVE_DEBOUNCE;

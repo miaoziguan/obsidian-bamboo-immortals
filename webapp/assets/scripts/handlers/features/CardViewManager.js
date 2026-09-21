@@ -136,19 +136,9 @@ export const CardViewManager = {
     return card;
   
   },
-  // (was _detectWriteLevel)
+  // (was _detectWriteLevel) — 委托 WritingDoc.detectLevel（单一真源，避免两处各写一份正则）
   detectWriteLevel(ctx, raw) {
-    const { state, ctrl } = ctx;
-    const lines = String(raw).split('\n');
-    const first = lines[0] || '';
-    let m;
-    if ((m = /^(#{1,6})\s+(.*)$/.exec(first))) { lines[0] = m[2]; return { level: 'h' + m[1].length, text: lines.join('\n') }; }
-    if ((m = /^>\s+(.*)$/.exec(first))) { lines[0] = m[1]; return { level: 'quote', text: lines.join('\n') }; }
-    if ((m = /^[-*]\s+\[( |x|X)\]\s+(.*)$/.exec(first))) { lines[0] = m[2]; return { level: 'task', text: lines.join('\n') }; }
-    if ((m = /^[-*]\s+(.*)$/.exec(first))) { lines[0] = m[1]; return { level: 'ul', text: lines.join('\n') }; }
-    if ((m = /^\d+[.)]\s+(.*)$/.exec(first))) { lines[0] = m[1]; return { level: 'ol', text: lines.join('\n') }; }
-    return { level: 'p', text: raw };
-  
+    return WritingDoc.detectLevel(raw);
   },
   // (was _applyZoom)
   applyZoom(ctx, card, zoom) {

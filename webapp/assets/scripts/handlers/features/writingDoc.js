@@ -277,6 +277,118 @@ export const WritingDoc = {
   },
 
   /**
+   * 级别嗅探（纯函数，单一真源）。
+   *  只解析首行前缀，命中则剥掉前缀、返回余文：
+   *    # {1,6}       → h1..h6
+   *    >             → quote
+   *    - [ ] / - [x] → task
+   *    - / *         → ul
+   *    1. / 1)       → ol
+   *    其余          → p
+   *  CardViewManager.detectWriteLevel 委托到此处，避免两处各写一份正则。
+   */
+  detectLevel(raw) {
+    const text = raw == null ? '' : String(raw);
+    const lines = text.split('\n');
+    const first = lines[0] || '';
+    let m;
+    if ((m = /^(#{1,6})\s+(.*)$/.exec(first))) { lines[0] = m[2]; return { level: 'h' + m[1].length, text: lines.join('\n') }; }
+    if ((m = /^>\s+(.*)$/.exec(first))) { lines[0] = m[1]; return { level: 'quote', text: lines.join('\n') }; }
+    if ((m = /^[-*]\s+\[( |x|X)\]\s+(.*)$/.exec(first))) { lines[0] = m[2]; return { level: 'task', text: lines.join('\n') }; }
+    if ((m = /^[-*]\s+(.*)$/.exec(first))) { lines[0] = m[1]; return { level: 'ul', text: lines.join('\n') }; }
+    if ((m = /^\d+[.)]\s+(.*)$/.exec(first))) { lines[0] = m[1]; return { level: 'ol', text: lines.join('\n') }; }
+    return { level: 'p', text };
+  },
+
+  /**
+   * 长文成块（纯函数）：把一整篇草稿切成「一块一张卡」的块序列，每块各自定级。
+   *  与 splitNote（拆单卡）的区别：splitNote 把拆出的段一律定为 'p'，会丢标题/列表语义；
+   *  此处每块各自跑 detectLevel，故 "# 三、结论" → h3 卡、"- 项" → ul 卡、"1. 项" → ol 卡。
+   *
+   *  成块规则（逐行状态机，兼顾 Markdown / 纯文本 / 外部 App 脏复制三种来源）：
+   *   ① 空行 = 段落边界（Markdown 段落语义）；
+   *   ② 标题行（#{1,6} ）必定另起一块 —— 草稿常「标题紧跟正文、无空行」，不断开会整块被判成标题；
+   *   ③ 同类型列表行 / 引用行合并成一块 —— 否则 "- a\n- b" 会被切成一张卡一行，导出成松散列表；
+   *   ④ 无空行时（PDF/网页复制常见）单换行即分段，避免整篇被并成一个巨段再按句硬切、丢掉原有段落结构。
+   *  最后对仍超 maxLen 的块按句末硬切（。！？；!?;），杜绝再出现「一块一万字」。
+   *  @param {string} raw    原始草稿全文
+   *  @param {number} maxLen 单卡字数上限（缺省 MAX_LEN=500）
+   *  @returns {Array<{text:string, level:string}>} 块序列（已去空块，顺序即文章顺序）
+   */
+  splitDraft(raw, maxLen) {
+    const MAX = (Number.isFinite(maxLen) && maxLen > 0) ? maxLen : MAX_LEN;
+    const src = String(raw == null ? '' : raw).replace(/\r\n?/g, '\n');
+    if (!src.trim()) return [];
+    // 行清洗：去行尾空白与行首缩进（外部 App 复制的乱缩进会污染 Markdown 语义，如把正文顶成标题）
+    const lines = src.split('\n').map((s) => s.replace(/[ \t]+$/g, '').replace(/^[ \t]+/g, ''));
+    const isBlank = (s) => !s.trim();
+    const isHeading = (s) => /^#{1,6}\s+/.test(s);
+    const isQuote = (s) => /^>\s?/.test(s);
+    const listKind = (s) => {
+      if (/^[-*]\s+\[( |x|X)\]\s+/.test(s)) return 'task';
+      if (/^[-*]\s+/.test(s)) return 'ul';
+      if (/^\d+[.)]\s+/.test(s)) return 'ol';
+      return '';
+    };
+    // 有空行 → 空行内的连续普通行是「软换行」，同属一段；无空行 → 每行自成一段（规则④）
+    const hasBlank = /\n[ \t]*\n/.test(src);
+
+    const blocks = [];
+    let cur = null;
+    const flush = () => {
+      if (cur && cur.lines.some((s) => s.trim())) {
+        blocks.push(cur.lines.join('\n').replace(/\s+$/g, '').replace(/^\s+/g, ''));
+      }
+      cur = null;
+    };
+    lines.forEach((line) => {
+      if (isBlank(line)) { flush(); return; }
+      if (isHeading(line)) { flush(); cur = { kind: 'h', lines: [line] }; return; }
+      const lk = listKind(line);
+      if (lk) {
+        if (cur && cur.kind === lk) { cur.lines.push(line); return; }
+        flush(); cur = { kind: lk, lines: [line] }; return;
+      }
+      if (isQuote(line)) {
+        if (cur && cur.kind === 'quote') { cur.lines.push(line); return; }
+        flush(); cur = { kind: 'quote', lines: [line] }; return;
+      }
+      if (cur && cur.kind === 'p' && hasBlank) { cur.lines.push(line); return; }   // 软换行并入同段
+      flush(); cur = { kind: 'p', lines: [line] };
+    });
+    flush();
+
+    // 超长块按句末硬切：优先在句读处断开，切不出就在 MAX 处硬断
+    const hardSplit = (s) => {
+      const out = [];
+      let rest = s;
+      while (rest.length > MAX) {
+        const win = rest.slice(0, MAX + 1);
+        let cut = -1;
+        for (let i = win.length - 1; i >= Math.floor(MAX * 0.6); i -= 1) {
+          if (/[。！？；!?;]/.test(win[i])) { cut = i + 1; break; }
+        }
+        if (cut <= 0) cut = MAX;
+        const piece = rest.slice(0, cut).replace(/\s+$/g, '');
+        if (piece) out.push(piece);
+        rest = rest.slice(cut).replace(/^\s+/g, '');
+      }
+      if (rest) out.push(rest);
+      return out;
+    };
+
+    const chunks = [];
+    blocks.forEach((b) => {
+      const parts = (b.length > MAX) ? hardSplit(b) : [b];
+      parts.forEach((p) => {
+        const d = this.detectLevel(p);
+        if (d.text && d.text.trim()) chunks.push({ text: d.text, level: d.level });
+      });
+    });
+    return chunks;
+  },
+
+  /**
    * 合并多张卡为一张（纯函数，与 splitNote 互逆，调用方负责落盘/重绘）。
    *  锚 = 选中里 seq 最小者（读序最前）；其余被并卡移除。
    *  正文 = 按 seq 顺序把所有选中卡 text 用 \n\n 拼接（保段落边界，将来可再拆）。

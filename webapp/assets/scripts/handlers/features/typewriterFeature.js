@@ -603,11 +603,30 @@ export const TypewriterFeature = {
       return;
     }
     if (this._mode === 'write') {
+      // 长文导入：整篇草稿按块拆成多张卡（每块各自定级），短输入仍走原单卡打印
+      const chunks = WritingDoc.splitDraft(text, MAX_LEN);
+      if (chunks.length > 1) { this._importDraft(chunks); return; }
       const { level, text: clean } = this._detectWriteLevel(text);
       this._spawn(clean, level);
     } else {
       this._spawn(text);
     }
+  },
+
+  /** 长文导入：把 splitDraft 切好的块序列一次性铺成文章（一步撤销、一次重排）。
+   *  每块已各自定级（标题/列表/引用/正文），顺序即文章顺序；落点由 _spawn 接在文章流末尾。 */
+  _importDraft(chunks) {
+    if (!chunks || chunks.length < 2) return;
+    if (this._undoStack) this._undoStack.push();   // 整篇导入作为一步撤销，避免逐块撤销
+    let firstCard = null;
+    chunks.forEach((c) => {
+      const card = this._spawn(c.text, c.level, { skipEnsureVisible: true });
+      if (!firstCard && card) firstCard = card;
+    });
+    // 顺流/分幕重排（skipUndo：撤销点已在上面留过，避免两步撤销）
+    PersistenceCoordinator.reflowWriteOrder({ state: this._state, ctrl: this }, { skipUndo: true });
+    if (firstCard) this._ensureCardVisible(firstCard);   // 只把首块带进视野，避免逐张校正导致画布乱跳
+    this._showScreenMsg('IMPORTED ' + chunks.length + ' BLOCKS', 2200);
   },
 
   /** 面板语义随模式切换：屏幕标题/右侧元信息、输入框 placeholder 与草稿、按钮可用性。
@@ -633,7 +652,7 @@ export const TypewriterFeature = {
    *  便签/导图模式不传，落到默认正文。
    *  【呈现方式按模式分流】写作档一次性落全文（连续成文不该等字一个个蹦）；
    *  便签档才是逐字打字 —— 那是寻呼机的签名动效。 */
-  _spawn(text, level) {
+  _spawn(text, level, opts) {
     if (!text) {
       if (typeof Toast !== 'undefined') Toast.showToast('请先输入文字', 'error');
       return;
@@ -736,7 +755,8 @@ export const TypewriterFeature = {
       this._scheduleSave();
       // 追加到文末的新卡多半在视野之外，且此刻文本刚落定、卡片才是最终高度 ——
       // 必须等到这里再校正，否则按空卡高度算是白校正一次（成文流会看着是断的）。
-      this._ensureCardVisible(card);
+      // 批量导入时由调用方统一校正首块，避免逐张校正导致画布乱跳，故可跳过此处。
+      if (!(opts && opts.skipEnsureVisible)) this._ensureCardVisible(card);
     } else {
       textEl.classList.add('is-typing');
 
@@ -768,6 +788,7 @@ export const TypewriterFeature = {
 
     // 超出上限删最早（DOM 顺序即时间序），并在落盘时同步
     this._enforceCap();
+    return card;
   },
 
   /** 结束某张卡片的打字动画：停表、补齐全文、清 pendingText 并落盘。

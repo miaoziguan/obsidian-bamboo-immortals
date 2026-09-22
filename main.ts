@@ -49,6 +49,24 @@ function hashContent(s: string): string {
 }
 
 /**
+ * 画中卷 leaf 的功能 / 停靠位解析。
+ *
+ * 必须从「持久化的视图状态」读取，而非贴在 leaf 对象上的运行时装饰：
+ * 后者只在 openScrollAt 写入，Obsidian 重启 / 热重载 / 布局重建后随 leaf 重建而丢失，
+ * 会回退成默认 'incense'——导致「打开香道」时把已恢复的打字机 leaf 误判为香道而 detach。
+ * ScrollView.getState() 持久化的是 this._feature，且 setState 在视图恢复时回填，
+ * 故 leaf.getViewState().state 才是权威且可跨重启的来源。
+ */
+function scrollLeafFeature(leaf: WorkspaceLeaf): string | undefined {
+  const vs = leaf.getViewState() as { state?: { feature?: string } } | null;
+  return vs?.state?.feature;
+}
+function scrollLeafLocation(leaf: WorkspaceLeaf): string | undefined {
+  const vs = leaf.getViewState() as { state?: { location?: string } } | null;
+  return vs?.state?.location;
+}
+
+/**
  * BambooReviewPlugin - 竹林修仙传 Obsidian 插件入口
  *
  * 职责：
@@ -1085,8 +1103,8 @@ export default class BambooReviewPlugin extends Plugin {
     let wasReused = false;
     if (feature) {
       const reuse = existing.find((l) => {
-        const lf = (l as unknown as { __scrollFeature?: string }).__scrollFeature ?? 'incense';
-        const ll = (l as unknown as { __scrollLocation?: string }).__scrollLocation ?? 'center';
+        const lf = scrollLeafFeature(l) ?? 'incense';
+        const ll = scrollLeafLocation(l) ?? 'center';
         return lf === feature && ll === loc;
       }) ?? null;
       if (reuse) {
@@ -1104,19 +1122,16 @@ export default class BambooReviewPlugin extends Plugin {
       } else {
         target = workspace.getLeaf(true);
       }
-      // feature 不明确时（如画布内移动），沿用即将复用的空位的旧功能，避免误覆盖
-      if (!feature) {
-        const tf = (target as unknown as { __scrollFeature?: string }).__scrollFeature;
-        if (tf) incomingFeature = tf;
-      }
     }
     if (!target) {
       new Notice('无法打开画中卷');
       return;
     }
-
-    (target as unknown as { __scrollFeature?: string }).__scrollFeature = incomingFeature;
-    (target as unknown as { __scrollLocation?: string }).__scrollLocation = loc;
+    // feature 不明确时（如画布内移动），沿用即将复用的空位的旧功能，避免误覆盖
+    if (!feature) {
+      const tf = scrollLeafFeature(target);
+      if (tf) incomingFeature = tf;
+    }
 
     // 捕获「本次打开前」该 leaf 已挂载视图的功能：setViewState 会经 setState 立即把
     // _feature 改成 incomingFeature，故重载判定必须用「改之前」的旧值，否则已挂载视图换功能时
@@ -1170,7 +1185,7 @@ export default class BambooReviewPlugin extends Plugin {
 
     existing.forEach((l) => {
       if (l === target) return;
-      const lf = (l as unknown as { __scrollFeature?: string }).__scrollFeature ?? 'incense';
+      const lf = scrollLeafFeature(l) ?? 'incense';
       if (lf === incomingFeature) l.detach();
     });
 

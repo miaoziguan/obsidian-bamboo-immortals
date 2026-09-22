@@ -179,7 +179,8 @@
    不会再命中，故其 CSS 一并移除。 */
 .tw-mm.tw-mm-style-1 .tw-mm-node {            /* 方角便签 */
   border-radius: 6px;
-  border: 1.5px solid var(--border-strong, var(--border-light));
+  /* 着色时边框取 --mm-accent；默认回退原 border-strong（不可写死 border-strong，否则改色对边框无效） */
+  border: 1.5px solid var(--mm-accent, var(--border-strong, var(--border-light)));
   box-shadow: var(--shadow-card);
 }
 .tw-mm.tw-mm-style-3 .tw-mm-node {            /* 胶囊点（左侧强调点） */
@@ -188,7 +189,7 @@
 .tw-mm.tw-mm-style-3 .tw-mm-node::before {
   content: ""; position: absolute; left: 0.7em; top: 50%; transform: translateY(-50%);
   width: 0.5em; height: 0.5em; border-radius: 50%;
-  background: rgb(var(--primary-rgb));
+  background: var(--mm-accent, rgb(var(--primary-rgb)));   /* 着色时强调点取 --mm-accent */
 }
 
 /* —— 空态 —— */
@@ -234,9 +235,9 @@
 /* ===== 每颗子弹可单独着色（由 JS 写 --mm-accent 局部变量） ===== */
 .tw-mm-node {
   border-color: var(--mm-accent, var(--border-light));
-  /* 改色（方案 C）：在默认底色上叠一层很淡的 accent 填色，让颜色成为可一眼扫读的“分组信号”，不伤文字对比；
+  /* 改色（方案 C）：在默认底色上叠一层 accent 填色，让颜色成为可一眼扫读的“分组信号”，不伤文字对比；
      未着色时 --mm-accent 回退到 card-bg，混合结果等同原底色，视觉零差异。 */
-  background: color-mix(in srgb, var(--mm-accent, var(--card-bg)) 14%, var(--card-bg));
+  background: color-mix(in srgb, var(--mm-accent, var(--card-bg)) 22%, var(--card-bg));
 }
 .tw-mm-node .tw-link-anchor {
   border-color: color-mix(in srgb, var(--mm-accent, rgb(var(--primary-rgb))) 55%, transparent);

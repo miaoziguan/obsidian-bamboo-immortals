@@ -389,7 +389,7 @@ export const MindmapFeature = {
       };
     }
     const spot = MindmapDoc.freeSpot(this._nodes, anchor);
-    _mutate(() => { this._nodes = MindmapDoc.addNode(this._nodes, t, spot.x, spot.y); });
+    this._mutate(() => { this._nodes = MindmapDoc.addNode(this._nodes, t, spot.x, spot.y); });
     const id = this._nodes[this._nodes.length - 1].id;
     this._mountNode(this._nodes[this._nodes.length - 1]);  // 只挂这一颗，不重画整图
     this._refreshEmpty();
@@ -1054,7 +1054,7 @@ export const MindmapFeature = {
     const id = this._selId;
     if (!id) return;
     this._exitConnectMode();
-    _mutate(() => {
+    this._mutate(() => {
       const { nodes, links } = MindmapDoc.removeNode(this._nodes, this._links, id);
       this._nodes = nodes;
       this._links = links;
@@ -1082,7 +1082,7 @@ export const MindmapFeature = {
   _deleteMulSel() {
     if (!this._selSet || !this._selSet.size) return;
     const ids = Array.from(this._selSet);
-    _mutate(() => {
+    this._mutate(() => {
       let nodes = this._nodes, links = this._links;
       ids.forEach((id) => {
         const r = MindmapDoc.removeNode(nodes, links, id);
@@ -1148,7 +1148,7 @@ export const MindmapFeature = {
   _setColorForSelection(color) {
     const ids = this.getSelectedIds();
     if (!ids.length) return;
-    _mutate(() => {
+    this._mutate(() => {
       ids.forEach((id) => this._setNodeColor(id, color));
       this._scheduleSave();
       this._msg(color ? '已改色' : '已恢复默认色');
@@ -1180,7 +1180,7 @@ export const MindmapFeature = {
     }
     const newIds = [];
     const map = new Map();          // oldId → newId
-    _mutate(() => {
+    this._mutate(() => {
       ids.forEach((oid) => {
         const on = this._nodes.find((n) => n.id === oid);
         if (!on) return;
@@ -1432,7 +1432,7 @@ export const MindmapFeature = {
     const partial = scope.size > 0;
     // 自动布局会重写所有（或选区）子弹的坐标、并可能重新居中视野，不可逆 —— 变更留档
     let label = '';
-    if (this._nodes.length) _mutate(() => { label = this.autoLayout(modes[idx].id, partial ? scope : null); });
+    if (this._nodes.length) this._mutate(() => { label = this.autoLayout(modes[idx].id, partial ? scope : null); });
     this._layoutIdx = (idx + 1) % modes.length;
     return label ? (partial ? '选区 ' + label : label) : '';
   },

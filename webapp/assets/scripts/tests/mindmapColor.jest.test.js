@@ -57,3 +57,47 @@ test('改色把 --mm-accent 写到节点元素且落到数据；恢复默认则�
   expect(el.style.getPropertyValue('--mm-accent')).toBe('');
   expect(MindmapFeature._nodes[0].color).toBe('');
 });
+
+test('端到端：点击工具条色盘 → 目标节点 --mm-accent 落地（复现用户路径）', () => {
+  const layer = document.createElement('div');
+  const nodeBox = document.createElement('div');
+  nodeBox.className = 'tw-mm-nodes';
+  layer.appendChild(nodeBox);
+
+  const MMP = MindmapFeature;
+  MMP._el = layer;
+  MMP._nodeBox = nodeBox;
+  MMP._els = new Map();
+  MMP._linkLayer = { makeLinkable() {} };
+  MMP._nodes = [{ id: 'n1', text: 'hi', x: 0, y: 0, color: '' }];
+  MMP._undoStack = null;
+  MMP._scheduleSave = () => {};
+  MMP._msg = () => {};
+  MMP._selId = 'n1';
+  MMP._selSet = null;
+  MMP._editId = null;
+
+  MMP._initToolbar(layer);
+  MMP._mountNode(MMP._nodes[0]);
+  const el = MMP._els.get('n1');
+  expect(el).toBeTruthy();
+
+  const sw = layer.querySelector('.tw-mm-swatch[data-color="#5b9bff"]');
+  expect(sw).toBeTruthy();
+  sw.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+  expect(el.style.getPropertyValue('--mm-accent')).toBe('#5b9bff');
+  expect(MMP._nodes[0].color).toBe('#5b9bff');
+});
+
+test('回归：mindmapFeature 内不得出现裸 _mutate( 调用（必须 this._mutate）', () => {
+  // 根因：_mutate 只是对象方法（MindmapFeature._mutate），模块作用域并无同名绑定；
+  // 写成裸 _mutate(...) 会在运行时抛 ReferenceError（改色/删除/复制/布局/新建全部静默失效）。
+  const src = fs.readFileSync(
+    path.join(__dirname, '..', 'handlers', 'features', 'mindmapFeature.js'), 'utf8'
+  );
+  const bad = src.split('\n').filter((l) =>
+    /_mutate\s*\(/.test(l) && !/_mutate\s*\(fn\)/.test(l) && !/this\._mutate\s*\(/.test(l)
+  );
+  expect(bad).toEqual([]);
+});

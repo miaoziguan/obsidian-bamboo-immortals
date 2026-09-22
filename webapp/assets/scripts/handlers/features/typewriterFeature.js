@@ -1132,8 +1132,8 @@ export const TypewriterFeature = {
     // ② 新卡必须显式建 DOM：写作档不做视口剔除（scheduleCull 在 write 档空转），
     //    只改模型不会有任何画面变化 —— 这正是「点了没反应」的根因。
     added.forEach((n) => { if (!this._mountedCards.has(n.id)) this._mountCard(n); });
-    // ②bis 顺连（拆出的片段按段落顺序首尾相接：首段→新段1→新段2…；
-    //    外部连线天然留在首段，不向外蔓延）
+    // ②bis 内联串接：拆出片段按段落顺序首尾相接、且把原「出边」挪到末段，
+    //    使拆出的段落链尾接续原文后续（首段不再叉出两条边）
     if (added.length && Array.isArray(this._links)) {
       const nextLinks = WritingDoc.chainSplitChunks(this._links, id, added.map((n) => n.id));
       if (nextLinks.length !== this._links.length) {

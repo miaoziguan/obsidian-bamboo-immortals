@@ -252,26 +252,43 @@ export const WritingDoc = {
   },
 
   /**
-   * 拆卡时把拆出的片段「顺连」成链（按段落顺序首尾相接，符合文章逻辑流）。
-   *  原卡是首段、id 不变 → 其原有外部连线（x→A / B→x）全部保留在首段上不动；
-   *  此处只在拆出的序列 [首段, 新段1, 新段2, …] 上补「每段 → 下一段」的顺连边，
-   *  即 首段→新段1、新段1→新段2 … 使段落按文章顺序相连。去重避免已存在的相邻边。
+   * 拆卡时把拆出的片段「内联串接」成链（按段落顺序首尾相接，且把原文后续接到链尾）：
+   *   · 进边（B→x）原样保留在首段 x（P1）上；
+   *   · 出边（x→A，即原文后续）改接到「末段」—— 拆出的段落链尾接续原文后续，
+   *     得到 上段→…→末段→A 的线性串接，而不是让 x 同时叉出两条边；
+   *   · 再在序列 [首段, 新段1, 新段2, …] 上补「每段 → 下一段」顺连边
+   *     （首段→新段1、新段1→新段2 …），去重避免已存在的相邻边。
+   *   若出边目标已是某段 id（链路内边），原样保留、不反向重接。
    *  @param {Array} links    原连线数组 [{from,to,...}]
    *  @param {string} origId 首段（原卡）的 id
    *  @param {Array<string>} newIds 拆出的新段 id 列表（按段落顺序）
-   *  @returns {Array} 含顺连链边的数组（原边全部保留；无新段时原样返回）
+   *  @returns {Array} 含顺连链边、且出边已挪到末段的数组（无新段时原样返回）
    */
   chainSplitChunks(links, origId, newIds) {
     const list = Array.isArray(links) ? links : [];
     if (!Array.isArray(newIds) || !newIds.length) return list;   // 无新段（未拆）：不改动
     const seen = new Set(list.map((l) => l.from + '>' + l.to));
-    const out = list.slice();
-    const seq = [origId].concat(newIds);                         // 段落顺序链
+    const idSet = new Set(newIds);
+    const lastNew = newIds[newIds.length - 1];
+    const out = [];
+    list.forEach((l) => {
+      if (l.from === origId) {
+        if (idSet.has(l.to)) { out.push(l); return; }   // 已是段落链内边：原样保留，避免反向/重复
+        // 内联串接：出边改接到末段，使拆出链尾接续原文后续（保留原线型 route/bend/dash）
+        const sig = lastNew + '>' + l.to;
+        if (seen.has(sig)) return;                       // 末段本就直连该卡：不重复
+        seen.add(sig);
+        out.push({ from: lastNew, to: l.to, route: l.route, bend: l.bend, dash: l.dash });
+      } else {
+        out.push(l);                                     // 其它边（含进边 to===origId）原样保留
+      }
+    });
+    const seq = [origId].concat(newIds);                 // 段落顺序链
     for (let i = 0; i + 1 < seq.length; i += 1) {
       const sig = seq[i] + '>' + seq[i + 1];
-      if (seen.has(sig)) continue;                             // 去重：相邻已连
+      if (seen.has(sig)) continue;                       // 去重：相邻已连
       seen.add(sig);
-      out.push({ from: seq[i], to: seq[i + 1] });             // 顺连：上一段 → 下一段
+      out.push({ from: seq[i], to: seq[i + 1] });       // 顺连：上一段 → 下一段
     }
     return out;
   },

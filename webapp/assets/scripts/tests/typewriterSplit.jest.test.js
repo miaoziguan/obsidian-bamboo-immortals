@@ -149,14 +149,14 @@ describe('写作档 _splitCard 端到端', () => {
     expect(pushed).toBe(0);                            // 未留档
   });
 
-  test('拆卡时片段顺连成链（段1→段2→段3），外部连线留在首段、不向外蔓延', () => {
+  test('拆卡时片段内联串接（段1→段2→段3→原文后续），原出边挪到末段、不在首段分叉', () => {
     splitFixture([
       { id: 'x', seq: 0, level: 'p', text: '甲\n\n乙\n\n丙', x: 0, y: 0 },   // x 连 A、被 B 连
       { id: 'y', seq: 1, level: 'p', text: '尾卡', x: 0, y: 100 },
     ]);
     feature._links = [
-      { from: 'x', to: 'A' },          // x → A（外部，应留在首段）
-      { from: 'B', to: 'x' },          // B → x（外部，应留在首段）
+      { from: 'x', to: 'A' },          // x → A（原文后续，应内联串接到末段）
+      { from: 'B', to: 'x' },          // B → x（进边，应留在首段）
       { from: 'y', to: 'z' },          // 与 x 无关，不动
     ];
     let rendered = 0;
@@ -165,16 +165,17 @@ describe('写作档 _splitCard 端到端', () => {
     feature._splitCard(feature._mountedCards.get('x'));
     const newIds = feature._notes.filter((n) => n.id !== 'x' && n.id !== 'y').map((n) => n.id);
     expect(newIds.length).toBe(2);     // 乙、丙 两张新段
-    // 顺连：原 3 条 + x→n1、n1→n2 两条链边 = 5
+    // 原 3 条 → x→A 被改为 末段→A（-1），再补 x→n1、n1→n2 两条链边（+2）= 5
     const has = (f, t) => feature._links.some((l) => l.from === f && l.to === t);
     expect(feature._links.length).toBe(5);
-    expect(has('x', 'A')).toBe(true);                 // 外部连线留在首段
-    expect(has('B', 'x')).toBe(true);
+    expect(has('B', 'x')).toBe(true);                  // 进边保留在首段
     expect(has('y', 'z')).toBe(true);                 // 无关边不受影响
-    expect(has('x', newIds[0])).toBe(true);          // 顺连：首段 → 新段1
-    expect(has(newIds[0], newIds[1])).toBe(true);    // 顺连：新段1 → 新段2
-    expect(has('x', newIds[1])).toBe(false);         // 非星型：新段2 只连新段1、不连首段
-    expect(has(newIds[0], 'A')).toBe(false);         // 不向外部伙伴蔓延
+    expect(has('x', newIds[0])).toBe(true);           // 顺连：首段 → 新段1
+    expect(has(newIds[0], newIds[1])).toBe(true);     // 顺连：新段1 → 新段2
+    expect(has(newIds[1], 'A')).toBe(true);           // 内联串接：原出边 x→A 挪到末段
+    expect(has('x', 'A')).toBe(false);                // 首段不再直连 A（改由末段连）
+    expect(has('x', newIds[1])).toBe(false);          // 非星型：首段不叉出到末段
+    expect(has(newIds[0], 'A')).toBe(false);          // 不向外部伙伴蔓延
     expect(has('B', newIds[0])).toBe(false);
     expect(rendered).toBeGreaterThanOrEqual(1);     // 触发了连线重绘
   });
@@ -191,22 +192,40 @@ describe('写作档 _splitCard 端到端', () => {
   });
 });
 
-describe('WritingDoc.chainSplitChunks 顺连契约', () => {
-  test('片段顺序首尾相接（段1→段2→段3），原外部边保留、不向外部蔓延', () => {
+describe('WritingDoc.chainSplitChunks 内联串接契约', () => {
+  test('片段顺序首尾相接（段1→段2→段3），原出边挪到末段、进边保留、不向外部蔓延', () => {
     const links = [
       { from: 'x', to: 'A', route: 'curve', bend: 0.3, dash: true },
       { from: 'B', to: 'x' },
     ];
     const out = WritingDoc.chainSplitChunks(links, 'x', ['n1', 'n2']);
-    expect(out.length).toBe(4);     // 2 原 + 顺连2
+    expect(out.length).toBe(4);     // 2 原(其一改接末段) + 顺连2
     const has = (f, t) => out.some((l) => l.from === f && l.to === t);
-    expect(has('x', 'A')).toBe(true);
-    expect(has('B', 'x')).toBe(true);
-    expect(has('x', 'n1')).toBe(true);    // 顺连：首段 → 新段1
-    expect(has('n1', 'n2')).toBe(true);   // 顺连：新段1 → 新段2
-    expect(has('x', 'n2')).toBe(false);   // 非星型：新段2 不连首段
-    expect(has('n1', 'A')).toBe(false);   // 不向外蔓延
+    expect(has('B', 'x')).toBe(true);                 // 进边保留在首段
+    expect(has('x', 'n1')).toBe(true);                // 顺连：首段 → 新段1
+    expect(has('n1', 'n2')).toBe(true);               // 顺连：新段1 → 新段2
+    expect(has('n2', 'A')).toBe(true);                // 内联串接：原出边 x→A 挪到末段 n2
+    expect(has('x', 'A')).toBe(false);                // 首段不再直连 A
+    expect(has('x', 'n2')).toBe(false);               // 首段不叉出到末段
+    expect(has('n1', 'A')).toBe(false);               // 不向外蔓延
     expect(has('B', 'n1')).toBe(false);
+    // 出边属性被原样带到末段（线型/弯曲/虚实不丢）
+    const moved = out.find((l) => l.from === 'n2' && l.to === 'A');
+    expect(moved).toBeTruthy();
+    expect(moved.route).toBe('curve');
+    expect(moved.bend).toBe(0.3);
+    expect(moved.dash).toBe(true);
+  });
+
+  test('内联串接核心：三段 + 原文后续 → 首段→n1→n2→后续（出边不在首段分叉）', () => {
+    const links = [{ from: 'prev', to: 'x' }, { from: 'x', to: 'next' }];
+    const out = WritingDoc.chainSplitChunks(links, 'x', ['n1', 'n2']);
+    const has = (f, t) => out.some((l) => l.from === f && l.to === t);
+    expect(has('prev', 'x')).toBe(true);   // 进边留在首段
+    expect(has('x', 'n1')).toBe(true);
+    expect(has('n1', 'n2')).toBe(true);
+    expect(has('n2', 'next')).toBe(true);  // 出边挪到末段 → 线性串接
+    expect(has('x', 'next')).toBe(false);  // 首段不再叉出
   });
 
   test('无既有连线时仍补顺连链边（x→n1→n2）', () => {

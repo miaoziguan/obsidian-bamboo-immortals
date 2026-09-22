@@ -1187,7 +1187,13 @@ export const TypewriterFeature = {
       if (t) { t.textContent = anchorNote.text; this._measureCard(anchorEl); }
     }
     if (this._mode === 'write') {
-      PersistenceCoordinator.reflowWriteOrder({ state: this._state, ctrl: this }, { skipUndo: true });
+      // 合并后保留当前布局（含分幕/顺流档位与既有位置），不再全量重排：
+      // 否则 reflowWriteOrder 会从原点(0,0)重铺整列并把视口重新居中，表现为「跳回顺流重排」；
+      // 且分幕档在合并后同级标题数不足 ≥2 时（splitActs 只数卡片 level）会回退顺流。
+      this._updateCulling();                        // 移除被并卡后重算挂载/剔除
+      this._refreshWriteOrder();                    // seq 已压紧，刷新顺序徽标
+      this._syncLayoutGeo();                        // 几何缓存与模型位置保持一致（位置未变，安全同步）
+      this._scheduleSave();                         // 持久化合并结果
     } else {
       this._seedSpatial();
       this._updateCulling();                        // 便签档：移除后重排进屏

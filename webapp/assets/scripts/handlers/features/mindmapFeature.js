@@ -182,13 +182,19 @@ export const MindmapFeature = {
     tb.addEventListener('click', (e) => {
       // 色块点击
       const swatch = e.target.closest('.tw-mm-swatch');
-      if (swatch) { e.stopPropagation(); this._setColorForSelection(swatch.dataset.color); return; }
-      // 图标按钮点击
+      if (swatch) {
+        e.stopPropagation();
+        this._setColorForSelection(swatch.dataset.color);
+        if (e.detail > 0) swatch.blur();   // 鼠标点击后交还焦点：否则空格会再着色 + 焦点框挂住
+        return;
+      }
+      // 图标按钮点击（dup / del）
       const b = e.target.closest('button[data-act]');
       if (!b) return;
       const act = b.dataset.act;
       if (act === 'dup') this._duplicateSel();
       else if (act === 'del') this._deleteSel();
+      if (e.detail > 0) b.blur();           // 鼠标点击后交还焦点：否则空格会再次 dup / del 选中
     });
   },
 
@@ -213,9 +219,10 @@ export const MindmapFeature = {
       if (e.key === 'Enter') { e.preventDefault(); this._searchStep(e.shiftKey ? -1 : 1); }
       else if (e.key === 'Escape') { e.preventDefault(); this._closeSearch(); }
     });
-    sb.querySelector('.tw-mm-search-prev').addEventListener('click', () => this._searchStep(-1));
-    sb.querySelector('.tw-mm-search-next').addEventListener('click', () => this._searchStep(1));
-    sb.querySelector('.tw-mm-search-close').addEventListener('click', () => this._closeSearch());
+    // 鼠标点击后交还焦点：否则按钮持焦，之后按空格会再次翻页 / 关闭搜索
+    sb.querySelector('.tw-mm-search-prev').addEventListener('click', (e) => { this._searchStep(-1); if (e.detail > 0) e.currentTarget.blur(); });
+    sb.querySelector('.tw-mm-search-next').addEventListener('click', (e) => { this._searchStep(1); if (e.detail > 0) e.currentTarget.blur(); });
+    sb.querySelector('.tw-mm-search-close').addEventListener('click', (e) => { this._closeSearch(); if (e.detail > 0) e.currentTarget.blur(); });
   },
 
   async activate() {

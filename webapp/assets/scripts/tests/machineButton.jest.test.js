@@ -64,3 +64,62 @@ test('回归：四个机身键必须走 _bindRbtn（不得裸用 addEventListene
     expect(src).toContain(`_bindRbtn('${sel}'`);
   });
 });
+
+test('主题开关鼠标点击后交还焦点（否则空格会重切 Obsidian 主题）', () => {
+  const host = document.createElement('div');
+  const sw = document.createElement('button');
+  sw.id = 'twThemeSwitch';
+  host.appendChild(sw);
+  document.body.appendChild(host);
+  feature._el = host;
+  let toggled = 0;
+  feature._toggleObsidianTheme = async () => { toggled++; };
+  feature._syncThemeSwitch = () => {};
+  feature._isDarkNow = () => false;
+  feature._bindThemeSwitch();
+
+  sw.focus();
+  sw.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }));
+  expect(toggled).toBe(1);
+  expect(document.activeElement).not.toBe(sw);   // 鼠标点击交还焦点
+
+  sw.focus();
+  sw.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 0 }));
+  expect(toggled).toBe(2);
+  expect(document.activeElement).toBe(sw);       // 键盘激活保留焦点
+});
+
+test('多选操作条（合并/删除）鼠标点击后交还焦点（否则空格重触发，删除尤危险）', () => {
+  const canvas = document.createElement('div');
+  document.body.appendChild(canvas);
+  feature._canvas = canvas;
+  feature._selBarEl = null;
+  let merged = 0, deleted = 0;
+  feature._mergeSelected = () => { merged++; };
+  feature._deleteSelected = () => { deleted++; };
+  feature._updateSelBar = () => {};
+  feature._ensureSelBar();
+
+  const mergeBtn = canvas.querySelector('.tw-sel-merge');
+  const delBtn = canvas.querySelector('.tw-sel-del');
+  expect(mergeBtn && delBtn).toBeTruthy();
+
+  mergeBtn.focus();
+  mergeBtn.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }));
+  expect(merged).toBe(1);
+  expect(document.activeElement).not.toBe(mergeBtn);
+
+  delBtn.focus();
+  delBtn.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }));
+  expect(deleted).toBe(1);
+  expect(document.activeElement).not.toBe(delBtn);
+});
+
+test('回归：主题开关与多选条按钮点击必须交还焦点', () => {
+  const src = fs.readFileSync(
+    path.join(__dirname, '..', 'handlers', 'features', 'typewriterFeature.js'), 'utf8'
+  );
+  expect(src).toContain('sw.blur()');        // 主题开关
+  expect(src).toContain('mergeBtn.blur()');  // 合并
+  expect(src).toContain('delBtn.blur()');    // 删除
+});

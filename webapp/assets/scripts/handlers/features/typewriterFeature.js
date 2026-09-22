@@ -363,7 +363,7 @@ export const TypewriterFeature = {
   _bindThemeSwitch() {
     const sw = this._el && this._el.querySelector('#twThemeSwitch');
     if (!sw) return;
-    sw.addEventListener('click', () => this._toggleObsidianTheme());
+    sw.addEventListener('click', (e) => { this._toggleObsidianTheme(); if (e.detail > 0) sw.blur(); });
     this._syncThemeSwitch();
     if (typeof MutationObserver !== 'undefined') {
       this._themeMo = new MutationObserver(() => this._syncThemeSwitch());
@@ -1220,8 +1220,11 @@ export const TypewriterFeature = {
     bar.innerHTML =
       '<button type="button" class="tw-sel-merge" aria-label="合并选中卡片"></button>' +
       '<button type="button" class="tw-sel-del" aria-label="删除选中卡片">删除</button>';
-    bar.querySelector('.tw-sel-merge').addEventListener('click', (e) => { e.stopPropagation(); this._mergeSelected(); });
-    bar.querySelector('.tw-sel-del').addEventListener('click', (e) => { e.stopPropagation(); this._deleteSelected(); });
+    const mergeBtn = bar.querySelector('.tw-sel-merge');
+    const delBtn = bar.querySelector('.tw-sel-del');
+    // 鼠标点击后交还焦点：否则按钮持焦，之后按空格会再次触发（重合并 / 重删除选中）
+    mergeBtn.addEventListener('click', (e) => { e.stopPropagation(); this._mergeSelected(); if (e.detail > 0) mergeBtn.blur(); });
+    delBtn.addEventListener('click', (e) => { e.stopPropagation(); this._deleteSelected(); if (e.detail > 0) delBtn.blur(); });
     bar.addEventListener('pointerdown', (e) => e.stopPropagation());   // 条内操作不触发画布平移/取消选择
     this._canvas.appendChild(bar);
     this._selBarEl = bar;

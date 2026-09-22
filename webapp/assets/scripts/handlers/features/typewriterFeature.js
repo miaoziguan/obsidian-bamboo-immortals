@@ -422,6 +422,17 @@ export const TypewriterFeature = {
     this._showScreenMsg(applied ? 'DARK MODE' : 'LIGHT MODE', 900);
   },
 
+  /** 机身按钮通用绑定：鼠标/触控点击后交还焦点（与旋钮 #twKnob 同款处理）。
+   *  不交还的话，按钮仍持有焦点，之后按空格/回车会「再次激活」它：
+   *  写作档 = 重切排版模式（顺流竖排 ⇄ 分幕）、便签档 = 重排网格/重切纸样字体、
+   *  打印键还会再打一张 —— 且浏览器冒出焦点框，看起来「激活态取消不掉」。
+   *  键盘激活（Enter/空格，detail=0）不 blur，保留键盘连续操作的能力。 */
+  _bindRbtn(sel, fn) {
+    const el = this._el && this._el.querySelector(sel);
+    if (!el) return;
+    el.addEventListener('click', (e) => { fn(e); if (e.detail > 0) el.blur(); });
+  },
+
   _bindInput() {
     const input = this._input;
     const cursor = this._el.querySelector('#twCursor');
@@ -431,7 +442,7 @@ export const TypewriterFeature = {
     // 同一个「打印」动作按模式分流：便签模式打印便签，导图模式新建节点。
     // 否则导图里打字回车会打出一张落在隐藏画布上的便签 —— 屏幕上什么都没有。
     const doPrint = () => this._commitInput();
-    this._el.querySelector('#twPrint').addEventListener('click', doPrint);
+    this._bindRbtn('#twPrint', doPrint);
     // 回车即打印：便签模式吐纸条、导图模式射出子弹（Ctrl/Cmd+Enter 亦同）。
     // Shift+Enter 保留换行，便于在便签里写多行；空输入由 _commitInput 各自提示。
     input.addEventListener('keydown', (e) => {
@@ -442,7 +453,7 @@ export const TypewriterFeature = {
     });
 
     // 第二个键：便签模式=切换字体；思维子弹模式=导出为 Markdown 落库（两者互不干扰）。
-    this._el.querySelector('#twFont').addEventListener('click', () => {
+    this._bindRbtn('#twFont', () => {
       if (this._mode === 'mindmap') { this._exportMindmap(); return; }   // 导图模式：第二个键改为「导出为 Markdown」
       // MD可视化写作模式：第二个键 = 保存快照（当前卡片合成整篇 Markdown，写入带时间戳的独立笔记，不覆盖源笔记）
       if (this._mode === 'write') { this._saveSnapshot(); return; }
@@ -453,7 +464,7 @@ export const TypewriterFeature = {
     });
 
     // 第三个键：便签模式=一键排版（网格）；思维子弹模式=一键自动布局（多种布局循环）。两者互不干扰。
-    this._el.querySelector('#twArrange').addEventListener('click', () => {
+    this._bindRbtn('#twArrange', () => {
       if (this._mode === 'mindmap') {
         const label = MindmapFeature.cycleLayout();
         this._showScreenMsg(label ? ('LAYOUT: ' + label) : '画布为空', 1400);
@@ -481,7 +492,7 @@ export const TypewriterFeature = {
 
     // 便签样式切换：循环全部 PAPERS，并更新屏幕 PAPER 标签。
     // 只影响「之后打印」的卡片，已生成的卡片保持其打印时的样式（各自 data-paper 固定）。
-    this._el.querySelector('#twPaper').addEventListener('click', () => {
+    this._bindRbtn('#twPaper', () => {
       if (this._mode === 'write') { this._openPreviewModal(); return; }  // 写作档：第一个键改为「整篇预览」
       if (this._mode === 'mindmap') { MindmapFeature.cycleStyle(); return; }   // 导图模式：第一个键改为切换子弹样式
       this._paperIdx = (this._paperIdx + 1) % PAPERS.length;

@@ -133,6 +133,12 @@ export class AppAPI {
   collapseRightSidebar?: () => boolean;
   /** 展开 Obsidian 右侧栏回调（由 DailyReviewView 注入；恢复纵向且此前由我们折叠时调用） */
   expandRightSidebar?: () => void;
+  /**
+   * 画中卷·打字机「一键全屏」：同时折叠/恢复 Obsidian 左右侧栏（由 ScrollView 注入）。
+   * 进入时记录两侧原始折叠态，退出时按记录恢复——不一律展开，避免把用户刻意收起的侧栏弹回来。
+   * @returns 切换后是否处于全屏态（true=已全屏，false=已恢复）
+   */
+  toggleZen?: () => boolean;
   /** 待恢复的布局模式回调（由 DailyReviewView 注入，重建视图后 app:ready 带回 webapp） */
   getPendingLayoutMode?: () => string | null;
   /** 视图已 detach 后置 true，扫描等异步任务据此提前终止（#L14） */
@@ -314,6 +320,17 @@ export class AppAPI {
         this.respond(id, { ok: true });
       } else {
         this.respond(id, { ok: false, error: 'moveToSidebar 未注入' });
+      }
+      return;
+    }
+
+    // ---- 画中卷·打字机「一键全屏」：折叠/恢复左右侧栏 ----
+    if (type === 'app:toggleZen') {
+      if (this.toggleZen) {
+        const zen = this.toggleZen();
+        this.respond(id, { ok: true, zen: !!zen });
+      } else {
+        this.respond(id, { ok: false, error: 'toggleZen 未注入' });
       }
       return;
     }

@@ -1214,6 +1214,22 @@ window.addEventListener('message', (e) => {
   }
 });
 
+// 画中卷真实全屏态（宿主注入）：两侧栏都已折叠即视为全屏。
+// 监听到达时若打字机按钮尚未挂载则只缓存，待 typewriterFeature 挂载后读取应用，
+// 使按钮初始态与宿主侧栏态一致（抗视图实例重建 / webapp 重载造成的错位）。
+ScrollManager._zen = false;
+window.addEventListener('message', (e) => {
+  if (e.data && e.data.type === 'scroll:zen') {
+    ScrollManager._zen = !!(e.data.zen);
+    const sw = document.getElementById('twZenSwitch');
+    if (sw) {
+      sw.setAttribute('aria-checked', ScrollManager._zen ? 'true' : 'false');
+      sw.title = ScrollManager._zen ? '退出全屏：恢复左右侧栏' : '一键全屏：收起左右侧栏';
+      sw.setAttribute('aria-label', sw.title);
+    }
+  }
+});
+
 // 画中卷以「独立视图」形态运行（scroll.html）：bridge 就绪后自动挂载全屏内容。
 // 仅当文档中存在独立视图容器 #scroll-view-root（scroll.html 特有）时才挂载，
 // 避免被首页/主视图（app.html）误加载后渲染到不该出现的位置。

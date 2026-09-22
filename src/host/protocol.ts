@@ -44,6 +44,8 @@ export const ALL_MESSAGE_TYPES = [
   'app:openScroll',
   'app:openScrollLeftSidebar',
   'app:moveScroll',
+  // 画中卷·打字机「一键全屏」：折叠/恢复 Obsidian 左右侧栏，最大化画面
+  'app:toggleZen',
   'app:collapseRightSidebar',
   'app:expandRightSidebar',
   'app:getTheme',

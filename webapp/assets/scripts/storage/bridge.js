@@ -620,6 +620,19 @@ export class BridgeStorage {
     }
   }
 
+  /** 画中卷·打字机「一键全屏」：折叠/恢复 Obsidian 左右侧栏（宿主记录进入前状态，退出按原状恢复）。
+   *  @returns {Promise<boolean>} 切换后是否处于全屏态 */
+  async toggleZen() {
+    await this.ensureReady();
+    try {
+      const res = await this._send('app:toggleZen', {});
+      return !!(res && res.zen);
+    } catch (e) {
+      console.warn('[Bridge] toggleZen 不可用:', e && e.message);
+      return false;
+    }
+  }
+
   /** 请求宿主打开「画中卷」独立中央视图（不影响日报视图） */
   async openScrollView(feature) {
     await this.ensureReady();

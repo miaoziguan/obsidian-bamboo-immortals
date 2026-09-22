@@ -130,6 +130,7 @@ export const TypewriterFeature = {
     this._bindLevelKeys();
     this._bindInput();
     this._bindThemeSwitch();
+    this._bindZenSwitch();
     if (typeof PrivacyMode !== 'undefined') PrivacyMode.markText();
     // 对齐原版：打开即聚焦输入框，便于直接键入
     if (this._input) this._input.focus();
@@ -197,6 +198,7 @@ export const TypewriterFeature = {
           <div class="tw-case-label">
             <span class="tw-dot"></span><span class="tw-brand">竹林中国</span>
             <button type="button" class="tw-theme-switch" id="twThemeSwitch" role="switch" aria-checked="false" aria-label="切换 Obsidian 明暗" title="切换 Obsidian 明暗"><span class="tw-theme-switch-knob" aria-hidden="true"></span></button>
+            <button type="button" class="tw-theme-switch" id="twZenSwitch" role="switch" aria-checked="false" aria-label="一键全屏：收起左右侧栏" title="一键全屏：收起左右侧栏"><span class="tw-theme-switch-knob" aria-hidden="true"></span></button>
             <span class="tw-case-right">BAMBOO IMMORTALS</span>
           </div>
 
@@ -372,6 +374,41 @@ export const TypewriterFeature = {
       if (document.body) this._themeMo.observe(document.body, opts);
       const host = document.getElementById('bamboo-shadow-host');
       if (host) this._themeMo.observe(host, opts);
+    }
+  },
+
+  /**
+   * 「一键全屏」开关（顶栏胶囊，样式复用主题开关）：折叠/恢复 Obsidian 左右侧栏。
+   * 仅打字机有本开关（香道无 typewriterFeature UI）；退出全屏由宿主恢复进入前状态。
+   */
+  _bindZenSwitch() {
+    const sw = this._el && this._el.querySelector('#twZenSwitch');
+    if (!sw) return;
+    // 初始态跟随宿主真实全屏态（ScrollView 经 scroll:zen 注入）：
+    // 视图实例重建 / webapp 重载后按钮停在 off、侧栏实际折叠时，依此把按钮拨回 on，
+    // 避免「点 off 按钮像进入全屏、宿主却退出全屏」的悖论。
+    const zen0 = (typeof ScrollManager !== 'undefined' && typeof ScrollManager._zen === 'boolean')
+      ? ScrollManager._zen
+      : false;
+    sw.setAttribute('aria-checked', zen0 ? 'true' : 'false');
+    sw.title = zen0 ? '退出全屏：恢复左右侧栏' : '一键全屏：收起左右侧栏';
+    sw.setAttribute('aria-label', sw.title);
+    sw.addEventListener('click', (e) => { void this._toggleZen(); if (e.detail > 0) sw.blur(); });
+  },
+
+  /** 切换全屏并同步开关态（aria-checked 驱动胶囊 knob 位移/变色） */
+  async _toggleZen() {
+    const sw = this._el && this._el.querySelector('#twZenSwitch');
+    let zen = false;
+    try {
+      if (typeof storageManager !== 'undefined' && typeof storageManager.toggleZen === 'function') {
+        zen = await storageManager.toggleZen();
+      }
+    } catch (_) { /* 桥不可用则静默 */ }
+    if (sw) {
+      sw.setAttribute('aria-checked', zen ? 'true' : 'false');
+      sw.title = zen ? '退出全屏：恢复左右侧栏' : '一键全屏：收起左右侧栏';
+      sw.setAttribute('aria-label', sw.title);
     }
   },
 

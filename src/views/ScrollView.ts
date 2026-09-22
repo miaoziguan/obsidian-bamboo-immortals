@@ -35,6 +35,51 @@ export class ScrollView extends ItemView {
   private _feature: string = 'incense';
   /** 本 leaf 当前停靠位置，per-leaf 存储（替代原 static pendingLocation） */
   private _location: ScrollLocation = 'center';
+  /** 「一键全屏」进入前左右侧栏的折叠态（退出时按此恢复；null = 当前不在全屏态） */
+  private _zenPrev: { left: boolean; right: boolean } | null = null;
+
+  /**
+   * 「一键全屏」：同时折叠 Obsidian 左右侧栏以最大化画面；再点一次恢复进入前的状态。
+   * 退出时只展开「原本开着」的那一侧——不一律展开，避免把用户刻意收起的侧栏弹回来。
+   * @returns 切换后是否处于全屏态（true = 已全屏，false = 已恢复）
+   */
+  private _toggleZen(): boolean {
+    const ws = this.app.workspace as unknown as {
+      leftSplit?: { collapse?: () => void; expand?: () => void; collapsed?: boolean };
+      rightSplit?: { collapse?: () => void; expand?: () => void; collapsed?: boolean };
+    };
+    const leftCollapsed = !!ws?.leftSplit?.collapsed;
+    const rightCollapsed = !!ws?.rightSplit?.collapsed;
+
+    // 退出全屏，命中以下任一即视为「当前处于全屏态」：
+    //  ① 内存仍有进入前记录（覆盖正常「再点一次退出」，按记录只展开原本开着的侧栏）；
+    //  ② 无记录但两侧此刻都已折叠 —— 对应两种隐性丢失场景：
+    //     · 视图实例被重建（热重载 / layout-change 重建 leaf 都会让 _zenPrev 重置为 null）；
+    //     · 用户经其它途径（Obsidian 原生/其它插件）手动收起了两侧栏。
+    // 此分支兜底展开两侧（全屏退出本就该回到完整界面），避免「_zenPrev 丢失 → 误走进入分支
+    // → 再折叠一次却无视觉变化」导致的「点了没反应」。
+    if (this._zenPrev || (leftCollapsed && rightCollapsed)) {
+      const prev = this._zenPrev ?? { left: false, right: false };
+      this._zenPrev = null;
+      try {
+        if (!prev.left) ws?.leftSplit?.expand?.();
+        if (!prev.right) ws?.rightSplit?.expand?.();
+      } catch {
+        /* 展开失败不阻断 */
+      }
+      return false;
+    }
+
+    // 进入全屏：记录两侧原始折叠态 → 两侧都折叠
+    this._zenPrev = { left: leftCollapsed, right: rightCollapsed };
+    try {
+      ws?.leftSplit?.collapse?.();
+      ws?.rightSplit?.collapse?.();
+    } catch {
+      /* 折叠失败不阻断，仍视为全屏态 */
+    }
+    return true;
+  }
 
   constructor(
     leaf: WorkspaceLeaf,
@@ -183,6 +228,15 @@ export class ScrollView extends ItemView {
         ScrollView.pendingLocation = null;
         cw.postMessage({ type: 'scroll:feature', feature: this._feature }, '*');
         cw.postMessage({ type: 'scroll:location', location: this._location }, '*');
+        // 真实全屏态（两侧栏都已折叠）：让 webapp 按钮初始态与宿主侧栏态一致，
+        // 避免「视图重建 / webapp 重载后按钮停在 off、侧栏实际折叠」造成的悖论
+        // （点 off 按钮按 UI 语义像「进入全屏」，宿主却依真实态退出）。
+        const wsZen = this.app.workspace as unknown as {
+          leftSplit?: { collapsed?: boolean };
+          rightSplit?: { collapsed?: boolean };
+        };
+        const zenNow = !!(wsZen?.leftSplit?.collapsed && wsZen?.rightSplit?.collapsed);
+        cw.postMessage({ type: 'scroll:zen', zen: zenNow }, '*');
       });
 
       loadingEl.remove();
@@ -220,7 +274,7 @@ export class ScrollView extends ItemView {
 
   /** 构造 AppAPI（通信层），含 3-dot 移动回调。onOpen 与 reloadWebapp 共用，避免逻辑分叉 */
   private _createAppApi(): AppAPI {
-    return new AppAPI(
+    const api = new AppAPI(
       this.app,
       this.settings,
       this.saveSettings,
@@ -258,6 +312,9 @@ export class ScrollView extends ItemView {
         })();
       }
     );
+    // 画中卷·打字机「一键全屏」：折叠/恢复左右侧栏（ScrollView 自持全屏前后状态，见 _toggleZen）
+    api.toggleZen = () => this._toggleZen();
+    return api;
   }
 
   /**

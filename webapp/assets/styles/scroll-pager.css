@@ -873,6 +873,103 @@ body.dark .tw-print,
 .tw-theme-switch:active { filter: brightness(1.06); }
 .tw-theme-switch[aria-checked="true"]:active { filter: brightness(1.14); }
 
+/* ===== 一键全屏开关（#twZenSwitch，打字机顶栏第二颗胶囊） =====
+   造型完全复用 .tw-theme-switch，且「亮色下不做任何覆盖」：
+   未全屏 = 基础态（半透明绿底 + 深色 knob），与主题开关未勾选态逐像素一致。
+   曾经的错误做法是无条件强加深色凹刻底——rgba(black,.55) 叠在亮色机身上会变灰白，
+   于是亮色下两颗开关一颗绿一颗灰白，明显不一致。
+   只有暗色机身，基础底座 rgba(primary,.20) 才几乎隐形（实测只剩 knob 一个点），
+   故把覆盖收窄到暗色作用域（:host(.dark) 与 body.dark 双写，同本文件其余暗色规则）。 */
+:host(.dark) .tw-theme-switch#twZenSwitch:not([aria-checked="true"]),
+body.dark .tw-theme-switch#twZenSwitch:not([aria-checked="true"]) {
+  border-color: rgba(var(--green-very-bright-rgb), 0.32);
+  background: linear-gradient(
+    180deg,
+    rgba(var(--black-rgb), 0.55) 0%,
+    rgba(var(--black-rgb), 0.35) 55%,
+    rgba(var(--black-rgb), 0.22) 100%
+  );
+  box-shadow:
+    inset 0 3px 4px rgba(var(--black-rgb), 0.55),
+    inset 0 -1px 1px rgba(var(--green-very-bright-rgb), 0.12);
+}
+/* 暗色·关态 knob：半透明荧光绿停左侧（开态一律沿用 checked 态：滑右 + 点亮） */
+:host(.dark) .tw-theme-switch#twZenSwitch:not([aria-checked="true"]) .tw-theme-switch-knob,
+body.dark .tw-theme-switch#twZenSwitch:not([aria-checked="true"]) .tw-theme-switch-knob {
+  background: rgba(var(--green-very-bright-rgb), 0.5);
+  box-shadow: 0 1px 2px rgba(var(--black-rgb), 0.35);
+}
+/* 暗色·关态 hover：加深描边，避免被基础态 hover 的亮色底洗掉 */
+:host(.dark) .tw-theme-switch#twZenSwitch:not([aria-checked="true"]):hover,
+body.dark .tw-theme-switch#twZenSwitch:not([aria-checked="true"]):hover {
+  border-color: rgba(var(--green-very-bright-rgb), 0.5);
+  background: linear-gradient(
+    180deg,
+    rgba(var(--black-rgb), 0.62) 0%,
+    rgba(var(--black-rgb), 0.42) 55%,
+    rgba(var(--black-rgb), 0.28) 100%
+  );
+}
+
+/* ===== 亮色机身 + 已全屏（#twZenSwitch 的 checked 态）=====
+   checked 态原样式（深色凹刻底 + 荧光绿边 + 亮绿 knob）是为**暗色机身**设计的：
+   主题开关在亮色下永远是未勾选态，所以这套配色从没在浅色机身上验证过。
+   直接套用 → 浅色机身上一颗暗疙瘩，与旁边绿胶囊格格不入（实测截图确认）。
+   亮色「开」的标准语义 = 实心品牌绿 + 白色 knob 滑右，故此处专给亮色重写；
+   暗色则由紧随其后的 :host(.dark)/body.dark 规则以更高特异性恢复原凹刻样式。
+
+   分层为什么不写 :not(.dark)：那样在「body 有 .dark 但 host 无」时会误判成亮色。
+   改用「暗色规则特异性更高」来分层（(1,3,0) > (1,2,0)），与本文件既有的
+   「body.dark / :host(.dark) 任一命中即暗色」约定保持一致。 */
+.tw-theme-switch#twZenSwitch[aria-checked="true"] {
+  border-color: rgba(var(--bamboo-deep-rgb), 0.42);
+  background: rgb(var(--primary-rgb));
+  box-shadow:
+    inset 0 1px 2px rgba(var(--white-rgb), 0.5),
+    0 1px 3px rgba(var(--primary-rgb), 0.35);
+}
+/* 亮色·开态 knob：宣纸白滑右（位移沿用基础 checked 规则的 transform，此处不重写） */
+.tw-theme-switch#twZenSwitch[aria-checked="true"] .tw-theme-switch-knob {
+  background: rgb(var(--rice-paper-rgb));
+  box-shadow: 0 1px 2px rgba(var(--bamboo-deep-rgb), 0.35);
+}
+/* 亮色·开态 hover：只压描边与投影，不用 filter —— 否则会盖掉 :active 的亮度反馈 */
+.tw-theme-switch#twZenSwitch[aria-checked="true"]:hover {
+  border-color: rgba(var(--bamboo-deep-rgb), 0.62);
+  box-shadow:
+    inset 0 1px 2px rgba(var(--white-rgb), 0.6),
+    0 1px 4px rgba(var(--primary-rgb), 0.5);
+}
+/* 暗色·开态：恢复凹刻深底 + 荧光绿边（与原 [aria-checked="true"] 完全一致） */
+:host(.dark) .tw-theme-switch#twZenSwitch[aria-checked="true"],
+body.dark .tw-theme-switch#twZenSwitch[aria-checked="true"] {
+  border-color: rgba(var(--green-very-bright-rgb), 0.32);
+  background: linear-gradient(
+    180deg,
+    rgba(var(--black-rgb), 0.55) 0%,
+    rgba(var(--black-rgb), 0.35) 55%,
+    rgba(var(--black-rgb), 0.22) 100%
+  );
+  box-shadow:
+    inset 0 3px 4px rgba(var(--black-rgb), 0.55),
+    inset 0 -1px 1px rgba(var(--green-very-bright-rgb), 0.12);
+}
+:host(.dark) .tw-theme-switch#twZenSwitch[aria-checked="true"] .tw-theme-switch-knob,
+body.dark .tw-theme-switch#twZenSwitch[aria-checked="true"] .tw-theme-switch-knob {
+  background: rgb(var(--green-very-bright-rgb));
+  box-shadow: 0 0 0.3em rgba(var(--green-very-bright-rgb), 0.6);
+}
+:host(.dark) .tw-theme-switch#twZenSwitch[aria-checked="true"]:hover,
+body.dark .tw-theme-switch#twZenSwitch[aria-checked="true"]:hover {
+  border-color: rgba(var(--green-very-bright-rgb), 0.62);
+  background: linear-gradient(
+    180deg,
+    rgba(var(--black-rgb), 0.62) 0%,
+    rgba(var(--black-rgb), 0.42) 55%,
+    rgba(var(--black-rgb), 0.28) 100%
+  );
+}
+
 /* ===== 红色齿轮旋钮（模式切换：自由画布 ↔ 思维子弹） =====
    机身是「绿玻璃功能键 + 琥珀金 PRINT」两个色调，这里引入第三种信号色承载
    「切换整个模式」的语义；取暗朱红 + 金属滚花，避免与柔绿玻璃撞色。

@@ -8,6 +8,11 @@ export const ThemeEffects = {
      */
     _themeSettings: {},
 
+    /** 外部主题清单（仅登记名字 + meta，代码未加载）。key=主题名，value={name,icon,description,loaded} */
+    availableExternal: {},
+    /** 进行中的懒加载 Promise（防止重复请求同名主题） */
+    _loadingThemes: {},
+
     themes: {
         bamboo: {
             name: '竹林清韵',
@@ -41,6 +46,15 @@ export const ThemeEffects = {
     init(themeName = 'bamboo') {
         var section = byId('themeEffectSection');
         if (!section) return;
+        // 外部主题懒加载恢复：清单在、代码未注册 → 先用 bamboo 占位，加载完成再真正初始化
+        if (themeName && themeName !== 'bamboo' && !this.themes[themeName] && this.availableExternal[themeName]) {
+            const self = this;
+            this.init('bamboo');
+            this._ensureLoaded(themeName).then(function (ok) {
+                if (ok) { self.destroy(); self.init(themeName); }
+            });
+            return;
+        }
         var container = section.firstElementChild;
         const theme = this.themes[themeName];
         if (theme && typeof theme.init === 'function') {
@@ -52,6 +66,20 @@ export const ThemeEffects = {
     },
 
     switchTheme(themeName) {
+        if (!themeName || themeName === this.currentTheme) return;
+        // 外部主题懒加载：清单在、代码未注册 → 先拉取再切换
+        if (!this.themes[themeName] && this.availableExternal[themeName]) {
+            const self = this;
+            this._ensureLoaded(themeName).then(function (ok) {
+                if (ok) {
+                    self.switchTheme(themeName);
+                } else {
+                    const label = self.availableExternal[themeName] ? self.availableExternal[themeName].name : themeName;
+                    Toast.showToast('主题「' + label + '」加载失败', 'error');
+                }
+            });
+            return;
+        }
         if (!this.themes[themeName]) return;
 
         var section = byId('themeEffectSection');
@@ -61,10 +89,25 @@ export const ThemeEffects = {
 
         // 淡出 → 替换内容 → 淡入，消除 innerHTML 瞬间白屏
         var self = this;
+        // doSwap 在淡出动画结束后才执行：先把新主题 DOM 挂载进 section，
+        // 再清理旧主题并初始化新主题。BambooGarden.init 等依赖 #farBamboo / #leafContainer
+        // 等新 DOM（byId 查找），必须在 DOM 就位后才能跑，否则会 early-return 导致
+        // 竹丛/落叶等动效缺失、显示不全。
         var doSwap = function() {
             var newEl = self.createElement(self.render(themeName));
             section.innerHTML = '';
             section.appendChild(newEl);
+            // 新 DOM 就位后再清理旧主题 + 初始化新主题
+            const oldTheme = self.themes[self.currentTheme];
+            if (oldTheme && typeof oldTheme.destroy === 'function') {
+                try { oldTheme.destroy(); } catch (e) {
+                    console.warn('[ThemeEffects] 旧主题 destroy 失败:', e.message);
+                }
+            }
+            self.destroy();
+            self.currentTheme = themeName;
+            self.init(themeName);
+            Toast.showToast('已切换至「' + self.themes[themeName].name + '」', 'success');
             // 新内容就位后立即恢复不透明度
             requestAnimationFrame(function() {
                 section.style.opacity = '1';
@@ -100,19 +143,6 @@ export const ThemeEffects = {
         if (typeof SectionRegistry !== 'undefined') {
             SectionRegistry.update('themeEffect', { theme: themeName });
         }
-
-        // 清理旧主题
-        const oldTheme = this.themes[this.currentTheme];
-        if (oldTheme && typeof oldTheme.destroy === 'function') {
-            try { oldTheme.destroy(); } catch (e) {
-                console.warn('[ThemeEffects] 旧主题 destroy 失败:', e.message);
-            }
-        }
-
-        this.destroy();
-        this.currentTheme = themeName;
-        this.init(themeName);
-        Toast.showToast('已切换至「' + this.themes[themeName].name + '」', 'success');
     },
 
     createElement(html) {
@@ -291,11 +321,53 @@ export const ThemeEffects = {
     },
 
     getThemeList() {
-        return Object.keys(this.themes).map(key => ({
+        const builtin = Object.keys(this.themes).map(key => ({
             id: key,
             name: this.themes[key].name,
-            icon: this.themes[key].icon
+            icon: this.themes[key].icon,
+            loaded: true
         }));
+        const external = Object.keys(this.availableExternal)
+            .filter(name => !this.themes[name]) // 仅未注册（待加载）的外部主题
+            .map(name => ({
+                id: name,
+                name: this.availableExternal[name].name || name,
+                icon: this.availableExternal[name].icon || 'palette',
+                loaded: false
+            }));
+        return builtin.concat(external);
+    },
+
+    /** 登记外部自定义主题清单（仅名字 + meta，不加载代码）；代码经 switchTheme/启动恢复时按需拉取 */
+    registerExternalManifest(name, meta = {}) {
+        if (!name) return;
+        if (this.themes[name]) return; // 已注册（内置/已加载）不重复登记为待加载项
+        this.availableExternal[name] = {
+            name: (meta && meta.name) || name,
+            icon: (meta && meta.icon) || 'palette',
+            description: (meta && meta.description) || '',
+            loaded: false
+        };
+    },
+
+    /** 确保某外部主题代码已加载并注册；返回 Promise<boolean> */
+    _ensureLoaded(name) {
+        const self = this;
+        if (this.themes[name]) return Promise.resolve(true);
+        if (!this.availableExternal[name]) return Promise.resolve(false);
+        this._loadingThemes = this._loadingThemes || {};
+        if (this._loadingThemes[name]) return this._loadingThemes[name];
+        const mgr = (typeof window !== 'undefined' && window.storageManager) || null;
+        if (!mgr || !mgr.requestThemeCode) return Promise.resolve(false);
+        const p = mgr.requestThemeCode(name).then(function (code) {
+            if (!code) return false;
+            self.registerExternal(name, code);
+            if (self.availableExternal[name]) self.availableExternal[name].loaded = true;
+            return !!self.themes[name];
+        }).catch(function () { return false; });
+        this._loadingThemes[name] = p;
+        p.finally(function () { if (self._loadingThemes) delete self._loadingThemes[name]; });
+        return p;
     },
 
     /** 注册外部自定义主题 */
@@ -1067,10 +1139,12 @@ export const ThemeEffects = {
         const current = this.currentTheme;
 
         const cards = themeList.map(t => `
-            <button class="theme-panel-card ${t.id === current ? 'active' : ''}"
+            <button class="theme-panel-card ${t.id === current ? 'active' : ''} ${t.loaded ? '' : 'theme-unloaded'}"
                     data-theme="${t.id}"
+                    data-loaded="${t.loaded ? '1' : '0'}"
                     title="${t.name}">
                 <span class="theme-panel-card-name">${t.name}</span>
+                ${t.loaded ? '' : '<span class="theme-panel-card-badge">待加载</span>'}
             </button>
         `).join('');
 
@@ -1123,9 +1197,30 @@ export const ThemeEffects = {
 
         // 主题卡片点击
         panel.querySelectorAll('.theme-panel-card').forEach(function(btn) {
-            btn.addEventListener('click', function() {
+            btn.addEventListener('click', async function() {
                 var themeName = btn.dataset.theme;
                 if (!themeName || themeName === el.currentTheme) return;
+                // 待加载外部主题：原地显示加载态，不关闭面板，加载完成再切换
+                if (btn.dataset.loaded === '0' && !el.themes[themeName]) {
+                    if (btn.classList.contains('theme-loading')) return;
+                    btn.classList.add('theme-loading');
+                    btn.textContent = '加载中…';
+                    const ok = await el._ensureLoaded(themeName);
+                    if (ok) {
+                        el.switchTheme(themeName);
+                        PanelManager.close();
+                    } else {
+                        const label = el.availableExternal[themeName] ? el.availableExternal[themeName].name : themeName;
+                        btn.classList.remove('theme-loading');
+                        btn.textContent = '';
+                        var span = document.createElement('span');
+                        span.className = 'theme-panel-card-name';
+                        span.textContent = label;
+                        btn.appendChild(span);
+                        Toast.showToast('主题「' + label + '」加载失败', 'error');
+                    }
+                    return;
+                }
                 el.switchTheme(themeName);
                 PanelManager.close();
             });

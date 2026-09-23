@@ -114,7 +114,10 @@ export class AppAPI {
     this.bambooCoinAvailableBalanceProvider = fn;
   }
 
-  private customThemes: Array<{ name: string; code: string }> = [];
+  /** 外部主题清单（仅名字 + 可选 meta），经 app:ready 下发，不含代码；代码按需经 theme:load 取回 */
+  private customThemeManifests: Array<{ name: string; meta?: Record<string, unknown> }> = [];
+  /** 外部主题代码缓存（name → code），由 scanCustomThemes 预读，按需经 theme:load 回传，避免每次全量跨进程下发 */
+  private customThemeCodeMap = new Map<string, string>();
   private vaultAdapter: DataAdapter;
   private noisePath: string;
   private configDir: string;
@@ -174,9 +177,10 @@ export class AppAPI {
     await this.storage.ensureStructure();
   }
 
-  /** 设置自定义主题列表 */
+  /** 设置自定义主题列表：拆成清单（下发）与代码缓存（按需取）两份 */
   setCustomThemes(themes: Array<{ name: string; code: string }>): void {
-    this.customThemes = themes;
+    this.customThemeManifests = themes.map(t => ({ name: t.name }));
+    this.customThemeCodeMap = new Map(themes.map(t => [t.name, t.code]));
   }
 
   /** 
@@ -287,7 +291,9 @@ export class AppAPI {
         // 门控：webapp 启动即知激活状态，未激活时显示全屏激活遮罩
         licenseActive: this.licenseStore.isActive(),
         sectionConfig: this.settings.sectionConfig || null,
-        customThemes: this.customThemes,
+        // 仅下发主题清单（名字 + meta），代码不在此全量下发；
+        // webapp 在用户点选/恢复外部主题时经 theme:load 按需取回，避免 5 个主题代码一次性跨进程灌入。
+        customThemes: this.customThemeManifests,
         customNoises: this.settings.noiseItems || [],
         syncPaletteToObsidian: this.settings.syncPaletteToObsidian || false,
         // 平台感知：移动端 webapp 据此做平台分支（隐藏拖拽提示、优化动画、抽屉适配等）。
@@ -298,6 +304,18 @@ export class AppAPI {
         // 重建视图（侧边栏移中央）后待恢复的布局模式，webapp 据此自动进入横向/看板
         pendingLayoutMode: this.getPendingLayoutMode ? this.getPendingLayoutMode() : null,
       });
+      return;
+    }
+
+    // ---- 按需加载外部主题代码（清单先行，用户点选/恢复时才取回，避免全量跨进程下发 + 全量 new Function 执行）----
+    if (type === 'theme:load') {
+      const name = (payload as { name?: string } | undefined)?.name;
+      const code = name ? this.customThemeCodeMap.get(name) : undefined;
+      if (code !== undefined) {
+        this.respond(id, { ok: true, code });
+      } else {
+        this.respondError(id, 'THEME_NOT_FOUND');
+      }
       return;
     }
 

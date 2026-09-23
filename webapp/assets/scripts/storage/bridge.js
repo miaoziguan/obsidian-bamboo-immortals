@@ -689,17 +689,30 @@ export class BridgeStorage {
     return 'bridge';
   }
 
-  /** 注册插件推送的自定义主题 */
+  /** 登记插件推送的自定义主题清单（仅名字 + meta，不含代码）；代码按需经 theme:load 取回 */
   _handleCustomThemes(themes) {
     if (!themes || themes.length === 0) return;
     if (typeof ThemeEffects === 'undefined') return;
 
     for (const t of themes) {
       try {
-        window.ThemeEffects.registerExternal(t.name, t.code);
+        window.ThemeEffects.registerExternalManifest(t.name, t.meta || {});
       } catch (e) {
-        console.warn(`[Bridge] 自定义主题 "${t.name}" 注册失败:`, e.message);
+        console.warn(`[Bridge] 自定义主题清单 "${t.name}" 登记失败:`, e.message);
       }
+    }
+  }
+
+  /** 按需向宿主请求某个外部主题的完整代码（懒加载：清单先行，点选/恢复时才取回） */
+  async requestThemeCode(name) {
+    await this.ensureReady();
+    try {
+      const resp = await this._send('theme:load', { name });
+      if (resp && resp.ok && typeof resp.code === 'string') return resp.code;
+      return null;
+    } catch (e) {
+      console.warn('[Bridge] 主题代码加载失败:', name, e && e.message);
+      return null;
     }
   }
 

@@ -184,13 +184,16 @@ export class ArchiveView extends ItemView {
 
       for (const entry of themeDirFiles) {
         if (!entry.endsWith('.js')) continue;
-        const filePath = `${themeDirName}/${entry}`;
+        // 见 DailyReviewView.scanCustomThemes 的同源修复说明：
+        // adapter.list 返回完整路径，需归一化为「完整路径读取 + basename 作 name」。
+        const fileName = entry.includes('/') ? (entry.split('/').pop() || entry) : entry;
+        const filePath = entry.includes('/') ? entry : `${themeDirName}/${entry}`;
         try {
           const code: string = await adapter.read(filePath);
           if (!code.includes('__bamboo_theme_')) {
             continue;
           }
-          themes.push({ name: entry.replace(/\.js$/, ''), code });
+          themes.push({ name: fileName.replace(/\.js$/, ''), code });
         } catch {
           // 读取失败跳过该主题
         }

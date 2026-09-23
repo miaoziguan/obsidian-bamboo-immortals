@@ -889,6 +889,34 @@
     letter-spacing: 0.5px;
 }
 
+/* 待加载（仅清单已登记、代码未拉取）的外部主题：视觉上略淡 + 角标提示 */
+.theme-panel-card.theme-unloaded {
+    opacity: 0.62;
+    border-style: dashed;
+}
+
+.theme-panel-card.theme-unloaded:hover {
+    opacity: 0.85;
+}
+
+.theme-panel-card-badge {
+    position: absolute;
+    top: -6px;
+    right: -4px;
+    font-size: 9px;
+    line-height: 1;
+    padding: 2px 4px;
+    border-radius: 6px;
+    background: var(--bamboo-primary);
+    color: #fff;
+    opacity: 0.85;
+}
+
+.theme-panel-card.theme-loading {
+    opacity: 0.7;
+    cursor: progress;
+}
+
 /* 主题颜色微调区 */
 .theme-panel-tune {
     margin-top: 12px;

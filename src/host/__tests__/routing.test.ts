@@ -54,14 +54,29 @@ describe('AppAPI 消息路由与来源校验', () => {
     expect(captured!.error).toBeUndefined();
   });
 
-  it('app:ready 回传配置（含自定义主题/音源）', async () => {
-    (api as any).customThemes = [{ name: 't', code: 'x' }];
+  it('app:ready 回传配置（含自定义主题清单/音源，主题仅下发清单不含代码）', async () => {
+    api.setCustomThemes([{ name: 't', code: 'x' }]);
     (api as any).settings = { noiseItems: [{ name: 'n' }] };
     await send(iframeContentWindow, { type: 'app:ready', id: 'x5', payload: {} });
     expect(captured!.error).toBeUndefined();
     const p = captured!.payload as any;
-    expect(p.customThemes).toEqual([{ name: 't', code: 'x' }]);
+    expect(p.customThemes).toEqual([{ name: 't' }]); // 仅清单，不含代码
     expect(p.customNoises).toEqual([{ name: 'n' }]);
+  });
+
+  it('theme:load 按需回传主题代码', async () => {
+    api.setCustomThemes([{ name: 't', code: 'x' }]);
+    await send(iframeContentWindow, { type: 'theme:load', id: 'xLoad', payload: { name: 't' } });
+    expect(captured!.error).toBeUndefined();
+    const p = captured!.payload as any;
+    expect(p.ok).toBe(true);
+    expect(p.code).toBe('x');
+  });
+
+  it('theme:load 未知主题返回 THEME_NOT_FOUND', async () => {
+    api.setCustomThemes([{ name: 't', code: 'x' }]);
+    await send(iframeContentWindow, { type: 'theme:load', id: 'xMiss', payload: { name: 'nope' } });
+    expect(captured!.error).toBe('THEME_NOT_FOUND');
   });
 
   // ---- 阶段3 · 契约化：版本协商 ----

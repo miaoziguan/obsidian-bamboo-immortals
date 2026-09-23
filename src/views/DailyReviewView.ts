@@ -404,13 +404,19 @@ export class DailyReviewView extends ItemView {
 
       for (const entry of themeDirFiles) {
         if (!entry.endsWith('.js')) continue;
-        const filePath = `${themeDirName}/${entry}`;
+        // Obsidian 的 DataAdapter.list 返回的 files 是完整相对路径（含目录前缀，
+        // 如 竹林动效主题/绯梦飞行.js）；部分 adapter / 测试 mock 则返回纯文件名。
+        // 统一归一化：用完整路径读取，用纯文件名（basename）作主题名——
+        // 否则路径会被拼成「目录/目录/文件」导致读取失败，且带前缀的 name 会让
+        // webapp 端 registerExternal 拼出的变量名含非法字符「/」而注册失败。
+        const fileName = entry.includes('/') ? (entry.split('/').pop() || entry) : entry;
+        const filePath = entry.includes('/') ? entry : `${themeDirName}/${entry}`;
         try {
           const code: string = await adapter.read(filePath);
           if (!code.includes('__bamboo_theme_')) {
             continue;
           }
-          themes.push({ name: entry.replace(/\.js$/, ''), code });
+          themes.push({ name: fileName.replace(/\.js$/, ''), code });
         } catch {
           // 读取失败跳过该主题
         }

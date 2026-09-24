@@ -64,6 +64,23 @@ describe('AppAPI 消息路由与来源校验', () => {
     expect(p.customNoises).toEqual([{ name: 'n' }]);
   });
 
+  it('app:ready 随激活外部主题代码下发 activeTheme', async () => {
+    api.setCustomThemes([{ name: 't', code: 'x' }]);
+    (api as any).settings = { noiseItems: [], sectionConfig: { themes: { themeEffect: 't' } } };
+    await send(iframeContentWindow, { type: 'app:ready', id: 'xActive', payload: {} });
+    expect(captured!.error).toBeUndefined();
+    const p = captured!.payload as any;
+    expect(p.activeTheme).toEqual({ name: 't', code: 'x' });
+  });
+
+  it('app:ready 激活主题为默认/无时不下发 activeTheme', async () => {
+    api.setCustomThemes([{ name: 't', code: 'x' }]);
+    (api as any).settings = { noiseItems: [], sectionConfig: { themeEffect: { theme: 'bamboo' } } };
+    await send(iframeContentWindow, { type: 'app:ready', id: 'xNoActive', payload: {} });
+    const p = captured!.payload as any;
+    expect(p.activeTheme).toBeNull();
+  });
+
   it('theme:load 按需回传主题代码', async () => {
     api.setCustomThemes([{ name: 't', code: 'x' }]);
     await send(iframeContentWindow, { type: 'theme:load', id: 'xLoad', payload: { name: 't' } });

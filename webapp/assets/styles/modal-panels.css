@@ -857,8 +857,10 @@
 
 .theme-panel-card {
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
+    gap: 3px;
     padding: 6px 4px;
     border: 1.5px solid var(--border-light);
     background: var(--btn-secondary-bg);
@@ -911,6 +913,79 @@
     color: #fff;
     opacity: 0.85;
 }
+
+/* 「专享」徽章：license 含「专享」时显示，琥珀色突出稀缺感；排于主题名下方、居中 */
+.theme-exclusive-badge {
+    display: inline-block;
+    margin-top: 3px;
+    font-size: 8px;
+    line-height: 1;
+    padding: 2px 5px;
+    border-radius: 6px;
+    background: linear-gradient(135deg, #c08a2d, #e9b949);
+    color: #2a1c00;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-align: center;
+}
+
+/* 主题面板 · 逛市场入口 */
+.theme-panel-market-entry { text-align: center; margin: 0 0 12px; }
+.theme-market-open-btn {
+    display: block;
+    width: 100%;
+    padding: 8px 16px;
+    border-radius: 10px;
+    border: 1px solid var(--bamboo-primary, #7d9b6a);
+    background: rgba(125, 155, 106, 0.12);
+    color: var(--text-normal);
+    font-size: 13px;
+    cursor: pointer;
+    transition: background .15s ease;
+}
+.theme-market-open-btn:hover { background: rgba(125, 155, 106, 0.22); }
+
+/* 主题市场面板 */
+.market-loading, .market-empty { padding: 28px 16px; text-align: center; color: var(--text-muted); font-size: 13px; }
+.market-list { display: flex; flex-direction: column; gap: 8px; padding: 4px 2px; }
+.market-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border: 1px solid var(--bamboo-border, rgba(255, 255, 255, 0.12));
+    border-radius: 12px;
+    padding: 10px 12px;
+    background: rgba(255, 255, 255, 0.03);
+}
+.market-card.installed { border-color: rgba(201, 138, 45, 0.55); }
+.market-card-main { flex: 1; min-width: 0; }
+.market-card-head { display: flex; align-items: center; gap: 6px; }
+.market-card-head .theme-exclusive-badge { margin-top: 0; }
+/* 「可更新」徽章：线上 version 与已安装版本不一致时显示 */
+.market-update-badge {
+    display: inline-block;
+    font-size: 8px;
+    line-height: 1;
+    padding: 2px 5px;
+    border-radius: 6px;
+    background: linear-gradient(135deg, #3f8f7a, #56b39a);
+    color: #06231c;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+.market-card-name { font-weight: 600; font-size: 14px; }
+.market-card-author { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.market-card-actions { flex-shrink: 0; }
+.market-btn {
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-size: 12px;
+    cursor: pointer;
+    border: 1px solid transparent;
+}
+.market-btn:disabled { opacity: 0.6; cursor: default; }
+.market-btn.install { background: var(--bamboo-primary, #7d9b6a); color: #fff; }
+.market-btn.uninstall { background: transparent; border-color: var(--bamboo-border, rgba(255, 255, 255, 0.22)); color: var(--text-muted); }
 
 .theme-panel-card.theme-loading {
     opacity: 0.7;

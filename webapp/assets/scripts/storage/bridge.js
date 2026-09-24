@@ -42,7 +42,7 @@ export class BridgeStorage {
       }
       // 处理插件推送的自定义主题
       if (readyResp && readyResp.customThemes && Array.isArray(readyResp.customThemes)) {
-        this._handleCustomThemes(readyResp.customThemes);
+        this._handleCustomThemes(readyResp.customThemes, readyResp.activeTheme || null);
       }
       // 处理插件推送的自定义音源
       if (readyResp && readyResp.customNoises && Array.isArray(readyResp.customNoises)) {
@@ -689,8 +689,10 @@ export class BridgeStorage {
     return 'bridge';
   }
 
-  /** 登记插件推送的自定义主题清单（仅名字 + meta，不含代码）；代码按需经 theme:load 取回 */
-  _handleCustomThemes(themes) {
+  /** 登记插件推送的自定义主题清单（仅名字 + meta，不含代码）；代码按需经 theme:load 取回。
+   *  activeTheme 为「当前已激活外部主题」的代码（随 app:ready 同步下发），用于视图重建后
+   *  立即注册，避免 init 异步懒加载因 iframe 绑定/路由竞态失败而掉回默认竹林。 */
+  _handleCustomThemes(themes, activeTheme = null) {
     if (!themes || themes.length === 0) return;
     if (typeof ThemeEffects === 'undefined') return;
 
@@ -699,6 +701,18 @@ export class BridgeStorage {
         window.ThemeEffects.registerExternalManifest(t.name, t.meta || {});
       } catch (e) {
         console.warn(`[Bridge] 自定义主题清单 "${t.name}" 登记失败:`, e.message);
+      }
+    }
+
+    // 立即注册当前激活的外部主题（若有）：清单 + 代码随握手同步到达，init 跑前即已就绪，
+    // 彻底规避重建视图后异步 theme:load 竞态。其余主题仍走按需懒加载。
+    if (activeTheme && activeTheme.name && typeof activeTheme.code === 'string') {
+      try {
+        if (!window.ThemeEffects.themes[activeTheme.name]) {
+          window.ThemeEffects.registerExternal(activeTheme.name, activeTheme.code);
+        }
+      } catch (e) {
+        console.warn(`[Bridge] 激活主题 "${activeTheme.name}" 注册失败:`, e.message);
       }
     }
   }
@@ -713,6 +727,48 @@ export class BridgeStorage {
     } catch (e) {
       console.warn('[Bridge] 主题代码加载失败:', name, e && e.message);
       return null;
+    }
+  }
+
+  /** 主题市场：拉取清单（宿主侧 fetch 公开仓库的 manifest.json） */
+  async fetchMarketManifest() {
+    await this.ensureReady();
+    try {
+      const resp = await this._send('market:manifest', {});
+      if (resp && resp.ok && resp.manifest) {
+        const m = resp.manifest;
+        // 宿主随清单带回「已安装版本表」（id → { version }），供面板比对出「可更新」
+        m.installed = resp.installed || {};
+        return m;
+      }
+      return null;
+    } catch (e) {
+      console.warn('[Bridge] 市场清单拉取失败:', e && e.message);
+      return null;
+    }
+  }
+
+  /** 主题市场：安装（宿主下载 .js 写入主题文件夹）；version 用于后续更新检测 */
+  async installMarketTheme(id, url, version) {
+    await this.ensureReady();
+    try {
+      const resp = await this._send('market:install', { id, url, version: version || '' });
+      return !!(resp && resp.ok);
+    } catch (e) {
+      console.warn('[Bridge] 主题安装失败:', id, e && e.message);
+      return false;
+    }
+  }
+
+  /** 主题市场：卸载（宿主删除主题文件夹中的 .js） */
+  async uninstallMarketTheme(id) {
+    await this.ensureReady();
+    try {
+      const resp = await this._send('market:uninstall', { id });
+      return !!(resp && resp.ok);
+    } catch (e) {
+      console.warn('[Bridge] 主题卸载失败:', id, e && e.message);
+      return false;
     }
   }
 

@@ -56,6 +56,12 @@ export interface BambooReviewSettings {
   noisePath: string;
   /** 自定义白噪音音源列表 */
   noiseItems: NoiseItem[];
+  /**
+   * 主题市场：已安装主题的版本记录（主题 id → { version, installedAt }）。
+   * 用于「可更新」检测——与 manifest 里的 version 比对，不一致即提示更新。
+   * 可选字段：老版本设置里没有该键时按「未知版本」处理（表现为可更新）。
+   */
+  marketInstalled?: Record<string, { version: string; installedAt: number }>;
   /** 是否将 webapp 调色同步到 Obsidian 原生界面 */
   syncPaletteToObsidian: boolean;
   /** 是否让插件配色跟随 Obsidian 主题（读取 --interactive-accent 反推色相） */
@@ -103,6 +109,7 @@ export const DEFAULT_SETTINGS: BambooReviewSettings = {
   themePath: '竹林复盘主题',
   noisePath: '',
   noiseItems: [],
+  marketInstalled: {},
   syncPaletteToObsidian: false,
   followObsidianTheme: true,
   aiEnabled: false,

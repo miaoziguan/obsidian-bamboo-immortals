@@ -41,33 +41,30 @@ export const BambooGarden = {
 
     render() {
         return `
-            <section class="bamboo-garden-section" id="bambooGardenSection" role="region">
-                <div class="bamboo-garden-container" id="bambooGardenContainer">
-                    <div class="moon"></div>
-                    <div class="mist-layer-1"></div>
-                    <div class="mist-layer-2"></div>
-                    <div class="mist-layer-3"></div>
-                    <div class="distant-mountains" id="distantMountains">
-                        <div class="mountain-layer mountain-3"></div>
-                        <div class="mountain-layer mountain-2"></div>
-                        <div class="mountain-layer mountain-1"></div>
-                        <div class="mountain-mist"></div>
-                    </div>
-                    <div class="river-surface"></div>
-                    <div class="boat-container">
-                        <div class="boat"></div>
-                    </div>
-                    <div class="bamboo-forest" id="bambooForest">
-                        <div class="bamboo-layer bamboo-far" id="farBamboo"></div>
-                        <div class="bamboo-layer bamboo-mid" id="midBamboo"></div>
-                        <div class="bamboo-layer bamboo-near" id="nearBamboo"></div>
-                    </div>
-                    <div class="forest-floor"></div>
-                    <div class="foreground-haze"></div>
-                    <div id="leafContainer"></div>
+            <div class="bamboo-garden-container" id="bambooGardenContainer" role="region">
+                <div class="moon"></div>
+                <div class="mist-layer-1"></div>
+                <div class="mist-layer-2"></div>
+                <div class="mist-layer-3"></div>
+                <div class="distant-mountains" id="distantMountains">
+                    <div class="mountain-layer mountain-3"></div>
+                    <div class="mountain-layer mountain-2"></div>
+                    <div class="mountain-layer mountain-1"></div>
+                    <div class="mountain-mist"></div>
                 </div>
-                ${typeof BambooPoem !== 'undefined' ? BambooPoem.render(typeof LayoutMode !== 'undefined' && LayoutMode.isKanban && LayoutMode.isKanban() ? 'kanban' : 'horizontal') : ''}
-            </section>
+                <div class="river-surface"></div>
+                <div class="boat-container">
+                    <div class="boat"></div>
+                </div>
+                <div class="bamboo-forest" id="bambooForest">
+                    <div class="bamboo-layer bamboo-far" id="farBamboo"></div>
+                    <div class="bamboo-layer bamboo-mid" id="midBamboo"></div>
+                    <div class="bamboo-layer bamboo-near" id="nearBamboo"></div>
+                </div>
+                <div class="forest-floor"></div>
+                <div class="foreground-haze"></div>
+                <div id="leafContainer"></div>
+            </div>
         `;
     },
 
@@ -161,9 +158,10 @@ export const BambooGarden = {
         
         if (!farLayer || !midLayer || !nearLayer) return;
         
-        farLayer.innerHTML = this.createBambooStalks(30, 280, 380, 2, 0.28, true);
-        midLayer.innerHTML = this.createBambooStalks(22, 320, 420, 4, 0.5, true);
-        nearLayer.innerHTML = this.createBambooStalks(14, 380, 480, 6, 0.72, false);
+        // 高度按设计画布 480×480 等比放大（原 480×300 基准 ×1.6），保证竹林竖向占比与方形构图一致
+        farLayer.innerHTML = this.createBambooStalks(30, 448, 608, 2, 0.28, true);
+        midLayer.innerHTML = this.createBambooStalks(22, 512, 672, 4, 0.5, true);
+        nearLayer.innerHTML = this.createBambooStalks(14, 608, 768, 6, 0.72, false);
     },
 
     createBambooStalks(count, minH, maxH, width, opacity, leftFade, staticRatio = 0.5) {
@@ -343,39 +341,39 @@ export const BambooGarden = {
         s.id = 'windLeafStyles';
         s.textContent = `
             @keyframes leafDrift0 {
-                0% { transform: translate(0, -70px) rotate(0deg); opacity: 0; }
+                0% { transform: translate(0, -112px) rotate(0deg); opacity: 0; }
                 12% { opacity: 0.45; }
-                40% { transform: translate(45px, 90px) rotate(150deg); }
-                70% { transform: translate(90px, 210px) rotate(300deg); }
+                40% { transform: translate(45px, 144px) rotate(150deg); }
+                70% { transform: translate(90px, 336px) rotate(300deg); }
                 88% { opacity: 0.3; }
-                100% { transform: translate(135px, 360px) rotate(480deg); opacity: 0; }
+                100% { transform: translate(135px, 576px) rotate(480deg); opacity: 0; }
             }
             @keyframes leafDrift1 {
-                0% { transform: translate(0, -70px) rotate(0deg); opacity: 0; }
+                0% { transform: translate(0, -112px) rotate(0deg); opacity: 0; }
                 15% { opacity: 0.45; }
-                35% { transform: translate(30px, 70px) rotate(100deg); }
-                55% { transform: translate(75px, 150px) rotate(220deg); }
-                80% { transform: translate(110px, 270px) rotate(360deg); }
+                35% { transform: translate(30px, 112px) rotate(100deg); }
+                55% { transform: translate(75px, 240px) rotate(220deg); }
+                80% { transform: translate(110px, 432px) rotate(360deg); }
                 85% { opacity: 0.3; }
-                100% { transform: translate(140px, 360px) rotate(500deg); opacity: 0; }
+                100% { transform: translate(140px, 576px) rotate(500deg); opacity: 0; }
             }
             @keyframes leafDrift2 {
-                0% { transform: translate(0, -70px) rotate(0deg); opacity: 0; }
+                0% { transform: translate(0, -112px) rotate(0deg); opacity: 0; }
                 10% { opacity: 0.45; }
-                25% { transform: translate(55px, 50px) rotate(180deg); }
-                45% { transform: translate(95px, 130px) rotate(320deg); }
-                65% { transform: translate(125px, 230px) rotate(460deg); }
+                25% { transform: translate(55px, 80px) rotate(180deg); }
+                45% { transform: translate(95px, 208px) rotate(320deg); }
+                65% { transform: translate(125px, 368px) rotate(460deg); }
                 85% { opacity: 0.28; }
-                100% { transform: translate(150px, 360px) rotate(600deg); opacity: 0; }
+                100% { transform: translate(150px, 576px) rotate(600deg); opacity: 0; }
             }
             @keyframes leafDrift3 {
-                0% { transform: translate(0, -70px) rotate(0deg); opacity: 0; }
+                0% { transform: translate(0, -112px) rotate(0deg); opacity: 0; }
                 15% { opacity: 0.45; }
-                30% { transform: translate(20px, 60px) rotate(80deg); }
-                50% { transform: translate(60px, 150px) rotate(180deg); }
-                70% { transform: translate(100px, 240px) rotate(290deg); }
+                30% { transform: translate(20px, 96px) rotate(80deg); }
+                50% { transform: translate(60px, 240px) rotate(180deg); }
+                70% { transform: translate(100px, 384px) rotate(290deg); }
                 85% { opacity: 0.28; }
-                100% { transform: translate(130px, 360px) rotate(400deg); opacity: 0; }
+                100% { transform: translate(130px, 576px) rotate(400deg); opacity: 0; }
             }
         `;
         getStyleMount().appendChild(s);

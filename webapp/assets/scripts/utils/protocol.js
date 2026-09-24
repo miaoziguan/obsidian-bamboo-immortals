@@ -78,6 +78,10 @@ export const APP_MESSAGE_TYPES = [
   'nav:today',
   'action:openStats',
   'action:openSettings',
+  // ---- 主题市场（webapp → host）----
+  'market:manifest',
+  'market:install',
+  'market:uninstall',
 ];
 
 const KNOWN = new Set(APP_MESSAGE_TYPES);
@@ -86,7 +90,7 @@ const KNOWN = new Set(APP_MESSAGE_TYPES);
 export function isKnownType(type) {
   if (typeof type !== 'string') return false;
   if (KNOWN.has(type)) return true;
-  return type.startsWith('storage:') || type.startsWith('file:');
+  return type.startsWith('storage:') || type.startsWith('file:') || type.startsWith('market:');
 }
 
 /**

@@ -45,11 +45,37 @@
     --theme-inner-radius: 26px;
 }
 
-/* 朦胧意境竹林动效（仅保留竹林专属样式，外壳由 #themeEffectSection 统一提供） */
-.bamboo-garden-section {
+/* 统一主题卡片外壳：所有主题共享，承载视觉容器 + 配套诗词条（原竹林专属提升到共享层） */
+.theme-card {
     position: relative;
     border-radius: var(--radius-26);
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+/* 统一视觉盒：比例由「当前主题的设计画布」决定（同比例主题即同构图比例）。
+   盒宽随列宽自适应 → 盒高按比例同步；默认 1:1（正方形）兼容未声明画布的主题。 */
+.theme-visual {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1 / 1;      /* 默认比例（正方形）；主题声明 design 时由内联 style 覆盖 */
+    height: auto;
+    border-radius: var(--theme-inner-radius);
+    overflow: hidden;
+}
+/* 设计画布：主题在其声明的固定尺寸内绘制（可放心用固定 px），
+   由框架按「盒宽 / 设计宽」整体等比缩放铺满视觉盒 → 任意尺寸下构图完全一致。
+   尺寸与 transform 由框架内联设置，这里只兜底定位。 */
+.theme-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    transform-origin: top left;
+}
+.theme-visual > style,
+.theme-canvas > style {
+    display: none;
 }
 
 /* ===== 竹林诗词区（横向布局专用，填充动效卡片下方空白） =====
@@ -66,19 +92,13 @@
         /* 卡片自然高度（320 动效 + 诗词），不被 grid stretch 拉高 → 避免底部留白 */
         align-self: start;
     }
-    .sections-container.horizontal-layout #themeEffectSection .bamboo-garden-section {
+    .sections-container.horizontal-layout #themeEffectSection .theme-card {
         display: flex;
         flex-direction: column;
     }
-    .sections-container.horizontal-layout #themeEffectSection .bamboo-garden-container {
+    .sections-container.horizontal-layout #themeEffectSection .theme-visual {
         flex: 0 0 auto;
-        /* 列内自适应：宽度占满列，高度按 16:10 等比缩放（列窄时画面同步变矮，
-           不压扁不拉伸），配合 overflow:hidden 裁切保证画面完整 */
-        width: 100%;
-        height: auto;
-        aspect-ratio: 16 / 10;
-        border-color: transparent;
-        box-shadow: none;
+        width: 100%;              /* 比例由 .theme-visual（主题画布比例）统一提供 */
     }
     .sections-container.horizontal-layout #themeEffectSection {
         border-color: hsla(calc(var(--accent-hue) + 0), 30%, 50%, 0.35);
@@ -133,15 +153,13 @@
         /* 卡片自然高度（200 动效 + 诗词），不被 grid stretch 拉高 → 避免底部留白 */
         align-self: start;
     }
-    .sections-container.kanban-layout #themeEffectSection .bamboo-garden-section {
+    .sections-container.kanban-layout #themeEffectSection .theme-card {
         display: flex;
         flex-direction: column;
     }
-    .sections-container.kanban-layout #themeEffectSection .bamboo-garden-container {
+    .sections-container.kanban-layout #themeEffectSection .theme-visual {
         flex: 0 0 auto;
-        height: 200px;
-        border-color: transparent;
-        box-shadow: none;
+        width: 100%;              /* 比例由 .theme-visual（主题画布比例）统一提供 */
     }
     .sections-container.kanban-layout #themeEffectSection {
         border-color: hsla(calc(var(--accent-hue) + 0), 30%, 50%, 0.35);
@@ -207,7 +225,7 @@
 .bamboo-garden-container {
     position: relative;
     width: 100%;
-    height: 300px;
+    height: 100%;
     overflow: hidden;
     border-radius: inherit;
     background: linear-gradient(180deg,
@@ -263,7 +281,7 @@
 /* 月亮 - 仅在暗色模式显示 */
 .moon {
     position: absolute;
-    top: 45px;
+    top: 72px;
     right: 70px;
     width: 60px;
     height: 60px;
@@ -354,10 +372,10 @@
 /* 远山层 - 多层叠加 */
 .distant-mountains {
     position: absolute;
-    bottom: 60px;
+    bottom: 96px;
     left: -15%;
     right: -15%;
-    height: 160px;
+    height: 256px;
 }
 
 .mountain-layer {
@@ -368,7 +386,7 @@
 }
 
 .mountain-1 {
-    height: 95px;
+    height: 152px;
     opacity: 0.15;
     background: linear-gradient(180deg, hsl(var(--accent-hue), 25%, calc(63% + var(--accent-lightness-offset))), hsl(var(--accent-hue), 19%, calc(51% + var(--accent-lightness-offset))));
     filter: blur(3px);
@@ -376,7 +394,7 @@
 }
 
 .mountain-2 {
-    height: 125px;
+    height: 200px;
     opacity: 0.1;
     background: linear-gradient(180deg, hsl(var(--accent-hue), 22%, calc(57% + var(--accent-lightness-offset))), hsl(var(--accent-hue), 21%, calc(45% + var(--accent-lightness-offset))));
     filter: blur(5px);
@@ -384,7 +402,7 @@
 }
 
 .mountain-3 {
-    height: 145px;
+    height: 232px;
     opacity: 0.07;
     background: linear-gradient(180deg, hsl(var(--accent-hue), 19%, calc(51% + var(--accent-lightness-offset))), hsl(var(--accent-hue), 24%, calc(38% + var(--accent-lightness-offset))));
     filter: blur(7px);
@@ -411,10 +429,10 @@
 /* 山间雾气 */
 .mountain-mist {
     position: absolute;
-    bottom: 30px;
+    bottom: 48px;
     left: -10%;
     right: -10%;
-    height: 80px;
+    height: 128px;
     background: var(--mountain-mist);
     animation: mountainMistFloat 25s ease-in-out infinite;
 }
@@ -427,10 +445,10 @@
 /* 江面 */
 .river-surface {
     position: absolute;
-    bottom: 25px;
+    bottom: 40px;
     left: 5%;
     right: 40%;
-    height: 30px;
+    height: 48px;
     background: linear-gradient(180deg, 
         rgba(60, 100, 120, 0.1) 0%, 
         rgba(80, 120, 140, 0.15) 50%, 
@@ -456,7 +474,7 @@
 /* 舟 */
 .boat-container {
     position: absolute;
-    bottom: 40px;
+    bottom: 64px;
     left: -10%;
     animation: boatFloat 6s ease-in-out infinite, boatDrift 45s linear infinite;
 }
@@ -517,13 +535,13 @@
     100% { left: 115%; }
 }
 
-/* 竹林层 */
+/* 竹林层：填满整个设计画布高度（勿写死 px —— 容器变高时会露出顶部死带） */
 .bamboo-forest {
     position: absolute;
     bottom: 0;
     left: -10%;
     right: -10%;
-    height: 300px;
+    height: 100%;
     overflow: hidden;
 }
 
@@ -596,7 +614,7 @@
     bottom: 0;
     left: 0;
     right: 0;
-    height: 45px;
+    height: 72px;
     background: linear-gradient(180deg, 
         hsla(calc(var(--accent-hue) + -9), 18%, 38%, 0.15) 0%, 
         hsla(calc(var(--accent-hue) + -9), 23%, 30%, 0.3) 100%);
@@ -637,23 +655,23 @@
 
 @keyframes leafDrift {
     0% {
-        transform: translate(0, -70px) rotate(0deg);
+        transform: translate(0, -112px) rotate(0deg);
         opacity: 0;
     }
     15% {
         opacity: 0.42;
     }
     35% {
-        transform: translate(25px, 40px) rotate(120deg);
+        transform: translate(25px, 64px) rotate(120deg);
     }
     60% {
-        transform: translate(75px, 150px) rotate(260deg);
+        transform: translate(75px, 240px) rotate(260deg);
     }
     85% {
         opacity: 0.32;
     }
     100% {
-        transform: translate(120px, 360px) rotate(420deg);
+        transform: translate(120px, 576px) rotate(420deg);
         opacity: 0;
     }
 }

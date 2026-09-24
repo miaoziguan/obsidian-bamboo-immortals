@@ -45,6 +45,8 @@ export function isValidAudioUrl(url: string): boolean {
  * 替代旧的 BridgeService + StorageBridge + ThemeBridge 三层架构，
  * 将 postMessage 路由、存储操作、主题同步合并为单一 API。
  */
+const MARKET_MANIFEST_URL = 'https://raw.githubusercontent.com/miaoziguan/bamboo-theme-market/main/manifest.json';
+
 export class AppAPI {
   private storage: VaultStorage;
   private themeBridge: ThemeBridge;
@@ -177,6 +179,16 @@ export class AppAPI {
     await this.storage.ensureStructure();
   }
 
+  /** 取出当前已激活的外部主题（含代码），随 app:ready 同步下发，避免重建后异步懒加载竞态 */
+  private getActiveExternalTheme(): { name: string; code: string } | null {
+    // 结构见 SectionRegistry.save()：sectionConfig.themes 以 sectionId 为键存选中主题
+    const theme = (this.settings.sectionConfig as { themes?: Record<string, string> } | undefined)
+      ?.themes?.themeEffect;
+    if (!theme || theme === 'bamboo') return null;
+    const code = this.customThemeCodeMap.get(theme);
+    return code !== undefined ? { name: theme, code } : null;
+  }
+
   /** 设置自定义主题列表：拆成清单（下发）与代码缓存（按需取）两份 */
   setCustomThemes(themes: Array<{ name: string; code: string }>): void {
     this.customThemeManifests = themes.map(t => ({ name: t.name }));
@@ -281,6 +293,29 @@ export class AppAPI {
   }
 
   /** 消息分发处理 */
+  /** 重扫主题文件夹，刷新「本地外部主题」清单与代码缓存（市场装/卸后调用） */
+  private async _rescanThemes(): Promise<void> {
+    const dir = this.settings.themePath || '竹林复盘主题';
+    try {
+      const listed = await this.vaultAdapter.list(dir);
+      const files = (listed.files || []).filter((f) => f.endsWith('.js'));
+      const themes: { name: string; code: string }[] = [];
+      for (const f of files) {
+        const name = f.split('/').pop() || f;
+        try {
+          const code = await this.vaultAdapter.read(f);
+          if (!code.includes('__bamboo_theme_')) continue;
+          themes.push({ name: name.replace(/\.js$/, ''), code });
+        } catch {
+          /* 跳过读取失败的文件 */
+        }
+      }
+      this.setCustomThemes(themes);
+    } catch (e) {
+      console.warn('[AppAPI] 重扫主题文件夹失败:', e);
+    }
+  }
+
   private async handleMessage(type: string, id: string, payload: unknown): Promise<void> {
     // ---- 生命周期 ----
     if (type === 'app:ready') {
@@ -294,6 +329,11 @@ export class AppAPI {
         // 仅下发主题清单（名字 + meta），代码不在此全量下发；
         // webapp 在用户点选/恢复外部主题时经 theme:load 按需取回，避免 5 个主题代码一次性跨进程灌入。
         customThemes: this.customThemeManifests,
+        // 随 app:ready 直接带上「当前已激活外部主题」的代码（仅此一个，非全量 5 个）：
+        // 视图重建（横向布局 moveToCenter 重建 webview）后，init 走异步 theme:load 往返会因
+        // 新 iframe 的通信层绑定 / 消息路由竞态而失败，导致外部主题掉回默认竹林。把激活主题代码
+        // 同步随握手下发，init 跑前即已注册，彻底消除该竞态。其余主题仍走懒加载。
+        activeTheme: this.getActiveExternalTheme(),
         customNoises: this.settings.noiseItems || [],
         syncPaletteToObsidian: this.settings.syncPaletteToObsidian || false,
         // 平台感知：移动端 webapp 据此做平台分支（隐藏拖拽提示、优化动画、抽屉适配等）。
@@ -698,6 +738,75 @@ export class AppAPI {
         });
       } catch (e) {
         this.respondError(id, `app:getHealthOverview 计算失败: ${(e as Error)?.message ?? String(e)}`);
+      }
+      return;
+    }
+
+    // ---- 主题市场：拉取清单（host 侧 fetch 公开仓库的 manifest.json）----
+    if (type === 'market:manifest') {
+      try {
+        const resp = await fetch(MARKET_MANIFEST_URL, { cache: 'no-store' });
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        const manifest = await resp.json();
+        // 附带「已安装版本表」，webapp 拿它与 manifest 中各主题的 version 比对 → 得出「可更新」
+        this.respond(id, { ok: true, manifest, installed: this.settings.marketInstalled || {} });
+      } catch (e) {
+        console.warn('[AppAPI] 主题市场清单拉取失败:', e);
+        this.respondError(id, e instanceof Error ? e.message : '市场清单拉取失败');
+      }
+      return;
+    }
+
+    // ---- 主题市场：安装（下载 .js 写入主题文件夹，触发重扫）----
+    if (type === 'market:install') {
+      const p = (payload && typeof payload === 'object' ? payload : {}) as {
+        id?: string;
+        url?: string;
+        version?: string;
+      };
+      const tid = p.id;
+      const url = p.url;
+      if (!tid || !url) { this.respondError(id, 'market:install 缺少 id 或 url'); return; }
+      try {
+        const resp = await fetch(url, { cache: 'no-store' });
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        const code = await resp.text();
+        if (!code.includes('__bamboo_theme_')) throw new Error('不是有效的竹林主题文件');
+        const dir = this.settings.themePath || '竹林复盘主题';
+        const filePath = `${dir}/${tid}.js`;
+        await this.vaultAdapter.write(filePath, code);
+        // 记录本次安装的版本：后续与 manifest 的 version 比对即可判断「可更新」
+        if (!this.settings.marketInstalled) this.settings.marketInstalled = {};
+        this.settings.marketInstalled[tid] = { version: p.version || '', installedAt: Date.now() };
+        await this.saveSettings();
+        await this._rescanThemes();
+        this.respond(id, { ok: true });
+      } catch (e) {
+        console.warn('[AppAPI] 主题市场安装失败:', e);
+        this.respondError(id, e instanceof Error ? e.message : '主题安装失败');
+      }
+      return;
+    }
+
+    // ---- 主题市场：卸载（删除主题文件夹中的 .js，触发重扫）----
+    if (type === 'market:uninstall') {
+      const p = (payload && typeof payload === 'object' ? payload : {}) as { id?: string };
+      const tid = p.id;
+      if (!tid) { this.respondError(id, 'market:uninstall 缺少 id'); return; }
+      try {
+        const dir = this.settings.themePath || '竹林复盘主题';
+        const filePath = `${dir}/${tid}.js`;
+        await this.vaultAdapter.remove(filePath);
+        // 同步清除版本记录，避免残留导致重装后误判「已最新」
+        if (this.settings.marketInstalled) {
+          delete this.settings.marketInstalled[tid];
+          await this.saveSettings();
+        }
+        await this._rescanThemes();
+        this.respond(id, { ok: true });
+      } catch (e) {
+        console.warn('[AppAPI] 主题市场卸载失败:', e);
+        this.respondError(id, e instanceof Error ? e.message : '主题卸载失败');
       }
       return;
     }

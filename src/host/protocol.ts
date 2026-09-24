@@ -19,7 +19,7 @@ export const PROTOCOL_VERSION = 1;
 // ============================================================
 //  消息前缀（host 侧 onMessage 来源前缀白名单）
 // ============================================================
-export const INBOUND_PREFIXES = ['storage:', 'app:', 'file:', 'theme:'] as const;
+export const INBOUND_PREFIXES = ['storage:', 'app:', 'file:', 'theme:', 'market:'] as const;
 
 // ============================================================
 //  全部已知 message type（双向）
@@ -97,6 +97,10 @@ export const ALL_MESSAGE_TYPES = [
   'nav:today',
   'action:openStats',
   'action:openSettings',
+  // ---- 主题市场（webapp → host）----
+  'market:manifest',
+  'market:install',
+  'market:uninstall',
 ] as const;
 
 export type AppMessageType = (typeof ALL_MESSAGE_TYPES)[number];

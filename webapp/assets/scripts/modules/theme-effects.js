@@ -17,6 +17,11 @@ export const ThemeEffects = {
         bamboo: {
             name: '竹林清韵',
             icon: 'tree-pine',
+            author: '羽鳞君',
+            license: '竹林用户专享 · 未经授权禁止使用（含个人使用） © 2026 羽鳞君 保留所有权利',
+            // 设计画布：正方形基准 480×480（1:1）；
+            // 场景内所有写死 px（月亮 60px、山体、竹林高度等）都以此尺寸为基准，缩放后完全一致。
+            design: { w: 480, h: 480 },
             render() {
                 return BambooGarden.render();
             },
@@ -33,36 +38,115 @@ export const ThemeEffects = {
     },
 
     render(themeName = 'bamboo') {
-        const theme = this.themes[themeName];
-
+        let theme = this.themes[themeName];
         if (!theme) {
+            // 外部主题代码尚未注册：先回退默认竹林（保证一定能正常显示，绝不留空白占位）；
+            // 若该主题确为已激活外部主题，app:ready 会随握手同步下发其代码并注册；即便时序更早，
+            // init 的懒加载完成后也会重新挂载真实主题，不会停留在竹林占位。
             console.debug('Theme not found, falling back to bamboo:', themeName);
-            return this.themes.bamboo.render();
+            theme = this.themes.bamboo;
         }
+        const inner = theme.render();
 
-        return theme.render();
+        // ===== 设计画布契约（框架级）=====
+        // 主题声明 design:{w,h} → 视觉盒按该比例定高，主题内容放进固定尺寸的 .theme-canvas，
+        // 由框架按「盒宽 / 设计宽」整体等比缩放。主题因此可放心用固定 px 绘制，
+        // 构图在任意容器尺寸下都保持一致（不会出现放大后细节不跟随的形变）。
+        // 未声明 design 的主题退回默认 1:1（正方形）视觉盒且不缩放，保持向后兼容。
+        const design = theme.design;
+        const visualAttr = design
+            ? ' style="aspect-ratio:' + design.w + '/' + design.h + '"'
+            : '';
+        const visualInner = design
+            ? '<div class="theme-canvas" data-design-w="' + design.w + '"' +
+              ' style="width:' + design.w + 'px;height:' + design.h + 'px">' + inner + '</div>'
+            : inner;
+        // 共享「配套」：诗词+日期条（原竹林专属，现全主题统一）+ 布局自适应视觉容器。
+        // 结构：.theme-card(.theme-visual + .bamboo-poem-strip)，与竹林主题完全一致。
+        const mode = (typeof LayoutMode !== 'undefined' && LayoutMode.isKanban && LayoutMode.isKanban()) ? 'kanban' : 'horizontal';
+        let poem = '';
+        if (typeof BambooPoem !== 'undefined') {
+            const p = BambooPoem.render(mode);
+            if (p) poem = p;
+        }
+        return '<div class="theme-card">' +
+            '<div class="theme-visual"' + visualAttr + '>' + visualInner + '</div>' +
+            poem +
+            '</div>';
     },
 
     init(themeName = 'bamboo') {
         var section = byId('themeEffectSection');
         if (!section) return;
-        // 外部主题懒加载恢复：清单在、代码未注册 → 先用 bamboo 占位，加载完成再真正初始化
-        if (themeName && themeName !== 'bamboo' && !this.themes[themeName] && this.availableExternal[themeName]) {
+        // 外部主题懒加载恢复：代码未注册（含清单未达的竞态）→ 先用 bamboo 占位，加载完成再真正初始化
+        if (themeName && themeName !== 'bamboo' && !this.themes[themeName]) {
             const self = this;
             this.init('bamboo');
             this._ensureLoaded(themeName).then(function (ok) {
-                if (ok) { self.destroy(); self.init(themeName); }
+                // 代码就绪后必须重新「渲染 + 挂载」：此前 render 因主题未注册而回退成了竹林标记，
+                // 若只 destroy+init 不重渲染，页面会停在竹林（表现为「重启后主题没加载出来」）。
+                if (ok && self.themes[themeName]) self._mountTheme(themeName);
             });
             return;
         }
-        var container = section.firstElementChild;
+        // 同步「当前主题」状态：启动/重载时 init 直接拿到已注册主题（非懒加载路径），
+        // 若不在此更新 currentTheme，它会一直停留在硬编码初值 'bamboo'
+        // → 主题面板高亮 / 色相滑块作用对象都会与实际渲染的主题不符。
+        this.currentTheme = themeName;
+        // 主题根现被共享外壳 .theme-card > .theme-visual 包裹，init 传入视觉容器
+        var container = section.querySelector('.theme-visual') || section.firstElementChild;
         const theme = this.themes[themeName];
         if (theme && typeof theme.init === 'function') {
             theme.init(container);
         }
+        this._setupCanvasScaler();
         this._applyThemeVars(themeName);
         this._syncThemeMode();
         this._initThemeModeObserver();
+    },
+
+    /** 渲染并挂载指定主题：清空旧 DOM → 挂新 DOM → 销毁旧主题 → 初始化新主题。
+     *  switchTheme 与「外部主题懒加载完成后的补渲染」共用，避免两处逻辑漂移。 */
+    _mountTheme(themeName) {
+        var section = byId('themeEffectSection');
+        if (!section) return;
+        var oldTheme = this.themes[this.currentTheme];
+        var newEl = this.createElement(this.render(themeName));
+        section.innerHTML = '';
+        section.appendChild(newEl);
+        if (oldTheme && typeof oldTheme.destroy === 'function') {
+            try { oldTheme.destroy(); } catch (e) {
+                console.warn('[ThemeEffects] 旧主题 destroy 失败:', e.message);
+            }
+        }
+        this.destroy();
+        this.currentTheme = themeName;
+        this.init(themeName);
+    },
+
+    /** 设计画布缩放：把固定尺寸的 .theme-canvas 等比缩放到视觉盒宽度。
+     *  主题只需声明 design 并按该尺寸绘制，无需自己处理任何尺寸变化。 */
+    _setupCanvasScaler() {
+        var section = byId('themeEffectSection');
+        var visual = section && section.querySelector('.theme-visual');
+        if (this._scalerRO) { this._scalerRO.disconnect(); this._scalerRO = null; }
+        if (!visual) return;
+        var canvas = visual.querySelector('.theme-canvas');
+        if (!canvas) return; // 主题未声明设计画布 → 不缩放（由主题自行适配）
+        var designW = parseFloat(canvas.getAttribute('data-design-w'));
+        if (!designW) return;
+        var apply = function () {
+            var w = visual.clientWidth;
+            if (!w) return;
+            canvas.style.transform = 'scale(' + (w / designW).toFixed(5) + ')';
+        };
+        apply();
+        if (typeof ResizeObserver !== 'undefined') {
+            this._scalerRO = new ResizeObserver(apply);
+            this._scalerRO.observe(visual);
+        }
+        // 首帧布局可能尚未稳定（clientWidth=0）→ 下一帧再兜底计算一次
+        if (typeof requestAnimationFrame === 'function') requestAnimationFrame(apply);
     },
 
     switchTheme(themeName) {
@@ -94,19 +178,7 @@ export const ThemeEffects = {
         // 等新 DOM（byId 查找），必须在 DOM 就位后才能跑，否则会 early-return 导致
         // 竹丛/落叶等动效缺失、显示不全。
         var doSwap = function() {
-            var newEl = self.createElement(self.render(themeName));
-            section.innerHTML = '';
-            section.appendChild(newEl);
-            // 新 DOM 就位后再清理旧主题 + 初始化新主题
-            const oldTheme = self.themes[self.currentTheme];
-            if (oldTheme && typeof oldTheme.destroy === 'function') {
-                try { oldTheme.destroy(); } catch (e) {
-                    console.warn('[ThemeEffects] 旧主题 destroy 失败:', e.message);
-                }
-            }
-            self.destroy();
-            self.currentTheme = themeName;
-            self.init(themeName);
+            self._mountTheme(themeName);
             Toast.showToast('已切换至「' + self.themes[themeName].name + '」', 'success');
             // 新内容就位后立即恢复不透明度
             requestAnimationFrame(function() {
@@ -325,7 +397,9 @@ export const ThemeEffects = {
             id: key,
             name: this.themes[key].name,
             icon: this.themes[key].icon,
-            loaded: true
+            loaded: true,
+            author: this.themes[key].author || '',
+            license: this.themes[key].license || ''
         }));
         const external = Object.keys(this.availableExternal)
             .filter(name => !this.themes[name]) // 仅未注册（待加载）的外部主题
@@ -333,7 +407,9 @@ export const ThemeEffects = {
                 id: name,
                 name: this.availableExternal[name].name || name,
                 icon: this.availableExternal[name].icon || 'palette',
-                loaded: false
+                loaded: false,
+                author: this.availableExternal[name].author || '',
+                license: this.availableExternal[name].license || ''
             }));
         return builtin.concat(external);
     },
@@ -346,6 +422,8 @@ export const ThemeEffects = {
             name: (meta && meta.name) || name,
             icon: (meta && meta.icon) || 'palette',
             description: (meta && meta.description) || '',
+            author: (meta && meta.author) || '',
+            license: (meta && meta.license) || '',
             loaded: false
         };
     },
@@ -354,7 +432,10 @@ export const ThemeEffects = {
     _ensureLoaded(name) {
         const self = this;
         if (this.themes[name]) return Promise.resolve(true);
-        if (!this.availableExternal[name]) return Promise.resolve(false);
+        // 注意：不依赖 availableExternal 是否已登记。视图重建（横向布局首次进入 moveToCenter
+        // 触发宿主重建 webview）后重新初始化时，init 可能跑在 app:ready 清单到达之前，此时
+        // availableExternal 尚为空；但宿主侧始终持有主题代码缓存，直接 requestThemeCode 取回即可，
+        // 避免恢复外部主题时因清单时序竞态而静默回退默认竹林。
         this._loadingThemes = this._loadingThemes || {};
         if (this._loadingThemes[name]) return this._loadingThemes[name];
         const mgr = (typeof window !== 'undefined' && window.storageManager) || null;
@@ -389,10 +470,19 @@ export const ThemeEffects = {
         }
 
         // 注册
+        // 设计画布契约：可选，声明 {w,h} 后由框架统一等比缩放；未声明则退回 16:10 盒且不缩放
+        const design = (themeObj.design && typeof themeObj.design === 'object'
+            && +themeObj.design.w > 0 && +themeObj.design.h > 0)
+            ? { w: +themeObj.design.w, h: +themeObj.design.h }
+            : null;
+
         this.themes[name] = {
             name: themeObj.name || name,
             icon: themeObj.icon || 'palette',
             description: themeObj.description || '',
+            author: themeObj.author || '',
+            license: themeObj.license || '',
+            design,
             render() { return themeObj.render(); },
             init(container) { if (typeof themeObj.init === 'function') themeObj.init(container); },
             destroy() { if (typeof themeObj.destroy === 'function') themeObj.destroy(); }
@@ -496,638 +586,16 @@ export const ThemeEffects = {
         return false;
     },
 
-    /** 显示主题开发指南 */
-    showThemeGuide() {
-        var g = [];
-        // AI 辅助创建入口
-        g.push('<div class="theme-guide-ai-bar">');
-        g.push('  <button class="theme-guide-ai-btn" id="aiWizardBtn">✨ AI 辅助创建</button>');
-        g.push('  <span class="theme-guide-ai-hint">填个描述，AI 帮你写主题代码</span>');
-        g.push('</div>');
-        g.push('<div class="theme-guide">');
-        g.push('<div class="theme-guide-section">');
-        g.push('<h3>📁 文件位置</h3>');
-        g.push('<p>在 Vault 根目录下创建 <code>竹林复盘主题/</code> 文件夹，放入 <code>.js</code> 文件。路径可在插件设置中修改。</p>');
-        g.push('</div>');
-        g.push('<div class="theme-guide-section">');
-        g.push('<h3>📝 接口规范</h3>');
-        g.push('<pre><code>// 文件名: 我的主题.js  →  变量名: __bamboo_theme_我的主题');
-        g.push('const theme = {');
-        g.push('  name: \'我的主题\',       // 必填：显示名称');
-        g.push('  render() {              // 必填：返回 HTML');
-        g.push('    return \'&lt;div&gt;...&lt;/div&gt;\';');
-        g.push('  },');
-        g.push('  init(container) {},     // 可选：平台传入根元素，存 this._container');
-        g.push('  destroy() {}            // 必读：清理所有 setTimeout/RAF/GSAP tweens');
-        g.push('};');
-        g.push('window.__bamboo_theme_我的主题 = theme;</code></pre>');
-        g.push('</div>');
-        g.push('<div class="theme-guide-section">');
-        g.push('<h3>🎨 跟随主题色</h3>');
-        g.push('<p>使用 <code>hsl(var(--accent-hue), S%, L%)</code> 跟随色相滑块，<code>calc(L% + var(--accent-lightness-offset))</code> 跟随明度滑块。</p>');
-        g.push('<p>使用 <code>var(--theme-lum)</code> 自动适配明暗模式：亮色时 = 80%，暗色时自动翻转为 22%。</p>');
-        g.push('<p>需要精细控制时，使用 <code>[data-theme-mode="dark"]</code> 选择器分写两套 CSS。</p>');
-        g.push('</div>');
-        g.push('<div class="theme-guide-section">');
-        g.push('<h3>🎯 平台 CSS 变量</h3>');
-        g.push('<p>以下 CSS 自定义属性由平台提供，主题中可直接使用：</p>');
-        g.push('<table class="theme-guide-var-table"><tr><th>变量名</th><th>用途</th><th>说明</th></tr>');
-        g.push('<tr><td><code>--theme-inner-radius</code></td><td>内框圆角</td><td>当前 = 26px，外框 38px−padding 12px。外层改大时自动更新，<u>必须用此变量，禁止硬编码</u></td></tr>');
-        g.push('<tr><td><code>--accent-hue</code></td><td>色相</td><td>跟随色相滑块，用 <code>hsl(var(--accent-hue), S%, L%)</code> 跟随</td></tr>');
-        g.push('<tr><td><code>--accent-lightness-offset</code></td><td>明度偏移</td><td>跟随明度滑块，用 <code>calc(L% + var(--accent-lightness-offset))</code></td></tr>');
-        g.push('<tr><td><code>--theme-lum</code></td><td>明暗自适应</td><td>亮色=80%，暗色自动翻转为 22%。用此变量写一套代码同时适配亮暗</td></tr>');
-        g.push('<tr><td><code>--theme-sat</code></td><td>饱和度自适应</td><td>亮色=35%，暗色自动降为 25%。跟随亮暗切换</td></tr>');
-        g.push('</table>');
-        g.push('</div>');
-        g.push('<div class="theme-guide-section">');
-        g.push('<h3>📐 容器适配规范</h3>');
-        g.push('<p><strong>宽度：父级 100%</strong> — 主题渲染区宽度由用户「内容宽度」滑块控制（400~1600px 动态变化），主题必须自适应。</p>');
-        g.push('<p><strong>高度：固定 250~400px</strong> — 推荐 300px，不得超出此区间。</p>');
-        g.push('<p><strong>圆角：使用平台变量</strong> — <code>border-radius: var(--theme-inner-radius)</code>，<u>禁止硬编码固定值</u>。平台外框圆角随时可能调大，变量值自动跟随，硬编码会导致双框倒角错位。</p>');
-        g.push('<p><strong>溢出裁切：必须设置</strong> — 容器加 <code>overflow: hidden</code>，防止动效（粒子、雾气等）穿透圆角边界。</p>');
-        g.push('<p><strong>水平定位必须自适应</strong> — 使用百分比（如 <code>left: 20%</code>）、<code>vw</code> 或 JS 动态计算（<code>container.offsetWidth</code>），<u>禁止使用固定 px 宽度</u>。</p>');
-        g.push('</div>');
-        g.push('<div class="theme-guide-section">');
-        g.push('<h3>🛠️ 快速模板</h3>');
-        g.push('<pre><code>const theme = {');
-        g.push('  name: \'我的主题\',');
-        g.push('  render() {');
-        g.push('    // width:100% 自适应父级，height:300px 固定高度，overflow:hidden 防止动效溢出');
-        g.push('    // border-radius 用平台变量 var(--theme-inner-radius)，禁止硬编码');
-        g.push('    return \'&lt;div style="width:100%;height:300px;overflow:hidden;');
-        g.push('      border-radius:var(--theme-inner-radius,26px);');
-        g.push('      background:linear-gradient(180deg,');
-        g.push('        hsl(calc(var(--accent-hue)+10),var(--theme-sat),var(--theme-lum)),');
-        g.push('        hsl(var(--accent-hue),var(--theme-sat),calc(var(--theme-lum) * 0.85)),');
-        g.push('        hsl(calc(var(--accent-hue)-10),var(--theme-sat),calc(var(--theme-lum) * 0.6)));');
-        g.push('      display:flex;align-items:center;justify-content:center"&gt;');
-        g.push('      &lt;h2 style="color:rgba(255,255,255,.85)"&gt;✨ 我的主题&lt;/h2&gt;');
-        g.push('      &lt;/div&gt;\';');
-        g.push('  }');
-        g.push('};');
-        g.push('window.__bamboo_theme_我的主题 = theme;</code></pre>');
-        g.push('</div>');
-        g.push('<div class="theme-guide-section">');
-        g.push('<h3>⚠️ 异步安全</h3>');
-        g.push('<p>切换主题时 <code>destroy()</code> 被调用，但异步回调（<code>setTimeout</code>/<code>requestAnimationFrame</code>/<code>gsap.onComplete</code>）可能仍在队列中，回调触发时 DOM 已被清空。</p>');
-        g.push('<p><strong>必须做到：</strong></p>');
-        g.push('<ol>');
-        g.push('<li><code>init(container)</code> 里存 <code>this._container = container</code></li>');
-        g.push('<li>所有 <code>setTimeout</code> 返回 ID 存入数组，<code>destroy()</code> 里 <code>clearTimeout</code> 全部清掉</li>');
-        g.push('<li>所有异步回调入口加 <code>if (!this._container) return</code></li>');
-        g.push('<li>如有 GSAP：<code>destroy()</code> 里 <code>gsap.killTweensOf(container.querySelectorAll(\'*\'))</code></li>');
-        g.push('</ol>');
-        g.push('<p>GSAP 通过 <code>window.gsap</code> 全局可用，主题无需 bundler，直接用。</p>');
-        g.push('</div>');
-        g.push('</div>');
-        var guide = g.join('\n');
-
-        PanelManager.open('theme-guide', '主题动效 · 开发指南', guide, {
-            width: '500px',
-            onClose: function() {}
-        });
-
-        // 绑定 AI 辅助创建按钮
-        var el = this;
-        var panel = byId('panel-theme-guide');
-        if (panel) {
-            var aiBtn = panel.querySelector('#aiWizardBtn');
-            if (aiBtn) {
-                aiBtn.addEventListener('click', function() {
-                    PanelManager.close();
-                    el.showAIWizard();
-                });
-            }
-        }
-    },
-
-    /** AI 辅助创建主题 — 多步向导 */
-    showAIWizard() {
-        var el = this;
-        var step = 1;
-        var promptText = '';
-
-        var content = [];
-        // 步骤指示器
-        content.push('<div class="ai-wizard">');
-        content.push('<div class="ai-wizard-steps">');
-        content.push('  <span class="ai-wizard-dot active"></span>');
-        content.push('  <span class="ai-wizard-line"></span>');
-        content.push('  <span class="ai-wizard-dot"></span>');
-        content.push('  <span class="ai-wizard-line"></span>');
-        content.push('  <span class="ai-wizard-dot"></span>');
-        content.push('</div>');
-
-        // 步骤 1: 输入信息 + 风格选项
-        content.push('<div class="ai-wizard-body" id="wizardStep1">');
-        content.push('  <label class="ai-wizard-label">主题名称</label>');
-        content.push('  <input class="ai-wizard-input" id="wizName" placeholder="如：星空、深海、樱花" maxlength="20">');
-        content.push('  <label class="ai-wizard-label">风格描述</label>');
-        content.push('  <textarea class="ai-wizard-textarea" id="wizDesc" placeholder="用一句话描述你想要的视觉效果，如：深蓝色星空背景，有流星划过和星光闪烁" rows="2" maxlength="200"></textarea>');
-
-        // 风格可选项
-        content.push('  <div class="ai-wizard-options">');
-        // 明暗适配
-        content.push('    <div class="ai-wizard-opt-group">');
-        content.push('      <div class="ai-wizard-opt-label">明暗适配</div>');
-        content.push('      <div class="ai-wizard-opt-row">');
-        content.push('        <button class="ai-wizard-opt active" data-group="darkMode" data-val="auto">自动适配</button>');
-        content.push('        <button class="ai-wizard-opt" data-group="darkMode" data-val="fine">精细控制</button>');
-        content.push('        <button class="ai-wizard-opt" data-group="darkMode" data-val="none">仅亮色</button>');
-        content.push('      </div>');
-        content.push('    </div>');
-        // 动效程度
-        content.push('    <div class="ai-wizard-opt-group">');
-        content.push('      <div class="ai-wizard-opt-label">动效程度</div>');
-        content.push('      <div class="ai-wizard-opt-row">');
-        content.push('        <button class="ai-wizard-opt" data-group="anim" data-val="none">静态</button>');
-        content.push('        <button class="ai-wizard-opt active" data-group="anim" data-val="light">轻量</button>');
-        content.push('        <button class="ai-wizard-opt" data-group="anim" data-val="rich">丰富</button>');
-        content.push('      </div>');
-        content.push('    </div>');
-        // 画面复杂度
-        content.push('    <div class="ai-wizard-opt-group">');
-        content.push('      <div class="ai-wizard-opt-label">画面复杂度</div>');
-        content.push('      <div class="ai-wizard-opt-row">');
-        content.push('        <button class="ai-wizard-opt" data-group="complexity" data-val="simple">简约</button>');
-        content.push('        <button class="ai-wizard-opt active" data-group="complexity" data-val="medium">中等</button>');
-        content.push('        <button class="ai-wizard-opt" data-group="complexity" data-val="rich">丰富</button>');
-        content.push('      </div>');
-        content.push('    </div>');
-        content.push('  </div>');
-
-        // 高级选项（折叠面板）
-        content.push('  <button class="ai-wizard-adv-toggle" id="advToggle">⚙ 高级选项 ▸</button>');
-        content.push('  <div class="ai-wizard-adv-body" id="advBody" style="display:none">');
-
-        // 技法标签（多选）
-        content.push('    <div class="ai-wizard-opt-group">');
-        content.push('      <div class="ai-wizard-opt-label">技法标签</div>');
-        content.push('      <div class="ai-wizard-tag-grid">');
-        // 空间与氛围
-        content.push('        <span class="ai-wizard-tag-cat">空间氛围</span>');
-        content.push('        <button class="ai-wizard-tag" data-group="technique" data-val="parallax">视差分层</button>');
-        content.push('        <button class="ai-wizard-tag" data-group="technique" data-val="fog">雾气飘动</button>');
-        content.push('        <button class="ai-wizard-tag" data-group="technique" data-val="cloud">云层漂移</button>');
-        content.push('        <button class="ai-wizard-tag" data-group="technique" data-val="dof">景深模糊</button>');
-        // 光影效果
-        content.push('        <span class="ai-wizard-tag-cat">光影效果</span>');
-        content.push('        <button class="ai-wizard-tag" data-group="technique" data-val="gradient-breath">渐变呼吸</button>');
-        content.push('        <button class="ai-wizard-tag" data-group="technique" data-val="light-scan">光线扫描</button>');
-        content.push('        <button class="ai-wizard-tag" data-group="technique" data-val="glow">光晕弥散</button>');
-        content.push('        <button class="ai-wizard-tag" data-group="technique" data-val="pulse">脉动闪烁</button>');
-        // 粒子与流体
-        content.push('        <span class="ai-wizard-tag-cat">粒子流体</span>');
-        content.push('        <button class="ai-wizard-tag" data-group="technique" data-val="particle">粒子漂浮</button>');
-        content.push('        <button class="ai-wizard-tag" data-group="technique" data-val="ripple">涟漪波纹</button>');
-        content.push('        <button class="ai-wizard-tag" data-group="technique" data-val="snow">雪花飘落</button>');
-        content.push('        <button class="ai-wizard-tag" data-group="technique" data-val="fire">火焰闪烁</button>');
-        // 图形与几何
-        content.push('        <span class="ai-wizard-tag-cat">图形几何</span>');
-        content.push('        <button class="ai-wizard-tag" data-group="technique" data-val="svg">SVG 图形</button>');
-        content.push('        <button class="ai-wizard-tag" data-group="technique" data-val="canvas">Canvas 渲染</button>');
-        content.push('        <button class="ai-wizard-tag" data-group="technique" data-val="3d">3D 透视</button>');
-        content.push('        <button class="ai-wizard-tag" data-group="technique" data-val="geom">几何变换</button>');
-        // 自然模拟
-        content.push('        <span class="ai-wizard-tag-cat">自然模拟</span>');
-        content.push('        <button class="ai-wizard-tag" data-group="technique" data-val="sway">植被摇曳</button>');
-        content.push('        <button class="ai-wizard-tag" data-group="technique" data-val="starline">星空连线</button>');
-        content.push('        <button class="ai-wizard-tag" data-group="technique" data-val="petal">花瓣飘落</button>');
-        content.push('      </div>');
-        content.push('    </div>');
-
-        // 视觉纵深（单选）
-        content.push('    <div class="ai-wizard-opt-group">');
-        content.push('      <div class="ai-wizard-opt-label">视觉纵深</div>');
-        content.push('      <div class="ai-wizard-opt-row">');
-        content.push('        <button class="ai-wizard-opt" data-group="layers" data-val="one">平面</button>');
-        content.push('        <button class="ai-wizard-opt active" data-group="layers" data-val="two">远近</button>');
-        content.push('        <button class="ai-wizard-opt" data-group="layers" data-val="three">纵深</button>');
-        content.push('      </div>');
-        content.push('    </div>');
-
-        // 镜头语言（多选）
-        content.push('    <div class="ai-wizard-opt-group">');
-        content.push('      <div class="ai-wizard-opt-label">镜头语言</div>');
-        content.push('      <div class="ai-wizard-opt-row">');
-        content.push('        <button class="ai-wizard-tag" data-group="camera" data-val="zoom">缓慢推拉</button>');
-        content.push('        <button class="ai-wizard-tag" data-group="camera" data-val="pan">横移运镜</button>');
-        content.push('        <button class="ai-wizard-tag" data-group="camera" data-val="focus">焦点切换</button>');
-        content.push('        <button class="ai-wizard-tag" data-group="camera" data-val="angle">俯仰视角</button>');
-        content.push('      </div>');
-        content.push('    </div>');
-
-        // 构图版式（多选）
-        content.push('    <div class="ai-wizard-opt-group">');
-        content.push('      <div class="ai-wizard-opt-label">构图版式</div>');
-        content.push('      <div class="ai-wizard-tag-grid">');
-        content.push('        <button class="ai-wizard-tag" data-group="comp" data-val="center">居中</button>');
-        content.push('        <button class="ai-wizard-tag" data-group="comp" data-val="symmetry">对称</button>');
-        content.push('        <button class="ai-wizard-tag" data-group="comp" data-val="diagonal">对角线</button>');
-        content.push('        <button class="ai-wizard-tag" data-group="comp" data-val="circle">圆形</button>');
-        content.push('        <button class="ai-wizard-tag" data-group="comp" data-val="ring">环形</button>');
-        content.push('        <button class="ai-wizard-tag" data-group="comp" data-val="rule-of-thirds">三分法</button>');
-        content.push('        <button class="ai-wizard-tag" data-group="comp" data-val="golden-ratio">黄金分割</button>');
-        content.push('        <button class="ai-wizard-tag" data-group="comp" data-val="frame">框架式</button>');
-        content.push('        <button class="ai-wizard-tag" data-group="comp" data-val="radial">放射线</button>');
-        content.push('        <button class="ai-wizard-tag" data-group="comp" data-val="s-curve">S 形</button>');
-        content.push('        <button class="ai-wizard-tag" data-group="comp" data-val="triangle">三角形</button>');
-        content.push('        <button class="ai-wizard-tag" data-group="comp" data-val="scatter">散点式</button>');
-        content.push('        <button class="ai-wizard-tag" data-group="comp" data-val="full-bleed">满版</button>');
-        content.push('        <button class="ai-wizard-tag" data-group="comp" data-val="whitespace">留白</button>');
-        content.push('      </div>');
-        content.push('    </div>');
-
-        // 性能取向（单选）
-        content.push('    <div class="ai-wizard-opt-group">');
-        content.push('      <div class="ai-wizard-opt-label">性能取向</div>');
-        content.push('      <div class="ai-wizard-opt-row">');
-        content.push('        <button class="ai-wizard-opt active" data-group="perf" data-val="smooth">流畅优先</button>');
-        content.push('        <button class="ai-wizard-opt" data-group="perf" data-val="quality">效果优先</button>');
-        content.push('      </div>');
-        content.push('    </div>');
-
-        content.push('  </div>');
-
-        content.push('  <div class="ai-wizard-desc-hint">Ctrl+Enter 快速生成</div>');
-        content.push('  <div class="ai-wizard-btn-row">');
-        content.push('    <button class="ai-wizard-btn primary" id="wizNext1">生成 AI 提示词 →</button>');
-        content.push('  </div>');
-        content.push('</div>');
-
-        // 步骤 2: 显示提示词
-        content.push('<div class="ai-wizard-body" id="wizardStep2" style="display:none">');
-        content.push('  <div class="ai-wizard-hint">将以下提示词复制给 AI（如 WorkBuddy、Claude、GPT），AI 会帮你写出完整的主题代码。</div>');
-        content.push('  <div class="ai-wizard-prompt" id="wizPrompt"></div>');
-        content.push('  <div class="ai-wizard-btn-row">');
-        content.push('    <button class="ai-wizard-btn secondary" id="wizBack2">← 返回修改</button>');
-        content.push('    <button class="ai-wizard-btn primary" id="wizCopy">📋 复制到剪贴板</button>');
-        content.push('  </div>');
-        content.push('</div>');
-
-        // 步骤 3: 完成引导
-        content.push('<div class="ai-wizard-body" id="wizardStep3" style="display:none">');
-        content.push('  <div class="ai-wizard-done-icon">✅</div>');
-        content.push('  <h3 class="ai-wizard-done-title">提示词已复制</h3>');
-        content.push('  <div class="ai-wizard-done-steps">');
-        content.push('    <div class="ai-wizard-done-step">');
-        content.push('      <span class="ai-wizard-done-num">1</span>');
-        content.push('      <span>将提示词粘贴给 AI，获取完整 <code>.js</code> 代码</span>');
-        content.push('    </div>');
-        content.push('    <div class="ai-wizard-done-step">');
-        content.push('      <span class="ai-wizard-done-num">2</span>');
-        content.push('      <span>在 Vault 的 <code>竹林复盘主题/</code> 文件夹中保存为 <code id="wizFileName">主题.js</code></span>');
-        content.push('    </div>');
-        content.push('    <div class="ai-wizard-done-step">');
-        content.push('      <span class="ai-wizard-done-num">3</span>');
-        content.push('      <span>回到这里，在「主题动效」面板中切换你创建的主题</span>');
-        content.push('    </div>');
-        content.push('  </div>');
-        content.push('  <div class="ai-wizard-btn-row">');
-        content.push('    <button class="ai-wizard-btn secondary" id="wizBack3">← 返回查看提示词</button>');
-        content.push('    <button class="ai-wizard-btn primary" id="wizDone">完成</button>');
-        content.push('  </div>');
-        content.push('</div>');
-        content.push('</div>');
-
-        PanelManager.open('ai-wizard', 'AI 辅助创建主题', content.join('\n'), {
-            width: '460px',
-            onClose: function() {}
-        });
-
-        var panel = byId('panel-ai-wizard');
-        if (!panel) return;
-
-        // 生成提示词模板
-        function generatePrompt(name, desc, opts, adv) {
-            var darkModeInstructions = '';
-            if (opts.darkMode === 'auto') {
-                darkModeInstructions = '使用 var(--theme-lum)（亮=80%, 暗=22%）和 var(--theme-sat)（亮=35%, 暗=25%）自动适配明暗，写一套代码即可。';
-            } else if (opts.darkMode === 'fine') {
-                darkModeInstructions = '使用 [data-theme-mode="dark"] 属性选择器分别编写亮色和暗色两套 CSS，亮色用浅色背景、深色文字，暗色用深色背景、浅色文字。wrapper 元素上设有 data-theme-mode="light"|"dark"。';
-            } else {
-                darkModeInstructions = '不需要处理暗色模式，保持固定颜色即可。';
-            }
-
-            var animInstructions = '';
-            if (opts.anim === 'none') {
-                animInstructions = '不需要任何动画效果，纯静态画面。';
-            } else if (opts.anim === 'light') {
-                animInstructions = '使用 1-2 个简单的 CSS animation（如淡入、缓慢漂移、呼吸效果），不使用复杂的粒子系统或物理模拟。';
-            } else {
-                animInstructions = '可以使用丰富的动画效果：CSS animation、requestAnimationFrame 循环、粒子效果等，追求视觉冲击力。';
-            }
-
-            var complexityInstructions = '';
-            if (opts.complexity === 'simple') {
-                complexityInstructions = '保持画面简约，用纯色渐变和大色块，元素数量控制在 3 个以内，代码简洁。';
-            } else if (opts.complexity === 'medium') {
-                complexityInstructions = '画面层次适中，可以有 4-8 个视觉元素，使用渐变色和简单几何图形。';
-            } else {
-                complexityInstructions = '画面元素丰富，可以用多层渐变、SVG 图形、纹理等复杂视觉手段。';
-            }
-
-            // 高级选项
-            var advParts = [];
-            if (adv.techniques && adv.techniques.length > 0) {
-                var techMap = {
-                    'parallax': '视差分层（多个元素以不同速度运动产生深度感）',
-                    'fog': '雾气飘动（半透明遮罩层缓慢平移，制造朦胧氛围）',
-                    'cloud': '云层漂移（大面积柔和形状横向移动）',
-                    'dof': '景深模糊（前景/背景模糊，突出中间主体）',
-                    'gradient-breath': '渐变呼吸（背景色周期性深浅变化）',
-                    'light-scan': '光线扫描（一道光束扫过画面）',
-                    'glow': '光晕弥散（光源周围柔和的径向渐变光晕）',
-                    'pulse': '脉动闪烁（元素周期性明暗或大小变化）',
-                    'particle': '粒子漂浮（大量小圆点或其他形状随机漂浮上升）',
-                    'ripple': '涟漪波纹（从中心向外扩散的圆形波纹）',
-                    'snow': '雪花飘落（白色粒子从顶部缓慢下落并水平漂移）',
-                    'fire': '火焰闪烁（不规则形状的橙红暖色闪烁效果）',
-                    'svg': 'SVG 图形（用内联 SVG 绘制几何图形）',
-                    'canvas': 'Canvas 渲染（用 JS Canvas 绘制复杂动态画面）',
-                    '3d': '3D 透视（CSS 3D transform 营造空间纵深感）',
-                    'geom': '几何变换（图形的旋转、缩放、位移组合）',
-                    'sway': '植被摇曳（树枝/草叶的周期性弯曲摆动）',
-                    'starline': '星空连线（星星之间的连线、星座图效果）',
-                    'petal': '花瓣飘落（花瓣形粒子旋转飘落）'
-                };
-                var techDesc = adv.techniques.map(function(t) { return techMap[t] || t; });
-                advParts.push('技法：' + techDesc.join('、'));
-            }
-            if (adv.layers) {
-                var layerMap = { 'one': '单层平铺，所有元素在同一平面', 'two': '双层结构：主体层 + 背景层', 'three': '三层结构：前景层 + 主体层 + 背景层，层层叠加产生空间深度' };
-                advParts.push('视觉纵深：' + (layerMap[adv.layers] || '双层'));
-            }
-            if (adv.composition && adv.composition.length > 0) {
-                var compMap = {
-                    'center': '居中构图（主体位于画面正中央，稳定、聚焦）',
-                    'symmetry': '对称构图（左右镜像对称，平衡、庄重）',
-                    'diagonal': '对角线构图（元素沿对角线分布，动感、张力）',
-                    'circle': '圆形构图（元素围绕中心环形排列，循环、聚焦）',
-                    'ring': '环形构图（元素沿环形路径分布运动，流动、循环感）',
-                    'rule-of-thirds': '三分法构图（九宫格，主体在交叉点，自然舒适）',
-                    'golden-ratio': '黄金分割构图（元素沿黄金比例线分布，经典美感）',
-                    'frame': '框架式构图（用前景元素框住主体，如窗框、树枝、拱门）',
-                    'radial': '放射线构图（从中心向外辐射，视觉爆发力）',
-                    's-curve': 'S 形构图（元素蜿蜒流动分布，优雅、引导视线）',
-                    'triangle': '三角形构图（元素形成三角稳定结构）',
-                    'scatter': '散点式构图（元素分散自由分布，轻松自然）',
-                    'full-bleed': '满版构图（元素填满整个画面，饱满、沉浸）',
-                    'whitespace': '留白构图（大面积空白，极简、呼吸感）'
-                };
-                var compDesc = adv.composition.map(function(c) { return compMap[c] || c; });
-                advParts.push('构图版式：' + compDesc.join('、'));
-            }
-            if (adv.camera && adv.camera.length > 0) {
-                var camMap = {
-                    'zoom': '缓慢推拉（画面周期性zoom in/out）',
-                    'pan': '横移运镜（画面内容横向平移）',
-                    'focus': '焦点切换（不同元素间轮流聚焦/失焦）',
-                    'angle': '俯仰视角（透视角度变化，俯瞰或仰视感）'
-                };
-                var camDesc = adv.camera.map(function(c) { return camMap[c] || c; });
-                advParts.push('镜头语言：' + camDesc.join('、'));
-            }
-            if (adv.perf) {
-                advParts.push('性能取向：' + (adv.perf === 'smooth' ? '流畅优先，控制帧率和计算量，避免卡顿' : '效果优先，不限制计算复杂度，追求极致视觉效果'));
-            }
-
-            var advancedSection = advParts.length > 0 ? '\n【高级要求】\n' + advParts.map(function(p) { return '- ' + p; }).join('\n') + '\n' : '';
-
-            return [
-                '你是一位前端动效专家，擅长 CSS 动画和视觉效果。请帮我创建一个竹林复盘插件的自定义主题动效文件。',
-                '',
-                '【我的需求】',
-                '主题名称：' + name,
-                '风格描述：' + desc,
-                '',
-                '【接口规范（严格遵守）】',
-                '- 文件名：' + name + '.js',
-                '- 变量名：window.__bamboo_theme_' + name + ' = { theme对象 }',
-                '- theme 对象必须包含：name（字符串）、render()（返回 HTML 字符串，作为动效容器的 innerHTML）',
-                '- 可选：init(container)（初始化逻辑，平台传入根元素）、destroy()（清理逻辑，必须清所有定时器和 GSAP tweens）',
-                '- 示例结构：',
-                '```js',
-                'const theme = {',
-                '  name: "' + name + '",',
-                '  render() { return `<div>...</div>`; },',
-                '  init(container) {},',
-                '  destroy() {}',
-                '};',
-                'window.__bamboo_theme_' + name + ' = theme;',
-                '```',
-                '',
-                '【跟随主题色】',
-                '- 色相跟随：hsl(var(--accent-hue), 饱和度%, 明度%)',
-                '- 明度偏移：calc(L% + var(--accent-lightness-offset))',
-                '',
-                '【平台 CSS 变量（必须使用，禁止硬编码）】',
-                '- --theme-inner-radius：内框圆角（当前=26px），容器 border-radius 必须用 var(--theme-inner-radius)，外层改大时自动对齐',
-                '- --accent-hue：色相（跟随用户色相滑块）',
-                '- --accent-lightness-offset：明度偏移',
-                '- --theme-lum：明暗自适应（亮=80%, 暗=22%）',
-                '- --theme-sat：饱和度自适应（亮=35%, 暗=25%）',
-                '',
-                '【明暗模式】',
-                darkModeInstructions,
-                '',
-                '【动效程度】',
-                animInstructions,
-                '',
-                '【画面复杂度】',
-                complexityInstructions,
-                advancedSection,
-                '【输出要求】',
-                '- 只输出完整的 .js 文件内容，我可以直接保存使用',
-                '- 不要包含任何解释、注释之外的多余文字',
-                '- HTML 使用内联 style 拼接，可以包含 <style> 标签',
-                '- 动效使用 requestAnimationFrame 或 CSS animation/@keyframes',
-                '- 容器宽度必须为 100%（自适应父级，父级宽度 400~1600px 动态变化），高度固定 250~400px',
-                '- 容器 border-radius 必须使用 var(--theme-inner-radius)（平台变量），禁止硬编码具体 px 值',
-                '- 容器必须设置 overflow: hidden，防止动效穿透圆角边界',
-                '- 推荐加 contain: paint 隔离绘制，提升渲染性能',
-                '- 所有水平定位必须用百分比或动态计算（container.offsetWidth），禁止使用固定 px 宽度',
-                '- 确保代码可以直接运行，不使用未声明的变量',
-                '',
-                '开始编写。'
-            ].join('\n');
-        }
-
-        // 切换到指定步骤
-        function showStep(n) {
-            step = n;
-            for (var i = 1; i <= 3; i++) {
-                var body = panel.querySelector('#wizardStep' + i);
-                if (body) body.style.display = i === n ? '' : 'none';
-            }
-            // 更新步骤点
-            var dots = panel.querySelectorAll('.ai-wizard-dot');
-            dots.forEach(function(d, idx) {
-                d.classList.toggle('active', idx + 1 <= n);
-                d.classList.toggle('done', idx + 1 < n);
-            });
-            // 更新步骤行颜色
-            var stepsEl = panel.querySelector('.ai-wizard-steps');
-            if (stepsEl) stepsEl.setAttribute('data-step', n);
-        }
-
-        // 步骤 1→2: 生成提示词
-        var next1 = panel.querySelector('#wizNext1');
-        if (next1) {
-            next1.addEventListener('click', function() {
-                var name = (panel.querySelector('#wizName').value || '').trim();
-                var desc = (panel.querySelector('#wizDesc').value || '').trim();
-                if (!name || !desc) {
-                    Toast.showToast('请填写主题名称和风格描述', 'warning');
-                    return;
-                }
-                // 收集风格选项
-                var getOptVal = function(group) {
-                    var activeBtn = panel.querySelector('.ai-wizard-opt.active[data-group="' + group + '"]');
-                    return activeBtn ? activeBtn.dataset.val : '';
-                };
-                // 收集多选标签值
-                var getMultiVals = function(group) {
-                    var vals = [];
-                    panel.querySelectorAll('.ai-wizard-tag.active[data-group="' + group + '"]').forEach(function(b) {
-                        vals.push(b.dataset.val);
-                    });
-                    return vals;
-                };
-                var opts = {
-                    darkMode: getOptVal('darkMode') || 'auto',
-                    anim: getOptVal('anim') || 'light',
-                    complexity: getOptVal('complexity') || 'medium'
-                };
-                var adv = {
-                    techniques: getMultiVals('technique'),
-                    layers: getOptVal('layers') || 'two',
-                    composition: getMultiVals('comp'),
-                    camera: getMultiVals('camera'),
-                    perf: getOptVal('perf') || 'smooth'
-                };
-                promptText = generatePrompt(name, desc, opts, adv);
-                panel.querySelector('#wizPrompt').textContent = promptText;
-                panel.querySelector('#wizFileName').textContent = name + '.js';
-                showStep(2);
-            });
-        }
-
-        function copyToClipboard(text, cb) {
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-                navigator.clipboard.writeText(text).then(cb).catch(function() {
-                    fallbackCopy(text, cb);
-                });
-            } else {
-                fallbackCopy(text, cb);
-            }
-        }
-
-        function fallbackCopy(text, cb) {
-            var ta = document.createElement('textarea');
-            ta.value = text;
-            ta.style.position = 'fixed';
-            ta.style.opacity = '0';
-            modalMount().appendChild(ta);
-            ta.select();
-            document.execCommand('copy');
-            ta.remove();
-            cb();
-        }
-
-        // 步骤 2→3: 复制
-        var copyBtn = panel.querySelector('#wizCopy');
-        if (copyBtn) {
-            copyBtn.addEventListener('click', function() {
-                copyToClipboard(promptText, function() {
-                    Toast.showToast('提示词已复制到剪贴板', 'success');
-                    showStep(3);
-                });
-            });
-        }
-
-        // 步骤 2→1: 返回修改
-        var back2 = panel.querySelector('#wizBack2');
-        if (back2) {
-            back2.addEventListener('click', function() { showStep(1); });
-        }
-
-        // 步骤 3→2: 返回查看
-        var back3 = panel.querySelector('#wizBack3');
-        if (back3) {
-            back3.addEventListener('click', function() { showStep(2); });
-        }
-
-        // 完成
-        var doneBtn = panel.querySelector('#wizDone');
-        if (doneBtn) {
-            doneBtn.addEventListener('click', function() {
-                PanelManager.close();
-            });
-        }
-
-        // 快捷键: Ctrl+Enter 快速生成
-        var wizDesc = panel.querySelector('#wizDesc');
-        if (wizDesc) {
-            wizDesc.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-                    var n1 = panel.querySelector('#wizNext1');
-                    if (n1) n1.click();
-                }
-            });
-        }
-
-        // 风格选项按钮切换（单选，支持点击取消）
-        panel.querySelectorAll('.ai-wizard-opt').forEach(function(btn) {
-            btn.addEventListener('click', function() {
-                var group = btn.dataset.group;
-                var isActive = btn.classList.contains('active');
-                // 同一组内取消全部
-                panel.querySelectorAll('.ai-wizard-opt[data-group="' + group + '"]').forEach(function(b) {
-                    b.classList.remove('active');
-                });
-                // 如果之前未选中，才选中当前；如果已选中则变为取消状态
-                if (!isActive) {
-                    btn.classList.add('active');
-                }
-            });
-        });
-
-        // 技法标签和镜头语言标签（多选切换）
-        panel.querySelectorAll('.ai-wizard-tag').forEach(function(btn) {
-            btn.addEventListener('click', function() {
-                btn.classList.toggle('active');
-            });
-        });
-
-        // 高级选项折叠切换（收起时清空所有高级选项）
-        var advToggle = panel.querySelector('#advToggle');
-        var advBody = panel.querySelector('#advBody');
-        if (advToggle && advBody) {
-            advToggle.addEventListener('click', function() {
-                var isOpen = advBody.style.display !== 'none';
-                if (isOpen) {
-                    // 收起：清空所有高级选项选择
-                    // 清除所有 tag active
-                    advBody.querySelectorAll('.ai-wizard-tag.active').forEach(function(t) {
-                        t.classList.remove('active');
-                    });
-                    // 清除所有 opt active（单选组）
-                    advBody.querySelectorAll('.ai-wizard-opt.active').forEach(function(o) {
-                        o.classList.remove('active');
-                    });
-                }
-                advBody.style.display = isOpen ? 'none' : '';
-                advToggle.innerHTML = '⚙ 高级选项 ' + (isOpen ? '▸' : '▾');
-            });
-        }
-    },
 
     destroy() {
         if (this._modeObserver) {
             this._modeObserver.disconnect();
             this._modeObserver = null;
             this._modeObserverActive = false;
+        }
+        if (this._scalerRO) {
+            this._scalerRO.disconnect();
+            this._scalerRO = null;
         }
         this._intervals.forEach(id => clearInterval(id));
         this._intervals = [];
@@ -1144,6 +612,7 @@ export const ThemeEffects = {
                     data-loaded="${t.loaded ? '1' : '0'}"
                     title="${t.name}">
                 <span class="theme-panel-card-name">${t.name}</span>
+                ${t.license && t.license.indexOf('专享') !== -1 ? '<span class="theme-exclusive-badge">专享</span>' : ''}
                 ${t.loaded ? '' : '<span class="theme-panel-card-badge">待加载</span>'}
             </button>
         `).join('');
@@ -1155,6 +624,10 @@ export const ThemeEffects = {
         var hasTune = cur.hue !== null || cur.lightness !== null;
 
         var content = [
+            '<div class="theme-panel-market-entry">',
+                '<button class="theme-market-open-btn" id="openMarketBtn">逛竹林主题市场</button>',
+            '</div>',
+
             '<div class="theme-panel-grid">',
                 cards,
             '</div>',
@@ -1178,11 +651,6 @@ export const ThemeEffects = {
                 '</div>',
             '</div>',
 
-            '<div class="theme-panel-help">',
-                '<button class="theme-panel-help-btn" id="themeHelpBtn">',
-                    '<span>如何制作自定义主题？</span>',
-                '</button>',
-            '</div>'
         ].join('\n');
 
         PanelManager.open('theme', '主题动效', content, {
@@ -1226,12 +694,11 @@ export const ThemeEffects = {
             });
         });
 
-        // 帮助按钮
-        var helpBtn = panel.querySelector('#themeHelpBtn');
-        if (helpBtn) {
-            helpBtn.addEventListener('click', function() {
-                PanelManager.close();
-                el.showThemeGuide();
+        // 逛市场入口
+        var marketBtn = panel.querySelector('#openMarketBtn');
+        if (marketBtn) {
+            marketBtn.addEventListener('click', function() {
+                el.showMarketPanel();
             });
         }
 
@@ -1309,6 +776,129 @@ export const ThemeEffects = {
             if (ra) ra.style.display = 'none';
         }
     },
+
+    showMarketPanel() {
+        const el = this;
+        if (byId('panel-market')) return; // 已打开则不重复
+        const content = '<div class="market-loading">正在从竹林主题市场加载…</div>';
+        PanelManager.open('market', '竹林主题市场', content, { width: '560px' });
+        const panel = byId('panel-market');
+        if (!panel) return;
+        const body = panel.querySelector('.fab-panel-body');
+        if (!body) return;
+        const mgr = (typeof window !== 'undefined' && window.storageManager) || null;
+        if (!mgr || typeof mgr.fetchMarketManifest !== 'function') {
+            body.innerHTML = '<div class="market-empty">市场功能暂不可用</div>';
+            return;
+        }
+        mgr.fetchMarketManifest().then(function(manifest) {
+            if (!manifest || !Array.isArray(manifest.themes) || manifest.themes.length === 0) {
+                body.innerHTML = '<div class="market-empty">市场暂无主题</div>';
+                return;
+            }
+            el._renderMarketBody(body, manifest.themes, manifest.installed || {});
+        }).catch(function() {
+            body.innerHTML = '<div class="market-empty">市场加载失败，请稍后重试</div>';
+        });
+    },
+
+    /**
+     * 渲染市场列表。
+     * @param {Array} themes manifest 中的主题条目（含 version）
+     * @param {Object} installed 宿主持久化的「已安装版本表」：id → { version }
+     */
+    _renderMarketBody(body, themes, installed) {
+        const el = this;
+        installed = installed || {};
+        const cards = themes.map(function(t) {
+            // 已安装：主题文件被扫进清单（待加载）或已注册（当前/已加载）
+            const isInstalled = !!el.availableExternal[t.id] || !!el.themes[t.id];
+            const exclusive = t.license && t.license.indexOf('专享') !== -1;
+            const ver = t.version || '';
+            const rec = installed[t.id];
+            // 可更新：已安装 且线上声明了版本 且（无安装记录 = 老版本遗留 / 记录版本与线上不一致）
+            const hasUpdate = isInstalled && !!ver && (!rec || rec.version !== ver);
+            const act = 'data-id="' + t.id + '"';
+            let btn;
+            if (!isInstalled) {
+                btn = '<button class="market-btn install" ' + act + ' data-action="install" data-url="' +
+                    (t.url || '') + '" data-version="' + ver + '">安装</button>';
+            } else if (hasUpdate) {
+                btn = '<button class="market-btn install" ' + act + ' data-action="update" data-url="' +
+                    (t.url || '') + '" data-version="' + ver + '">更新</button>' +
+                    '<button class="market-btn uninstall" ' + act + '>卸载</button>';
+            } else {
+                btn = '<button class="market-btn uninstall" ' + act + '>卸载</button>';
+            }
+            return '<div class="market-card' + (isInstalled ? ' installed' : '') + '">' +
+                '<div class="market-card-main">' +
+                    '<div class="market-card-head">' +
+                        '<span class="market-card-name">' + (t.name || t.id) + '</span>' +
+                        (exclusive ? '<span class="theme-exclusive-badge">专享</span>' : '') +
+                        (hasUpdate ? '<span class="market-update-badge">可更新 v' + ver + '</span>' : '') +
+                    '</div>' +
+                    (t.author ? '<div class="market-card-author">作者：' + t.author + (ver ? ' · v' + ver : '') + '</div>' : '') +
+                '</div>' +
+                '<div class="market-card-actions">' + btn + '</div>' +
+            '</div>';
+        }).join('');
+        body.innerHTML = '<div class="market-list">' + cards + '</div>';
+
+        body.querySelectorAll('.market-btn.install').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                const id = btn.getAttribute('data-id');
+                const url = btn.getAttribute('data-url');
+                const ver = btn.getAttribute('data-version') || '';
+                const isUpdate = btn.getAttribute('data-action') === 'update';
+                const entry = themes.find(function(x) { return x.id === id; });
+                if (btn.disabled) return;
+                btn.disabled = true;
+                btn.textContent = isUpdate ? '更新中…' : '安装中…';
+                window.storageManager.installMarketTheme(id, url, ver).then(function(ok) {
+                    if (ok) {
+                        el.registerExternalManifest(id, entry || {});
+                        installed[id] = { version: ver };
+                        // 更新且该主题正在显示：内存里注册的还是旧代码 → 注销后重新拉取并挂载，让新版本立即生效
+                        if (isUpdate && el.currentTheme === id) {
+                            const oldT = el.themes[id];
+                            if (oldT && typeof oldT.destroy === 'function') {
+                                try { oldT.destroy(); } catch (e) { /* 旧主题清理失败不阻塞更新 */ }
+                            }
+                            delete el.themes[id];
+                            el._ensureLoaded(id).then(function (ok2) {
+                                if (ok2) el._mountTheme(id);
+                            });
+                        }
+                        el._renderMarketBody(body, themes, installed);
+                        Toast.showToast('「' + (entry ? entry.name : id) + '」' +
+                            (isUpdate ? '已更新' : '已安装，可在主题面板切换'), 'success');
+                    } else {
+                        btn.disabled = false;
+                        btn.textContent = isUpdate ? '更新失败，重试' : '安装失败，重试';
+                    }
+                });
+            });
+        });
+        body.querySelectorAll('.market-btn.uninstall').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                const id = btn.getAttribute('data-id');
+                if (btn.disabled) return;
+                btn.disabled = true; btn.textContent = '卸载中…';
+                window.storageManager.uninstallMarketTheme(id).then(function(ok) {
+                    if (ok) {
+                        if (el.currentTheme === id) { try { el.switchTheme('bamboo'); } catch (e) {} }
+                        if (el.availableExternal[id]) delete el.availableExternal[id];
+                        delete installed[id];
+                        el._renderMarketBody(body, themes, installed);
+                        Toast.showToast('「' + id + '」已卸载', 'success');
+                    } else {
+                        btn.disabled = false; btn.textContent = '卸载失败，重试';
+                    }
+                });
+            });
+        });
+    },
+
 };
 
 window.ThemeEffects = ThemeEffects;

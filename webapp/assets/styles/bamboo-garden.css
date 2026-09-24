@@ -759,25 +759,46 @@
     display: none;
 }
 
-/* ===== 移动端降级（触摸且无 hover 的设备，如三星等安卓 WebView）=====
-   平板/手机 GPU 弱，上千个同时运行的 transform/opacity 无限动画 + 多层
-   filter:blur 滤镜会掉帧甚至渲染错乱；且 JS 端已停止 sway/tremble/落叶
-   setInterval。此处用媒体查询在 CSS 层兜底关闭全部动效与模糊，改为静态绘制，
-   消除滚动时的持续重绘成本。桌面（fine pointer + hover）不受影响。 */
+/* ===== 移动端 lite 竹林（触摸且无 hover 的设备，如三星等安卓 WebView）=====
+   目标：保留「静谧竹林 + 几片落叶飘落 + 月色呼吸」的氛围，但把同时动画的
+   元素压到个位数（3 片 CSS 落叶 + 1 轮月亮），全部走合成器友好的
+   transform/opacity，杜绝上千节点常驻动画、JS 落叶强制重排、以及模糊层每帧
+   重绘。模糊只保留在「静止」图层（山/雾/水），paint 一次即被缓存，叠加飘叶
+   时仅混合位图、不重算 blur。桌面（fine pointer + hover）不受影响。 */
 @media (pointer: coarse) and (hover: none) {
-    .bamboo-garden-container,
-    .bamboo-garden-container * {
-        animation: none !important;
-        will-change: auto !important;
-    }
-    /* 多层 blur 是弱 GPU 的最大杀手，移动端直接去模糊 */
+    /* 关闭一切非必要时序动效：迷雾漂移、远山浮动、江水波、舟、竹身摇曳、竹叶轻颤。
+       注意：不在此列表中的 .drifting-leaf（落叶）与 .moon（月亮）动画保留。 */
     .mist-layer-1,
     .mist-layer-2,
     .mist-layer-3,
     .distant-mountains .mountain-layer,
     .river-surface,
-    .mountain-mist {
-        filter: none !important;
+    .mountain-mist,
+    .boat-container,
+    .bamboo-forest .bamboo-inner,
+    .bamboo-leaf-tip {
+        animation: none !important;
+    }
+    /* 静止模糊图层：释放此前被提升的合成层，避免常驻 GPU 内存 */
+    .mist-layer-1,
+    .mist-layer-2,
+    .mist-layer-3,
+    .distant-mountains .mountain-layer,
+    .river-surface,
+    .mountain-mist,
+    .boat-container {
+        will-change: auto !important;
+    }
+    /* 3 个静态竹子容器：不挂 will-change（不动画），改用 contain 隔离滚动重绘，省内存 */
+    .bamboo-far,
+    .bamboo-mid,
+    .bamboo-near {
+        contain: layout paint;
+    }
+    /* 仅真正在动的 4 个元素挂 will-change：3 片落叶 + 1 轮月亮 */
+    .drifting-leaf,
+    .moon {
+        will-change: transform, opacity;
     }
 }
 

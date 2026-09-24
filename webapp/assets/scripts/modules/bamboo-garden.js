@@ -92,8 +92,9 @@ export const BambooGarden = {
         this._initialized = true;
 
         this.createBambooForest();
-        // 移动端：跳过落叶 setInterval（含 void offsetWidth 强制重排），改静态绘制
-        if (!_isMobileEnv()) this.startLeafAnimation();
+        // 移动端：用纯 CSS 落叶（3 片，无 JS setInterval / 无强制重排）；桌面走 JS 对象池
+        if (_isMobileEnv()) this._createMobileDriftLeaves();
+        else this.startLeafAnimation();
         this._setupVisibilityGuard();
         this._initPerfHud();
         // 初始即按当前明暗模式应用大背景（避免依赖 CSS :host(.dark) 在个别 webview 下未命中）
@@ -241,6 +242,27 @@ export const BambooGarden = {
         nearLayer.innerHTML = this.createBambooStalks(14, 608, 768, 6, 0.72, false);
     },
 
+    /**
+     * 移动端 lite 落叶：纯 CSS 飘落（leafDrift），不依赖 JS setInterval 与
+     * 强制重排。仅 3 片、无限循环 + 错峰 delay，营造「几片落叶飘过」的轻动效。
+     * 真在动的只有这 3 个元素（加月亮共 4 个），合成器友好（仅 transform/opacity）。
+     * 桌面端不走这里 —— 桌面用 startLeafAnimation 的 JS 对象池（更密更灵动）。
+     */
+    _createMobileDriftLeaves() {
+        const container = byId('leafContainer');
+        if (!container) return;
+        const specs = [
+            { left: 8,  dur: 7,   delay: 0 },
+            { left: 30, dur: 8.5, delay: 3 },
+            { left: 54, dur: 9.5, delay: 6 },
+        ];
+        let html = '';
+        for (const s of specs) {
+            html += `<div class="drifting-leaf" style="left:${s.left}%; animation: leafDrift ${s.dur}s linear infinite ${s.delay}s both;"></div>`;
+        }
+        container.innerHTML = html;
+    },
+
     createBambooStalks(count, minH, maxH, width, opacity, leftFade, staticRatio = 0.5) {
         let html = '';
         // 移动端（触摸无 hover 设备）：强制全部静态，彻底关闭 sway 动画
@@ -372,6 +394,8 @@ export const BambooGarden = {
     },
 
     startLeafAnimation() {
+        // 移动端走纯 CSS 落叶（_createMobileDriftLeaves），不启 JS 对象池 / setInterval
+        if (_isMobileEnv()) return;
         // 避免重复创建 interval
         if (this._leafIntervalId) return;
 

@@ -372,8 +372,12 @@ export const LayoutMode = {
     _reflowHorizontal(container) {
         if (!container) return;
         this._unreflow(container);
-        const cols = this._columns > 0 ? this._columns : 2;
         const items = Array.from(container.children);
+        // 按「当前」板块数重算列数（每行 2 个板块，最少 2 列）。
+        // 不能沿用 _enter 时算出的 _columns：渲染系统在 init() 恢复布局之后才渲染板块，
+        // 那时板块数为 0，陈旧值会让后续列数与实际板块数不符。
+        const cols = Math.max(2, Math.ceil(items.length / 2));
+        this._columns = cols;
         // 在文档外（Fragment）把整棵列结构组装完，再一次插入容器：
         // 逐个 appendChild 到文档中会让布局反复失效，批量插入只失效一次。
         const frag = document.createDocumentFragment();
@@ -393,8 +397,13 @@ export const LayoutMode = {
     _reflowKanban(container) {
         if (!container) return;
         this._unreflow(container);
-        const cols = this._columns > 0 ? this._columns : 1;
         const items = Array.from(container.children);
+        // 看板：一行全排开，每板块独占一列（列数 = 板块数）。
+        // 必须按「当前」板块数重算：init() 恢复看板时板块尚未渲染（visibleCount=0），
+        // 沿用那时算出的 _columns=1 会把所有板块塞进 1 列 → 视觉上等同纵向，
+        // 表现为「看板没有恢复」。渲染系统渲染完后调 reflow() 重算即可纠正。
+        const cols = Math.max(1, items.length);
+        this._columns = cols;
         const frag = document.createDocumentFragment();
         const wrappers = [];
         for (let i = 0; i < cols; i++) {

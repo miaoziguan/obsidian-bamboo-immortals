@@ -119,37 +119,59 @@ export const BambooGarden = {
     },
 
     /**
-     * 调试 HUD：在视图内按 P 键切换。显示实时 FPS 与 DOM 节点数，用于真机验证
-     * 性能修复（如移动端动效降级）是否生效。仅在用户主动按键时挂载，零运行时成本。
-     * 不直接读 URL（日复盘跑在 data: iframe 内，query 不可达），改用按键触发。
+     * 调试 HUD：桌面按 P 键、触屏长按约 0.7 秒 切换。显示实时 FPS 与 DOM 节点数，
+     * 用于真机验证性能修复（如移动端动效降级）是否生效。
+     * 注：日复盘跑在 data: iframe 内，URL query 不可达，且平板无键盘无法按 P，
+     * 故同时提供长按触发（手指不移动并持续按住即呼出/收起）。仅在用户主动触发时挂载，零运行时成本。
      */
     _initPerfHud() {
         try {
-            const key = (e) => {
-                if (e.key && e.key.toLowerCase() === 'p') {
-                    const existing = byId('__perfHud');
-                    if (existing) { existing.remove(); return; }
-                    const box = document.createElement('div');
-                    box.id = '__perfHud';
-                    box.style.cssText =
-                        'position:fixed;right:8px;bottom:8px;z-index:2147483647;background:rgba(0,0,0,.8);' +
-                        'color:#3f6;font:12px/1.45 monospace;padding:6px 9px;border-radius:6px;pointer-events:none;white-space:pre';
-                    (document.body || document.documentElement).appendChild(box);
-                    let frames = 0, last = performance.now();
-                    const loop = (t) => {
-                        frames++;
-                        if (t - last >= 1000) {
-                            const fps = Math.round((frames * 1000) / (t - last));
-                            frames = 0; last = t;
-                            const n = document.getElementsByTagName('*').length;
-                            box.textContent = `FPS ${fps}\nDOM ${n}\nmobile ${_isMobileEnv() ? 'Y' : 'N'}`;
-                        }
-                        requestAnimationFrame(loop);
-                    };
+            const toggle = () => {
+                const existing = byId('__perfHud');
+                if (existing) { existing.remove(); return; }
+                const box = document.createElement('div');
+                box.id = '__perfHud';
+                box.style.cssText =
+                    'position:fixed;right:8px;bottom:8px;z-index:2147483647;background:rgba(0,0,0,.8);' +
+                    'color:#3f6;font:12px/1.45 monospace;padding:6px 9px;border-radius:6px;pointer-events:none;white-space:pre';
+                (document.body || document.documentElement).appendChild(box);
+                let frames = 0, last = performance.now();
+                const loop = (t) => {
+                    frames++;
+                    if (t - last >= 1000) {
+                        const fps = Math.round((frames * 1000) / (t - last));
+                        frames = 0; last = t;
+                        const n = document.getElementsByTagName('*').length;
+                        box.textContent = `FPS ${fps}\nDOM ${n}\nmobile ${_isMobileEnv() ? 'Y' : 'N'}`;
+                    }
                     requestAnimationFrame(loop);
-                }
+                };
+                requestAnimationFrame(loop);
             };
-            document.addEventListener('keydown', key);
+            // 桌面（有键盘）：按 P 键切换
+            document.addEventListener('keydown', (e) => {
+                if (e.key && e.key.toLowerCase() === 'p') toggle();
+            });
+            // 触屏设备（平板/手机无键盘，P 键不可达）：长按约 0.7 秒呼出/收起
+            let lpTimer = null, lpStart = null;
+            document.addEventListener('touchstart', (e) => {
+                if (!e.touches || !e.touches[0]) return;
+                lpStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                lpTimer = setTimeout(toggle, 700);
+            }, { passive: true });
+            document.addEventListener('touchmove', (e) => {
+                if (lpTimer && lpStart && e.touches && e.touches[0]) {
+                    const dx = e.touches[0].clientX - lpStart.x;
+                    const dy = e.touches[0].clientY - lpStart.y;
+                    if (Math.hypot(dx, dy) > 12) { clearTimeout(lpTimer); lpTimer = null; }
+                }
+            }, { passive: true });
+            document.addEventListener('touchend', () => {
+                if (lpTimer) { clearTimeout(lpTimer); lpTimer = null; }
+                lpStart = null;
+            });
+            // 长按时不弹出系统右键菜单
+            document.addEventListener('contextmenu', (e) => { if (lpStart) e.preventDefault(); });
         } catch (e) {}
     },
 

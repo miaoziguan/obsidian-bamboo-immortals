@@ -476,13 +476,15 @@
     position: absolute;
     bottom: 64px;
     left: -10%;
-    animation: boatFloat 6s ease-in-out infinite, boatDrift 45s linear infinite;
+    /* 横移改用 transform（合成器友好，不再用 left 触发重排）；上下浮交给内层 .boat 的 boatFloat，
+       两者分属不同元素，避免两条动画争抢 transform 导致浮动被覆盖 */
+    animation: boatDrift 45s linear infinite;
 }
 
-/* 暗色模式下原地浮动 + 发光 */
+/* 暗色模式下原地浮动 + 发光（不横穿，保留 .boat 的上下浮即可） */
 :host(.dark) .boat-container {
     left: 12%;
-    animation: boatFloat 6s ease-in-out infinite;
+    animation: none;
 }
 
 :host(.dark) .boat {
@@ -505,6 +507,8 @@
     height: 15px;
     filter: blur(0.5px);
     opacity: 0.45;
+    /* 上下浮/微倾：合成器友好；外层 .boat-container 负责横移，两者分属不同元素互不冲突 */
+    animation: boatFloat 6s ease-in-out infinite;
 }
 
 .boat::before {
@@ -531,8 +535,10 @@
 }
 
 @keyframes boatDrift {
-    0% { left: -15%; }
-    100% { left: 115%; }
+    /* 用设计空间 px（画布宽 480）：translateX(%) 是相对元素自身宽度的，无法跨屏，故用 px。
+       从画布左侧外(-80)漂到右侧外(560)，合成器友好、不触发重排。 */
+    0% { transform: translateX(-80px); }
+    100% { transform: translateX(560px); }
 }
 
 /* 竹林层：填满整个设计画布高度（勿写死 px —— 容器变高时会露出顶部死带） */
@@ -766,15 +772,14 @@
    重绘。模糊只保留在「静止」图层（山/雾/水），paint 一次即被缓存，叠加飘叶
    时仅混合位图、不重算 blur。桌面（fine pointer + hover）不受影响。 */
 @media (pointer: coarse) and (hover: none) {
-    /* 关闭一切非必要时序动效：迷雾漂移、远山浮动、江水波、舟、竹身摇曳、竹叶轻颤。
-       注意：不在此列表中的 .drifting-leaf（落叶）与 .moon（月亮）动画保留。 */
+    /* 关闭一切非必要时序动效：迷雾漂移、远山浮动、江水波、竹身摇曳、竹叶轻颤。
+       注意：不在此列表中的 .drifting-leaf（落叶）、.moon（月亮）、.boat*（小船）动画保留。 */
     .mist-layer-1,
     .mist-layer-2,
     .mist-layer-3,
     .distant-mountains .mountain-layer,
     .river-surface,
     .mountain-mist,
-    .boat-container,
     .bamboo-forest .bamboo-inner,
     .bamboo-leaf-tip {
         animation: none !important;
@@ -785,8 +790,7 @@
     .mist-layer-3,
     .distant-mountains .mountain-layer,
     .river-surface,
-    .mountain-mist,
-    .boat-container {
+    .mountain-mist {
         will-change: auto !important;
     }
     /* 3 个静态竹子容器：不挂 will-change（不动画），改用 contain 隔离滚动重绘，省内存 */
@@ -795,9 +799,11 @@
     .bamboo-near {
         contain: layout paint;
     }
-    /* 仅真正在动的 4 个元素挂 will-change：3 片落叶 + 1 轮月亮 */
+    /* 仅真正在动的元素挂 will-change：3 片落叶 + 1 轮月亮 + 1 小船（外层横移 + 内层浮 = 2 节点 1 视觉元素） */
     .drifting-leaf,
-    .moon {
+    .moon,
+    .boat-container,
+    .boat {
         will-change: transform, opacity;
     }
 }

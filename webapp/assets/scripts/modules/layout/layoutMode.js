@@ -43,9 +43,10 @@ export const LayoutMode = {
      */
     /**
      * 初始化：webapp 启动时由外部调用。
-     * - 同会话「侧边栏移中央」重建：宿主 app:ready 通过 window.__bambooPendingLayoutMode 带回模式，优先恢复；
-     * - 跨重启持久化：若无 pending（全新启动），则从 settings.layoutMode 读回上次模式自动恢复，
-     *   并请求宿主把视图移回主工作区（多列布局需要横向宽度；已在中央则宿主端自动 no-op）。
+     * - 模式以 settings.layoutMode 为权威来源（跨重启持久化）。
+     * - 宿主侧 pendingLayoutMode 仅用于「同会话移中央重建」时跳过重复移动；它不参与跨重启
+     *   恢复，因为在「横向→看板」手动切换时该字段不会更新（停留 'horizontal'），且重启后
+     *   Obsidian 视图状态带回的是 stale 值——若拿它当模式，看板会被错误恢复成横向。
      * 移动端不恢复多列（_isDesktop 守卫）。
      */
     async init() {
@@ -53,12 +54,13 @@ export const LayoutMode = {
         window.__bambooPendingLayoutMode = null;
         // 移动端不支持多列，保持纵向
         if (!this._isDesktop()) return;
-        let mode = pending;
-        if (!mode) {
-            try { mode = await this._loadPersistedMode(); } catch (e) { mode = null; }
-        }
-        // 仅「同会话移中央重建」跳过 moveToCenter（已在中央）；跨重启恢复需重新移回中央
-        this._restoring = !!pending;
+        // 模式权威来源 = settings.layoutMode；仅当 settings 为空（极早期/竞态）才回退 pending
+        let mode = null;
+        try { mode = await this._loadPersistedMode(); } catch (e) { mode = null; }
+        if (!mode && pending) mode = pending;
+        // _restoring（跳过 moveToCenter）仅在「同会话移中央重建且视图已在主工作区」时成立；
+        // 重启即使 pending 非空（stale），若视图在侧栏仍需重新移回中央，故须绑定 __bambooIsMainLeaf
+        this._restoring = !!(pending && window.__bambooIsMainLeaf);
         try {
             if (mode === 'kanban') {
                 this._enter('kanban');

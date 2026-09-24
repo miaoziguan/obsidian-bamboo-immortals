@@ -2,7 +2,7 @@ import esbuild from "esbuild";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-
+import { wrapGzip } from "./wrap-gzip.mjs";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const webappDir = path.join(__dirname, "..", "webapp");
 const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "package.json"), "utf-8"));
@@ -134,6 +134,19 @@ async function buildSelfContainedHtml(htmlFile, outFile) {
     const escaped = bundleCode.replace(/<\/script/gi, "<\\/script");
     const bundleTag = `<script type="module">\n${escaped}\n</script>`;
     appHtml = appHtml.slice(0, firstIndex) + bundleTag + appHtml.slice(firstIndex);
+  }
+
+  // R1 gzip 瘦身：仅对超限入口启用，把自包含 HTML 压成极小 loader，
+  // 让 iframe 的 data: URL 体积稳定 < 2MB（绕开 blob: 在 ArkWeb 上被拦）。
+  const rawBytes = Buffer.byteLength(appHtml, "utf-8");
+  if (rawBytes > 900 * 1024) {
+    const wrapped = wrapGzip(appHtml);
+    const wrappedBytes = Buffer.byteLength(wrapped, "utf-8");
+    appHtml = wrapped;
+    console.log(
+      `  ↳ R1 gzip 包装: ${(rawBytes / 1024).toFixed(0)}KB → loader ${(wrappedBytes / 1024).toFixed(0)}KB ` +
+      `(运行时 DecompressionStream 解压还原，data: URL 稳 < 2MB)`
+    );
   }
 
   const appOutFile = path.join(webappDir, outFile);

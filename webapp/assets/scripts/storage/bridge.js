@@ -33,6 +33,10 @@ export class BridgeStorage {
   async initialize() {
     // 在 Obsidian ItemView 中始终通过 blob URL iframe 运行
     this.ready = true;
+    // 提前锁定宿主引用（父窗口）：运行期某些 webview 上下文 window.parent 可能临时
+    // 不可达，导致「Cannot read properties of undefined (reading 'postMessage')」。
+    // 在初始化（握手前）捕获稳定引用，供 _send / _onMessage 使用。
+    this._host = (typeof window !== 'undefined' && (window.parent || window.top || window)) || null;
     try {
       const readyResp = await this._send('app:ready', {
         protocolVersion: window.AppProtocol ? window.AppProtocol.PROTOCOL_VERSION : 1,
@@ -173,21 +177,42 @@ export class BridgeStorage {
 
       this._pendingRequests.set(id, { resolve, reject, timeout });
 
+      // 宿主引用：initialize() 已锁定 this._host（window.parent || window.top ||
+      // window）。运行期部分 webview 上下文 window.parent 会临时不可达，提前使用稳定
+      // 引用；若仍无可达目标，则干净 reject 让上层（如市场清单拉取）走降级，而非抛出
+      // 未捕获异常（Cannot read properties of undefined (reading 'postMessage')）。
+      const target = this._host
+        || (typeof window !== 'undefined' && (window.parent || window.top || window))
+        || null;
+      if (!target || typeof target.postMessage !== 'function') {
+        clearTimeout(timeout);
+        this._pendingRequests.delete(id);
+        reject(new Error('Bridge host unreachable (no postMessage target)'));
+        return;
+      }
+
       // 统一用 '*' 作 targetOrigin。
       // 注意：在安卓 Obsidian（Capacitor WebView）中，blob 源 iframe 的
       // window.parent.origin 返回字符串 'null'，postMessage(msg, 'null') 会抛
       // SyntaxError（'null' 既非 '*' 也非合法 origin）；而 '*' 在所有平台（桌面/安卓/ios）
       // 都安全且可达——宿主侧校验的是 event.source（contentWindow 对象），不依赖 origin 字符串。
-      window.parent.postMessage({ type, id, payload }, '*');
+      try {
+        target.postMessage({ type, id, payload }, '*');
+      } catch (e) {
+        clearTimeout(timeout);
+        this._pendingRequests.delete(id);
+        reject(e instanceof Error ? e : new Error('Bridge postMessage failed: ' + e));
+      }
     });
   }
 
   /** 接收父窗口的响应 */
   _onMessage(event) {
     // 统一来源校验 + type 合法性（阶段3 · 契约化，替代裸 event.source 比较）
+    const expectedSource = this._host || (typeof window !== 'undefined' && window.parent) || null;
     const data = (window.AppProtocol
-      ? window.AppProtocol.parseAppMessage(event, window.parent)
-      : (event.source === window.parent ? event.data : null));
+      ? window.AppProtocol.parseAppMessage(event, expectedSource)
+      : (event.source === expectedSource ? event.data : null));
     if (!data) return;
 
     // 调色联动开关更新

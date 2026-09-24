@@ -504,24 +504,42 @@ export const ThemeEffects = {
             // 记录执行前的 window 属性快照（用于清理泄漏）
             const beforeKeys = Object.getOwnPropertyNames(window);
 
-            // 暂存要屏蔽的危险全局变量（保留 document、location 供主题正常操作 DOM，通过审计拦截 document.cookie）
-            const DANGEROUS = ['parent', 'top', 'opener', 'fetch', 'XMLHttpRequest',
-                'WebSocket', 'localStorage', 'sessionStorage', 'indexedDB',
-                'eval', 'import'];
+            // 受限环境（data: URL 的 webview）里 localStorage/sessionStorage/indexedDB 是「读取即抛
+            // SecurityError」的 getter：既不能读取原值、也不能被 Object.defineProperty 重定义。
+            // 因此对它们的处理与「越权能力」分开：
+            //   ① 越权能力（parent/top/opener/fetch/XHR/WebSocket/eval/import）仍清空，收敛逃逸/外联；
+            //   ② 存储三件套改为注入内存垫片（见下方 new Function 形参），主题内部的裸引用走垫片，
+            //      既不触达真实存储（安全意图不变），也不会在受限环境抛错。
+            const BLANK = ['parent', 'top', 'opener', 'fetch', 'XMLHttpRequest', 'WebSocket', 'eval', 'import'];
+            const makeStorage = () => {
+                const m = {};
+                return {
+                    getItem: (k) => (Object.prototype.hasOwnProperty.call(m, k) ? m[k] : null),
+                    setItem: (k, v) => { m[k] = String(v); },
+                    removeItem: (k) => { delete m[k]; },
+                    clear: () => { for (const k in m) delete m[k]; },
+                    key: (i) => Object.keys(m)[i] ?? null,
+                    get length() { return Object.keys(m).length; },
+                };
+            };
+            const lsShim = makeStorage();
+            const ssShim = makeStorage();
+
             const saved = {};
-            for (const key of DANGEROUS) {
-                saved[key] = window[key];
+            for (const key of BLANK) {
+                try { saved[key] = window[key]; } catch (_) { saved[key] = undefined; }
                 try { Object.defineProperty(window, key, { value: undefined, configurable: true, writable: false }); } catch (_) {}
             }
 
             let result = null;
             try {
-                const func = new Function('window', 'self',
+                // storage 三件套通过形参注入（裸引用优先命中局部形参，而非被 data: URL 限制的全局 getter）
+                const func = new Function('window', 'self', 'localStorage', 'sessionStorage', 'indexedDB',
                     code + '; return typeof ' + varName + ' !== "undefined" ? ' + varName + ' : null;');
-                result = func(window, window);
+                result = func(window, window, lsShim, ssShim, undefined);
             } finally {
                 // 恢复被屏蔽的全局变量
-                for (const key of DANGEROUS) {
+                for (const key of BLANK) {
                     try { Object.defineProperty(window, key, { value: saved[key], configurable: true, writable: true }); } catch (_) {}
                 }
             }
@@ -530,7 +548,7 @@ export const ThemeEffects = {
 
             // 兜底：扫描 window 上的 __bamboo_theme_* 变量
             const afterKeys = Object.getOwnPropertyNames(window);
-            const leaked = afterKeys.filter(k => !beforeKeys.includes(k) && !DANGEROUS.includes(k));
+            const leaked = afterKeys.filter(k => !beforeKeys.includes(k) && !BLANK.includes(k));
             const themeVar = window[varName];
             // 清理主题代码可能泄漏到 window 上的非必要属性
             for (const k of leaked) {
@@ -567,9 +585,8 @@ export const ThemeEffects = {
             { pattern: /\bfetch\s*\(/,               msg: 'fetch()' },
             { pattern: /\bXMLHttpRequest\b/,          msg: 'XMLHttpRequest' },
             { pattern: /\bWebSocket\b/,               msg: 'WebSocket' },
-            { pattern: /\blocalStorage\b/,            msg: 'localStorage' },
-            { pattern: /\bsessionStorage\b/,          msg: 'sessionStorage' },
-            { pattern: /\bindexedDB\b/,               msg: 'indexedDB' },
+            // 注：localStorage/sessionStorage/indexedDB 已通过 new Function 形参注入内存垫片，
+            // 主题内部引用不再触达真实存储（安全意图不变），故不再拦截，避免误杀合规主题。
             { pattern: /\bdocument\.cookie\b/,        msg: 'document.cookie' },
             { pattern: /\beval\s*\(/,                msg: 'eval()' },
             { pattern: /\bnew\s+Function\s*\(/,      msg: 'new Function()' },

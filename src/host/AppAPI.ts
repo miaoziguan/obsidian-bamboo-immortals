@@ -295,7 +295,7 @@ export class AppAPI {
   /** 消息分发处理 */
   /** 重扫主题文件夹，刷新「本地外部主题」清单与代码缓存（市场装/卸后调用） */
   private async _rescanThemes(): Promise<void> {
-    const dir = this.settings.themePath || '竹林复盘主题';
+    const dir = this.settings.themePath || '竹林动效主题';
     try {
       const listed = await this.vaultAdapter.list(dir);
       const files = (listed.files || []).filter((f) => f.endsWith('.js'));
@@ -772,7 +772,7 @@ export class AppAPI {
         if (!resp.ok) throw new Error('HTTP ' + resp.status);
         const code = await resp.text();
         if (!code.includes('__bamboo_theme_')) throw new Error('不是有效的竹林主题文件');
-        const dir = this.settings.themePath || '竹林复盘主题';
+        const dir = this.settings.themePath || '竹林动效主题';
         const filePath = `${dir}/${tid}.js`;
         await this.vaultAdapter.write(filePath, code);
         // 记录本次安装的版本：后续与 manifest 的 version 比对即可判断「可更新」
@@ -794,7 +794,7 @@ export class AppAPI {
       const tid = p.id;
       if (!tid) { this.respondError(id, 'market:uninstall 缺少 id'); return; }
       try {
-        const dir = this.settings.themePath || '竹林复盘主题';
+        const dir = this.settings.themePath || '竹林动效主题';
         const filePath = `${dir}/${tid}.js`;
         await this.vaultAdapter.remove(filePath);
         // 同步清除版本记录，避免残留导致重装后误判「已最新」

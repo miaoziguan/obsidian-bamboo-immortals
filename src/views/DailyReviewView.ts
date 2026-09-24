@@ -394,7 +394,7 @@ export class DailyReviewView extends ItemView {
     const adapter = this.app.vault.adapter;
 
     try {
-      const themeDirName = this.settings.themePath || '竹林复盘主题';
+      const themeDirName = this.settings.themePath || '竹林动效主题';
       let themeDirFiles: string[];
       try {
         themeDirFiles = (await adapter.list(themeDirName)).files;

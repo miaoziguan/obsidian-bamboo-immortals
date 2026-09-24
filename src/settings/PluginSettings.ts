@@ -106,7 +106,7 @@ export const DEFAULT_SETTINGS: BambooReviewSettings = {
   dataPath: 'bamboo-review',
   enableMarkdownSync: true,
   sectionConfig: null,
-  themePath: '竹林复盘主题',
+  themePath: '竹林动效主题',
   noisePath: '',
   noiseItems: [],
   marketInstalled: {},
@@ -526,10 +526,10 @@ class AppearancePage extends SettingPage {
       .setDesc('Vault 根目录下存放自定义主题 .js 文件的文件夹（修改后需重启插件）')
       .addText((text) =>
         text
-          .setPlaceholder('竹林复盘主题')
+          .setPlaceholder('竹林动效主题')
           .setValue(this.plugin.settings.themePath)
           .onChange(async (value) => {
-            this.plugin.settings.themePath = value || '竹林复盘主题';
+            this.plugin.settings.themePath = value || '竹林动效主题';
             await this.plugin.saveSettings();
           })
       );

@@ -4,7 +4,7 @@ import { byId } from '../../utils/domRef.js';
  * 桌面端多列布局模式（单按钮循环：纵向 → 横向 → 看板 → 纵向）
  * - 横向（horizontal-layout）：列数 = 每行 2 个板块（ceil(板块数/2)，最少 2 列）
  * - 看板（kanban-layout）：列数 = min(板块数, 4)，一行全排开
- * - 仅为会话内的临时视图：每次进入默认纵向，手动切换才生效，不做持久化。
+ * - 跨重启持久化：进入多列模式即写入 settings.layoutMode，重启后 init() 自动恢复（并移回主工作区宽度）。
  * - 沿用现有 SectionRegistry.order 顺序，只改变排版方向，不触碰板块顺序逻辑。
  * - 宽度自动适配：内容宽度不足时临时放宽（横向<600→800，看板<1200→1200），
  *   退出时恢复原宽度。
@@ -41,19 +41,43 @@ export const LayoutMode = {
      * 初始化：webapp 启动时由外部调用。检测「侧边栏移中央」重建后待恢复的布局模式
      * （宿主 app:ready 带回），自动进入对应模式。恢复模式时已在中央视图，不再请求移动。
      */
-    init() {
+    /**
+     * 初始化：webapp 启动时由外部调用。
+     * - 同会话「侧边栏移中央」重建：宿主 app:ready 通过 window.__bambooPendingLayoutMode 带回模式，优先恢复；
+     * - 跨重启持久化：若无 pending（全新启动），则从 settings.layoutMode 读回上次模式自动恢复，
+     *   并请求宿主把视图移回主工作区（多列布局需要横向宽度；已在中央则宿主端自动 no-op）。
+     * 移动端不恢复多列（_isDesktop 守卫）。
+     */
+    async init() {
         const pending = window.__bambooPendingLayoutMode;
-        this._restoring = true;
+        window.__bambooPendingLayoutMode = null;
+        // 移动端不支持多列，保持纵向
+        if (!this._isDesktop()) return;
+        let mode = pending;
+        if (!mode) {
+            try { mode = await this._loadPersistedMode(); } catch (e) { mode = null; }
+        }
+        // 仅「同会话移中央重建」跳过 moveToCenter（已在中央）；跨重启恢复需重新移回中央
+        this._restoring = !!pending;
         try {
-            if (pending === 'kanban') {
+            if (mode === 'kanban') {
                 this._enter('kanban');
-            } else if (pending === 'horizontal') {
+            } else if (mode === 'horizontal') {
                 this._enter('horizontal');
             }
         } finally {
             this._restoring = false;
         }
-        window.__bambooPendingLayoutMode = null;
+    },
+
+    /** 从持久化设置读回上次布局模式（跨重启恢复）；仅接受合法值，否则返回 null */
+    async _loadPersistedMode() {
+        if (typeof storageManager === 'undefined' || !storageManager.getSetting) return null;
+        try {
+            const v = await storageManager.getSetting('layoutMode');
+            if (v === 'horizontal' || v === 'kanban') return v;
+        } catch (e) { /* 读取失败不阻塞 */ }
+        return null;
     },
 
     /**
@@ -158,6 +182,10 @@ export const LayoutMode = {
 
         const prevMode = this._mode;
         this._mode = mode;
+        // 持久化当前模式，供跨重启恢复（init 读回 settings.layoutMode）
+        if (typeof storageManager !== 'undefined' && storageManager.putSetting) {
+            try { storageManager.putSetting('layoutMode', mode); } catch (e) { /* 不阻塞 */ }
+        }
         this._columns = columns;
         // 进入流程保护：避开刚进入时浏览器未回流、_applyResponsiveClasses 读到旧宽
         // 误触发守卫退出。下帧后清标志，守卫恢复生效。
@@ -270,6 +298,10 @@ export const LayoutMode = {
     _forceOff() {
         if (this._mode === 'none') return;
         this._mode = 'none';
+        // 退出即清除持久化的模式（下次启动回到默认纵向）
+        if (typeof storageManager !== 'undefined' && storageManager.putSetting) {
+            try { storageManager.putSetting('layoutMode', 'none'); } catch (e) { /* 不阻塞 */ }
+        }
         // 恢复纵向：请求宿主把视图移回右侧栏（宿主仅当视图由系统从侧栏移来才执行）
         if (typeof storageManager !== 'undefined' && storageManager.moveToSidebar) {
             try { storageManager.moveToSidebar(); } catch (e) { /* 不阻塞 */ }

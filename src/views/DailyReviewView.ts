@@ -393,15 +393,24 @@ export class DailyReviewView extends ItemView {
     const themes: Array<{ name: string; code: string }> = [];
     const adapter = this.app.vault.adapter;
 
-    try {
-      const themeDirName = this.settings.themePath || '竹林动效主题';
+    // 候选目录：优先用户配置的 themePath；并兼容实际目录「竹林动效主题」
+    // （复盘主题 → 动效主题 改名后的正确目录）与历史默认「竹林复盘主题」。
+    // 一旦某个目录成功扫到主题即停止，避免后续候选覆盖已收集结果。
+    // 这样即便 themePath 被旧默认值/手填错值残留，也能回退到真实目录，
+    // 不会因单一目录不存在而让所有外部主题「加载失败」。
+    const candidates: string[] = [];
+    if (this.settings.themePath) candidates.push(this.settings.themePath);
+    candidates.push('竹林动效主题', '竹林复盘主题');
+
+    for (const themeDirName of candidates) {
       let themeDirFiles: string[];
       try {
         themeDirFiles = (await adapter.list(themeDirName)).files;
       } catch {
-        return themes;
+        continue; // 该候选目录不存在，尝试下一个
       }
 
+      let found = false;
       for (const entry of themeDirFiles) {
         if (!entry.endsWith('.js')) continue;
         // Obsidian 的 DataAdapter.list 返回的 files 是完整相对路径（含目录前缀，
@@ -417,12 +426,12 @@ export class DailyReviewView extends ItemView {
             continue;
           }
           themes.push({ name: fileName.replace(/\.js$/, ''), code });
+          found = true;
         } catch {
           // 读取失败跳过该主题
         }
       }
-    } catch {
-      // 扫描自定义主题出错时返回已收集的主题
+      if (found) break; // 已找到有效目录，停止后续候选
     }
 
     return themes;

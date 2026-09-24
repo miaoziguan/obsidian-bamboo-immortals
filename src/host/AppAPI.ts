@@ -295,25 +295,39 @@ export class AppAPI {
   /** 消息分发处理 */
   /** 重扫主题文件夹，刷新「本地外部主题」清单与代码缓存（市场装/卸后调用） */
   private async _rescanThemes(): Promise<void> {
-    const dir = this.settings.themePath || '竹林动效主题';
-    try {
-      const listed = await this.vaultAdapter.list(dir);
-      const files = (listed.files || []).filter((f) => f.endsWith('.js'));
-      const themes: { name: string; code: string }[] = [];
-      for (const f of files) {
-        const name = f.split('/').pop() || f;
-        try {
-          const code = await this.vaultAdapter.read(f);
-          if (!code.includes('__bamboo_theme_')) continue;
-          themes.push({ name: name.replace(/\.js$/, ''), code });
-        } catch {
-          /* 跳过读取失败的文件 */
+    // 候选目录：优先用户配置的 themePath；并兼容实际目录「竹林动效主题」
+    // （复盘主题 → 动效主题 改名后的正确目录）与历史默认「竹林复盘主题」。
+    // 任一目录成功扫到主题即采用，避免 themePath 被旧默认值/错值残留时整体加载失败。
+    const candidates: string[] = [];
+    if (this.settings.themePath) candidates.push(this.settings.themePath);
+    candidates.push('竹林动效主题', '竹林复盘主题');
+
+    for (const dir of candidates) {
+      try {
+        const listed = await this.vaultAdapter.list(dir);
+        const files = (listed.files || []).filter((f) => f.endsWith('.js'));
+        const themes: { name: string; code: string }[] = [];
+        let found = false;
+        for (const f of files) {
+          const name = f.split('/').pop() || f;
+          try {
+            const code = await this.vaultAdapter.read(f);
+            if (!code.includes('__bamboo_theme_')) continue;
+            themes.push({ name: name.replace(/\.js$/, ''), code });
+            found = true;
+          } catch {
+            /* 跳过读取失败的文件 */
+          }
         }
+        if (found) {
+          this.setCustomThemes(themes);
+          return;
+        }
+      } catch {
+        /* 该候选目录不存在，尝试下一个 */
       }
-      this.setCustomThemes(themes);
-    } catch (e) {
-      console.warn('[AppAPI] 重扫主题文件夹失败:', e);
     }
+    console.warn('[AppAPI] 未在任何候选目录中找到外部主题');
   }
 
   private async handleMessage(type: string, id: string, payload: unknown): Promise<void> {

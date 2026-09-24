@@ -759,6 +759,28 @@
     display: none;
 }
 
+/* ===== 移动端降级（触摸且无 hover 的设备，如三星等安卓 WebView）=====
+   平板/手机 GPU 弱，上千个同时运行的 transform/opacity 无限动画 + 多层
+   filter:blur 滤镜会掉帧甚至渲染错乱；且 JS 端已停止 sway/tremble/落叶
+   setInterval。此处用媒体查询在 CSS 层兜底关闭全部动效与模糊，改为静态绘制，
+   消除滚动时的持续重绘成本。桌面（fine pointer + hover）不受影响。 */
+@media (pointer: coarse) and (hover: none) {
+    .bamboo-garden-container,
+    .bamboo-garden-container * {
+        animation: none !important;
+        will-change: auto !important;
+    }
+    /* 多层 blur 是弱 GPU 的最大杀手，移动端直接去模糊 */
+    .mist-layer-1,
+    .mist-layer-2,
+    .mist-layer-3,
+    .distant-mountains .mountain-layer,
+    .river-surface,
+    .mountain-mist {
+        filter: none !important;
+    }
+}
+
 :host(.dark) .forest-floor {
     background: linear-gradient(180deg,
         hsla(calc(var(--accent-hue) + -12), 38%, 13%, 0.4) 0%,

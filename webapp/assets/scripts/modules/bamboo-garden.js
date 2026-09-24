@@ -1,4 +1,22 @@
 import { byId, getStyleMount } from '../utils/domRef.js';
+
+/**
+ * 移动端（触摸且无 hover 的设备）检测：用于把满血动效竹林降级为静态绘制。
+ * 用媒体查询而非 bridge 时序标志，避免初始化早于 __bambooIsMobile 赋值而漏判。
+ * 桌面（fine pointer + hover）不会命中，故桌面特效完全不变。
+ */
+const _isMobileEnv = () => {
+  try {
+    if (window.__bambooIsMobile === true) return true;
+    if (
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(pointer: coarse) and (hover: none)').matches
+    )
+      return true;
+  } catch (e) {}
+  return false;
+};
+
 export const BambooGarden = {
     container: null,
     _leafIntervalId: null,
@@ -74,8 +92,10 @@ export const BambooGarden = {
         this._initialized = true;
 
         this.createBambooForest();
-        this.startLeafAnimation();
+        // 移动端：跳过落叶 setInterval（含 void offsetWidth 强制重排），改静态绘制
+        if (!_isMobileEnv()) this.startLeafAnimation();
         this._setupVisibilityGuard();
+        this._initPerfHud();
         // 初始即按当前明暗模式应用大背景（避免依赖 CSS :host(.dark) 在个别 webview 下未命中）
         this.updateTheme();
         // 明暗切换由 ThemeEffects 统一观察者驱动（合并 observer，避免重复监听 documentElement.class）
@@ -98,8 +118,42 @@ export const BambooGarden = {
         if (sc.classList.contains('kanban-layout')) this.rerenderPoem();
     },
 
-    _setupVisibilityGuard() {
-        // 移除旧的监听器（如果存在）
+    /**
+     * 调试 HUD：在视图内按 P 键切换。显示实时 FPS 与 DOM 节点数，用于真机验证
+     * 性能修复（如移动端动效降级）是否生效。仅在用户主动按键时挂载，零运行时成本。
+     * 不直接读 URL（日复盘跑在 data: iframe 内，query 不可达），改用按键触发。
+     */
+    _initPerfHud() {
+        try {
+            const key = (e) => {
+                if (e.key && e.key.toLowerCase() === 'p') {
+                    const existing = byId('__perfHud');
+                    if (existing) { existing.remove(); return; }
+                    const box = document.createElement('div');
+                    box.id = '__perfHud';
+                    box.style.cssText =
+                        'position:fixed;right:8px;bottom:8px;z-index:2147483647;background:rgba(0,0,0,.8);' +
+                        'color:#3f6;font:12px/1.45 monospace;padding:6px 9px;border-radius:6px;pointer-events:none;white-space:pre';
+                    (document.body || document.documentElement).appendChild(box);
+                    let frames = 0, last = performance.now();
+                    const loop = (t) => {
+                        frames++;
+                        if (t - last >= 1000) {
+                            const fps = Math.round((frames * 1000) / (t - last));
+                            frames = 0; last = t;
+                            const n = document.getElementsByTagName('*').length;
+                            box.textContent = `FPS ${fps}\nDOM ${n}\nmobile ${_isMobileEnv() ? 'Y' : 'N'}`;
+                        }
+                        requestAnimationFrame(loop);
+                    };
+                    requestAnimationFrame(loop);
+                }
+            };
+            document.addEventListener('keydown', key);
+        } catch (e) {}
+    },
+
+    _setupVisibilityGuard() {        // 移除旧的监听器（如果存在）
         if (this._visibilityHandler) {
             document.removeEventListener('visibilitychange', this._visibilityHandler);
         }
@@ -155,6 +209,7 @@ export const BambooGarden = {
         const farLayer = byId('farBamboo');
         const midLayer = byId('midBamboo');
         const nearLayer = byId('nearBamboo');
+        // 移动端：全部竹子静态（不 sway），消除成百上千节点的常驻动画开销
         
         if (!farLayer || !midLayer || !nearLayer) return;
         
@@ -166,6 +221,8 @@ export const BambooGarden = {
 
     createBambooStalks(count, minH, maxH, width, opacity, leftFade, staticRatio = 0.5) {
         let html = '';
+        // 移动端（触摸无 hover 设备）：强制全部静态，彻底关闭 sway 动画
+        if (_isMobileEnv()) staticRatio = 1;
         // 随机均匀：恰好 staticRatio 比例的竹子为静态（洗牌保证位置随机均匀），
         // 静态竹子不做 sway，竹叶也不 tremble —— 动画负载减半，竹林密度不变。
         const isStatic = this._buildStaticMask(count, staticRatio);
@@ -264,6 +321,8 @@ export const BambooGarden = {
     },
 
     createLeafCluster(height, isStatic = false) {
+        // 移动端：叶子全部静态，不挂 tremble 无限动画
+        if (_isMobileEnv()) isStatic = true;
         const count = 6 + Math.floor(Math.random() * 7);
         let html = '';
         
@@ -336,6 +395,7 @@ export const BambooGarden = {
 
     /** 注入飘落叶子的 keyframes（仅在首次生成时） */
     _ensureLeafKeyframes() {
+        if (_isMobileEnv()) return;
         if (byId('windLeafStyles')) return;
         const s = document.createElement('style');
         s.id = 'windLeafStyles';

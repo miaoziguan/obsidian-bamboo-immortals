@@ -41,35 +41,12 @@ export const FABManager = {
     },
 
     /** 隐私按钮点击 → 翻转模糊态。
-     *  监听挂在 getDomRoot()（shadow 模式下即 shadowRoot，运行时取值确保拿到正确根），
-     *  并用 composedPath() 取真实事件路径（含 shadow 内节点），兼容 Obsidian 下
-     *  e.target 被 retarget 成 host 导致 closest 找不到按钮的情况——这正是此前
-     *  「点了没反应、菜单也不关」的根因：this.actions 在 retarget 下 closest 返回 null
-     *  提前 return，连 close 都没执行。
-     *  作为 fab-privacy 的唯一处理方，避免与 ActionDispatcher 双触发。 */
-    setupPrivacyAction() {
-        const root = getDomRoot();
-        if (!root) return;
-        root.addEventListener('click', (e) => {
-            const path = (typeof e.composedPath === 'function') ? e.composedPath() : [e.target];
-            let btn = null;
-            for (const node of path) {
-                if (node && node.nodeType === 1 && typeof node.closest === 'function') {
-                    const m = node.closest('[data-action="fab-privacy"]');
-                    if (m) { btn = m; break; }
-                }
-            }
-            if (!btn) return;
-            e.preventDefault();
-            e.stopPropagation();
-            const PM = window.PrivacyMode;
-            if (PM) {
-                const on = PM.toggle();
-                this.updatePrivacyButton(on);
-            }
-            this.close();
-        });
-    },
+     *  注：本方法**未接线**，真实路径是 index.html 里 fab-privacy 按钮的内联 onclick
+     *  （内联可绕过 Shadow DOM retarget 与一切事件委托不确定性，已在 Obsidian 实测可用）。
+     *  此前保留本方法会诱使后来者在 init() 里补调用，从而与内联 onclick 双触发
+     *  ——点一次 toggle 两次、状态原样翻回，表现为「点了没反应」。故整体移除，
+     *  保持「唯一处理方」。
+     *  @deprecated 已删除，勿恢复；如需改用事件委托，请同步移除 index.html 的内联 onclick。 */
 
     /** 全局快捷键 Cmd/Ctrl + . 切换隐私模糊（输入框内不触发，避免干扰输入） */
     setupPrivacyShortcut() {
@@ -102,8 +79,9 @@ export const FABManager = {
             panel.hidden = !on;
             const range = byId('fabPrivacyRange');
             if (range && typeof PrivacyMode !== 'undefined') {
-                const lv = PrivacyMode.getLevel();
-                range.value = String(lv > 0 ? lv : (PrivacyMode.DEFAULT_LEVEL || 10));
+                // 滑杆 min 已放宽到 0：直接反映当前真实档位（含 0=关闭），避免
+                // 「拖到 0 关闭后滑杆又跳回默认档」的错位感。
+                range.value = String(PrivacyMode.getLevel());
             }
         }
     },
@@ -114,9 +92,11 @@ export const FABManager = {
         const more = this.actions && this.actions.querySelector('[data-action="fab-privacy-more"]');
         const step = (delta) => {
             if (typeof PrivacyMode === 'undefined') return;
-            const next = Math.max(1, Math.min(PrivacyMode.MAX_LEVEL, PrivacyMode.getLevel() + delta));
+            const next = Math.max(PrivacyMode.MIN_LEVEL, Math.min(PrivacyMode.MAX_LEVEL, PrivacyMode.getLevel() + delta));
             PrivacyMode.setLevel(next);
-            this.updatePrivacyButton(true);
+            // 可一路减到 MIN_LEVEL(0)：减到 0 即关闭模糊，此时应收起强度面板
+            // （updatePrivacyButton(false) 会令 panel.hidden = true）。
+            this.updatePrivacyButton(next > 0);
         };
         if (less) {
             less.addEventListener('click', (e) => {

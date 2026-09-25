@@ -111,6 +111,21 @@ body.privacy-on .bamboo-license-gate * {
     transition: none;
 }
 
+/* === UI 骨架 / 操作引导文字豁免（Bug 修复）===
+   上面那条 :is(p, ...) 兜底里的裸 `p` 会命中**一切**段落，包括弹窗与菜单里的 UI 文字。
+   markText 的 isSkeleton 只能挡住「自动补标 data-private-text」，挡不住这条 CSS 兜底，
+   于是 UI 文字被误糊。与本文件 .bamboo-license-gate 补丁同理（那里只补了付费页一处）：
+   本规则定义于隐私模糊规则之后、特异性与其相同，按「后定义者胜出」可靠覆盖，无需 !important。
+   已 grep 到的受影响者：confirmDialog 的 .confirm-message、目标编辑器 .tmpl-empty-hint、
+   思维导图画中卷 .tw-mm-empty-*、预览合成 .tw-preview-hint、意境选择器 .scroll-pick-sub。 */
+:host(.privacy-on) :is(.modal-container, .modal-base, .modal-panel, .fab-container, .fab-actions, .tooltip) *,
+:host(.privacy-on) :is(.confirm-message, .tmpl-empty-hint, .tw-mm-empty-title, .tw-mm-empty-sub, .tw-mm-empty-note, .tw-preview-hint, .scroll-pick-sub),
+body.privacy-on :is(.modal-container, .modal-base, .modal-panel, .fab-container, .fab-actions, .tooltip) *,
+body.privacy-on :is(.confirm-message, .tmpl-empty-hint, .tw-mm-empty-title, .tw-mm-empty-sub, .tw-mm-empty-note, .tw-preview-hint, .scroll-pick-sub) {
+    filter: none;
+    transition: none;
+}
+
 /* === 画中卷工作台（ScrollManager）===
    三段式：左栏香道番茄钟 / 中栏便签墙 / 右栏编辑·预览。
    竹林雅致风：暖白纸底 + 竹青描边 + 柔和阴影。根 class 用 .scroll-workbench

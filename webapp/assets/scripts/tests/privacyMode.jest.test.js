@@ -13,6 +13,9 @@ describe('PrivacyMode 防偷窥模糊', () => {
 
   beforeEach(() => {
     localStorage.clear();
+    // 内存层是权威值，跨用例必须重置，否则上一个用例的档位会泄漏到下一个
+    PrivacyMode._cached = null;
+    PrivacyMode._lastCached = null;
     document.documentElement.style.removeProperty('--privacy-blur');
     document.body.classList.remove('privacy-on');
   });
@@ -76,5 +79,51 @@ describe('PrivacyMode 防偷窥模糊', () => {
     expect(PrivacyMode.isOn()).toBe(false);
     PrivacyMode.setLevel(6);
     expect(PrivacyMode.isOn()).toBe(true);
+  });
+
+  test('localStorage 不可写时仍能连续步进（不被持久化失败卡在同一档）', () => {
+    // 复现 WebView 配额耗尽 / 隐私模式：setItem 抛错。
+    // 修复前：写入失败被静默吞掉 → 下次 getLevel() 读回旧值 → 点「+」永远只停在 11。
+    const realSetItem = Storage.prototype.setItem;
+    Storage.prototype.setItem = () => { throw new Error('QuotaExceededError'); };
+    try {
+      PrivacyMode.setLevel(10);
+      expect(PrivacyMode.getLevel()).toBe(10);
+      PrivacyMode.setLevel(PrivacyMode.getLevel() + 1);
+      expect(PrivacyMode.getLevel()).toBe(11);
+      PrivacyMode.setLevel(PrivacyMode.getLevel() + 1);
+      expect(PrivacyMode.getLevel()).toBe(12);
+      // 视觉层也必须同步跟上
+      expect(document.documentElement.style.getPropertyValue('--privacy-blur')).toBe('12px');
+    } finally {
+      Storage.prototype.setItem = realSetItem;
+    }
+  });
+
+  test('markText 命中即停：不给嵌套后代重复打标（避免 filter 叠加致强度非线性）', () => {
+    document.body.innerHTML = '<div id="scope"><p>外层文本 <span id="inner">内层文本</span></p></div>';
+    try {
+      PrivacyMode.markText();
+      const p = document.querySelector('p');
+      const span = document.getElementById('inner');
+      expect(p.hasAttribute('data-private-text')).toBe(true);
+      // 父元素一旦被打标，其 filter 已作用于整棵子树；再给子元素打标会叠加一层模糊
+      expect(span.hasAttribute('data-private-text')).toBe(false);
+    } finally {
+      document.body.innerHTML = '';
+    }
+  });
+
+  test('markText 跳过 UI 骨架（按钮/媒体保持清晰）', () => {
+    document.body.innerHTML =
+      '<div id="scope"><p id="txt">文本</p><button id="btn">按钮</button><img id="img" alt="图"></div>';
+    try {
+      PrivacyMode.markText();
+      expect(document.getElementById('txt').hasAttribute('data-private-text')).toBe(true);
+      expect(document.getElementById('btn').hasAttribute('data-private-text')).toBe(false);
+      expect(document.getElementById('img').hasAttribute('data-private-text')).toBe(false);
+    } finally {
+      document.body.innerHTML = '';
+    }
   });
 });

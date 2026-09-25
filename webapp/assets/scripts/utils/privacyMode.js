@@ -15,31 +15,50 @@ export const PrivacyMode = {
     DEFAULT_LEVEL: 10,
     MAX_LEVEL: 20,
     MIN_LEVEL: 0,
+    /**
+     * 内存层（权威值）。localStorage 并非总可写（配额耗尽 / 隐私模式 /
+     * 部分 WebView 限制），而一旦 setItem 失败被静默吞掉，下一次 getLevel()
+     * 就会读回旧档 —— 表现为「点 + 跳一格就再也不动」「拖完滑杆被弹回」，
+     * 即用户感知的「无法调节模糊强度」。
+     * 因此：以内存值为准，localStorage 仅作尽力而为的持久化。
+     * 单测请在 beforeEach 把 _cached / _lastCached 重置为 null。
+     */
+    _cached: null,
+    _lastCached: null,
 
     /** 读取当前模糊强度（0=关，否则 px）。
      *  重要：未设置过（首次使用）返回 0 = 关，绝不默认开启隐私。 */
     getLevel() {
+        if (this._cached !== null && this._cached !== undefined) return this._cached;
+        let n = 0;
         try {
             const raw = localStorage.getItem(this.KEY);
-            if (raw === null) return 0;
-            const n = parseInt(raw, 10);
-            if (isNaN(n)) return 0;
-            return Math.max(this.MIN_LEVEL, Math.min(this.MAX_LEVEL, n));
+            if (raw !== null) {
+                const parsed = parseInt(raw, 10);
+                n = isNaN(parsed) ? 0 : Math.max(this.MIN_LEVEL, Math.min(this.MAX_LEVEL, parsed));
+            }
         } catch (_) {
-            return 0;
+            n = 0;
         }
+        this._cached = n;
+        return n;
     },
 
     /** 读取上次使用的非零强度（用于关闭后再开时恢复，不丢档位） */
     getLastLevel() {
+        if (this._lastCached !== null && this._lastCached !== undefined) return this._lastCached;
+        let n = this.DEFAULT_LEVEL;
         try {
             const raw = localStorage.getItem(this.LAST_KEY);
-            const n = raw === null ? NaN : parseInt(raw, 10);
-            if (isNaN(n)) return this.DEFAULT_LEVEL;
-            return Math.max(this.MIN_LEVEL, Math.min(this.MAX_LEVEL, n)) || this.DEFAULT_LEVEL;
+            const parsed = raw === null ? NaN : parseInt(raw, 10);
+            n = isNaN(parsed)
+                ? this.DEFAULT_LEVEL
+                : (Math.max(this.MIN_LEVEL, Math.min(this.MAX_LEVEL, parsed)) || this.DEFAULT_LEVEL);
         } catch (_) {
-            return this.DEFAULT_LEVEL;
+            n = this.DEFAULT_LEVEL;
         }
+        this._lastCached = n;
+        return n;
     },
 
     /** 当前是否处于隐私开启状态（强度 > 0） */
@@ -50,6 +69,8 @@ export const PrivacyMode = {
     /** 持久化强度并立即应用到 DOM；强度>0 时记住上次强度 */
     setLevel(level) {
         const n = Math.max(this.MIN_LEVEL, Math.min(this.MAX_LEVEL, Math.round(level)));
+        this._cached = n;
+        if (n > 0) this._lastCached = n;
         try {
             localStorage.setItem(this.KEY, String(n));
             if (n > 0) localStorage.setItem(this.LAST_KEY, String(n));
@@ -129,8 +150,12 @@ export const PrivacyMode = {
             const hasText = Array.from(node.childNodes).some(
                 (c) => c.nodeType === 3 && c.textContent.trim().length > 0
             );
-            if (hasText && !node.hasAttribute('data-private-text')) {
-                node.setAttribute('data-private-text', '');
+            // 命中即停：父元素的 filter 作用于「整棵子树的渲染结果」，若继续给后代打标
+            // 会形成嵌套 blur 叠加（父一次 + 子一次），实际强度随嵌套层数放大，与用户
+            // 设定的档位不成线性 —— 表现为「拖滑杆看不出变化 / 各处糊得不一样」。
+            if (hasText) {
+                if (!node.hasAttribute('data-private-text')) node.setAttribute('data-private-text', '');
+                return;
             }
             for (const child of Array.from(node.children)) walk(child);
         };

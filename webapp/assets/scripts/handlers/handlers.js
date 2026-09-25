@@ -71,7 +71,10 @@ export const Handlers = {
             // 确保新出现的文字也被纳入模糊。观察整个 shadow root，覆盖任何位置的板块。
             const mark = () => PrivacyMode.markText();
             const sr = window.__bambooShadowRoot;
-            const observeTarget = (sr && sr.documentElement) || contentRoot || document.body;
+            // 注意：ShadowRoot 没有 documentElement（那是 Document 的属性），必须直接用
+            // sr 本身。写成 sr.documentElement 会恒为 undefined，从而静默退化成只观察
+            // contentRoot —— 其内容之外新增的板块将永远拿不到 data-private-text。
+            const observeTarget = sr || contentRoot || document.body;
             if (typeof MutationObserver === 'function' && observeTarget) {
                 this._privacyObserver = new MutationObserver(mark);
                 this._privacyObserver.observe(observeTarget, {

@@ -14,7 +14,7 @@
     "lint:css": "node scripts/lint-css-tokens.mjs",
     "format": "prettier --write \"src/**/*.ts\" \"webapp/**/*.js\"",
     "format:check": "prettier --check \"src/**/*.ts\" \"webapp/**/*.js\"",
-    "prepare": "husky"
+    "prepare": "husky || true"
   },
   "devDependencies": {
     "@types/node": "^22.10.5",

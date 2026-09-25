@@ -552,9 +552,9 @@ export class VaultStorage {
     if (!(await this.app.vault.adapter.exists(path))) return null;
     try {
       const content = await this.app.vault.adapter.read(path);
-      const parsed = content ? JSON.parse(content) : null;
-      if (!parsed || typeof parsed !== 'object' || !Array.isArray(parsed.notes)) return null;
-      return parsed as { version: number; notes: unknown[]; links: unknown[]; canvasOffset: { x: number; y: number; scale?: number } | null };
+      const parsed = (content ? JSON.parse(content) : null) as { version: number; notes: unknown[]; links: unknown[]; canvasOffset: { x: number; y: number; scale?: number } | null } | null;
+      if (!parsed || !Array.isArray(parsed.notes)) return null;
+      return parsed;
     } catch {
       return null;
     }

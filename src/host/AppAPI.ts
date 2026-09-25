@@ -760,7 +760,7 @@ export class AppAPI {
       try {
         const resp = await requestUrl({ url: MARKET_MANIFEST_URL, method: 'GET' });
         if (resp.status < 200 || resp.status >= 300) throw new Error('HTTP ' + resp.status);
-        const manifest = resp.json;
+        const manifest = resp.json as Record<string, unknown>;
         // 附带「已安装版本表」，webapp 拿它与 manifest 中各主题的 version 比对 → 得出「可更新」
         this.respond(id, { ok: true, manifest, installed: this.settings.marketInstalled || {} });
       } catch (e) {

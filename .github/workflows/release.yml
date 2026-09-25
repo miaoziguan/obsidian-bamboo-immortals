@@ -1,69 +1,77 @@
-name: release
+name: Release
 
 on:
   push:
     tags:
-      - "[0-9]*.*.*"
+      - '[0-9]*.*.*'
 
 permissions:
   contents: write
+  id-token: write
+  attestations: write
 
 jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - name: Verify version sync
+        run: |
+          PKG_VER=$(node -p "require('./package.json').version")
+          MF_VER=$(node -p "require('./manifest.json').version")
+          echo "package.json: $PKG_VER | manifest.json: $MF_VER"
+          if [ "$PKG_VER" != "$MF_VER" ]; then
+            echo "::error::package.json 版本($PKG_VER) 与 manifest.json 版本($MF_VER) 不一致。请先同步两者，否则 webapp 版本守卫会误判，导致标准安装用户重复自举下载。"
+            exit 1
+          fi
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
         with:
-          node-version: "24"
-          cache: "npm"
-          # 仓库现分两份 lockfile：根（仅扫描器需要的极小依赖）+ dev/（构建/测试/lint 工具链）
-          cache-dependency-path: |
-            package-lock.json
-            dev/package-lock.json
+          node-version: '24'
 
-      # 根 npm ci 只装 fflate + obsidian + @types/node + typescript（扫描器类型检查要的最小集）；
-      # dev/ 工具链单独装，扫描器不会触碰 dev/，从而把根安装体积从 ~493 包降到极小。
-      - name: Install root (minimal) + dev toolchain
-        run: npm ci && npm --prefix dev ci
+      - name: Install dependencies
+        run: npm ci
 
-      - name: Build webapp bundle
-        run: npm --prefix dev run build:webapp
+      - name: Build webapp (内联 CSS + 内联 bundle 生成自包含 webapp/app.html)
+        run: node scripts/bundle-webapp.mjs
 
       - name: Type check
-        run: npm --prefix dev run typecheck
+        run: npx tsc --noEmit
 
-      - name: Lint
-        run: npm --prefix dev run lint
+      - name: Test (host)
+        run: npm run test:host
 
-      - name: Host tests (vitest)
-        run: npm --prefix dev run test:host
-        env:
-          CI: "true"
+      - name: Test (webapp)
+        run: npm run test
 
-      - name: Webapp tests (jest)
-        run: npm --prefix dev run test
+      - name: Build main.js
+        run: node esbuild.config.mjs production
 
-      - name: Build main.js (production)
-        run: npm --prefix dev run build:main
-
-      - name: Zip webapp
-        run: cd webapp && zip -r ../webapp.zip . -x "*.map" "node_modules/*"
-
-      - name: Verify manifest/package version match
+      - name: Package webapp
         run: |
-          PKG=$(node -p "require('./package.json').version")
-          MAN=$(node -p "require('./manifest.json').version")
-          if [ "$PKG" != "$MAN" ]; then echo "version mismatch: $PKG vs $MAN"; exit 1; fi
+          cd webapp
+          zip -r ../webapp.zip . -x "*.DS_Store"
+          cd ..
 
-      - name: Release
-        uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/')
+      - name: Generate artifact attestation
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: |
+            main.js
+            manifest.json
+            styles.css
+            webapp.zip
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v3
         with:
           files: |
             main.js
             manifest.json
             styles.css
-            webapp.zip
             author-avatar.jpg
+            webapp.zip
+          generate_release_notes: true

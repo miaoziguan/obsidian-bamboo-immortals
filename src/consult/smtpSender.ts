@@ -23,10 +23,10 @@ interface SmtpSocket {
   setEncoding(enc: string): void;
   setTimeout(ms: number, cb?: () => void): void;
   setNoDelay?(v: boolean): void;
-  on(event: 'data', listener: (chunk: string | Buffer) => void): void;
+  on(event: 'data', listener: (chunk: string | Uint8Array) => void): void;
   on(event: 'error', listener: (err: Error) => void): void;
   on(event: 'close', listener: () => void): void;
-  off(event: 'data', listener: (chunk: string | Buffer) => void): void;
+  off(event: 'data', listener: (chunk: string | Uint8Array) => void): void;
   off(event: 'error', listener: (err: Error) => void): void;
   off(event: 'close', listener: () => void): void;
 }
@@ -77,7 +77,10 @@ export interface SendResult {
 }
 
 function b64(s: string): string {
-  return Buffer.from(s, 'utf-8').toString('base64');
+  const bytes = new TextEncoder().encode(s);
+  let bin = '';
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin);
 }
 
 /**
@@ -181,7 +184,7 @@ export function sendEmail(
           break;
         case 7: {
           const fromName = cfg.fromName || '竹林修仙传';
-          const subjectEncoded = `=?UTF-8?B?${Buffer.from(subject).toString('base64')}?=`;
+          const subjectEncoded = `=?UTF-8?B?${b64(subject)}?=`;
           const head =
             `From: "${fromName}" <${cfg.user}>\r\n` +
             `To: <${to}>\r\n` +
@@ -203,7 +206,7 @@ export function sendEmail(
       conn.write(raw);
     };
 
-    const handleData = (chunk: string | Buffer) => {
+    const handleData = (chunk: string | Uint8Array) => {
       buffer += chunk.toString();
       let idx: number;
       while ((idx = buffer.indexOf('\r\n')) !== -1) {

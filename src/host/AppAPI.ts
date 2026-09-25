@@ -327,7 +327,6 @@ export class AppAPI {
         /* 该候选目录不存在，尝试下一个 */
       }
     }
-    console.warn('[AppAPI] 未在任何候选目录中找到外部主题');
   }
 
   private async handleMessage(type: string, id: string, payload: unknown): Promise<void> {
@@ -765,7 +764,6 @@ export class AppAPI {
         // 附带「已安装版本表」，webapp 拿它与 manifest 中各主题的 version 比对 → 得出「可更新」
         this.respond(id, { ok: true, manifest, installed: this.settings.marketInstalled || {} });
       } catch (e) {
-        console.warn('[AppAPI] 主题市场清单拉取失败:', e);
         this.respondError(id, e instanceof Error ? e.message : '市场清单拉取失败');
       }
       return;
@@ -796,7 +794,6 @@ export class AppAPI {
         await this._rescanThemes();
         this.respond(id, { ok: true });
       } catch (e) {
-        console.warn('[AppAPI] 主题市场安装失败:', e);
         this.respondError(id, e instanceof Error ? e.message : '主题安装失败');
       }
       return;
@@ -819,7 +816,6 @@ export class AppAPI {
         await this._rescanThemes();
         this.respond(id, { ok: true });
       } catch (e) {
-        console.warn('[AppAPI] 主题市场卸载失败:', e);
         this.respondError(id, e instanceof Error ? e.message : '主题卸载失败');
       }
       return;

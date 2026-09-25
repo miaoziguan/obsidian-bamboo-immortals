@@ -1,5 +1,9 @@
 /** @type {import('jest').Config} */
+const path = require('path');
 module.exports = {
+  // 配置随工具链迁入 dev/，rootDir 指向仓库根，并让模块解析包含 dev/node_modules
+  rootDir: '..',
+  modulePaths: [path.resolve(__dirname, 'node_modules')],
   testEnvironment: 'jsdom',
   roots: ['<rootDir>/webapp/assets/scripts/tests'],
   testMatch: ['**/*.jest.test.js'],

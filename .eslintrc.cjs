@@ -5,10 +5,19 @@
  *  - 生产代码（src 下非测试 .ts）严格约束，重点锁死 any 回潮 / 未用变量 / console 泄漏
  *  - 测试文件（*.test.ts）放宽：mock 与断言中 `as any` 是合理写法，不应被 no-explicit-any 刁难
  *  - 已收窄的 Obsidian API 边界（as unknown as / as AnyBridgeMessage）不触发 no-explicit-any，无需豁免
+ *
+ * 注意：构建/测试/lint 工具链已迁入 dev/（见 dev/package.json），但本配置保留在仓库根，
+ * 以便 override 的 `src/**` glob 能天然匹配仓库根下的源码。parser 用 require.resolve 绝对路径
+ * 指向 dev/node_modules，使 eslint 从工具链目录解析 @typescript-eslint/parser。
  */
+const path = require('path');
+
 module.exports = {
   root: true,
-  parser: '@typescript-eslint/parser',
+  // 工具链在 dev/，用绝对路径解析 parser
+  parser: require.resolve('@typescript-eslint/parser', {
+    paths: [path.resolve(__dirname, 'dev/node_modules')],
+  }),
   parserOptions: {
     ecmaVersion: 2020,
     sourceType: 'module',

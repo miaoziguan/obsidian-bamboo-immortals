@@ -15,7 +15,11 @@
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
     "strict": true,
-    "lib": ["DOM", "ES2020"]
+    "lib": ["DOM", "ES2020"],
+    "paths": {
+      "vitest": ["dev/node_modules/vitest"],
+      "yaml": ["dev/node_modules/yaml"]
+    }
   },
   "include": ["main.ts", "src/**/*.ts"]
 }

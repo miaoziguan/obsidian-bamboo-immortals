@@ -1682,4 +1682,4 @@
 /* hidden 必须显式兜底：.tw-zoom-bar 用了 display:flex（作者样式），会盖掉 UA 的
    [hidden]{display:none}，导致「导图模式下两条缩放条同时可见且重叠」。
    仓库其余组件均有同类显式规则，此处补齐。 */
-.tw-zoom-bar[hidden] { display: none !important; }
+.tw-zoom-bar[hidden] { display: none; }

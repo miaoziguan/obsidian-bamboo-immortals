@@ -782,7 +782,7 @@
     .mountain-mist,
     .bamboo-forest .bamboo-inner,
     .bamboo-leaf-tip {
-        animation: none !important;
+        animation: none;
     }
     /* 静止模糊图层：释放此前被提升的合成层，避免常驻 GPU 内存 */
     .mist-layer-1,
@@ -791,7 +791,7 @@
     .distant-mountains .mountain-layer,
     .river-surface,
     .mountain-mist {
-        will-change: auto !important;
+        will-change: auto;
     }
     /* 3 个静态竹子容器：不挂 will-change（不动画），改用 contain 隔离滚动重绘，省内存 */
     .bamboo-far,

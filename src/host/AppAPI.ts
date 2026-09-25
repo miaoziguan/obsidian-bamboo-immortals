@@ -759,9 +759,9 @@ export class AppAPI {
     // ---- 主题市场：拉取清单（host 侧 fetch 公开仓库的 manifest.json）----
     if (type === 'market:manifest') {
       try {
-        const resp = await fetch(MARKET_MANIFEST_URL, { cache: 'no-store' });
-        if (!resp.ok) throw new Error('HTTP ' + resp.status);
-        const manifest = await resp.json();
+        const resp = await requestUrl({ url: MARKET_MANIFEST_URL, method: 'GET' });
+        if (resp.status < 200 || resp.status >= 300) throw new Error('HTTP ' + resp.status);
+        const manifest = resp.json;
         // 附带「已安装版本表」，webapp 拿它与 manifest 中各主题的 version 比对 → 得出「可更新」
         this.respond(id, { ok: true, manifest, installed: this.settings.marketInstalled || {} });
       } catch (e) {
@@ -782,9 +782,9 @@ export class AppAPI {
       const url = p.url;
       if (!tid || !url) { this.respondError(id, 'market:install 缺少 id 或 url'); return; }
       try {
-        const resp = await fetch(url, { cache: 'no-store' });
-        if (!resp.ok) throw new Error('HTTP ' + resp.status);
-        const code = await resp.text();
+        const resp = await requestUrl({ url, method: 'GET' });
+        if (resp.status < 200 || resp.status >= 300) throw new Error('HTTP ' + resp.status);
+        const code = resp.text;
         if (!code.includes('__bamboo_theme_')) throw new Error('不是有效的竹林主题文件');
         const dir = this.settings.themePath || '竹林动效主题';
         const filePath = `${dir}/${tid}.js`;

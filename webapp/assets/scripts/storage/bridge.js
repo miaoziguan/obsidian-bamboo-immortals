@@ -346,6 +346,22 @@ export class BridgeStorage {
       console.warn('[Bridge] deleteTypewriterMindmapDoc 不可用:', e && e.message);
     }
   }
+  async getTypewriterNotesDoc(id) {
+    await this.ensureReady();
+    return this._send('storage:getTypewriterNotesDoc', { id });
+  }
+  async putTypewriterNotesDoc(id, doc) {
+    await this.ensureReady();
+    return this._send('storage:putTypewriterNotesDoc', { id, doc });
+  }
+  async deleteTypewriterNotesDoc(id) {
+    await this.ensureReady();
+    try {
+      return await this._send('storage:deleteTypewriterNotesDoc', { id });
+    } catch (e) {
+      console.warn('[Bridge] deleteTypewriterNotesDoc 不可用:', e && e.message);
+    }
+  }
 
   async putSetting(key, value) {
     await this.ensureReady();

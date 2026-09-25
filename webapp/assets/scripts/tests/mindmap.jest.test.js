@@ -171,7 +171,7 @@ describe('存储层：独立 key + 净化（TypewriterStore）', () => {
     const back = await TypewriterStore.loadMindmap();
     expect(back.nodes[0].text).toBe('根');
     expect(back.links).toEqual([{ from: 'a', to: 'b' }]);
-    expect(back.view).toEqual({ x: 5, y: 6 });
+    expect(back.view).toEqual({ x: 5, y: 6, scale: 1 });   // 视口序列化经统一入口，含 scale（P0-2 修复后）
   });
 
   test('净化：逐条丢弃非法节点，绝不整体清空', async () => {

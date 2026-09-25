@@ -543,6 +543,32 @@ export class VaultStorage {
     }
   }
 
+  // 便签组文档：每组独立文件，索引(轻量)放 settings.json（与写作/导图同构）
+  private typewriterNotesDocPath(id: string): string {
+    return normalizePath(`${this.basePath}/typewriter-notes/${id}.json`);
+  }
+  async getTypewriterNotesDoc(id: string): Promise<{ version: number; notes: unknown[]; links: unknown[]; canvasOffset: { x: number; y: number; scale?: number } | null } | null> {
+    const path = this.typewriterNotesDocPath(id);
+    if (!(await this.app.vault.adapter.exists(path))) return null;
+    try {
+      const content = await this.app.vault.adapter.read(path);
+      const parsed = content ? JSON.parse(content) : null;
+      if (!parsed || typeof parsed !== 'object' || !Array.isArray(parsed.notes)) return null;
+      return parsed as { version: number; notes: unknown[]; links: unknown[]; canvasOffset: { x: number; y: number; scale?: number } | null };
+    } catch {
+      return null;
+    }
+  }
+  async putTypewriterNotesDoc(id: string, doc: unknown): Promise<void> {
+    await this.vaultWrite(this.typewriterNotesDocPath(id), JSON.stringify(doc, null, 2));
+  }
+  async deleteTypewriterNotesDoc(id: string): Promise<void> {
+    const path = this.typewriterNotesDocPath(id);
+    if (await this.app.vault.adapter.exists(path)) {
+      await this.app.vault.adapter.remove(path);
+    }
+  }
+
   async getPlansIndex(): Promise<Record<string, string[]>> {
     const path = this.plansIndexPath();
     if (!(await this.app.vault.adapter.exists(path))) return {};

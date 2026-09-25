@@ -248,6 +248,7 @@ describe('帧预算：连续手势 rAF 合流（对标 tldraw batched store upda
   }
 
   test('缩放手柄拖拽：5 次 pointermove 只合帧落一次，不是每事件一次', () => {
+    feature._mode = 'notes';   // 拖角手柄仅便签档创建（写作档不提供单卡缩放）
     const card = frameFixture();
     feature._makeResizable(card);
     const handle = card.querySelector('.tw-card-resize');
@@ -263,6 +264,7 @@ describe('帧预算：连续手势 rAF 合流（对标 tldraw batched store upda
   });
 
   test('缩放手柄松手补写末帧，不丢最后一次增量', () => {
+    feature._mode = 'notes';   // 拖角手柄仅便签档创建（写作档不提供单卡缩放）
     const card = frameFixture();
     feature._makeResizable(card);
     const handle = card.querySelector('.tw-card-resize');
@@ -273,17 +275,27 @@ describe('帧预算：连续手势 rAF 合流（对标 tldraw batched store upda
     expect(feature._applyZoom.mock.calls[0][1]).toBeGreaterThan(1);  // 末尾增量没丢
   });
 
-  test('⌘/Ctrl+滚轮缩放：一帧内多次 wheel 只落一次，且步进全部累计不丢', () => {
+  // 单卡缩放快捷键（Alt+滚轮）已整体移除：任何档位下 Alt+滚轮都不应触发单卡缩放，交由画布正常平移
+  test('Alt+滚轮不再单卡缩放（便签档/写作档均交画布平移，不误触）', () => {
+    for (const mode of ['notes', 'write']) {
+      const prevMode = feature._mode;
+      feature._mode = mode;
+      const card = frameFixture();
+      feature._makeResizable(card);
+      card.dispatchEvent(new WheelEvent('wheel', { deltaY: -1, altKey: true, bubbles: true }));
+      flush();
+      expect(feature._applyZoom).not.toHaveBeenCalled();   // 任何档位都不接管单卡缩放
+      feature._mode = prevMode;
+    }
+  });
+
+  test('⌘/Ctrl+滚轮不再缩放单卡（让位给画布缩放）', () => {
     const card = frameFixture();
     feature._makeResizable(card);
-    const wheel = () => card.dispatchEvent(new WheelEvent('wheel', { deltaY: -1, metaKey: true, bubbles: true }));
-    wheel(); wheel(); wheel();
-    expect(feature._applyZoom).not.toHaveBeenCalled();
-    expect(rafQueue.length).toBe(1);
+    card.dispatchEvent(new WheelEvent('wheel', { deltaY: -1, metaKey: true, bubbles: true }));
     flush();
-    expect(feature._applyZoom).toHaveBeenCalledTimes(1);
-    // 三次步进必须都累积上：若基准误读 dataset.zoom 旧值，只会落出一次步进（≈1.08）
-    expect(feature._applyZoom.mock.calls[0][1]).toBeGreaterThan(1.1);
+    expect(feature._applyZoom).not.toHaveBeenCalled();
+    expect(rafQueue.length).toBe(0);   // 卡片不接管：事件冒泡给画布层做画布缩放
   });
 });
 

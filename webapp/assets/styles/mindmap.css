@@ -354,3 +354,8 @@
 .tw-mm-search button:hover { background: rgba(var(--primary-rgb), 0.12); }
 
 
+
+/* 抓手态（空格按下 / H 工具）：此刻拖动 = 平移，而非框选 */
+.tw-mm.is-hand { cursor: grab; }
+.tw-mm.is-hand.is-panning { cursor: grabbing; }
+.tw-mm.is-hand .tw-mm-canvas { cursor: grab; }

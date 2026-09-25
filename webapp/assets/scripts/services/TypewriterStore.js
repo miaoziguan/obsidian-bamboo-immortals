@@ -10,11 +10,14 @@
  */
 // 写作文档 schema 版本：单一真源在 twConfig.WRITING_SCHEMA_VERSION（与 WritingDoc.VERSION 同值）。
 import { WRITING_SCHEMA_VERSION } from '../handlers/features/twConfig.js';
+import { CanvasViewport } from './CanvasViewport.js';
 export const TypewriterStore = {
   KEY_NOTES: 'typewriter:notes',         // 新格式：{ version, notes }
   KEY_CANVAS: 'typewriterCanvas',        // 画布平移偏移（独立 key，绝不混入便签数组）
   KEY_NOTES_BAK: 'typewriter:notes:bak', // 写前备份
   KEY_LINKS: 'typewriter:links',     // 便签连线（独立 key：与便签数组分存，互不影响）
+  // 便签多组（与写作/导图同构）：每组独立文件 typewriter-notes/<id>.json + 轻量索引（仅 groups 元信息）放 settings.json
+  KEY_NOTES_INDEX: 'typewriter:notes-index',
   // 思维子弹是**独立文档**（与便签彻底分家）：便签只管便签的卡片/位置/连线，
   // 导图只管自己的节点树与视野。两边各自增删改，互不可见 —— 详见 mindmapFeature.js 顶部说明。
   KEY_MINDMAP: 'typewriter:mindmap',
@@ -71,7 +74,7 @@ export const TypewriterStore = {
         // 画布偏移（独立 key，缩放与偏移同存）
         const off = await sm.getSetting(this.KEY_CANVAS);
         if (off && (typeof off.x === 'number' || typeof off.y === 'number')) {
-          result.canvasOffset = { x: Number(off.x) || 0, y: Number(off.y) || 0 };
+          result.canvasOffset = { x: Number(off.x) || 0, y: Number(off.y) || 0, scale: Number(off.scale) || 1 };
         }
         // 连线（独立 key）：存的是 {from,to} 便签 id 对，坐标实时算、不入档
         const links = await sm.getSetting(this.KEY_LINKS);
@@ -96,6 +99,9 @@ export const TypewriterStore = {
         await sm.putSetting(this.KEY_CANVAS, {
           x: Number(canvasOffset.x) || 0,
           y: Number(canvasOffset.y) || 0,
+          // 画布缩放比：按文档持久化视口（对齐 Excalidraw 的 scrollX/scrollY/zoom）；
+          // 非法值由读取侧（CanvasViewport.clamp）钳制回 1
+          scale: Number(canvasOffset.scale) || 1,
         });
       }
       // 连线独立 key：与便签数组分离，连线出错也绝不波及便签
@@ -128,6 +134,8 @@ export const TypewriterStore = {
           result.view = { x: Number(doc.view.x) || 0, y: Number(doc.view.y) || 0 };
         }
         if (typeof doc.style === 'number') result.style = doc.style;
+        // 视口反序列化统一走唯一入口（恢复 scale）
+        if (CanvasViewport) result.view = CanvasViewport.viewFromStore(doc.view);
       }
     } catch (e) {
       console.warn('[TypewriterStore] 思维子弹读取失败：', e);
@@ -150,7 +158,7 @@ export const TypewriterStore = {
         version: this.MINDMAP_VERSION,
         nodes: clean,
         links: wires,
-        view: view ? { x: Number(view.x) || 0, y: Number(view.y) || 0 } : null,
+        view: CanvasViewport ? CanvasViewport.viewToStore(view) : (view ? { x: Number(view.x) || 0, y: Number(view.y) || 0 } : null),
         style: (typeof style === 'number') ? style : 0,
       });
       const back = await sm.getSetting(this.KEY_MINDMAP);
@@ -240,56 +248,104 @@ export const TypewriterStore = {
    * @param {string} [id] 组 id，省略则用当前组（索引.current，缺省 'default'）。
    * @returns {{notes: Array, canvasOffset: {x:number,y:number}|null, links: Array, version: number}}
    */
-  async loadWriting(id) {
+  // ---- 卡片档（写作/便签）收敛：write 与 notes 仅「桥方法名 / version / 索引 / 缺省标题」不同，
+  // 由 _docDesc 描述符参数化，共用 _saveCardDoc/_loadCardDoc，杜绝「改一档漏一档」（正是几何不一致类 bug 的根因）。
+  // 思维导图数据模型不同（nodes/links/view/style），单走 saveMindmap/loadMindmap，不在此收敛。
+  _docDesc(kind) {
+    const write = kind === 'write';
+    return {
+      version: write ? this.WRITING_VERSION : this.VERSION,
+      putBridge: write ? 'putTypewriterWritingDoc' : 'putTypewriterNotesDoc',
+      getBridge: write ? 'getTypewriterWritingDoc' : 'getTypewriterNotesDoc',
+      legacyFallback: !write,                         // 便签档：桥不可用退化回旧单文档 key（写作档不退化，仅告警）
+      newTitle: write ? '未命名草稿' : '未命名便签',
+      extraGroupFields: write ? { notePath: null } : {},
+      currentId: () => (write ? this._writingCurrentId() : this._notesCurrentId()),
+      loadIndex: () => (write ? this._loadWritingIndex() : this._loadNotesIndex()),
+      saveIndex: (i) => (write ? this._saveWritingIndex(i) : this._saveNotesIndex(i)),
+      getIdxTs: () => (write ? this._writingIdxTs : this._notesIdxTs),
+      setIdxTs: (n) => { if (write) this._writingIdxTs = n; else this._notesIdxTs = n; },
+      migrate: () => (write ? this._migrateLegacyWriting() : this._migrateLegacyNotes()),
+    };
+  },
+  async saveDoc(kind, notes, canvasOffset, links, id) {
+    if (kind === 'mindmap') return this.saveMindmap(notes, canvasOffset, links, id);
+    return this._saveCardDoc(this._docDesc(kind), notes, canvasOffset, links, id);
+  },
+  async loadDoc(kind, id) {
+    if (kind === 'mindmap') return this.loadMindmap(id);
+    return this._loadCardDoc(this._docDesc(kind), id);
+  },
+  async _saveCardDoc(desc, notes, canvasOffset, links, id) {
     const sm = window.storageManager;
-    const result = { notes: [], canvasOffset: null, links: [], version: this.WRITING_VERSION };
+    if (!sm || typeof sm.putSetting !== 'function') return;
+    const gid = id || (await desc.currentId());
+    const clean = this._sanitizeNotes(notes);
+    const wires = this._sanitizeLinks(links);
+    const doc = { version: desc.version, notes: clean, links: wires, canvasOffset };
+    let wroteDoc = false;
+    if (sm[desc.putBridge]) {
+      try { await sm[desc.putBridge](gid, doc); wroteDoc = true; }
+      catch (e) { console.warn('[TypewriterStore] 卡片档写入失败：', e); }
+    }
+    if (!wroteDoc && desc.legacyFallback) {
+      await this._writeNotes(clean, desc.version);
+      if (canvasOffset) await sm.putSetting(this.KEY_CANVAS, { x: Number(canvasOffset.x) || 0, y: Number(canvasOffset.y) || 0, scale: Number(canvasOffset.scale) || 1 });
+      if (Array.isArray(wires)) await sm.putSetting(this.KEY_LINKS, wires);
+    }
+    try {
+      const idx = (await desc.loadIndex()) || { version: 1, current: gid, groups: {} };
+      idx.groups = idx.groups || {};
+      const isNew = !idx.groups[gid];
+      if (isNew) idx.groups[gid] = Object.assign({ id: gid, title: desc.newTitle, updatedAt: Date.now() }, desc.extraGroupFields);
+      const curChanged = idx.current !== gid;
+      const now = Date.now();
+      if (isNew || curChanged || (now - (desc.getIdxTs() || 0)) > this.WRITING_INDEX_THROTTLE) {
+        idx.current = gid;
+        idx.groups[gid].updatedAt = now;
+        await desc.saveIndex(idx);
+        desc.setIdxTs(now);
+      }
+    } catch (_) { /* 索引失败不阻断主写入 */ }
+  },
+  async _loadCardDoc(desc, id) {
+    const sm = window.storageManager;
+    const result = { notes: [], canvasOffset: null, links: [], version: desc.version };
     if (!sm || typeof sm.getSetting !== 'function') return result;
-    const gid = id || (await this._writingCurrentId());
-    // 首启：无索引但有旧版整组数据 → 迁移到新结构（独立文件 + 索引）
-    if (!id && !await this._loadWritingIndex()) await this._migrateLegacyWriting();
-    const doc = (sm.getTypewriterWritingDoc) ? await sm.getTypewriterWritingDoc(gid) : null;
+    const gid = id || (await desc.currentId());
+    if (!id && !(await desc.loadIndex())) await desc.migrate();
+    let doc = null;
+    if (sm[desc.getBridge]) {
+      try { doc = await sm[desc.getBridge](gid); } catch (_) { doc = null; }
+    }
     if (doc && Array.isArray(doc.notes)) {
       result.notes = this._sanitizeNotes(doc.notes);
-      result.version = Number(doc.version) || this.WRITING_VERSION;
+      result.version = Number(doc.version) || desc.version;
       if (doc.canvasOffset && (typeof doc.canvasOffset.x === 'number' || typeof doc.canvasOffset.y === 'number')) {
-        result.canvasOffset = { x: Number(doc.canvasOffset.x) || 0, y: Number(doc.canvasOffset.y) || 0 };
+        result.canvasOffset = { x: Number(doc.canvasOffset.x) || 0, y: Number(doc.canvasOffset.y) || 0, scale: Number(doc.canvasOffset.scale) || 1 };
       }
       result.links = Array.isArray(doc.links) ? this._sanitizeLinks(doc.links) : [];
+      return result;
+    }
+    if (desc.legacyFallback && !sm[desc.getBridge]) {
+      const legacy = await this.load();
+      result.notes = legacy.notes;
+      result.canvasOffset = legacy.canvasOffset;
+      result.links = legacy.links;
+      result.version = legacy.version;
     }
     return result;
+  },
+
+  async loadWriting(id) {
+    return this._loadCardDoc(this._docDesc('write'), id);
   },
 
   /** 落盘MD可视化写作文档（每组独立文件 + 轻量索引，与便签零耦合）。
    *  只重写该组文件，绝不波及 settings.json 里的其他组 / 便签；索引仅更新轻量元信息。
    *  @param {Array} notes  @param {{x:number,y:number}} canvasOffset  @param {Array} links  @param {string} [id] 组 id（省略=当前组） */
   async saveWriting(notes, canvasOffset, links, id) {
-    const sm = window.storageManager;
-    if (!sm || typeof sm.putSetting !== 'function') return;
-    const gid = id || (await this._writingCurrentId());
-    const clean = this._sanitizeNotes(notes);
-    const wires = this._sanitizeLinks(links);
-    try {
-      if (sm.putTypewriterWritingDoc) await sm.putTypewriterWritingDoc(gid, { version: this.WRITING_VERSION, notes: clean, links: wires, canvasOffset });
-    } catch (e) {
-      console.warn('[TypewriterStore] 写作档保存失败：', e);
-    }
-    // 索引：只在「新建组 / current 变了 / 节流窗口到期」时才写 settings.json ——
-    // 【性能】纯内容保存（拖卡·打字，防抖 350ms 一次）不再每次刷 updatedAt，
-    // 避免每 350ms 一次 settings.json 整文件 read-modify-write（卡片正文已走独立文件，无需进索引）。
-    try {
-      const idx = (await this._loadWritingIndex()) || { version: 1, current: gid, groups: {} };
-      idx.groups = idx.groups || {};
-      const isNew = !idx.groups[gid];
-      if (isNew) idx.groups[gid] = { id: gid, title: '未命名草稿', updatedAt: Date.now(), notePath: null };
-      const curChanged = idx.current !== gid;
-      const now = Date.now();
-      if (isNew || curChanged || (now - (this._writingIdxTs || 0)) > this.WRITING_INDEX_THROTTLE) {
-        idx.current = gid;
-        idx.groups[gid].updatedAt = now;
-        await this._saveWritingIndex(idx);
-        this._writingIdxTs = now;
-      }
-    } catch (_) { /* 索引失败不阻断主写入 */ }
+    return this._saveCardDoc(this._docDesc('write'), notes, canvasOffset, links, id);
   },
 
   /** 净化子弹：逐条过滤非法项，绝不整体清空（与便签同一条原则）。
@@ -425,6 +481,162 @@ export const TypewriterStore = {
     return { ok: true, id, notePath, current: idx.current };
   },
 
+  // ---- 便签：分组（多份便签组，每份独立文件）管理 ----
+  // 与写作/导图同构：索引(轻量)放 settings.json 的 typewriter:notes-index；每组便签(重，无上限)放独立文件
+  // typewriter-notes/<id>.json，保存只重写该组文件，不撑大 settings.json。
+  // 旧版单文档(typewriter:notes / typewriterCanvas / typewriter:links)首启自动迁到 default 组文件（见 _migrateLegacyNotes）。
+  async _loadNotesIndex() {
+    const sm = window.storageManager;
+    if (!sm || typeof sm.getSetting !== 'function') return null;
+    try {
+      const raw = await sm.getSetting(this.KEY_NOTES_INDEX);
+      if (raw && typeof raw === 'object' && raw.groups) return raw;
+    } catch (_) { /* 忽略 */ }
+    return null;
+  },
+  async _saveNotesIndex(idx) {
+    const sm = window.storageManager;
+    if (!sm || typeof sm.putSetting !== 'function') return;
+    try { await sm.putSetting(this.KEY_NOTES_INDEX, idx); } catch (_) { /* 忽略 */ }
+  },
+  async _notesCurrentId() {
+    const idx = await this._loadNotesIndex();
+    return (idx && typeof idx.current === 'string' && idx.current) ? idx.current : 'default';
+  },
+  async ensureNotesIndex() {
+    let idx = await this._loadNotesIndex();
+    if (!idx) {
+      idx = { version: 1, current: 'default', groups: { default: { id: 'default', title: '未命名便签', updatedAt: Date.now() } } };
+      await this._saveNotesIndex(idx);
+    }
+    return idx;
+  },
+  /** 读取上次退出时的档位（notes/write/mindmap），缺省便签。 */
+  async getMode() {
+    const sm = window.storageManager;
+    if (!sm || typeof sm.getSetting !== 'function') return 'notes';
+    try {
+      const m = await sm.getSetting('typewriter:mode');
+      return (m === 'write' || m === 'mindmap') ? m : 'notes';
+    } catch (_) { return 'notes'; }
+  },
+  /** 记录当前档位，下次启动恢复。best-effort：失败静默，不影响切换本身。 */
+  async setMode(mode) {
+    const sm = window.storageManager;
+    if (!sm || typeof sm.putSetting !== 'function') return;
+    try { await sm.putSetting('typewriter:mode', mode); } catch (_) { /* 忽略 */ }
+  },
+  /** 首启迁移：把旧版单文档便签搬进 default 组独立文件 + 索引（仅一次）。
+   *  与写作(_migrateLegacyWriting)同原则：只有确认落盘到独立文件才建索引并清旧 key，否则保留旧数据。 */
+  async _migrateLegacyNotes() {
+    const sm = window.storageManager;
+    if (!sm || typeof sm.getSetting !== 'function') return false;
+    let notes = [];
+    let links = [];
+    let canvasOffset = null;
+    let version = this.VERSION_RATIO_COORDS;   // 旧数据默认可疑为比例坐标
+    // 1) 新格式 KEY_NOTES（{version, notes}）
+    const wrapped = await sm.getSetting(this.KEY_NOTES);
+    if (wrapped && Array.isArray(wrapped.notes)) {
+      notes = this._sanitizeNotes(wrapped.notes);
+      version = Number(wrapped.version) || this.VERSION_RATIO_COORDS;
+      const lk = await sm.getSetting(this.KEY_LINKS);
+      if (Array.isArray(lk)) links = this._sanitizeLinks(lk);
+      const off = await sm.getSetting(this.KEY_CANVAS);
+      if (off && (typeof off.x === 'number' || typeof off.y === 'number')) {
+        canvasOffset = { x: Number(off.x) || 0, y: Number(off.y) || 0, scale: Number(off.scale) || 1 };
+      }
+    } else if (typeof sm.getTypewriterNotes === 'function') {
+      // 2) 更早的裸数组 typewriter-notes.json
+      const legacy = await sm.getTypewriterNotes();
+      if (Array.isArray(legacy)) {
+        notes = this._sanitizeNotes(legacy);
+        version = this.VERSION_RATIO_COORDS;   // 裸数组 = 比例坐标
+      }
+    }
+    if (!notes.length && !links.length) return false;   // 无旧数据 → 无需迁移
+    const id = 'default';
+    let moved = false;
+    if (sm.putTypewriterNotesDoc) {
+      try {
+        await sm.putTypewriterNotesDoc(id, { version, notes, links, canvasOffset });
+        moved = true;
+      } catch (e) { console.warn('[TypewriterStore] 旧便签迁移写文件失败，保留旧 key 不清理：', e); }
+    }
+    if (!moved) return false;   // 桥不可用：保留旧 key，下次重试
+    await this._saveNotesIndex({ version: 1, current: id, groups: { [id]: { id, title: '未命名便签', updatedAt: Date.now() } } });
+    // 只有确认落盘成功才清旧 key（避免静默丢数据）
+    try { await sm.putSetting(this.KEY_NOTES, null); await sm.putSetting(this.KEY_LINKS, null); await sm.putSetting(this.KEY_CANVAS, null); } catch (_) {}
+    return true;
+  },
+  /** 读取便签组文档（按组独立文件，多组同构）。
+   *  @param {string} [id] 组 id，省略则用当前组（索引.current，缺省 'default'）。
+   *  @returns {{notes: Array, canvasOffset: {x:number,y:number}|null, links: Array, version: number}} */
+  async loadNotes(id) {
+    return this._loadCardDoc(this._docDesc('notes'), id);
+  },
+  /** 落盘便签组文档（每组独立文件 + 轻量索引，与写作/导图同构）。
+   *  桥不可用时退化回旧单文档 key（putSetting），行为与改造前一致，不丢数据。 */
+  async saveNotes(notes, canvasOffset, links, id) {
+    return this._saveCardDoc(this._docDesc('notes'), notes, canvasOffset, links, id);
+  },
+  async listNotesGroups() {
+    const idx = await this.ensureNotesIndex();
+    return Object.keys(idx.groups)
+      .map((id) => idx.groups[id])
+      .map((g) => ({ id: g.id, title: (g && g.title) || '未命名便签', updatedAt: (g && g.updatedAt) || 0 }))
+      .sort((a, b) => b.updatedAt - a.updatedAt);
+  },
+  async getCurrentNotesGroup() {
+    const idx = await this.ensureNotesIndex();
+    const id = (idx.current && idx.groups[idx.current]) ? idx.current : 'default';
+    const g = idx.groups[id] || { id, title: '未命名便签' };
+    return { id, title: g.title || '未命名便签' };
+  },
+  async createNotesGroup(title) {
+    const idx = await this.ensureNotesIndex();
+    const id = 'note-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    const cleanTitle = (title && String(title).trim()) || '未命名便签';
+    idx.groups[id] = { id, title: cleanTitle, updatedAt: Date.now() };
+    idx.current = id;
+    await this._saveNotesIndex(idx);
+    return { id, title: cleanTitle };
+  },
+  async renameNotesGroup(id, title) {
+    const idx = await this.ensureNotesIndex();
+    if (!idx.groups[id]) return;
+    const v = (title && String(title).trim());
+    if (v) idx.groups[id].title = v;
+    idx.groups[id].updatedAt = Date.now();
+    await this._saveNotesIndex(idx);
+  },
+  async setNotesCurrent(id) {
+    const idx = await this.ensureNotesIndex();
+    if (!idx.groups[id]) return;
+    idx.current = id;
+    await this._saveNotesIndex(idx);
+  },
+  /** 删除一个便签组：从索引移除 + 删其文档文件；若删当前组则退回剩余首组（无剩余则重建 default）。 */
+  async deleteNotesGroup(id) {
+    const idx = await this.ensureNotesIndex();
+    if (!idx.groups[id]) return { ok: false, id, current: (await this._notesCurrentId()) };
+    delete idx.groups[id];
+    const remaining = Object.keys(idx.groups);
+    if (idx.current === id) {
+      if (remaining.length === 0) {
+        const nid = 'default';
+        idx.groups[nid] = { id: nid, title: '未命名便签', updatedAt: Date.now() };
+        idx.current = nid;
+      } else {
+        idx.current = remaining[0];
+      }
+    }
+    await this._saveNotesIndex(idx);
+    const sm = window.storageManager;
+    try { if (sm && typeof sm.deleteTypewriterNotesDoc === 'function') await sm.deleteTypewriterNotesDoc(id); } catch (_) { /* 忽略 */ }
+    return { ok: true, id, current: idx.current };
+  },
+
   // ---- 思维子弹：分组（多份思维导图，每份独立文档）管理 ----
   // 索引(轻量)放 settings.json；每组文档存独立文件 typewriter-mindmap/<id>.json（与写作档同构，不进 settings.json）。
   // 首次运行会把旧的单文档（KEY_MINDMAP）与旧版 settings 里的 typewriter:mindmap:<id> 一并迁到独立文件，保证存量数据不丢。
@@ -522,7 +734,8 @@ export const TypewriterStore = {
       version: this.MINDMAP_VERSION,
       nodes: this._sanitizeNodes(doc.nodes),
       links: this._sanitizeLinks(doc.links),
-      view: doc.view ? { x: Number(doc.view.x) || 0, y: Number(doc.view.y) || 0 } : null,
+      // 视口序列化统一走 CanvasViewport.viewToStore：scale 不会再被某一层手写时漏掉（修复 P0-2）
+      view: CanvasViewport.viewToStore(doc.view),
       style: (typeof doc.style === 'number') ? doc.style : 0,
     };
     // 主路径：每组独立文件（与写作档同构），不撑大 settings.json、保存只重写该组文件
@@ -550,8 +763,8 @@ export const TypewriterStore = {
     return {
       nodes: this._sanitizeNodes(doc.nodes),
       links: this._sanitizeLinks(doc.links),
-      view: (doc.view && (typeof doc.view.x === 'number' || typeof doc.view.y === 'number'))
-        ? { x: Number(doc.view.x) || 0, y: Number(doc.view.y) || 0 } : null,
+      // 读档反序列化同样走唯一入口：缺失/非法一律回退（scale 缺省 1）
+      view: CanvasViewport.viewFromStore(doc.view),
       style: (typeof doc.style === 'number') ? doc.style : 0,
       version: Number(doc.version) || this.MINDMAP_VERSION,
     };

@@ -26,6 +26,8 @@ import { SpatialIndex } from '../../services/SpatialIndex.js';
 import { GeoCache } from '../../services/GeoCache.js';
 import { NotesState } from '../../services/NotesState.js';
 import { ViewportCuller } from '../../services/ViewportCuller.js';
+import { CanvasViewport } from '../../services/CanvasViewport.js';
+import { CanvasZoomUI } from '../../services/CanvasZoomUI.js';
 // B1 解耦：从本巨型单例抽出的 4 个子系统（委托壳调用的目标），详见各模块头部注释
 import { CardViewManager } from './CardViewManager.js';
 import { CardInteractions } from './CardInteractions.js';
@@ -63,6 +65,10 @@ export const TypewriterFeature = {
     this._canvas = null;
     this._input = null;
     this._case = null;
+    this._canvasKeysDetach = null;     // C2 共享键位接线（unmount 销毁后归零）
+    this._wheelDetach = null;          // C3 共享滚轮接线
+    this._gestureDetach = null;        // C3 共享指针手势接线
+    this._hand = null;                 // C3 空格/抓手状态对象
     this._timers = [];                 // 所有卡片打字计时器，供 unmount 精确清理
     this._selBarEl = null;             // 多选浮动操作条（≥2 张时浮出）
     this._selBarRAF = 0;               // 操作条跟随定位的 rAF 句柄
@@ -118,6 +124,7 @@ export const TypewriterFeature = {
     this._editingId = null;            // 正在编辑的卡 id（钉屏）
     this._cullRaf = 0;
     this._CULL_MARGIN = 240;           // 视口外预取边距(px)
+    this._flushHandler = null;         // 落盘兜底监听（visibilitychange/pagehide）
   },
 
   /** 接入画中卷功能舞台 */
@@ -136,6 +143,7 @@ export const TypewriterFeature = {
     if (this._input) this._input.focus();
     // 异步加载已保存便签并重建（直接显示全文，不重放动画）
     await this._restore();
+    this._bindFlushGuards();   // 落盘兜底：页面隐藏/卸载前 flush 防抖窗口内未落盘的编辑
   },
 
   /** 退出：清理全部打字计时器与 DOM 监听，释放引用 */
@@ -143,11 +151,19 @@ export const TypewriterFeature = {
     // —— 先收尾副作用（清 timer / 落盘 / 断 observer / 移除监听 / teardown）——
     this._timers.forEach((t) => { try { clearInterval(t); } catch (_) { /* 忽略 */ } });
     this._timers = [];
+    // 【防丢数据】打字动画中途卸载：把 pendingText（目标全文）回填模型，否则正在打出的卡会丢未落盘的全文
+    if (this._typingIds && this._typingIds.size) {
+      this._typingIds.forEach((id) => {
+        const el = this._mountedCards && this._mountedCards.get(id);
+        if (el && el._typing) this._finishTyping(el);
+      });
+    }
     if (this._msgTimer) { try { clearTimeout(this._msgTimer); } catch (_) { /* 忽略 */ } this._msgTimer = null; }
     // 【P0】退出前无条件落盘一次（fire-and-forget：宿主仍在，bridge 可用）。
     // 原先只在 _saveTimer 存在时才写，若用户恰好在打字动画途中关闭/切走视图，
-    // 这张便签可能从未排过保存 → 静默丢失。此处统一兜底（配合 pendingText 拿到全文）。
+    // 这张便签可能从未排过保存 → 静默丢失。此处统一兜底（打字卡已先回填模型）。
     if (this._saveTimer) { clearTimeout(this._saveTimer); this._saveTimer = null; }
+    this._unbindFlushGuards();   // 解绑落盘兜底监听（避免重复绑定/泄漏）
     this._saveNow();
     TypewriterStore.invalidateWritingIndex();   // 卸载后 settings 可能被外部改写，丢弃索引缓存
     if (this._el && this._el.parentNode) this._el.parentNode.removeChild(this._el);
@@ -175,6 +191,12 @@ export const TypewriterFeature = {
     if (this._cullRo) { this._cullRo.disconnect(); this._cullRo = null; }
     clearTimeout(this._hoverTimer);
     if (this._selKeyHandler) { document.removeEventListener('keydown', this._selKeyHandler); this._selKeyHandler = null; }
+    // C2/C3 共享接线同样挂在 document 上，必须对称摘除：否则每开/关一次视图就多挂一份
+    // （CanvasKeys 会因 stopImmediatePropagation 抢在新处理器之前，空格 keydown 亦会叠加）。
+    if (this._canvasKeysDetach) { this._canvasKeysDetach(); this._canvasKeysDetach = null; }
+    if (this._wheelDetach) { this._wheelDetach(); this._wheelDetach = null; }
+    if (this._gestureDetach) { this._gestureDetach(); this._gestureDetach = null; }
+    if (this._hand && typeof this._hand.destroy === 'function') { this._hand.destroy(); this._hand = null; }
     // 【B 修复】_bindLevelKeys 在 mount 时挂的文档级 keydown 监听，此前 unmount 漏摘 →
     // 每开/关一次视图就多挂一个活监听器（单例 this 相同），Cmd/Ctrl+1..6 被 N 重触发。此处对称移除。
     if (this._levelKeyHandler) { document.removeEventListener('keydown', this._levelKeyHandler); this._levelKeyHandler = null; }
@@ -287,6 +309,104 @@ export const TypewriterFeature = {
       this._cullRo = new ResizeObserver(() => this._scheduleCull());
       this._cullRo.observe(this._canvas);
     }
+    this._mountZoomUI();
+  },
+
+  /** 缩放控件（便签模式）：− / 百分比(重置) / + / 适应内容。
+   *  挂 wrap（层根）而非 canvas —— 后者带 transform，控件会跟着一起缩放/平移。 */
+  _mountZoomUI() {
+    const ctrl = this;
+    if (!this._el || typeof CanvasZoomUI === 'undefined') return;
+    this._zoomUI = CanvasZoomUI.mount(this._el, {
+      getCanvas: () => ctrl._canvas,
+      getView: () => ctrl._canvasOffset,
+      setView: (v) => CanvasViewport.set({ state: ctrl._state, ctrl }, v.x, v.y, v.scale),
+      // 以画布中心为焦点缩放（点按钮没有光标位置，中心缩放最符合预期）
+      zoomAtCenter: (f) => {
+        const c = ctrl._canvas;
+        if (!c) return;
+        const r = c.getBoundingClientRect();
+        CanvasViewport.zoomAt({ state: ctrl._state, ctrl }, r.left + r.width / 2, r.top + r.height / 2, f);
+      },
+      reset: () => {
+        const c = ctrl._canvas;
+        if (!c) return;
+        const r = c.getBoundingClientRect();
+        // 保持视口中心的内容不动，仅把缩放比归位 100%
+        CanvasViewport.zoomAt({ state: ctrl._state, ctrl }, r.left + r.width / 2, r.top + r.height / 2,
+          1 / CanvasViewport.getScale(ctrl));
+      },
+      fit: () => ctrl._fitNotesToView(),
+    });
+  },
+
+  /** 缩放变化后刷新外围圆钮尺寸（圆钮不应随画布一起变大变小） */
+  _refreshKnobs() {
+    if (!this._el) return;
+    this._el.querySelectorAll('.tw-card-rotate, .tw-card-link').forEach((k) => this._applyKnobSize(k));
+  },
+
+  /** 缩放变化后同步缩放控件的百分比显示 */
+  _syncZoomUI() {
+    if (this._zoomUI && typeof this._zoomUI.sync === 'function') this._zoomUI.sync();
+  },
+
+  /** 以画布中心为焦点缩放（键盘/按钮等没有光标位置的入口） */
+  _zoomByCenter(factor) {
+    const c = this._canvas;
+    if (!c) return;
+    const r = c.getBoundingClientRect();
+    CanvasViewport.zoomAt({ state: this._state, ctrl: this }, r.left + r.width / 2, r.top + r.height / 2, factor);
+  },
+
+  /** 缩放归位 100%（保持视口中心的内容不动） */
+  _zoomReset() {
+    const c = this._canvas;
+    if (!c) return;
+    const r = c.getBoundingClientRect();
+    CanvasViewport.zoomAt({ state: this._state, ctrl: this }, r.left + r.width / 2, r.top + r.height / 2,
+      1 / CanvasViewport.getScale(this));
+  },
+
+  /** 适应选区（Shift+2）：把当前选中的卡片居中并缩放到合适；无选中则退回适应全部。 */
+  _fitSelectionToView() {
+    const c = this._canvas;
+    if (!c) return;
+    const sel = this._selected;
+    if (!sel || !sel.size) { this._fitNotesToView(); return; }
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity, any = false;
+    sel.forEach((card) => {
+      const g = this._geo ? this._geo.get(card.dataset.id) : null;
+      const lx = g ? g.x : (parseFloat(card.style.left) || 0);
+      const ly = g ? g.y : (parseFloat(card.style.top) || 0);
+      const w = g ? g.w : (card.offsetWidth || 340);
+      const h = g ? g.h : (card.offsetHeight || 200);
+      minX = Math.min(minX, lx); minY = Math.min(minY, ly);
+      maxX = Math.max(maxX, lx + w); maxY = Math.max(maxY, ly + h);
+      any = true;
+    });
+    if (!any) { this._fitNotesToView(); return; }
+    const v = CanvasViewport.fitView(c, { minX, minY, maxX, maxY });
+    CanvasViewport.set({ state: this._state, ctrl: this }, v.x, v.y, v.scale);
+  },
+
+  /** 适应内容：按全部便签的包围盒算出「居中 + 缩放」的视口。 */
+  _fitNotesToView() {
+    const c = this._canvas;
+    if (!c || !this._notes || !this._notes.length) { this._recenterNotes(); return; }
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity, any = false;
+    for (const n of this._notes) {
+      const x = (typeof n.x === 'number') ? n.x : 0;
+      const y = (typeof n.y === 'number') ? n.y : 0;
+      const g = this._geo ? this._geo.get(n.id) : null;
+      const w = g ? g.w : 340, h = g ? g.h : 200;
+      minX = Math.min(minX, x); minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x + w); maxY = Math.max(maxY, y + h);
+      any = true;
+    }
+    if (!any) { this._recenterNotes(); return; }
+    const v = CanvasViewport.fitView(c, { minX, minY, maxX, maxY });
+    CanvasViewport.set({ state: this._state, ctrl: this }, v.x, v.y, v.scale);
   },
 
   /** 以设备实际渲染宽度驱动 .tw-case 根字号，实现「单一根字号 + em」连续流式缩放。
@@ -824,9 +944,9 @@ export const TypewriterFeature = {
     } else {
       textEl.classList.add('is-typing');
 
-      // 【P0】落盘与打字动画解耦：把「目标全文」先写进 dataset.pendingText 并立刻排一次落盘，
-      // 使便签在动画刚开始时就已经落盘（_collectNotes 优先读 pendingText）。
-      // 否则若用户在打字途中关闭/切走视图，磁盘上根本没有这张便签 → 静默丢数据。
+      // 打字动画与模型解耦：目标全文暂存到 dataset.pendingText，
+      // 供导图导出/预览在读序中优先读取（见 getSeedSource / ModeController 导出），避免「打字中途导出」拿到半截字。
+      // 模型 this._notes 在 _finishTyping 才同步全文并落盘；卸载时会先把 pendingText 回填模型再兜底落盘，故不会丢数据。
       card.dataset.pendingText = text;
       if (!this._typingIds) this._typingIds = new Set();
       this._typingIds.add(id);   // 打字中：钉在屏上，剔除跳过（避免动画被打断/焦点丢失）
@@ -1182,7 +1302,7 @@ export const TypewriterFeature = {
       // 写作档：按新 seq 顺流/分幕重排（skipUndo 避免重复入栈，撤销点唯一）
       PersistenceCoordinator.reflowWriteOrder({ state: this._state, ctrl: this }, { skipUndo: true });
     } else {
-      this._seedSpatial();
+      this._syncLayoutGeo();
       this._updateCulling();                        // 便签档：新卡以级联位置进屏
       this._refreshWriteOrder();
       this._scheduleSave();
@@ -1232,7 +1352,7 @@ export const TypewriterFeature = {
       this._syncLayoutGeo();                        // 几何缓存与模型位置保持一致（位置未变，安全同步）
       this._scheduleSave();                         // 持久化合并结果
     } else {
-      this._seedSpatial();
+      this._syncLayoutGeo();
       this._updateCulling();                        // 便签档：移除后重排进屏
       this._refreshWriteOrder();
       this._scheduleSave();
@@ -1434,7 +1554,7 @@ export const TypewriterFeature = {
   // ===== 写作卡片组 / 思维导图组 切换器（列 / 选 / 新建 / 改名）=====
   // 复用 level-menu 的浮层范式：挂在功能根、absolute 定位、外部点击用 composedPath 判定
   // （Shadow DOM 事件重定向，closest 会失效，见 _isInLevelMenu 的坑）。
-  // kind = 'write'（写作卡片组）| 'mindmap'（思维导图组）| null（便签模式不显示切换器）
+  // kind = 'write'（写作卡片组）| 'mindmap'（思维导图组）| 'notes'（便签组）；便签现已支持多组切换
     _getDocKind() { return ModeController.getDocKind({ state: this._state, ctrl: this }); },
     _ensureDocCorner() { return ModeController.ensureDocCorner({ state: this._state, ctrl: this }); },
     _ensureDocPanel() { return ModeController.ensureDocPanel({ state: this._state, ctrl: this }); },
@@ -1446,8 +1566,11 @@ export const TypewriterFeature = {
     _beginRenameDoc(kind, id, nameEl) { return ModeController.beginRenameDoc({ state: this._state, ctrl: this }, kind, id, nameEl); },
 
     async _deleteWritingGroup(id, title) { return ModeController.deleteWritingGroup({ state: this._state, ctrl: this }, id, title); },
+    async _switchNotesGroup(id) { return ModeController.switchNotesGroup({ state: this._state, ctrl: this }, id); },
+    async _createNotesGroup() { return ModeController.createNotesGroup({ state: this._state, ctrl: this }); },
+    async _deleteNotesGroup(id, title) { return ModeController.deleteNotesGroup({ state: this._state, ctrl: this }, id, title); },
 
-  // ===== 通用（写作 / 思维导图）组切换调度：按 kind 分流到各自实现 =====
+  // ===== 通用（写作 / 思维导图 / 便签）组切换调度：按 kind 分流到各自实现 =====
     async _switchDocGroup(kind, id) { return ModeController.switchDocGroup({ state: this._state, ctrl: this }, kind, id); },
     async _createDocGroup(kind) { return ModeController.createDocGroup({ state: this._state, ctrl: this }, kind); },
     async _deleteDocGroup(kind, id, title) { return ModeController.deleteDocGroup({ state: this._state, ctrl: this }, kind, id, title); },
@@ -1729,6 +1852,27 @@ export const TypewriterFeature = {
    *  【按档分流】便签写便签的 key、MD可视化写作写作的 key，两份文档永远不互相覆盖。
    *  导图档直接跳过（画布已隐藏、数据由 MindmapFeature 自管），避免空数据盖掉卡片。 */
     async _saveNow() { return PersistenceCoordinator.saveNow({ state: this._state, ctrl: this }); },
+
+  /** 落盘兜底：页面隐藏/卸载前，把防抖窗口内尚未落盘的编辑立刻写出（防硬关闭丢最后编辑）。
+   *  mount 注册、unmount 解绑，避免重复绑定/泄漏。 */
+  _bindFlushGuards() {
+    if (this._flushHandler) return;   // 防重复绑定
+    const handler = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') return;
+      if (this._saveTimer) { clearTimeout(this._saveTimer); this._saveTimer = null; }
+      Promise.resolve(this._saveNow()).catch(() => { /* 落盘失败不阻断卸载 */ });
+    };
+    this._flushHandler = handler;
+    if (typeof document !== 'undefined') document.addEventListener('visibilitychange', handler);
+    if (typeof window !== 'undefined') window.addEventListener('pagehide', handler);
+  },
+  _unbindFlushGuards() {
+    if (!this._flushHandler) return;
+    const handler = this._flushHandler;
+    this._flushHandler = null;
+    if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', handler);
+    if (typeof window !== 'undefined') window.removeEventListener('pagehide', handler);
+  },
 
   /** 把画布现状写回「指定档位那份文档」（切档前调用）。
    *  与 _saveNow 的区别：这里显式指定档位 —— 切档时 this._mode 还没变，

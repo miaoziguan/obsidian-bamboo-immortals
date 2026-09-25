@@ -1626,3 +1626,60 @@
 :host(.dark) .tw-sel-merge:hover { background: rgba(206, 220, 190, 0.28); }
 :host(.dark) .tw-sel-del:hover { color: #e09a86; background: rgba(214, 120, 96, 0.16); }
 
+
+/* ===== 画布缩放控件（便签画布 / 思维子弹共用）=====
+   存在意义：WCAG 2.5.1 要求多点手势（捏合）必须有单指替代；平板无键盘也必须有点按入口。
+   定位于所属模式层的顶部居中，绝不随画布 transform 缩放（挂在层根而非画布内）。 */
+.tw-zoom-bar {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);   /* 顶部水平居中 */
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  padding: 3px;
+  border-radius: var(--radius-pill);      /* 整体胶囊（与 .tw-mm-node 同一视觉语言） */
+  background: var(--card-bg);
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-card);
+  backdrop-filter: blur(6px);
+  user-select: none;
+}
+.tw-zoom-bar button {
+  min-width: 24px;                       /* 对齐 .tw-mm-tb-btn：显式压过全局触控目标，保持紧凑 */
+  min-height: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-pill);     /* 悬停底为圆形 → 与外壳嵌套成胶囊 */
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--type-sm);
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
+}
+.tw-zoom-bar button:hover { background: rgba(var(--primary-rgb), 0.12); color: var(--text-primary); }
+.tw-zoom-bar button:active { transform: scale(0.92); }
+.tw-zoom-bar button:focus-visible { outline: 2px solid rgb(var(--primary-rgb)); outline-offset: 1px; }
+.tw-zoom-bar .tw-zoom-val {
+  min-width: 38px;
+  padding: 0 8px;
+  font-size: var(--type-xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+}
+
+/* 连线：画布缩放时线宽不应跟着变粗（否则放大后线像墨棒）。
+   锚点/控件圆点由 JS 按 1/scale 反向补偿（见 LinkLayer），此处只处理描边。 */
+.tw-links path { vector-effect: non-scaling-stroke; }
+
+/* hidden 必须显式兜底：.tw-zoom-bar 用了 display:flex（作者样式），会盖掉 UA 的
+   [hidden]{display:none}，导致「导图模式下两条缩放条同时可见且重叠」。
+   仓库其余组件均有同类显式规则，此处补齐。 */
+.tw-zoom-bar[hidden] { display: none !important; }

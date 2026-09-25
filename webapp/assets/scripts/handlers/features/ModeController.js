@@ -116,6 +116,7 @@ export const ModeController = {
         mindmap: '思维子弹模式：打字后回车新建节点',
       };
       ctrl._showScreenMsg(MSGS[mode] || '', mode === 'mindmap' ? 1800 : 1900);
+      TypewriterStore.setMode(mode).catch(() => {});   // 持久化档位，下次启动恢复（best-effort）
     } finally {
       ctrl._switching = false;
     }
@@ -126,6 +127,7 @@ export const ModeController = {
     const { state, ctrl } = ctx;
     if (ctrl._mode === 'mindmap') return 'mindmap';
     if (ctrl._mode === 'write') return 'write';
+    if (ctrl._mode === 'notes') return 'notes';
     return null;
   
   },
@@ -182,13 +184,18 @@ export const ModeController = {
       const cur = await TypewriterStore.getCurrentMindmapGroup();
       curId = cur ? cur.id : null;
       headText = '思维导图组'; addText = '＋ 新建思维导图组';
+    } else if (kind === 'notes') {
+      groups = await TypewriterStore.listNotesGroups();
+      const cur = await TypewriterStore.getCurrentNotesGroup();
+      curId = cur ? cur.id : null;
+      headText = '便签组'; addText = '＋ 新建便签组';
     } else {
       groups = await TypewriterStore.listWritingGroups();
       const cur = await TypewriterStore.getCurrentWritingGroup();
       curId = cur ? cur.id : null;
       headText = '写作卡片组'; addText = '＋ 新建卡片组';
     }
-    const fallback = kind === 'mindmap' ? '未命名思维导图' : '未命名草稿';
+    const fallback = kind === 'mindmap' ? '未命名思维导图' : (kind === 'notes' ? '未命名便签' : '未命名草稿');
     panel.innerHTML = '';
     const head = document.createElement('div');
     head.className = 'tw-doc-head';
@@ -301,7 +308,7 @@ export const ModeController = {
   // (was _switchWritingGroup)
   async switchWritingGroup(ctx, id) {
     const { state, ctrl } = ctx;
-    if (ctrl._mode !== 'write' || ctrl._docBusy) return;
+    if (ctrl._mode !== 'write' || ctrl._docBusy || ctrl._switching) return;
     const cur = (await TypewriterStore.getCurrentWritingGroup()).id;
     ctrl._hideDocPanel();
     if (id === cur) return;
@@ -324,7 +331,7 @@ export const ModeController = {
   // (was _createWritingGroup)
   async createWritingGroup(ctx) {
     const { state, ctrl } = ctx;
-    if (ctrl._mode !== 'write' || ctrl._docBusy) return;
+    if (ctrl._mode !== 'write' || ctrl._docBusy || ctrl._switching) return;
     ctrl._docBusy = true;
     try {
       ctrl._exitAllEdits();
@@ -359,6 +366,8 @@ export const ModeController = {
       if (kind === 'mindmap') {
         // 思维导图是纯快照导出、不绑定笔记，改名只改组名
         await MindmapFeature.renameGroup(id, v || cur);
+      } else if (kind === 'notes') {
+        await TypewriterStore.renameNotesGroup(id, v || cur);
       } else {
         await TypewriterStore.renameWritingGroup(id, v || cur);
       }
@@ -375,7 +384,7 @@ export const ModeController = {
   // (was _deleteWritingGroup)
   async deleteWritingGroup(ctx, id, title) {
     const { state, ctrl } = ctx;
-    if (ctrl._mode !== 'write' || ctrl._docBusy) return;
+    if (ctrl._mode !== 'write' || ctrl._docBusy || ctrl._switching) return;
     const idx = await TypewriterStore.ensureWritingIndex();
     const g = idx.groups[id];
     if (!g) return;
@@ -397,11 +406,69 @@ export const ModeController = {
     }
   
   },
+  async switchNotesGroup(ctx, id) {
+    const { state, ctrl } = ctx;
+    if (ctrl._mode !== 'notes' || ctrl._docBusy || ctrl._switching) return;
+    const cur = (await TypewriterStore.getCurrentNotesGroup()).id;
+    ctrl._hideDocPanel();
+    if (id === cur) return;
+    ctrl._docBusy = true;
+    try {
+      ctrl._exitAllEdits();
+      if (ctrl._saveTimer) { clearTimeout(ctrl._saveTimer); ctrl._saveTimer = null; }
+      await ctrl._persistDoc('notes');
+      await TypewriterStore.setNotesCurrent(id);
+      await ctrl._loadDoc('notes');
+      if (ctrl._undoStack) ctrl._undoStack.reset();
+      ctrl._scheduleRenderLinks();
+      await ctrl._refreshDocBtnLabel();
+      await ctrl._renderDocPanel();
+      ctrl._showScreenMsg('已切换便签组', 1200);
+    } finally { ctrl._docBusy = false; }
+  },
+  async createNotesGroup(ctx) {
+    const { state, ctrl } = ctx;
+    if (ctrl._mode !== 'notes' || ctrl._docBusy || ctrl._switching) return;
+    ctrl._docBusy = true;
+    try {
+      ctrl._exitAllEdits();
+      if (ctrl._saveTimer) { clearTimeout(ctrl._saveTimer); ctrl._saveTimer = null; }
+      await ctrl._persistDoc('notes');
+      await TypewriterStore.createNotesGroup('未命名便签');
+      await ctrl._loadDoc('notes');
+      if (ctrl._undoStack) ctrl._undoStack.reset();
+      await ctrl._refreshDocBtnLabel();
+      await ctrl._renderDocPanel();
+      ctrl._showScreenMsg('已新建便签组', 1200);
+    } finally { ctrl._docBusy = false; }
+  },
+  async deleteNotesGroup(ctx, id, title) {
+    const { state, ctrl } = ctx;
+    if (ctrl._mode !== 'notes' || ctrl._docBusy || ctrl._switching) return;
+    const idx = await TypewriterStore.ensureNotesIndex();
+    const g = idx.groups[id];
+    if (!g) return;
+    const warn = '确定删除便签组「' + (title || '未命名便签') + '」？此操作无法撤销。';
+    if (!window.confirm(warn)) return;
+    ctrl._docBusy = true;
+    try {
+      ctrl._exitAllEdits();
+      if (ctrl._saveTimer) { clearTimeout(ctrl._saveTimer); ctrl._saveTimer = null; }
+      const wasCurrent = (await TypewriterStore.getCurrentNotesGroup()).id === id;
+      await TypewriterStore.deleteNotesGroup(id);
+      if (wasCurrent) await ctrl._loadDoc('notes');
+      if (ctrl._undoStack) ctrl._undoStack.reset();
+      await ctrl._refreshDocBtnLabel();
+      await ctrl._renderDocPanel();
+      ctrl._showScreenMsg('已删除便签组', 1200);
+    } finally { ctrl._docBusy = false; }
+  },
+
   // (was _switchDocGroup)
   async switchDocGroup(ctx, kind, id) {
     const { state, ctrl } = ctx;
     if (kind === 'mindmap') {
-      if (ctrl._docBusy) return;
+      if (ctrl._docBusy || ctrl._switching) return;
       ctrl._docBusy = true;
       try {
         ctrl._hideDocPanel();
@@ -413,6 +480,8 @@ export const ModeController = {
           ctrl._showScreenMsg('已切换思维导图组', 1200);
         }
       } finally { ctrl._docBusy = false; }
+    } else if (kind === 'notes') {
+      await ctrl._switchNotesGroup(id);
     } else {
       await ctrl._switchWritingGroup(id);
     }
@@ -422,7 +491,7 @@ export const ModeController = {
   async createDocGroup(ctx, kind) {
     const { state, ctrl } = ctx;
     if (kind === 'mindmap') {
-      if (ctrl._docBusy) return;
+      if (ctrl._docBusy || ctrl._switching) return;
       ctrl._docBusy = true;
       try {
         ctrl._exitAllEdits();
@@ -431,6 +500,8 @@ export const ModeController = {
         await ctrl._renderDocPanel();
         ctrl._showScreenMsg('已新建思维导图组', 1200);
       } finally { ctrl._docBusy = false; }
+    } else if (kind === 'notes') {
+      await ctrl._createNotesGroup();
     } else {
       await ctrl._createWritingGroup();
     }
@@ -440,13 +511,14 @@ export const ModeController = {
   async deleteDocGroup(ctx, kind, id, title) {
     const { state, ctrl } = ctx;
     if (kind === 'mindmap') await ctrl._deleteMindmapGroup(id, title);
+    else if (kind === 'notes') await ctrl._deleteNotesGroup(id, title);
     else await ctrl._deleteWritingGroup(id, title);
   
   },
   // (was _deleteMindmapGroup)
   async deleteMindmapGroup(ctx, id, title) {
     const { state, ctrl } = ctx;
-    if (ctrl._docBusy) return;
+    if (ctrl._docBusy || ctrl._switching) return;
     const idx = await TypewriterStore.ensureMindmapIndex();
     const g = idx.groups[id];
     if (!g) return;
@@ -479,6 +551,10 @@ export const ModeController = {
       const g = await TypewriterStore.getCurrentMindmapGroup();
       title = (g && g.title) || '未命名思维导图';
       prefix = '当前思维导图组：';
+    } else if (kind === 'notes') {
+      const g = await TypewriterStore.getCurrentNotesGroup();
+      title = (g && g.title) || '未命名便签';
+      prefix = '当前便签组：';
     } else if (kind === 'write') {
       const g = await TypewriterStore.getCurrentWritingGroup();
       title = (g && g.title) || '未命名草稿';
@@ -499,6 +575,13 @@ export const ModeController = {
     ctrl._ensureDocCorner();   // 先确保画布角控件已创建，下面的 set('#twDocCorner') 才不会因元素不存在而跳过
     const mm = ctrl._mode === 'mindmap';
     const wr = ctrl._mode === 'write';
+    // 缩放条互斥：便签与导图各有一条（分别挂在 wrap 与 .tw-mm 上）。
+    // 只显示当前模式对应的那条，否则导图模式下会叠出两条重叠的缩放条。
+    // （导图层在便签模式下 layer.hidden = true，其缩放条随之隐藏，无需额外处理。）
+    for (let i = 0; i < root.children.length; i++) {
+      const c = root.children[i];
+      if (c && c.classList && c.classList.contains('tw-zoom-bar')) c.hidden = mm;
+    }
     const T = {
       notes: { title: '凝墨成笺', ph: '输入文字打印便签...' },
       // 抬头「列锦成文」：列锦是古典修辞格——意象并置、如锦缎铺陈，正合本模式
@@ -578,7 +661,7 @@ export const ModeController = {
     });
     // 写作卡片组切换控件：仅写作模式可见，浮于画布右上角（异步刷新组名，不阻塞 Chrome）
     set('#twDocCorner', (el) => {
-      const kind = ctrl._mode === 'mindmap' ? 'mindmap' : (ctrl._mode === 'write' ? 'write' : null);
+      const kind = ctrl._mode === 'mindmap' ? 'mindmap' : (ctrl._mode === 'write' ? 'write' : (ctrl._mode === 'notes' ? 'notes' : null));
       el.hidden = !kind;
       if (kind) ctrl._refreshDocBtnLabel();
     });

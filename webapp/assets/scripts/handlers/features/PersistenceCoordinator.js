@@ -16,6 +16,17 @@ import { WritingDoc } from './writingDoc.js';
 import { UndoStack } from '../../services/undoStack.js';
 import { isFromTextEntry } from '../../utils/domRef.js';
 
+// 比例坐标(v1)→绝对px(v2)换算：旧版 x/y 是「相对画布宽高的比例」，画布尺寸一变便签就被按比例甩出视野。
+// 按当前画布尺寸换算成绝对 px 后即以 v2 落盘。此函数在「恢复」与「热切档」两条加载路径共用，
+// 避免切档路径漏换算导致卡片飞出视野。
+function convertRatioCoords(notes, version, w, h) {
+  if ((Number(version) || 1) >= 2) return Array.isArray(notes) ? notes : [];
+  return (Array.isArray(notes) ? notes : []).map((n) => Object.assign({}, n, {
+    x: (typeof n.x === 'number') ? n.x * w : n.x,
+    y: (typeof n.y === 'number') ? n.y * h : n.y,
+  }));
+}
+
 export const PersistenceCoordinator = {
   // (was _scheduleSave)
   scheduleSave(ctx) {
@@ -41,11 +52,8 @@ export const PersistenceCoordinator = {
     // 存储契约收敛到 TypewriterStore：自管 schema(putSetting)，画布偏移独立 KV。
     // 彻底绕开只认数组的 putTypewriterNotes，TS 端再也无法因结构假设清空数据。
     const off = ctrl._canvasOffset || { x: 0, y: 0 };
-    if (ctrl._mode === 'write') {
-      await TypewriterStore.saveWriting(notes, off, ctrl._links);
-    } else {
-      await TypewriterStore.save(notes, off, ctrl._links);
-    }
+    // 收敛：write/notes 走同一套 saveDoc（mindmap 已在顶部 return，不至此）
+    await TypewriterStore.saveDoc(ctrl._mode, notes, off, ctrl._links);
   
   },
   // (was _persistDoc)
@@ -55,8 +63,7 @@ export const PersistenceCoordinator = {
     const notes = ctrl._collectNotes();
     if (!notes) return;   // 画布未布局：跳过，绝不写入失真数据
     const off = ctrl._canvasOffset || { x: 0, y: 0 };
-    if (mode === 'write') await TypewriterStore.saveWriting(notes, off, ctrl._links);
-    else await TypewriterStore.save(notes, off, ctrl._links);
+    await TypewriterStore.saveDoc(mode, notes, off, ctrl._links); // write/notes 两档（mindmap 不走 persistDoc）
   
   },
   // (was _loadDoc)
@@ -64,26 +71,28 @@ export const PersistenceCoordinator = {
     const { state, ctrl } = ctx;
     const canvas = ctrl._canvas;
     if (!canvas) return;
-    const data = (mode === 'write')
-      ? await TypewriterStore.loadWriting()
-      : await TypewriterStore.load();
+    const data = await TypewriterStore.loadDoc(mode);
+    const cr = canvas.getBoundingClientRect();
+    const w = cr.width || 1;
+    const h = cr.height || 1;
+    const notes = convertRatioCoords(data.notes || [], data.version, w, h);
     // 先停掉进行中的打字计时器：否则它们会继续往已被移除的卡片里写字
     ctrl._timers.forEach((t) => { try { clearInterval(t); } catch (_) { /* 忽略 */ } });
     ctrl._timers = [];
     Array.from(canvas.querySelectorAll('.tw-card')).forEach((c) => c.remove());
     ctrl._clearSelection();
     // 信任边界：读档数据经 WritingDoc.normalize 净化；从此 ctrl._notes 为规范模型
-    const doc = WritingDoc.normalize(data.notes || [], data.links || [], data.canvasOffset || { x: 0, y: 0 });
+    const doc = WritingDoc.normalize(notes, data.links || [], data.canvasOffset || { x: 0, y: 0 });
     ctrl._notes = doc.notes;
     ctrl._seedSpatial(); // 【P8 空间索引】加载后重建索引
     ctrl._links = doc.links;
     ctrl._canvasOffset = doc.canvasOffset;
     ctrl._applyCanvasTransform();
-    const cr = canvas.getBoundingClientRect();
-    ctrl._buildCards(ctrl._notes, false, cr.width || 1, cr.height || 1);
+    ctrl._buildCards(ctrl._notes, false, w, h);
     ctrl._renderLinks();          // 卡片就位后再画连线（端点依赖布局尺寸）
     ctrl._ensureNotesVisible();   // 卡片若在视野外自动归位，避免出现「空画布」的错觉
-  
+    // 比例→px 换算完成后立刻以 v2 落盘，避免每次切档都重算（与 restore 一致）
+    if ((Number(data.version) || 1) < 2 && ctrl._notes.length) ctrl._scheduleSave();
   },
   // (was _initUndo)
   initUndo(ctx) {
@@ -146,21 +155,14 @@ export const PersistenceCoordinator = {
     if (ctrl._restored) return;
     ctrl._restored = true;
     // 存储契约收敛到 TypewriterStore：便签(新 schema) + 画布偏移，含版本/校验/备份/读后校验
-    const { notes, canvasOffset, links, version } = await TypewriterStore.load();
+    const { notes, canvasOffset, links, version } = await TypewriterStore.loadNotes();
     const canvas = ctrl._canvas;
     const cr = canvas.getBoundingClientRect();
     const w = cr.width || 1;
     const h = cr.height || 1;
-    // v1 的 x/y 是「相对画布宽高的比例」：画布尺寸一变，便签就按比例被甩出视野（量纲与
-    // 画布偏移的绝对 px 不一致）。先按当前画布尺寸换算成绝对 px，随后以 v2 落盘，
-    // 之后画布尺寸再变也不会带偏便签位置。
-    const ratioCoords = (Number(version) || 1) < TypewriterStore.VERSION;
-    const absNotes = ratioCoords
-      ? (Array.isArray(notes) ? notes : []).map((n) => Object.assign({}, n, {
-          x: (typeof n.x === 'number') ? n.x * w : n.x,
-          y: (typeof n.y === 'number') ? n.y * h : n.y,
-        }))
-      : (Array.isArray(notes) ? notes : []);
+    // v1 的 x/y 是「相对画布宽高的比例」：画布尺寸一变，便签就按比例被甩出视野。
+    // 按当前画布尺寸换算成绝对 px（与 _loadDoc 热切档路径共用 convertRatioCoords）。
+    const absNotes = convertRatioCoords(notes, version, w, h);
     // 信任边界：读档数据经 WritingDoc.normalize 净化（补齐缺省、枚举/范围校正、丢非法项、
     // 连线去自环/悬空/重复），从此 ctrl._notes 为便签的规范模型；_buildCards 再用它建 DOM。
     const doc = WritingDoc.normalize(absNotes, links || [], canvasOffset || { x: 0, y: 0 });
@@ -168,14 +170,20 @@ export const PersistenceCoordinator = {
     ctrl._seedSpatial(); // 【P8 空间索引】恢复后重建索引（_buildCards 会逐个测量→精确入格）
     ctrl._links = doc.links;
     ctrl._canvasOffset = doc.canvasOffset;
-    ctrl._buildCards(ctrl._notes, false, w, h);   // ratioCoords=false：坐标已是绝对 px
+    ctrl._buildCards(ctrl._notes, false, w, h);   // 坐标已是绝对 px
     ctrl._applyCanvasTransform();
     ctrl._renderLinks();   // 便签就位后再画连线（端点依赖布局尺寸）
     ctrl._ensureNotesVisible();  // 便签若在视野外，自动归位（不必再手动双击空白）
 
     // 迁移：比例→px 换算完成后立刻以 v2 落盘，避免每次打开都重算
-    if (ratioCoords && ctrl._notes.length) ctrl._scheduleSave();
-  
+    if ((Number(version) || 1) < 2 && ctrl._notes.length) ctrl._scheduleSave();
+
+    // 子模式持久化：恢复上次退出时的档位（默认便签）。复用 setMode 完整切换逻辑，
+    // 顺带激活导图/载入对应文档/刷新 chrome/重置撤销栈——避免与手动切换分叉。
+    const savedMode = await TypewriterStore.getMode();
+    if (savedMode !== 'notes') {
+      await ctrl.setMode(ctx, savedMode);
+    }
   },
   // (was _buildCards)
   buildCards(ctx, notes, ratioCoords, w, h) {
@@ -348,8 +356,12 @@ export const PersistenceCoordinator = {
     ctrl._scheduleCull();                           // 重排后重算挂载：移出视野的卡卸载
 
     const VW = ctrl._canvas.clientWidth, VH = ctrl._canvas.clientHeight;
+    // 缩放后：可见区宽（画布坐标）= 布局宽 / s，且平移量 tx 作用在 scale 之前 → 需乘 s。
+    // 否则重排居中的落点在缩放状态下会偏出去。
+    const _off0 = ctrl._canvasOffset;
+    const _s = (_off0 && Number(_off0.scale)) || 1;
     // 内容比视口宽/高时，从原点(0,0)起排，避免把开头推到屏外（平移去探索其余部分），与顺流竖排一致
-    ctrl._setCanvasOffset(Math.max(0, VW / 2 - totalW / 2), Math.max(0, VH / 2 - totalH / 2));
+    ctrl._setCanvasOffset(Math.max(0, VW / 2 - _s * totalW / 2), Math.max(0, VH / 2 - _s * totalH / 2));
 
     const scope = selCount >= 2 ? '选中的 ' : '全部 ';
     if (useActs) {

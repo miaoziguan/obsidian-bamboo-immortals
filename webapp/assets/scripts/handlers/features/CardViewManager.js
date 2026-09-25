@@ -10,6 +10,7 @@ import { LEVELS, LEVEL_LABELS, LEVEL_FEEDBACK, LEVEL_GROUPS, LEVEL_LADDER } from
 import { TypewriterStore } from '../../services/TypewriterStore.js';
 import { SpatialIndex } from '../../services/SpatialIndex.js';
 import { GeoCache } from '../../services/GeoCache.js';
+import { CanvasViewport } from '../../services/CanvasViewport.js';
 import { MindmapFeature } from './mindmapFeature.js';
 import { LinkLayer } from '../../services/LinkLayer.js';
 import { WritingDoc } from './writingDoc.js';
@@ -97,6 +98,12 @@ export const CardViewManager = {
     if (isWrite) {
       const pb = card.querySelector('.tw-card-paper');
       if (pb) pb.hidden = true;
+      // 单卡字号 / 单卡缩放是便签维度，写作档统一由「全局字号滑块 + 全局画布缩放」接管，
+      // 卡片宽度统一、高度随内容流动。隐藏而非删除：模型值保留，切回便签档按钮自然恢复。
+      ['tw-card-font-down', 'tw-card-font-up', 'tw-card-zoom-out', 'tw-card-zoom-in'].forEach((cls) => {
+        const b = card.querySelector('.' + cls);
+        if (b) b.hidden = true;
+      });
     }
 
     // 纸样：写入抬头与按钮提示（显示当前纸样名）
@@ -557,8 +564,11 @@ export const CardViewManager = {
   applyKnobSize(ctx, el) {
     const { state, ctrl } = ctx;
     const scale = parseFloat(ctrl._el && ctrl._el.style.getPropertyValue('--tw-scale')) || 1;
-    const px = Math.min(38, Math.max(26, 30 * scale));
-    const iconPx = Math.min(21, Math.max(15, 17 * scale));
+    // 画布缩放补偿：圆钮是画布内元素，会随 transform 一起放大；除以缩放比让其屏幕尺寸恒定
+    // （否则放大到 3x 时圆钮会大得离谱，缩小后又会小到点不中）。
+    const cs = (typeof CanvasViewport !== 'undefined') ? CanvasViewport.getScale(ctrl) : 1;
+    const px = Math.min(38, Math.max(26, 30 * scale)) / cs;
+    const iconPx = Math.min(21, Math.max(15, 17 * scale)) / cs;
     el.style.width = px.toFixed(2) + 'px';
     el.style.height = px.toFixed(2) + 'px';
     el.style.minWidth = px.toFixed(2) + 'px';

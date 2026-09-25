@@ -32,12 +32,16 @@ export const ViewportCuller = {
       if (ctrl._canvas) {
         const cr = ctrl._canvas.getBoundingClientRect();
         const r = card.getBoundingClientRect();
-        const sx = (cr.width && ctrl._canvas.offsetWidth) ? cr.width / ctrl._canvas.offsetWidth : 1;
-        const hw = (card.offsetWidth / sx) / 2 || 1;
-        const hh = (card.offsetHeight / sx) / 2 || 1;
+        // 缩放比取自视口真源；仅在视口不可用时（测试/旧上下文）才回退到 rect 反推。
+        // 注意：card.offsetWidth 是未缩放的布局尺寸，即画布坐标下的宽高，不能再除以 s。
+        const s = (typeof CanvasViewport !== 'undefined')
+          ? CanvasViewport.getScale(ctrl)
+          : ((cr.width && ctrl._canvas.offsetWidth) ? cr.width / ctrl._canvas.offsetWidth : 1);
+        const hw = card.offsetWidth / 2 || 1;
+        const hh = card.offsetHeight / 2 || 1;
         return {
-          cx: (r.left + r.width / 2 - cr.left) / sx,
-          cy: (r.top + r.height / 2 - cr.top) / sx,
+          cx: (r.left + r.width / 2 - cr.left) / s,
+          cy: (r.top + r.height / 2 - cr.top) / s,
           hw, hh,
           rot: Number(card.dataset.rot) || 0,
         };
@@ -230,6 +234,10 @@ export const ViewportCuller = {
     // 文章块既少又便宜，虚拟化零收益、纯属负担；超阈值才回退剔除作安全兜底。
     // 常驻挂载不丢功能：卡片由 _buildCards / _mountCard 全量建立，删除走 _removeCard，
     // 几何缓存与连线端点照常工作（离屏卡仍可从 geo 取几何画连线）。
+    // 【补注·抖动根因已可治】上文「反复销毁又重建」抖动的根因（每帧 createElement + 逐卡测量强制重排）
+    // 已在导图侧以「DOM 回收池复用 + 批量测量」根治（mindmapFeature._mountNode 入池、_cullView 走 _batchMeasure）。
+    // 若便签/写作画布日后也出现可感知抖动，可按同一套手法给 mountCard/unmountCard 上回收池，
+    // 届时写作档是否下调 WRITE_NO_CULL_MAX 再据实测决定，勿凭推断放宽。
     if (state.mode === 'write'
       && (state.notes ? state.notes.length : 0) <= WRITE_NO_CULL_MAX) return;
     if (ctrl._cullRaf) return;
@@ -255,13 +263,20 @@ export const ViewportCuller = {
     if (!state.geo) state.geo = new GeoCache();
     if (!state.spatial) state.spatial = new SpatialIndex(512);
     if (ctrl._CULL_MARGIN == null) ctrl._CULL_MARGIN = 240;
+    const s = (typeof CanvasViewport !== 'undefined') ? CanvasViewport.getScale(ctrl) : 1;
     const cr = ctrl._canvas.getBoundingClientRect();
-    const VW = cr.width, VH = cr.height;
-    if (VW < 2 || VH < 2) return;
+    // rect 已含缩放（rect.width = 布局宽 * s），除以 s 还原成「布局宽」——
+    // 即未缩放前的可见宽度。不能直接用 cr.width 当可见宽度，否则缩放会让可见区失真。
+    // 注：不用 offsetWidth —— jsdom 无布局时恒为 0，会让剔除整体失效（压测回归）。
+    const LW = cr.width / s, LH = cr.height / s;
+    if (LW < 2 || LH < 2) return;
     const _t0 = ctrl._perfBegin();
     const off = state.canvasOffset || { x: 0, y: 0 };
     const M = ctrl._CULL_MARGIN;
-    const vx0 = -off.x - M, vy0 = -off.y - M, vx1 = VW - off.x + M, vy1 = VH - off.y + M;
+    // 缩放感知：卡片在「内容空间」的位置是 off + s * 画布坐标，
+    // 故屏幕可见区 [0, LW] 反解回画布坐标要除以 s —— 否则缩小后大片卡片被误剔除（画面空白）。
+    const vx0 = (-off.x - M) / s, vy0 = (-off.y - M) / s;
+    const vx1 = (LW + M - off.x) / s, vy1 = (LH + M - off.y) / s;
     const pinned = ctrl._pinnedIds();
     const noteIdx = ctrl._noteIndex();
     const visible = state.spatial.queryRect(vx0, vy0, vx1, vy1);

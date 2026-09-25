@@ -179,9 +179,11 @@ export const WritingDoc = {
         dash: l.dash === 'dashed' ? 'dashed' : 'solid',
       });
     });
+    // 缩放比一并通过 normalize 保留（缺省/非法 → 1，由 CanvasViewport.clamp 兜底）
+    const rawS = (canvasOffset && typeof canvasOffset === 'object') ? Number(canvasOffset.scale) : 0;
     const off = (canvasOffset && typeof canvasOffset === 'object')
-      ? { x: Number(canvasOffset.x) || 0, y: Number(canvasOffset.y) || 0 }
-      : { x: 0, y: 0 };
+      ? { x: Number(canvasOffset.x) || 0, y: Number(canvasOffset.y) || 0, scale: (rawS > 0 ? rawS : 1) }
+      : { x: 0, y: 0, scale: 1 };
     return { notes: this.normalizeSeq(out, wires), links: wires, canvasOffset: off };
   },
 

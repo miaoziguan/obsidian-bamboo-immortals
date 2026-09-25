@@ -15,6 +15,9 @@ import { LinkLayer } from '../../services/LinkLayer.js';
 import { WritingDoc } from './writingDoc.js';
 import { UndoStack } from '../../services/undoStack.js';
 import { isFromTextEntry } from '../../utils/domRef.js';
+import { CanvasViewport } from '../../services/CanvasViewport.js';
+import { CanvasGestures } from '../../services/CanvasGestures.js';
+import { CanvasKeys } from '../../services/CanvasKeys.js';
 
 export const CardInteractions = {
   // (was _makeDraggable)
@@ -39,10 +42,12 @@ export const CardInteractions = {
     const onMove = (e) => {
       if (!dragging) return;
       if (Math.abs(e.clientX - startX) > 4 || Math.abs(e.clientY - startY) > 4) moved = true;
-      // 无限画布：坐标相对 .tw-canvas（含其 transform 平移），不 clamp；
-      // 画布固定 100%，屏幕位移即局部位移
-      dx = (e.clientX - startX);
-      dy = (e.clientY - startY);
+      // 无限画布：坐标相对 .tw-canvas（含其 transform 平移），不 clamp。
+      // 画布带缩放后「屏幕位移 ≠ 局部位移」：必须除以缩放比，
+      // 否则放大后拖不动（位移被放大）、缩小后拖过头。
+      const s = CanvasViewport.getScale(ctrl);
+      dx = (e.clientX - startX) / s;
+      dy = (e.clientY - startY) / s;
       if (!raf) raf = requestAnimationFrame(apply);
     };
     const onUp = () => {
@@ -100,65 +105,86 @@ export const CardInteractions = {
   
   },
   // (was _makeCanvasDraggable)
+  // 画布级手势（平移 / 双指捏合 / 空格抓手 / 滚轮）统一走共享 CanvasGestures（C3 机制收敛），
+  // 模式专属的「卡片拖拽 / 框选」经 onEmptyPointerDown 回调注入，避免三模式各自维护一份漂移。
   makeCanvasDraggable(ctx) {
     const { state, ctrl } = ctx;
     const canvas = ctrl._canvas;
     const root = ctrl._el;
     if (!canvas || !root) return;
-    let dragging = false;
-    let startX = 0, startY = 0;
-    let baseX = 0, baseY = 0;
-    const onMove = (e) => {
-      if (!dragging) return;
-      // 真无限画布：不做 clamp，画布可平移到任意远处，靠双击空白 fit-all 找回
-      const x = baseX + (e.clientX - startX);
-      const y = baseY + (e.clientY - startY);
-      ctrl._canvasOffset = { x, y };
-      ctrl._applyCanvasTransform();   // 平移（origin 0,0）
-    };
-    const onUp = () => {
-      dragging = false;
-      ctrl._setLodDragging(false);   // 松手即恢复满细节
-      root.classList.remove('dragging');
-      canvas.style.willChange = '';   // 平移结束即撤掉合成层提升，避免常驻巨型层拖垮整页合成器
-      document.removeEventListener('pointermove', onMove);
-      document.removeEventListener('pointerup', onUp);
-      ctrl._scheduleSave();   // 持久化画布偏移
-    };
+    // 幂等重挂载：先销毁上一次的共享接线（指针手势 / 滚轮 / 空格抓手）。
+    // 关键：installSpaceHand 挂的是 document 级 keydown，不销毁会随 mount 次数叠加。
+    if (ctrl._gestureDetach) { ctrl._gestureDetach(); ctrl._gestureDetach = null; }
+    if (ctrl._wheelDetach) { ctrl._wheelDetach(); ctrl._wheelDetach = null; }
+    if (ctrl._hand && typeof ctrl._hand.destroy === 'function') { ctrl._hand.destroy(); ctrl._hand = null; }
+
     // 双击空白：归位所有便签到视野中心(fit-all)；无便签则复位画布
     root.addEventListener('dblclick', (e) => {
       if (ctrl._mode === 'mindmap') return;                 // 导图模式：归位交互属于导图，便签不接手
       if (e.target.closest('.tw-card, button, .tw-card-resize, input, textarea')) return;
       ctrl._recenterNotes();
     });
-    const onDown = (e) => {
-      if (ctrl._mode === 'mindmap') return;                 // 导图模式：便签画布既不平移也不框选（否则会连带动到便签的落盘偏移）
-      if (e.target.closest('.tw-card')) return;   // 点便签：交给便签拖拽
-      // 交互控件不触发画布拖动，其余整块区域全局可平移画布
-      if (e.target.closest('button, .tw-card-resize, .tw-card-rotate, .tw-card-link, input, textarea')) return;
-      // 【点空白取消选中】必须挂在功能根(root)而非 .tw-canvas —— 与「点外面退不出编辑态」同一个坑：
-      // .tw-canvas 只是 root 里 flex:1 的一小块且 overflow:visible（卡片会溢出到机身区显示），
-      // 机身 .tw-beeper 又整体 pointer-events:none（仅开关/输入框单独放行），
-      // 这些区域的命中目标实际是 root/wrap；监听挂在 canvas 上时点它们收不到事件，
-      // 于是框选后点「画布外那圈空白」永远取消不掉选中态。
-      if (ctrl._pinOnly) ctrl._pinOnly(null);
-      if (ctrl._clearSelection) ctrl._clearSelection();
-      // Shift + 空白拖拽 = 框选（替代平移）；其余空白拖拽 = 平移画布
-      if (e.shiftKey) { ctrl._startMarquee(e); return; }
-      dragging = true;
-      ctrl._setLodDragging(true);   // 平移期间降级（对标 tldraw 相机移动时简化）
-      startX = e.clientX;
-      startY = e.clientY;
-      baseX = (ctrl._canvasOffset && ctrl._canvasOffset.x) || 0;
-      baseY = (ctrl._canvasOffset && ctrl._canvasOffset.y) || 0;
-      canvas.style.willChange = 'transform';   // 仅平移期间临时提升合成层，保证拖拽顺滑；松手即撤
-      root.classList.add('dragging');
-      e.preventDefault();
-      document.addEventListener('pointermove', onMove);
-      document.addEventListener('pointerup', onUp);
-    };
-    // 监听挂在功能根(wrap)而非 canvas：机身区(绿壳空白处)也能拖动画布，实现全局平移
-    root.addEventListener('pointerdown', onDown);
+
+    // 空格=临时抓手 / Hand 工具：统一接线（含状态对象 state，供 attach 读取）
+    const hand = CanvasGestures.installSpaceHand(root, { isActive: () => ctrl._mode !== 'mindmap' });
+    ctrl._hand = hand;
+
+    // 滚轮：统一接线（⌘/Ctrl=缩放、Shift=横移、普通=平移；Alt+滚轮也走正常平移，单卡缩放快捷键已移除）
+    ctrl._wheelDetach = CanvasGestures.installWheel(root, {
+      isActive: () => ctrl._mode !== 'mindmap',
+      getView: () => ({
+        x: CanvasViewport.getOffset(ctrl).x,
+        y: CanvasViewport.getOffset(ctrl).y,
+        scale: CanvasViewport.getScale(ctrl),
+      }),
+      zoomAt: (cx, cy, f) => CanvasViewport.zoomAt(ctx, cx, cy, f),
+      panBy: (dx, dy) => CanvasViewport.panBy(ctx, dx, dy),
+    });
+
+    // 平移 / 捏合 / 空白判定：统一接管；空缺点交给便签的「清选 + 框选」
+    const detach = CanvasGestures.attach(root, {
+      isActive: () => ctrl._mode !== 'mindmap',
+      state: hand.state,
+      getView: () => ({
+        x: CanvasViewport.getOffset(ctrl).x,
+        y: CanvasViewport.getOffset(ctrl).y,
+        scale: CanvasViewport.getScale(ctrl),
+      }),
+      setView: (v) => CanvasViewport.set(ctx, v.x, v.y, v.scale),
+      getScale: () => CanvasViewport.getScale(ctrl),
+      zoomAt: (cx, cy, f) => CanvasViewport.zoomAt(ctx, cx, cy, f),
+      panBy: (dx, dy) => CanvasViewport.panBy(ctx, dx, dy),
+      onPointerDownAny: () => { if (ctrl._pinOnly) ctrl._pinOnly(null); },   // 点空白清钉
+      onBeforePan: () => { if (ctrl._clearSelection) ctrl._clearSelection(); },
+      onPanStart: () => {
+        ctrl._setLodDragging(true);                 // 平移期间降级（对标 tldraw 相机移动时简化）
+        canvas.style.willChange = 'transform';      // 仅平移期间临时提升合成层，松手即撤
+        root.classList.add('dragging');
+      },
+      onPanEnd: () => {
+        ctrl._setLodDragging(false);                // 松手即恢复满细节
+        root.classList.remove('dragging');
+        canvas.style.willChange = '';               // 撤掉合成层提升，避免常驻巨型层拖垮整页合成器
+        ctrl._scheduleSave();                       // 持久化画布偏移
+      },
+      onPinchWillStart: () => { if (ctrl._cancelMarquee) ctrl._cancelMarquee(); },  // 取消可能已起的框选
+      onPinchStart: () => {
+        ctrl._setLodDragging(true);
+        canvas.style.willChange = 'transform';
+      },
+      onPinchEnd: () => {
+        ctrl._setLodDragging(false);
+        canvas.style.willChange = '';
+        ctrl._scheduleSave();
+      },
+      onEmptyPointerDown: (e) => {
+        // Excalidraw 语义：拖空白 = 框选（Shift = 追加）；平移改由 空格/中键/抓手/滚轮/双指 承担
+        if (!e.shiftKey && ctrl._clearSelection) ctrl._clearSelection();
+        ctrl._startMarquee(e, e.shiftKey);
+      },
+    });
+    ctrl._gestureDetach = detach;
+
     // 【根因修复·退不出编辑态】编辑态下，点便签文本/控件以外的任意处即退出编辑（捕获阶段，
     // 先于画布平移的 preventDefault 生效——否则 preventDefault 会抑制默认失焦、导致 blur 兜底失效）。
     root.addEventListener('pointerdown', (e) => {
@@ -168,23 +194,21 @@ export const CardInteractions = {
       if (e.target.closest('button, .tw-card-resize, .tw-card-rotate, .tw-card-link, input, textarea')) return;
       ctrl._exitAllEdits();
     }, true);
-  
   },
   // (was _setCanvasOffset)
   setCanvasOffset(ctx, x, y) {
     const { state, ctrl } = ctx;
-    ctrl._canvasOffset = { x, y };
-    ctrl._applyCanvasTransform();
-    ctrl._scheduleSave();
+    // 只改平移、保留当前缩放比：缩放由 CanvasViewport.set / zoomAt 单独管理，
+    // 避免「重排后居中」等只传 x/y 的调用把用户的缩放级别抹回 100%。
+    CanvasViewport.set(ctx, x, y, CanvasViewport.getScale(ctrl));
   
   },
   // (was _applyCanvasTransform)
   applyCanvasTransform(ctx) {
     const { state, ctrl } = ctx;
     if (!ctrl._canvas) return;
-    const o = ctrl._canvasOffset || { x: 0, y: 0 };
-    ctrl._canvas.style.transform = `translate(${o.x}px, ${o.y}px)`;
-    ctrl._scheduleCull();   // 画布平移即重算挂载（视口剔除）
+    // 平移 + 缩放的唯一写入口（内部已含 _scheduleCull 重算挂载）
+    CanvasViewport.apply(ctx);
   
   },
   // (was _selectOnly)
@@ -250,11 +274,12 @@ export const CardInteractions = {
     if (ly < edge) dy = 1; else if (ly > vp.height - edge) dy = -1;
     return (dx || dy) ? { dx, dy } : null;
   },
-  // (was _startMarquee)
-  startMarquee(ctx, e) {
+  // (was _startMarquee)  additive=true 表示 Shift 追加框选（不清空已有选中）
+  startMarquee(ctx, e, additive) {
     const { state, ctrl } = ctx;
     const canvas = ctrl._canvas;
     if (!canvas) return;
+    ctrl._marqueeCancelled = false;
     if (ctrl._marquee) ctrl._marquee.remove();
     const m = document.createElement('div');
     m.className = 'tw-marquee';
@@ -265,9 +290,10 @@ export const CardInteractions = {
     ctrl._marquee = m;
     ctrl._marqueeRect = null;
 
-    const rect0 = canvas.getBoundingClientRect();
-    const sx0 = e.clientX - rect0.left;   // 框选起点（画布内容坐标，恒定）
-    const sy0 = e.clientY - rect0.top;
+    // 框选起点（画布内容坐标，恒定）：走统一换算，自动扣除缩放比
+    const p0 = CanvasViewport.screenToCanvas(ctx, e.clientX, e.clientY);
+    const sx0 = p0.x;
+    const sy0 = p0.y;
     // 视口（固定、不随画布平移）：边缘判定必须基于它，不能用被 transform 的画布 rect
     const vpRect = (canvas.parentElement || canvas).getBoundingClientRect();
     let lastX = e.clientX, lastY = e.clientY;
@@ -278,8 +304,8 @@ export const CardInteractions = {
 
     // 用当前屏幕坐标刷新框选矩形：画布随平移移动后，内容坐标会自然外扩 → 框得够画布外
     const refresh = () => {
-      const cr = canvas.getBoundingClientRect();
-      const sx1 = lastX - cr.left, sy1 = lastY - cr.top;   // 终点内容坐标
+      const p1 = CanvasViewport.screenToCanvas(ctx, lastX, lastY);
+      const sx1 = p1.x, sy1 = p1.y;   // 终点内容坐标（已按缩放比换算）
       const x = Math.min(sx0, sx1), y = Math.min(sy0, sy1);
       const w = Math.abs(sx1 - sx0), h = Math.abs(sy1 - sy0);
       m.style.left = x + 'px'; m.style.top = y + 'px';
@@ -314,13 +340,22 @@ export const CardInteractions = {
       document.removeEventListener('pointerup', up);
       if (rafId) cancelAnimationFrame(rafId);
       if (ctrl._marquee) { ctrl._marquee.remove(); ctrl._marquee = null; }
-      ctrl._selectInRect(ctrl._marqueeRect || { x: sx0, y: sy0, w: 0, h: 0 });
+      // 被双指捏合接管（_cancelMarquee）：不做任何选中变更，避免捏合时把已选清空
+      if (ctrl._marqueeCancelled) { ctrl._marqueeCancelled = false; ctrl._marqueeRect = null; return; }
+      ctrl._selectInRect(ctrl._marqueeRect || { x: sx0, y: sy0, w: 0, h: 0 }, additive);
       ctrl._marqueeRect = null;
       if (ctrl._revealSelection) ctrl._revealSelection();   // 兜底：选区超视口则平移露出
     };
     document.addEventListener('pointermove', move);
     document.addEventListener('pointerup', up);
     refresh();
+  },
+  /** 取消进行中的框选（双指捏合接管时用） */
+  cancelMarquee(ctx) {
+    const { ctrl } = ctx;
+    ctrl._marqueeCancelled = true;
+    if (ctrl._marquee) { ctrl._marquee.remove(); ctrl._marquee = null; }
+    ctrl._marqueeRect = null;
   },
   // (was _countInRect) 统计落在矩形内（含画布外）的卡片数，供框选实时数量提示（不挂载、不选中）
   countInRect(ctx, r) {
@@ -341,14 +376,14 @@ export const CardInteractions = {
     return n;
   },
   // (was _selectInRect)
-  selectInRect(ctx, r) {
+  selectInRect(ctx, r, additive) {
     const { state, ctrl } = ctx;
     if (!ctrl._spatial) ctrl._spatial = new SpatialIndex(512);
     // 候选由空间索引 queryRect 给出（O(命中)），不再全量读 DOM。关键点：空间索引在剔除卸载时
     // 不清空，故**候选含离屏卡**。离屏卡无 DOM，无法被选中 —— 先按需挂载（进入 _selected 后即被
     // pinnedIds 钉住，后续剔除不会再卸载它），再判相交选中。这样 Shift 框选就能覆盖视口之外的内容。
     const hits = ctrl._spatial.queryRect(r.x, r.y, r.x + r.w, r.y + r.h);
-    ctrl._clearSelection();
+    if (!additive) ctrl._clearSelection();   // Shift 追加框选：保留已有选中
     if (!ctrl._mountedCards) return;
     const noteIdx = ctrl._noteIndex ? ctrl._noteIndex() : null;
     hits.forEach((id) => {
@@ -380,9 +415,11 @@ export const CardInteractions = {
     const sel = ctrl._selected;
     const canvas = ctrl._canvas;
     if (!sel || !sel.size || !canvas) return;
-    const VW = canvas.clientWidth, VH = canvas.clientHeight;
+    // 可见区换算成画布坐标：布局尺寸 / 缩放比
+    const s = CanvasViewport.getScale(ctrl);
+    const VW = canvas.clientWidth / s, VH = canvas.clientHeight / s;
     if (VW < 2 || VH < 2) return;
-    const off = (state && state.canvasOffset) || { x: 0, y: 0 };
+    const off = CanvasViewport.getOffset(ctrl);
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity, any = false;
     sel.forEach((card) => {
       const id = card.dataset && card.dataset.id;
@@ -397,11 +434,12 @@ export const CardInteractions = {
     });
     if (!any) return;
     // 选区完全在视口内：不动（避免无谓平移打断视线）
-    const outX = minX < -off.x || maxX > VW - off.x;
-    const outY = minY < -off.y || maxY > VH - off.y;
+    const outX = minX < -off.x / s || maxX > VW - off.x / s;
+    const outY = minY < -off.y / s || maxY > VH - off.y / s;
     if (outX || outY) {
       const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
-      ctrl._setCanvasOffset(VW / 2 - cx, VH / 2 - cy);   // 平移到选区中心（不缩放）
+      // 平移到选区中心；平移量在 scale 之前生效，故需乘以 s（保留当前缩放比）
+      ctrl._setCanvasOffset(s * (VW / 2 - cx), s * (VH / 2 - cy));
       if (ctrl._updateSelBar) ctrl._updateSelBar();        // 选区工具条跟随新视口重定位
     }
   },
@@ -410,6 +448,8 @@ export const CardInteractions = {
     const { state, ctrl } = ctx;
     const root = ctrl._el;
     if (!root) return;
+    // 幂等：重复绑定时先摘掉旧监听，避免 document 级 keydown 叠加。
+    if (ctrl._selKeyHandler) { document.removeEventListener('keydown', ctrl._selKeyHandler); ctrl._selKeyHandler = null; }
     ctrl._selKeyHandler = (e) => {
       // 不能直接判 e.target.tagName：机身输入框在 shadow 树内，事件穿出 shadow 边界后
       // target 会被重定向成 host(div)，该守卫会失效 → 在输入框里按退格会误删选中的便签、
@@ -434,6 +474,10 @@ export const CardInteractions = {
         ctrl._undoRedo(e.shiftKey ? 'redo' : 'undo');
         return;
       }
+      // ⌘±/0、Shift+1/2、H 等「画布缩放/适应/抓手」键已统一收口到 CanvasKeys（C2）：
+      // 便签与导图各注册一份、命中且本模式激活时 stopImmediatePropagation，杜绝双响。
+      // 以下仅处理便签模式专属键（撤销/重做、删除、F 归位）。
+
       const cv = ctrl._canvas;
       if (!cv || !cv.isConnected || cv.getBoundingClientRect().width < 2) return;
       if (cv.querySelector('.tw-card.editing')) return;   // 编辑中不打断
@@ -446,7 +490,21 @@ export const CardInteractions = {
       if (e.key === 'f' || e.key === 'F') { e.preventDefault(); ctrl._recenterNotes(); }
     };
     document.addEventListener('keydown', ctrl._selKeyHandler);
-    
+
+    // 通用画布键位（⌘±/0、Shift+1/2、H）统一收口到 CanvasKeys（C2）：与导图共用同一份逻辑，
+    // 命中且便签激活时 stopImmediatePropagation，避免事件继续到导图处理器造成双响。
+    // 幂等：CanvasKeys 挂 document 级捕获监听，重复绑定会叠加（且旧 handler 先执行并
+    // stopImmediatePropagation，会把新 handler 挡掉），故先销毁旧的。
+    if (ctrl._canvasKeysDetach) { ctrl._canvasKeysDetach(); ctrl._canvasKeysDetach = null; }
+    ctrl._canvasKeysDetach = CanvasKeys.bind({
+      isActive: () => ctrl._mode !== 'mindmap',
+      zoomByCenter: (f) => ctrl._zoomByCenter(f),
+      zoomReset: () => ctrl._zoomReset(),
+      fitView: () => ctrl._fitNotesToView(),
+      fitSelection: () => ctrl._fitSelectionToView(),
+      toggleHand: () => ctrl._hand.toggleHand(),
+      zoomStep: 1.25,
+    });
   },
   // (was _enforceEditLimit)
   enforceEditLimit(ctx, text) {
@@ -469,6 +527,9 @@ export const CardInteractions = {
   // (was _makeResizable)
   makeResizable(ctx, card) {
     const { state, ctrl } = ctx;
+    // 写作档（MD可视化写作）：卡片尺寸由内容决定，不提供拖角缩放手柄——
+    // 单卡缩放是便签维度，文章里没有这语义（与纸样 / 旋转在写作档被隐藏 / 归零同理）。
+    if (ctrl._mode === 'write') return;
     const handle = document.createElement('div');
     handle.className = 'tw-card-resize';
     handle.setAttribute('role', 'slider');
@@ -488,9 +549,6 @@ export const CardInteractions = {
     let pendingZoom = 1;
     let raf = 0;
     // ⌘/Ctrl+滚轮缩放同理：触控板可在一帧内连发多次，需合帧
-    let wheelRaf = 0;
-    let pendingZoomW = null;   // null = 本帧无待落的滚轮缩放值
-
     const apply = () => {
       raf = 0;
       ctrl._applyZoom(card, pendingZoom);
@@ -538,32 +596,10 @@ export const CardInteractions = {
       ctrl._scheduleSave();
     });
 
-    // 滚轮：Shift = 调字级（档位多，滚轮比连点快）；⌘/Ctrl = 整张等比缩放（乘性步进，手感对称）
-    card.addEventListener('wheel', (e) => {
-      if (e.shiftKey && !(e.metaKey || e.ctrlKey)) {
-        e.preventDefault();
-        const cur = Number(card.dataset.fontIdx);
-        const base = isFinite(cur) ? cur : FONT_SCALE_DEFAULT_IDX;
-        if (ctrl._applyFontScale(card, base + (e.deltaY > 0 ? -1 : 1)) !== base) ctrl._scheduleSave();
-        return;
-      }
-      if (!(e.metaKey || e.ctrlKey)) return;
-      e.preventDefault();
-      e.stopPropagation();   // 避免冒泡到画布层触发「画布整体缩放」
-      // 【帧预算】触控板滚轮可在一帧内连发多次 → 步进先本地累计，rAF 合帧后只落一次。
-      // 基准必须读「本帧已累计值」而非 dataset.zoom：一帧内第二个事件若读到尚未落盘的旧值会丢步进
-      // （与旋转手势 pendingDeg 同一个坑，见 _makeRotatable 内注释）。
-      const base = (pendingZoomW != null) ? pendingZoomW : ctrl._clampZoom(card.dataset.zoom);
-      pendingZoomW = base * (e.deltaY > 0 ? (1 - ZOOM_STEP) : (1 + ZOOM_STEP));
-      if (!wheelRaf) {
-        wheelRaf = requestAnimationFrame(() => {
-          wheelRaf = 0;
-          ctrl._applyZoom(card, pendingZoomW);
-          pendingZoomW = null;
-          ctrl._scheduleSave();
-        });
-      }
-    }, { passive: false });
+    // 卡片滚轮快捷键已全部移除：
+    //   · Alt+滚轮（单卡缩放）—— 移除，改由卡片上的 S/M/L/XL 档位按钮操作；
+    //   · Shift+滚轮（调字号）—— 移除，改由卡片上的「放大/缩小字号」圆钮或右侧字号面板操作。
+    // 所有滚轮事件一律放行给画布层做平移/缩放，卡片不再拦截滚轮。
   
   },
   // (was _makeRotatable)
@@ -851,7 +887,10 @@ export const CardInteractions = {
       maxX = Math.max(maxX, x + w); maxY = Math.max(maxY, y + h);
     }
     const bcx = (minX + maxX) / 2, bcy = (minY + maxY) / 2;
-    ctrl._setCanvasOffset(VW / 2 - bcx, VH / 2 - bcy);
+    // 缩放后：可见区宽（画布坐标）= 布局宽 / s。平移量 tx 作用在 scale 之前，
+    // 故让包围盒中心落在视口中心的平移量 = 布局宽/2 - s * 中心。
+    const s = CanvasViewport.getScale(ctrl);
+    ctrl._setCanvasOffset(VW / 2 - s * bcx, VH / 2 - s * bcy);
   
   },
   // (was _arrangeNotes)
@@ -928,6 +967,13 @@ export const CardInteractions = {
       else { x += colW + GAP; }
     });
     const VW = canvas.clientWidth, VH = canvas.clientHeight;
+    // 【缩放标准化】一键排版即「回归标准态」：当前缩放只要不是 100%（无论放大或缩小，
+    // 用户约定「偏离 100% 都算」），排版后把缩放比也拉回 100%。
+    // 顺序关键：先 _zoomReset() 把 scale 拉回 1（保持视口中心内容点不动），再按 100% 居中排版后内容。
+    // 不可先居中后重置——旧居中公式未乘 scale，在 scale≠1 时会算错位移，_zoomReset 再把错误中心锁死，
+    // 导致要再点一次才归位（recenterNotes 的正确写法即居中需乘 s；scale=1 时 *s 等价本公式）。
+    if (Math.abs(CanvasViewport.getScale(ctrl) - 1) > 1e-3) ctrl._zoomReset();
+    // 此刻 scale=1，居中公式无需乘 s
     ctrl._setCanvasOffset(VW / 2 - (minX + maxX) / 2, VH / 2 - (minY + maxY) / 2);
 
     // 明确作用范围：单张/未选中时其实动了全部，不说明会让人困惑「我只选了一张，怎么全动了」

@@ -80,6 +80,9 @@ export const ALL_MESSAGE_TYPES = [
   'storage:getTypewriterMindmapDoc',
   'storage:putTypewriterMindmapDoc',
   'storage:deleteTypewriterMindmapDoc',
+  'storage:getTypewriterNotesDoc',
+  'storage:putTypewriterNotesDoc',
+  'storage:deleteTypewriterNotesDoc',
   // file:*（画中卷文本文件协议：list / get / write / delete）
   'file:list',
   'file:get',

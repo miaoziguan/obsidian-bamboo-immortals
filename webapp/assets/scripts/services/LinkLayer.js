@@ -177,6 +177,13 @@ export class LinkLayer {
         if (ga && gb) items.push({ l, ga, gb });
       });
     }
+    // 【P2-3 连线剔除】两端都不在视口时不绘制该连线（isVisible 由导图剔除态提供；便签无剔除则恒真）
+    if (typeof this.opts.isVisible === 'function') {
+      const iv = this.opts.isVisible;
+      for (let i = items.length - 1; i >= 0; i--) {
+        if (!iv(items[i].l.from) && !iv(items[i].l.to)) items.splice(i, 1);
+      }
+    }
     // 【性能】结构签名：只有连线的增删/顺序变了才重建 DOM。端点移动（拖元素/旋转/缩放）
     // 时复用已有元素、只改几何属性。
     const sig = items.map((it) => it.l.from + '>' + it.l.to).join('|');
@@ -444,6 +451,9 @@ export class LinkLayer {
       if (!gA || !gB) return;
       this._ctlHover = true;
       const rect = this._container.getBoundingClientRect();
+      // 画布带缩放：rect 已含 scale（rect.width = 布局宽 * s）。屏幕坐标换算成画布坐标必须除以缩放比，
+      // 否则弯曲量按屏幕像素与画布坐标混算，非 100% 时 bend 随缩放漂移。
+      const crScale = (rect.width && this._container.offsetWidth) ? rect.width / this._container.offsetWidth : 1;
       const cA = { x: gA.cx, y: gA.cy };
       const cB = { x: gB.cx, y: gB.cy };
       const A = this.anchorOn(gA, cB);
@@ -457,8 +467,8 @@ export class LinkLayer {
       const onMove = (ev) => {
         const lk = this.linkOf(from, to);
         if (!lk) return;
-        const mx = ev.clientX - rect.left;
-        const my = ev.clientY - rect.top;
+        const mx = (ev.clientX - rect.left) / crScale;
+        const my = (ev.clientY - rect.top) / crScale;
         lk.bend = Math.round((mx - base.x) * nx + (my - base.y) * ny);
         this._scheduleRenderLinks();   // rAF 节流：弯曲手柄拖动时每帧最多重绘一次连线
       };
@@ -653,13 +663,16 @@ export class LinkLayer {
     const cr = this._container.getBoundingClientRect();
     const crLeft = cr.left;
     const crTop = cr.top;
+    // 画布带缩放：rect 已含 scale（rect.width = 布局宽 * s），
+    // 屏幕坐标换算成画布坐标必须除以缩放比，否则连线端点随缩放漂移。
+    const crScale = (cr.width && this._container.offsetWidth) ? cr.width / this._container.offsetWidth : 1;
     let raf = 0;
     let lastX = e.clientX;
     let lastY = e.clientY;
     const apply = () => {
       raf = 0;
-      const px = lastX - crLeft;
-      const py = lastY - crTop;
+      const px = (lastX - crLeft) / crScale;
+      const py = (lastY - crTop) / crScale;
       const p1 = this.edgePoint(fromEl, px, py);
       temp.setAttribute('d', `M ${p1.x} ${p1.y} L ${px} ${py}`);
       const next = this.nodeAtPoint(lastX, lastY, fromEl);
@@ -731,8 +744,9 @@ export class LinkLayer {
     const canvas = this._container;
     if (!canvas) return null;
     const r = canvas.getBoundingClientRect();
-    const px = cx - r.left;
-    const py = cy - r.top;
+    const sc = (r.width && canvas.offsetWidth) ? r.width / canvas.offsetWidth : 1;
+    const px = (cx - r.left) / sc;
+    const py = (cy - r.top) / sc;
     let best = null;
     let bestZ = -Infinity;
     // 【性能】优先用拖拽开始时建好的快照（纯算术、零 DOM 读）；

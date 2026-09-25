@@ -46,6 +46,10 @@ export const LOD_DENSITY_EXIT = 100;  // 已降级时，低于此值才退出（
 // 而剔除会随「新建卡自动归位」/ 画布平移不断销毁重建卡片 DOM —— 这是可视化写作闪烁的根因
 // （卡片甚至不到 20 张就开始闪）。文章块既少又便宜，虚拟化零收益、纯属负担。
 // 故写作档在卡片数不超过此值时一律常驻挂载；超过才回退剔除，作安全兜底。
+// 【补注·抖动根因已可治】上述「反复销毁重建」抖动的根因（每帧 createElement + 逐卡测量强制重排）
+// 已在导图侧以「DOM 回收池复用 + 批量测量」根治（见 mindmapFeature._mountNode / _cullView / _batchMeasure）。
+// 卡片画布（便签 + 超阈值的写作档）仍按此模式逐卡重建 DOM；若日后观测到可感知抖动，
+// 可复用同一手法给 ViewportCuller.mountCard/unmountCard 上回收池，而无需放宽本阈值。
 export const WRITE_NO_CULL_MAX = 300;
 // 手动缩放范围
 export const ZOOM_MIN = 0.6;

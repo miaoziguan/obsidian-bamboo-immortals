@@ -7,6 +7,11 @@ import { LinkLayer } from '../../services/LinkLayer.js';
 import { isFromTextEntry } from '../../utils/domRef.js';
 // 撤销/重做栈（快照式；导图这份文档独享一份历史）
 import { UndoStack } from '../../services/undoStack.js';
+import { CanvasViewport } from '../../services/CanvasViewport.js';
+import { CanvasZoomUI } from '../../services/CanvasZoomUI.js';
+import { CanvasGestures } from '../../services/CanvasGestures.js';
+import { CanvasKeys } from '../../services/CanvasKeys.js';
+import { SpatialIndex } from '../../services/SpatialIndex.js';
 
 /**
  * mindmapFeature — 思维子弹（**独立文档**：子弹自由拖动 + 子弹之间自由连线）
@@ -43,7 +48,7 @@ const MM_STYLE_AVAILABLE = [1, 3];   // 在售档位：方角 / 胶囊点
 
 export const MindmapFeature = {
   NODE_MAX_W: 220,          // 子弹最大宽度（px，超长文本换行）
-  NODE_CAP: 500,            // 子弹数量软上限：防无限新建把 O(N)/O(L) 问题放大到卡顿
+  NODE_CAP: 500,            // 子弹数软上限阈值：仅作性能软警戒提示，不再硬阻断（剔除已让渲染成本与总量脱钩，可无限生长）
   // 每颗子弹可单独着色：'' = 默认（随主题）；其余为任意 CSS 颜色值
   MM_COLORS: ['', '#e6b450', '#5ec8a0', '#5b9bff', '#ef8a9c', '#b58cff', '#8fd0e8'],
   SAVE_DEBOUNCE: 400,
@@ -65,6 +70,17 @@ export const MindmapFeature = {
   _selId: null,
   _selLinkIdx: null,
   _els: null,               // Map<id, el>
+  _nodeGeo: new Map(),      // Map<id, {cx,cy,hw,hh,rot}> 节点几何缓存（离屏卸载后供连线按缓存绘制，剔除核心）
+  _visibleIds: null,        // Set<id> 当前可见节点（供 LinkLayer 连线剔除；null=全绘）
+  _dragSet: null,           // 拖拽中的节点集合（pin，剔除时不被卸载）
+  _cullRaf: 0,              // 剔除重算的 rAF 句柄
+  _CULL_MARGIN: 300,        // 视口外扩（屏幕 px）预挂载，避免滚动露白
+  _CULL_MIN_NODES: 60,      // 节点数低于此不剔除，避免小图无谓的挂载/卸载抖动
+  _nodePool: null,          // 离屏节点 DOM 回收池（复用已挂好的连线锚点/监听，消除反复 createElement 抖动）
+  _POOL_CAP: 256,           // 回收池上限（超出则丢弃），约束内存
+  _spatial: null,           // SpatialIndex：节点几何空间索引（剔除 + 框选/命中 共用，消除 O(N) 全量扫描）
+  _spatialDirty: true,      // 结构变更后置脏，下次查询前惰性重建（O(N) 一次，之后查询 O(log N)）
+  _nodeMap: null,           // id -> node 映射（_rebuildSpatial 顺带构建，供剔除 O(1) 反查节点对象）
   _selSet: null,            // 框选多选集合：Set<id>（思维子弹模式框选删除用）
   _marquee: null,           // 框选矩形 DOM
   _marqueeRect: null,       // 框选矩形几何（画布局部 px）
@@ -125,16 +141,106 @@ export const MindmapFeature = {
       removeLink: (f, t) => { let r; this._mutate(() => { r = MindmapDoc.removeLink(this._links, f, t); this._links = r; }); },  // 删线可撤销（B1）
       removeLinksOf: (id) => { this._links = this._links.filter((l) => l.from !== id && l.to !== id); },
       onChange: () => this._scheduleSave(),
+      // 剔除后节点可能离屏卸载：连线端点优先用实时 DOM 几何，离屏时回退 _nodeGeo 缓存（见 _cullView）
+      getGeom: (id) => {
+        const el = this._els.get(id);
+        if (el && el.parentNode) return this._geoOf(el);
+        return this._nodeGeo.get(id) || null;
+      },
+      // 连线剔除：两端都不在视口时不绘制该连线（配合节点剔除，渲染成本真正随视野封顶）
+      isVisible: (id) => (this._visibleIds ? this._visibleIds.has(id) : true),
       anchorClass: 'tw-link-anchor',
       toast: (m) => this._msg(m),
     });
     this._nodeBox = layer.querySelector('.tw-mm-nodes');
     this._empty = layer.querySelector('.tw-mm-empty');
     this._els = new Map();
+    this._nodePool = [];            // 离屏节点 DOM 回收池
+    this._nodeGeo = new Map();      // 剔除几何缓存
+    this._spatial = new SpatialIndex();   // 空间索引（剔除+框选共用）
+    this._spatialDirty = true;
+    this._nodeMap = new Map();
+    this._visibleIds = null;
+    this._dragSet = null;
+    this._cullRaf = 0;
     this._initToolbar(layer);
     this._initSearch(layer);
     this._initUndo();
     this._bindLayer();
+    this._mountZoomUI();
+  },
+
+  /** 缩放控件（思维子弹）：与便签模式共用 CanvasZoomUI，挂层根（不随画布 transform）。 */
+  _mountZoomUI() {
+    if (!this._el || typeof CanvasZoomUI === 'undefined') return;
+    const mm = this;
+    this._zoomUI = CanvasZoomUI.mount(this._el, {
+      getCanvas: () => mm._canvas,
+      getView: () => mm._view,
+      setView: (v) => mm._setView(v.x, v.y, v.scale),
+      zoomAtCenter: (f) => {
+        const c = mm._canvas;
+        if (!c) return;
+        const r = c.getBoundingClientRect();
+        mm._zoomAt(r.left + r.width / 2, r.top + r.height / 2, f);
+      },
+      reset: () => {
+        const c = mm._canvas;
+        if (!c) return;
+        const r = c.getBoundingClientRect();
+        // 保持视口中心内容不动，仅把缩放比归位 100%
+        mm._zoomAt(r.left + r.width / 2, r.top + r.height / 2, 1 / CanvasViewport.scaleOf(mm._view));
+      },
+      fit: () => mm._fitToView(),
+    });
+  },
+
+  /** 以画布中心为焦点缩放（键盘/按钮等没有光标位置的入口） */
+  _zoomByCenter(factor) {
+    const c = this._canvas;
+    if (!c) return;
+    const r = c.getBoundingClientRect();
+    this._zoomAt(r.left + r.width / 2, r.top + r.height / 2, factor);
+  },
+
+  /** 缩放归位 100%（保持视口中心的内容不动） */
+  _zoomReset() {
+    const c = this._canvas;
+    if (!c) return;
+    const r = c.getBoundingClientRect();
+    this._zoomAt(r.left + r.width / 2, r.top + r.height / 2, 1 / CanvasViewport.scaleOf(this._view));
+  },
+
+  /** 适应内容：按全部子弹包围盒算出「居中 + 缩放」的视口。 */
+  _fitToView() {
+    if (!this._canvas) return;
+    if (!this._nodes || !this._nodes.length) { this._centerView(); return; }
+    const bb = this._bounds();
+    const v = CanvasViewport.fitView(this._canvas, bb);
+    this._setView(v.x, v.y, v.scale);
+  },
+
+  /** 适应选区：把当前选中（单选/框选）的子弹居中并缩放到合适；无选区则降级为 _fitToView。 */
+  _fitSelectionToView() {
+    if (!this._canvas) return;
+    const ids = (this._selSet && this._selSet.size)
+      ? Array.from(this._selSet)
+      : (this._selId ? [this._selId] : []);
+    if (!ids.length) { this._fitToView(); return; }
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity, any = false;
+    for (const id of ids) {
+      const el = this._els.get(id);
+      if (!el) continue;
+      const x = parseFloat(el.style.left) || 0;
+      const y = parseFloat(el.style.top) || 0;
+      const w = el.offsetWidth || 200, h = el.offsetHeight || 120;
+      minX = Math.min(minX, x); minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x + w); maxY = Math.max(maxY, y + h);
+      any = true;
+    }
+    if (!any) { this._fitToView(); return; }
+    const v = CanvasViewport.fitView(this._canvas, { minX, minY, maxX, maxY });
+    this._setView(v.x, v.y, v.scale);
   },
 
   /** 选中浮动工具条：图标按钮 + 一级内联色盘（6 色圆点直接在条内，无需弹窗） */
@@ -271,10 +377,14 @@ export const MindmapFeature = {
     const norm = MindmapDoc.normalize(nodes, links);
     this._nodes = norm.nodes;
     this._links = norm.links;
-    this._view = doc.view ? { x: doc.view.x, y: doc.view.y } : null;
+    // 缩放一并恢复（按文档持久化视口，对齐 Excalidraw）；非法值由 clamp 兜底
+    this._view = doc.view
+      ? { x: doc.view.x || 0, y: doc.view.y || 0, scale: CanvasViewport.clamp(doc.view.scale == null ? 1 : doc.view.scale) }
+      : null;
     // 老文档可能停在下架的「经典」(0) 或索引越界 → 一律落到首档，避免困在不再提供的样式上
     const rawStyle = (typeof doc.style === 'number') ? doc.style : MM_STYLE_AVAILABLE[0];
     this._style = MM_STYLE_AVAILABLE.indexOf(rawStyle) >= 0 ? rawStyle : MM_STYLE_AVAILABLE[0];
+    this._spatialDirty = true;   // 整份文档重载 → 索引待重建
   },
 
   /** 防抖落盘（拖动/编辑时高频触发，只在停手后写一次） */
@@ -287,7 +397,8 @@ export const MindmapFeature = {
     clearTimeout(this._saveTimer);
     this._saveTimer = 0;
     if (!this._nodes || !this._groupId) return;
-    const hasView = this._view && (this._view.x || this._view.y);
+    // 只要「有平移」或「缩放非 1」就落盘：否则只改了缩放级别会被整份丢掉
+    const hasView = this._view && (this._view.x || this._view.y || (this._view.scale && this._view.scale !== 1));
     TypewriterStore.saveMindmapGroupDoc(this._groupId, {
       nodes: this._nodes, links: this._links,
       view: hasView ? this._view : null, style: this._style,
@@ -382,17 +493,18 @@ export const MindmapFeature = {
     const t = (text || '').trim();
     if (!t) return false;
     if (this._nodes.length >= this.NODE_CAP) {
-      this._msg('子弹已达上限（' + this.NODE_CAP + '），先清理或删一些再新建');
-      return false;
+      this._msg('子弹数已达软上限（' + this.NODE_CAP + '），继续添加可能影响性能');
     }
     let anchor = { x: 0, y: 0 };
     if (this._selId) {
       const el = this._els.get(this._selId);
       if (el) anchor = { x: parseFloat(el.style.left) || 0, y: parseFloat(el.style.top) || 0 };
     } else if (this._view && this._canvas) {
+      // 视口中心换算成画布坐标：(布局宽/2 - 平移量) / 缩放比
+      const s = CanvasViewport.scaleOf(this._view);
       anchor = {
-        x: -this._view.x + (this._canvas.clientWidth || 600) / 2,
-        y: -this._view.y + (this._canvas.clientHeight || 400) / 2,
+        x: (-this._view.x + (this._canvas.clientWidth || 600) / 2) / s,
+        y: (-this._view.y + (this._canvas.clientHeight || 400) / 2) / s,
       };
     }
     const spot = MindmapDoc.freeSpot(this._nodes, anchor);
@@ -412,16 +524,19 @@ export const MindmapFeature = {
     const el = this._els.get(id);
     if (!el || !this._view) return;
     const r = this._canvas.getBoundingClientRect();
+    const s = CanvasViewport.scaleOf(this._view);
+    // rect 含缩放 → 除以 s 还原布局尺寸；节点中心的屏幕位置 = view + s * 画布坐标
+    const LW = r.width / s, LH = r.height / s;
     const cx = parseFloat(el.style.left) + el.offsetWidth / 2;
     const cy = parseFloat(el.style.top) + el.offsetHeight / 2;
-    const sx = this._view.x + cx;
-    const sy = this._view.y + cy;
+    const sx = this._view.x + s * cx;
+    const sy = this._view.y + s * cy;
     const M = 32;
     let dx = 0, dy = 0;
-    if (sx < M) dx = M - sx; else if (sx > r.width - M) dx = (r.width - M) - sx;
-    if (sy < M) dy = M - sy; else if (sy > r.height - M) dy = (r.height - M) - sy;
+    if (sx < M) dx = M - sx; else if (sx > LW - M) dx = (LW - M) - sx;
+    if (sy < M) dy = M - sy; else if (sy > LH - M) dy = (LH - M) - sy;
     if (!dx && !dy) return;
-    this._view = { x: this._view.x + dx, y: this._view.y + dy };
+    this._view = { x: this._view.x + dx, y: this._view.y + dy, scale: s };
     this._applyView();
     this._scheduleSave();
   },
@@ -483,15 +598,23 @@ export const MindmapFeature = {
   // ===== 渲染 =====
 
   /** 仅挂载/注册一颗子弹的 DOM（增量新增用）：建元素、挂锚点、落位、画文本。已存在则跳过。 */
-  _mountNode(n) {
+  _mountNode(n, skipMeasure) {
     let el = this._els.get(n.id);
     if (el) return el;
-    el = this._createNodeEl(n);
+    // 复用回收池中的离屏节点：元素本体 + 连线锚点 + 监听都还在，省去 createElement/innerHTML/makeLinkable 的反复开销
+    el = (this._nodePool && this._nodePool.length) ? this._nodePool.pop() : this._createNodeEl(n);
+    el.dataset.id = n.id;
+    el.classList.remove('is-sel', 'is-multi-sel', 'is-editing');
+    el.removeAttribute('data-rot');
     this._els.set(n.id, el);
     this._nodeBox.appendChild(el);
-    this._linkLayer.makeLinkable(el);
+    if (!el._linkable) { this._linkLayer.makeLinkable(el); el._linkable = true; }
     this._placeNode(n.id);
     this._paintNode(el, n);
+    // 剔除后重挂：恢复选中/多选高亮（否则离屏选中节点再挂载会丢高亮）
+    if (this._selId === n.id) el.classList.add('is-sel');
+    if (this._selSet && this._selSet.has(n.id)) el.classList.add('is-multi-sel');
+    if (!skipMeasure) this._nodeGeo.set(n.id, this._geoOf(el));   // 剔除路径走 _batchMeasure，避免逐个强制重排
     return el;
   },
 
@@ -505,10 +628,106 @@ export const MindmapFeature = {
   },
 
   /** 从 DOM 移除一颗子弹（增量删除用） */
-  _unmountNode(id) {
+  _unmountNode(id, skipGeo) {
     const el = this._els.get(id);
-    if (el && el.parentNode) el.parentNode.removeChild(el);
+    if (el) {
+      // 剔除路径已批量缓存几何，这里跳过测量；其他路径（删除/整图 render）按需测量兜底
+      if (!skipGeo && !this._nodeGeo.has(id)) this._nodeGeo.set(id, this._geoOf(el));
+      if (el.parentNode) el.parentNode.removeChild(el);
+      // 回收到池（限量）：离屏节点不释放而是复用，平移反复进出视野时不再反复建 DOM
+      if (this._nodePool && this._nodePool.length < this._POOL_CAP) this._nodePool.push(el);
+    }
     this._els.delete(id);
+  },
+
+  /** 节点几何取用（供连线层 getGeom / 剔除缓存）。优先实时 DOM，离屏卸载后用缓存兜底。 */
+  _geoOf(el) {
+    const w = el.offsetWidth || 0, h = el.offsetHeight || 0;
+    return {
+      cx: el.offsetLeft + w / 2,
+      cy: el.offsetTop + h / 2,
+      hw: w / 2 || 1,
+      hh: h / 2 || 1,
+      rot: Number(el.dataset.rot) || 0,
+    };
+  },
+
+  /** 剔除调度（rAF 节流）：每次平移/缩放只重算一次可见集 */
+  _scheduleCull() {
+    if (this._cullRaf) return;
+    this._cullRaf = requestAnimationFrame(() => { this._cullRaf = 0; this._cullView(); });
+  },
+
+  /** 视口剔除：仅挂载「可见（含外扩边距）+ 被 pin（选中/编辑/拖拽）」的子弹，其余卸载但保留几何缓存供连线绘制。
+   *  渲染成本由 O(全量节点数) 降为 O(视野内可见数)，从而得以安全移除 NODE_CAP 硬上限、支持无限生长。 */
+  /** 标记空间索引待重建（结构变更时调用；查询前惰性 O(N) 重建一次，之后查询 O(log N)）。 */
+  _markSpatialDirty() { this._spatialDirty = true; },
+
+  /** 从模型 + 几何缓存重建空间索引（顺带构建 id->node 映射，供剔除 O(1) 反查）。 */
+  _rebuildSpatial() {
+    const sp = this._spatial;
+    sp.clear();
+    const map = this._nodeMap = new Map();
+    for (const n of this._nodes) {
+      map.set(n.id, n);
+      const g = this._nodeGeo.get(n.id);
+      const w = (g ? g.hw * 2 : 0) || MindmapDoc.EST_W;
+      const h = (g ? g.hh * 2 : 0) || MindmapDoc.EST_H;
+      sp.insert(n.id, n.x, n.y, w, h, 0);
+    }
+    this._spatialDirty = false;
+  },
+
+  /** 索引待重建则惰性重建（消灭全网遍历）。 */
+  _ensureSpatial() { if (this._spatialDirty) this._rebuildSpatial(); },
+
+  /** id → node 对象（O(1)，失败回退 find）。 */
+  _nodeById(id) {
+    if (this._nodeMap && this._nodeMap.has(id)) return this._nodeMap.get(id);
+    return this._nodes.find((n) => n.id === id) || null;
+  },
+
+  _cullView() {
+    if (!this._canvas || !this._view || !this._active) return;
+    const s = CanvasViewport.scaleOf(this._view);
+    const cw = this._canvas.clientWidth, ch = this._canvas.clientHeight;
+    if (!cw || !ch) return;
+    const M = this._CULL_MARGIN / s;                 // 屏幕 px 外扩 → 画布坐标
+    const vx0 = -this._view.x / s - M, vy0 = -this._view.y / s - M;
+    const vx1 = (cw - this._view.x) / s + M, vy1 = (ch - this._view.y) / s + M;
+    // pin 集：选中/编辑/拖拽中的节点永远挂载（工具条定位、多选高亮、拖拽保活都依赖其在 DOM）
+    const pin = new Set();
+    if (this._selId) pin.add(this._selId);
+    if (this._selSet) this._selSet.forEach((id) => pin.add(id));
+    if (this._editId) pin.add(this._editId);
+    if (this._dragSet) this._dragSet.forEach((id) => pin.add(id));
+    // 小图门控：节点少时不剔除，避免无谓的挂载/卸载抖动（仍走批量测量，统一路径）
+    if (this._nodes.length <= this._CULL_MIN_NODES) {
+      for (const n of this._nodes) if (!this._els.get(n.id)) this._mountNode(n, true);
+      this._batchMeasure();
+      this._visibleIds = null;
+      this._linkLayer.render();
+      this._paintSelection();
+      return;
+    }
+    this._ensureSpatial();
+    const vis = this._visibleIds = this._spatial.queryRect(vx0, vy0, vx1, vy1);
+    // 挂载：可见节点（含外扩边距区） + pin 集（选中/编辑/拖拽保活）；skipMeasure：几何留到 _batchMeasure 合并成一次重排
+    vis.forEach((id) => { if (!this._els.get(id)) { const n = this._nodeById(id); if (n) this._mountNode(n, true); } });
+    pin.forEach((id) => { if (!vis.has(id) && !this._els.get(id)) { const n = this._nodeById(id); if (n) this._mountNode(n, true); } });
+    // 批量测量：所有已挂载节点一次性读几何（仅 1 次强制重排），替代每个节点各 1 次 → 消除平移时的反复重排抖动
+    this._batchMeasure();
+    // 卸载：仅遍历「已挂载」集合（体积≈可见数，与总量 N 解耦），不在可见/选中集的一律卸载（skipGeo：几何已批量缓存，连线按缓存绘制）
+    for (const id of this._els.keys()) {
+      if (!vis.has(id) && !pin.has(id)) this._unmountNode(id, true);
+    }
+    this._linkLayer.render();
+    this._paintSelection();
+  },
+
+  /** 批量刷新所有已挂载节点的几何缓存：一次强制重排供剔除 + 连线层统一取用（避免逐节点测量触发 K 次重排） */
+  _batchMeasure() {
+    for (const el of this._els.values()) this._nodeGeo.set(el.dataset.id, this._geoOf(el));
   },
 
   /** 同步空态显隐（增量增删后调用，避免每步都跑全量 render） */
@@ -528,7 +747,7 @@ export const MindmapFeature = {
     this._nodes.forEach((n) => {
       alive.add(n.id);
       const el = this._els.get(n.id);
-      if (!el) { this._mountNode(n); }
+      if (!el) { this._mountNode(n, true); }
       else { this._paintNode(el, n); this._placeNode(n.id); }
     });
     Array.from(this._els.keys()).forEach((id) => {
@@ -541,20 +760,23 @@ export const MindmapFeature = {
     // 3) 视野：首次（无存档视野）自动居中到所有子弹
     const vw = this._canvas.clientWidth || 0;
     const vh = this._canvas.clientHeight || 0;
+    const sInit = CanvasViewport.scaleOf(this._view);
     if (!this._view && this._nodes.length) {
       const bb = this._bounds();
       this._view = {
-        x: Math.round(vw / 2 - (bb.minX + bb.maxX) / 2),
-        y: Math.round(vh / 2 - (bb.minY + bb.maxY) / 2),
+        x: Math.round(vw / 2 - sInit * (bb.minX + bb.maxX) / 2),
+        y: Math.round(vh / 2 - sInit * (bb.minY + bb.maxY) / 2),
+        scale: sInit,
       };
     }
-    if (!this._view) this._view = { x: 0, y: 0 };
+    if (!this._view) this._view = { x: 0, y: 0, scale: 1 };
     this._applyView();
 
     this._linkLayer.render();
     this._paintSelection();
     this._updateToolbar();
     if (this._ctrl && typeof this._ctrl._refreshScreenMeta === 'function') this._ctrl._refreshScreenMeta();
+    this._cullView();        // 全量重挂后按视口裁剪离屏子弹（节点/连线剔除在此收口）
   },
 
   /** 增量刷新：只重画指定的若干颗子弹，再重画连线 / 选中态 / 工具条。
@@ -580,8 +802,29 @@ export const MindmapFeature = {
 
   _applyView() {
     if (!this._canvas || !this._view) return;
-    this._canvas.style.transform = `translate(${this._view.x}px, ${this._view.y}px)`;
+    // 与便签画布同一约定：translate(平移) scale(缩放)，transform-origin 已在 CSS(.tw-mm-canvas) 定为 0 0
+    const s = CanvasViewport.scaleOf(this._view);
+    this._canvas.style.transform = `translate(${this._view.x}px, ${this._view.y}px) scale(${s})`;
     this._updateToolbar();    // 平移时让工具条跟着选中节点走
+    // 缩放/平移后同步缩放控件的百分比显示
+    if (this._zoomUI && typeof this._zoomUI.sync === 'function') this._zoomUI.sync();
+    this._scheduleCull();     // 视口变化 → rAF 节流后重算可见集（节点/连线剔除）
+  },
+
+  /** 写入视野（含缩放）并落盘：唯一入口，避免各处只改 x/y 把缩放抹掉。 */
+  _setView(x, y, scale) {
+    const s = CanvasViewport.clamp(scale == null ? CanvasViewport.scaleOf(this._view) : scale);
+    this._view = { x, y, scale: s };
+    this._applyView();
+    this._scheduleSave();
+  },
+
+  /** 以屏幕点为焦点缩放（Excalidraw 手感：该点下方内容不动）。 */
+  _zoomAt(clientX, clientY, factor) {
+    if (!this._canvas) return;
+    const nv = CanvasViewport.zoomedView(this._canvas, this._view, clientX, clientY, factor);
+    if (nv === this._view) return;   // 已到上下限
+    this._setView(nv.x, nv.y, nv.scale);
   },
 
   _createNodeEl(n) {
@@ -639,20 +882,78 @@ export const MindmapFeature = {
 
   _bindLayer() {
     const layer = this._el;
+    // 幂等：重复建层前先销毁上一次的共享接线（空格 keydown / 滚轮 / 指针手势）。
+    // 其中 installSpaceHand 挂的是 document 级 keydown，不销毁会随建层次数叠加。
+    if (this._hand && typeof this._hand.destroy === 'function') { this._hand.destroy(); this._hand = null; }
+    if (this._wheelDetach) { this._wheelDetach(); this._wheelDetach = null; }
+    if (this._gestureDetach) { this._gestureDetach(); this._gestureDetach = null; }
     // 原生 dblclick 兜底：pointerdown 上的 preventDefault 通常会抑制它，但慢速双击（越过手动判定阈值）仍能触发；
     // _handleDoubleTap 已有 350ms 节流，与手动判定重复触发时只执行一次。
     layer.addEventListener('dblclick', (e) => { this._handleDoubleTap(e); });
     layer.addEventListener('click', (e) => {
       if (e.target.closest('.tw-links, .tw-links-ctl')) return;   // 点击连线/控件：交给 LinkLayer 的悬浮控件
     });
-    layer.addEventListener('pointerdown', (e) => this._onPointerDown(e));
+
+    // 空格 = 临时抓手 / Hand 工具：统一接线（含状态对象 state，供 attach 读取）
+    const hand = CanvasGestures.installSpaceHand(layer, { isActive: () => this._active });
+    this._hand = hand;
+
+    // 滚轮：与便签画布同一套 Excalidraw 规范（⌘/Ctrl=缩放、Shift=横移、普通=平移、Alt=放行），统一收口到 CanvasGestures
+    this._wheelDetach = CanvasGestures.installWheel(layer, {
+      isActive: () => this._active,
+      getView: () => { const v = this._view || { x: 0, y: 0, scale: 1 }; return { x: v.x, y: v.y, scale: CanvasViewport.scaleOf(v) }; },
+      zoomAt: (cx, cy, f) => this._zoomAt(cx, cy, f),
+      panBy: (dx, dy) => { const v = this._view || { x: 0, y: 0 }; this._setView(v.x + dx, v.y + dy, null); },
+    });
+
+    // 平移 / 双指捏合 / 空白判定：统一接管（C3）；模式专属的「节点/连线拖拽 / 框选」经 onEmptyPointerDown 注入
+    this._gestureDetach = CanvasGestures.attach(layer, {
+      isActive: () => this._active,
+      state: hand.state,
+      getView: () => { const v = this._view || { x: 0, y: 0, scale: 1 }; return { x: v.x, y: v.y, scale: CanvasViewport.scaleOf(v) }; },
+      setView: (v) => this._setView(v.x, v.y, v.scale),
+      getScale: () => CanvasViewport.scaleOf(this._view || { x: 0, y: 0 }),
+      zoomAt: (cx, cy, f) => this._zoomAt(cx, cy, f),
+      panBy: (dx, dy) => { const v = this._view || { x: 0, y: 0 }; this._setView(v.x + dx, v.y + dy, null); },
+      onBeforePan: () => this._clearMultiSel(),
+      onPanStart: () => {
+        this._select(null);
+        if (this._toolbar) this._toolbar.hidden = true;
+        layer.classList.add('is-panning');
+      },
+      onPanEnd: () => {
+        layer.classList.remove('is-panning');
+        this._scheduleSave();
+        this._updateToolbar();
+      },
+      onPinchWillStart: () => { if (typeof this._cancelMarquee === 'function') this._cancelMarquee(); },
+      onEmptyPointerDown: (e) => this._onEmptyPointerDown(e),
+    });
+
+    // 幂等：重复建层时先摘掉旧的文档级捕获监听，避免叠加。
+    if (this._keyHandler) { document.removeEventListener('keydown', this._keyHandler, true); this._keyHandler = null; }
     this._keyHandler = (e) => this._onKeyDown(e);
     // 捕获阶段：先于便签的画布监听拿到键盘，避免两边同时响应
     document.addEventListener('keydown', this._keyHandler, true);
+
+    // 通用画布键位（⌘±/0、Shift+1/2、H）统一收口到 CanvasKeys（C2）：与便签共用同一份逻辑，
+    // 命中且导图激活时 stopImmediatePropagation，避免事件继续到便签处理器造成双响。
+    if (!this._canvasKeysDetach) {
+      this._canvasKeysDetach = CanvasKeys.bind({
+        isActive: () => this._active,
+        zoomByCenter: (f) => this._zoomByCenter(f),
+        zoomReset: () => this._zoomReset(),
+        fitView: () => this._fitToView(),
+        fitSelection: () => this._fitSelectionToView(),
+        toggleHand: () => this._hand.toggleHand(),
+        zoomStep: 1.25,
+      });
+    }
   },
 
-  _onPointerDown(e) {
-    if (e.pointerType === 'mouse' && e.button !== 0) return;
+  // 画布空白/节点/连线 的指针按下（平移 / 双指捏合 已由共享 CanvasGestures 接管，这里只处理模式专属逻辑：
+  // 节点拖拽、连线起手、框选）。共享层已过滤：控件元素、右键、以及空格/中键/抓手意图的平移。
+  _onEmptyPointerDown(e) {
     if (e.target.closest('.tw-links, .tw-links-ctl')) return;   // 点连线或控件不触发平移（交给 LinkLayer）
     if (e.target.closest('button, .tw-mm-search, .tw-mm-toolbar')) return;
     // 双击检测：pointerdown 上的 preventDefault（平移/拖拽）会抑制原生 dblclick（兼容性鼠标事件），
@@ -681,9 +982,10 @@ export const MindmapFeature = {
       this._beginMoveDrag(e, nodeEl);
       return;
     }
-    if (e.shiftKey) { this._startMarquee(e); return; }   // Shift+空白拖拽 = 框选（替代平移）
-    this._clearMultiSel();
-    this._beginPan(e);
+    // ── Excalidraw 语义 ──
+    // 拖空白 = 框选（Shift = 追加）；平移改由 空格+拖 / 中键拖 / 抓手工具(H) / 滚轮 / 双指 承担（共享 CanvasGestures 接管）
+    if (!e.shiftKey) this._clearMultiSel();
+    this._startMarquee(e, e.shiftKey);
   },
 
   /** 手动双击语义（规避 pointerdown preventDefault 吞掉原生 dblclick）：
@@ -708,6 +1010,7 @@ export const MindmapFeature = {
     e.preventDefault();
     const id = nodeEl.dataset.id;
     const dragSet = (this._selSet && this._selSet.has(id)) ? this._selSet : null;
+    this._dragSet = dragSet;   // 拖拽中的节点 pin，避免被剔除卸载
     this._select(id);   // 单选高亮（不清除 _selSet，多选框仍保留）
     const x0 = e.clientX, y0 = e.clientY;
     // 记录每个被拖节点的初始坐标
@@ -745,7 +1048,9 @@ export const MindmapFeature = {
       if (lastEv) updateDropHint(lastEv);
     };
     const move = (ev) => {
-      const dx = ev.clientX - x0, dy = ev.clientY - y0;
+      // 缩放后「屏幕位移 ≠ 画布位移」：必须除以缩放比，否则放大后拖不动、缩小后拖过头
+      const s = CanvasViewport.scaleOf(this._view);
+      const dx = (ev.clientX - x0) / s, dy = (ev.clientY - y0) / s;
       if (!moved && Math.abs(dx) + Math.abs(dy) < 3) return;
       moved = true;
       // 仅写节点位置（落到下一帧统一读），避免「写 → 读 offset → 强制回流」在同一事件里反复发生
@@ -758,6 +1063,7 @@ export const MindmapFeature = {
       if (!raf) raf = requestAnimationFrame(flush);
     };
     const up = (ev) => {
+      this._dragSet = null;
       document.removeEventListener('pointermove', move);
       document.removeEventListener('pointerup', up);
       if (raf) { cancelAnimationFrame(raf); raf = 0; }   // 丢弃未执行的重绘，改用下面的终态渲染
@@ -802,42 +1108,19 @@ export const MindmapFeature = {
 
 
   _clientToCanvas(clientX, clientY) {
-    const r = this._canvas.getBoundingClientRect();
-    // getBoundingClientRect 已含 translate(view) 变换，画布坐标 = 屏幕坐标 - 画布左上角即可；
+    // getBoundingClientRect 已含 translate(view) 与 scale 变换：
+    // 画布坐标 = (屏幕坐标 - 画布左上角) / 缩放比。
     // 不要再减 this._view，否则平移量被算两次，Shift+双击新建会偏到别处。
-    return { x: clientX - r.left, y: clientY - r.top };
+    return CanvasViewport.toCanvas(this._canvas, this._view, clientX, clientY);
   },
 
 
-  /** 空白拖动 = 平移视野（与便签画布同一手感） */
-  _beginPan(e) {
-    if (e.target.closest('button, .tw-mm-search, .tw-mm-toolbar')) return;
-    e.preventDefault();
-    this._select(null);
-    if (this._toolbar) this._toolbar.hidden = true;
-    this._el.classList.add('is-panning');
-    const x0 = e.clientX, y0 = e.clientY;
-    const v0 = { x: this._view ? this._view.x : 0, y: this._view ? this._view.y : 0 };
-    const move = (ev) => {
-      this._view = { x: v0.x + (ev.clientX - x0), y: v0.y + (ev.clientY - y0) };
-      this._applyView();
-    };
-    const up = () => {
-      document.removeEventListener('pointermove', move);
-      document.removeEventListener('pointerup', up);
-      this._el.classList.remove('is-panning');
-      this._scheduleSave();
-      this._updateToolbar();
-    };
-    document.addEventListener('pointermove', move);
-    document.addEventListener('pointerup', up);
-  },
+  // 双指捏合(_beginPinch) 与 空白平移(_beginPan) 已统一收口到共享 CanvasGestures（C3），此处不再重复实现。
 
   /** 在落点新建一颗子弹并进入编辑（程序化调用；双击空白已改为归位，不再走此路径） */
   _createBulletAt(clientX, clientY) {
     if (this._nodes.length >= this.NODE_CAP) {
-      this._msg('子弹已达上限（' + this.NODE_CAP + '），先清理或删一些再新建');
-      return;
+      this._msg('子弹数已达软上限（' + this.NODE_CAP + '），继续添加可能影响性能');
     }
     const p = this._clientToCanvas(clientX, clientY);
     const spot = { x: p.x - MindmapDoc.EST_W / 2, y: p.y - MindmapDoc.EST_H / 2 };
@@ -910,6 +1193,7 @@ export const MindmapFeature = {
       if (!cancel) {
         const text = (el._text.innerText || '').replace(/\s+$/, '');
         this._nodes = MindmapDoc.setText(this._nodes, id, text);
+        this._spatialDirty = true;   // 文本变化可能改变节点尺寸 → 索引待重建
       }
     }
     this._editKey = null;
@@ -927,6 +1211,13 @@ export const MindmapFeature = {
     // 表现为：在输入框里打完字按回车，除了正常建出那颗带文字的子弹，
     // 这里还会把它当成「画布上的回车」（case 'Enter' → _addNear）再补一颗**空**子弹。
     if (isFromTextEntry(e)) return;
+    // 捕获阶段已先于此处的便签键盘处理器执行：只要导图认领了键盘（active 已确认），
+    // 就 stopPropagation，避免事件继续冒泡到便签的 handler —— 否则导图模式下一次 ⌘+ 会被
+    // 两边各缩放一次（便签画布虽隐藏，却会偷偷改隐藏画布的视口）。
+    e.stopPropagation();
+
+    // ⌘±/0、Shift+1/2、H 等「画布缩放/适应/抓手」键已统一收口到 CanvasKeys（C2）：导图与便签共用同一份逻辑，
+    // 命中且导图激活时 stopImmediatePropagation，杜绝双响。以下仅处理导图专属键（搜索/撤销/删除/新建等）。
     // Cmd/Ctrl+F：唤起子弹搜索（与便签模式的查找一致）
     if ((e.metaKey || e.ctrlKey) && (e.key === 'f' || e.key === 'F')) { e.preventDefault(); this._openSearch(); return; }
     // 撤销 / 重做：Cmd/Ctrl+Z、Cmd/Ctrl+Shift+Z（不要求有选中，空画布也能撤）
@@ -961,15 +1252,15 @@ export const MindmapFeature = {
   /** 在选中子弹旁新建一颗；withLink=true 时顺便连一条线 */
   _addNear(withLink) {
     if (this._nodes.length >= this.NODE_CAP) {
-      this._msg('子弹已达上限（' + this.NODE_CAP + '），先清理或删一些再新建');
-      return;
+      this._msg('子弹数已达软上限（' + this.NODE_CAP + '），继续添加可能影响性能');
     }
     const selId = this._selId;
     const base = selId ? this._els.get(selId) : null;
+    const ms = CanvasViewport.scaleOf(this._view);
     const anchor = base
       ? { x: parseFloat(base.style.left) || 0, y: parseFloat(base.style.top) || 0 }
       : (this._view && this._canvas
-        ? { x: -this._view.x + this._canvas.clientWidth / 2, y: -this._view.y + this._canvas.clientHeight / 2 }
+        ? { x: (-this._view.x + this._canvas.clientWidth / 2) / ms, y: (-this._view.y + this._canvas.clientHeight / 2) / ms }
         : { x: 0, y: 0 });
     const spot = MindmapDoc.freeSpot(this._nodes, { x: anchor.x + 40, y: anchor.y + 30 });
     let id = null, linked = false;
@@ -1041,6 +1332,7 @@ export const MindmapFeature = {
   _mutate(fn) {
     if (this._undoStack) this._undoStack.push();
     fn();
+    this._spatialDirty = true;   // 结构变更 → 索引待重建（剔除/框选下次查询前惰性 O(N) 一次）
   },
 
   /**
@@ -1051,6 +1343,7 @@ export const MindmapFeature = {
     const stack = this._undoStack;
     if (!stack) return;
     const ok = (kind === 'redo') ? stack.redo() : stack.undo();
+    if (ok) this._spatialDirty = true;   // 撤销/重做改了节点集合 → 索引待重建
     this._msg(ok
       ? (kind === 'redo' ? '已重做' : '已撤销')
       : (kind === 'redo' ? '没有可重做的操作' : '没有可撤销的操作'));
@@ -1182,8 +1475,7 @@ export const MindmapFeature = {
     const ids = this.getSelectedIds();
     if (!ids.length) return;
     if (this._nodes.length + ids.length > this.NODE_CAP) {
-      this._msg('复制后超过上限（' + this.NODE_CAP + '）');
-      return;
+      this._msg('复制后超过软上限（' + this.NODE_CAP + '），继续可能拖慢');
     }
     const newIds = [];
     const map = new Map();          // oldId → newId
@@ -1280,7 +1572,9 @@ export const MindmapFeature = {
     const cx = parseFloat(el.style.left) + (el.offsetWidth || 0) / 2;
     const cy = parseFloat(el.style.top) + (el.offsetHeight || 0) / 2;
     const vw = this._canvas.clientWidth || 0, vh = this._canvas.clientHeight || 0;
-    this._view = { x: Math.round(vw / 2 - cx), y: Math.round(vh / 2 - cy) };
+    // 缩放后：平移量在 scale 之前生效 → 乘 s，缩放比原样保留
+    const s = CanvasViewport.scaleOf(this._view);
+    this._view = { x: Math.round(vw / 2 - s * cx), y: Math.round(vh / 2 - s * cy), scale: s };
     this._applyView();
     this._scheduleSave();
   },
@@ -1293,22 +1587,22 @@ export const MindmapFeature = {
   },
 
   /** 在画布上拉出框选矩形（Shift+空白拖拽触发，几何对齐便签模式 _startMarquee） */
-  _startMarquee(e) {
+  _startMarquee(e, additive) {
     const canvas = this._canvas;
     if (!canvas) return;
-    this._clearMultiSel();
+    if (!additive) this._clearMultiSel();   // Shift 追加框选：保留已有选中
     if (this._marquee) this._marquee.remove();
     const m = document.createElement('div');
     m.className = 'tw-mm-marquee';
     canvas.appendChild(m);
     this._marquee = m;
     this._marqueeRect = null;
-    const cr = canvas.getBoundingClientRect();
-    const sx0 = e.clientX - cr.left;   // 画布局部坐标（仅平移不缩放，屏幕位移即局部位移）
-    const sy0 = e.clientY - cr.top;
+    // 画布坐标：走统一换算，自动扣除缩放比（缩放后屏幕位移 ≠ 画布位移）
+    const p0 = CanvasViewport.toCanvas(canvas, this._view, e.clientX, e.clientY);
+    const sx0 = p0.x, sy0 = p0.y;
     const move = (ev) => {
-      const sx1 = ev.clientX - cr.left;
-      const sy1 = ev.clientY - cr.top;
+      const p1 = CanvasViewport.toCanvas(canvas, this._view, ev.clientX, ev.clientY);
+      const sx1 = p1.x, sy1 = p1.y;
       const x = Math.min(sx0, sx1), y = Math.min(sy0, sy1);
       const w = Math.abs(sx1 - sx0), h = Math.abs(sy1 - sy0);
       m.style.left = x + 'px'; m.style.top = y + 'px';
@@ -1319,7 +1613,7 @@ export const MindmapFeature = {
       document.removeEventListener('pointermove', move);
       document.removeEventListener('pointerup', up);
       if (this._marquee) { this._marquee.remove(); this._marquee = null; }
-      this._selectInRect(this._marqueeRect || { x: sx0, y: sy0, w: 0, h: 0 });
+      this._selectInRect(this._marqueeRect || { x: sx0, y: sy0, w: 0, h: 0 }, additive);
       this._marqueeRect = null;
     };
     document.addEventListener('pointermove', move);
@@ -1328,21 +1622,24 @@ export const MindmapFeature = {
   },
 
   /** 框选矩形与子弹求交，选中相交者（矩形与子弹包围盒相交即算） */
-  _selectInRect(r) {
+  _selectInRect(r, additive) {
     if (!this._selSet) this._selSet = new Set();
-    this._selSet.clear();
-    this._nodes.forEach((n) => {
-      const el = this._els.get(n.id);
-      if (!el) return;
-      const lx = parseFloat(el.style.left) || 0;
-      const ly = parseFloat(el.style.top) || 0;
-      const w = el.offsetWidth || MindmapDoc.EST_W;
-      const h = el.offsetHeight || MindmapDoc.EST_H;
-      if (lx + w >= r.x && lx <= r.x + r.w && ly + h >= r.y && ly <= r.y + r.h) {
-        this._selSet.add(n.id);
-        el.classList.add('is-multi-sel');
+    if (!additive) this._selSet.clear();
+    // 先用空间索引收候选（O(覆盖单元)），再做精确 AABB 判定 —— 消除 O(N) 全量遍历
+    this._ensureSpatial();
+    const hits = this._spatial.queryRect(r.x, r.y, r.x + r.w, r.y + r.h);
+    for (const id of hits) {
+      const n = this._nodeById(id);
+      if (!n) continue;
+      const g = this._nodeGeo.get(id);
+      const w = (g ? g.hw * 2 : 0) || MindmapDoc.EST_W;
+      const h = (g ? g.hh * 2 : 0) || MindmapDoc.EST_H;
+      if (n.x + w >= r.x && n.x <= r.x + r.w && n.y + h >= r.y && n.y <= r.y + r.h) {
+        this._selSet.add(id);
+        const el = this._els.get(id);
+        if (el) el.classList.add('is-multi-sel');
       }
-    });
+    }
     if (this._selSet.size) this._selId = null;   // 框选优先：清掉单选高亮，避免两套高亮混叠
     this._paintSelection();
     this._updateToolbar();    // 框选后也要刷新浮动工具条（否则删除/复制/改色工具条不出现，见 B3）
@@ -1355,9 +1652,12 @@ export const MindmapFeature = {
     const bb = this._bounds();
     const vw = this._canvas.clientWidth || 0;
     const vh = this._canvas.clientHeight || 0;
+    // 缩放后：可见区宽（画布坐标）= 布局宽 / s；平移量在 scale 之前生效 → 需乘 s
+    const s = CanvasViewport.scaleOf(this._view);
     this._view = {
-      x: Math.round(vw / 2 - (bb.minX + bb.maxX) / 2),
-      y: Math.round(vh / 2 - (bb.minY + bb.maxY) / 2),
+      x: Math.round(vw / 2 - s * (bb.minX + bb.maxX) / 2),
+      y: Math.round(vh / 2 - s * (bb.minY + bb.maxY) / 2),
+      scale: s,
     };
     this._applyView();
     this._scheduleSave();
@@ -1483,6 +1783,11 @@ export const MindmapFeature = {
       document.removeEventListener('keydown', this._keyHandler, true);
       this._keyHandler = null;
     }
+    // C2/C3 共享接线：与 _keyHandler 对称销毁（均含 document 级监听，不销毁会随建层叠加）
+    if (this._canvasKeysDetach) { this._canvasKeysDetach(); this._canvasKeysDetach = null; }
+    if (this._wheelDetach) { this._wheelDetach(); this._wheelDetach = null; }
+    if (this._gestureDetach) { this._gestureDetach(); this._gestureDetach = null; }
+    if (this._hand && typeof this._hand.destroy === 'function') { this._hand.destroy(); this._hand = null; }
     // 历史只属于本次会话的文档：卸载即弃，避免重挂载后把旧状态的快照带回来
     if (this._undoStack) { this._undoStack.reset(); this._undoStack = null; }
     this._active = false;
@@ -1494,7 +1799,15 @@ export const MindmapFeature = {
     this._searchBox = null;
     this._searchInput = null;
     this._searchCount = null;
+    if (this._cullRaf) { cancelAnimationFrame(this._cullRaf); this._cullRaf = 0; }
     this._els = new Map();
+    this._nodeGeo = new Map();      // 剔除几何缓存随文档丢弃
+    this._nodePool = [];            // 回收池随文档丢弃
+    this._spatial = new SpatialIndex();   // 空间索引随文档丢弃
+    this._spatialDirty = true;
+    this._nodeMap = new Map();
+    this._visibleIds = null;
+    this._dragSet = null;
     this._nodes = [];
     this._links = [];
     this._view = null;

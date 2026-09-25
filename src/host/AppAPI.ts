@@ -947,6 +947,12 @@ export class AppAPI {
         return await this.storage.putTypewriterMindmapDoc(p.id as string, p.doc);
       case 'storage:deleteTypewriterMindmapDoc':
         return await this.storage.deleteTypewriterMindmapDoc(p.id as string);
+      case 'storage:getTypewriterNotesDoc':
+        return await this.storage.getTypewriterNotesDoc(p.id as string);
+      case 'storage:putTypewriterNotesDoc':
+        return await this.storage.putTypewriterNotesDoc(p.id as string, p.doc);
+      case 'storage:deleteTypewriterNotesDoc':
+        return await this.storage.deleteTypewriterNotesDoc(p.id as string);
       default:
         throw new Error(`Unknown storage message type: ${type}`);
     }

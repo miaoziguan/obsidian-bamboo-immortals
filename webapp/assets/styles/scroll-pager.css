@@ -68,7 +68,11 @@
   /* 单一容器：机身与卡片的所有根字号都用本画布宽度的 cqi 驱动 */
   container-type: inline-size;
   cursor: grab;        /* 画布桌面可整体拖动（机身固定） */
-  touch-action: none;
+  touch-action: none;  /* 必须：否则平台吞掉双指捏合，画布收不到 pointer 手势 */
+  /* 缩放前提：transform 为 translate(tx,ty) scale(s)，原点必须是左上角，
+     否则 scale 以中心为基准会让内容「缩放即跑位」，且 CanvasViewport 的坐标换算全部失效。
+     （此前只 translate 所以无所谓，加 scale 后必须显式声明。） */
+  transform-origin: 0 0;
   /* 注意：不要在此常驻 will-change:transform。
      画布 overflow:visible 且卡片绝对定位会溢出到数千像素外，常驻会把整块（含溢出）
      永久提升为巨型合成层，导入越多越大，最终超出 GPU 纹理上限 → 整页（含背后首页）

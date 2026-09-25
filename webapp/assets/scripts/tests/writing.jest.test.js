@@ -112,9 +112,13 @@ describe('WritingDoc 纯逻辑（自由模型）', () => {
       expect(out.notes[1]).toMatchObject({ font: 'classic', paper: 'plain', level: 'p', zoom: 2.4, rot: -180 });
     });
 
-    test('canvasOffset 净化：缺省 0,0、非法值兜底', () => {
-      expect(WritingDoc.normalize([], [], null).canvasOffset).toEqual({ x: 0, y: 0 });
-      expect(WritingDoc.normalize([], [], { x: 5, y: 'xx' }).canvasOffset).toEqual({ x: 5, y: 0 });
+    test('canvasOffset 净化：缺省 0,0、非法值兜底（含 scale）', () => {
+      expect(WritingDoc.normalize([], [], null).canvasOffset).toEqual({ x: 0, y: 0, scale: 1 });
+      expect(WritingDoc.normalize([], [], { x: 5, y: 'xx' }).canvasOffset).toEqual({ x: 5, y: 0, scale: 1 });
+      // 缩放比：合法值保留，缺省/非法/非正 → 1（更细的钳制由 CanvasViewport.clamp 负责）
+      expect(WritingDoc.normalize([], [], { x: 1, y: 2, scale: 1.5 }).canvasOffset).toEqual({ x: 1, y: 2, scale: 1.5 });
+      expect(WritingDoc.normalize([], [], { x: 1, y: 2, scale: 'x' }).canvasOffset).toEqual({ x: 1, y: 2, scale: 1 });
+      expect(WritingDoc.normalize([], [], { x: 1, y: 2, scale: -3 }).canvasOffset).toEqual({ x: 1, y: 2, scale: 1 });
     });
 
     test('丢弃自环、悬空、重复连线（同一对不分方向只留一条）', () => {

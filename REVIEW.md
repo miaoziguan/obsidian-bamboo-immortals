@@ -57,25 +57,41 @@
 | `fetch` / `XMLHttpRequest` → 须用内置 `requestUrl`（`src/host/AppAPI.ts:762,785`） | 静态检查已报 | ✅ 已改用 `requestUrl` | 已修复 |
 | CSS `!important`（`bamboo-garden.css:785,794`、`notes.css:1685`） | 静态检查已报 | ✅ 已移除（靠源顺序/选择器特异性胜出） | 已修复 |
 | `console.log` 等调试日志（4 处，来自本仓库自身 eslint） | ESLint 全量阶段（被跳过，机器人未报） | ✅ 已清理 | 已修复（预防性） |
-| **`dependency installation failed`（Error，阻塞项）** | 阻塞自动审核 | ⚠️ 环境性，见 §4 | 仓库侧已加固 |
+| **`dependency installation failed`（Error，阻塞项）** | 阻塞自动审核 | ✅ 已定位真因并修复（lockfile 的 `resolved` 指向 npmmirror，扫描器不可达）见 §4 | 已修复（3.24.15） |
 
-版本与 Tag：当前 `3.24.12`，Tag `3.24.12`（无 `v`），`manifest.json`/`package.json`/`versions.json` 一致 ✅。
+版本与 Tag：当前 `3.24.15`，Tag `3.24.15`（无 `v`），`manifest.json`/`package.json`/`versions.json` 一致 ✅。
 
 ---
 
-## 4. 「依赖安装失败」根因与仓库侧加固
+## 4. 「依赖安装失败」根因（已定位并修复：lockfile 的 `resolved` 指向 npmmirror）
 
-**根因（环境性，非仓库缺陷）**：机器人沙箱大概率无法访问 npm registry（无网络/无缓存），或用了旧 Node + `engine-strict`（`@typescript-eslint@7.18` 要求 node ≥18.18）。证据：
-- 本仓库 `release.yml` CI 每次用 **Node 20 跑 `npm ci` 成功** → 仓库可正常安装；
-- `package-lock.json` 已与 `package.json`(3.24.12) 同步、`lockfileVersion: 2`、无 git/link/私有依赖；
-- 仓库无自定义 `.npmrc`（本机 `~/.npmrc` 指向 npmmirror 只影响本地，不影响云端机器人）。
+**真因（repo 侧，非环境性）**：`package-lock.json` 里每个包的 `resolved` URL 指向 `registry.npmmirror.com`
+（中国镜像）。`npm ci` **严格按 lockfile 的 `resolved` 拉包**；而审核扫描器沙箱在 GitHub 基础设施、
+只能访问 `registry.npmjs.org`（其他插件能过即证），**到不了 npmmirror** → 每个包拉取失败 →
+报 `Source review dependency installation failed … checks skipped`。
 
-**已做的仓库侧加固（已推 `main`）**：
-- `package-lock.json` 根版本同步到 `3.24.12`（消除 lockfile 失配）；
-- `prepare` 脚本改为 `husky || true`（非 git 检出里安装不因 husky 失败）；
-- `.nvmrc` → `20`（若机器人读取，避开 EBADENGINE / engine-strict）。
+为什么本地一直过、扫描器一直挂：
+- 本机 `~/.npmrc` 指向 npmmirror，本地 `npm ci` 能拉到 → 一直 PASS（误以为仓库健康）；
+- 扫描器沙箱无 npmmirror 出口 → 全 FAIL。
 
-> 注意：机器人很可能当初审的是**更早的提交**（那时 lockfile 根版本停在 `3.17.3`）。重审 `3.24.12` 即拿到同步后的 lockfile 与全部修复。
+实证（修复前，3.24.14）：
+- 根 `package-lock.json`：**30 个 `resolved` 为 npmmirror，0 个 npmjs**；`dev/` 同理（1094 处 npmmirror）。
+- 本地 `npm ci --registry=https://registry.npmjs.org/` 在干净克隆能过（本机也能到 npmjs），但 lockfile 里
+  仍是 npmmirror URL —— 扫描器用的是 lockfile URL，不是 `--registry` 参数，故仍失败。
+- 砍到 11 个依赖（3.24.14）也没用：URL 还是 npmmirror，失败模式不变。这直接证伪了「装太多/超时」假说。
+
+**已做的仓库侧修复（随 3.24.15 发布）**：
+- 删除旧 lockfile，以 `--registry=https://registry.npmjs.org/` 重生根与 `dev/` 两份 lockfile →
+  `resolved` 全部改为 npmjs.org（根 30 / dev 1094，npmmirror 计数归零）；
+- 新增仓库级 `.npmrc`：`registry=https://registry.npmjs.org/`，**钉死 registry**，防止本机 npmmirror
+  配置在日后 `npm install` 时再次污染 lockfile（这是复发的唯一风险点）；
+- **注意**：`.npmrc` 只设 `registry`，**不要加 `engine-strict`**（`obsidianmd/eslint-plugin#182`
+  里 Grimoire 的坑：`engine-strict` + 版本错配会让扫描器 `EBADENGINE` 直接失败）；
+- 验证：修复后本地 `npm ci`（根+dev）均 exit 0，URL 全 npmjs。
+
+> 参考 `obsidianmd/eslint-plugin#182`（扫描器依赖未解析时的误报机制）：其中 Grimoire 的坑是
+> `.npmrc` 的 `engine-strict`，vault-audit-AI 的坑是 lockfile 失配——我们两者都不是，我们是
+> **lockfile 的 registry URL 指向了扫描器不可达的镜像**。
 
 ---
 
@@ -84,9 +100,9 @@
 - [ ] `manifest.json` 版本号 = `package.json` = 本次发版号（格式 `x.y.z`）。
 - [ ] 打 GitHub Release Tag（**无 `v` 前缀**），与版本号一致。
 - [ ] 确认 `fetch`/`!important` 零出现（见 §3）。
-- [ ] 在**社区插件目录送审后台**更新插件版本（指向本次发版号），触发 `obsidian-reviews` 机器人用修好的代码重跑审核；后台「Source review」结果刷新即为重审输出。
-- [ ] 若重跑仍报 `dependency installation failed`：属机器人基础设施瞬时/网络故障，在 `obsidianmd/obsidian-reviews` 对该 submission 触发 **re-run / retry**；可参考其 issues 是否为共性故障。仓库侧已无可改。
-- [ ] 本地验证：`npm ci`（Node 20）可过 → 仓库健康。
+- [ ] 在**社区插件目录送审后台**更新插件版本（指向 `3.24.15`），触发 `obsidian-reviews` 机器人用修好的代码重跑审核；后台「Source review」结果刷新即为重审输出。
+- [ ] **lockfile 防复发**：日后在本仓库跑 `npm install` 前，确保 registry 为 npmjs（`git status` 看 `package-lock.json`/`dev/package-lock.json` 是否出现 `registry.npmmirror.com`；仓库级 `.npmrc` 已钉死，正常不会）。若 CI/扫描器再报「依赖安装失败」，先 `grep -c registry.npmmirror.com package-lock.json dev/package-lock.json` 排查是否又被镜像污染。
+- [ ] 本地验证：`npm ci`（根+dev）可过且 `resolved` 全为 npmjs → 仓库健康。
 
 ---
 

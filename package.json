@@ -1,6 +1,6 @@
 {
   "name": "obsidian-bamboo-review",
-  "version": "3.24.18",
+  "version": "3.25.0",
   "description": "竹林修仙传 - Obsidian 每日复盘插件",
   "main": "main.js",
   "scripts": {
@@ -12,6 +12,7 @@
     "test:host": "vitest run",
     "lint": "eslint .",
     "lint:css": "node scripts/lint-css-tokens.mjs",
+    "check:load-matrix": "node scripts/check-load-matrix.mjs",
     "format": "prettier --write \"src/**/*.ts\" \"webapp/**/*.js\"",
     "format:check": "prettier --check \"src/**/*.ts\" \"webapp/**/*.js\"",
     "prepare": "husky || true"

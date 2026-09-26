@@ -1,4 +1,5 @@
 import { byId, $, modalMount, eventInTargets, getCssVarRoot, getGlobalComputedStyle, getHost } from '../utils/domRef.js';
+import { applyDerivedRgb } from '../utils/palette.js';
 /**
  * DisplayManager — 显示设置管理器
  *
@@ -100,15 +101,6 @@ export const DisplayManager = {
         { label: '默认', value: 0,   title: '标准明度' },
         { label: '明亮', value: 8,   title: '清新亮丽' },
     ],
-
-    /* HSL → RGB 转换辅助函数 */
-    _hslToRgb(h, s, l) {
-        s /= 100; l /= 100;
-        const k = n => (n + h / 30) % 12;
-        const a = s * Math.min(l, 1 - l);
-        const f = n => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
-        return [Math.round(f(0) * 255), Math.round(f(8) * 255), Math.round(f(4) * 255)].join(', ');
-    },
 
     /* ===== 初始化 ===== */
     async init() {
@@ -604,73 +596,11 @@ export const DisplayManager = {
      * 供 rgba(var(--xx-rgb), a) 半透明色使用。
      * 拖动滑块期间跳过（见 _applyHue 的 _dragging 分支），仅松手时补齐一次，
      * 以降低每帧需要重算样式的元素数量。
+     * 逻辑已抽到 utils/palette.js 的 applyDerivedRgb（画中卷等无 DisplayManager 的
+     * iframe 也复用，修复寻呼机不跟随主题色相/明度）。
      */
     _applyDerivedRgb(hue) {
-        const root = getCssVarRoot();
-        if (!root) return;
-
-        // 暗色模式下提高前景色明度，确保文字 / 按钮 / 卡片在深色背景上可见
-        // （匹配 :host(.dark) CSS 变量值；host 的 dark 类由 MutationObserver 异步同步，故两者都查）
-        const darkHost = getHost();
-        const isDark = (darkHost && darkHost.classList.contains('dark')) ||
-                       document.documentElement.classList.contains('dark');
-        const darkLift = isDark ? 10 : 0;  // 前景色明度提升（%）
-
-        // 竹青绿主色 hsl(hue, 27%, 48%) → 暗色 hsl(hue, 27%, 58%) #5A9A5A → #82C382
-        const primaryRgb = this._hslToRgb(hue, 27, 48 + darkLift);
-        root.style.setProperty('--primary-rgb', primaryRgb);
-
-        // 竹青深色 hsl(hue-7, 40%, 25%) → 暗色 hsl(hue-7, 40%, 28%) #2D5A27 → #2D5A35
-        const deepRgb = this._hslToRgb(hue - 7, 40, 25 + (isDark ? 3 : 0));
-        root.style.setProperty('--deep-rgb', deepRgb);
-        root.style.setProperty('--bamboo-deep-rgb', deepRgb);  // 票面文案 RGB 变量
-
-        // 竹青浅色 hsl(hue, 35%, 75%) → 暗色 hsl(hue, 35%, 80%) #A8D5A8 → #BCE2BC
-        const paleRgb = this._hslToRgb(hue, 35, 75 + (isDark ? 5 : 0));
-        root.style.setProperty('--pale-rgb', paleRgb);
-
-        // 票根背景 hsl(hue, 36%, 68%) → 暗色 hsl(hue, 36%, 78%) #94C694 → #B4E2B4
-        const ticketStubRgb = this._hslToRgb(hue, 36, 68 + darkLift);
-        root.style.setProperty('--ticket-stub-bg-rgb', ticketStubRgb);
-
-        // 主色变体 hsl(hue, 28%, 55%) → 暗色 hsl(hue, 28%, 65%) #6BAE6B → #8CC58C
-        const primaryAltRgb = this._hslToRgb(hue, 28, 55 + darkLift);
-        root.style.setProperty('--primary-alt-rgb', primaryAltRgb);
-
-        // 浅绿 hsl(hue, 27%, 83%) → 暗色 hsl(hue, 27%, 88%) #C8E0C8 → #D9EDD9
-        const greenPaleRgb = this._hslToRgb(hue, 27, 83 + (isDark ? 5 : 0));
-        root.style.setProperty('--green-pale-rgb', greenPaleRgb);
-
-        // 亮绿 hsl(hue, 47%, 70%) → 暗色 hsl(hue, 47%, 78%) #8FD88F → #B0E7B0
-        const greenBrightRgb = this._hslToRgb(hue, 47, 70 + (isDark ? 8 : 0));
-        root.style.setProperty('--green-bright-rgb', greenBrightRgb);
-
-        // 次绿 hsl-16, 44%, 75% → 暗色 hsl-16, 44%, 82% (hue 偏移较大，保留偏移)
-        const greenAltRgb = this._hslToRgb(hue - 16, 44, 75 + (isDark ? 7 : 0));
-        root.style.setProperty('--green-alt-rgb', greenAltRgb);
-
-        // 极亮绿 hsl(hue, 72%, 79%) → 暗色 hsl(hue, 72%, 85%) #C8FF96 → #D6FFB5
-        const greenVeryBrightRgb = this._hslToRgb(hue, 72, 79 + (isDark ? 6 : 0));
-        root.style.setProperty('--green-very-bright-rgb', greenVeryBrightRgb);
-
-        // 暗色模式表面色（卡片、面板背景等）
-        const surfaceDarkRgb = this._hslToRgb(hue, 18, 10);
-        root.style.setProperty('--surface-dark-rgb', surfaceDarkRgb);
-        const surfaceDarkMidRgb = this._hslToRgb(hue, 18, 13);
-        root.style.setProperty('--surface-dark-rgb-mid', surfaceDarkMidRgb);
-        const surfaceDarkEndRgb = this._hslToRgb(hue, 18, 16);
-        root.style.setProperty('--surface-dark-rgb-end', surfaceDarkEndRgb);
-        const surfaceDeepRgb = this._hslToRgb(hue, 14, 8);
-        root.style.setProperty('--surface-deep-rgb', surfaceDeepRgb);
-        const surfaceDeepAltRgb = this._hslToRgb(hue, 17, 10);
-        root.style.setProperty('--surface-deep-alt-rgb', surfaceDeepAltRgb);
-
-        // 暗色模式淡绿基底（表面色）hsl(hue, 18%, 10%)
-        const paleGreenRgbDark = this._hslToRgb(hue, 18, 10);
-        root.style.setProperty('--pale-green-rgb-dark', paleGreenRgbDark);
-        // 暗色模式淡绿变体 hsl(hue, 18%, 13%)
-        const paleGreenAltRgbDark = this._hslToRgb(hue, 18, 13);
-        root.style.setProperty('--pale-green-alt-rgb-dark', paleGreenAltRgbDark);
+        applyDerivedRgb(hue, null);
     },
 
     /**

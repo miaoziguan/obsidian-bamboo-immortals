@@ -36,6 +36,12 @@ export class ThemeBridge {
     ThemeBridge.registry.add(this);
   }
 
+  /** 最近一次由 webapp 同步来的应用内调色（色相/明度），供初始推送/重放时补齐，
+   *  使画中卷等独立 iframe 首屏即跟随主视图手动调色，而非停在默认竹青绿。 */
+  get currentPalette(): { hue: number; lightnessOffset: number; isDark: boolean } | null {
+    return this._lastPalette;
+  }
+
   detachIframe(): void {
     this.iframe = null;
     ThemeBridge.registry.delete(this);

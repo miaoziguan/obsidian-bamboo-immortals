@@ -1,5 +1,6 @@
 # 门禁：提交前必须通过 lint 与两套测试，避免破窗回归。
 # 测试已通过 CI 强制（release.yml），此处为本地最后一道防线。
 npm run lint
+npm run check:load-matrix
 npm run test:host
 npm run test

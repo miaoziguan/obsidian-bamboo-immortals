@@ -38,6 +38,9 @@ jobs:
       - name: Build webapp (内联 CSS + 内联 bundle 生成自包含 webapp/app.html)
         run: node scripts/bundle-webapp.mjs
 
+      - name: Check webapp load matrix (防漂移)
+        run: node scripts/check-load-matrix.mjs
+
       - name: Type check
         run: npx tsc --noEmit
 

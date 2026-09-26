@@ -1,0 +1,50 @@
+/* === 画中卷工作台（ScrollManager）===
+   源文件：原 webapp/assets/styles/base.css 的「画中卷工作台」段。
+   拆分原因：本块为 scroll 视图专属——仅 scrollManager.js 与
+   typewriterFeature.js 引用 .scroll-workbench / .scroll-close /
+   :host(.scroll-workbench-host)，且两者仅由 scroll-src.html 加载。
+   故从全局 base.css 抽离为 scroll 侧文件，仅供 scroll 视图挂载。
+   注意：PrivacyMode / UI 骨架豁免仍留在全局 base.css（见第 3/4 项拆分方案）。
+   === */
+/* Obsidian 视图挂载在 shadow host 内，host 本身没有明确高度，子元素 height:100% 会退化为 auto。
+   给 host 加 .scroll-workbench-host 类后，把它拉成 flex 容器并让 workbench flex:1，
+   这样背景才能精确铺满侧边栏/面板底部。 */
+:host(.scroll-workbench-host) {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+:host(.scroll-workbench-host) .scroll-workbench {
+    height: auto;
+    flex: 1;
+    min-height: 0;
+}
+.scroll-workbench {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    /* 父级（:host）只设了 min-height、并未指定 height，而百分比高度依赖父元素的
+       「指定高度」——父为 auto 时子元素的 height:100% 会退化为 auto，根容器实际
+       就只有内容那么高，主题渐变背景铺不满整个视图（底部留白，看着像没铺满）。
+       这里用 min-height 兜底到视口高度：父高度确定时仍由 height:100% 精确铺满；
+       父高度为 auto 时至少铺满一屏。min-height 只设下限，内容更高时仍由内容撑开，
+       不会裁掉内容。 */
+    min-height: var(--viewport-height, 100vh);
+    display: flex;
+    flex-direction: column;
+    /* 与主页（日报根容器）同款主题渐变，亮暗随 --bg-gradient-* 自动切换 */
+    background: linear-gradient(165deg, var(--bg-gradient-start) 0%, var(--bg-gradient-mid1) 20%, var(--bg-gradient-mid2) 40%, var(--bg-gradient-mid1) 60%, var(--bg-gradient-end) 80%, var(--bg-gradient-start) 100%);
+    color: var(--text-primary, #2f3a2c);
+    overflow: hidden;
+}
+.scroll-workbench[hidden] { display: none; }
+.scroll-close {
+    border: none;
+    background: transparent;
+    font-size: var(--type-2xl);
+    line-height: 1;
+    color: #7c8473;
+    cursor: pointer;
+    padding: 0 6px;
+}
+.scroll-close:hover { color: #3f5a3a; }

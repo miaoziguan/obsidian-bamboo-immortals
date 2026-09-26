@@ -222,9 +222,10 @@ export class AppAPI {
   bindIframe(iframe: HTMLIFrameElement): void {
     this.iframe = iframe;
     this.themeBridge.attachIframe(iframe);
-    // iframe 一旦绑定即主动推一次当前主题，确保画中卷/归档等独立视图首屏即跟随亮暗，
-    // 不依赖 app:ready 往返的时序（避免 contentWindow 尚未就绪导致 pushTheme 漏推）。
-    this.themeBridge.pushTheme(this.settings.followObsidianTheme);
+    // iframe 一旦绑定即主动推一次当前主题，确保画中卷/归档等独立视图首屏即跟随。
+    // 带上 currentPalette（主视图已同步的手动调色），使独立视图首屏即跟随色相/明度，
+    // 而非停在默认竹青绿（此前仅推 isDark，用户在显示设置调的色相/明度首屏不生效）。
+    this.themeBridge.pushTheme(this.settings.followObsidianTheme, undefined, this.themeBridge.currentPalette ?? undefined);
   }
 
   /** 解绑并停止监听 */

@@ -347,10 +347,11 @@ body:not(.dark) .tw-screen {
     inset 0 -24px 42px rgba(var(--primary-rgb), 0.12),
     0 0 0 1px rgba(var(--bamboo-deep-rgb), 0.20);
   }
-/* 亮色模式：系统消息浮层改用浅墨绿半透明底，避免切换便签样式瞬间闪黑屏 */
+/* 亮色模式：系统消息浮层改用主题深色半透明底（随 --bamboo-deep-rgb 走色相），
+   既避免切换便签样式瞬间闪黑屏，又让浮层跟随主题而非固定绿 */
 :host(:not(.dark)) .tw-screen-msg,
 body:not(.dark) .tw-screen-msg {
-  background: rgba(70, 120, 85, 0.72);
+  background: rgba(var(--bamboo-deep-rgb), 0.72);
 }
 
 /* 暗色模式：深色屏幕凹进机身（挖孔质感，光源在上方，加深） */
@@ -412,7 +413,10 @@ body:not(.dark) .tw-case-label {
 
 :host(:not(.dark)) .tw-case-right,
 body:not(.dark) .tw-case-right {
-  color: rgba(45, 130, 70, 0.9);
+  /* 此前写死 rgba(45,130,70) 绿 → 主题换色相时这枚「BAMBOO IMMORTALS」铭牌
+     卡在绿色不跟随。改用随色相的 --bamboo-deep-rgb（与同行 .tw-brand 同源），
+     使机身标签整体跟随主题色相/明度。 */
+  color: rgba(var(--bamboo-deep-rgb), 0.9);
 }
 
 .tw-screen-glare {
@@ -1262,3 +1266,6 @@ body.dark .tw-theme-switch#twZenSwitch[aria-checked="true"]:hover {
 .tw-preview-btn-go:hover { filter: brightness(1.08); }
 .tw-preview-btn:focus-visible { outline: 0.12em solid rgb(var(--primary-rgb)); outline-offset: 0.14em; }
 
+
+/* 移植自 base.css：画中卷暗色模式 canvas 提示文字配色（typewriter 域，原 base.css:2531） */
+:host(.dark) .tw-canvas-hint { color: var(--ink-light); }

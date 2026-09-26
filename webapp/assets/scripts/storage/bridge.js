@@ -12,6 +12,13 @@
 import { bootstrapLicenseGate } from '../utils/licenseGate.js';
 // 精简视图（画中卷）内没有 DisplayManager，收到主题调色时用它直接写 CSS 变量
 import { setGlobalCssVar } from '../utils/domRef.js';
+// 画中卷等无 DisplayManager 的 iframe 也复用此工具，重算由色相派生的 20 个 RGB 通道，
+// 使寻呼机（使用 --*-rgb 静态通道）跟随主题色相与明度。
+import { applyDerivedRgb } from '../utils/palette.js';
+
+// 画中卷 iframe 缓存最近一次收到的色相/明度，供后续单独的色相或明度变更重算派生 RGB 通道使用。
+let _pagerHue = null;
+let _pagerLightness = null;
 
 export class BridgeStorage {
   constructor() {
@@ -880,28 +887,30 @@ window.addEventListener('message', (event) => {
     }
   }
 
-  // 意境配色联动：主题推来色相时，驱动插件整盘配色
-  // fromTheme=true → 不回写 Obsidian，杜绝 iframe→Obsidian→iframe 死循环
-  if (data.payload && typeof data.payload.hue === 'number') {
+  // 意境/调色联动：主题推来色相与明度时，驱动插件整盘配色。
+  // fromTheme=true → 不回写 Obsidian，杜绝 iframe→Obsidian→iframe 死循环。
+  // 画中卷等无 DisplayManager 的精简 iframe：直接写变量并重算派生 RGB 通道，
+  // 使寻呼机（使用 --*-rgb 静态通道）同时跟随色相与明度——此前画中卷的 -rgb 通道
+  // 从未被重算，停在默认竹青绿；仅靠 --accent-hue 派生的背景/卡片会变、寻呼机不变。
+  const tHue = data.payload && typeof data.payload.hue === 'number' ? data.payload.hue : null;
+  const tLight = data.payload && typeof data.payload.lightnessOffset === 'number' ? data.payload.lightnessOffset : null;
+  if (tHue !== null || tLight !== null) {
     if (typeof window.DisplayManager !== 'undefined' && window.DisplayManager._applyHue) {
       // 主视图：经 DisplayManager 应用，顺带刷新由色相派生的一组 RGB 变量与滑块 UI
-      window.DisplayManager._applyHue(data.payload.hue, true);
+      if (tHue !== null) window.DisplayManager._applyHue(tHue, true);
+      if (tLight !== null) window.DisplayManager._applyLightness(tLight, true);
     } else if (typeof setGlobalCssVar === 'function') {
-      // 画中卷等精简视图：bundle 内没有 DisplayManager，直接写变量即可。
-      // variables.css 中 --bg-gradient-*、卡片、文字等全部由 --accent-hue 派生，
-      // 因此写这一个变量就能让整盘配色跟随主视图。
-      setGlobalCssVar('--accent-hue', String(data.payload.hue));
-    }
-  }
-
-  // 明度联动：与色相同源下发（悬浮菜单明度滑块）。
-  // 此前 lightnessOffset 从未跨 iframe 同步过，画中卷只能停在默认明度。
-  if (data.payload && typeof data.payload.lightnessOffset === 'number') {
-    if (typeof window.DisplayManager !== 'undefined' && window.DisplayManager._applyLightness) {
-      // fromTheme=true → 不回写，避免「广播→再回写→再广播」的回环（同 _applyHue）
-      window.DisplayManager._applyLightness(data.payload.lightnessOffset, true);
-    } else if (typeof setGlobalCssVar === 'function') {
-      setGlobalCssVar('--accent-lightness-offset', data.payload.lightnessOffset + '%');
+      if (tHue !== null) {
+        setGlobalCssVar('--accent-hue', String(tHue));
+        _pagerHue = tHue;
+      }
+      if (tLight !== null) {
+        setGlobalCssVar('--accent-lightness-offset', tLight + '%');
+        _pagerLightness = tLight;
+      }
+      // 重算 20 个 -rgb 通道（直接传入明度偏移数值，避免 getComputedStyle 读取代理对象抛错），
+      // 让寻呼机跟随主题色相与明度
+      if (_pagerHue !== null) applyDerivedRgb(_pagerHue, _pagerLightness);
     }
   }
 

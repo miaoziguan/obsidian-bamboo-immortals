@@ -213,15 +213,18 @@
     box-shadow: var(--bamboo-glow-xs);
 }
 
-/* ===== 色相滑块 ===== */
+/* ===== 色相滑块 =====
+   纳入统一滑块规范（同 .display-slider）：44px 热区 + content-box 裁出的 4px 轨道，
+   仅把轨道内容换成本组件的七彩渐变以保留其身份。原先为 6px 轨道 / 22px thumb / 3px 白环，
+   与其它滑块不一致，已对齐为 4px / 18px / 2px。 */
 .display-hue-slider {
     flex: 1;
     -webkit-appearance: none;
     appearance: none;
     height: var(--touch-target);
-    padding: calc((var(--touch-target) - 6px) / 2) 0;
+    padding: calc((var(--touch-target) - 4px) / 2) 0;
     box-sizing: border-box;
-    border-radius: var(--radius-3);
+    border-radius: var(--radius-3xs);
     background: linear-gradient(to right,
         hsl(0, 70%, 50%),
         hsl(60, 70%, 50%),
@@ -248,37 +251,39 @@
 .display-hue-slider::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
-    width: 22px;
-    height: 22px;
+    width: 18px;
+    height: 18px;
     border-radius: 50%;
     background: var(--bamboo-primary);
-    border: 3px solid var(--white);
-    box-shadow: 0 1px 6px rgba(var(--black-rgb), 0.3);
+    border: 2px solid var(--white);
+    box-shadow: 0 1px 4px rgba(var(--black-rgb), 0.2);
     cursor: pointer;
     transition: transform var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 .display-hue-slider::-webkit-slider-thumb:hover {
     transform: scale(1.15);
+    box-shadow: var(--bamboo-glow-sm);
 }
 
 .display-hue-slider::-webkit-slider-thumb:active {
     transform: scale(1.05);
+    background: var(--bamboo-dark);
 }
 
 .display-hue-slider::-moz-range-thumb {
-    width: 22px;
-    height: 22px;
+    width: 18px;
+    height: 18px;
     border-radius: 50%;
     background: var(--bamboo-primary);
-    border: 3px solid var(--white);
-    box-shadow: 0 1px 6px rgba(var(--black-rgb), 0.3);
+    border: 2px solid var(--white);
+    box-shadow: 0 1px 4px rgba(var(--black-rgb), 0.2);
     cursor: pointer;
 }
 
 .display-hue-slider::-moz-range-track {
-    height: 6px;
-    border-radius: var(--radius-3);
+    height: 4px;
+    border-radius: var(--radius-3xs);
     background: linear-gradient(to right,
         hsl(0, 70%, 50%),
         hsl(60, 70%, 50%),
@@ -358,20 +363,27 @@
     border-color: var(--bamboo-border);
 }
 
+/* 滑块：五个滑块（内容宽度 / 字号 / 间距 / 色相 / 明度）统一沿用亮色的「白色实心环」。
+   原先此处把白环换成半透明主色环（0.3 与 0.35 两套值）——半透明在深底上会让 thumb
+   边界发虚；而暗色模式恰恰需要更高对比度（variables.css 暗色文字即为「亮度提升至
+   WCAG AA 4.5:1+」）。故删除 border-color 覆盖，明暗统一为白环。
+   仅阴影按背景重取：亮色的黑影在深底上完全不可见，会丢失「可拖拽」的浮起感；
+   改用弱一档的竹林绿辉光 --bamboo-glow-xs（hover 仍是 --bamboo-glow-sm），
+   使常态比 hover 弱一档，保住 hover 的层次反馈。 */
 :host(.dark) .display-slider::-webkit-slider-thumb {
-    border-color: rgba(var(--primary-rgb), 0.3);
+    box-shadow: var(--bamboo-glow-xs);
 }
 
 :host(.dark) .display-slider::-moz-range-thumb {
-    border-color: rgba(var(--primary-rgb), 0.3);
+    box-shadow: var(--bamboo-glow-xs);
 }
 
 :host(.dark) .display-hue-slider::-webkit-slider-thumb {
-    border-color: rgba(var(--primary-rgb), 0.35);
+    box-shadow: var(--bamboo-glow-xs);
 }
 
 :host(.dark) .display-hue-slider::-moz-range-thumb {
-    border-color: rgba(var(--primary-rgb), 0.35);
+    box-shadow: var(--bamboo-glow-xs);
 }
 
 /* ===== 响应式 ===== */

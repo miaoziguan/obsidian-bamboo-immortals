@@ -435,13 +435,23 @@
     padding: 4px 0;
 }
 
+/* 统一滑块规范（与 .display-slider 同款）：44px 热区 + content-box 裁出的 4px 细轨道。
+   原写法 `height: 4px` + 元素级背景会被 base.css 全局 min-height 顶成 44px 粗柱；
+   thumb 原用 `width/height: 44px + border: 15px transparent + background-clip: padding-box`
+   的「大透明框障眼法」，元素一旦被顶高同样露出粗轨道，且与其它滑块不一致，一并替换为
+   规范的 18px 圆点 + 2px 白环。 */
 .wn-volume-slider {
-    flex: 1;
-    height: 4px;
+    flex: 1 1 auto;
     -webkit-appearance: none;
     appearance: none;
-    background: var(--border-light);
+    min-width: 0;
+    height: var(--touch-target);
+    margin: 0;
+    padding: calc((var(--touch-target) - 4px) / 2) 0;
+    box-sizing: border-box;
     border-radius: var(--radius-3xs);
+    background: var(--border-light);
+    background-clip: content-box;
     cursor: pointer;
 }
 
@@ -457,30 +467,48 @@
 .wn-volume-slider::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
-    width: var(--touch-target);
-    height: var(--touch-target);
+    width: 18px;
+    height: 18px;
     border-radius: 50%;
     background: var(--bamboo-primary);
+    border: 2px solid var(--white);
+    box-shadow: 0 1px 4px rgba(var(--black-rgb), 0.2);
     cursor: pointer;
-    transition: transform 0.15s;
-    border: 15px solid transparent;
-    background-clip: padding-box;
-    box-sizing: border-box;
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 .wn-volume-slider::-webkit-slider-thumb:hover {
-    transform: scale(1.2);
+    transform: scale(1.15);
+    box-shadow: var(--bamboo-glow-sm);
+}
+
+.wn-volume-slider::-webkit-slider-thumb:active {
+    transform: scale(1.05);
+    background: var(--bamboo-dark);
 }
 
 .wn-volume-slider::-moz-range-thumb {
-    width: var(--touch-target);
-    height: var(--touch-target);
+    width: 18px;
+    height: 18px;
     border-radius: 50%;
     background: var(--bamboo-primary);
+    border: 2px solid var(--white);
+    box-shadow: 0 1px 4px rgba(var(--black-rgb), 0.2);
     cursor: pointer;
-    border: 15px solid transparent;
-    background-clip: padding-box;
-    box-sizing: border-box;
+}
+
+.wn-volume-slider::-moz-range-track {
+    height: 4px;
+    border-radius: var(--radius-3xs);
+    background: var(--border-light);
+}
+
+:host(.dark) .wn-volume-slider::-webkit-slider-thumb {
+    box-shadow: var(--bamboo-glow-xs);
+}
+
+:host(.dark) .wn-volume-slider::-moz-range-thumb {
+    box-shadow: var(--bamboo-glow-xs);
 }
 
 .wn-volume-label {
@@ -905,12 +933,12 @@
     position: absolute;
     top: -6px;
     right: -4px;
-    font-size: 9px;
+    font-size: var(--type-mini);
     line-height: 1;
     padding: 2px 4px;
-    border-radius: 6px;
+    border-radius: var(--radius-2xs);
     background: var(--bamboo-primary);
-    color: #fff;
+    color: var(--white);
     opacity: 0.85;
 }
 
@@ -918,10 +946,10 @@
 .theme-exclusive-badge {
     display: inline-block;
     margin-top: 3px;
-    font-size: 8px;
+    font-size: var(--type-mini);
     line-height: 1;
     padding: 2px 5px;
-    border-radius: 6px;
+    border-radius: var(--radius-2xs);
     background: linear-gradient(135deg, #c08a2d, #e9b949);
     color: #2a1c00;
     font-weight: 700;
@@ -935,27 +963,27 @@
     display: block;
     width: 100%;
     padding: 8px 16px;
-    border-radius: 10px;
+    border-radius: var(--radius-sm);
     border: 1px solid var(--bamboo-primary, #7d9b6a);
     background: rgba(125, 155, 106, 0.12);
     color: var(--text-normal);
-    font-size: 13px;
+    font-size: var(--type-sm);
     cursor: pointer;
     transition: background .15s ease;
 }
 .theme-market-open-btn:hover { background: rgba(125, 155, 106, 0.22); }
 
 /* 主题市场面板 */
-.market-loading, .market-empty { padding: 28px 16px; text-align: center; color: var(--text-muted); font-size: 13px; }
+.market-loading, .market-empty { padding: 28px 16px; text-align: center; color: var(--text-muted); font-size: var(--type-sm); }
 .market-list { display: flex; flex-direction: column; gap: 8px; padding: 4px 2px; }
 .market-card {
     display: flex;
     align-items: center;
     gap: 12px;
     border: 1px solid var(--bamboo-border, rgba(255, 255, 255, 0.12));
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     padding: 10px 12px;
-    background: rgba(255, 255, 255, 0.03);
+    background: rgba(var(--white-rgb), 0.03);
 }
 .market-card.installed { border-color: rgba(201, 138, 45, 0.55); }
 .market-card-main { flex: 1; min-width: 0; }
@@ -964,27 +992,27 @@
 /* 「可更新」徽章：线上 version 与已安装版本不一致时显示 */
 .market-update-badge {
     display: inline-block;
-    font-size: 8px;
+    font-size: var(--type-mini);
     line-height: 1;
     padding: 2px 5px;
-    border-radius: 6px;
+    border-radius: var(--radius-2xs);
     background: linear-gradient(135deg, #3f8f7a, #56b39a);
     color: #06231c;
     font-weight: 700;
     letter-spacing: 0.5px;
 }
-.market-card-name { font-weight: 600; font-size: 14px; }
-.market-card-author { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.market-card-name { font-weight: 600; font-size: var(--type-md); }
+.market-card-author { font-size: var(--type-caption); color: var(--text-muted); margin-top: 2px; }
 .market-card-actions { flex-shrink: 0; }
 .market-btn {
     padding: 6px 14px;
-    border-radius: 8px;
-    font-size: 12px;
+    border-radius: var(--radius-xs);
+    font-size: var(--type-sm);
     cursor: pointer;
     border: 1px solid transparent;
 }
 .market-btn:disabled { opacity: 0.6; cursor: default; }
-.market-btn.install { background: var(--bamboo-primary, #7d9b6a); color: #fff; }
+.market-btn.install { background: var(--bamboo-primary, #7d9b6a); color: var(--white); }
 .market-btn.uninstall { background: transparent; border-color: var(--bamboo-border, rgba(255, 255, 255, 0.22)); color: var(--text-muted); }
 
 .theme-panel-card.theme-loading {
@@ -1060,15 +1088,24 @@
     font-variant-numeric: tabular-nums;
 }
 
+/* 统一滑块规范（与 .display-slider 同款）：--touch-target(44px) 触控热区 + 经 padding 与
+   background-clip: content-box 裁出的 4px 细轨道，热区与视觉解耦。
+   原先写法是 `height: 4px` + 元素级背景，会被 base.css 全局
+   `:where(input){ min-height: var(--touch-target) }` 顶高，整块背景胀成 44px 绿色粗柱
+   —— 这正是「主题动效里色相/明度是一条粗绿块」的根因。 */
 .theme-tune-slider {
-    flex: 1;
+    flex: 1 1 auto;
     -webkit-appearance: none;
     appearance: none;
-    height: 4px;
+    min-width: 0;
+    height: var(--touch-target);
+    margin: 0;
+    padding: calc((var(--touch-target) - 4px) / 2) 0;
+    box-sizing: border-box;
     border-radius: var(--radius-3xs);
     background: var(--border-light);
+    background-clip: content-box;
     cursor: pointer;
-    min-width: 0;
 }
 
 .theme-tune-slider:focus {
@@ -1083,18 +1120,80 @@
 .theme-tune-slider::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
-    width: 14px;
-    height: 14px;
+    width: 18px;
+    height: 18px;
     border-radius: 50%;
-    background: var(--bamboo-primary, hsl(var(--accent-hue), 35%, 45%));
-    cursor: pointer;
+    background: var(--bamboo-primary);
     border: 2px solid var(--white);
-    box-shadow: 0 1px 4px rgba(var(--black-rgb), 0.15);
-    transition: transform var(--transition-fast);
+    box-shadow: 0 1px 4px rgba(var(--black-rgb), 0.2);
+    cursor: pointer;
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 .theme-tune-slider::-webkit-slider-thumb:hover {
     transform: scale(1.15);
+    box-shadow: var(--bamboo-glow-sm);
+}
+
+.theme-tune-slider::-webkit-slider-thumb:active {
+    transform: scale(1.05);
+    background: var(--bamboo-dark);
+}
+
+.theme-tune-slider::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--bamboo-primary);
+    border: 2px solid var(--white);
+    box-shadow: 0 1px 4px rgba(var(--black-rgb), 0.2);
+    cursor: pointer;
+}
+
+.theme-tune-slider::-moz-range-track {
+    height: 4px;
+    border-radius: var(--radius-3xs);
+    background: var(--border-light);
+}
+
+:host(.dark) .theme-tune-slider::-webkit-slider-thumb {
+    box-shadow: var(--bamboo-glow-xs);
+}
+
+:host(.dark) .theme-tune-slider::-moz-range-thumb {
+    box-shadow: var(--bamboo-glow-xs);
+}
+
+/* 色相滑块（#tuneHue）保留「七彩光谱」这一功能身份 —— 轨道换成与显示设置
+   .display-hue-slider 同款彩虹渐变；明度（#tuneLight）是中性量，仍用统一的
+   --border-light 素色轨道。用 id 提升特异性覆盖上面的共享素色背景，不波及明度。
+   注意：`background` 简写会把 background-clip 重置为 border-box，必须重新声明
+   content-box，否则渐变会填满整个 44px 热区（又退回粗色柱）。 */
+.theme-tune-slider#tuneHue {
+    background: linear-gradient(to right,
+        hsl(0, 70%, 50%),
+        hsl(60, 70%, 50%),
+        hsl(120, 70%, 50%),
+        hsl(180, 70%, 50%),
+        hsl(240, 70%, 50%),
+        hsl(300, 70%, 50%),
+        hsl(360, 70%, 50%)
+    );
+    background-clip: content-box;
+}
+
+.theme-tune-slider#tuneHue::-moz-range-track {
+    height: 4px;
+    border-radius: var(--radius-3xs);
+    background: linear-gradient(to right,
+        hsl(0, 70%, 50%),
+        hsl(60, 70%, 50%),
+        hsl(120, 70%, 50%),
+        hsl(180, 70%, 50%),
+        hsl(240, 70%, 50%),
+        hsl(300, 70%, 50%),
+        hsl(360, 70%, 50%)
+    );
 }
 
 .theme-tune-reset {

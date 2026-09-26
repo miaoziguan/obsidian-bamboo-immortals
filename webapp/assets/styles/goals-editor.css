@@ -871,11 +871,16 @@
     margin-bottom: var(--space-2);
 }
 
+/* 统一滑块规范（与 .display-slider 同款 thumb）：18px 圆点 + 2px 白环。
+   本滑块自带独立填充轨道（.goal-progress-track，4px），故本体背景保持透明，
+   仅统一热区高度与 thumb，避免「细轨道 + 大圆点」与其它滑块不一致。
+   原 thumb 为 20px / 3px 裸 white 环 / --shadow-card，已对齐为 18px / 2px var(--white)。 */
 .goal-progress-slider {
     width: 100%;
-    height: 4px;
+    height: var(--touch-target);
     -webkit-appearance: none;
     appearance: none;
+    margin: 0;
     background: transparent;
     cursor: pointer;
     position: relative;
@@ -885,18 +890,45 @@
 .goal-progress-slider::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
     border-radius: 50%;
     background: var(--bamboo-primary);
-    border: 3px solid white;
-    box-shadow: var(--shadow-card);
+    border: 2px solid var(--white);
+    box-shadow: 0 1px 4px rgba(var(--black-rgb), 0.2);
     cursor: pointer;
-    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 .goal-progress-slider::-webkit-slider-thumb:hover {
-    transform: scale(1.2);
+    transform: scale(1.15);
+    box-shadow: var(--bamboo-glow-sm);
+}
+
+.goal-progress-slider::-webkit-slider-thumb:active {
+    transform: scale(1.05);
+    background: var(--bamboo-dark);
+}
+
+.goal-progress-slider::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--bamboo-primary);
+    border: 2px solid var(--white);
+    box-shadow: 0 1px 4px rgba(var(--black-rgb), 0.2);
+    cursor: pointer;
+}
+
+.goal-progress-slider::-moz-range-track {
+    height: 4px;
+    border-radius: var(--radius-3xs);
+    background: transparent;
+}
+
+:host(.dark) .goal-progress-slider::-webkit-slider-thumb,
+:host(.dark) .goal-progress-slider::-moz-range-thumb {
+    box-shadow: var(--bamboo-glow-xs);
 }
 
 .goal-progress-track {

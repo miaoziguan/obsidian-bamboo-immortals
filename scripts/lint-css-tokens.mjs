@@ -113,6 +113,42 @@ const R10_ALLOWLIST = new Set([
   '--theme-inner-radius',
   '--glow-width', '--glow-opacity', '--glow-duration',
   '--kpi-value-color', '--kpi-accent-bg',
+
+  // === 组件私有命名空间（2026-09-26 治理后集体放行）===
+  // 放行依据：这批变量并非散落的裸命名，而是各功能组件自成一体的局部命名空间——
+  //   · 作用域收敛：每个前缀仅跨 1–3 个文件，无全局污染；
+  //   · 语义清晰且有组织：fb- 火折子/香道、tw- 打字机、ash- 香灰、smoke- 青烟、
+  //     lv-、cs-，以及 wisp-/burn-/goose- 等香道特效；
+  //   · 实现方式正确：多走 hsl(calc(var(--accent-hue) …)) 做主题自适应，
+  //     并在 :host(.dark) 下成对覆盖 —— 比硬编码更贴合设计系统。
+  // 若强行改成 --bm-* 双前缀，会得到 --bm-fb-bamboo-1 这类丢失层次的长名，
+  // 属「有规范却套错规范」，故按 grandfather 放行。
+  // 另注：--bamboo / --ink / --jade（全仓零 var() 引用）以及 .scroll-screen 内对
+  // --bamboo-deep / --ink-light 的同名遮蔽，已在本轮治理中直接删除，故不在此列。
+  '--ash-1', '--ash-2', '--ash-3', '--ash-4', '--ash-tex-1', '--ash-tex-2',
+  '--burn',
+  '--cs-1', '--cs-2', '--cs-3', '--cs-4', '--cs-accent', '--cs-accent-2',
+  '--cs-hole', '--cs-line', '--cs-pool-a', '--cs-pool-b', '--cs-rim',
+  '--fb-bamboo-1', '--fb-bamboo-2', '--fb-bamboo-3', '--fb-bamboo-stroke',
+  '--fb-bamboo-top', '--fb-cap-1', '--fb-cap-2', '--fb-cap-3', '--fb-cap-edge',
+  '--fb-cap-knob', '--fb-cap-knob-stroke', '--fb-flame-inner', '--fb-flame-outer',
+  '--fb-spark', '--goose-fill',
+  // notes / 纸色组件的局部多主题（亮色 / 暗色 / 宣纸三套，成对覆盖）
+  '--rice-paper', '--ink-dark', '--ink-light', '--ink-medium', '--ink-pale',
+  '--lv-h1', '--lv-h2', '--lv-h3', '--lv-h4', '--lv-h5', '--lv-h6',
+  '--lv-ol', '--lv-p', '--lv-quote',
+  '--lv-src-1', '--lv-src-2', '--lv-src-3', '--lv-src-4', '--lv-src-5', '--lv-src-6',
+  '--lv-task', '--lv-ul',
+  '--smoke-a', '--smoke-b', '--smoke-c',
+  '--tw-card-fs', '--tw-card-rot', '--tw-card-scale', '--tw-card-zoom',
+  '--tw-font-classic', '--tw-font-global', '--tw-font-kai', '--tw-font-modern',
+  '--tw-font-mono', '--tw-font-sans', '--tw-font-screen', '--tw-font-serif',
+  '--tw-fs-base', '--tw-fs-floor', '--tw-fs-lg', '--tw-fs-sm', '--tw-fs-xl', '--tw-fs-xs',
+  '--tw-grid', '--tw-line', '--tw-link-stroke', '--tw-link-stroke-hi', '--tw-rule-rgb',
+  '--tw-sp-1', '--tw-sp-2', '--tw-sp-3', '--tw-sp-4', '--tw-sp-6', '--tw-sp-8',
+  '--tw-text-zoom', '--tw-tools-icon', '--tw-tools-size', '--tw-type-fs',
+  '--tw-write-ink', '--tw-write-line',
+  '--wisp-o',
 ]);
 
 for (const file of files) {

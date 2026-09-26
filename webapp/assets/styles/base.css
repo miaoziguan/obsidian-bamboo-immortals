@@ -165,7 +165,7 @@ body.privacy-on :is(.confirm-message, .tmpl-empty-hint, .tw-mm-empty-title, .tw-
 .scroll-close {
     border: none;
     background: transparent;
-    font-size: 26px;
+    font-size: var(--type-2xl);
     line-height: 1;
     color: #7c8473;
     cursor: pointer;
@@ -189,7 +189,7 @@ body.privacy-on :is(.confirm-message, .tmpl-empty-hint, .tw-mm-empty-title, .tw-
     width: min(300px, 86vw);
     background: #fbfdf8;
     border: 1px solid rgba(96, 132, 96, 0.30);
-    border-radius: 16px;
+    border-radius: var(--radius-xl);
     padding: 14px 14px 16px;
     box-shadow: 0 18px 50px rgba(31, 46, 28, 0.30);
     color: var(--text-primary, #2f3a2c);
@@ -200,18 +200,18 @@ body.privacy-on :is(.confirm-message, .tmpl-empty-hint, .tw-mm-empty-title, .tw-
     justify-content: space-between;
     margin-bottom: 2px;
 }
-.scroll-pick-title { font-size: 16px; font-weight: 600; }
+.scroll-pick-title { font-size: var(--type-lg); font-weight: 600; }
 .scroll-pick-close {
     border: none;
     background: transparent;
-    font-size: 20px;
+    font-size: var(--type-xl);
     line-height: 1;
     color: #7c8473;
     cursor: pointer;
     padding: 0 4px;
 }
 .scroll-pick-close:hover { color: #3f5a3a; }
-.scroll-pick-sub { margin: 0 0 10px; font-size: 12px; opacity: 0.7; }
+.scroll-pick-sub { margin: 0 0 10px; font-size: var(--type-sm); opacity: 0.7; }
 .scroll-pick-list { display: flex; flex-direction: column; gap: 10px; }
 .scroll-pick-card {
     display: flex;
@@ -221,7 +221,7 @@ body.privacy-on :is(.confirm-message, .tmpl-empty-hint, .tw-mm-empty-title, .tw-
     width: 100%;
     text-align: left;
     border: 1px solid rgba(96, 132, 96, 0.28);
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     background: rgba(107, 143, 113, 0.10);
     color: var(--text-primary, #2f3a2c);
     cursor: pointer;
@@ -236,18 +236,18 @@ body.privacy-on :is(.confirm-message, .tmpl-empty-hint, .tw-mm-empty-title, .tw-
     box-shadow: 0 4px 12px rgba(79, 115, 85, 0.16);
 }
 .scroll-pick-card:focus-visible { outline: 2px solid rgba(79, 115, 85, 0.6); outline-offset: 2px; }
-.scroll-pick-icon { font-size: 22px; line-height: 1; }
+.scroll-pick-icon { font-size: var(--type-xl); line-height: 1; }
 .scroll-pick-icon-svg { width: 24px; height: 24px; opacity: 0.9; }
 .scroll-pick-text { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
-.scroll-pick-name { font-size: 14px; font-weight: 600; }
-.scroll-pick-desc { font-size: 12px; opacity: 0.7; }
+.scroll-pick-name { font-size: var(--type-md); font-weight: 600; }
+.scroll-pick-desc { font-size: var(--type-sm); opacity: 0.7; }
 .scroll-pick-lock {
     margin-left: auto;
-    font-size: 11px;
+    font-size: var(--type-caption);
     opacity: 0.85;
     padding: 2px 7px;
     border: 1px solid currentColor;
-    border-radius: 999px;
+    border-radius: var(--radius-pill);
     white-space: nowrap;
 }
 .scroll-pick-card.is-placeholder {
@@ -344,16 +344,17 @@ body.privacy-on :is(.confirm-message, .tmpl-empty-hint, .tw-mm-empty-title, .tw-
 }
 
 
-/* 番茄钟配色变量（青瓷竹节体系，供 SVG 引用） */
+/* 番茄钟配色变量（青瓷竹节体系，供 SVG 引用）
+   清理（R10 治理）：此处原重复定义了 --bamboo / --bamboo-deep / --ink / --ink-light / --jade。
+     · --bamboo / --ink / --jade：全仓 var() 引用数为 0，系遗留死变量；
+     · --bamboo-deep / --ink-light：**同名遮蔽**了 variables.css 的正式令牌（分别被 16 / 8 个
+       文件使用）。这里的硬编码值既不跟随 --accent-hue 主题，也不参与暗色切换，一旦将来
+       在该子树内被引用就会拿到错误且不换肤的颜色 —— 属定时炸弹。
+   以上均已移除，让 .scroll-screen 直接继承全局令牌；仅保留确有使用的青烟三色 --smoke-*。 */
 .scroll-screen {
-    --bamboo: #6b8f71;
-    --bamboo-deep: #4a6b50;
     --smoke-a: rgba(168,197,173,0.4);
     --smoke-b: rgba(197,214,202,0.15);
     --smoke-c: rgba(224,235,227,0);
-    --ink: #3a3a3a;
-    --ink-light: #6e6e6e;
-    --jade: #7ba88e;
 }
 
 /* 控制区：竹制火折子（可拔帽） */
@@ -696,7 +697,7 @@ body.privacy-on :is(.confirm-message, .tmpl-empty-hint, .tw-mm-empty-title, .tw-
     transform: translateX(-50%);
     width: 3px;
     height: 560px;
-    border-radius: 2px;
+    border-radius: var(--radius-3xs);
     overflow: hidden;
     z-index: 3;
 }
@@ -716,7 +717,7 @@ body.privacy-on :is(.confirm-message, .tmpl-empty-hint, .tw-mm-empty-title, .tw-
     --ash-tex-2: rgba(86,78,70,0.12);
     background:
         repeating-linear-gradient(180deg, var(--ash-tex-1) 0px, transparent 1px, transparent 3px, var(--ash-tex-2) 4px),
-        repeating-linear-gradient(90deg, rgba(255,255,255,0.10) 0px, transparent 2px, transparent 5px, rgba(120,110,100,0.10) 6px),
+        repeating-linear-gradient(90deg, rgba(var(--white-rgb), 0.10) 0px, transparent 2px, transparent 5px, rgba(120,110,100,0.10) 6px),
         linear-gradient(180deg, var(--ash-1) 0%, var(--ash-2) 10%, var(--ash-3) 55%, var(--ash-4) 100%);
     /* 色带与颗粒按「整支香」(560px) 定位，并随 --ash-top 上移：
        本元素高度随 --ash-top / --burn 变化，若让渐变按元素自身高度铺开，
@@ -724,7 +725,7 @@ body.privacy-on :is(.confirm-message, .tmpl-empty-hint, .tw-mm-empty-title, .tw-
        颜色始终锚在整支香的绝对位置上，与原「整支香上裁一段」的观感一致。 */
     background-size: 100% 560px;
     background-position: 0 calc(var(--ash-top, 0) * -560px);
-    border-radius: 1px 1px 0 0;
+    border-radius: var(--radius-1) var(--radius-1) 0 0;
     box-shadow: inset 0 0 1px rgba(90,82,74,0.4);
     transition: height 0.9s linear, top 0.9s linear;
 }
@@ -738,7 +739,7 @@ body.privacy-on :is(.confirm-message, .tmpl-empty-hint, .tw-mm-empty-title, .tw-
     --ash-2: rgba(238,234,226,0.8);
     --ash-3: rgba(248,245,238,0.7);
     --ash-4: rgba(232,228,220,0.66);
-    --ash-tex-1: rgba(255,255,255,0.16);
+    --ash-tex-1: rgba(var(--white-rgb), 0.16);
     --ash-tex-2: rgba(240,236,228,0.14);
 }
 /* 随风化雁：每燃烧 10 分钟，一段香灰化作大雁飞向远方天空 */
@@ -765,7 +766,7 @@ body.privacy-on :is(.confirm-message, .tmpl-empty-hint, .tw-mm-empty-title, .tw-
    注：描边方案在此无效——缩小是父元素的 CSS transform，
    vector-effect: non-scaling-stroke 无法阻止其连带缩放，故改为放缓缩小。 */
 :host(.dark) .scroll-wild-goose {
-    --goose-fill: #ffffff;
+    --goose-fill: var(--white);
     width: 32px;
     height: 18px;
     margin-left: -16px;
@@ -773,7 +774,7 @@ body.privacy-on :is(.confirm-message, .tmpl-empty-hint, .tw-mm-empty-title, .tw-
 /* 再给雁身描一圈白边把轮廓加粗，让它在深底上更跳。
    这里刻意不用 filter 做发光：滤镜会随振翅动画每帧重算，代价高于加粗描边。 */
 :host(.dark) .scroll-wild-goose .goose-body {
-    stroke: rgba(255,255,255,0.92);
+    stroke: rgba(var(--white-rgb), 0.92);
     stroke-width: 1.6;
     paint-order: stroke fill;
 }
@@ -811,7 +812,7 @@ body.privacy-on :is(.confirm-message, .tmpl-empty-hint, .tw-mm-empty-title, .tw-
        高度随 --burn 收缩时，颜色不会被重新压缩。顶边即燃点位置 (1 - --burn)。 */
     background-size: 100% 560px;
     background-position: 0 calc((1 - var(--burn)) * -560px);
-    border-radius: 0 0 2px 2px;
+    border-radius: 0 0 var(--radius-3xs) var(--radius-3xs);
     transition: height 0.9s linear;
 }
 /* 此处同样不再使用 clip-path（理由同 .scroll-incense-ash）。 */
@@ -1021,7 +1022,7 @@ body.privacy-on :is(.confirm-message, .tmpl-empty-hint, .tw-mm-empty-title, .tw-
 .scroll-censer:focus-visible {
     outline: 2px solid rgba(123, 172, 146, 0.7);
     outline-offset: 3px;
-    border-radius: 8px;
+    border-radius: var(--radius-xs);
 }
 /* 燃烧中的线香可点（掐灭 / 暂停）；暂停态仍保留 is-lit，cursor 一并保留 */
 .scroll-incense.is-lit { cursor: pointer; }
@@ -1071,17 +1072,19 @@ body.privacy-on :is(.confirm-message, .tmpl-empty-hint, .tw-mm-empty-title, .tw-
 .scroll-screen .scroll-btn {
     border: 1px solid rgba(96, 132, 96, 0.35);
     background:
-        linear-gradient(180deg, rgba(255, 255, 255, 0.85) 0%, rgba(248, 246, 236, 0.7) 100%);
+        linear-gradient(180deg, rgba(var(--white-rgb), 0.85) 0%, rgba(248, 246, 236, 0.7) 100%);
     color: #3a5a3e;
-    border-radius: 7px;
+    border-radius: var(--radius-7);
     padding: 5px 12px;
-    font-size: 11px;
+    font-size: var(--type-caption);
     letter-spacing: 2px;
     text-shadow: none;
     box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.9),
+        inset 0 1px 0 rgba(var(--white-rgb), 0.9),
         0 1px 2px rgba(45, 70, 45, 0.12);
-    transition: all 0.18s ease;
+    /* 原 transition: all 会监听所有属性（含不可插值的渐变 background），既浪费重绘
+       又掩盖真实过渡意图；hover 实际变化的是边框色 / 阴影 / 位移，故显式列出。 */
+    transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
 }
 .scroll-screen .scroll-btn:hover {
     background: linear-gradient(180deg, #f4f8ec 0%, #e8efdd 100%);
@@ -1092,7 +1095,7 @@ body.privacy-on :is(.confirm-message, .tmpl-empty-hint, .tw-mm-empty-title, .tw-
     color: #f7fff0;
     border-color: rgba(80, 110, 70, 0.6);
     box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.35),
+        inset 0 1px 0 rgba(var(--white-rgb), 0.35),
         inset 0 -1px 0 rgba(30, 50, 28, 0.3),
         0 2px 5px rgba(45, 90, 50, 0.28);
 }
@@ -1132,15 +1135,12 @@ body.privacy-on :is(.confirm-message, .tmpl-empty-hint, .tw-mm-empty-title, .tw-
     background: transparent;
 }
 :host(.dark) .scroll-screen {
-    --bamboo: #8ab39a;
-    --bamboo-deep: #5e8c66;
-    /* 暗色下的青烟压低绿调、往白里收（原偏绿 rgba(170,210,180)），深底上更显形 */
+    /* 暗色下的青烟压低绿调、往白里收（原偏绿 rgba(170,210,180)），深底上更显形。
+       --bamboo / --bamboo-deep / --ink / --ink-light / --jade 的暗色重复定义已随 R10
+       治理一并移除，改由 variables.css 的正式令牌统一提供（见上文 .scroll-screen 清理说明）。 */
     --smoke-a: rgba(214,228,218,0.45);
     --smoke-b: rgba(234,242,236,0.2);
     --smoke-c: rgba(240,246,242,0);
-    --ink: #d8e6d8;
-    --ink-light: #9fc0a8;
-    --jade: #7ba88e;
 }
 :host(.dark) .scroll-timer {
     background: linear-gradient(180deg, #c8e8c0 0%, #9ed09a 100%);
@@ -1158,20 +1158,20 @@ body.privacy-on :is(.confirm-message, .tmpl-empty-hint, .tw-mm-empty-title, .tw-
 /* 通用按钮 */
 .scroll-btn {
     border: 1px solid rgba(96, 132, 96, 0.35);
-    background: #fff;
+    background: var(--white);
     color: #3f5a3a;
-    border-radius: 9px;
+    border-radius: var(--radius-9);
     padding: 7px 14px;
-    font-size: 13px;
+    font-size: var(--type-sm);
     cursor: pointer;
     transition: background 0.15s ease, transform 0.1s ease;
 }
 .scroll-btn:hover { background: #eef3e8; }
 .scroll-btn:active { transform: translateY(1px); }
-.scroll-btn-primary { background: #4f7a47; color: #fff; border-color: #4f7a47; }
+.scroll-btn-primary { background: #4f7a47; color: var(--white); border-color: #4f7a47; }
 .scroll-btn-primary:hover { background: #436b3d; }
 .scroll-btn-danger { color: #a8483a; border-color: rgba(168, 72, 58, 0.4); }
-.scroll-btn-sm { padding: 4px 10px; font-size: 12px; }
+.scroll-btn-sm { padding: 4px 10px; font-size: var(--type-sm); }
 
 /* 右栏编辑/预览样式已在方案 C 中移除（深度编辑回归 Obsidian 原生） */
 
@@ -1361,7 +1361,7 @@ a:active) {
 /* :host(shadow host) 自带主题背景兜底：webapp 运行于 Shadow DOM，:root 匹配
    外层 document 不可见。若 ::after 伪元素因 iOS webview 层叠/position:fixed 不绘制，
    host 自身也不透出 iframe 默认白底（移动端顶部白遮罩修复）。--surface-solid 随主题
-   自适应（浅色 #fff / 暗色 #1c2a1e）。 */ /* lint-disable: R3 仅为注释中的颜色说明文字，非代码 */
+   自适应（浅色 var(--white) / 暗色 #1c2a1e）。 */ /* lint-disable: R3 仅为注释中的颜色说明文字，非代码 */
 :host {
     background: var(--surface-solid);
 }
@@ -2046,10 +2046,10 @@ textarea:focus-visible) {
   flex: 1;
   min-height: 36px;
   border: 1px solid var(--border-subtle, rgba(120,100,70,0.22));
-  border-radius: 8px;
+  border-radius: var(--radius-xs);
   background: var(--scroll-tab-bg, rgba(255,255,255,0.55));
   color: var(--text-secondary, #6b5d49);
-  font-size: 13px;
+  font-size: var(--type-sm);
   font-weight: 600;
   cursor: pointer;
   transition: background .18s, color .18s, box-shadow .18s;
@@ -2133,7 +2133,7 @@ textarea:focus-visible) {
   margin: 0 auto;
   /* 根字号由 JS _observeScale 按 .tw-case 真实宽度写入内联 px 驱动；
      机身内尺寸一律 em 跟随，比例自洽（本环境 Electron 不支持 cqi，故不用容器查询） */
-  font-size: 14.5px;
+  font-size: var(--type-md);
   padding: 1.07em 1.6em 2.13em;
   border-radius: 1.6em;
   /* 玻璃通透外壳：亮色下更轻更透 */
@@ -2460,13 +2460,13 @@ body:not(.dark) .tw-case-right {
 }
 .tw-input::placeholder { color: rgba(var(--bamboo-deep-rgb), 0.5); text-transform: uppercase; }
 .theme-dark .tw-input::placeholder { color: rgba(var(--green-very-bright-rgb), 0.5); }
-.tw-input::selection { background: rgb(var(--bamboo-deep-rgb)); color: #fff; }
-.theme-dark .tw-input::selection { background: rgb(var(--green-very-bright-rgb)); color: #000; }
+.tw-input::selection { background: rgb(var(--bamboo-deep-rgb)); color: var(--white); }
+.theme-dark .tw-input::selection { background: rgb(var(--green-very-bright-rgb)); color: var(--black); }
 /* 黑屏细滚动条（文字超屏时不突兀） */
 .tw-input { scrollbar-width: thin; scrollbar-color: rgba(var(--bamboo-deep-rgb),0.25) transparent; }
 .tw-input::-webkit-scrollbar { width: 6px; }
 .tw-input::-webkit-scrollbar-track { background: transparent; }
-.tw-input::-webkit-scrollbar-thumb { background: rgba(var(--bamboo-deep-rgb),0.25); border-radius: 3px; }
+.tw-input::-webkit-scrollbar-thumb { background: rgba(var(--bamboo-deep-rgb),0.25); border-radius: var(--radius-3); }
 .theme-dark .tw-input { scrollbar-color: rgba(var(--green-very-bright-rgb),0.25) transparent; }
 .theme-dark .tw-input::-webkit-scrollbar-thumb { background: rgba(var(--green-very-bright-rgb),0.25); }
 
@@ -2520,7 +2520,7 @@ body:not(.dark) .tw-case-right {
   min-width: 0; min-height: 0;
   padding: 0;
   box-sizing: border-box;
-  font-size: calc(var(--tw-scale, 1) * 28px);
+  font-size: calc(var(--tw-scale, 1) * 28px); /* lint-disable: R2 */
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2546,7 +2546,7 @@ body:not(.dark) .tw-case-right {
       color-mix(in srgb, rgb(var(--primary-rgb)), black 40%) 100%);
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
-  color: #fff;
+  color: var(--white);
   /* 机身挖孔：按钮镶在深色圆井里；仅保留柔和投影，不再加内阴影暗带 */
   box-shadow:
     0 0 0 0.07em rgba(var(--deep-rgb), 0.82),
@@ -2557,19 +2557,19 @@ body:not(.dark) .tw-case-right {
   transition: color .15s, transform .08s;
 }
 .tw-rbtn svg { width: 0.55em; height: 0.55em; }
-.tw-rbtn:hover { color: #fff; }
+.tw-rbtn:hover { color: var(--white); }
 .tw-rbtn:active { transform: translateY(0.13em); box-shadow: 0 0 0 0.07em rgba(var(--deep-rgb), 0.82), 0 0 0 0.11em rgba(var(--deep-rgb), 0.42), 0 0 0.18em rgba(var(--black-rgb), 0.30), inset 0 0.18em 0.4em rgba(var(--deep-rgb), 0.5); }
 #twPaper:hover { color: rgb(var(--pale-rgb)); }
-#twFont:hover { color: #fff; }
+#twFont:hover { color: var(--white); }
 #twClear:hover { color: rgb(var(--danger-rgb)); }
 
 .tw-grill { display: none; flex-direction: column; gap: 0.27em; opacity: 0.2; }
-.tw-grill i { display: block; width: 3.2em; height: 0.13em; border-radius: 0.13em; background: #000; }
+.tw-grill i { display: block; width: 3.2em; height: 0.13em; border-radius: 0.13em; background: var(--black); }
 @media (min-width: 768px) { .tw-grill { display: flex; } }
 
 /* 橙色 PRINT 大钮 */
 .tw-print {
-  font-size: calc(var(--tw-scale, 1) * 28px);
+  font-size: calc(var(--tw-scale, 1) * 28px); /* lint-disable: R2 */
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2739,12 +2739,12 @@ body.dark .tw-print,
     rgba(var(--black-rgb), 0.22) 100%
   );
   border: 1px solid rgba(var(--green-very-bright-rgb), 0.32);
-  border-top-color: rgba(0, 0, 0, 0.55);
-  border-bottom-color: rgba(255, 255, 255, 0.10);
+  border-top-color: rgba(var(--black-rgb), 0.55);
+  border-bottom-color: rgba(var(--white-rgb), 0.10);
   color: rgb(var(--green-very-bright-rgb));
   box-shadow:
-    inset 0 3px 4px rgba(0, 0, 0, 0.75),
-    inset 0 -1px 1px rgba(255, 255, 255, 0.12);
+    inset 0 3px 4px rgba(var(--black-rgb), 0.75),
+    inset 0 -1px 1px rgba(var(--white-rgb), 0.12);
 }
 /* 桌面阴影/反射 */
 .tw-desk-shadow {
@@ -2995,13 +2995,13 @@ body.dark .tw-print,
   margin: 0;
   flex: none;
   font-family: inherit;
-  font-size: calc(11px * var(--tw-scale, 1));
+  font-size: calc(11px * var(--tw-scale, 1)); /* lint-disable: R2 */
   line-height: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius-4);
   background: transparent;
   color: #5b6257;
   cursor: pointer;
@@ -3176,7 +3176,7 @@ body.dark .tw-print,
   content: ""; position: absolute; inset: 0; z-index: 20;
   pointer-events: none;
   background: repeating-linear-gradient(0deg,
-    rgba(0, 0, 0, 0.14) 0 1px, transparent 1px 3px);
+    rgba(var(--black-rgb), 0.14) 0 1px, transparent 1px 3px);
 }
 
 /* ===== 中国风便签（朱砂） =====
@@ -3203,7 +3203,7 @@ body.dark .tw-print,
   width: 1.7em; height: 1.7em;
   display: flex; align-items: center; justify-content: center;
   background: rgba(var(--tw-rule-rgb), 0.88); color: #F6F0E2;
-  font-size: var(--tw-fs-xs); font-weight: 700; border-radius: 2px;
+  font-size: var(--tw-fs-xs); font-weight: 700; border-radius: var(--radius-3xs);
 }
 .tw-card[data-paper="zhusha"] .tw-card-title {
   color: #B23A2A; font-weight: 700; letter-spacing: 0.22em;
@@ -3258,7 +3258,7 @@ body.dark .tw-print,
   display: none;
 }
 .tw-card[data-paper="zhuye"] .tw-card-main {
-  background-color: #ffffff;
+  background-color: var(--white);
   color: #231815;
   position: relative;
   padding: 0 1.6em 1.1em;
@@ -3670,12 +3670,12 @@ body.dark .tw-print,
   height: clamp(26px, calc(30px * var(--tw-scale, 1)), 38px);
   transform: translate(-50%, 0);
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(var(--white-rgb), 0.9);
   -webkit-backdrop-filter: blur(12px) saturate(1.4);
   backdrop-filter: blur(12px) saturate(1.4);
   border: 1.5px solid rgba(16, 24, 40, 0.16);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    inset 0 1px 0 rgba(var(--white-rgb), 0.7),
     0 8px 18px -6px rgba(16, 24, 40, 0.32);
   color: #46503f;
   display: flex;
@@ -3729,7 +3729,7 @@ body.dark .tw-print,
 }
 /* 连线上的悬浮控件（仅 hover 连线时出现）：中点弯曲手柄 + 线型切换按钮 */
 .tw-link-ctl {
-  fill: #fff;
+  fill: var(--white);
   stroke: var(--tw-link-stroke-hi);
   stroke-width: 1.5;
   pointer-events: auto;
@@ -3750,7 +3750,7 @@ body.dark .tw-print,
 /* 删除按钮（hover 连线时浮现于约 3/4 处，避开中点弯曲手柄）：克制红，提示「可删」，hover 填充变红、× 变白 */
 .tw-link-ctl.tw-link-del { cursor: pointer; }
 .tw-link-del-bg {
-  fill: rgba(255, 255, 255, 0.92);
+  fill: rgba(var(--white-rgb), 0.92);
   stroke: rgba(178, 78, 58, 0.65);
   stroke-width: 1.5;
   transition: fill .14s ease, stroke .14s ease;
@@ -3763,7 +3763,7 @@ body.dark .tw-print,
   transition: stroke .14s ease;
 }
 .tw-link-ctl.tw-link-del:hover .tw-link-del-bg { fill: rgba(178, 78, 58, 0.95); stroke: rgba(178, 78, 58, 0.95); }
-.tw-link-ctl.tw-link-del:hover .tw-link-del-x { stroke: #fff; }
+.tw-link-ctl.tw-link-del:hover .tw-link-del-x { stroke: var(--white); }
 :host(.dark) .tw-link-del-bg { fill: rgba(40, 46, 38, 0.92); stroke: rgba(214, 120, 96, 0.72); }
 :host(.dark) .tw-link-del-x { stroke: rgba(214, 120, 96, 0.92); }
 :host(.dark) .tw-link-ctl.tw-link-del:hover .tw-link-del-bg { fill: rgba(214, 120, 96, 0.95); }
@@ -3795,12 +3795,12 @@ body.dark .tw-print,
   height: clamp(26px, calc(30px * var(--tw-scale, 1)), 38px);
   transform: translate(0, -50%);
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(var(--white-rgb), 0.9);
   -webkit-backdrop-filter: blur(12px) saturate(1.4);
   backdrop-filter: blur(12px) saturate(1.4);
   border: 1.5px solid rgba(16, 24, 40, 0.16);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    inset 0 1px 0 rgba(var(--white-rgb), 0.7),
     0 8px 18px -6px rgba(16, 24, 40, 0.32);
   color: #46503f;
   display: flex;
@@ -3866,10 +3866,10 @@ body.dark .tw-print,
   position: fixed;
   z-index: 9999;
   padding: 5px 9px;
-  border-radius: 6px;
+  border-radius: var(--radius-2xs);
   background: rgba(28, 30, 26, 0.92);
   color: #f4f2ec;
-  font-size: 11px;
+  font-size: var(--type-caption);
   line-height: 1.25;
   letter-spacing: 0.01em;
   white-space: nowrap;
@@ -3877,7 +3877,7 @@ body.dark .tw-print,
   opacity: 0;
   transform: translateY(6px);
   transition: opacity 0.12s ease, transform 0.12s ease;
-  box-shadow: 0 4px 14px -4px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 4px 14px -4px rgba(var(--black-rgb), 0.45);
 }
 .tw-tip.on { opacity: 1; transform: translateY(0); }
 

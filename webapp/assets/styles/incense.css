@@ -69,14 +69,11 @@
 
 /* 番茄钟配色变量（青瓷竹节体系，供 SVG 引用） */
 .scroll-screen {
-    --bamboo: #6b8f71;
-    --bamboo-deep: #4a6b50;
+    /* 青烟三色确有使用，保留；--bamboo / --bamboo-deep / --ink / --ink-light / --jade
+       已随 R10 治理移除（零引用或遮蔽全局令牌），详见 base.css 同名清理说明。 */
     --smoke-a: rgba(168,197,173,0.4);
     --smoke-b: rgba(197,214,202,0.15);
     --smoke-c: rgba(224,235,227,0);
-    --ink: #3a3a3a;
-    --ink-light: #6e6e6e;
-    --jade: #7ba88e;
 }
 
 /* 控制区：竹制火折子（可拔帽） */
@@ -430,7 +427,7 @@
     transform: translateX(-50%);
     width: 3px;
     height: 560px;
-    border-radius: 2px;
+    border-radius: var(--radius-3xs);
     overflow: hidden;
     z-index: 3;
 }
@@ -450,7 +447,7 @@
     --ash-tex-2: rgba(86,78,70,0.12);
     background:
         repeating-linear-gradient(180deg, var(--ash-tex-1) 0px, transparent 1px, transparent 3px, var(--ash-tex-2) 4px),
-        repeating-linear-gradient(90deg, rgba(255,255,255,0.10) 0px, transparent 2px, transparent 5px, rgba(120,110,100,0.10) 6px),
+        repeating-linear-gradient(90deg, rgba(var(--white-rgb), 0.10) 0px, transparent 2px, transparent 5px, rgba(120,110,100,0.10) 6px),
         linear-gradient(180deg, var(--ash-1) 0%, var(--ash-2) 10%, var(--ash-3) 55%, var(--ash-4) 100%);
     /* 色带与颗粒按「整支香」(560px) 定位，并随 --ash-top 上移：
        本元素高度随 --ash-top / --burn 变化，若让渐变按元素自身高度铺开，
@@ -458,7 +455,7 @@
        颜色始终锚在整支香的绝对位置上，与原「整支香上裁一段」的观感一致。 */
     background-size: 100% 560px;
     background-position: 0 calc(var(--ash-top, 0) * -560px);
-    border-radius: 1px 1px 0 0;
+    border-radius: var(--radius-1) var(--radius-1) 0 0;
     box-shadow: inset 0 0 1px rgba(90,82,74,0.4);
     transition: height 0.9s linear, top 0.9s linear;
 }
@@ -472,7 +469,7 @@
     --ash-2: rgba(238,234,226,0.8);
     --ash-3: rgba(248,245,238,0.7);
     --ash-4: rgba(232,228,220,0.66);
-    --ash-tex-1: rgba(255,255,255,0.16);
+    --ash-tex-1: rgba(var(--white-rgb), 0.16);
     --ash-tex-2: rgba(240,236,228,0.14);
 }
 /* 随风化雁：每燃烧 10 分钟，一段香灰化作大雁飞向远方天空 */
@@ -499,7 +496,7 @@
    注：描边方案在此无效——缩小是父元素的 CSS transform，
    vector-effect: non-scaling-stroke 无法阻止其连带缩放，故改为放缓缩小。 */
 :host(.dark) .scroll-wild-goose {
-    --goose-fill: #ffffff;
+    --goose-fill: var(--white);
     width: 32px;
     height: 18px;
     margin-left: -16px;
@@ -507,7 +504,7 @@
 /* 再给雁身描一圈白边把轮廓加粗，让它在深底上更跳。
    这里刻意不用 filter 做发光：滤镜会随振翅动画每帧重算，代价高于加粗描边。 */
 :host(.dark) .scroll-wild-goose .goose-body {
-    stroke: rgba(255,255,255,0.92);
+    stroke: rgba(var(--white-rgb), 0.92);
     stroke-width: 1.6;
     paint-order: stroke fill;
 }
@@ -545,7 +542,7 @@
        高度随 --burn 收缩时，颜色不会被重新压缩。顶边即燃点位置 (1 - --burn)。 */
     background-size: 100% 560px;
     background-position: 0 calc((1 - var(--burn)) * -560px);
-    border-radius: 0 0 2px 2px;
+    border-radius: 0 0 var(--radius-3xs) var(--radius-3xs);
     transition: height 0.9s linear;
 }
 /* 此处同样不再使用 clip-path（理由同 .scroll-incense-ash）。 */
@@ -755,7 +752,7 @@
 .scroll-censer:focus-visible {
     outline: 2px solid rgba(123, 172, 146, 0.7);
     outline-offset: 3px;
-    border-radius: 8px;
+    border-radius: var(--radius-xs);
 }
 /* 燃烧中的线香可点（掐灭 / 暂停）；暂停态仍保留 is-lit，cursor 一并保留 */
 .scroll-incense.is-lit { cursor: pointer; }
@@ -805,17 +802,19 @@
 .scroll-screen .scroll-btn {
     border: 1px solid rgba(96, 132, 96, 0.35);
     background:
-        linear-gradient(180deg, rgba(255, 255, 255, 0.85) 0%, rgba(248, 246, 236, 0.7) 100%);
+        linear-gradient(180deg, rgba(var(--white-rgb), 0.85) 0%, rgba(248, 246, 236, 0.7) 100%);
     color: #3a5a3e;
-    border-radius: 7px;
+    border-radius: var(--radius-7);
     padding: 5px 12px;
-    font-size: 11px;
+    font-size: var(--type-caption);
     letter-spacing: 2px;
     text-shadow: none;
     box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.9),
+        inset 0 1px 0 rgba(var(--white-rgb), 0.9),
         0 1px 2px rgba(45, 70, 45, 0.12);
-    transition: all 0.18s ease;
+    /* 原 transition: all 会监听所有属性（含不可插值的渐变 background），既浪费重绘
+       又掩盖真实过渡意图；hover 实际变化的是边框色 / 阴影 / 位移，故显式列出。 */
+    transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
 }
 .scroll-screen .scroll-btn:hover {
     background: linear-gradient(180deg, #f4f8ec 0%, #e8efdd 100%);
@@ -826,7 +825,7 @@
     color: #f7fff0;
     border-color: rgba(80, 110, 70, 0.6);
     box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.35),
+        inset 0 1px 0 rgba(var(--white-rgb), 0.35),
         inset 0 -1px 0 rgba(30, 50, 28, 0.3),
         0 2px 5px rgba(45, 90, 50, 0.28);
 }
@@ -866,15 +865,11 @@
     background: transparent;
 }
 :host(.dark) .scroll-screen {
-    --bamboo: #8ab39a;
-    --bamboo-deep: #5e8c66;
-    /* 暗色下的青烟压低绿调、往白里收（原偏绿 rgba(170,210,180)），深底上更显形 */
+    /* 暗色下的青烟压低绿调、往白里收（原偏绿），深底上更显形。
+       --bamboo / --bamboo-deep / --ink / --ink-light / --jade 的暗色重复定义已随 R10 治理移除。 */
     --smoke-a: rgba(214,228,218,0.45);
     --smoke-b: rgba(234,242,236,0.2);
     --smoke-c: rgba(240,246,242,0);
-    --ink: #d8e6d8;
-    --ink-light: #9fc0a8;
-    --jade: #7ba88e;
 }
 :host(.dark) .scroll-timer {
     background: linear-gradient(180deg, #c8e8c0 0%, #9ed09a 100%);
@@ -892,18 +887,18 @@
 /* 通用按钮 */
 .scroll-btn {
     border: 1px solid rgba(96, 132, 96, 0.35);
-    background: #fff;
+    background: var(--white);
     color: #3f5a3a;
-    border-radius: 9px;
+    border-radius: var(--radius-9);
     padding: 7px 14px;
-    font-size: 13px;
+    font-size: var(--type-sm);
     cursor: pointer;
     transition: background 0.15s ease, transform 0.1s ease;
 }
 .scroll-btn:hover { background: #eef3e8; }
 .scroll-btn:active { transform: translateY(1px); }
-.scroll-btn-primary { background: #4f7a47; color: #fff; border-color: #4f7a47; }
+.scroll-btn-primary { background: #4f7a47; color: var(--white); border-color: #4f7a47; }
 .scroll-btn-primary:hover { background: #436b3d; }
 .scroll-btn-danger { color: #a8483a; border-color: rgba(168, 72, 58, 0.4); }
-.scroll-btn-sm { padding: 4px 10px; font-size: 12px; }
+.scroll-btn-sm { padding: 4px 10px; font-size: var(--type-sm); }
 

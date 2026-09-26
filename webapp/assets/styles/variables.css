@@ -280,6 +280,9 @@
     --radius-3: 3px;
     --radius-4: 4px;
     --radius-5: 5px;
+    /* R1 治理补充：代码里实际在用的散落档位，补齐后替换完全等价（零视觉变化） */
+    --radius-7: 7px;
+    --radius-9: 9px;
     --radius-26: 26px;
     --radius-38: 38px;
     --radius-pill: 9999px;

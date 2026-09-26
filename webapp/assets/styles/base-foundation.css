@@ -186,7 +186,7 @@ a:active) {
 /* :host(shadow host) 自带主题背景兜底：webapp 运行于 Shadow DOM，:root 匹配
    外层 document 不可见。若 ::after 伪元素因 iOS webview 层叠/position:fixed 不绘制，
    host 自身也不透出 iframe 默认白底（移动端顶部白遮罩修复）。--surface-solid 随主题
-   自适应（浅色 #fff / 暗色 #1c2a1e）。 */ /* lint-disable: R3 仅为注释中的颜色说明文字，非代码 */
+   自适应（浅色 var(--white) / 暗色 #1c2a1e）。 */ /* lint-disable: R3 仅为注释中的颜色说明文字，非代码 */
 :host {
     background: var(--surface-solid);
 }

@@ -178,7 +178,7 @@
    重编号会让老文档的子弹样式整体错位变样。下架档位在 load 时统一迁到首档（见 MM_STYLE_AVAILABLE），
    不会再命中，故其 CSS 一并移除。 */
 .tw-mm.tw-mm-style-1 .tw-mm-node {            /* 方角便签 */
-  border-radius: 6px;
+  border-radius: var(--radius-2xs);
   /* 着色时边框取 --mm-accent；默认回退原 border-strong（不可写死 border-strong，否则改色对边框无效） */
   border: 1.5px solid var(--mm-accent, var(--border-strong, var(--border-light)));
   box-shadow: var(--shadow-card);
@@ -279,7 +279,7 @@
   width: 24px; height: 24px;
   min-width: 24px; min-height: 24px;   /* 覆盖 base-foundation 全局触控目标 44px */
   border: none;
-  border-radius: 5px;
+  border-radius: var(--radius-5);
   background: transparent;
   color: var(--text-secondary);
   padding: 0;
@@ -321,7 +321,7 @@
   left: 50%; top: 50%;
   width: 150%; height: 1.5px;
   background: var(--text-tertiary);
-  border-radius: 1px;
+  border-radius: var(--radius-1);
   transform: translate(-50%, -50%) rotate(-45deg);
 }
 
@@ -349,7 +349,7 @@
 .tw-mm-search-count { font-size: var(--type-xs); color: var(--text-tertiary); min-width: 2.5em; text-align: center; }
 .tw-mm-search button {
   border: none; background: transparent; color: var(--text-secondary);
-  cursor: pointer; font-size: var(--type-xs); padding: 0.2em 0.45em; border-radius: 5px;
+  cursor: pointer; font-size: var(--type-xs); padding: 0.2em 0.45em; border-radius: var(--radius-5);
 }
 .tw-mm-search button:hover { background: rgba(var(--primary-rgb), 0.12); }
 

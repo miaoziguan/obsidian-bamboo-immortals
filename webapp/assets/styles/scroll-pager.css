@@ -11,10 +11,10 @@
   flex: 1;
   min-height: 36px;
   border: 1px solid var(--border-subtle, rgba(120,100,70,0.22));
-  border-radius: 8px;
+  border-radius: var(--radius-xs);
   background: var(--scroll-tab-bg, rgba(255,255,255,0.55));
   color: var(--text-secondary, #6b5d49);
-  font-size: 13px;
+  font-size: var(--type-sm);
   font-weight: 600;
   cursor: pointer;
   transition: background .18s, color .18s, box-shadow .18s;
@@ -107,7 +107,7 @@
   color: #1b1b1b;
   font: 11px/1.4 -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
   padding: 1px 6px;
-  border-radius: 8px;
+  border-radius: var(--radius-xs);
   pointer-events: none;
   white-space: nowrap;
 }
@@ -139,7 +139,7 @@
   margin: 0 auto;
   /* 根字号由 JS _observeScale 按 .tw-case 真实宽度写入内联 px 驱动；
      机身内尺寸一律 em 跟随，比例自洽（本环境 Electron 不支持 cqi，故不用容器查询） */
-  font-size: 14.5px;
+  font-size: var(--type-md);
   padding: 1.07em 1.6em 2.13em;
   border-radius: 1.6em;
   /* 玻璃通透外壳：亮色下更轻更透 */
@@ -466,13 +466,13 @@ body:not(.dark) .tw-case-right {
 }
 .tw-input::placeholder { color: rgba(var(--bamboo-deep-rgb), 0.5); text-transform: uppercase; }
 .theme-dark .tw-input::placeholder { color: rgba(var(--green-very-bright-rgb), 0.5); }
-.tw-input::selection { background: rgb(var(--bamboo-deep-rgb)); color: #fff; }
-.theme-dark .tw-input::selection { background: rgb(var(--green-very-bright-rgb)); color: #000; }
+.tw-input::selection { background: rgb(var(--bamboo-deep-rgb)); color: var(--white); }
+.theme-dark .tw-input::selection { background: rgb(var(--green-very-bright-rgb)); color: var(--black); }
 /* 黑屏细滚动条（文字超屏时不突兀） */
 .tw-input { scrollbar-width: thin; scrollbar-color: rgba(var(--bamboo-deep-rgb),0.25) transparent; }
 .tw-input::-webkit-scrollbar { width: 6px; }
 .tw-input::-webkit-scrollbar-track { background: transparent; }
-.tw-input::-webkit-scrollbar-thumb { background: rgba(var(--bamboo-deep-rgb),0.25); border-radius: 3px; }
+.tw-input::-webkit-scrollbar-thumb { background: rgba(var(--bamboo-deep-rgb),0.25); border-radius: var(--radius-3); }
 .theme-dark .tw-input { scrollbar-color: rgba(var(--green-very-bright-rgb),0.25) transparent; }
 .theme-dark .tw-input::-webkit-scrollbar-thumb { background: rgba(var(--green-very-bright-rgb),0.25); }
 
@@ -526,7 +526,7 @@ body:not(.dark) .tw-case-right {
   min-width: 0; min-height: 0;
   padding: 0;
   box-sizing: border-box;
-  font-size: calc(var(--tw-scale, 1) * 28px);
+  font-size: calc(var(--tw-scale, 1) * 28px); /* lint-disable: R2 */
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -552,7 +552,7 @@ body:not(.dark) .tw-case-right {
       color-mix(in srgb, rgb(var(--primary-rgb)), black 40%) 100%);
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
-  color: #fff;
+  color: var(--white);
   /* 机身挖孔：按钮镶在深色圆井里；仅保留柔和投影，不再加内阴影暗带 */
   box-shadow:
     0 0 0 0.07em rgba(var(--deep-rgb), 0.82),
@@ -563,7 +563,7 @@ body:not(.dark) .tw-case-right {
   transition: color .15s, transform .08s;
 }
 .tw-rbtn svg { width: 0.55em; height: 0.55em; }
-.tw-rbtn:hover { color: #fff; }
+.tw-rbtn:hover { color: var(--white); }
 /* 导图模式下纸样/字体/排版只对便签有意义 → 置灰；hover/active 一并压掉，
    否则鼠标扫过还会变色、看起来「能点」。title 会说明原因，所以保留指针事件。 */
 .tw-rbtn:disabled { opacity: 0.34; cursor: not-allowed; filter: grayscale(0.35); }
@@ -572,16 +572,16 @@ body:not(.dark) .tw-case-right {
 .tw-rbtn:active { transform: translateY(0.13em); box-shadow: 0 0 0 0.07em rgba(var(--deep-rgb), 0.82), 0 0 0 0.11em rgba(var(--deep-rgb), 0.42), 0 0 0.18em rgba(var(--black-rgb), 0.30), inset 0 0.18em 0.4em rgba(var(--deep-rgb), 0.5); }
 
 #twPaper:hover { color: rgb(var(--pale-rgb)); }
-#twFont:hover { color: #fff; }
+#twFont:hover { color: var(--white); }
 #twClear:hover { color: rgb(var(--danger-rgb)); }
 
 .tw-grill { display: none; flex-direction: column; gap: 0.27em; opacity: 0.2; }
-.tw-grill i { display: block; width: 3.2em; height: 0.13em; border-radius: 0.13em; background: #000; }
+.tw-grill i { display: block; width: 3.2em; height: 0.13em; border-radius: 0.13em; background: var(--black); }
 @media (min-width: 768px) { .tw-grill { display: flex; } }
 
 /* 橙色 PRINT 大钮 */
 .tw-print {
-  font-size: calc(var(--tw-scale, 1) * 28px);
+  font-size: calc(var(--tw-scale, 1) * 28px); /* lint-disable: R2 */
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -751,12 +751,12 @@ body.dark .tw-print,
     rgba(var(--black-rgb), 0.22) 100%
   );
   border: 1px solid rgba(var(--green-very-bright-rgb), 0.32);
-  border-top-color: rgba(0, 0, 0, 0.55);
-  border-bottom-color: rgba(255, 255, 255, 0.10);
+  border-top-color: rgba(var(--black-rgb), 0.55);
+  border-bottom-color: rgba(var(--white-rgb), 0.10);
   color: rgb(var(--green-very-bright-rgb));
   box-shadow:
-    inset 0 3px 4px rgba(0, 0, 0, 0.75),
-    inset 0 -1px 1px rgba(255, 255, 255, 0.12);
+    inset 0 3px 4px rgba(var(--black-rgb), 0.75),
+    inset 0 -1px 1px rgba(var(--white-rgb), 0.12);
 }
 /* ===== 机身明暗开关（控制 Obsidian 亮/暗，紧邻「竹林中国」品牌标）=====
    对齐准则：与 .tw-brand 取**同一套度量**，让它视觉上是「同一枚铭牌的延伸」——

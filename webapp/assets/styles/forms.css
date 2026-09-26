@@ -346,8 +346,14 @@
     box-shadow: 0 0 8px rgba(var(--primary-rgb), 0.4);
 }
 
-/* 竹林暗色模式：输入框微光 */
-:host(.dark) input,
+/* 竹林暗色模式：输入框微光
+   注意：必须排除 range。滑块的轨道由 .display-slider / .display-hue-slider /
+   .fab-privacy-range 通过「元素级 background + background-clip: content-box」绘制，
+   而 :host(.dark) input 的特异性 (0,2,1) 高于那些类选择器 (0,1,0)，一旦命中就会把
+   轨道背景整个覆盖成深色底色 → 暗色下所有滑块「轨道消失、只剩一个孤点」，
+   色相滑块的七彩轨道同样被吃掉（它也是元素级 background）。
+   这正是「亮色与暗色滑块不一致」的真正根因（与 thumb 的圆环无关）。 */
+:host(.dark) input:not([type="range"]),
 :host(.dark) select,
 :host(.dark) textarea {
     background: rgba(var(--surface-dark-rgb), 0.8);
@@ -355,7 +361,7 @@
     color: var(--text-primary);
 }
 
-:host(.dark) input:focus,
+:host(.dark) input:not([type="range"]):focus,
 :host(.dark) select:focus,
 :host(.dark) textarea:focus {
     border-color: var(--bamboo-primary);

@@ -121,10 +121,15 @@
                              仅在「关闭」隐私时才收起菜单。 -->
                         <div class="fab-privacy-panel" id="fabPrivacyPanel" hidden>
                             <span class="fab-privacy-label">模糊强度</span>
+                            <output class="fab-privacy-value" id="fabPrivacyValue" for="fabPrivacyRange">10</output>
                             <div class="fab-privacy-controls">
-                                <button class="fab-privacy-step" data-action="fab-privacy-less" aria-label="减弱" type="button">−</button>
-                                <input class="fab-privacy-range" id="fabPrivacyRange" type="range" min="0" max="20" step="1" value="10" aria-label="模糊强度" oninput="event.stopPropagation(); if (window.PrivacyMode) { window.PrivacyMode.setLevel(Number(this.value)); }" />
-                                <button class="fab-privacy-step" data-action="fab-privacy-more" aria-label="增强" type="button">+</button>
+                                <button class="fab-privacy-step" data-action="fab-privacy-less" aria-label="减弱模糊" type="button">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><line x1="6" y1="12" x2="18" y2="12"/></svg>
+                                </button>
+                                <input class="fab-privacy-range" id="fabPrivacyRange" type="range" min="0" max="20" step="1" value="10" aria-label="模糊强度" oninput="event.stopPropagation(); if (window.PrivacyMode) { window.PrivacyMode.setLevel(Number(this.value)); } if (window.FABManager) window.FABManager.syncPrivacyLevel();" />
+                                <button class="fab-privacy-step" data-action="fab-privacy-more" aria-label="增强模糊" type="button">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><line x1="12" y1="6" x2="12" y2="18"/><line x1="6" y1="12" x2="18" y2="12"/></svg>
+                                </button>
                             </div>
                         </div>
                     </div>

@@ -73,17 +73,26 @@ export const FABManager = {
             const label = on ? '关闭隐私模糊' : '隐私模糊（防偷窥）';
             btn.setAttribute('aria-label', label);
         }
-        // 强度面板仅隐私开启时可见；同步滑杆为当前强度
+        // 强度面板仅隐私开启时可见
         const panel = byId('fabPrivacyPanel');
         if (panel) {
             panel.hidden = !on;
-            const range = byId('fabPrivacyRange');
-            if (range && typeof PrivacyMode !== 'undefined') {
-                // 滑杆 min 已放宽到 0：直接反映当前真实档位（含 0=关闭），避免
-                // 「拖到 0 关闭后滑杆又跳回默认档」的错位感。
-                range.value = String(PrivacyMode.getLevel());
-            }
+            this.syncPrivacyLevel();
         }
+    },
+
+    /** 同步强度控件的读数（滑杆位置 + 数值徽标），**不改变面板可见性**。
+     *  单独抽出的原因：拖滑杆时若走 updatePrivacyButton，一旦拖到 0（=关闭）就会把面板
+     *  收起来，手感是「面板突然消失」。拖动过程只做读数同步，可见性仍由 toggle 统一管。 */
+    syncPrivacyLevel() {
+        if (typeof PrivacyMode === 'undefined') return;
+        // 滑杆 min 已放宽到 0：直接反映当前真实档位（含 0=关闭），避免
+        // 「拖到 0 关闭后滑杆又跳回默认档」的错位感。
+        const lv = PrivacyMode.getLevel();
+        const range = byId('fabPrivacyRange');
+        if (range) range.value = String(lv);
+        const val = byId('fabPrivacyValue');
+        if (val) val.textContent = String(lv);
     },
 
     /** 隐私强度调节：−/+ 步进按钮 + 滑杆即时调（均挂在 FAB 菜单内，不进设置面板） */

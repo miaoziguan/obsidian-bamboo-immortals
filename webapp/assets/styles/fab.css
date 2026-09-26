@@ -412,64 +412,175 @@
     transform: scale(0.95);
 }
 
-/* === 隐私强度调节面板（FAB 菜单内，不进设置面板）=== */
+/* === 隐私强度调节面板（FAB 菜单内，不进设置面板）===
+   形态：单行式紧凑步进器 —— 左侧「标签 + 数值徽标」读数区，右侧「− / 滑杆 / +」控制区。
+   紧凑：整行 nowrap（放不下时标签以省略号收敛，而非换行拆成两行）；控件取最小可用尺寸。
+   精致：细轨道 + 圆滑块 + 白边 + 辉光，对齐仓库既有 .display-slider 的视觉语言，
+        仅在热区高度上按 FAB 内嵌语境收紧（22px，仍远好于原先那条 4px 的裸轨道）。
+   规范：圆角走 --radius-*、字号走 --type-*、颜色走语义令牌；原先裸写的圆角 px / 字号 px /
+        白色通道色值已全部令牌化，符合 scripts/lint-css-tokens.mjs 的 R1/R2/R5。
+   注意：该守门员按行扫描，连注释里的裸色值字面量也会命中，故此处改用中文描述。 */
 .fab-privacy-panel {
     display: flex;
     align-items: center;
-    flex-wrap: wrap;
-    gap: 8px;
-    padding: 8px 12px;
-    margin: 2px 0 6px;
-    background: var(--bg-elevated, rgba(255, 255, 255, 0.06));
-    border-radius: 10px;
+    gap: var(--space-2);
     /* 跟随隐私菜单容器的宽度，避免溢出 */
     width: 100%;
     box-sizing: border-box;
+    padding: var(--space-2) var(--space-3);
+    margin: var(--space-1) 0;
+    border-radius: var(--radius-control);
+    border: 1px solid var(--bamboo-border);
+    background: var(--bamboo-background);
+    /* 顶部一道极淡内高光，让面板呈「嵌入」层次而非平涂 */
+    box-shadow: inset 0 1px 0 var(--glass-highlight-wash);
 }
 .fab-privacy-panel[hidden] {
     display: none;
 }
 .fab-privacy-label {
-    font-size: 12px;
-    color: var(--text-secondary, #9aa0a6);
-    white-space: nowrap;
     flex: 0 1 auto;
     min-width: 0;
+    font-size: var(--type-mini);
+    letter-spacing: 0.02em;
+    color: var(--text-secondary);
+    white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+/* 数值徽标：tabular-nums 等宽数字，避免 9→10 时读数宽度抖动 */
+.fab-privacy-value {
+    flex: 0 0 auto;
+    min-width: 1.8em;
+    padding: 0 var(--space-1);
+    border-radius: var(--radius-2xs);
+    background: var(--btn-secondary-bg);
+    color: var(--text-primary);
+    font-size: var(--type-mini);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.7;
+    text-align: center;
 }
 .fab-privacy-controls {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: var(--space-1);
     flex: 1 1 auto;
     min-width: 0;
 }
 .fab-privacy-step {
     flex: 0 0 auto;
-    width: 26px;
-    height: 26px;
-    border-radius: 7px;
-    border: 1px solid var(--bamboo-border, rgba(255, 255, 255, 0.14));
-    background: var(--bg-elevated, rgba(255, 255, 255, 0.08));
-    color: var(--text-primary, #e8eaed);
-    font-size: 16px;
-    line-height: 1;
+    width: var(--bm-icon-xxl);
+    height: var(--bm-icon-xxl);
+    /* base.css 以 :where(button, …) 零权重给所有 button/input 施加了
+       min-height/min-width: var(--touch-target)=44px（移动端再抬到 48px）。
+       本面板是紧凑内嵌控件，须显式覆写（base.css 触控尺寸段注释已声明
+       「任一组件类均可无竞赛覆写最小触控尺寸」），否则这两个 24px 圆形步进钮
+       会被撑成 44px 的笨重圆圈——此前面板「又大又肿」即源于此。 */
+    min-width: 0;
+    min-height: 0;
+    padding: 0;
+    border-radius: 50%;
+    border: 1px solid var(--bamboo-border);
+    background: var(--btn-secondary-bg);
+    color: var(--text-secondary);
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     user-select: none;
+    transition: background-color var(--transition-fast), color var(--transition-fast),
+        border-color var(--transition-fast), transform var(--transition-fast);
+}
+.fab-privacy-step svg {
+    width: var(--bm-icon-sm);
+    height: var(--bm-icon-sm);
+}
+.fab-privacy-step:hover {
+    background: var(--btn-secondary-hover);
+    border-color: var(--bamboo-primary);
+    color: var(--text-primary);
 }
 .fab-privacy-step:active {
-    transform: scale(0.92);
+    transform: var(--scale-tiny);
 }
+.fab-privacy-step:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+}
+/* 滑杆：视觉轨道 4px（content-box 填充），热区 24px —— 与 .display-slider 同款做法
+   （元素级 background + background-clip: content-box），保留精致的细轨道观感。 */
 .fab-privacy-range {
+    -webkit-appearance: none;
+    appearance: none;
     flex: 1 1 auto;
     min-width: 0;
-    height: 4px;
-    accent-color: var(--bamboo-primary, #2d5a27);
+    /* 【关键】须先解除 base.css 的全局 min-height: var(--touch-target)=44px。
+       否则元素被顶到 44px，而下方 padding 是按 24px 元素高算的 → content-box 膨胀到
+       20px+，细轨道就糊成一整块粗色条 —— 这正是「隐私滑块是一坨绿色粗块、和显示设置的
+       细滑块对不上」的根因。解除后 content-box = 24 − 10×2 = 4px。 */
+    min-height: 0;
+    height: 24px;
+    margin: 0;
+    padding: 10px 0;
+    box-sizing: border-box;
+    border-radius: var(--radius-3xs);
+    background: var(--border-light);
+    background-clip: content-box;
     cursor: pointer;
+}
+.fab-privacy-range:focus {
+    outline: none;
+}
+.fab-privacy-range:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+}
+.fab-privacy-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--bamboo-primary);
+    border: 2px solid var(--white);
+    box-shadow: 0 1px 4px rgba(var(--black-rgb), 0.2);
+    cursor: pointer;
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+.fab-privacy-range::-webkit-slider-thumb:hover {
+    transform: scale(1.15);
+    box-shadow: var(--bamboo-glow-sm);
+}
+.fab-privacy-range::-webkit-slider-thumb:active {
+    transform: scale(1.05);
+    background: var(--bamboo-dark);
+}
+.fab-privacy-range::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--bamboo-primary);
+    border: 2px solid var(--white);
+    box-shadow: 0 1px 4px rgba(var(--black-rgb), 0.2);
+    cursor: pointer;
+}
+/* 与 .display-slider 完全对齐：Firefox 轨道同样取 --border-light，不再单独给已填充段
+   着色（显示设置的滑块也没有 ::-moz-range-progress），保证两个滑块观感一致。 */
+.fab-privacy-range::-moz-range-track {
+    height: 4px;
+    border-radius: var(--radius-3xs);
+    background: var(--border-light);
+}
+/* 与显示设置面板的 .display-slider 保持同一暗色语言：亮色是黑影，暗色下黑影在深底上
+   完全不可见，会丢失「可拖拽」的浮起感，故改用弱一档竹林绿辉光 --bamboo-glow-xs
+   （hover 仍是 --bamboo-glow-sm），让隐私滑块在明暗两套主题下与 .display-slider
+   完全一致。thumb 白环在亮色即统一为 var(--white)，此处无需再改。 */
+:host(.dark) .fab-privacy-range::-webkit-slider-thumb {
+    box-shadow: var(--bamboo-glow-xs);
+}
+:host(.dark) .fab-privacy-range::-moz-range-thumb {
+    box-shadow: var(--bamboo-glow-xs);
 }
 .fab-container.fab-open {
     z-index: var(--z-layer-modal);

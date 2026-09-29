@@ -186,6 +186,10 @@
     --card-glass: rgba(var(--white-rgb), 0.55);
     /* 玻璃拟态 fallback：当 backdrop-filter 不被支持或背景过透时，切回不透明表面色 */
     --card-bg-fallback: var(--surface-solid);
+    /* 浮层/弹层专用底（分类选择、日期范围、排序菜单、导图工具条等压在正文上的面板）：
+       统一不透明跟随色——不再使用玻璃拟态，避免 backdrop-filter 兼容与明暗两态的脆弱性。
+       亮色取极浅色相实心色，既压住底层正文，又跟随调色。 */
+    --bamboo-popup-bg: hsl(var(--accent-hue), 18%, calc(96% + var(--accent-lightness-offset)));
 
     /* === 文字语义变量 === */
     --text-primary: var(--ink-dark);
@@ -361,8 +365,8 @@
     --bamboo-glow-sm: 0 2px 8px rgba(var(--primary-rgb), 0.4);
     --bamboo-glow-xs: 0 1px 4px rgba(var(--primary-rgb), 0.3);
 
-    /* === 浮层设计令牌（Toast / Confirm / 选择器统一语言：留白素笺） === */
-    --overlay-surface: var(--card-bg);
+    /* === 浮层设计令牌（Toast / Confirm / 选择器统一语言：留白素笺 → 统一不透明跟随色，不再用玻璃） === */
+    --overlay-surface: var(--bamboo-popup-bg);
     --overlay-border-width: 1px;
     --overlay-border-style: solid;
     --overlay-border-color: var(--bamboo-border);
@@ -483,6 +487,13 @@
     --card-glass: hsla(var(--accent-hue), 18%, calc(10% + var(--accent-lightness-offset)), 0.84);
     /* 玻璃拟态 fallback：当 backdrop-filter 不被支持或背景过透时，切回不透明表面色 */
     --card-bg-fallback: var(--surface-solid);
+    /* 暗色已全局关闭 backdrop-filter（dark.css :host(.dark) *），浮层只能靠 alpha 遮底；
+       而暗色背景下方的正文是亮色的，0.84 仍会透出"幽灵字"，故浮层需不透明。
+       关键：绝不能指 --card-bg-fallback（= --surface-solid: #1c2a1e，写死色、不吃 --accent-hue），
+       否则换色相时浮层掉队。这里直接以 --accent-hue 生成实心色 —— 与 --card-glass 同色相/明度
+       （18% 饱和、10%+lightness 偏移），仅把 alpha 拉满为 1，既守住上一轮"不透明防幽灵字"，
+       又跟随调色。 */
+    --bamboo-popup-bg: hsla(var(--accent-hue), 18%, calc(10% + var(--accent-lightness-offset)), 1);
 
     /* 文字语义 — 亮度提升至 WCAG AA 4.5:1+ */
     --text-primary: hsl(var(--accent-hue), 18%, calc(91% + var(--accent-lightness-offset)));
@@ -579,8 +590,8 @@
     --status-danger-bg: rgba(var(--danger-rgb), 0.15);
     --status-info-bg: rgba(var(--info-rgb, 79, 195, 247), 0.12);
 
-    /* === 浮层设计令牌（Toast / Confirm / 选择器统一语言：留白素笺） === */
-    --overlay-surface: var(--card-bg);
+    /* === 浮层设计令牌（Toast / Confirm / 选择器统一语言：留白素笺 → 统一不透明跟随色，不再用玻璃） === */
+    --overlay-surface: var(--bamboo-popup-bg);
     --overlay-border-width: 1px;
     --overlay-border-style: solid;
     --overlay-border-color: var(--bamboo-border);
@@ -6638,11 +6649,13 @@ body.dark .tw-theme-switch#twZenSwitch[aria-checked="true"]:hover {
   align-items: center;
   gap: 2px;
   padding: 3px 5px;
-  background: var(--card-bg);
+  /* 统一不透明跟随色，不再使用玻璃拟态。 */
+  background: var(--bamboo-popup-bg);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-control);
   box-shadow: var(--shadow-card);
-  transform: translate(-50%, calc(-100% - 6px));
+  /* translateZ(0) 只能「追加」：本条 transform 承担居中定位，覆盖会直接错位 */
+  transform: translate(-50%, calc(-100% - 6px)) translateZ(0);
   pointer-events: auto;
 }
 .tw-mm-toolbar[hidden] { display: none; }
@@ -6707,12 +6720,14 @@ body.dark .tw-theme-switch#twZenSwitch[aria-checked="true"]:hover {
   position: absolute;
   z-index: 50;
   top: 10px; left: 50%;
-  transform: translateX(-50%);
+  /* 追加 translateZ(0) 触发合成层，保留原有居中位移 */
+  transform: translateX(-50%) translateZ(0);
   display: flex;
   align-items: center;
   gap: 4px;
   padding: 4px 6px;
-  background: var(--card-bg);
+  /* 同 .tw-mm-toolbar：统一不透明跟随色，不再使用玻璃拟态。 */
+  background: var(--bamboo-popup-bg);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-control);
   box-shadow: var(--shadow-card);

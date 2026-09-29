@@ -279,7 +279,9 @@
     position: absolute;
     top: calc(100% + 4px);
     right: 0;
-    background: var(--card-bg);
+    /* 统一不透明跟随色，不再使用玻璃拟态（避免底层商品列表透出 + backdrop 兼容问题）。 */
+    background: var(--bamboo-popup-bg);
+    transform: translateZ(0);
     border: 1px solid var(--border-light);
     border-radius: var(--radius-xs);
     box-shadow: 0 4px 12px rgba(var(--black-rgb), 0.1);
@@ -684,7 +686,9 @@
 
 /* 排序菜单 */
 :host(.dark) .shop-sort-menu {
-    background: rgba(var(--primary-rgb), 0.12);
+    /* 背景交回 .shop-sort-menu 的 var(--bamboo-popup-bg)（暗色＝不透明跟随色）。
+       原为 rgba(var(--primary-rgb), 0.12)：暗色已全局关闭 backdrop 模糊，12% 近乎全透明，
+       会让底层商品列表透出（幽灵字），与其它浮层的「不透明」规范相悖。 */
     border-color: rgba(var(--primary-rgb), 0.18);
     box-shadow: 0 4px 16px rgba(var(--black-rgb), 0.3);
 }

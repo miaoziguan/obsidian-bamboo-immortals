@@ -11,6 +11,10 @@
     border-radius: var(--radius-xl);
     box-shadow: var(--shadow-floating);
     padding: var(--space-4);
+    /* 面板内按钮的统一紧凑高度：44px 触摸令牌在桌面上偏占空间，
+       32px 与 iOS 分段控件同高；宽度仍由 flex 撑开，热区照旧宽裕。
+       （滑块保留 44px 热区，见 .display-slider） */
+    --bamboo-ctl-h: 32px;
     opacity: 0;
     transform: scale(0.95) translateY(4px);
     transition: opacity 0.2s ease, transform 0.2s ease;
@@ -186,12 +190,12 @@
     border: 1px solid var(--border-light);
     background: var(--btn-secondary-bg);
     color: var(--text-secondary);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-xs);
     font-size: var(--type-xs);
     font-weight: 600;
     cursor: pointer;
     transition: transform, opacity, box-shadow, border-color, background-color var(--transition-fast);
-    min-height: var(--touch-target);
+    min-height: var(--bamboo-ctl-h);
     min-width: var(--touch-target);
     padding: 0;
 }
@@ -306,12 +310,12 @@
     border: 1px solid var(--border-light);
     background: var(--btn-secondary-bg);
     color: var(--text-secondary);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-xs);
     font-size: var(--type-xs);
     font-weight: 600;
     cursor: pointer;
     transition: transform, opacity, box-shadow, border-color, background-color var(--transition-fast);
-    min-height: var(--touch-target);
+    min-height: var(--bamboo-ctl-h);
     min-width: var(--touch-target);
     padding: 0;
 }
@@ -341,13 +345,13 @@
     border: 1px dashed var(--border-light);
     background: transparent;
     color: var(--text-tertiary);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-xs);
     font-size: var(--type-xs);
     font-weight: 600;
     cursor: pointer;
     transition: transform, opacity, box-shadow, border-color, background-color var(--transition-fast);
     margin-top: var(--space-2);
-    min-height: var(--touch-target);
+    min-height: var(--bamboo-ctl-h);
     min-width: var(--touch-target);
     padding: 0;
 }
@@ -391,13 +395,5 @@
     .display-panel {
         /* Same min() formula; at 375px this gives 1rem margin on each side */
         width: min(280px, 100% - 2rem);
-    }
-
-    .display-preset-btn,
-    .display-font-preset-btn,
-    .display-gap-preset-btn,
-    .display-hue-preset-btn,
-    .display-lightness-preset-btn {
-        min-height: var(--touch-target);
     }
 }

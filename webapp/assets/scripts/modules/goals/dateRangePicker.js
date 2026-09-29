@@ -105,10 +105,8 @@ export const DateRangePicker = {
                 </div>
                 <div class="drp-footer">
                     <div class="drp-selected-range">
-                        <span class="drp-selected-label">起始:</span>
                         <input type="text" class="drp-input-start" value="${HTMLUtils.escapeHtmlAttr(currentStart || '')}" placeholder="YYYY-MM-DD">
                         <span class="drp-arrow">→</span>
-                        <span class="drp-selected-label">结束:</span>
                         <input type="text" class="drp-input-end" value="${HTMLUtils.escapeHtmlAttr(currentEnd || '')}" placeholder="YYYY-MM-DD">
                     </div>
                     <div class="drp-actions">
@@ -128,7 +126,7 @@ export const DateRangePicker = {
             popupElement: container.querySelector('.drp-container'),
             anchorRect: rect,
             anchor: { placement: 'below-center' },
-            fallbackSize: { width: 300, height: 400 },
+            fallbackSize: { width: 344, height: 500 },
         });
 
         const renderCalendar = (calendarEl, baseDate) => {

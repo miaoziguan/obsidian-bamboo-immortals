@@ -261,11 +261,13 @@
   align-items: center;
   gap: 2px;
   padding: 3px 5px;
-  background: var(--card-bg);
+  /* 统一不透明跟随色，不再使用玻璃拟态。 */
+  background: var(--bamboo-popup-bg);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-control);
   box-shadow: var(--shadow-card);
-  transform: translate(-50%, calc(-100% - 6px));
+  /* translateZ(0) 只能「追加」：本条 transform 承担居中定位，覆盖会直接错位 */
+  transform: translate(-50%, calc(-100% - 6px)) translateZ(0);
   pointer-events: auto;
 }
 .tw-mm-toolbar[hidden] { display: none; }
@@ -330,12 +332,14 @@
   position: absolute;
   z-index: 50;
   top: 10px; left: 50%;
-  transform: translateX(-50%);
+  /* 追加 translateZ(0) 触发合成层，保留原有居中位移 */
+  transform: translateX(-50%) translateZ(0);
   display: flex;
   align-items: center;
   gap: 4px;
   padding: 4px 6px;
-  background: var(--card-bg);
+  /* 同 .tw-mm-toolbar：统一不透明跟随色，不再使用玻璃拟态。 */
+  background: var(--bamboo-popup-bg);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-control);
   box-shadow: var(--shadow-card);

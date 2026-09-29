@@ -368,6 +368,7 @@
     width: 320px;
     max-width: 90vw;
     max-height: 70vh;
+    /* 通过 --overlay-surface 令牌（已在 variables.css 统一为不透明跟随色），与 Toast / Confirm 等浮层一致，不再使用玻璃。 */
     background: var(--overlay-surface);
     border: var(--overlay-border);
     border-radius: var(--radius-md);
@@ -379,6 +380,7 @@
 }
 
 .theme-dark .catm-migrate-picker .cmp-container {
+    /* 暗色同样走 --overlay-surface（令牌已含暗色实心值），与 base 一致，无需特判。 */
     background: var(--overlay-surface);
     border: var(--overlay-border);
 }

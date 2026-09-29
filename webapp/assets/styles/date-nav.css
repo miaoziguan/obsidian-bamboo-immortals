@@ -237,21 +237,25 @@
     background: rgba(var(--black-rgb), 0.2);
 }
 .drp-container {
-    background: var(--card-bg);
+    /* 统一不透明跟随色，不再使用玻璃拟态（其遮罩 .drp-overlay 只压暗、不模糊，无需 blur）。 */
+    background: var(--bamboo-popup-bg);
     border-radius: var(--radius-md);
     box-shadow: 0 8px 32px rgba(var(--black-rgb), 0.2), 0 0 0 1px var(--border-light);
     overflow: hidden;
     width: min(360px, 92vw);
     max-width: 360px;
+    max-height: min(600px, 88vh); /* 视口偏矮时不溢出，日历区内部滚动 */
     font-size: var(--type-sm);
     display: flex;
     flex-direction: column;
 }
 .drp-header {
+    flex: 0 0 auto;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 10px 14px;
+    gap: var(--space-2);
+    padding: 8px 12px;
     border-bottom: 1px solid var(--border-light);
     background: var(--bamboo-background);
 }
@@ -261,8 +265,11 @@
     color: var(--text-primary);
 }
 .drp-close-btn {
+    /* 视觉 24px；热区由 base.css 的 ::before 扩至 44px（见「触控目标扩展」） */
     width: 24px;
     height: 24px;
+    min-width: 0;
+    min-height: 0;
     border: none;
     background: transparent;
     color: var(--text-secondary);
@@ -280,6 +287,7 @@
     color: var(--text-primary);
 }
 .drp-tabs {
+    flex: 0 0 auto;
     display: flex;
     gap: 0;
     border-bottom: 1px solid var(--border-light);
@@ -287,7 +295,9 @@
 }
 .drp-tab {
     flex: 1;
-    padding: 8px 10px;
+    padding: 7px 8px;
+    min-height: 34px;
+    min-width: 0;
     border: none;
     background: transparent;
     color: var(--text-secondary);
@@ -297,7 +307,7 @@
     border-bottom: 2px solid transparent;
     transition: transform, opacity, box-shadow, border-color, background-color 0.15s;
     white-space: nowrap;
-    min-height: var(--touch-target);
+    user-select: none;
 }
 .drp-tab:hover {
     color: var(--bamboo-primary);
@@ -308,29 +318,33 @@
     font-weight: 600;
 }
 .drp-quick-area {
-    padding: 10px 12px;
+    flex: 0 0 auto;
+    padding: 6px 12px;
     border-bottom: 1px solid var(--border-light);
 }
 .drp-quick-row {
     display: flex;
     flex-wrap: wrap;
-    gap: 6px;
-    margin-bottom: 6px;
+    gap: 4px;
+    margin-bottom: 4px;
 }
 .drp-quick-row:last-child {
     margin-bottom: 0;
 }
 .drp-quick-btn {
-    padding: 4px 10px;
+    padding: 3px 9px;
+    min-height: 24px;
+    min-width: 0;
+    line-height: 1.3;
     border: 1px solid var(--border-light);
     background: var(--bamboo-background);
     color: var(--text-secondary);
     font-size: var(--type-xs);
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-sm);
     cursor: pointer;
     transition: transform, opacity, box-shadow, border-color, background-color 0.15s;
     white-space: nowrap;
-    min-height: var(--touch-target);
+    user-select: none;
 }
 .drp-quick-btn:hover {
     border-color: var(--bamboo-primary);
@@ -338,7 +352,10 @@
     background: rgba(var(--teal-rgb), 0.08);
 }
 .drp-body {
-    padding: 10px 14px;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 8px 12px;
 }
 .drp-calendar {
     width: 100%;
@@ -347,16 +364,20 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
 }
 .drp-month-label {
     font-weight: 600;
     font-size: var(--type-base);
     color: var(--text-primary);
+    letter-spacing: 0.02em;
 }
 .drp-nav-btn {
+    /* 视觉 24px；热区由 base.css 的 ::before 扩至 44px（见「触控目标扩展」） */
     width: 24px;
     height: 24px;
+    min-width: 0;
+    min-height: 0;
     border: none;
     background: var(--bamboo-background);
     color: var(--text-secondary);
@@ -373,20 +394,20 @@
     color: var(--text-primary);
 }
 .drp-nav-btn:disabled {
-    opacity: 0.3;
+    opacity: 0.4;
     cursor: not-allowed;
 }
 .drp-weekdays {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
     gap: 1px;
-    margin-bottom: 4px;
+    margin-bottom: 2px;
 }
 .drp-weekdays span {
     text-align: center;
     font-size: var(--type-mini);
     color: var(--text-secondary);
-    padding: 3px 0;
+    padding: 2px 0;
 }
 .drp-days {
     display: grid;
@@ -394,8 +415,8 @@
     gap: 1px;
 }
 .drp-day {
-    height: 30px;
-    min-height: var(--touch-target);
+    height: 32px;
+    min-height: 0;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -404,6 +425,7 @@
     border-radius: var(--radius-5);
     cursor: pointer;
     transition: transform, opacity, box-shadow, border-color, background-color 0.15s;
+    user-select: none;
 }
 .drp-day:hover:not(.drp-day-disabled) {
     background: rgba(var(--teal-rgb), 0.12);
@@ -438,21 +460,25 @@
     border-radius: var(--radius-5);
 }
 .drp-footer {
+    flex: 0 0 auto;
     display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-    padding: 10px 14px;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 8px;
+    padding: 6px 12px;
     border-top: 1px solid var(--border-light);
     background: var(--bamboo-background);
 }
 .drp-selected-range {
     display: flex;
     align-items: center;
-    justify-content: center;
-    gap: var(--space-2);
+    justify-content: flex-start;
+    flex: 1 1 auto;
+    min-width: 0;
+    gap: 5px;
     font-size: var(--type-xs);
 }
-.drp-selected-label {
+.drp-arrow {
     color: var(--text-secondary);
 }
 .drp-input-start,
@@ -460,26 +486,21 @@
     color: var(--bamboo-primary);
     font-weight: 600;
     background: rgba(var(--teal-rgb), 0.1);
-    padding: 4px 8px;
+    padding: 3px 6px;
     border-radius: var(--radius-2xs);
     border: 1px solid transparent;
     font-size: var(--type-xs);
-    width: 90px;
+    width: 80px;
+    min-height: 28px;
     text-align: center;
     transition: transform, opacity, box-shadow, border-color, background-color 0.2s;
-    min-height: var(--touch-target);
 }
 .drp-input-start:hover,
 .drp-input-end:hover {
     border-color: var(--bamboo-primary);
 }
 .drp-input-start:focus,
-.drp-input-end:focus {
-    outline: none;
-    border-color: var(--bamboo-primary);
-    background: rgba(var(--teal-rgb), 0.15);
-    box-shadow: 0 0 0 2px rgba(var(--teal-rgb), 0.2);
-}
+.drp-input-end:focus,
 .drp-input-start:focus-visible,
 .drp-input-end:focus-visible {
     outline: none;
@@ -494,18 +515,22 @@
 }
 .drp-actions {
     display: flex;
-    gap: var(--space-2);
-    justify-content: flex-end;
+    gap: 8px;
+    flex: 0 0 auto;
+    margin-left: auto;
 }
 .drp-cancel-btn,
 .drp-confirm-btn {
-    padding: 6px 14px;
+    /* 高度与 28px 输入框对齐，底栏视觉更协调 */
+    padding: 4px 14px;
+    min-height: 28px;
+    min-width: 0;
     border-radius: var(--radius-2xs);
     font-size: var(--type-sm);
     font-weight: 500;
     cursor: pointer;
+    white-space: nowrap;
     transition: transform, opacity, box-shadow, border-color, background-color 0.2s;
-    min-height: var(--touch-target);
 }
 .drp-cancel-btn {
     border: 1px solid var(--border-light);
@@ -527,6 +552,36 @@
 .drp-confirm-btn:disabled {
     opacity: 0.4;
     cursor: not-allowed;
+}
+
+/* 触摸设备：恢复足够的触控尺寸（鼠标环境一律使用上面的紧凑尺寸）。
+   ⚠️ 这里必须按「输入能力」判定，不能用 max-width 宽度代理：
+   桌面端的窄侧边栏 / 窄窗口同样会命中 max-width: 480px，会把紧凑尺寸
+   顶回 44px，使紧凑化改动看起来「完全没生效」。
+   移动端的权威来源是 bridge 下发的 :host(.platform-mobile)（见下条规则）。 */
+@media (hover: none) and (pointer: coarse) {
+    .drp-tab,
+    .drp-quick-btn,
+    .drp-cancel-btn,
+    .drp-confirm-btn,
+    .drp-input-start,
+    .drp-input-end {
+        min-height: var(--touch-target);
+    }
+    .drp-day {
+        height: 40px;
+    }
+}
+:host(.platform-mobile) .drp-tab,
+:host(.platform-mobile) .drp-quick-btn,
+:host(.platform-mobile) .drp-cancel-btn,
+:host(.platform-mobile) .drp-confirm-btn,
+:host(.platform-mobile) .drp-input-start,
+:host(.platform-mobile) .drp-input-end {
+    min-height: var(--touch-target);
+}
+:host(.platform-mobile) .drp-day {
+    height: 40px;
 }
 
 .week-view {

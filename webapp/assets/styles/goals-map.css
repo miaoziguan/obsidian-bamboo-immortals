@@ -1061,7 +1061,9 @@ input[type="number"].goal-inline-edit-input {
     background: rgba(var(--black-rgb), 0.2);
 }
 .catp-container {
-    background: var(--card-bg);
+    /* 统一不透明跟随色，不再使用玻璃拟态（避免 backdrop-filter 兼容/明暗两态的脆弱性）。
+       底由 --bamboo-popup-bg 提供（亮色极浅色相实心、暗色不透明跟随色）。 */
+    background: var(--bamboo-popup-bg);
     border-radius: var(--radius-md);
     box-shadow: 0 8px 32px rgba(var(--black-rgb), 0.2), 0 0 0 1px var(--border-light);
     overflow: hidden;
@@ -1168,7 +1170,8 @@ input[type="number"].goal-inline-edit-input {
     backdrop-filter: blur(var(--glass-blur));
 }
 .catm-container {
-    background: var(--card-bg);
+    /* 统一不透明跟随色，与 .catp-container 等浮层一致，不再使用玻璃（避免透底幽灵字 + 明暗两态脆弱性）。 */
+    background: var(--bamboo-popup-bg);
     border-radius: var(--radius-xl);
     box-shadow: 0 20px 60px rgba(var(--black-rgb), 0.3), 0 0 0 1px var(--border-light);
     overflow: hidden;
@@ -1225,7 +1228,10 @@ input[type="number"].goal-inline-edit-input {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 10px 12px;
+    /* 行高 48 → 38px：行内内容高由 28px 的操作按钮决定，故只收上下内边距（10 → 5）。
+       行距 = 38 + 6(gap) = 44px，恰好等于 .catm-item-actions button 的 44px 触控热区，
+       既不重叠，也不浪费空间。 */
+    padding: 5px 12px;
     border-radius: var(--radius-sm);
     background: var(--bamboo-background);
     transition: transform, opacity, box-shadow, border-color, background-color 0.15s;
@@ -1262,6 +1268,15 @@ input[type="number"].goal-inline-edit-input {
 }
 .catm-item-actions button:hover {
     background: var(--border-light);
+}
+/* base.css 的 :where(button, [role="button"], …) 给「全站所有按钮」兜底了
+   min-height/min-width: var(--touch-target)（窄屏更是 48px），会把本组 28px 的
+   小按钮撑成 44/48px，行高随之被顶到 64/68px。而本组按钮已用 ::before 扩展出
+   44px 热区（见文件末「触控目标扩展」；上面 [data-inline-edit] 规则也已显式排除本组），
+   豁免兜底并不会缩小热区，只是让视觉尺寸回到设计值 28px。 */
+.catm-item-actions button {
+    min-height: auto;
+    min-width: auto;
 }
 .catm-inline-input {
     padding: 4px 8px;

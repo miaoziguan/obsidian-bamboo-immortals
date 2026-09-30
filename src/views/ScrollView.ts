@@ -329,7 +329,7 @@ export class ScrollView extends ItemView {
 
             // ② 目标栏已有异功能的画中卷 → 改开新栏位，绝不覆盖/销毁它
             if (target && target.view instanceof ScrollView &&
-                (target.view as ScrollView).getFeature() !== this._feature) {
+                target.view.getFeature() !== this._feature) {
               target = pickTarget(true) ?? target;
             }
             if (!target || target === this.leaf) {

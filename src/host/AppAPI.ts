@@ -88,6 +88,17 @@ export class AppAPI {
   onMoveScroll?: (location?: string) => void;
 
   /**
+   * 「画中卷」上下文索取回调（由 ScrollView 注入）。
+   *
+   * 画中卷的功能选型/停靠位/全屏态原本只在 iframe `load` 事件里注入一次，而 webapp 侧
+   * 是一次性 promise（2s 超时后回落香道）。若 webapp 因故晚于 `load` 才注册监听
+   * （典型场景：scroll.html 体积超过 bundle 阈值被 gzip 包装，模块脚本在 `load` 之后
+   * 才解压执行），这次注入就被彻底漏掉 —— 表现为「打字机变香道」且 2s 白屏。
+   * 故 webapp 握手（`app:ready`）时由宿主补发一次上下文，把一次性注入升级为「可重放」。
+   */
+  onScrollContextRequest?: () => { feature?: string; location?: string; zen?: boolean } | null;
+
+  /**
    * 健康分权威快照数据源（由 DailyReviewView 注入，转发到插件的 getStrategyOverview()）。
    * webapp 通过 app:getHealthOverview 向插件请求单一数据源的健康分套件，
    * 避免插件与前端各算一遍导致的分数漂移。
@@ -269,16 +280,31 @@ export class AppAPI {
     this.iframe.contentWindow.postMessage({ type: 'storage:response', id, error }, '*');
   }
 
+  /** 向 iframe 推送画中卷上下文（feature / location / zen）。
+   *  由 app:ready 握手触发；ScrollView 未注入索取回调时（日报/归档视图）静默跳过。 */
+  private _pushScrollContext(): void {
+    if (!this.onScrollContextRequest) return;
+    const cw = this.iframe?.contentWindow;
+    if (!cw) return;
+    const ctx = this.onScrollContextRequest();
+    if (!ctx) return;
+    cw.postMessage({ type: 'scroll:feature', feature: ctx.feature ?? 'incense' }, '*');
+    cw.postMessage({ type: 'scroll:location', location: ctx.location ?? 'center' }, '*');
+    cw.postMessage({ type: 'scroll:zen', zen: !!ctx.zen }, '*');
+  }
+
   /** 消息路由 */
   private async onMessage(event: MessageEvent): Promise<void> {
     const msg = event.data as { type?: string; id?: string; payload?: unknown };
     if (!msg || !msg.type || !msg.id) return;
-    if (msg.type === 'app:moveToCenter') {
-      // 来源校验下面统一做
-    }
 
     // 来源校验
-    if (this.iframe && event.source !== this.iframe.contentWindow) return;
+    // 【安全】必须是「已绑定的本视图 iframe」：startListening() 早于 iframe 创建（中间还隔着
+    // await buildBlobUrl），那段窗口里 this.iframe 为 null，若写成 `this.iframe && ...`，
+    // 来源校验会被整体跳过 —— 主窗口内任意第三方插件/脚本 postMessage 一条
+    // storage:clearAll / file:write 即可被无条件执行。iframe 尚不存在时其内的 webapp
+    // 也必然还不存在，故这段窗口内到达的任何消息都不是合法来源，一律丢弃。
+    if (!this.iframe || event.source !== this.iframe.contentWindow) return;
 
     // 消息类型白名单（阶段3 · 契约化：从 protocol.ts 集中定义）
     const type = msg.type;
@@ -358,6 +384,9 @@ export class AppAPI {
         // 重建视图（侧边栏移中央）后待恢复的布局模式，webapp 据此自动进入横向/看板
         pendingLayoutMode: this.getPendingLayoutMode ? this.getPendingLayoutMode() : null,
       });
+      // 画中卷：握手时补发一次上下文（feature/location/zen），
+      // 兜住「iframe load 时那次注入被 webapp 漏收」的窗口（详见 onScrollContextRequest 注释）。
+      this._pushScrollContext();
       return;
     }
 
@@ -376,7 +405,11 @@ export class AppAPI {
     // ---- 视图移动到主工作区（侧边栏点横向/看板 → 自动切到中央）----
     if (type === 'app:moveToCenter') {
       if (this.moveToCenter) {
-        const mode = (payload as { mode?: string })?.mode || 'horizontal';
+        // mode 会被写进视图状态（pendingLayoutMode）并随 workspace 布局跨重启持久化，
+        // 重启后又经 app:ready 注入 webapp 兜底恢复。必须白名单收口，
+        // 否则任意字符串会被存进布局文件、并在恢复时被当成布局模式消费。
+        const raw = (payload as { mode?: string })?.mode;
+        const mode = raw === 'kanban' || raw === 'horizontal' ? raw : 'horizontal';
         this.moveToCenter(mode);
         this.respond(id, { ok: true });
       } else {
@@ -744,11 +777,16 @@ export class AppAPI {
           this.respondError(id, '暂无目标数据，无法计算健康分');
           return;
         }
+        // overview 必须一并下发：webapp「数据概览」tab 此前拿不到它，只能本地再算一遍
+        // （且本地用的是未过滤归档的目标集），于是同一面板里「概览」与「诊断」两套口径。
+        // 下发后概览 tab 优先消费这份权威聚合，真正做到单一数据源。
         this.respond(id, {
           updatedAt: overview.updatedAt,
           health: overview.health,
           goals: overview.goals,
           results: overview.results,
+          overview: overview.overview,
+          hints: overview.hints,
         });
       } catch (e) {
         this.respondError(id, `app:getHealthOverview 计算失败: ${(e as Error)?.message ?? String(e)}`);
@@ -1107,7 +1145,10 @@ export class AppAPI {
       const resolveScrollPath = (raw: string | undefined): string => {
         const src = (raw || '').trim();
         if (!src) throw new Error('未提供文件路径');
-        if (src.includes('..')) throw new Error('路径遍历禁止');
+        // 按「路径分段」判定 `..`，而不是子串包含：后者会误伤 `笔记..md` / `..备份.md`
+        // 这类合法文件名（用户命名习惯里连续两个点并不罕见），导致正常文件被拒绝读写。
+        // 分段相等判定既挡住真正的 `../` 越界，又放行含 `..` 的文件名。
+        if (src.split(/[\\/]+/).some((seg) => seg === '..')) throw new Error('路径遍历禁止');
         const norm = normalizePath(src);
         // 允许以「画中卷」开头或相对，统一收敛到绑定目录内
         const full = norm.startsWith(root + '/') || norm === root

@@ -11,7 +11,22 @@ export function fmt(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-/** 纯函数：构造某年的法定节假日 + 春节集合（与 webapp 口径一致） */
+/**
+ * 春节假期（农历，每年不同；含除夕起的调休窗口）。key=公历年，value=该年春节假期日期。
+ *
+ * 维护契约（重要）：每年年初把「来年春节」按官方放假安排补进此表即可；
+ * 未登记的年份会被【优雅跳过】——该年春节不计入节假日（工作日计数略偏高），
+ * 但绝不 crash、也绝不产生一个错误日期。旧的「if refYear<=2026 硬编码」写法
+ * 到 2027 年就悄悄失效，且没有任何提示，改为表驱动后失效点显式可见。
+ */
+const CHINESE_NEW_YEAR: Record<number, string[]> = {
+  2025: ['2025-01-28', '2025-01-29', '2025-01-30', '2025-01-31',
+         '2025-02-01', '2025-02-02', '2025-02-03', '2025-02-04'],
+  2026: ['2026-02-16', '2026-02-17', '2026-02-18', '2026-02-19',
+         '2026-02-20', '2026-02-21', '2026-02-22'],
+};
+
+/** 纯函数：构造某年的法定节假日 + 春节集合 */
 export function buildHolidays(refYear: number): Set<string> {
   const h = new Set<string>();
   const add = (y: number, m: number, d: number) =>
@@ -24,13 +39,12 @@ export function buildHolidays(refYear: number): Set<string> {
     add(y, 6, 9); add(y, 6, 10);
     add(y, 9, 14); add(y, 9, 15); add(y, 9, 16);
   });
-  if (refYear <= 2025 && 2025 <= refYear + 1) {
-    ['2025-01-28', '2025-01-29', '2025-01-30', '2025-01-31',
-      '2025-02-01', '2025-02-02', '2025-02-03', '2025-02-04'].forEach((d) => h.add(d));
-  }
-  if (refYear <= 2026 && 2026 <= refYear + 1) {
-    ['2026-02-16', '2026-02-17', '2026-02-18', '2026-02-19',
-      '2026-02-20', '2026-02-21', '2026-02-22'].forEach((d) => h.add(d));
+  // 春节：只补「表中已登记」且落在 [refYear, refYear+1] 区间内的年份。
+  for (const yearStr of Object.keys(CHINESE_NEW_YEAR)) {
+    const year = Number(yearStr);
+    if (year >= refYear && year <= refYear + 1) {
+      CHINESE_NEW_YEAR[year].forEach((d) => h.add(d));
+    }
   }
   return h;
 }

@@ -184,18 +184,26 @@ export const TypewriterStore = {
   // 所有索引写入都收敛在 _saveWritingIndex 这一出口，故缓存不会失真；
   // 外部整体改写 settings（数据导入/恢复）后需调 invalidateWritingIndex() 丢弃。
   _writingIdxCache: null,
+  // 【数据安全】索引「读取失败」标记：与「确实没有索引」严格区分。
+  // 二者在返回值上都表现为 null，但语义完全不同——读失败时若照常走「构造空索引并立刻回写」，
+  // 磁盘上原有的所有组条目会被只含当前组的新索引整体覆盖（各组数据文件还在，却成了无人引用的
+  // 孤儿，UI 里表现为「我的卡片组全没了」）。调用方必须据此跳过索引更新。
+  _writingLoadFailed: false,
+  _notesIdxCache: null,
+  _notesLoadFailed: false,
 
   async _loadWritingIndex() {
-    if (this._writingIdxCache) return this._writingIdxCache;
+    if (this._writingIdxCache) { this._writingLoadFailed = false; return this._writingIdxCache; }
     const sm = window.storageManager;
     if (!sm || typeof sm.getSetting !== 'function') return null;
     try {
       const raw = await sm.getSetting('typewriter:writing-index');
+      this._writingLoadFailed = false;
       if (raw && typeof raw === 'object' && raw.groups) {
         this._writingIdxCache = raw;
         return raw;
       }
-    } catch (_) { /* 忽略 */ }
+    } catch (_) { this._writingLoadFailed = true; }
     return null;
   },
   async _saveWritingIndex(idx) {
@@ -205,7 +213,13 @@ export const TypewriterStore = {
     try { await sm.putSetting('typewriter:writing-index', idx); } catch (_) { /* 忽略 */ }
   },
   /** 丢弃写作索引缓存：数据导入/恢复或卸载重挂后调用，下次读取重新落库读取 */
-  invalidateWritingIndex() { this._writingIdxCache = null; this._writingIdxTs = 0; },
+  invalidateWritingIndex() {
+    this._writingIdxCache = null;
+    this._writingIdxTs = 0;
+    this._writingLoadFailed = false;
+    this._notesIdxCache = null;
+    this._notesLoadFailed = false;
+  },
   async _writingCurrentId() {
     const idx = await this._loadWritingIndex();
     return (idx && typeof idx.current === 'string' && idx.current) ? idx.current : 'default';
@@ -227,11 +241,21 @@ export const TypewriterStore = {
     } catch (_) {}
     const id = 'default';
     let moved = false;
-    if (sm.getTypewriterWritingDoc && sm.putTypewriterWritingDoc) {
-      try {
-        await sm.putTypewriterWritingDoc(id, { version: this.WRITING_VERSION, notes, links, canvasOffset });
+    if (sm.putTypewriterWritingDoc) {
+      // 【防数据回滚】与便签迁移同原则：只在目标组文件尚不存在时才写。
+      // 索引丢失会让迁移重跑，无条件覆盖会把已积累的 default 组内容回滚成迁移前旧快照。
+      let exists = false;
+      if (typeof sm.getTypewriterWritingDoc === 'function') {
+        try { exists = !!(await sm.getTypewriterWritingDoc(id)); } catch (_) { exists = false; }
+      }
+      if (!exists) {
+        try {
+          await sm.putTypewriterWritingDoc(id, { version: this.WRITING_VERSION, notes, links, canvasOffset });
+          moved = true;
+        } catch (e) { console.warn('[TypewriterStore] 旧写作数据迁移写文件失败，保留旧 key 不清理：', e); }
+      } else {
         moved = true;
-      } catch (e) { console.warn('[TypewriterStore] 旧写作数据迁移写文件失败，保留旧 key 不清理：', e); }
+      }
     }
     // 【修复】只有确认已落到独立文件才建索引并清旧 key；
     // 否则会「新位置没写成功 + 旧数据被清空」→ 静默丢数据（下次进来会重试迁移）。
@@ -262,6 +286,8 @@ export const TypewriterStore = {
       extraGroupFields: write ? { notePath: null } : {},
       currentId: () => (write ? this._writingCurrentId() : this._notesCurrentId()),
       loadIndex: () => (write ? this._loadWritingIndex() : this._loadNotesIndex()),
+      // 上一次 loadIndex 是否「读取失败」（而非索引不存在）。失败时调用方必须跳过索引更新。
+      loadFailed: () => (write ? !!this._writingLoadFailed : !!this._notesLoadFailed),
       saveIndex: (i) => (write ? this._saveWritingIndex(i) : this._saveNotesIndex(i)),
       getIdxTs: () => (write ? this._writingIdxTs : this._notesIdxTs),
       setIdxTs: (n) => { if (write) this._writingIdxTs = n; else this._notesIdxTs = n; },
@@ -287,33 +313,51 @@ export const TypewriterStore = {
     if (sm[desc.putBridge]) {
       try { await sm[desc.putBridge](gid, doc); wroteDoc = true; }
       catch (e) { console.warn('[TypewriterStore] 卡片档写入失败：', e); }
+    } else {
+      // 【防静默丢数据】宿主未提供该桥（webapp 版本新于宿主 / 宿主较旧）时，
+      // 原先连一行 warn 都没有就正常返回，调用方以为「已保存」，实际每次落盘都是空操作。
+      console.error('[TypewriterStore] 卡片档写入桥缺失，本次未落盘：', desc.putBridge);
+      if (typeof Toast !== 'undefined' && Toast.showToast) Toast.showToast('卡片档保存失败（宿主桥缺失）', 'warning');
     }
     if (!wroteDoc && desc.legacyFallback) {
-      await this._writeNotes(clean, desc.version);
-      if (canvasOffset) await sm.putSetting(this.KEY_CANVAS, { x: Number(canvasOffset.x) || 0, y: Number(canvasOffset.y) || 0, scale: Number(canvasOffset.scale) || 1 });
-      if (Array.isArray(wires)) await sm.putSetting(this.KEY_LINKS, wires);
+      try {
+        await this._writeNotes(clean, desc.version);
+        if (canvasOffset) await sm.putSetting(this.KEY_CANVAS, { x: Number(canvasOffset.x) || 0, y: Number(canvasOffset.y) || 0, scale: Number(canvasOffset.scale) || 1 });
+        if (Array.isArray(wires)) await sm.putSetting(this.KEY_LINKS, wires);
+        wroteDoc = true;
+      } catch (e) { console.warn('[TypewriterStore] 卡片档降级写入失败：', e); }
     }
+    // 索引更新：先读一次，「读取失败」与「索引不存在」必须分开处理。
+    // 失败时（离线 / vault 只读 / 宿主异常）若照常走 `|| 空索引` 分支，
+    // 会用「只含当前组」的新索引覆盖磁盘上原有的全部组条目——各组数据文件还在，
+    // 却成了无人引用的孤儿，UI 里表现为「我的卡片组全没了」。故直接跳过本次索引更新。
+    const idx = await desc.loadIndex();
+    if (desc.loadFailed()) return wroteDoc;
     try {
-      const idx = (await desc.loadIndex()) || { version: 1, current: gid, groups: {} };
-      idx.groups = idx.groups || {};
-      const isNew = !idx.groups[gid];
-      if (isNew) idx.groups[gid] = Object.assign({ id: gid, title: desc.newTitle, updatedAt: Date.now() }, desc.extraGroupFields);
-      const curChanged = idx.current !== gid;
+      const target = idx || { version: 1, current: gid, groups: {} };
+      target.groups = target.groups || {};
+      const isNew = !target.groups[gid];
+      if (isNew) target.groups[gid] = Object.assign({ id: gid, title: desc.newTitle, updatedAt: Date.now() }, desc.extraGroupFields);
+      const curChanged = target.current !== gid;
       const now = Date.now();
       if (isNew || curChanged || (now - (desc.getIdxTs() || 0)) > this.WRITING_INDEX_THROTTLE) {
-        idx.current = gid;
-        idx.groups[gid].updatedAt = now;
-        await desc.saveIndex(idx);
+        target.current = gid;
+        target.groups[gid].updatedAt = now;
+        await desc.saveIndex(target);
         desc.setIdxTs(now);
       }
     } catch (_) { /* 索引失败不阻断主写入 */ }
+    return wroteDoc;
   },
   async _loadCardDoc(desc, id) {
     const sm = window.storageManager;
     const result = { notes: [], canvasOffset: null, links: [], version: desc.version };
     if (!sm || typeof sm.getSetting !== 'function') return result;
     const gid = id || (await desc.currentId());
-    if (!id && !(await desc.loadIndex())) await desc.migrate();
+    // 只有「明确没有索引」才跑首启迁移；读失败时跳过——此时无从判断该不该迁移，
+    // 盲目迁移可能在下一次读取恢复后与目标文档打架（迁移本身已加存在性护栏，此处再省一次往返）。
+    const idx0 = id ? {} : await desc.loadIndex();
+    if (!id && !idx0 && !desc.loadFailed()) await desc.migrate();
     let doc = null;
     if (sm[desc.getBridge]) {
       try { doc = await sm[desc.getBridge](gid); } catch (_) { doc = null; }
@@ -409,7 +453,12 @@ export const TypewriterStore = {
   // ---- 写作档：分组（多份卡片组，每份独立文件）管理 ----
   // 索引(轻量)放 settings.json；分组切换 = 换当前组 id。以下方法供 UI 调用。
   async ensureWritingIndex() {
+    const placeholder = () => ({ version: 1, current: 'default', groups: { default: { id: 'default', title: '未命名草稿', updatedAt: Date.now(), notePath: null } } });
     let idx = await this._loadWritingIndex();
+    // 【数据安全】读失败 ≠ 没有索引。此时若照常回写「只含 default 的空索引」，
+    // 会把磁盘上全部写作组条目覆盖掉（各组数据文件还在，却成了无人引用的孤儿，
+    // UI 里表现为「我的卡片组全没了」）。故返回内存占位索引供 UI 渲染，但绝不落盘。
+    if (this._writingLoadFailed) return placeholder();
     if (!idx) {
       idx = { version: 1, current: 'default', groups: { default: { id: 'default', title: '未命名草稿', updatedAt: Date.now(), notePath: null } } };
       await this._saveWritingIndex(idx);
@@ -485,16 +534,24 @@ export const TypewriterStore = {
   // 与写作/导图同构：索引(轻量)放 settings.json 的 typewriter:notes-index；每组便签(重，无上限)放独立文件
   // typewriter-notes/<id>.json，保存只重写该组文件，不撑大 settings.json。
   // 旧版单文档(typewriter:notes / typewriterCanvas / typewriter:links)首启自动迁到 default 组文件（见 _migrateLegacyNotes）。
+  // 与写作档索引对称：加内存缓存，避免每次保存都把 settings.json 整份读出来 JSON.parse
+  //（那份还含便签等其它 key，解析成本随数据量增长）。写入同样收敛在 _saveNotesIndex 单一出口。
   async _loadNotesIndex() {
+    if (this._notesIdxCache) { this._notesLoadFailed = false; return this._notesIdxCache; }
     const sm = window.storageManager;
     if (!sm || typeof sm.getSetting !== 'function') return null;
     try {
       const raw = await sm.getSetting(this.KEY_NOTES_INDEX);
-      if (raw && typeof raw === 'object' && raw.groups) return raw;
-    } catch (_) { /* 忽略 */ }
+      this._notesLoadFailed = false;
+      if (raw && typeof raw === 'object' && raw.groups) {
+        this._notesIdxCache = raw;
+        return raw;
+      }
+    } catch (_) { this._notesLoadFailed = true; }
     return null;
   },
   async _saveNotesIndex(idx) {
+    this._notesIdxCache = idx || null;
     const sm = window.storageManager;
     if (!sm || typeof sm.putSetting !== 'function') return;
     try { await sm.putSetting(this.KEY_NOTES_INDEX, idx); } catch (_) { /* 忽略 */ }
@@ -504,7 +561,10 @@ export const TypewriterStore = {
     return (idx && typeof idx.current === 'string' && idx.current) ? idx.current : 'default';
   },
   async ensureNotesIndex() {
+    const placeholder = () => ({ version: 1, current: 'default', groups: { default: { id: 'default', title: '未命名便签', updatedAt: Date.now() } } });
     let idx = await this._loadNotesIndex();
+    // 与 ensureWritingIndex 同原则：读失败 ≠ 没有索引，返回内存占位索引、绝不落盘。
+    if (this._notesLoadFailed) return placeholder();
     if (!idx) {
       idx = { version: 1, current: 'default', groups: { default: { id: 'default', title: '未命名便签', updatedAt: Date.now() } } };
       await this._saveNotesIndex(idx);
@@ -535,33 +595,57 @@ export const TypewriterStore = {
     let links = [];
     let canvasOffset = null;
     let version = this.VERSION_RATIO_COORDS;   // 旧数据默认可疑为比例坐标
+    // 读取旧数据的每一步都必须容错：宿主 _send 走 postMessage，超时/错误会 reject。
+    // 原先这几处是裸 await，一次异常就会冲穿 restore()（其 _restored 已提前置位），
+    // 导致本次会话便签画布永久空白、只能刷新页面。
     // 1) 新格式 KEY_NOTES（{version, notes}）
-    const wrapped = await sm.getSetting(this.KEY_NOTES);
-    if (wrapped && Array.isArray(wrapped.notes)) {
-      notes = this._sanitizeNotes(wrapped.notes);
-      version = Number(wrapped.version) || this.VERSION_RATIO_COORDS;
-      const lk = await sm.getSetting(this.KEY_LINKS);
-      if (Array.isArray(lk)) links = this._sanitizeLinks(lk);
-      const off = await sm.getSetting(this.KEY_CANVAS);
-      if (off && (typeof off.x === 'number' || typeof off.y === 'number')) {
-        canvasOffset = { x: Number(off.x) || 0, y: Number(off.y) || 0, scale: Number(off.scale) || 1 };
+    try {
+      const wrapped = await sm.getSetting(this.KEY_NOTES);
+      if (wrapped && Array.isArray(wrapped.notes)) {
+        notes = this._sanitizeNotes(wrapped.notes);
+        version = Number(wrapped.version) || this.VERSION_RATIO_COORDS;
+        try {
+          const lk = await sm.getSetting(this.KEY_LINKS);
+          if (Array.isArray(lk)) links = this._sanitizeLinks(lk);
+        } catch (_) { /* 连线读失败不影响便签本体迁移 */ }
+        try {
+          const off = await sm.getSetting(this.KEY_CANVAS);
+          if (off && (typeof off.x === 'number' || typeof off.y === 'number')) {
+            canvasOffset = { x: Number(off.x) || 0, y: Number(off.y) || 0, scale: Number(off.scale) || 1 };
+          }
+        } catch (_) { /* 偏移读失败同上 */ }
+      } else if (typeof sm.getTypewriterNotes === 'function') {
+        // 2) 更早的裸数组 typewriter-notes.json
+        const legacy = await sm.getTypewriterNotes();
+        if (Array.isArray(legacy)) {
+          notes = this._sanitizeNotes(legacy);
+          version = this.VERSION_RATIO_COORDS;   // 裸数组 = 比例坐标
+        }
       }
-    } else if (typeof sm.getTypewriterNotes === 'function') {
-      // 2) 更早的裸数组 typewriter-notes.json
-      const legacy = await sm.getTypewriterNotes();
-      if (Array.isArray(legacy)) {
-        notes = this._sanitizeNotes(legacy);
-        version = this.VERSION_RATIO_COORDS;   // 裸数组 = 比例坐标
-      }
+    } catch (e) {
+      console.warn('[TypewriterStore] 旧便签读取失败，本次跳过迁移：', e);
+      return false;
     }
     if (!notes.length && !links.length) return false;   // 无旧数据 → 无需迁移
     const id = 'default';
     let moved = false;
     if (sm.putTypewriterNotesDoc) {
-      try {
-        await sm.putTypewriterNotesDoc(id, { version, notes, links, canvasOffset });
+      // 【防数据回滚】迁移只在「目标组文件尚不存在」时才写。
+      // 旧裸数组文件 typewriter-notes.json 迁移后从未被删除，若索引因故丢失导致迁移重跑，
+      // 无条件覆盖会把已积累的 default 组内容回滚到迁移前的旧快照 —— 不可逆地丢数据。
+      // 目标文件已存在说明迁移早就成功过，此处只补索引 + 清旧 key 即可。
+      let exists = false;
+      if (typeof sm.getTypewriterNotesDoc === 'function') {
+        try { exists = !!(await sm.getTypewriterNotesDoc(id)); } catch (_) { exists = false; }
+      }
+      if (!exists) {
+        try {
+          await sm.putTypewriterNotesDoc(id, { version, notes, links, canvasOffset });
+          moved = true;
+        } catch (e) { console.warn('[TypewriterStore] 旧便签迁移写文件失败，保留旧 key 不清理：', e); }
+      } else {
         moved = true;
-      } catch (e) { console.warn('[TypewriterStore] 旧便签迁移写文件失败，保留旧 key 不清理：', e); }
+      }
     }
     if (!moved) return false;   // 桥不可用：保留旧 key，下次重试
     await this._saveNotesIndex({ version: 1, current: id, groups: { [id]: { id, title: '未命名便签', updatedAt: Date.now() } } });

@@ -23,6 +23,15 @@ describe('HTMLUtils', () => {
         expect(window.HTMLUtils.escapeHtmlAttr('"\'<>&')).toBe('&quot;&#39;&lt;&gt;&amp;');
     });
 
+    test('契约：escapeHtml 只用于文本上下文（不转义引号），属性上下文必须用 escapeHtmlAttr', () => {
+        // escapeHtml 基于 textContent→innerHTML，天然不转义引号；这是有意设计：
+        // 引号只在 HTML 属性值里危险，而 escapeHtml 用于文本节点/文本插值。
+        // 若有用户输入要放进属性（title="..." / data-* 等），必须用 escapeHtmlAttr。
+        // 锁死此差异，避免有人「顺手把 escapeHtml 改成也转义引号」导致全站渲染变化。
+        expect(window.HTMLUtils.escapeHtml('a"b\'c')).toBe('a"b\'c');          // 文本上下文：引号原样保留
+        expect(window.HTMLUtils.escapeHtmlAttr('a"b\'c')).toBe('a&quot;b&#39;c'); // 属性上下文：引号被转义
+    });
+
     test('setSafeContent allowHtml=false 应使用 textContent', () => {
         const el = document.createElement('div');
         window.HTMLUtils.setSafeContent(el, '<b>bold</b>', false);

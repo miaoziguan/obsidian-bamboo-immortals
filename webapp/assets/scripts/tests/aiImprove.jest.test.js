@@ -3,7 +3,10 @@
  *
  * openHealthScoreDetail 的「用 AI 改进」按钮：
  * 点击 → window.parent.postMessage({type:'app:aiImproveGoal', payload:{goalId,title,hints}})
- * 把目标（含本地健康分 hints）喂给插件侧 Agentic 编辑链路。
+ * 把目标（含宿主权威健康分 hints）喂给插件侧 Agentic 编辑链路。
+ *
+ * M2（方案 B）后：详情弹窗只消费宿主权威快照（_remoteHealth），
+ * webapp 无本地评分引擎，故本测试用 _remoteHealth 注入权威 health + results。
  */
 const { loadModule } = require('./__helpers__/testUtils');
 
@@ -27,25 +30,9 @@ const PanelManagerStub = {
 const storeStub = {
   getGlobalGoals: () => [{ id: 'g-x', title: '健康减重', archived: false, items: [] }],
 };
+// webapp 侧仅保留渲染（评分 + 诊断文案均已迁宿主）
 const GoalHealthScoreStub = {
-  _buildDataCache: () => ({}),
-  compute: () => ({
-    score: 62,
-    label: '需关注',
-    color: '#f59e0b',
-    L1: { onTime: { hint: 'L1 拖延提示' } },
-    L3: { stagnation: { hint: 'L3 停滞提示' } },
-  }),
-  computeSet: () => ({
-    avgScore: 62,
-    avgLabel: '需关注',
-    avgColor: '#f59e0b',
-    trend: 0,
-    L1: 70,
-    L2: 60,
-    L3: 40,
-  }),
-  generateDynamicHints: () => [],
+  renderOverviewCard: () => '',
 };
 
 const { GoalsRenderer } = loadModule('modules/goals/renderer.js', ['GoalsRenderer'], {
@@ -57,6 +44,25 @@ const { GoalsRenderer } = loadModule('modules/goals/renderer.js', ['GoalsRendere
   Toast: ToastStub,
 });
 
+const remoteHealth = {
+  health: {
+    avgScore: 62, avgLevel: 'warning', avgColor: '#f59e0b', avgLabel: '需关注',
+    count: 1, trend: 0, L1: 70, L2: 60, L3: 40,
+  },
+  results: [
+    {
+      goalId: 'g-x',
+      score: 62, level: 'warning', label: '需关注', color: '#f59e0b',
+      L1: { score: 70, onTime: { score: 55, hint: 'L1 拖延提示' } },
+      L2: { score: 60 },
+      L3: { score: 40, stagnation: { penalty: 20, hint: 'L3 停滞提示' }, balance: { score: 50 } },
+    },
+  ],
+  updatedAt: '2026-06-01T00:00:00.000Z',
+  overview: null,
+  hints: [],
+};
+
 describe('健康分详情 · 用 AI 改进按钮', () => {
   beforeEach(() => {
     postSpy.mockClear();
@@ -64,9 +70,10 @@ describe('健康分详情 · 用 AI 改进按钮', () => {
     PanelManagerStub.open.mockClear();
     document.body.innerHTML = '';
     window.parent.postMessage = postSpy;
+    GoalsRenderer._remoteHealth = remoteHealth;   // 注入宿主权威快照
   });
 
-  it('渲染每个目标一个「用 AI 改进」按钮，带 goalId/title/hints 数据', () => {
+  it('渲染每个目标一个「用 AI 改进」按钮，带 goalId/title/hints 数据（来自宿主权威 results）', () => {
     GoalsRenderer.openHealthScoreDetail();
     const btn = document.querySelector('.health-goal-improve');
     expect(btn).not.toBeNull();
@@ -87,6 +94,13 @@ describe('健康分详情 · 用 AI 改进按钮', () => {
       title: '健康减重',
       hints: 'L1 拖延提示；L3 停滞提示',
     });
+    expect(ToastStub.showToast).toHaveBeenCalled();
+  });
+
+  it('无权威快照时：不渲染详情、给出提示并触发一次拉取（不再本地计算）', () => {
+    GoalsRenderer._remoteHealth = null;
+    GoalsRenderer.openHealthScoreDetail();
+    expect(document.querySelector('.health-goal-improve')).toBeNull();
     expect(ToastStub.showToast).toHaveBeenCalled();
   });
 });

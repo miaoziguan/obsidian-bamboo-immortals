@@ -7,8 +7,8 @@
  */
 
 import type { GoalItem } from "../types/data";
-import { computeGoalHealth, computeHealthSet } from "./healthScore";
-import type { HealthLevel, HealthResult, HealthSet } from "./healthScore";
+import { buildSetHints, computeGoalHealth, computeHealthSet } from "./healthScore";
+import type { HealthLevel, HealthResult, HealthSet, HealthSetHint } from "./healthScore";
 import { calculateGoalStats, type GoalStats } from "./goalStats";
 import type { DeviationCache } from "./DeviationCalculator";
 
@@ -43,6 +43,8 @@ export interface StrategyOverview {
    * 避免插件与前端各维护一份引擎导致的漂移。
    */
   results: HealthResult[];
+  /** 目标集层面系统诊断提示（webapp「系统战略诊断」直接渲染，不再本地生成） */
+  hints: HealthSetHint[];
 }
 
 const clamp = (v: number, lo: number, hi: number): number =>
@@ -93,12 +95,16 @@ export function buildStrategyOverview(
 
   const overview = calculateGoalStats(goals);
   const set = computeHealthSet(goals, cache, today);
+  const hints = buildSetHints(set, results);
 
   return {
-    updatedAt: new Date().toISOString(),
+    // 用注入的 today 而非 new Date()：与 L1/L2/L3 的判定基准日严格同源，
+    // 否则「分数按 A 日算、时间戳却是 B 日」，排查漂移时会误导；也让单测可断言。
+    updatedAt: today.toISOString(),
     goals: goalHealths,
     overview,
     health: set,
     results,
+    hints,
   };
 }

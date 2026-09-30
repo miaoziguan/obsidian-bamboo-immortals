@@ -5,8 +5,10 @@ import {
   generateHealthHints,
   weakestDimension,
   buildHolidays,
+  buildSetHints,
   TUNING,
   type HealthResult,
+  type HealthSet,
 } from '../healthScore';
 import { buildCache, type DeviationCache } from '../DeviationCalculator';
 import type { DayData, GoalItem } from '../../types/data';
@@ -40,6 +42,44 @@ describe('healthScore.buildHolidays', () => {
     expect(h.has('2026-10-01')).toBe(true);
     expect(h.has('2026-02-16')).toBe(true); // 2026 春节
     expect(h.size).toBeGreaterThan(0);
+  });
+});
+
+describe('healthScore.buildSetHints（目标集层面系统诊断，单一数据源）', () => {
+  it('L2 偏低 → 返回「动力指数下降」warning 提示', () => {
+    const set = {
+      avgScore: 55, avgLevel: 'warning', avgLabel: '需关注', avgColor: '#f59e0b',
+      count: 1, L1: 80, L2: 50, L3: 70, trend: 0,
+    } as unknown as HealthSet;
+    const hints = buildSetHints(set, []);
+    expect(hints.some((h) => h.type === 'warning' && h.text.includes('动力指数下降'))).toBe(true);
+  });
+
+  it('各维度均高 → 仅返回一条 success 激励提示', () => {
+    const set = {
+      avgScore: 92, avgLevel: 'excellent', avgLabel: '优秀', avgColor: '#0a0',
+      count: 1, L1: 90, L2: 90, L3: 90, trend: 0,
+    } as unknown as HealthSet;
+    const hints = buildSetHints(set, []);
+    expect(hints).toHaveLength(1);
+    expect(hints[0].type).toBe('success');
+  });
+
+  it('存在停滞目标 → 返回 danger 提示并报出数量', () => {
+    const set = {
+      avgScore: 45, avgLevel: 'risk', avgLabel: '风险', avgColor: '#d00',
+      count: 1, L1: 60, L2: 60, L3: 40, trend: 0,
+    } as unknown as HealthSet;
+    const results = [
+      {
+        goalId: 'g1', score: 40, level: 'risk', label: '风险', color: '#d00',
+        L1: { score: 60, onTime: { score: 60 } },
+        L2: { score: 60 },
+        L3: { score: 40, stagnation: { penalty: 25, hint: '' }, balance: { score: 60 } },
+      },
+    ] as unknown as HealthResult[];
+    const hints = buildSetHints(set, results);
+    expect(hints.some((h) => h.type === 'danger' && h.text.includes('1 个项目已停滞'))).toBe(true);
   });
 });
 

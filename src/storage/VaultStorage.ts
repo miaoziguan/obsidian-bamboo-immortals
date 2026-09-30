@@ -10,6 +10,22 @@ import type {
   CustomTemplate,
 } from '../types/data';
 
+/**
+ * 文档 id 安全校验（画中卷·写作档 / 思维子弹 / 便签组）。
+ *
+ * id 直接参与文件路径拼接（`typewriter-writing/<id>.json` 等），而 Obsidian 的
+ * normalizePath 只做斜杠归一、不解析 `..`。若不加约束，形如 `../../.obsidian/x`
+ * 或 `a/b` 的 id 会拼出越界路径 —— 读写删都可能落在「画中卷数据目录」之外
+ * （路径遍历）。此处统一收敛为「仅字母数字、下划线、短横线，1~64 字符」，
+ * 非法 id 一律抛错（fail-fast，与 putTypewriterNotes 的契约一致）。
+ */
+export function assertSafeDocId(id: string): string {
+  if (typeof id !== 'string' || !/^[A-Za-z0-9_-]{1,64}$/.test(id)) {
+    throw new Error(`非法文档 id：${typeof id === 'string' ? JSON.stringify(id) : String(id)}`);
+  }
+  return id;
+}
+
 /** 将 unknown 收窄为普通对象（含字符串索引），非对象/数组/null 返回 null */
 function asPlainObject(value: unknown): Record<string, unknown> | null {
   if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
@@ -475,7 +491,7 @@ export class VaultStorage {
   // 这样「保存」只重写该组文件，不再把多组卡片塞进 settings.json 导致每次保存全量重写（性能隐患的根源）。
   // 旧版曾把整组写作数据塞进 settings.json 的 typewriter:writing，由 webapp 侧首启自动迁移（见 TypewriterStore._migrateLegacyWriting）。
   private typewriterWritingDocPath(id: string): string {
-    return normalizePath(`${this.basePath}/typewriter-writing/${id}.json`);
+    return normalizePath(`${this.basePath}/typewriter-writing/${assertSafeDocId(id)}.json`);
   }
 
   async getTypewriterWritingIndex(): Promise<unknown> {
@@ -515,7 +531,7 @@ export class VaultStorage {
   // 与写作档完全同构：索引(轻量)走 settings.json；每组文档放独立文件 typewriter-mindmap/<id>.json，
   // 避免多组 + 大文档把 settings.json 撑大、每次保存整文件重写（性能悬崖）。
   private typewriterMindmapDocPath(id: string): string {
-    return normalizePath(`${this.basePath}/typewriter-mindmap/${id}.json`);
+    return normalizePath(`${this.basePath}/typewriter-mindmap/${assertSafeDocId(id)}.json`);
   }
 
   async getTypewriterMindmapDoc(id: string): Promise<{ version: number; nodes: unknown[]; links: unknown[]; view: { x: number; y: number } | null; style: number } | null> {
@@ -545,7 +561,7 @@ export class VaultStorage {
 
   // 便签组文档：每组独立文件，索引(轻量)放 settings.json（与写作/导图同构）
   private typewriterNotesDocPath(id: string): string {
-    return normalizePath(`${this.basePath}/typewriter-notes/${id}.json`);
+    return normalizePath(`${this.basePath}/typewriter-notes/${assertSafeDocId(id)}.json`);
   }
   async getTypewriterNotesDoc(id: string): Promise<{ version: number; notes: unknown[]; links: unknown[]; canvasOffset: { x: number; y: number; scale?: number } | null } | null> {
     const path = this.typewriterNotesDocPath(id);

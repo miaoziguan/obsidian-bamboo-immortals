@@ -36,6 +36,7 @@ import { runDiagnosis } from './src/ai/runDiagnosis';
 import { DiagnosisProgressModal } from './src/ai/DiagnosisProgressModal';
 import type { GoalItem } from './src/types/data';
 import { buildCache } from './src/ai/DeviationCalculator';
+import { TUNING } from './src/ai/healthScore';
 import { buildStrategyOverview, type StrategyOverview } from './src/ai/strategyOverview';
 import { toCultivationRealm, type CultivationRealm } from './src/cultivation';
 
@@ -806,8 +807,26 @@ export default class BambooReviewPlugin extends Plugin {
 
     const daysMap = await storage.getAllDays();
     const days = Object.values(daysMap);
-    const cache = buildCache(goals, days);
+    // 【口径对齐】只把最近 STAGNATION_WINDOW(60) 天喂给 buildCache。
+    // 前端 GoalHealthScore._buildDataCache 同样只回看 60 天，宿主 AI 诊断链路
+    // （runDiagnosis）传的也是 60 天窗口。若此处用全历史：
+    //   · 老目标在 60 天窗口外有过活动 → 宿主判定 everActive=true「不停滞」，
+    //     前端降级计算判定 everActive=false「停滞」→ 同一目标两个分数；
+    //   · buildCache 需遍历 vault 里全部日记，随使用年限线性变慢。
+    // 统一到 60 天后三方同源，且缓存构建成本恒定。
     const today = new Date();
+    const windowStart = new Date(today);
+    windowStart.setDate(windowStart.getDate() - (TUNING.STAGNATION_WINDOW - 1));
+    const windowKey = (d: Date): string => {
+      const p = (n: number) => String(n).padStart(2, '0');
+      return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+    };
+    const floorKey = windowKey(windowStart);
+    const windowedDays = days.filter((d) => {
+      const k = (d as unknown as { date?: string })?.date;
+      return typeof k === 'string' && k >= floorKey;
+    });
+    const cache = buildCache(goals, windowedDays);
 
     return buildStrategyOverview(goals, cache, today);
   }

@@ -11,8 +11,14 @@ export const StatsModal = {
         PanelManager.open('achievements', LucideUtils.createIcon('mountain', { size: 16 }) + '竹林修仙', content);
     },
 
-    renderStatsHTML() {
-        const stats = this._getGoalStats();
+    /**
+     * 渲染「数据概览」内容。
+     * @param {object} [precomputedStats] 插件权威聚合（app:getHealthOverview 的 overview）。
+     *   有则直接用（单一数据源，且与宿主同为「排除已归档」口径）；
+     *   无（非 Obsidian 环境 / 通道异常）才本地算，本地同样排除归档以保持口径一致。
+     */
+    renderStatsHTML(precomputedStats) {
+        const stats = precomputedStats || this._getGoalStats();
         return `
             <div class="stats-overview-container">
                 <div class="stats-section">
@@ -64,7 +70,7 @@ export const StatsModal = {
                             <div class="alert-card-title">紧急到期</div>
                             <div class="alert-card-desc">3天内需要关注</div>
                             <div class="alert-card-projects">
-                                ${stats.urgentGoals.slice(0, 3).map(g => `<div class="alert-card-project">${g.title.length > 12 ? g.title.substring(0, 12) + '...' : g.title}</div>`).join('')}
+                                ${stats.urgentGoals.slice(0, 3).map(g => `<div class="alert-card-project">${this._goalLabel(g)}</div>`).join('')}
                                 ${stats.urgentGoals.length > 3 ? `<div class="alert-card-project">...还有${stats.urgentGoals.length - 3}个</div>` : ''}
                             </div>
                         </div>
@@ -80,7 +86,7 @@ export const StatsModal = {
                             <div class="alert-card-title">已逾期</div>
                             <div class="alert-card-desc">需要立即处理</div>
                             <div class="alert-card-projects">
-                                ${stats.overdueGoals.slice(0, 3).map(g => `<div class="alert-card-project">${g.title.length > 12 ? g.title.substring(0, 12) + '...' : g.title}</div>`).join('')}
+                                ${stats.overdueGoals.slice(0, 3).map(g => `<div class="alert-card-project">${this._goalLabel(g)}</div>`).join('')}
                                 ${stats.overdueGoals.length > 3 ? `<div class="alert-card-project">...还有${stats.overdueGoals.length - 3}个</div>` : ''}
                             </div>
                         </div>
@@ -96,7 +102,7 @@ export const StatsModal = {
                             <div class="alert-card-title">即将到期</div>
                             <div class="alert-card-desc">7天内需要准备</div>
                             <div class="alert-card-projects">
-                                ${stats.upcomingGoals.slice(0, 3).map(g => `<div class="alert-card-project">${g.title.length > 12 ? g.title.substring(0, 12) + '...' : g.title}</div>`).join('')}
+                                ${stats.upcomingGoals.slice(0, 3).map(g => `<div class="alert-card-project">${this._goalLabel(g)}</div>`).join('')}
                                 ${stats.upcomingGoals.length > 3 ? `<div class="alert-card-project">...还有${stats.upcomingGoals.length - 3}个</div>` : ''}
                             </div>
                         </div>
@@ -112,7 +118,7 @@ export const StatsModal = {
                             <div class="alert-card-title">停滞预警</div>
                             <div class="alert-card-desc">超过14天无进展</div>
                             <div class="alert-card-projects">
-                                ${stats.stagnantGoals.slice(0, 3).map(g => `<div class="alert-card-project">${g.title.length > 12 ? g.title.substring(0, 12) + '...' : g.title}</div>`).join('')}
+                                ${stats.stagnantGoals.slice(0, 3).map(g => `<div class="alert-card-project">${this._goalLabel(g)}</div>`).join('')}
                                 ${stats.stagnantGoals.length > 3 ? `<div class="alert-card-project">...还有${stats.stagnantGoals.length - 3}个</div>` : ''}
                             </div>
                         </div>
@@ -321,7 +327,24 @@ export const StatsModal = {
     },
 
     _getGoalStats() {
-        return GoalStatsCalculator.calculate(store.getGlobalGoals());
+        // 与「综合健康分」环 / 宿主 getStrategyOverview 同口径：已归档目标不参与统计。
+        // 此前这里直接用 store.getGlobalGoals()（含归档），导致同一面板里
+        // 「概览」的总目标数/平均进度 与「诊断」的健康分对不上。
+        const goals = (store && store.getGlobalGoals) ? (store.getGlobalGoals() || []) : [];
+        return GoalStatsCalculator.calculate(goals.filter(g => !g.archived));
+    },
+
+    /**
+     * 目标标题的安全展示：先截断再转义。
+     * 目标标题是用户自由输入，直接插值进 innerHTML 是一条真实的注入链
+     * （webapp 侧的 XSS 还能借 postMessage 反过来驱动宿主的 storage:/file: 写盘接口）。
+     * 另外 title 缺失时原写法 `g.title.length` 会抛 TypeError，
+     * 让整个战略复盘面板渲染失败 —— 这里一并兜底为「未命名目标」。
+     */
+    _goalLabel(g) {
+        const raw = (g && g.title != null) ? String(g.title) : '';
+        const text = raw.length > 12 ? raw.substring(0, 12) + '...' : (raw || '未命名目标');
+        return (typeof escapeHtml === 'function') ? escapeHtml(text) : text;
     },
 
     _filterByTimeSpan(timeSpan) {
@@ -332,11 +355,16 @@ export const StatsModal = {
         if (targetCard) targetCard.classList.add('active');
         
         const goalItems = $$('.health-goal-item');
+        // 目标集只在循环外取一次并建 id 索引：原实现每个条目都调一次
+        // store.getGlobalGoals() 再 goals.find(...) 全表扫描（O(条目数 × 目标数)），
+        // 且**按 title 匹配** —— 重名目标会张冠李戴。改按 id 匹配（无 id 时退回 title）。
+        const goals = (store && store.getGlobalGoals) ? (store.getGlobalGoals() || []) : [];
+        const byId = new Map(goals.map(g => [g.id, g]));
         goalItems.forEach(item => {
+            const goalId = item.getAttribute('data-goal-id');
             const goalTitle = item.querySelector('.health-goal-title')?.textContent;
-            const goals = store.getGlobalGoals();
-            const targetGoal = goals.find(g => g.title === goalTitle);
-            
+            const targetGoal = (goalId && byId.get(goalId)) || goals.find(g => g.title === goalTitle);
+
             if (targetGoal && targetGoal.startDate && targetGoal.endDate) {
                 const start = new Date(targetGoal.startDate);
                 const end = new Date(targetGoal.endDate);

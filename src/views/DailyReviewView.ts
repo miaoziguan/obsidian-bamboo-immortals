@@ -58,7 +58,12 @@ export class DailyReviewView extends ItemView {
     return 'leaf';
   }
 
-  /** 视图状态持久化：重建（侧边栏↔中央）时恢复布局模式与来源标记 */
+  /** 视图状态持久化：重建（侧边栏↔中央）时恢复布局模式与来源标记。
+   *
+   * cameFromSidebar 必须随 workspace 布局跨重启持久化：这是「回到来处」的设计意图——
+   * 面板因多列布局从右栏移到中央后，无论是否重启，退出多列（恢复纵向）都应回到右栏。
+   * setState 对其只增不减也是有意为之：一旦确认来自侧栏，该事实就不再被清掉。
+   */
   getState(): Record<string, unknown> {
     return {
       pendingLayoutMode: this.pendingLayoutMode ?? null,
@@ -82,11 +87,8 @@ export class DailyReviewView extends ItemView {
     this.settings.reviewViewOpen = true;
     void this.saveSettings();
 
-    // 从侧边栏移到中央的重建视图：读取待恢复的布局模式与来源标记
-    //（getState/setState 已由 Obsidian 在 setViewState 时自动调用恢复）
-    if (this.pendingLayoutMode || this.cameFromSidebar) {
-      // 待恢复状态已在 getState/setState 中处理，无需额外日志
-    }
+    // 从侧边栏移到中央的重建视图：待恢复的布局模式与来源标记已由 getState/setState
+    // 在 setViewState 时被 Obsidian 自动回调恢复，此处无需再做任何处理。
 
     const container: HTMLElement = this.containerEl.children[1] as HTMLElement;
     container.empty();
@@ -342,6 +344,11 @@ export class DailyReviewView extends ItemView {
         new Notice('无法移动到右侧栏', 3000);
         return;
       }
+      // 【自毁防护】getRightLeaf(false) 返回的是右栏「当前活动」leaf。
+      // 若本视图此刻已经在右栏（典型：用户把它从中央手动拖回右栏后再点「恢复纵向」），
+      // 它就是 this.leaf —— 此时 setViewState 是空操作，而紧随的 this.leaf.detach()
+      // 会把面板整个关掉，表现为「点了一下恢复纵向，面板没了」。已在右栏则直接收工。
+      if (rightLeaf === this.leaf) return;
       // 在右栏 leaf 上打开本视图（纵向为默认布局，无需恢复模式）
       await rightLeaf.setViewState({
         type: VIEW_TYPE_DAILY_REVIEW,

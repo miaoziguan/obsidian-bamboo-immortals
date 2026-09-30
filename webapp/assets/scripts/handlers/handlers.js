@@ -261,6 +261,33 @@ export const Handlers = {
         }
     },
 
+    /** 切换 Obsidian 整体明暗（moonstone ↔ obsidian）。
+     *
+     *  悬浮菜单「夜间模式」的语义是「切换 Obsidian 外观明暗」，不是应用内部夜间模式：
+     *  经桥请求宿主改基础主题，宿主改完重放 css-change → 各视图 theme:changed → 跟随刷新。
+     *  不传 isDark 让宿主按自身真实主题取反（应用内关掉「跟随 Obsidian」时本地明暗
+     *  可能与 OB 不一致，宿主侧判断更可靠）。
+     *  非 Obsidian 环境（纯浏览器调试 / 桥缺失）退回应用内明暗切换，保证按钮仍可用。
+     */
+    async toggleObsidianTheme() {
+        const sm = (typeof window !== 'undefined') ? window.storageManager : null;
+        if (sm && typeof sm.toggleObsidianTheme === 'function') {
+            const res = await sm.toggleObsidianTheme();
+            if (res && res.ok !== false) {
+                // 与宿主真实明暗对齐：跟随开启时 theme:changed 已处理（此处幂等兜底），
+                // 跟随关闭时也能让面板与 OB 保持一致，避免按钮标签与实际主题脱节。
+                if (typeof store !== 'undefined' && store.setDarkMode && typeof res.isDark === 'boolean') {
+                    try { await store.setDarkMode(res.isDark, true); } catch (_) { /* 对齐失败不阻塞 */ }
+                }
+            } else if (typeof Toast !== 'undefined' && Toast.showToast) {
+                Toast.showToast('明暗切换失败', 'warning');
+            }
+        } else if (typeof store !== 'undefined' && store.setDarkMode) {
+            await store.setDarkMode();
+        }
+        if (typeof ThemeSelector !== 'undefined') ThemeSelector.updateDarkModeButton();
+    },
+
     handleImportFile(event) {
         DataIO.handleImportFile(event);
     },
@@ -275,11 +302,6 @@ ActionDispatcher.registerMany({
     'close-modal-overlay': (data, target, e) => Handlers.closeModal(e),
     'export-data': () => DataIO.exportData(),
     'import-from-textarea': () => DataIO.importFromTextarea(),
-    'toggle-dark-mode': () => {
-        store.setDarkMode();
-        store.setSyncTheme(false);
-        Handlers.updateDarkModeButton();
-    },
     'open-date-picker': () => Handlers.openDatePicker(),
     'open-archive-page': () => {
         if (typeof openArchivePage === 'function') openArchivePage();
@@ -309,10 +331,10 @@ ActionDispatcher.registerMany({
         if (typeof StatsModal !== 'undefined') StatsModal.openAchievements(); 
         if (typeof FABManager !== 'undefined') FABManager.close();
     },
-    'fab-dark-mode': () => { 
-        store.setDarkMode();
-        store.setSyncTheme(false);
-        if (typeof ThemeSelector !== 'undefined') ThemeSelector.updateDarkModeButton();
+    'fab-dark-mode': () => {
+        // 切换 Obsidian 整体明暗（不再是应用内夜间模式、也不再关闭「跟随 Obsidian」）：
+        // 宿主改基础主题后经主题管线驱动本面板与各独立视图（画中卷/归档）同步跟随。
+        void Handlers.toggleObsidianTheme();
         if (typeof FABManager !== 'undefined') FABManager.close();
     },
     'fab-white-noise': () => { 

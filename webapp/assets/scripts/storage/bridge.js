@@ -711,12 +711,17 @@ export class BridgeStorage {
     }
   }
 
-  /** 切换 Obsidian 明暗主题（画中卷打字机机身开关）。isDark 为期望明暗值。
+  /** 切换 Obsidian 明暗主题（画中卷打字机机身开关 / 悬浮菜单「夜间模式」）。
+   *
+   *  isDark 为「期望明暗」：传布尔则强制切到该值（打字机开关用，其本地 DOM 恒等于 OB 主题）；
+   *  不传则由宿主按自身当前主题取反——悬浮菜单用此形态：应用内若关掉了「跟随 Obsidian」，
+   *  本地 isDarkMode 可能与 OB 真实主题不一致，交给宿主判断更可靠。
    *  @returns {Promise<{ok:boolean,isDark?:boolean}|null>} 桥不可用/超时返回 null，由调用方兜底。 */
   async toggleObsidianTheme(isDark) {
     try {
       await this.ensureReady();
-      return await this._send('app:toggleObsidianTheme', { isDark: !!isDark });
+      const payload = (typeof isDark === 'boolean') ? { isDark } : {};
+      return await this._send('app:toggleObsidianTheme', payload);
     } catch (e) {
       console.warn('[Bridge] app:toggleObsidianTheme 不可用:', e && e.message);
       return null;

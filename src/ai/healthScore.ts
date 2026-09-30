@@ -62,6 +62,8 @@ export interface HealthL3 extends HealthSubScore {
 }
 
 export interface HealthResult {
+  /** 目标 id：供 webapp 详情弹窗按 id 匹配结果，消除「按数组下标对齐」的顺序耦合 */
+  goalId: string;
   score: number;
   level: HealthLevel;
   label: string;
@@ -90,6 +92,13 @@ export interface HealthHint {
   dimension: HealthDimension;
   type: HealthHintType;
   icon: string;
+  text: string;
+  action: string;
+}
+
+/** 目标集层面的系统诊断提示（webapp「系统战略诊断」直接消费，不再本地生成文案） */
+export interface HealthSetHint {
+  type: HealthHintType;
   text: string;
   action: string;
 }
@@ -637,6 +646,7 @@ export function computeGoalHealth(
   const level = levelFor(score);
 
   return {
+    goalId: goal.id,
     score,
     level,
     label: LEVELS[level].label,
@@ -695,8 +705,76 @@ export function computeHealthSet(
 }
 
 /**
- * 按「维度」生成健康归因 hints（移植 webapp generateDynamicHints，
- * 每条额外标注 dimension，供诊断提示词按维度对齐建议）。
+ * 生成「目标集层面」的系统诊断提示（单一数据源，替代 webapp generateDynamicHints）。
+ * 只读已算好的 HealthSet + HealthResult[]，不重新评分；webapp 只负责按 type 上色渲染。
+ */
+export function buildSetHints(set: HealthSet, results: HealthResult[]): HealthSetHint[] {
+  const hints: HealthSetHint[] = [];
+
+  if (set.L1 < TUNING.HINT_L1) {
+    const lateGoals = results.filter((r) => r.L1.onTime.score < TUNING.HINT_LATE_GOAL_SCORE);
+    if (lateGoals.length > 0) {
+      hints.push({
+        type: 'danger',
+        text: `算法检测到 ${lateGoals.length} 个项目进度严重落后于计划。`,
+        action: '根据当前完成速率，建议调整截止日期或精简任务子项。',
+      });
+    } else if (set.L1 < 50) {
+      hints.push({
+        type: 'warning',
+        text: '系统监测到本周活跃天数未达标。',
+        action: '数据表明：小步快跑的频率比单次长时间投入更有助于维持目标健康。',
+      });
+    }
+  }
+
+  if (set.L2 < TUNING.HINT_L2) {
+    hints.push({
+      type: 'warning',
+      text: '动力指数下降：近期进度增量低于历史平均水平。',
+      action: '诊断：执行动力进入瓶颈期，建议通过完成一个简单的子项来重新激活惯性。',
+    });
+  }
+
+  if (set.L3 < TUNING.HINT_L3) {
+    const stagnantGoals = results.filter((r) => r.L3.stagnation.penalty > TUNING.HINT_STAGNATION_PENALTY);
+    if (stagnantGoals.length > 0) {
+      hints.push({
+        type: 'danger',
+        text: `检测到 ${stagnantGoals.length} 个项目已停滞超过预期阈值。`,
+        action: '警告：长期停滞会显著降低完成概率，建议立即复查项目可行性。',
+      });
+    }
+
+    const unbalancedGoals = results.filter((r) => r.L3.balance.score < TUNING.HINT_BALANCE_SCORE);
+    if (unbalancedGoals.length > 0) {
+      hints.push({
+        type: 'warning',
+        text: '子项方差过大：项目内部进度分布严重不均。',
+        action: '建议：关注被长期忽略的边缘子项，防止项目后期出现结构性崩塌。',
+      });
+    }
+  }
+
+  if (set.avgScore >= TUNING.HINT_HIGH_SCORE) {
+    hints.push({
+      type: 'success',
+      text: '算法评估：战略执行力处于极高水平。',
+      action: '当前数据模型显示你已建立稳固的习惯闭环，建议保持现状。',
+    });
+  } else if (hints.length === 0) {
+    hints.push({
+      type: 'success',
+      text: '系统评估：各维度数据指标平稳。',
+      action: '建议：当前节奏可持续，可尝试逐步增加任务负荷。',
+    });
+  }
+
+  return hints;
+}
+
+/**
+ * 按「维度」生成健康归因 hints（供诊断提示词按维度对齐建议）。
  */
 export function generateHealthHints(result: HealthResult, _set?: HealthSet): HealthHint[] {
   const hints: HealthHint[] = [];

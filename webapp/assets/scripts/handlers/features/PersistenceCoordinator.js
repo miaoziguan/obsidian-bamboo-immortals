@@ -153,9 +153,20 @@ export const PersistenceCoordinator = {
   async restore(ctx) {
     const { state, ctrl } = ctx;
     if (ctrl._restored) return;
-    ctrl._restored = true;
+    ctrl._restored = true;   // 先占位防重入，成功后保持；失败时回滚（见下）
     // 存储契约收敛到 TypewriterStore：便签(新 schema) + 画布偏移，含版本/校验/备份/读后校验
-    const { notes, canvasOffset, links, version } = await TypewriterStore.loadNotes();
+    let loaded;
+    try {
+      loaded = await TypewriterStore.loadNotes();
+    } catch (e) {
+      // 【可恢复性】原先 _restored 在 await 之前就已置位，loadNotes 一旦 reject
+      // （宿主桥超时 / 迁移路径异常），本次会话再也进不来 restore —— 便签画布永久空白，
+      // 用户只能刷新页面。失败时回滚占位，让下一次打开/切档仍可重试。
+      ctrl._restored = false;
+      console.warn('[Typewriter] 便签恢复失败，画布保持空白并允许重试：', e);
+      return;
+    }
+    const { notes, canvasOffset, links, version } = loaded;
     const canvas = ctrl._canvas;
     const cr = canvas.getBoundingClientRect();
     const w = cr.width || 1;

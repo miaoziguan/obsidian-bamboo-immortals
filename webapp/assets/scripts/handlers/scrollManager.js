@@ -1190,16 +1190,22 @@ window.ScrollManager = ScrollManager;
 ScrollManager._hfResolved = null;
 ScrollManager._hf = new Promise((resolve) => {
   let done = false;
-  const t = setTimeout(() => { if (!done) { done = true; ScrollManager._hfResolved = null; resolve(null); } }, 2000);
-  window.addEventListener('message', (e) => {
-    if (e.data && e.data.type === 'scroll:feature') {
-      if (done) return;
-      done = true;
-      clearTimeout(t);
-      ScrollManager._hfResolved = e.data.feature || null;
-      resolve(ScrollManager._hfResolved);
-    }
-  });
+  // 宿主会在 iframe load 与 app:ready 握手时各推一次 feature（后者兜住「本次注入被漏收」），
+  // 故监听器必须在兑现后主动摘除：否则它会在 iframe 整个生命周期内常驻，
+  // 每条 message 都白白跑一次闭包判断。
+  const settle = (feature) => {
+    if (done) return;
+    done = true;
+    clearTimeout(t);
+    window.removeEventListener('message', onFeature);
+    ScrollManager._hfResolved = feature;
+    resolve(feature);
+  };
+  const onFeature = (e) => {
+    if (e.data && e.data.type === 'scroll:feature') settle(e.data.feature || null);
+  };
+  const t = setTimeout(() => settle(null), 2000);
+  window.addEventListener('message', onFeature);
 });
 
 // 画中卷停靠位置广播：宿主在 iframe 加载后 / 移动后 postMessage 注入，用于点亮当前栏对应的点。

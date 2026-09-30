@@ -313,6 +313,7 @@ export const ModeController = {
     ctrl._hideDocPanel();
     if (id === cur) return;
     ctrl._docBusy = true;
+    ctrl._switching = true;   // 切组窗口挡防抖落盘/剔除重挂载（同 setMode 语义），防旧组内容写进新组文件
     try {
       ctrl._exitAllEdits();
       if (ctrl._saveTimer) { clearTimeout(ctrl._saveTimer); ctrl._saveTimer = null; }
@@ -324,6 +325,7 @@ export const ModeController = {
       await ctrl._refreshDocBtnLabel();
       ctrl._showScreenMsg('已切换卡片组', 1200);
     } finally {
+      ctrl._switching = false;
       ctrl._docBusy = false;
     }
   
@@ -333,6 +335,7 @@ export const ModeController = {
     const { state, ctrl } = ctx;
     if (ctrl._mode !== 'write' || ctrl._docBusy || ctrl._switching) return;
     ctrl._docBusy = true;
+    ctrl._switching = true;   // 新建组窗口挡防抖落盘（同 setMode 语义），防旧组内容写进新组文件
     try {
       ctrl._exitAllEdits();
       if (ctrl._saveTimer) { clearTimeout(ctrl._saveTimer); ctrl._saveTimer = null; }
@@ -344,6 +347,7 @@ export const ModeController = {
       await ctrl._renderDocPanel();             // 刷新列表（面板保持打开）
       ctrl._showScreenMsg('已新建卡片组', 1200);
     } finally {
+      ctrl._switching = false;
       ctrl._docBusy = false;
     }
   
@@ -391,6 +395,7 @@ export const ModeController = {
     const warn = '确定删除卡片组「' + (title || '未命名草稿') + '」？此操作无法撤销。';
     if (!window.confirm(warn)) return;
     ctrl._docBusy = true;
+    ctrl._switching = true;   // 删组窗口挡防抖落盘（同 setMode 语义）
     try {
       ctrl._exitAllEdits();
       if (ctrl._saveTimer) { clearTimeout(ctrl._saveTimer); ctrl._saveTimer = null; }
@@ -402,6 +407,7 @@ export const ModeController = {
       await ctrl._renderDocPanel();
       ctrl._showScreenMsg('已删除卡片组', 1200);
     } finally {
+      ctrl._switching = false;
       ctrl._docBusy = false;
     }
   
@@ -413,6 +419,7 @@ export const ModeController = {
     ctrl._hideDocPanel();
     if (id === cur) return;
     ctrl._docBusy = true;
+    ctrl._switching = true;   // 切便签组窗口挡防抖落盘（同 setMode 语义）
     try {
       ctrl._exitAllEdits();
       if (ctrl._saveTimer) { clearTimeout(ctrl._saveTimer); ctrl._saveTimer = null; }
@@ -424,12 +431,16 @@ export const ModeController = {
       await ctrl._refreshDocBtnLabel();
       await ctrl._renderDocPanel();
       ctrl._showScreenMsg('已切换便签组', 1200);
-    } finally { ctrl._docBusy = false; }
+    } finally {
+      ctrl._switching = false;
+      ctrl._docBusy = false;
+    }
   },
   async createNotesGroup(ctx) {
     const { state, ctrl } = ctx;
     if (ctrl._mode !== 'notes' || ctrl._docBusy || ctrl._switching) return;
     ctrl._docBusy = true;
+    ctrl._switching = true;   // 新建便签组窗口挡防抖落盘（同 setMode 语义）
     try {
       ctrl._exitAllEdits();
       if (ctrl._saveTimer) { clearTimeout(ctrl._saveTimer); ctrl._saveTimer = null; }
@@ -440,7 +451,10 @@ export const ModeController = {
       await ctrl._refreshDocBtnLabel();
       await ctrl._renderDocPanel();
       ctrl._showScreenMsg('已新建便签组', 1200);
-    } finally { ctrl._docBusy = false; }
+    } finally {
+      ctrl._switching = false;
+      ctrl._docBusy = false;
+    }
   },
   async deleteNotesGroup(ctx, id, title) {
     const { state, ctrl } = ctx;
@@ -451,6 +465,7 @@ export const ModeController = {
     const warn = '确定删除便签组「' + (title || '未命名便签') + '」？此操作无法撤销。';
     if (!window.confirm(warn)) return;
     ctrl._docBusy = true;
+    ctrl._switching = true;   // 删便签组窗口挡防抖落盘（同 setMode 语义）
     try {
       ctrl._exitAllEdits();
       if (ctrl._saveTimer) { clearTimeout(ctrl._saveTimer); ctrl._saveTimer = null; }
@@ -461,7 +476,10 @@ export const ModeController = {
       await ctrl._refreshDocBtnLabel();
       await ctrl._renderDocPanel();
       ctrl._showScreenMsg('已删除便签组', 1200);
-    } finally { ctrl._docBusy = false; }
+    } finally {
+      ctrl._switching = false;
+      ctrl._docBusy = false;
+    }
   },
 
   // (was _switchDocGroup)

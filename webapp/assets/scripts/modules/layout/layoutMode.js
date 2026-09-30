@@ -3,7 +3,7 @@ import { byId } from '../../utils/domRef.js';
 /**
  * 桌面端多列布局模式（单按钮循环：纵向 → 横向 → 看板 → 纵向）
  * - 横向（horizontal-layout）：列数 = 每行 2 个板块（ceil(板块数/2)，最少 2 列）
- * - 看板（kanban-layout）：列数 = min(板块数, 4)，一行全排开
+ * - 看板（kanban-layout）：列数 = 板块数（每板块独占一列），一行全排开
  * - 跨重启持久化：进入多列模式即写入 settings.layoutMode，重启后 init() 自动恢复（并移回主工作区宽度）。
  * - 沿用现有 SectionRegistry.order 顺序，只改变排版方向，不触碰板块顺序逻辑。
  * - 宽度自动适配：内容宽度不足时临时放宽（横向<600→800，看板<1200→1200），
@@ -13,10 +13,10 @@ import { byId } from '../../utils/domRef.js';
 export const LayoutMode = {
     _mode: 'none', // 'none' | 'horizontal' | 'kanban'
     _columns: 2,
-    _savedWidth: null, // 进入时临时放宽内容宽度后记录的原宽度，退出时恢复
     _justEntered: false, // 进入流程保护期：避开刚进入时浏览器未回流导致守卫读到旧宽
     _restoring: false, // 重建视图后恢复模式中：跳过 moveToCenter 请求（已在中央）
     _collapsedRightSidebar: false, // 右侧栏是否由本模块折叠（退出时据此对称展开，不动用户原有状态）
+    _switchTimer: 0, // layout-switching 过渡类的收尾定时器
 
     isActive() {
         return this._mode !== 'none';
@@ -57,7 +57,9 @@ export const LayoutMode = {
         // 模式权威来源 = settings.layoutMode；仅当 settings 为空（极早期/竞态）才回退 pending
         let mode = null;
         try { mode = await this._loadPersistedMode(); } catch (e) { mode = null; }
-        if (!mode && pending) mode = pending;
+        // pending 来自宿主视图状态（可由 webapp 消息写入），未受白名单约束，
+        // 必须在这里收口：否则非法值会被 _enter 当成横向处理并持久化进 settings.layoutMode。
+        if (!mode && (pending === 'horizontal' || pending === 'kanban')) mode = pending;
         // _restoring（跳过 moveToCenter）仅在「同会话移中央重建且视图已在主工作区」时成立；
         // 重启即使 pending 非空（stale），若视图在侧栏仍需重新移回中央，故须绑定 __bambooIsMainLeaf
         this._restoring = !!(pending && window.__bambooIsMainLeaf);
@@ -87,8 +89,11 @@ export const LayoutMode = {
      * 或窗口跌破桌面断点（600px）一律禁止，避免窄屏下内联 grid 样式撑出多列挤压。
      */
     _isDesktop() {
-        // 仅按宿主平台判断：桌面端即使 iframe 窄（如侧边栏 ~300px）也允许进入多列，
-        // 因为窄场景会自动移动到中央视图并放宽内容宽度。移动端平台才禁止。
+        // 仅按宿主平台判断（不看窗口/iframe 宽度）：桌面端即使 iframe 窄（如侧边栏 ~300px）
+        // 也允许进入多列，因为窄场景会自动移动到中央视图并放宽内容宽度。移动端平台才禁止。
+        // 注意：本函数**不做**宽度断点判定。真正的窄屏保护在 checkAndExitIfNarrow()，
+        // 且它刻意只看「用户设置的内容宽度」而非容器实际渲染宽度——后者会被 iframe
+        // 物理宽度截断（主工作区视图本身可能只有 ~551px），用它判定会一进入就误退出。
         if (window.__bambooIsMobile) return false;
         return true;
     },
@@ -121,6 +126,10 @@ export const LayoutMode = {
      * @param {'horizontal'|'kanban'} mode
      */
     _enter(mode) {
+        // 白名单收口：本函数是唯一会把 layoutMode 写进 settings 的出口，
+        // 放行任意值会污染跨重启恢复（_loadPersistedMode 只接受这两个值，
+        // 被写脏后下次启动会静默回落纵向，且用户无从察觉）。
+        if (mode !== 'horizontal' && mode !== 'kanban') return;
         const el = byId('sectionsContainer');
         if (!el) return;
 
@@ -154,8 +163,6 @@ export const LayoutMode = {
         if (container && typeof DisplayManager !== 'undefined' && DisplayManager._applyWidth) {
             if (mode === 'horizontal') {
                 // 无条件切到 800px
-                const currentW = DisplayManager._currentWidth || 0;
-                this._savedWidth = currentW > 0 ? currentW : null;
                 // 布局切换不做宽度过渡：max-width 动画会让浏览器在 250ms 内持续重排
                 // 整个容器，与紧接着的分列 DOM 重构叠加 → 明显掉帧。
                 DisplayManager._applyWidth(autoBumpTo, false);
@@ -170,7 +177,6 @@ export const LayoutMode = {
                 try { cw = container.getBoundingClientRect().width; } catch (e) { cw = 0; }
                 let widthSetting = DisplayManager._currentWidth || 0;
                 if (cw < minWidth && widthSetting < minWidth) {
-                    this._savedWidth = widthSetting > 0 ? widthSetting : null;
                     // 同横向：布局切换期间不做宽度过渡，避免与分列重构叠加掉帧
                     DisplayManager._applyWidth(autoBumpTo, false);
                     // 同步持久化（看板 autoBumpTo=1200）：防止 DisplayManager.init 异步读回旧值覆盖
@@ -188,7 +194,6 @@ export const LayoutMode = {
         if (typeof storageManager !== 'undefined' && storageManager.putSetting) {
             try { storageManager.putSetting('layoutMode', mode); } catch (e) { /* 不阻塞 */ }
         }
-        this._columns = columns;
         // 进入流程保护：避开刚进入时浏览器未回流、_applyResponsiveClasses 读到旧宽
         // 误触发守卫退出。下帧后清标志，守卫恢复生效。
         this._justEntered = true;
@@ -204,9 +209,8 @@ export const LayoutMode = {
         if (typeof window !== 'undefined' && window.BambooGarden && typeof window.BambooGarden.rerenderPoem === 'function') {
             window.BambooGarden.rerenderPoem();
         }
-        this._bindResizeGuard();
 
-        // 分列：横向=交替入列；看板=一行全排开
+        // 分列：横向=交替入列；看板=一行全排开（列数由 reflow 内部按当前板块数最终确定）
         this._columns = columns;
         if (mode === 'kanban') {
             this._reflowKanban(el);
@@ -332,13 +336,21 @@ export const LayoutMode = {
         if (typeof window !== 'undefined' && window.BambooGarden && typeof window.BambooGarden.rerenderPoem === 'function') {
             window.BambooGarden.rerenderPoem();
         }
-        // 退出横向/看板：无条件恢复默认内容宽度 400px（多列模式是临时放大，
+        // 退出横向/看板：无条件恢复默认内容宽度（多列模式是临时放大，
         // 退出回到窄布局默认态），不保留进入前宽度。
         // 同样不做宽度过渡：退出时刚拆完列 wrapper，再叠 250ms 宽度动画会掉帧。
+        // 宽度取 DisplayManager.MIN_WIDTH 而非硬编码 400，避免两处断点各说各话。
+        const exitWidth = (typeof DisplayManager !== 'undefined' && DisplayManager.MIN_WIDTH) || 400;
         if (typeof DisplayManager !== 'undefined' && DisplayManager._applyWidth) {
-            try { DisplayManager._applyWidth(400, false); } catch (e) { /* 不阻塞 */ }
+            try { DisplayManager._applyWidth(exitWidth, false); } catch (e) { /* 不阻塞 */ }
+            // 【持久化必须跟上】_enter 已把 800 / 1200 写进 settings.displayWidth，
+            // 若此处只改内存不落盘，重启后 DisplayManager._loadAndApply() 会把宽度读回
+            // 800/1200 —— 纵向布局却顶着多列模式的宽度，与「退出即回到窄布局」自相矛盾，
+            // 表现为「退出后宽度是对的，重启一次又变宽」。
+            if (typeof storageManager !== 'undefined' && storageManager.putSetting) {
+                try { storageManager.putSetting('displayWidth', exitWidth); } catch (e) { /* 不阻塞 */ }
+            }
         }
-        this._savedWidth = null;
         this._updateButtonText();
         // 与进入时对称：响应式类重算和 Toast 延后到下一帧，等拆列后的布局稳定
         const finish = () => {
@@ -368,11 +380,52 @@ export const LayoutMode = {
         else if (this._mode === 'horizontal') this._reflowHorizontal(el);
     },
 
+    /**
+     * 取待分列的板块元素，按「权威顺序」排列。
+     *
+     * 绝不能直接用 container.children 的顺序：_unreflow() 摊平列 wrapper 后得到的是
+     * **列优先**顺序（col1 全部 → col2 全部 → …），而不是板块的真实顺序。
+     * 横向模式再按 idx % cols 交替回填，等于把列优先序列再交错一次 ——
+     * 结果是 reflow 不幂等：第一次 [A,B,C,D] → col1=[A,C] col2=[B,D]（视觉 A B / C D，正确）；
+     * 摊平后是 [A,C,B,D]，第二次回填得 col1=[A,B] col2=[C,D]（视觉 A C / B D，错序）。
+     * 于是每渲染一次（renderScheduler 的局部渲染由勾选待办等触发）板块顺序就跳一次，来回抖。
+     *
+     * 权威顺序来自 SectionRegistry.getVisible()（拖拽排序后的唯一真源）；
+     * 取不到注册表、或元素上没有 data-section-id 时回退 DOM 顺序。
+     */
+    _orderedItems(container) {
+        const kids = Array.from(container.children);
+        let ids = null;
+        try {
+            if (typeof SectionRegistry !== 'undefined' && SectionRegistry.getVisible) {
+                ids = SectionRegistry.getVisible().map((s) => (s && s.id) || s);
+            }
+        } catch (e) { ids = null; }
+        if (!ids || !ids.length) return kids;
+
+        const map = new Map();
+        kids.forEach((el) => {
+            const id = el && el.getAttribute ? el.getAttribute('data-section-id') : null;
+            if (id) map.set(id, el);
+        });
+        if (map.size === 0) return kids;   // 元素无 data-section-id（测试桩等）→ 沿用 DOM 顺序
+
+        const out = [];
+        const used = new Set();
+        ids.forEach((id) => {
+            const el = map.get(id);
+            if (el && !used.has(el)) { out.push(el); used.add(el); }
+        });
+        // 未被注册表收录的元素：按 DOM 顺序补在末尾，绝不丢板块
+        kids.forEach((el) => { if (!used.has(el)) out.push(el); });
+        return out;
+    },
+
     /** 横向分列：交替均衡入列（每行 2 个板块的瀑布流） */
     _reflowHorizontal(container) {
         if (!container) return;
         this._unreflow(container);
-        const items = Array.from(container.children);
+        const items = this._orderedItems(container);
         // 按「当前」板块数重算列数（每行 2 个板块，最少 2 列）。
         // 不能沿用 _enter 时算出的 _columns：渲染系统在 init() 恢复布局之后才渲染板块，
         // 那时板块数为 0，陈旧值会让后续列数与实际板块数不符。
@@ -397,7 +450,9 @@ export const LayoutMode = {
     _reflowKanban(container) {
         if (!container) return;
         this._unreflow(container);
-        const items = Array.from(container.children);
+        // 同样走权威顺序：局部渲染会把新板块 appendChild 到容器顶层，
+        // 直接用 DOM 顺序会让新板块被排到列尾而非其应在的位置。
+        const items = this._orderedItems(container);
         // 看板：一行全排开，每板块独占一列（列数 = 板块数）。
         // 必须按「当前」板块数重算：init() 恢复看板时板块尚未渲染（visibleCount=0），
         // 沿用那时算出的 _columns=1 会把所有板块塞进 1 列 → 视觉上等同纵向，
@@ -413,8 +468,9 @@ export const LayoutMode = {
             frag.appendChild(col);
         }
         items.forEach((item, idx) => {
-            // 每个板块一列；板块数超过列数时，多余板块按顺序追加到各列尾（不丢板块）
-            (idx < cols ? wrappers[idx] : wrappers[idx % cols]).appendChild(item);
+            // 每个板块一列（cols === items.length，故 idx % cols === idx）。
+            // 保留取模是为了 cols 被外力改小（如极端降级）时仍不丢板块——多余板块按顺序追加到各列尾。
+            wrappers[idx % cols].appendChild(item);
         });
         container.appendChild(frag);
         this._logReflow('reflowKanban', cols, wrappers);
@@ -456,23 +512,12 @@ export const LayoutMode = {
     },
 
     /**
-     * resize 兜底：多列模式激活期间监听窗口宽度，跌破桌面断点（600px）
-     * 自动退出，防止桌面开多列后缩窄窗口/侧栏导致内联 grid 撑多列挤压。
-     */
-    _bindResizeGuard() {
-        if (this._resizeGuardBound) return;
-        this._resizeGuardBound = true;
-        window.addEventListener('resize', () => {
-            if (this._mode === 'none') return;
-            if (!this._isDesktop()) {
-                this._forceOff();
-            }
-        });
-    },
-
-    /**
      * 内容宽度守卫：多列模式激活时，若内容宽度设置跌破桌面断点（600px）
-     * 则自动退出。由 DisplayManager._applyResponsiveClasses 在内容宽度变化时调用。
+     * 则自动退出。由 DisplayManager._applyResponsiveClasses 调用，
+     * 后者又由「宽度变化」与 ResizeObserver（容器实际尺寸变化）双双驱动，
+     * 因此窗口/侧栏缩放导致的变窄同样能走到这里 —— 无需额外的 window resize 监听。
+     * （此前确有 _bindResizeGuard 常驻 window resize，但它判的是 _isDesktop()，
+     *   而后者只取决于宿主平台标志、resize 中恒定，故那个监听永远不会触发退出，已移除。）
      * @param {number} settingWidth 内容宽度设置（非容器实际宽，避免 iframe 截断误判）
      */
     checkAndExitIfNarrow(settingWidth) {

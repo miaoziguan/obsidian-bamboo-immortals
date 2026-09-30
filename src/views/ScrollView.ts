@@ -129,6 +129,39 @@ export class ScrollView extends ItemView {
     }
   }
 
+  /** 解析本 leaf 的功能/停靠位：优先 leaf 视图状态（打开命令 / 三圆点移动写入，随 workspace
+   *  布局持久化、重启后即由此还原），回退宿主 pending（同会话内命令打开写入）。 */
+  private _resolveScrollContext(): void {
+    const vs = this.leaf.getViewState() as { state?: { feature?: string; location?: ScrollLocation } } | null;
+    this._feature = vs?.state?.feature ?? ScrollView.pendingFeature ?? 'incense';
+    this._location = vs?.state?.location ?? ScrollView.pendingLocation ?? 'center';
+    // pending 是静态量、只服务「本次打开」，消费后立即清空：
+    // 否则残留值会被后续重载或其它 leaf 误读（双 leaf 并存时尤其危险）。
+    ScrollView.pendingFeature = null;
+    ScrollView.pendingLocation = null;
+  }
+
+  /** 宿主的真实全屏态：左右侧栏都已折叠。用于让 webapp 按钮初始态与宿主侧栏态一致，
+   *  避免「视图重建 / webapp 重载后按钮停在 off、侧栏实际折叠」造成的悖论
+   *  （点 off 按钮按 UI 语义像「进入全屏」，宿主却依真实态退出）。 */
+  private _isZenNow(): boolean {
+    const wsZen = this.app.workspace as unknown as {
+      leftSplit?: { collapsed?: boolean };
+      rightSplit?: { collapsed?: boolean };
+    };
+    return !!(wsZen?.leftSplit?.collapsed && wsZen?.rightSplit?.collapsed);
+  }
+
+  /** 向 iframe 推送功能/停靠位/全屏态（load 完成时调用一次） */
+  private _pushScrollContext(): void {
+    const cw = this.iframe?.contentWindow;
+    if (!cw) return;
+    this._resolveScrollContext();
+    cw.postMessage({ type: 'scroll:feature', feature: this._feature }, '*');
+    cw.postMessage({ type: 'scroll:location', location: this._location }, '*');
+    cw.postMessage({ type: 'scroll:zen', zen: this._isZenNow() }, '*');
+  }
+
   async onOpen(): Promise<void> {
     const container: HTMLElement = this.containerEl.children[1] as HTMLElement;
     container.empty();
@@ -214,33 +247,18 @@ export class ScrollView extends ItemView {
 
       // 画中卷功能选型（typewriter/incense）经 data: URL 的 #hash 在 Obsidian 中不稳定，
       // 改为 iframe 加载完成后由宿主主动 postMessage 注入（与主题同步同机制）。
-      this.iframe.addEventListener('load', () => {
-        const cw = this.iframe?.contentWindow;
-        if (!cw) return;
-        // 本 leaf 的功能/位置：优先 leaf 视图状态（打开命令 / 三圆点移动写入；
-        // 随 workspace 布局持久化，重启后即由此还原），回退宿主 pending（同会话内命令打开写入）。
-        const vs = this.leaf.getViewState() as { state?: { feature?: string; location?: ScrollLocation } } | null;
-        this._feature = vs?.state?.feature ?? ScrollView.pendingFeature ?? 'incense';
-        this._location = vs?.state?.location ?? ScrollView.pendingLocation ?? 'center';
-        // pending 是静态量、只服务「本次打开」，消费后立即清空：
-        // 否则残留值会被后续重载或其它 leaf 误读（双 leaf 并存时尤其危险）。
-        ScrollView.pendingFeature = null;
-        ScrollView.pendingLocation = null;
-        cw.postMessage({ type: 'scroll:feature', feature: this._feature }, '*');
-        cw.postMessage({ type: 'scroll:location', location: this._location }, '*');
-        // 真实全屏态（两侧栏都已折叠）：让 webapp 按钮初始态与宿主侧栏态一致，
-        // 避免「视图重建 / webapp 重载后按钮停在 off、侧栏实际折叠」造成的悖论
-        // （点 off 按钮按 UI 语义像「进入全屏」，宿主却依真实态退出）。
-        const wsZen = this.app.workspace as unknown as {
-          leftSplit?: { collapsed?: boolean };
-          rightSplit?: { collapsed?: boolean };
-        };
-        const zenNow = !!(wsZen?.leftSplit?.collapsed && wsZen?.rightSplit?.collapsed);
-        cw.postMessage({ type: 'scroll:zen', zen: zenNow }, '*');
-      });
+      this.iframe.addEventListener('load', () => this._pushScrollContext());
 
       loadingEl.remove();
       this.appAPI?.bindIframe(this.iframe);
+      // 握手补发：webapp 在 app:ready 时会再来要一次上下文，
+      // 兜住「本次 load 注入被漏收」的窗口（见 AppAPI.onScrollContextRequest 注释）。
+      if (this.appAPI) {
+        this.appAPI.onScrollContextRequest = () => {
+          this._resolveScrollContext();
+          return { feature: this._feature, location: this._location, zen: this._isZenNow() };
+        };
+      }
 
       this.cssChangeRef = this.app.workspace.on('css-change', () => {
         this.appAPI?.onThemeChanged(this.settings.followObsidianTheme);
@@ -292,12 +310,34 @@ export class ScrollView extends ItemView {
             await this.saveSettings();
             ScrollView.pendingLocation = targetLoc;
             this._location = targetLoc;
-            let target: WorkspaceLeaf | null = null;
-            if (targetLoc === 'left') target = ws.getLeftLeaf(false) || ws.getLeftLeaf(true);
-            else if (targetLoc === 'right') target = ws.getRightLeaf(false) || ws.getRightLeaf(true);
-            else target = ws.getLeaf(true);
-            if (!target) {
-              new Notice('无法移动画中卷', 3000);
+
+            // split=false 复用目标栏现有 leaf；split=true 在其内新建一栏（不抢占已有标签页）。
+            // 注意 getLeftLeaf/getRightLeaf 返回的是目标栏「当前活动」leaf：
+            //  ① 若它就是本 leaf，说明画中卷已在目标栏 —— 此时 detach 会把视图自己关掉
+            //     （点已点亮的那个圆点 = 画中卷凭空消失），故必须提前终止；
+            //  ② 若它是另一个画中卷 leaf，setViewState 会把它的 feature 覆盖成当前功能，
+            //     紧接着 detach 本 leaf —— 净效果是「另一个功能的画中卷被销毁」，
+            //     违背「同功能至多一个、异功能（香道/打字机）可并存」的设计。
+            const pickTarget = (split: boolean): WorkspaceLeaf | null => {
+              if (targetLoc === 'left') return ws.getLeftLeaf(split) ?? null;
+              if (targetLoc === 'right') return ws.getRightLeaf(split) ?? null;
+              return ws.getLeaf(split) ?? null;
+            };
+
+            let target = pickTarget(false);
+            if (target === this.leaf) return; // ① 已停靠在此栏：无需移动
+
+            // ② 目标栏已有异功能的画中卷 → 改开新栏位，绝不覆盖/销毁它
+            if (target && target.view instanceof ScrollView &&
+                (target.view as ScrollView).getFeature() !== this._feature) {
+              target = pickTarget(true) ?? target;
+            }
+            if (!target || target === this.leaf) {
+              // 拿不到新栏位且原栏位就是自己 → 保持现状，仅提示
+              if (!target) {
+                new Notice('无法移动画中卷', 3000);
+                return;
+              }
               return;
             }
             await target.setViewState({

@@ -129,7 +129,8 @@ export const GoalsRenderer = {
 
         const healthHost = container.querySelector('#goalHealthOverviewHost');
         if (healthHost && window.GoalHealthScore) {
-            // 先用本地计算渲染（即时可见），随后若有插件权威套件到达会覆盖刷新
+            // 权威快照到达前渲染「暂不可用」占位（webapp 已无本地评分引擎），
+            // 随后插件权威套件到达会自动覆盖刷新成真实健康分环。
             healthHost.innerHTML = GoalHealthScore.renderOverviewCard(goals);
         }
 
@@ -407,6 +408,11 @@ export const GoalsRenderer = {
                     health: data.health,
                     results: data.results || null,
                     updatedAt: data.updatedAt || null,
+                    // 「数据概览」的权威聚合：宿主按「排除已归档」口径算出，
+                    // 交给 StatsModal 直接消费，避免概览 tab 本地再算一遍导致两套数字。
+                    overview: data.overview || null,
+                    // 「系统战略诊断」的权威提示：宿主 buildSetHints 生成，webapp 只渲染
+                    hints: data.hints || null,
                 };
                 this._remoteHealthGoalKey = key;
                 this._renderRemoteHealthCard();
@@ -434,11 +440,11 @@ export const GoalsRenderer = {
         const host = byId('goalHealthOverviewHost');
         if (!host || !window.GoalHealthScore) return;
         const goals = store.getGlobalGoals().filter(g => !g.archived);
-        if (this._remoteHealth && this._remoteHealth.health) {
-            host.innerHTML = GoalHealthScore.renderOverviewCard(goals, this._remoteHealth.health);
-        } else {
-            host.innerHTML = GoalHealthScore.renderOverviewCard(goals);
-        }
+        // 单一数据源：只消费权威快照；未就绪时 renderOverviewCard 自会渲染「暂不可用」占位
+        host.innerHTML = GoalHealthScore.renderOverviewCard(
+            goals,
+            (this._remoteHealth && this._remoteHealth.health) || null
+        );
     },
 
     openHealthScoreDetail() {
@@ -446,36 +452,32 @@ export const GoalsRenderer = {
 
         const goals = store.getGlobalGoals().filter(g => !g.archived);
 
-        // 单一数据源：优先使用插件 app:getHealthOverview 返回的权威套件（与竹杖芒鞋同源同算）。
-        // 仅在远程不可用（非 Obsidian 环境 / 通道异常）时退化为本地计算。
-        let results, set;
-        if (this._remoteHealth && this._remoteHealth.results) {
-            set = this._remoteHealth.health;
-            results = this._remoteHealth.results;
-        } else {
-            // Build cache ONCE and reuse everywhere — one pass over last 60 days of store data
-            const dataCache = GoalHealthScore._buildDataCache
-                ? GoalHealthScore._buildDataCache(goals)
-                : null;
-
-            // Compute every goal ONCE (using shared cache → 1 pass over 60 days
-            results = goals.map(g => GoalHealthScore.compute(g, dataCache));
-
-            // Pass the precomputed results to computeSet — reuses them 0 extra store reads.
-            set = GoalHealthScore.computeSet(goals, results);
+        // 单一数据源（M2 方案 B）：健康分只能来自插件 app:getHealthOverview 的权威快照。
+        // webapp 已删除本地评分引擎，未就绪/不可用时不降级计算，给出提示并触发一次拉取自愈。
+        if (!this._remoteHealth || !this._remoteHealth.health || !this._remoteHealth.results) {
+            if (typeof Toast !== 'undefined') Toast.showToast('健康分尚未就绪，请稍后重试', 'info');
+            this._requestRemoteHealth(goals);
+            return;
         }
-        const dynamicHints = GoalHealthScore.generateDynamicHints(set, results);
+        const set = this._remoteHealth.health;
+        const results = this._remoteHealth.results;
+        // 系统诊断提示：宿主权威生成，webapp 只按 type 渲染
+        const dynamicHints = this._remoteHealth.hints || [];
+
+        // 逐目标结果按 goalId 匹配（而非数组下标）：消除宿主/webapp 目标顺序不一致时的错配
+        const resultsById = new Map(results.map((r) => [r.goalId, r]));
 
         let goalsDetailHtml = '';
         if (goals.length > 0) {
-            goalsDetailHtml = goals.map((goal, idx) => {
-                const healthScore = results[idx];
+            goalsDetailHtml = goals.map((goal) => {
+                const healthScore = resultsById.get(goal.id);
+                if (!healthScore) return '';   // 该目标无健康分结果（异常数据）→ 跳过不渲染
                 const hints = [
                     healthScore.L1.onTime.hint,
                     healthScore.L3.stagnation.hint,
                 ].filter(Boolean).join('；');
                 return `
-                    <div class="health-goal-item">
+                    <div class="health-goal-item" data-goal-id="${HTMLUtils.escapeHtmlAttr(goal.id)}">
                         <div class="health-goal-title">${escapeHtml(goal.title)}</div>
                         <div class="health-goal-score" style="color: ${healthScore.color};">
                             ${healthScore.score}分 · ${healthScore.label}
@@ -494,7 +496,9 @@ export const GoalsRenderer = {
 
         const content = `
             <div id="tab-content-overview" class="fab-tab-content active">
-                ${typeof StatsModal !== 'undefined' ? StatsModal.renderStatsHTML() : ''}
+                ${typeof StatsModal !== 'undefined'
+                    ? StatsModal.renderStatsHTML(this._remoteHealth && this._remoteHealth.overview)
+                    : ''}
             </div>
 
             <div id="tab-content-diagnosis" class="fab-tab-content">

@@ -438,7 +438,7 @@ export class AppAPI {
 
   /** 解析模块目录：用户自定义优先，否则取默认管理区路径 */
   private _moduleDir(): string {
-    return normalizePath(this._usingDefaultModulePath() ? this._defaultModulePath() : (this.settings.modulePath as string));
+    return normalizePath(this._usingDefaultModulePath() ? this._defaultModulePath() : this.settings.modulePath);
   }
 
   /** 目标文件是否存在（迁移时避免覆盖已重装的新版本） */
@@ -480,7 +480,7 @@ export class AppAPI {
       }
       try { await this.vaultAdapter.mkdir(target); } catch { /* 已存在忽略 */ }
       for (const f of movable) {
-        const name = (f.split('/').pop() || f) as string;
+        const name = f.split('/').pop() || f;
         const dest = `${target}/${name}`;
         if (!(await this._fileExists(dest))) {
           const code = await this.vaultAdapter.read(f);
@@ -869,9 +869,11 @@ export class AppAPI {
       }
       if (markdown == null) { this.respondError(id, 'module:renderMarkdown 缺少 content/path'); return; }
       try {
+        // 在 webview(activeDocument) 的 foreign document 上创建渲染容器，无法使用 Obsidian 的 createEl，故用原生 createElement
+        // eslint-disable-next-line -- 在 webview/foreign document 上创建容器，Obsidian 的 createEl 不适用
         const el = activeDocument.createElement('div');
         const comp = new Component();
-        await MarkdownRenderer.renderMarkdown(markdown, el, sourcePath, comp);
+        await MarkdownRenderer.render(this.app, markdown, el, sourcePath, comp);
         this.respond(id, { ok: true, html: el.innerHTML, sourcePath });
       } catch (e) {
         this.respondError(id, e instanceof Error ? e.message : '渲染失败');
@@ -908,7 +910,7 @@ export class AppAPI {
       const np = normalizePath(p.path);
       try {
         const dir = np.split('/').slice(0, -1).join('/');
-        if (dir) { try { await this.app.vault.adapter.mkdir(dir); } catch (e) { /* 目录已存在 */ } }
+        if (dir) { try { await this.app.vault.adapter.mkdir(dir); } catch { /* 目录已存在 */ } }
         await this.vaultAdapter.write(np, p.content);
         this.respond(id, { ok: true });
       } catch (e) {

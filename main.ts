@@ -1302,7 +1302,7 @@ export default class BambooReviewPlugin extends Plugin {
   async openReaderView(path: string): Promise<void> {
     const { workspace } = this.app;
     BambooReaderView.pendingPath = path;
-    const leaves = workspace.getLeavesOfType(VIEW_TYPE_BAMBOO_READER) as WorkspaceLeaf[];
+    const leaves = workspace.getLeavesOfType(VIEW_TYPE_BAMBOO_READER);
     // 复用唯一的阅读视图 leaf：跨文章仅切换内容（setState），不新增 tab
     const existing = leaves[0];
     if (existing) {

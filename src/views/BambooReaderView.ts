@@ -24,102 +24,6 @@ const BLOG_MODULE_ID = 'blog';
  *   · 上/下篇（按 date）+ 相关阅读（按 tag 重叠）
  *   · 返回按钮 + 浮动 FAB(↑↓)
  */
-const BAMBOO_READER_CSS = [
-  '.bamboo-reader-view{position:relative;height:100%;min-height:0;display:flex;flex-direction:column;overflow:hidden;}',
-  '.bamboo-reader-view .bm-layout{flex:1 1 auto;min-height:0;height:100%;display:grid;grid-template-columns:1fr auto;grid-template-rows:auto 1fr;grid-template-areas:"topbar toc" "content toc";box-sizing:border-box;overflow-y:auto;overflow-x:hidden;background:var(--background-primary);overscroll-behavior:contain;}',
-  // TOC 侧栏
-  '.bamboo-reader-view .bm-toc{grid-area:toc;width:220px;overflow-y:auto;padding:16px 10px 16px 14px;border-left:1px solid var(--background-modifier-border,#ececec);box-sizing:border-box;scrollbar-width:none;-ms-overflow-style:none;position:sticky;top:0;align-self:start;max-height:100%;}',
-  '.bamboo-reader-view .bm-toc::-webkit-scrollbar{width:0;height:0;display:none;}',
-  '.bamboo-reader-view .bm-toc-progress{height:3px;background:var(--background-modifier-border,#e5e3da);border-radius:2px;overflow:hidden;margin-bottom:10px;}',
-  '.bamboo-reader-view .bm-toc-bar{height:100%;width:0;background:#4a7c59;transition:width .12s linear;}',
-  '.bamboo-reader-view .bm-toc-head{display:flex;justify-content:space-between;align-items:baseline;font-size:11px;color:var(--text-muted,#888);margin-bottom:6px;}',
-  '.bamboo-reader-view .bm-toc-pct{font-variant-numeric:tabular-nums;}',
-  '.bamboo-reader-view .bm-toc-list{display:flex;flex-direction:column;gap:2px;}',
-  '.bamboo-reader-view .bm-toc-item{font-size:12px;color:var(--text-muted,#777);cursor:pointer;padding:2px 0 2px 8px;border-left:2px solid transparent;line-height:1.45;}',
-  '.bamboo-reader-view .bm-toc-item:hover{color:#3d6b4a;}',
-  '.bamboo-reader-view .bm-toc-item.is-active{border-left-color:#4a7c59;color:#3d6b4a;font-weight:600;}',
-  '.bamboo-reader-view .bm-toc-h2{padding-left:16px;}.bamboo-reader-view .bm-toc-h3{padding-left:26px;}.bamboo-reader-view .bm-toc-h4{padding-left:36px;}',
-  // 内容列（滚动容器）
-  '.bamboo-reader-view .bm-content{grid-area:content;min-width:0;min-height:0;display:flex;flex-direction:column;overflow:visible;position:relative;scrollbar-width:none;-ms-overflow-style:none;overscroll-behavior:contain;}',
-  '.bamboo-reader-view .bm-content::-webkit-scrollbar{width:0;height:0;display:none;}',
-  // 顶栏（sticky）
-  '.bamboo-reader-view .bm-topbar{grid-area:topbar;position:sticky;top:0;z-index:5;display:flex;flex-direction:column;gap:6px;padding:8px 12px 9px;background:var(--background-primary);border-bottom:1px solid var(--background-modifier-border,#ececec);}',
-  '.bamboo-reader-view .bm-toolbar{display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap;max-width:44rem;margin:0 auto;width:100%;}',
-  '.bamboo-reader-view .bm-rbtn{border:none;background:transparent;border-radius:6px;padding:4px 8px;cursor:pointer;font:inherit;font-size:12px;color:var(--text-muted,#777);transition:.12s;line-height:1;}',
-  '.bamboo-reader-view .bm-rbtn:hover{color:#3d6b4a;background:var(--background-modifier-hover,rgba(0,0,0,.05));}',
-  '.bamboo-reader-view .bm-rbtn.primary{color:#3d6b4a;font-weight:600;background:transparent;border:none;}',
-  '.bamboo-reader-view .bm-rbtn.primary:hover{background:rgba(74,124,89,.12);}',
-  '.bamboo-reader-view .bm-rbtn.is-on{color:#3d6b4a;font-weight:600;background:transparent;border:none;}',
-  '.bamboo-reader-view .bm-toolbar-sep{width:1px;height:18px;background:var(--background-modifier-border,#ececec);margin:0 3px;}',
-  // 正文容器
-  '.bamboo-reader-view .bm-body-wrap{padding:6px 16px 48px;max-width:44rem;margin:0 auto;width:100%;box-sizing:border-box;}',
-  '.bamboo-reader-view .bm-header{max-width:44rem;margin:0 auto;width:100%;padding:10px 16px 4px;}',
-  '.bamboo-reader-view .bm-title{font-size:calc(var(--bm-base-size,16px)*1.6);font-weight:700;line-height:1.4;letter-spacing:.01em;color:var(--text-normal);cursor:default;}',
-  '.bamboo-reader-view .bm-meta{font-size:12px;color:var(--text-muted,#9a9a9a);margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;}',
-  '.bamboo-reader-view .bm-sep{opacity:.5;}',
-  '.bamboo-reader-view .bm-badge{font-size:11px;padding:1px 7px;border-radius:10px;background:rgba(74,124,89,.12);color:#3d6b4a;}',
-  '.bamboo-reader-view .bm-updated{font-size:11px;color:var(--text-muted,#9a9a9a);margin:8px 0 0;opacity:.85;}',
-  // 竹青排版覆盖（markdown-preview-view 原生接管其余样式，加前缀压过原生）
-  '.bamboo-reader-view .bm-reader-body{--bm-bamboo-deep:#3d6b4a;--bm-bamboo:#4a7c59;--bm-bamboo-light:#6a9e6e;--bm-bamboo-pale:#a8c5a0;font-size:var(--bm-base-size,16px);line-height:1.75;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;padding:0;}',
-  '.bamboo-reader-view .bm-reader-body p{margin-bottom:1.2em;text-align:justify;overflow-wrap:break-word;}',
-  '.bamboo-reader-view .bm-reader-body h1,.bamboo-reader-view .bm-reader-body h2,.bamboo-reader-view .bm-reader-body h3{line-height:1.4;letter-spacing:.01em;font-weight:600;color:var(--text-normal);}',
-  '.bamboo-reader-view .bm-reader-body h1{font-size:calc(var(--bm-base-size,16px)*1.6);margin-top:1.6em;}.bamboo-reader-view .bm-reader-body h2{font-size:calc(var(--bm-base-size,16px)*1.35);margin-top:1.4em;}.bamboo-reader-view .bm-reader-body h3{font-size:calc(var(--bm-base-size,16px)*1.15);margin-top:1.2em;}',
-  '.bamboo-reader-view .bm-reader-body :not(pre)>code{white-space:nowrap;text-align:initial;background:rgba(74,124,89,.1);padding:1px 5px;border-radius:4px;font-size:.9em;}',
-  '.bamboo-reader-view .bm-reader-body ::selection{background:color-mix(in srgb,var(--bm-bamboo) 22%,transparent);}',
-  '.bamboo-reader-view .bm-reader-body strong{font-weight:600;}',
-  '.bamboo-reader-view .bm-reader-body blockquote{border-left:3px solid var(--bm-bamboo-light);background:color-mix(in srgb,var(--bm-bamboo-pale) 12%,transparent);padding:8px 16px;margin:1.2em 0;border-radius:0 4px 4px 0;color:var(--text-muted);}',
-  '.bamboo-reader-view .bm-reader-body a{color:var(--bm-bamboo);text-decoration:none;}',
-  '.bamboo-reader-view .bm-reader-body a:hover{text-decoration:underline;}',
-  '.bamboo-reader-view .bm-reader-body img{display:block;max-width:100%;height:auto;margin:1.4em auto;border-radius:6px;box-shadow:0 1px 3px rgba(0,0,0,.12);cursor:zoom-in;}',
-  '.bamboo-reader-view .bm-reader-body hr{border:none;height:20px;margin:2em 0;background:none;position:relative;}',
-  '.bamboo-reader-view .bm-reader-body hr::after{content:"";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:40px;height:2px;background:var(--bm-bamboo-pale);border-radius:1px;}',
-  '.bamboo-reader-view .bm-reader-body table th{background:color-mix(in srgb,var(--bm-bamboo-pale) 16%,transparent);font-weight:600;}',
-  // 图片骨架
-  '.bamboo-reader-view .bm-img{opacity:0;transition:opacity .3s ease;}',
-  '.bamboo-reader-view .bm-img--loaded{opacity:1;}',
-  // 代码块增强
-  '.bamboo-reader-view .bm-code{border-radius:6px;border:1px solid var(--background-modifier-border);padding:0;margin:1.2em 0;position:relative;overflow:hidden;counter-reset:bm-line;}',
-  '.bamboo-reader-view .bm-code code{padding:0;}',
-  '.bamboo-reader-view .bm-code-header{display:flex;align-items:center;justify-content:space-between;padding:4px 10px;font-size:10px;color:var(--text-muted,#999);background:var(--background-secondary,#f0f0f0);border-bottom:1px solid var(--background-modifier-border);}',
-  '.bamboo-reader-view .bm-code-lang{text-transform:uppercase;letter-spacing:.05em;}',
-  '.bamboo-reader-view .bm-code-copy{border:none;background:none;cursor:pointer;font-size:11px;color:var(--text-muted,#999);padding:0;}',
-  '.bamboo-reader-view .bm-code-copy:hover{color:#3d6b4a;}',
-  '.bamboo-reader-view .bm-line{display:block;white-space:pre;position:relative;padding-left:2.6em;}',
-  '.bamboo-reader-view .bm-line::before{content:counter(bm-line);counter-increment:bm-line;position:absolute;left:0;width:2.1em;text-align:right;color:var(--text-faint,#bbb);user-select:none;font-size:11px;}',
-  // 上/下篇 + 相关阅读
-  '.bamboo-reader-view .bm-prevnext{display:flex;gap:24px;margin-top:22px;}',
-  '.bamboo-reader-view .bm-pn{flex:1 1 0;min-width:0;padding:6px 0;cursor:pointer;background:transparent;}',
-  '.bamboo-reader-view .bm-pn:hover .bm-pn-title{color:#3d6b4a;}',
-  '.bamboo-reader-view .bm-pn-empty{visibility:hidden;}',
-  '.bamboo-reader-view .bm-pn-label{font-size:10px;color:var(--text-muted,#aaa);}',
-  '.bamboo-reader-view .bm-pn-title{font-size:13px;font-weight:600;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
-  '.bamboo-reader-view .bm-related{margin-top:22px;}',
-  '.bamboo-reader-view .bm-related-title{font-size:12px;font-weight:700;color:var(--text-normal,#444);margin-bottom:6px;border-bottom:1px solid var(--background-modifier-border,#ececec);padding-bottom:4px;}',
-  '.bamboo-reader-view .bm-related-link{display:block;font-size:12.5px;color:#3d6b4a;padding:5px 0;cursor:pointer;}',
-  '.bamboo-reader-view .bm-related-link:hover{text-decoration:underline;}',
-  // 加载/错误态
-  '.bamboo-reader-view .bm-loading,.bamboo-reader-view .bm-error{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:12px;color:var(--text-muted,#9a9a9a);padding:30px;box-sizing:border-box;text-align:center;}',
-  '.bamboo-reader-view .bm-spinner{width:28px;height:28px;border:3px solid var(--background-modifier-border,#e0ddd2);border-top-color:#4a7c59;border-radius:50%;animation:bm-spin .8s linear infinite;}',
-  '@keyframes bm-spin{to{transform:rotate(360deg);}}',
-  '.bamboo-reader-view .bm-error-icon{font-size:30px;opacity:.6;}',
-  // lightbox
-  '.bamboo-reader-view .bm-mask{position:fixed;inset:0;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;z-index:9999;cursor:zoom-out;}',
-  '.bamboo-reader-view .bm-lightbox-img{max-width:90vw;max-height:90vh;border-radius:8px;}',
-  // FAB
-  '.bamboo-reader-view .bm-fab{position:absolute;right:18px;bottom:18px;display:flex;flex-direction:column;gap:8px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:6;}',
-  '.bamboo-reader-view .bm-fab.show{opacity:1;pointer-events:auto;}',
-  '.bamboo-reader-view .bm-fab-btn{width:34px;height:34px;border-radius:50%;border:1px solid var(--background-modifier-border);background:var(--background-primary);cursor:pointer;color:var(--text-muted);font-size:15px;line-height:1;box-shadow:0 1px 4px rgba(0,0,0,.12);}',
-  '.bamboo-reader-view .bm-fab-btn:hover{color:#3d6b4a;border-color:#4a7c59;}',
-  // 专注模式：仅隐藏 TOC 侧栏；顶栏（工具）始终保留，避免“工具丢失”
-  '.bamboo-reader-view.bm-focus .bm-toc{display:none;}',
-  '.bamboo-reader-view.bm-focus .bm-layout{grid-template-columns:1fr 0fr;}',
-  // 目录显隐开关（工具栏按钮控制，跨次打开保留）
-  '.bamboo-reader-view.bm-hide-toc .bm-toc{display:none;}',
-  '.bamboo-reader-view.bm-hide-toc .bm-layout{grid-template-columns:1fr 0fr;}',
-  // 暗色校准
-  '.theme-dark .bamboo-reader-view .bm-reader-body{--bm-bamboo-deep:#7ab890;--bm-bamboo:#8fc59f;--bm-bamboo-light:#a8d6b5;--bm-bamboo-pale:rgba(143,197,159,.25);}',
-  '.theme-dark .bamboo-reader-view .bm-reader-body blockquote{background:rgba(143,197,159,.08);}',
-].join('\n');
 
 interface ArticleMeta {
   title: string;
@@ -293,9 +197,6 @@ export class BambooReaderView extends ItemView {
     const container = this.containerEl.children[1] as HTMLElement;
     container.empty();
     container.addClass('bamboo-reader-view');
-    if (!container.querySelector('style.bamboo-reader-style')) {
-      container.createEl('style', { cls: 'bamboo-reader-style', text: BAMBOO_READER_CSS });
-    }
     this._container = container;
     this._opened = true;
     // 不再自动恢复上次的专注模式：否则顶栏(工具)与目录会被隐藏，造成“工具丢失”的错觉
@@ -330,9 +231,7 @@ export class BambooReaderView extends ItemView {
   }
 
   private async render(container: HTMLElement): Promise<void> {
-    Array.from(container.children).forEach((ch) => {
-      if (!(ch instanceof HTMLElement && ch.classList.contains('bamboo-reader-style'))) ch.remove();
-    });
+    container.empty();
     this._renderComp?.unload();
     this._renderComp = new Component();
     this._renderComp.load();
@@ -362,8 +261,9 @@ export class BambooReaderView extends ItemView {
     this.renderToolbar(topbar);
     const content = layout.createDiv({ cls: 'bm-content' });
     const bodyWrap = content.createDiv({ cls: 'bm-body-wrap' });
-    bodyWrap.createDiv({ cls: 'bm-loading' }).innerHTML =
-      '<div class="bm-spinner"></div><div>正在加载文章…</div>';
+    const loading = bodyWrap.createDiv({ cls: 'bm-loading' });
+    loading.createDiv({ cls: 'bm-spinner' });
+    loading.createDiv({ text: '正在加载文章…' });
 
     try {
       const raw = await this.app.vault.read(file);
@@ -391,7 +291,7 @@ export class BambooReaderView extends ItemView {
       });
 
       // 代码块增强（语言标签 + 复制 + 行号）
-      body.querySelectorAll('pre').forEach((pre) => this.enhanceCode(pre as HTMLElement));
+      body.querySelectorAll('pre').forEach((pre) => this.enhanceCode(pre));
 
       // 内部链接拦截
       this.interceptLinks(body);
@@ -713,26 +613,18 @@ export class BambooReaderView extends ItemView {
         }
       }
       code.textContent = '';
-      const frag = document.createDocumentFragment();
       for (let i = 0; i < lines.length; i++) {
-        const sp = document.createElement('span');
-        sp.className = 'bm-line';
+        const sp = code.createSpan({ cls: 'bm-line' });
         lines[i].forEach((n) => sp.appendChild(n));
-        frag.appendChild(sp);
-        if (i < lines.length - 1) frag.appendChild(document.createTextNode('\n'));
+        code.appendChild(sp);
+        if (i < lines.length - 1) code.appendText('\n');
       }
-      code.appendChild(frag);
     }
   }
 
   private showLightbox(src: string, alt: string): void {
-    const mask = document.createElement('div');
-    mask.className = 'bm-mask';
-    const img = document.createElement('img');
-    img.className = 'bm-lightbox-img';
-    img.src = src;
-    img.alt = alt;
-    mask.appendChild(img);
+    const mask = this.containerEl.createDiv({ cls: 'bm-mask' });
+    mask.createEl('img', { cls: 'bm-lightbox-img', attr: { src, alt } });
     mask.addEventListener('click', () => mask.remove());
     this.containerEl.appendChild(mask);
     const onKey = (e: KeyboardEvent) => {

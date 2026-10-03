@@ -62,6 +62,24 @@ export interface BambooReviewSettings {
    * 可选字段：老版本设置里没有该键时按「未知版本」处理（表现为可更新）。
    */
   marketInstalled?: Record<string, { version: string; installedAt: number }>;
+  /**
+   * 模块市场：已安装模块的版本记录（模块 id → { version, installedAt }）。
+   * 与主题市场（marketInstalled）分开存放，避免两类市场的版本记录互相覆盖。
+   */
+  moduleInstalled?: Record<string, { version: string; installedAt: number }>;
+  /**
+   * 模块文件夹路径（Vault 相对路径）。留空时回落到默认管理区 <configDir>/bamboo-review/modules，
+   * 收拢在插件数据同域、不再散落 vault 根目录；设置具体路径则完全自定义（此时不做旧目录迁移）。
+   */
+  modulePath: string;
+  /**
+   * 模块自持久化的业务数据（模块 id → 任意 JSON 对象）。
+   *
+   * 模块视图以 data: URL 加载，该上下文下 localStorage / sessionStorage / indexedDB
+   * 读取即抛 SecurityError（不可配置 getter），故模块的用户数据（如博客头像、昵称、
+   * 简介、目录配置）必须由宿主代为落盘，经 module:saveData / module:loadData 存取。
+   */
+  moduleData?: Record<string, Record<string, unknown>>;
   /** 是否将 webapp 调色同步到 Obsidian 原生界面 */
   syncPaletteToObsidian: boolean;
   /** 是否让插件配色跟随 Obsidian 主题（读取 --interactive-accent 反推色相） */
@@ -110,6 +128,9 @@ export const DEFAULT_SETTINGS: BambooReviewSettings = {
   noisePath: '',
   noiseItems: [],
   marketInstalled: {},
+  moduleInstalled: {},
+  modulePath: '',
+  moduleData: {},
   syncPaletteToObsidian: false,
   followObsidianTheme: true,
   aiEnabled: false,

@@ -19,7 +19,15 @@ export const PROTOCOL_VERSION = 1;
 // ============================================================
 //  消息前缀（host 侧 onMessage 来源前缀白名单）
 // ============================================================
-export const INBOUND_PREFIXES = ['storage:', 'app:', 'file:', 'theme:', 'market:'] as const;
+export const INBOUND_PREFIXES = [
+  'storage:',
+  'app:',
+  'file:',
+  'theme:',
+  'market:',
+  // 竹林模块系统：按需下载的模块经 module:* 与宿主通信（清单/安装/卸载/加载/能力调用）
+  'module:',
+] as const;
 
 // ============================================================
 //  全部已知 message type（双向）
@@ -47,6 +55,8 @@ export const ALL_MESSAGE_TYPES = [
   'app:openScroll',
   'app:openScrollLeftSidebar',
   'app:moveScroll',
+  // 竹林模块：悬浮菜单点模块按钮 → 宿主打开该模块视图
+  'app:openModule',
   // 画中卷·打字机「一键全屏」：折叠/恢复 Obsidian 左右侧栏，最大化画面
   'app:toggleZen',
   'app:collapseRightSidebar',
@@ -117,6 +127,21 @@ export const ALL_MESSAGE_TYPES = [
   'market:manifest',
   'market:install',
   'market:uninstall',
+  // ---- 竹林模块系统（webapp → host）----
+  'module:market:manifest', // 拉取模块市场清单（宿主侧 requestUrl）
+  'module:install',         // 下载模块 .js 写入模块目录
+  'module:uninstall',       // 删除模块 .js
+  'module:list',            // 已安装模块清单（id → version）
+  'module:load',            // 按 id 取回模块代码（同 theme:load 懒加载）
+  'module:saveData',        // 模块自持久化数据写入（data: URL 下无 localStorage）
+  'module:loadData',        // 模块自持久化数据读取
+  'module:listFiles',       // 列出指定目录下的 markdown 文件
+  'module:readFile',        // 读取 vault 文件正文
+  'module:openFile',        // 用 Obsidian 原生视图打开文件
+  'module:resolveResource', // 把 vault 内文件路径解析成 webview 可加载的资源 URL（头像/封面等）
+  'module:toggleTheme',     // 模块切换 Obsidian 基础明暗（博客模块「快门」改作明暗开关用）
+  // ---- 竹林模块系统（host → webapp）----
+  'module:context',         // 宿主注入当前 leaf 承载的 moduleId
 ] as const;
 
 export type AppMessageType = (typeof ALL_MESSAGE_TYPES)[number];

@@ -28,6 +28,8 @@ import type { AgenticPlanOptions } from './src/ai/AgenticPlanController';
 import { PlanEditorView, VIEW_TYPE_PLAN_EDITOR } from './src/views/PlanEditorView';
 import { ArchiveView, VIEW_TYPE_ARCHIVE } from './src/views/ArchiveView';
 import { ScrollView, VIEW_TYPE_SCROLL } from './src/views/ScrollView';
+import { ModuleView, VIEW_TYPE_MODULE } from './src/views/ModuleView';
+import { BambooReaderView, VIEW_TYPE_BAMBOO_READER } from './src/views/BambooReaderView';
 import { SuggestionApplyModal } from './src/ai/SuggestionApplyModal';
 import { diagnose } from './src/ai/GoalDiagnoser';
 import { ConsultModal, type ConsultOptions } from './src/consult/ConsultModal';
@@ -126,6 +128,15 @@ export default class BambooReviewPlugin extends Plugin {
     // 注册「画中卷」独立视图（便签墙 + 香道番茄钟，独立中央页签，不影响日报）
     this.registerView(VIEW_TYPE_SCROLL, (leaf: WorkspaceLeaf) => {
       return new ScrollView(leaf, pluginDir, this, this.settings, () => this.saveSettings());
+    });
+
+    // 注册「竹林模块」通用宿主视图：所有按需下载的模块共用此视图类型，
+    // 具体承载哪个模块由 leaf 视图状态的 moduleId 决定（模块无需各自注册视图类型）。
+    this.registerView(VIEW_TYPE_MODULE, (leaf: WorkspaceLeaf) => {
+      return new ModuleView(leaf, pluginDir, this, this.settings, () => this.saveSettings());
+    });
+    this.registerView(VIEW_TYPE_BAMBOO_READER, (leaf: WorkspaceLeaf) => {
+      return new BambooReaderView(leaf, this);
     });
 
     // 宿主 → webapp 直连接口（Phase3 门面，内部仍走 sendCommand 线协议）
@@ -1213,6 +1224,95 @@ export default class BambooReviewPlugin extends Plugin {
       this.settings.scrollDefaultLocation = loc;
       await this.saveSettings();
     }
+  }
+
+  /** 打开模块视图，并以左侧边栏形态呈现（模块默认停靠位：类似大纲面板，不抢占编辑区）。
+   *  使用 getLeftLeaf(false)：复用左侧栏现有位置作为标签页打开，不新建 split。 */
+  async openModuleLeftSidebar(moduleId: string): Promise<void> {
+    return this.openModuleAt('left', moduleId);
+  }
+
+  /**
+   * 统一打开模块视图并停靠到指定位置（left/center/right）。
+   * - left：左侧栏（getLeftLeaf，复用现有左栏 tab）—— 模块默认位
+   * - center：中央新页签（getLeaf(true)，不抢占当前编辑笔记）
+   * - right：右侧栏（getRightLeaf）
+   * 移动端无侧栏，强制 center。
+   *
+   * 复用规则：同一模块已在任意位置打开 → 直接带到前台（revealLeaf），不重建、不重挂
+   * iframe，避免反复新建视图；若目标 leaf 承载的是另一个模块 → 重载其 webapp，
+   * 让新模块 id 在 iframe load 时注入（模块 id 注入是一次性的，换模块必须重载）。
+   */
+  async openModuleAt(loc: ScrollLocation, moduleId: string): Promise<void> {
+    if (!moduleId) {
+      new Notice('未指定要打开的模块');
+      return;
+    }
+    ModuleView.pendingModuleId = moduleId;
+    const { workspace } = this.app;
+
+    const existing = workspace.getLeavesOfType(VIEW_TYPE_MODULE);
+
+    // 同一模块至多一个 leaf：已开则复用（不论当前停靠在哪个栏）
+    let target: WorkspaceLeaf | null =
+      existing.find((l) => (l.view instanceof ModuleView) && l.view.getModuleId() === moduleId) ?? null;
+    const wasReused = !!target;
+
+    if (!target) {
+      if (Platform.isMobile) {
+        target = workspace.getLeaf(false);
+      } else if (loc === 'left') {
+        target = workspace.getLeftLeaf(false);
+      } else if (loc === 'right') {
+        target = workspace.getRightLeaf(false) || workspace.getRightLeaf(true);
+      } else {
+        target = workspace.getLeaf(true);
+      }
+    }
+    if (!target) {
+      new Notice('无法打开模块视图');
+      return;
+    }
+
+    // 捕获「本次打开前」该 leaf 已挂载的模块：setViewState 会经 setState 立即把 _moduleId
+    // 改成新值，故重载判定必须用改之前的旧值，否则换模块时会判成「已一致」而漏掉重载。
+    const prevModuleId = (target.view instanceof ModuleView) ? target.view.getModuleId() : null;
+
+    if (wasReused) {
+      // 已挂载且模块一致：仅带到前台，不重建、不抢键盘焦点（同画中卷复用分支的理由）
+      await workspace.revealLeaf(target);
+    } else {
+      // 把模块 id 写入视图状态：真正落盘靠 ModuleView.getState()（Obsidian 序列化的是它），
+      // 重启后由 setState 回填，模块视图不会变空白。
+      await target.setViewState({
+        type: VIEW_TYPE_MODULE,
+        state: { moduleId },
+        active: true,
+      });
+      await workspace.revealLeaf(target);
+    }
+
+    // 换模块（同 leaf 原挂别的模块）→ 重载 webapp 让新模块 id 在 load 时注入
+    if (prevModuleId !== null && prevModuleId !== moduleId && target.view instanceof ModuleView) {
+      await target.view.reloadWebapp();
+    }
+  }
+
+  /** 在宿主自建的竹杖芒鞋式阅读视图（中央 ItemView）打开文章；全程复用唯一阅读视图，不新建 tab */
+  async openReaderView(path: string): Promise<void> {
+    const { workspace } = this.app;
+    BambooReaderView.pendingPath = path;
+    const leaves = workspace.getLeavesOfType(VIEW_TYPE_BAMBOO_READER) as WorkspaceLeaf[];
+    // 复用唯一的阅读视图 leaf：跨文章仅切换内容（setState），不新增 tab
+    const existing = leaves[0];
+    if (existing) {
+      await existing.setViewState({ type: VIEW_TYPE_BAMBOO_READER, active: true, state: { path } });
+      await workspace.revealLeaf(existing);
+      return;
+    }
+    const target = workspace.getLeaf('tab');
+    await target.setViewState({ type: VIEW_TYPE_BAMBOO_READER, active: true, state: { path } });
+    await workspace.revealLeaf(target);
   }
 
   /** 加载设置 */

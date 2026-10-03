@@ -11,6 +11,19 @@ html body .workspace-leaf-content[data-type="bamboo-immortals"] .view-header {
   display: none;
 }
 
+/* 竹林模块视图（bamboo-module）：与首页视图同构，同样把 leaf 内边距清零。
+   否则 Obsidian 默认的 .view-content 内边距会叠在模块自绘的卡片留白上，
+   导致模块卡片（如博客）比首页卡片「顶」上去一截、左右也差几像素。 */
+html body .workspace-leaf-content[data-type="bamboo-module"] .view-content {
+  padding: 0;
+  margin: 0;
+}
+
+/* 同首页：模块 iframe 自带标题区，leaf 标题栏多余 */
+html body .workspace-leaf-content[data-type="bamboo-module"] .view-header {
+  display: none;
+}
+
 .bamboo-review-container {
   width: 100%;
   height: 100%;

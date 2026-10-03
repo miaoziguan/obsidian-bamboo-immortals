@@ -7,13 +7,15 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const webappDir = path.join(__dirname, "..", "webapp");
 const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "package.json"), "utf-8"));
 
-// 入口清单：index.html → app.html（主日复盘），archive-src.html → archive.html（目标归档独立页）。
-// 两者都用同一套「内联 CSS + 内联 bundle（暴露到 window）」自包含流程，
+// 入口清单：index.html → app.html（主日复盘），archive-src.html → archive.html（目标归档独立页），
+// scroll-src.html → scroll.html（画中卷），module-src.html → module.html（竹林模块通用宿主）。
+// 四者都用同一套「内联 CSS + 内联 bundle（暴露到 window）」自包含流程，
 // 确保经 blob URL 加载进 iframe 时无需任何外部相对资源（否则相对脚本/样式在 blob 基址下无法解析）。
 const ENTRIES = [
   { html: "index.html", out: "app.html" },
   { html: "archive-src.html", out: "archive.html" },
   { html: "scroll-src.html", out: "scroll.html" },
+  { html: "module-src.html", out: "module.html" },
 ];
 
 async function buildSelfContainedHtml(htmlFile, outFile) {

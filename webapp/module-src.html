@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="theme-bamboo">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
+<meta name="description" content="Bamboo Immortals - 竹林模块">
+<meta name="theme-color" content="#2D5A27">
+
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect fill='%232D5A27' width='32' height='32' rx='6'/><path d='M16 6v20M16 10l-4 2M16 10l4 2M16 16l-3 1.5M16 16l3 1.5' stroke='%23ffffff' stroke-width='2' stroke-linecap='round'/></svg>">
+<title>竹林模块</title>
+<!-- 字体：纯系统字体栈（见 base.css --tw-font-*），不加载 Google Fonts，离线 / 中国大陆均可一致呈现 -->
+<link rel="stylesheet" href="assets/styles/variables.css?__BUILD__">
+<link rel="stylesheet" href="assets/styles/base.css?__BUILD__">
+<link rel="stylesheet" href="assets/styles/module.css?__BUILD__">
+</head>
+<body>
+  <!-- 竹林模块「通用宿主」视图：
+       本页不渲染任何具体业务，只负责承载——宿主把 moduleId 注入后，
+       ModuleManager 取回模块代码并在沙箱内执行，由模块自己 mount 出界面。
+       故依赖极简：仅常量 + 通信层（bridge）+ 模块管理器，不含日报渲染 / FAB 等主应用模块。 -->
+  <div id="module-view-root"></div>
+
+  <script type="module" src="assets/scripts/utils/constants.js?__BUILD__"></script>
+  <script type="module" src="assets/scripts/utils/storageAdapter.js?__BUILD__"></script>
+  <script type="module" src="assets/scripts/storage/bridge.js?__BUILD__"></script>
+  <script type="module" src="assets/scripts/utils/protocol.js?__BUILD__"></script>
+  <script type="module" src="assets/scripts/handlers/moduleManager.js?__BUILD__"></script>
+</body>
+</html>

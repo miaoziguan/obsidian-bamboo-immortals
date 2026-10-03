@@ -1,4 +1,4 @@
-import { App, TFile, DataAdapter, normalizePath, requestUrl, Platform } from 'obsidian';
+import { App, TFile, DataAdapter, normalizePath, requestUrl, Platform, MarkdownRenderer, Component } from 'obsidian';
 import { arrayBufferToBase64 } from '../utils/base64';
 import { VaultStorage } from '../storage/VaultStorage';
 import { ThemeBridge } from '../bridge/ThemeBridge';
@@ -46,6 +46,31 @@ export function isValidAudioUrl(url: string): boolean {
  * 将 postMessage 路由、存储操作、主题同步合并为单一 API。
  */
 const MARKET_MANIFEST_URL = 'https://raw.githubusercontent.com/miaoziguan/bamboo-theme-market/main/manifest.json';
+/**
+ * 竹林模块市场清单（与主题市场平级的独立仓库）。
+ *
+ * 模块是「用户按需下载」的可选能力（首个模块 = 本地博客阅读器），不入主 bundle，
+ * 故清单与代码都必须联网获取；webview 侧禁止 fetch（沙箱），下载一律由宿主 requestUrl 代劳。
+ */
+const MODULE_MARKET_MANIFEST_URL = 'https://raw.githubusercontent.com/miaoziguan/bamboo-module-market/main/manifest.json';
+
+/**
+ * 模块元数据。
+ *
+ * 模块文件顶部约定带一行标记注释：
+ *   /* __bamboo_module_ {"id":"blog","name":"本地博客","version":"1.0.0","fab":{...}} *\/
+ * 宿主扫描时只做纯文本解析（不 new Function 执行），因此主应用拿到按钮配置
+ * 无需承担「执行全部模块代码」的代价——真正执行只发生在用户打开该模块视图时。
+ */
+export interface ModuleMeta {
+  id: string;
+  name: string;
+  version: string;
+  /** 模块声明的悬浮菜单按钮（图标用 lucide 名，与主题/FAB 现有图标体系一致） */
+  fab?: { icon?: string; label?: string };
+  /** 默认停靠位，未声明按 left（左侧栏） */
+  location?: 'left' | 'center' | 'right';
+}
 
 export class AppAPI {
   private storage: VaultStorage;
@@ -88,6 +113,18 @@ export class AppAPI {
   onMoveScroll?: (location?: string) => void;
 
   /**
+   * 「竹林模块」入口回调（由 DailyReviewView 注入，转发到插件 openModuleLeftSidebar）。
+   * webapp 悬浮菜单点模块按钮时触发，把该模块视图以左侧边栏形态打开。
+   *
+   * 模块代码不在主 bundle 内（按需下载），故这里只传模块 id，由宿主视图
+   * 经 module:load 取回代码后执行——主应用不需要为拿按钮而执行任何模块代码。
+   */
+  onOpenModule?: (moduleId: string, location?: string) => void;
+
+  /** 「博客模块」入口回调：在宿主自建的竹杖芒鞋式阅读视图打开文章（中央视图） */
+  onOpenReader?: (path: string) => void;
+
+  /**
    * 「画中卷」上下文索取回调（由 ScrollView 注入）。
    *
    * 画中卷的功能选型/停靠位/全屏态原本只在 iframe `load` 事件里注入一次，而 webapp 侧
@@ -97,6 +134,17 @@ export class AppAPI {
    * 故 webapp 握手（`app:ready`）时由宿主补发一次上下文，把一次性注入升级为「可重放」。
    */
   onScrollContextRequest?: () => { feature?: string; location?: string; zen?: boolean } | null;
+
+  /**
+   * 「模块视图」上下文索取回调（由 ModuleView 注入）。
+   *
+   * 模块视图是通用宿主：同一个 VIEW_TYPE_MODULE 可承载任意模块，具体承载哪个由
+   * leaf 视图状态里的 moduleId 决定。该 id 原本只在 iframe `load` 时注入一次，
+   * 与画中卷同源问题——module.html 若被 gzip 包装、脚本在 load 之后才解压执行，
+   * 这次注入就会被漏掉，表现为模块视图空白。故 webapp 握手（app:ready）时由宿主
+   * 补发一次，把一次性注入升级为「可重放」。
+   */
+  onModuleContextRequest?: () => { moduleId?: string } | null;
 
   /**
    * 健康分权威快照数据源（由 DailyReviewView 注入，转发到插件的 getStrategyOverview()）。
@@ -131,6 +179,12 @@ export class AppAPI {
   private customThemeManifests: Array<{ name: string; meta?: Record<string, unknown> }> = [];
   /** 外部主题代码缓存（name → code），由 scanCustomThemes 预读，按需经 theme:load 回传，避免每次全量跨进程下发 */
   private customThemeCodeMap = new Map<string, string>();
+  /** 模块代码缓存（模块 id → 代码），由 _rescanModules 填充，按需经 module:load 回传。
+   *  与主题同构：清单先行、代码懒加载，避免所有模块代码一次性跨进程灌入。 */
+  private moduleCodeMap = new Map<string, string>();
+  /** 模块元数据缓存（模块 id → meta）。从模块文件的标记行解析，**不执行模块代码**，
+   *  供主应用在不加载模块的情况下把模块声明的悬浮菜单按钮注入菜单。 */
+  private moduleMetaMap = new Map<string, ModuleMeta>();
   private vaultAdapter: DataAdapter;
   private noisePath: string;
   private configDir: string;
@@ -293,6 +347,17 @@ export class AppAPI {
     cw.postMessage({ type: 'scroll:zen', zen: !!ctx.zen }, '*');
   }
 
+  /** 向 iframe 推送模块视图上下文（moduleId）。
+   *  由 app:ready 握手触发；ModuleView 未注入索取回调时（日报/归档/画中卷视图）静默跳过。 */
+  private _pushModuleContext(): void {
+    if (!this.onModuleContextRequest) return;
+    const cw = this.iframe?.contentWindow;
+    if (!cw) return;
+    const ctx = this.onModuleContextRequest();
+    if (!ctx || !ctx.moduleId) return;
+    cw.postMessage({ type: 'module:context', moduleId: ctx.moduleId }, '*');
+  }
+
   /** 消息路由 */
   private async onMessage(event: MessageEvent): Promise<void> {
     const msg = event.data as { type?: string; id?: string; payload?: unknown };
@@ -356,6 +421,195 @@ export class AppAPI {
     }
   }
 
+  /**
+   * 模块默认存放目录：收拢到 bamboo-review 管理区（<configDir>/bamboo-review/modules），
+   * 不再散落 vault 根目录的 `竹林模块/`，与插件数据同域、且不受插件更新覆盖。
+   * 用户可在设置用 modulePath 覆盖（自定义路径时不做旧目录迁移）。
+   */
+  private _defaultModulePath(): string {
+    return normalizePath(`${this.configDir}/bamboo-review/modules`);
+  }
+
+  /** 是否走默认路径（未设置，或仍是旧默认 '竹林模块' 哨兵） */
+  private _usingDefaultModulePath(): boolean {
+    const mp = this.settings.modulePath;
+    return !mp || mp === '竹林模块';
+  }
+
+  /** 解析模块目录：用户自定义优先，否则取默认管理区路径 */
+  private _moduleDir(): string {
+    return normalizePath(this._usingDefaultModulePath() ? this._defaultModulePath() : (this.settings.modulePath as string));
+  }
+
+  /** 目标文件是否存在（迁移时避免覆盖已重装的新版本） */
+  private async _fileExists(p: string): Promise<boolean> {
+    try {
+      await this.vaultAdapter.read(p);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * 一次性迁移：把 vault 根目录旧的 `竹林模块/*.js` 移入默认管理区。
+   * 仅在使用默认路径时执行；目标已存在的文件保留（不回退覆盖），旧目录迁移后清空。
+   */
+  private async _migrateLegacyModules(): Promise<void> {
+    if (!this._usingDefaultModulePath()) return;
+    const legacy = normalizePath('竹林模块');
+    const target = this._defaultModulePath();
+    if (legacy === target) return;
+    try {
+      const listed = await this.vaultAdapter.list(legacy);
+      const files = (listed.files || []).filter((f) => f.endsWith('.js'));
+      if (!files.length) return;
+      const movable: string[] = [];
+      for (const f of files) {
+        try {
+          const code = await this.vaultAdapter.read(f);
+          if (code.includes('__bamboo_module_')) movable.push(f);
+        } catch {
+          /* 跳过读取失败 */
+        }
+      }
+      if (!movable.length) return;
+      const parent = target.split('/').slice(0, -1).join('/');
+      if (parent) {
+        try { await this.vaultAdapter.mkdir(parent); } catch { /* 已存在忽略 */ }
+      }
+      try { await this.vaultAdapter.mkdir(target); } catch { /* 已存在忽略 */ }
+      for (const f of movable) {
+        const name = (f.split('/').pop() || f) as string;
+        const dest = `${target}/${name}`;
+        if (!(await this._fileExists(dest))) {
+          const code = await this.vaultAdapter.read(f);
+          await this.vaultAdapter.write(dest, code);
+        }
+        await this.vaultAdapter.remove(f);
+      }
+      // 落定新路径，避免后续仍走旧哨兵判断
+      this.settings.modulePath = target;
+      await this.saveSettings();
+      // 旧目录若已空则尝试移除（失败忽略：空目录残留无害）
+      try { await this.vaultAdapter.remove(legacy); } catch { /* 忽略 */ }
+    } catch {
+      // 旧目录不存在等：无需迁移
+    }
+  }
+
+  /** 重扫模块目录，刷新「已安装模块」代码缓存（市场装/卸后、module:list/load 前调用）。
+   *  模块标记校验（__bamboo_module_）与主题（__bamboo_theme_）同构，误放进来的普通
+   *  .js 会被静默忽略，不会被当作模块执行。目录不存在（尚未装任何模块）不算错误。 */
+  private async _rescanModules(): Promise<void> {
+    await this._migrateLegacyModules();
+    const dir = this._moduleDir();
+    try {
+      const listed = await this.vaultAdapter.list(dir);
+      const files = (listed.files || []).filter((f) => f.endsWith('.js'));
+      const map = new Map<string, string>();
+      const metaMap = new Map<string, ModuleMeta>();
+      for (const f of files) {
+        const name = (f.split('/').pop() || f).replace(/\.js$/, '');
+        try {
+          const code = await this.vaultAdapter.read(f);
+          if (!code.includes('__bamboo_module_')) continue;
+          map.set(name, code);
+          metaMap.set(name, this._parseModuleMeta(code, name));
+        } catch {
+          /* 跳过读取失败的文件 */
+        }
+      }
+      this.moduleCodeMap = map;
+      this.moduleMetaMap = metaMap;
+    } catch {
+      // 目录不存在：尚未安装任何模块，清空缓存即可
+      this.moduleCodeMap = new Map();
+      this.moduleMetaMap = new Map();
+    }
+  }
+
+  /** 从模块代码的标记行解析元数据（纯文本，不执行代码）。
+   *  解析失败时退回「以文件名当 id 与显示名」的最小元数据，保证模块仍可用。 */
+  private _parseModuleMeta(code: string, fallbackId: string): ModuleMeta {
+    const fallback: ModuleMeta = { id: fallbackId, name: fallbackId, version: '' };
+    const marker = '__bamboo_module_';
+    const idx = code.indexOf(marker);
+    if (idx < 0) return fallback;
+    const after = code.slice(idx + marker.length);
+    const open = after.indexOf('{');
+    if (open < 0) return fallback;
+    // 括号匹配（跳过字符串字面量里的括号）定位 meta 对象体的闭合 }。
+    // 声明可能跨多行且含 mount 函数，故不能只取标记那一行做 JSON.parse。
+    let depth = 0;
+    let close = -1;
+    let inStr: string | null = null;
+    for (let i = open; i < after.length; i++) {
+      const ch = after[i];
+      if (inStr) {
+        if (ch === '\\') { i++; continue; } // 跳转义字符
+        if (ch === inStr) inStr = null;
+        continue;
+      }
+      if (ch === '"' || ch === "'" || ch === '`') { inStr = ch; continue; }
+      if (ch === '{') depth++;
+      else if (ch === '}') { depth--; if (depth === 0) { close = i; break; } }
+    }
+    if (close < 0) return fallback;
+    const body = after.slice(open, close + 1);
+
+    // 优先按 JSON 解析：模块声明常写成纯 JSON（key 带引号，如 {"id":"blog",...}），
+    // 整体 JSON.parse 最稳；正则方案对带引号 key 会整体失配（已用 node 复现确认）。
+    let parsed: Record<string, unknown> | null = null;
+    try {
+      parsed = JSON.parse(body) as Record<string, unknown>;
+    } catch {
+      parsed = null;
+    }
+    if (parsed && typeof parsed === 'object') {
+      const fabRaw = (parsed.fab && typeof parsed.fab === 'object' ? parsed.fab : null) as {
+        icon?: unknown;
+        label?: unknown;
+      } | null;
+      const loc = parsed.location;
+      return {
+        id: typeof parsed.id === 'string' && parsed.id ? parsed.id : fallbackId,
+        name: typeof parsed.name === 'string' && parsed.name ? parsed.name : fallbackId,
+        version: typeof parsed.version === 'string' ? parsed.version : '',
+        fab:
+          fabRaw && (fabRaw.icon || fabRaw.label)
+            ? {
+                icon: typeof fabRaw.icon === 'string' ? fabRaw.icon : undefined,
+                label: typeof fabRaw.label === 'string' ? fabRaw.label : undefined,
+              }
+            : undefined,
+        location: loc === 'left' || loc === 'center' || loc === 'right' ? loc : undefined,
+      };
+    }
+
+    // JSON 解析失败（对象字面量含函数等）→ 正则兜底，兼容无引号 key 的 JS 对象
+    const strField = (key: string): string | undefined => {
+      const m = body.match(new RegExp(`["']?${key}["']?\\s*:\\s*["']([^"']*?)["']`));
+      return m ? m[1] : undefined;
+    };
+    const id = strField('id') || fallbackId;
+    const name = strField('name') || fallbackId;
+    const version = strField('version') || '';
+    const locRaw = strField('location');
+    const location = locRaw === 'left' || locRaw === 'center' || locRaw === 'right' ? locRaw : undefined;
+
+    // fab 按钮块（约定只含 icon/label 两个字符串字段，无嵌套 {}）
+    const fabMatch = body.match(/["']?fab["']?\s*:\s*\{[^}]*\}/);
+    let fab: ModuleMeta['fab'] = undefined;
+    if (fabMatch) {
+      const fb = fabMatch[0];
+      const icon = (fb.match(/icon\s*:\s*["']([^"']*?)["']/) || [])[1];
+      const label = (fb.match(/label\s*:\s*["']([^"']*?)["']/) || [])[1];
+      if (icon || label) fab = { icon, label };
+    }
+    return { id, name, version, fab, location };
+  }
+
   private async handleMessage(type: string, id: string, payload: unknown): Promise<void> {
     // ---- 生命周期 ----
     if (type === 'app:ready') {
@@ -387,6 +641,8 @@ export class AppAPI {
       // 画中卷：握手时补发一次上下文（feature/location/zen），
       // 兜住「iframe load 时那次注入被 webapp 漏收」的窗口（详见 onScrollContextRequest 注释）。
       this._pushScrollContext();
+      // 模块视图：同理补发 moduleId（详见 onModuleContextRequest 注释）。
+      this._pushModuleContext();
       return;
     }
 
@@ -398,6 +654,265 @@ export class AppAPI {
         this.respond(id, { ok: true, code });
       } else {
         this.respondError(id, 'THEME_NOT_FOUND');
+      }
+      return;
+    }
+
+    // ================= 竹林模块系统 =================
+    // 设计前提：模块是「按需下载」的可选能力，代码不在主 bundle 内，落盘在 vault 的
+    // 模块目录（默认 <configDir>/bamboo-review/modules，收拢到插件管理区，不再散落 vault 根目录）。
+    // webview 侧禁 fetch，故下载一律由宿主 requestUrl 完成。
+    // 模块标记 __bamboo_module_ 用于校验下载物确为模块，避免把任意 .js 当模块执行。
+
+    // ---- 模块市场：拉取清单（host 侧 fetch 公开仓库的 manifest.json）----
+    if (type === 'module:market:manifest') {
+      try {
+        const resp = await requestUrl({ url: MODULE_MARKET_MANIFEST_URL, method: 'GET' });
+        if (resp.status < 200 || resp.status >= 300) throw new Error('HTTP ' + resp.status);
+        const manifest = resp.json as Record<string, unknown>;
+        // 附带「已安装版本表」，webapp 拿它与 manifest 中各模块的 version 比对 → 得出「可更新」
+        this.respond(id, { ok: true, manifest, installed: this.settings.moduleInstalled || {} });
+      } catch (e) {
+        this.respondError(id, e instanceof Error ? e.message : '模块市场清单拉取失败');
+      }
+      return;
+    }
+
+    // ---- 模块市场：安装（下载 .js 写入模块目录，触发重扫）----
+    if (type === 'module:install') {
+      const p = (payload && typeof payload === 'object' ? payload : {}) as {
+        id?: string;
+        url?: string;
+        version?: string;
+      };
+      if (!p.id || !p.url) { this.respondError(id, 'module:install 缺少 id 或 url'); return; }
+      try {
+        const resp = await requestUrl({ url: p.url, method: 'GET' });
+        if (resp.status < 200 || resp.status >= 300) throw new Error('HTTP ' + resp.status);
+        const code = resp.text;
+        if (!code.includes('__bamboo_module_')) throw new Error('不是有效的竹林模块文件');
+        const dir = this._moduleDir();
+        await this.vaultAdapter.write(`${dir}/${p.id}.js`, code);
+        // 记录本次安装的版本：后续与 manifest 的 version 比对即可判断「可更新」
+        if (!this.settings.moduleInstalled) this.settings.moduleInstalled = {};
+        this.settings.moduleInstalled[p.id] = { version: p.version || '', installedAt: Date.now() };
+        await this.saveSettings();
+        await this._rescanModules();
+        this.respond(id, { ok: true });
+      } catch (e) {
+        this.respondError(id, e instanceof Error ? e.message : '模块安装失败');
+      }
+      return;
+    }
+
+    // ---- 模块市场：卸载（删除模块 .js，连带清除其自持久化数据）----
+    if (type === 'module:uninstall') {
+      const p = (payload && typeof payload === 'object' ? payload : {}) as { id?: string };
+      if (!p.id) { this.respondError(id, 'module:uninstall 缺少 id'); return; }
+      try {
+        const dir = this._moduleDir();
+        await this.vaultAdapter.remove(`${dir}/${p.id}.js`);
+        let dirty = false;
+        if (this.settings.moduleInstalled) {
+          delete this.settings.moduleInstalled[p.id];
+          dirty = true;
+        }
+        // 模块数据一并清除：避免卸载后重装读到上个「人生」的残留配置
+        if (this.settings.moduleData) {
+          delete this.settings.moduleData[p.id];
+          dirty = true;
+        }
+        if (dirty) await this.saveSettings();
+        await this._rescanModules();
+        this.respond(id, { ok: true });
+      } catch (e) {
+        this.respondError(id, e instanceof Error ? e.message : '模块卸载失败');
+      }
+      return;
+    }
+
+    // ---- 已安装模块清单（主应用据此把模块声明的按钮注入悬浮菜单）----
+    if (type === 'module:list') {
+      await this._rescanModules();
+      const installed = this.settings.moduleInstalled || {};
+      this.respond(id, {
+        ok: true,
+        // 带上元数据（含 fab 按钮声明），主应用据此注入悬浮菜单按钮，无需执行模块代码
+        modules: Array.from(this.moduleCodeMap.keys()).map((mid) => {
+          const meta = this.moduleMetaMap.get(mid);
+          return {
+            id: meta?.id || mid,
+            name: meta?.name || mid,
+            // 版本以安装记录为准（市场装/卸时写入）；无记录（手工放入的文件）退回元数据声明
+            version: installed[mid]?.version || meta?.version || '',
+            fab: meta?.fab || null,
+            location: meta?.location || 'left',
+          };
+        }),
+      });
+      return;
+    }
+
+    // ---- 按需加载模块代码（同 theme:load，避免全量下发 + 全量 new Function 执行）----
+    if (type === 'module:load') {
+      const mid = (payload as { id?: string } | undefined)?.id;
+      if (!mid) { this.respondError(id, 'module:load 缺少 id'); return; }
+      if (this.moduleCodeMap.size === 0) await this._rescanModules();
+      const code = this.moduleCodeMap.get(mid);
+      if (code !== undefined) {
+        this.respond(id, { ok: true, code });
+      } else {
+        this.respondError(id, 'MODULE_NOT_FOUND');
+      }
+      return;
+    }
+
+    // ---- 模块自持久化数据：data: URL 下 localStorage/sessionStorage/indexedDB 读取即抛
+    //      SecurityError，故模块的用户数据统一由宿主存进插件设置 ----
+    if (type === 'module:saveData') {
+      const p = (payload && typeof payload === 'object' ? payload : {}) as { id?: string; data?: unknown };
+      if (!p.id) { this.respondError(id, 'module:saveData 缺少 id'); return; }
+      if (!this.settings.moduleData) this.settings.moduleData = {};
+      this.settings.moduleData[p.id] =
+        (p.data && typeof p.data === 'object' ? p.data : {}) as Record<string, unknown>;
+      await this.saveSettings();
+      this.respond(id, { ok: true });
+      return;
+    }
+
+    if (type === 'module:loadData') {
+      const p = (payload && typeof payload === 'object' ? payload : {}) as { id?: string };
+      const data = (p.id && this.settings.moduleData?.[p.id]) || null;
+      this.respond(id, { ok: true, data });
+      return;
+    }
+
+    // ---- 模块能力：列出指定目录下的 markdown 文件（博客文章列表）----
+    if (type === 'module:listFiles') {
+      const p = (payload && typeof payload === 'object' ? payload : {}) as {
+        folder?: string;
+        recursive?: boolean;
+      };
+      const folder = normalizePath((p.folder || '').replace(/\/+$/, ''));
+      if (!folder) { this.respondError(id, 'module:listFiles 缺少 folder'); return; }
+      try {
+        const out: { path: string; name: string; mtime: number; ctime: number; size: number }[] = [];
+        // 上限保护：误把 vault 根目录当博客目录时，不至于一次吞掉整个库
+        const MAX_FILES = 500;
+        const MAX_DEPTH = 5;
+        const queue: { p: string; d: number }[] = [{ p: folder, d: 0 }];
+        while (queue.length > 0 && out.length < MAX_FILES) {
+          const cur = queue.shift();
+          if (!cur) break;
+          const listed = await this.vaultAdapter.list(cur.p);
+          for (const f of listed.files || []) {
+            if (!f.endsWith('.md')) continue;
+            const np = normalizePath(f);
+            const tf = this.app.vault.getAbstractFileByPath(np) as TFile | null;
+            const st = tf ? tf.stat : null;
+            out.push({
+              path: np,
+              name: (np.split('/').pop() || np).replace(/\.md$/, ''),
+              mtime: st?.mtime ?? 0,
+              ctime: st?.ctime ?? 0,
+              size: st?.size ?? 0,
+            });
+            if (out.length >= MAX_FILES) break;
+          }
+          if (p.recursive && cur.d + 1 < MAX_DEPTH) {
+            for (const d of listed.folders || []) queue.push({ p: d, d: cur.d + 1 });
+          }
+        }
+        out.sort((a, b) => b.mtime - a.mtime);
+        this.respond(id, { ok: true, files: out });
+      } catch (e) {
+        this.respondError(id, e instanceof Error ? e.message : '目录读取失败');
+      }
+      return;
+    }
+
+    // ---- 模块能力：读取 vault 文件正文 ----
+    if (type === 'module:readFile') {
+      const p = (payload && typeof payload === 'object' ? payload : {}) as { path?: string };
+      if (!p.path) { this.respondError(id, 'module:readFile 缺少 path'); return; }
+      try {
+        const content = await this.vaultAdapter.read(normalizePath(p.path));
+        this.respond(id, { ok: true, content });
+      } catch (e) {
+        this.respondError(id, e instanceof Error ? e.message : '文件读取失败');
+      }
+      return;
+    }
+
+    // ---- 模块能力：渲染 markdown 为 HTML（侧栏内置阅读视图，避免跳离模块）----
+    if (type === 'module:renderMarkdown') {
+      const p = (payload && typeof payload === 'object' ? payload : {}) as {
+        path?: string; content?: string; sourcePath?: string;
+      };
+      let markdown = typeof p.content === 'string' ? p.content : null;
+      let sourcePath = typeof p.sourcePath === 'string' ? p.sourcePath : (p.path || '');
+      if (markdown == null && p.path) {
+        let target = normalizePath(p.path);
+        if (!(await this.app.vault.adapter.exists(target))) {
+          // wikilink / 仅笔记名：按 basename 查找（模块内 [[笔记]] 跳转）
+          const base = p.path.split('#')[0].split('/').pop() || p.path;
+          const hit = this.app.vault.getMarkdownFiles().find((f) => f.basename === base);
+          if (hit) target = hit.path;
+        }
+        try {
+          markdown = await this.vaultAdapter.read(target);
+          sourcePath = target;
+        } catch (e) {
+          this.respondError(id, e instanceof Error ? e.message : '文件读取失败');
+          return;
+        }
+      }
+      if (markdown == null) { this.respondError(id, 'module:renderMarkdown 缺少 content/path'); return; }
+      try {
+        const el = activeDocument.createElement('div');
+        const comp = new Component();
+        await MarkdownRenderer.renderMarkdown(markdown, el, sourcePath, comp);
+        this.respond(id, { ok: true, html: el.innerHTML, sourcePath });
+      } catch (e) {
+        this.respondError(id, e instanceof Error ? e.message : '渲染失败');
+      }
+      return;
+    }
+
+    // ---- 模块能力：用 Obsidian 原生阅读视图打开文件 ----
+    // 模块视图常驻左侧栏，故文章一律在中央工作区新页签打开（不抢占模块视图所在的 leaf）。
+    if (type === 'module:openFile') {
+      const p = (payload && typeof payload === 'object' ? payload : {}) as { path?: string };
+      if (!p.path) { this.respondError(id, 'module:openFile 缺少 path'); return; }
+      const path = p.path;
+      let tf = this.app.vault.getAbstractFileByPath(normalizePath(path)) as TFile | null;
+      if (!tf) {
+        // wikilink / 仅笔记名：按 basename 查找（模块内 markdown 的 [[笔记]] 跳转）
+        const base = path.split('#')[0].split('/').pop() || path;
+        const hit = this.app.vault.getMarkdownFiles().find(
+          (f) => f.basename === base || f.path === normalizePath(path)
+        );
+        if (hit) tf = hit;
+      }
+      if (!tf) { this.respondError(id, '文件不存在：' + path); return; }
+      const leaf = this.app.workspace.getLeaf('tab');
+      await leaf.openFile(tf);
+      this.respond(id, { ok: true });
+      return;
+    }
+
+    // ---- 模块能力：写入 vault 文件（博客模块「一键应用竹杖芒鞋排版」用）----
+    if (type === 'module:writeFile') {
+      const p = (payload && typeof payload === 'object' ? payload : {}) as { path?: string; content?: string };
+      if (!p.path || typeof p.content !== 'string') { this.respondError(id, 'module:writeFile 缺少 path/content'); return; }
+      const np = normalizePath(p.path);
+      try {
+        const dir = np.split('/').slice(0, -1).join('/');
+        if (dir) { try { await this.app.vault.adapter.mkdir(dir); } catch (e) { /* 目录已存在 */ } }
+        await this.vaultAdapter.write(np, p.content);
+        this.respond(id, { ok: true });
+      } catch (e) {
+        this.respondError(id, e instanceof Error ? e.message : '写入失败');
       }
       return;
     }
@@ -577,6 +1092,22 @@ export class AppAPI {
       return;
     }
 
+    // ---- 模块能力：切换 Obsidian 基础明暗（博客模块「快门」改作明暗开关用）----
+    // 与画中卷·打字机的机身明暗开关走同一实现（_switchObsidianTheme），
+    // 语义是「控制 Obsidian 外观明暗」，切换后整条主题管线会即时跟随，模块侧栏随之变明暗。
+    if (type === 'module:toggleTheme') {
+      const wanted = (payload as { isDark?: boolean } | null)?.isDark;
+      const currentlyDark = activeDocument.body.classList.contains('theme-dark');
+      const targetIsDark = typeof wanted === 'boolean' ? wanted : !currentlyDark;
+      const r = this._switchObsidianTheme(targetIsDark);
+      if (!r.ok) {
+        this.respondError(id, r.error || '切换明暗主题失败');
+        return;
+      }
+      this.respond(id, { ok: true, isDark: r.isDark });
+      return;
+    }
+
     // ---- 应用内手动切换明暗（如悬浮菜单夜间模式）----
     // webapp 的 store.setDarkMode 仅在用户手动切换时发出本消息（宿主推送不触发），
     // 由宿主广播给所有视图，确保画中卷等独立 iframe 跟随应用明暗，不依赖 Obsidian 系统主题。
@@ -595,37 +1126,12 @@ export class AppAPI {
       const wanted = (payload as { isDark?: boolean } | null)?.isDark;
       const currentlyDark = activeDocument.body.classList.contains('theme-dark');
       const targetIsDark = typeof wanted === 'boolean' ? wanted : !currentlyDark;
-      const targetMode = targetIsDark ? 'obsidian' : 'moonstone';
-      // Obsidian 未在公开类型中暴露「切基础主题」API：优先用运行时存在的 App.changeTheme，
-      // 回退到 Vault.setConfig('theme', mode)。两者都以受限接口探测，避免 any 回潮。
-      const appUnsafe = this.app as unknown as {
-        changeTheme?: (theme: string) => void;
-        vault?: { setConfig?: (key: string, value: unknown) => void };
-      };
-      let switched = false;
-      try {
-        if (typeof appUnsafe.changeTheme === 'function') {
-          appUnsafe.changeTheme(targetMode);
-          switched = true;
-        } else if (appUnsafe.vault && typeof appUnsafe.vault.setConfig === 'function') {
-          appUnsafe.vault.setConfig('theme', targetMode);
-          switched = true;
-        }
-      } catch {
-        /* 落到下方「不支持」分支统一响应 */
-      }
-      if (!switched) {
-        this.respondError(id, '当前 Obsidian 版本不支持切换明暗主题');
+      const r = this._switchObsidianTheme(targetIsDark);
+      if (!r.ok) {
+        this.respondError(id, r.error || '切换明暗主题失败');
         return;
       }
-      // 显式重放主题管线：即便 changeTheme/setConfig 已自行派发 css-change，
-      // 再触发一次也幂等（pushTheme 有签名缓存），却可兜住「配置已改但事件未派发」的情况。
-      try {
-        this.app.workspace.trigger('css-change');
-      } catch {
-        /* 触发失败不影响切换结果：下一次任意主题事件仍会同步 */
-      }
-      this.respond(id, { ok: true, isDark: targetIsDark });
+      this.respond(id, { ok: true, isDark: r.isDark });
       return;
     }
 
@@ -713,6 +1219,43 @@ export class AppAPI {
     if (type === 'app:moveScroll') {
       const loc = payload && typeof payload === 'object' ? (payload as { location?: unknown }).location : undefined;
       this.onMoveScroll?.(typeof loc === 'string' ? loc : undefined);
+      this.respond(id, { ok: true });
+      return;
+    }
+
+    // ---- 模块能力：把 vault 文件路径解析成 webview 可加载的资源 URL ----
+    // 模块运行在 webview 里，拿不到 Obsidian 的 getResourcePath；头像/封面等 vault 内图片
+    // 必须经宿主换成 app:// 资源地址才能渲染。只读操作，不写盘。
+    if (type === 'module:resolveResource') {
+      const p = (payload && typeof payload === 'object' ? payload : {}) as { path?: string };
+      if (!p.path) { this.respondError(id, 'module:resolveResource 缺少 path'); return; }
+      const tf = this.app.vault.getAbstractFileByPath(normalizePath(p.path)) as TFile | null;
+      if (!tf) { this.respondError(id, '文件不存在'); return; }
+      this.respond(id, { ok: true, url: this.app.vault.getResourcePath(tf) });
+      return;
+    }
+
+    // ---- 竹林模块：悬浮菜单点模块按钮 → 打开该模块视图 ----
+    if (type === 'app:openModule') {
+      const p = (payload && typeof payload === 'object' ? payload : {}) as {
+        moduleId?: unknown;
+        location?: unknown;
+      };
+      const moduleId = typeof p.moduleId === 'string' ? p.moduleId : '';
+      if (!moduleId) { this.respondError(id, 'app:openModule 缺少 moduleId'); return; }
+      const location = p.location === 'left' || p.location === 'center' || p.location === 'right'
+        ? p.location
+        : undefined;
+      this.onOpenModule?.(moduleId, location);
+      this.respond(id, { ok: true });
+      return;
+    }
+
+    // ---- 模块能力：在宿主自建的竹杖芒鞋式中央阅读视图打开文章 ----
+    if (type === 'module:openReader') {
+      const p = (payload && typeof payload === 'object' ? payload : {}) as { path?: string };
+      if (!p.path) { this.respondError(id, 'module:openReader 缺少 path'); return; }
+      this.onOpenReader?.(p.path);
       this.respond(id, { ok: true });
       return;
     }
@@ -908,6 +1451,47 @@ export class AppAPI {
     // ---- 存储类消息（委托给 VaultStorage）----
     const result = await this.handleStorageMessage(type, payload);
     this.respond(id, result);
+  }
+
+  /**
+   * 切换 Obsidian 基础明暗主题（moonstone 亮 / obsidian 暗）——明暗开关的唯一实现。
+   * 抽出来给两处复用：画中卷·打字机机身开关（app:toggleObsidianTheme）与博客模块快门
+   * （module:toggleTheme，见 _buildApi 暴露的 api.toggleTheme）。
+   *
+   * 语义是「控制 Obsidian 外观明暗」（不是 webapp 内部夜间模式）：切换后显式重放
+   * css-change，驱动既有主题管线（各视图 css-change → onThemeChanged → pushTheme →
+   * theme:changed）即时跟随，模块侧栏也就跟着变明暗。
+   *
+   * Obsidian 未在公开类型中暴露「切基础主题」API：优先用运行时存在的 App.changeTheme，
+   * 回退到 Vault.setConfig('theme', mode)。两者都以受限接口探测，避免 any 回潮。
+   */
+  private _switchObsidianTheme(targetIsDark: boolean): { ok: boolean; isDark?: boolean; error?: string } {
+    const targetMode = targetIsDark ? 'obsidian' : 'moonstone';
+    const appUnsafe = this.app as unknown as {
+      changeTheme?: (theme: string) => void;
+      vault?: { setConfig?: (key: string, value: unknown) => void };
+    };
+    let switched = false;
+    try {
+      if (typeof appUnsafe.changeTheme === 'function') {
+        appUnsafe.changeTheme(targetMode);
+        switched = true;
+      } else if (appUnsafe.vault && typeof appUnsafe.vault.setConfig === 'function') {
+        appUnsafe.vault.setConfig('theme', targetMode);
+        switched = true;
+      }
+    } catch {
+      /* 落到下方「不支持」分支统一响应 */
+    }
+    if (!switched) return { ok: false, error: '当前 Obsidian 版本不支持切换明暗主题' };
+    // 显式重放主题管线：即便 changeTheme/setConfig 已自行派发 css-change，
+    // 再触发一次也幂等（pushTheme 有签名缓存），却可兜住「配置已改但事件未派发」的情况。
+    try {
+      this.app.workspace.trigger('css-change');
+    } catch {
+      /* 触发失败不影响切换结果：下一次任意主题事件仍会同步 */
+    }
+    return { ok: true, isDark: targetIsDark };
   }
 
   /** 存储消息处理 */

@@ -108,15 +108,39 @@ export const APP_MESSAGE_TYPES = [
   'market:manifest',
   'market:install',
   'market:uninstall',
+  // ---- 竹林模块系统（webapp → host）----
+  'module:market:manifest',
+  'module:install',
+  'module:uninstall',
+  'module:list',
+  'module:load',
+  'module:saveData',
+  'module:loadData',
+  'module:listFiles',
+  'module:readFile',
+  'module:openFile',
+  'module:resolveResource',
+  'module:renderMarkdown',
+  'module:writeFile',
+  'module:openReader',
+  // 悬浮菜单点模块按钮 → 宿主打开该模块视图
+  'app:openModule',
+  // ---- 竹林模块系统（host → webapp）----
+  'module:context',
 ];
 
 const KNOWN = new Set(APP_MESSAGE_TYPES);
 
-/** type 是否合法：精确命中集合，或 storage:/file: 前缀（子类型众多，按前缀放行） */
+/** type 是否合法：精确命中集合，或 storage:/file:/market:/module: 前缀（子类型众多，按前缀放行） */
 export function isKnownType(type) {
   if (typeof type !== 'string') return false;
   if (KNOWN.has(type)) return true;
-  return type.startsWith('storage:') || type.startsWith('file:') || type.startsWith('market:');
+  return (
+    type.startsWith('storage:') ||
+    type.startsWith('file:') ||
+    type.startsWith('market:') ||
+    type.startsWith('module:')
+  );
 }
 
 /**

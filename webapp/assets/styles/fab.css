@@ -333,6 +333,27 @@
 .fab-action-btn.fab-primary:hover {
     background: rgba(var(--primary-rgb), 0.1);
 }
+/* 模块市场入口：不用图标，做成横贯分组的文字按钮。
+   仍带 .fab-action-btn（键盘导航需要），此修饰类把它从「图标磁贴」改为实心按钮。 */
+.fab-action-btn.fab-market-btn {
+    flex-direction: row;
+    justify-content: center;
+    padding: 9px 12px;
+    background: rgba(var(--primary-rgb), 0.1);
+    border: 1px solid rgba(var(--primary-rgb), 0.32);
+    border-radius: var(--radius-md);
+    color: var(--bamboo-primary);
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+.fab-action-btn.fab-market-btn:hover {
+    background: rgba(var(--primary-rgb), 0.18);
+    border-color: rgba(var(--primary-rgb), 0.5);
+}
+.fab-action-btn.fab-market-btn:active {
+    transform: scale(0.98);
+    background: rgba(var(--primary-rgb), 0.22);
+}
 .fab-btn-icon {
     width: 20px;
     height: 20px;
@@ -361,6 +382,19 @@
 }
 .fab-action-btn.fab-primary .fab-btn-text {
     font-weight: 600;
+    color: var(--bamboo-primary);
+}
+/* 动态注入的 FAB 按钮（模块 / 市场入口）用 .fab-btn-label；此前无任何规则，
+   标签会继承 .fab-action-btn 的普通文本色。补上与 .fab-btn-text 一致的样式，
+   统一为主题强调色。 */
+.fab-btn-label {
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: var(--type-mini);
+    font-weight: 600;
+    line-height: 1.2;
     color: var(--bamboo-primary);
 }
 .fab-action-btn .tooltip {

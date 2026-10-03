@@ -329,7 +329,9 @@ export class AppHost {
     }
 
     // commit：assets 等先写，入口文件最后写
-    const entryFiles = new Set(['app.html', 'archive.html']);
+    // 入口文件最后写：确保任何时刻它们要么完整旧版、要么完整新版。
+    // module.html（竹林模块宿主）与 scroll.html（画中卷）同为视图入口，一并纳入。
+    const entryFiles = new Set(['app.html', 'archive.html', 'scroll.html', 'module.html']);
     const ordered = [...entries].sort((a, b) => {
       const aEntry = entryFiles.has(a.rel) ? 1 : 0;
       const bEntry = entryFiles.has(b.rel) ? 1 : 0;

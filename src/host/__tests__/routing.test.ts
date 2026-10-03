@@ -14,6 +14,19 @@ describe('AppAPI 消息路由与来源校验', () => {
   let iframeContentWindow: { postMessage: (msg: Resp) => void };
 
   beforeEach(() => {
+    // node 环境缺少 Obsidian 运行时全局：app:ready 路由会触发 theme:changed 广播
+    // （ThemeBridge.pushTheme），其依赖 activeDocument / getComputedStyle 兜底定位所有 webapp 视图。
+    // 提供最小 mock（与 ThemeBridge.test.ts / toggleObsidianTheme.test.ts 同款），避免 ReferenceError。
+    vi.stubGlobal('activeDocument', {
+      defaultView: {} as Window,
+      querySelectorAll: () => [] as unknown as NodeListOf<Element>,
+      createElement: () => ({ setAttribute: () => {}, classList: { add: () => {} }, appendChild: () => {} }),
+      body: {
+        classList: { contains: () => false },
+        style: { setProperty: () => {}, removeProperty: () => {} },
+      },
+    });
+    vi.stubGlobal('getComputedStyle', () => ({ getPropertyValue: () => '' }));
     const mock = createMockApp();
     captured = null;
     iframeContentWindow = {

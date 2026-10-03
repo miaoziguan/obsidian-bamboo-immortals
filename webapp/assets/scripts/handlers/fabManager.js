@@ -391,6 +391,11 @@ export const FABManager = {
     open() {
         if (this.isOpen) return;
         this.isOpen = true;
+        // 模块按钮按需刷新：用户打开悬浮菜单时（文档与 bridge 均已就绪）重新拉取已装模块，
+        // 保证「博客」等模块按钮始终存在，不依赖 webapp 初始加载的竞态时机。
+        if (typeof window !== 'undefined' && window.ModuleManager && typeof window.ModuleManager.initModuleFab === 'function') {
+            void window.ModuleManager.initModuleFab();
+        }
         this.positionPanel();
         this.mainBtn.classList.add('open');
         this.mainBtn.setAttribute('aria-expanded', 'true');

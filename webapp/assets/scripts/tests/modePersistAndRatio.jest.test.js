@@ -32,7 +32,7 @@ function fakeCtrl() {
     _seedSpatial() {}, _applyCanvasTransform() {}, _renderLinks() {}, _ensureNotesVisible() {},
     _clearSelection() {}, _scheduleSave() { this._saved++; },
     _buildCards(notes) { this._builtNotes = notes; },
-    setMode(ctx, m) { this._mode = m; this._switchedTo = m; return Promise.resolve(); },
+    _setMode(m) { this._mode = m; this._switchedTo = m; return Promise.resolve(); },
   };
 }
 

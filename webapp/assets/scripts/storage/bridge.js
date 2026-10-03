@@ -825,6 +825,220 @@ export class BridgeStorage {
     }
   }
 
+  // ================= 竹林模块系统 =================
+  // 模块是按需下载的可选能力，代码不在主 bundle 内。下载一律由宿主 requestUrl 代劳
+  // （webview 沙箱禁 fetch），模块代码经 module:load 懒取回后在沙箱内执行。
+
+  /** 模块市场：拉取清单（宿主侧 fetch 公开仓库的 manifest.json） */
+  async fetchModuleMarketManifest() {
+    await this.ensureReady();
+    try {
+      const resp = await this._send('module:market:manifest', {});
+      if (resp && resp.ok && resp.manifest) {
+        return { manifest: resp.manifest, installed: resp.installed || {} };
+      }
+      return null;
+    } catch (e) {
+      console.warn('[Bridge] 模块市场清单拉取失败:', e && e.message);
+      return null;
+    }
+  }
+
+  /** 模块市场：安装（宿主下载 .js 写入模块目录）；version 用于后续更新检测 */
+  async installMarketModule(id, url, version) {
+    await this.ensureReady();
+    try {
+      const resp = await this._send('module:install', { id, url, version: version || '' });
+      return !!(resp && resp.ok);
+    } catch (e) {
+      console.warn('[Bridge] 模块安装失败:', id, e && e.message);
+      return false;
+    }
+  }
+
+  /** 模块市场：卸载（宿主删除模块 .js 及其持久化数据） */
+  async uninstallMarketModule(id) {
+    await this.ensureReady();
+    try {
+      const resp = await this._send('module:uninstall', { id });
+      return !!(resp && resp.ok);
+    } catch (e) {
+      console.warn('[Bridge] 模块卸载失败:', id, e && e.message);
+      return false;
+    }
+  }
+
+  /** 已安装模块清单（含元数据与 fab 按钮声明，宿主不执行代码即可读出） */
+  async listModules() {
+    await this.ensureReady();
+    try {
+      const resp = await this._send('module:list', {});
+      if (resp && resp.ok && Array.isArray(resp.modules)) return resp.modules;
+      return [];
+    } catch (e) {
+      console.warn('[Bridge] 模块清单拉取失败:', e && e.message);
+      return [];
+    }
+  }
+
+  /** 按需取回模块代码（同主题懒加载，避免全量下发） */
+  async loadModuleCode(id) {
+    await this.ensureReady();
+    try {
+      const resp = await this._send('module:load', { id });
+      if (resp && resp.ok && typeof resp.code === 'string') return resp.code;
+      console.warn('[Bridge] 模块代码加载失败:', id);
+      return null;
+    } catch (e) {
+      console.warn('[Bridge] 模块代码加载失败:', id, e && e.message);
+      return null;
+    }
+  }
+
+  /** 模块自持久化数据写入（data: URL 下无 localStorage，由宿主存进插件设置） */
+  async saveModuleData(id, data) {
+    await this.ensureReady();
+    try {
+      const resp = await this._send('module:saveData', { id, data: data || {} });
+      return !!(resp && resp.ok);
+    } catch (e) {
+      console.warn('[Bridge] 模块数据保存失败:', id, e && e.message);
+      return false;
+    }
+  }
+
+  /** 模块自持久化数据读取；无数据时返回 null */
+  async loadModuleData(id) {
+    await this.ensureReady();
+    try {
+      const resp = await this._send('module:loadData', { id });
+      return (resp && resp.ok && resp.data) || null;
+    } catch (e) {
+      console.warn('[Bridge] 模块数据读取失败:', id, e && e.message);
+      return null;
+    }
+  }
+
+  /** 模块能力：列出指定目录下的 markdown 文件（按修改时间倒序） */
+  async moduleListFiles(folder, recursive) {
+    await this.ensureReady();
+    try {
+      const resp = await this._send('module:listFiles', { folder, recursive: !!recursive });
+      if (resp && resp.ok && Array.isArray(resp.files)) return resp.files;
+      return [];
+    } catch (e) {
+      console.warn('[Bridge] 模块文件列表失败:', folder, e && e.message);
+      return [];
+    }
+  }
+
+  /** 模块能力：读取 vault 文件正文 */
+  async moduleReadFile(path) {
+    await this.ensureReady();
+    try {
+      const resp = await this._send('module:readFile', { path });
+      if (resp && resp.ok && typeof resp.content === 'string') return resp.content;
+      return null;
+    } catch (e) {
+      console.warn('[Bridge] 模块文件读取失败:', path, e && e.message);
+      return null;
+    }
+  }
+
+  /** 模块能力：用 Obsidian 原生阅读视图打开文件（模块视图常驻侧栏，文章在中央打开） */
+  async moduleOpenFile(path) {
+    await this.ensureReady();
+    try {
+      const resp = await this._send('module:openFile', { path });
+      return !!(resp && resp.ok);
+    } catch (e) {
+      console.warn('[Bridge] 模块打开文件失败:', path, e && e.message);
+      return false;
+    }
+  }
+
+  /** 模块能力：把 vault 文件路径解析成 webview 可加载的资源 URL（头像/封面等） */
+  async moduleResolveResource(path) {
+    await this.ensureReady();
+    try {
+      const resp = await this._send('module:resolveResource', { path });
+      if (resp && resp.ok && typeof resp.url === 'string') return resp.url;
+      return null;
+    } catch (e) {
+      console.warn('[Bridge] 模块资源解析失败:', path, e && e.message);
+      return null;
+    }
+  }
+
+  /** 模块能力：把 markdown 渲染为 HTML（Obsidian MarkdownRenderer），供侧栏内置阅读视图使用 */
+  async moduleRenderMarkdown(opts) {
+    await this.ensureReady();
+    try {
+      const resp = await this._send('module:renderMarkdown', opts || {});
+      if (resp && resp.ok && typeof resp.html === 'string') return resp.html;
+      return '';
+    } catch (e) {
+      console.warn('[Bridge] 模块 markdown 渲染失败:', e && e.message);
+      return '';
+    }
+  }
+
+  /** 模块能力：写入 vault 文件（博客模块「一键应用竹杖芒鞋排版」用） */
+  async moduleWriteFile(path, content) {
+    await this.ensureReady();
+    try {
+      const resp = await this._send('module:writeFile', { path, content });
+      if (resp && resp.ok) return true;
+      return false;
+    } catch (e) {
+      console.warn('[Bridge] 模块写文件失败:', path, e && e.message);
+      return false;
+    }
+  }
+
+  /** 模块能力：在宿主自建的竹杖芒鞋式阅读视图打开文章（中央视图） */
+  async moduleOpenReader(path) {
+    await this.ensureReady();
+    try {
+      const resp = await this._send('module:openReader', { path });
+      if (resp && resp.ok) return true;
+      return false;
+    } catch (e) {
+      console.warn('[Bridge] 模块打开阅读视图失败:', path, e && e.message);
+      return false;
+    }
+  }
+
+  /**
+   * 模块能力：切换 Obsidian 基础明暗（博客模块「快门」改作明暗开关用）。
+   * 宿主侧与画中卷·打字机的机身明暗开关同一实现；切换后整条主题管线即时跟随，
+   * 本模块侧栏（.dark 令牌由宿主推送）随之变明暗。
+   * @param {boolean} [isDark] 指定目标明暗；省略则取反当前
+   * @returns {Promise<boolean>} 是否切换成功
+   */
+  async moduleToggleTheme(isDark) {
+    await this.ensureReady();
+    try {
+      const resp = await this._send('module:toggleTheme', { isDark: isDark });
+      return !!(resp && resp.ok);
+    } catch (e) {
+      console.warn('[Bridge] 模块切换明暗失败:', e && e.message);
+      return false;
+    }
+  }
+
+  /** 请求宿主打开某模块视图（悬浮菜单模块按钮） */
+  async openModule(moduleId, location) {
+    await this.ensureReady();
+    try {
+      const resp = await this._send('app:openModule', { moduleId, location: location || 'left' });
+      return !!(resp && resp.ok);
+    } catch (e) {
+      console.warn('[Bridge] 打开模块失败:', moduleId, e && e.message);
+      return false;
+    }
+  }
+
   isFallbackMode() {
     return this.fallbackMode;
   }

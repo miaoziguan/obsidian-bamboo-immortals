@@ -1003,17 +1003,44 @@
 }
 .market-card-name { font-weight: 600; font-size: var(--type-md); }
 .market-card-author { font-size: var(--type-caption); color: var(--text-muted); margin-top: 2px; }
-.market-card-actions { flex-shrink: 0; }
+.market-card-actions { flex-shrink: 0; display: flex; align-items: center; gap: 6px; }
+/* 市场操作按钮：精致胶囊（子弹）形，模块市场 / 主题市场共用 */
 .market-btn {
-    padding: 6px 14px;
-    border-radius: var(--radius-xs);
-    font-size: var(--type-sm);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 5px 15px;
+    border-radius: var(--radius-pill);
+    font-size: var(--type-xs);
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    line-height: 1.5;
     cursor: pointer;
     border: 1px solid transparent;
+    transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease,
+        box-shadow 0.18s ease, transform 0.12s ease;
 }
-.market-btn:disabled { opacity: 0.6; cursor: default; }
-.market-btn.install { background: var(--bamboo-primary, #7d9b6a); color: var(--white); }
-.market-btn.uninstall { background: transparent; border-color: var(--bamboo-border, rgba(255, 255, 255, 0.22)); color: var(--text-muted); }
+.market-btn:active { transform: translateY(1px); }
+.market-btn:disabled { opacity: 0.55; cursor: default; transform: none; }
+.market-btn.install {
+    background: var(--bamboo-primary, #7d9b6a);
+    color: var(--text-on-accent, var(--white));
+    box-shadow: 0 1px 2px rgba(var(--black-rgb), 0.22), inset 0 1px 0 rgba(var(--white-rgb), 0.18);
+}
+.market-btn.install:hover:not(:disabled) {
+    filter: brightness(1.06);
+    box-shadow: 0 2px 8px rgba(var(--black-rgb), 0.28), inset 0 1px 0 rgba(var(--white-rgb), 0.24);
+}
+.market-btn.uninstall {
+    background: rgba(var(--bm-primary-rgb), 0.06);
+    border-color: var(--bamboo-border, rgba(var(--bm-primary-rgb), 0.25));
+    color: var(--text-muted);
+}
+.market-btn.uninstall:hover:not(:disabled) {
+    background: rgba(var(--bm-primary-rgb), 0.14);
+    border-color: rgba(var(--bm-primary-rgb), 0.5);
+    color: var(--text-normal);
+}
 
 .theme-panel-card.theme-loading {
     opacity: 0.7;

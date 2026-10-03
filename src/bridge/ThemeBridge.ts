@@ -6,6 +6,10 @@
 export class ThemeBridge {
     /** 所有 ThemeBridge 实例注册表：用于跨视图广播应用内主题切换（如悬浮菜单夜间模式） */
     private static registry = new Set<ThemeBridge>();
+    /** 所有已绑定 iframe 的集合：pushTheme 向其中每一个广播 theme:changed，
+     *  确保同时打开的多个独立视图（模块宿主 / 画中卷 / 归档）都跟随色相/明度调色，
+     *  而非只有最后绑定的那个（此前单例只记录最后一个 this.iframe，导致先开的视图收不到）。 */
+    private static iframes = new Set<HTMLIFrameElement>();
 
     private iframe: HTMLIFrameElement | null = null;
     private _paletteSyncTimer: number | null = null;
@@ -34,6 +38,7 @@ export class ThemeBridge {
   attachIframe(iframe: HTMLIFrameElement): void {
     this.iframe = iframe;
     ThemeBridge.registry.add(this);
+    ThemeBridge.iframes.add(iframe);
   }
 
   /** 最近一次由 webapp 同步来的应用内调色（色相/明度），供初始推送/重放时补齐，
@@ -42,9 +47,13 @@ export class ThemeBridge {
     return this._lastPalette;
   }
 
-  detachIframe(): void {
+  detachIframe(iframe?: HTMLIFrameElement): void {
+    const target = iframe ?? this.iframe;
+    if (target) ThemeBridge.iframes.delete(target);
     this.iframe = null;
     ThemeBridge.registry.delete(this);
+    // 最后一个实例解绑（插件卸载 / 测试清理）时，清空 iframe 集合，避免跨会话/跨用例残留
+    if (ThemeBridge.registry.size === 0) ThemeBridge.iframes.clear();
     // iframe 解绑 → 新上下文需重新推送主题，清除解析缓存
     this._themeCacheKey = null;
     this._themeCachePayload = null;
@@ -317,7 +326,16 @@ export class ThemeBridge {
     forceIsDark?: boolean,
     palette?: { hue: number; lightnessOffset: number }
   ): void {
-    if (!this.iframe?.contentWindow) return;
+    // 目标 iframe 集合 = 已注册集合 ∪ 文档内所有 .bamboo-review-frame 视图。
+    // 模块宿主等独立视图即便已 attachIframe 注册，仍可能因注册实例/时机差异
+    // 未真正进入可广播集合，现象是「主视图跟随调色、模块视图不跟随」。
+    // 这里以 DOM 全量兜底，保证所有已打开的 webapp 视图（主/画中卷/归档/模块）
+    // 都能收到 theme:changed。
+    const targets = new Set<HTMLIFrameElement>(ThemeBridge.iframes);
+    activeDocument
+      .querySelectorAll<HTMLIFrameElement>('.bamboo-review-frame')
+      .forEach((f) => targets.add(f));
+    if (targets.size === 0) return;
 
     type ThemePayload = { isDark: boolean; hue?: number; lightnessOffset?: number; bg?: string; textNormal?: string; textMuted?: string };
 
@@ -378,14 +396,17 @@ export class ThemeBridge {
       this._themeCachePayload = payload;
     }
 
-    this.iframe.contentWindow.postMessage(
-      {
-        type: 'theme:changed',
-        id: 'theme_push_' + Date.now(),
-        payload,
-      },
-      '*'
-    );
+    targets.forEach((iframe) => {
+      if (!iframe.contentWindow) return;
+      iframe.contentWindow.postMessage(
+        {
+          type: 'theme:changed',
+          id: 'theme_push_' + Date.now(),
+          payload,
+        },
+        '*'
+      );
+    });
   }
 
   /** 供外部调用：Obsidian 主题变化时触发 */

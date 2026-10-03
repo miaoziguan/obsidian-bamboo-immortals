@@ -1,0 +1,1912 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="theme-bamboo">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
+<meta name="description" content="Bamboo Immortals - 竹林模块">
+<meta name="theme-color" content="#2D5A27">
+
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect fill='%232D5A27' width='32' height='32' rx='6'/><path d='M16 6v20M16 10l-4 2M16 10l4 2M16 16l-3 1.5M16 16l3 1.5' stroke='%23ffffff' stroke-width='2' stroke-linecap='round'/></svg>">
+<title>竹林模块</title>
+<!-- 字体：纯系统字体栈（见 base.css --tw-font-*），不加载 Google Fonts，离线 / 中国大陆均可一致呈现 -->
+<style data-src="assets/styles/variables.css">
+/* ========== 全局变量（竹林中国风 - 亮色模式） ==========
+ *
+ * 命名规范（三层架构）：
+ *   基础色板层  --{palette}-{shade}       例：--bamboo-deep, --bm-primary
+ *   语义层      --{semantic}-{variant}     例：--text-primary, --status-danger
+ *   组件层      --{component}-{property}   例：--tag-execute-bg, --kpi-up-bg
+ *   RGB 通道    --{name}-rgb                例：--bm-primary-rgb, --danger-rgb
+ *   动效/间距/圆角/字体  --{category}-{step}  例：--space-3, --radius-md, --type-sm
+ *
+ * 规范前缀（Task 8 统一命名空间）：
+ *   新增自定义属性必须使用 --bm-* 或 --bamboo-* 前缀（lint R10 强制）。
+ *   以下旧名保留为兼容别名（定义见下方，新代码禁止使用）：
+ *     --primary-rgb          → 用 --bm-primary-rgb
+ *     --primary-alt-rgb      → 用 --bm-primary-alt-rgb
+ *     --bamboo-primary       → 用 --bm-primary
+ *     --bamboo-primary-light → 用 --bm-primary-light
+ *     --bamboo-primary-dark  → 用 --bamboo-dark（已废弃）
+ *
+ * 禁止：裸写 #fff / #000 / white / black / rgb(255,255,255) — 必须走令牌
+ * 禁止：裸写 px 圆角 / px 字号 — 必须走 --radius-* / --type-*
+ * 废弃别名（保留兼容，新代码禁止使用）：
+ *   --font-size-* → 用 --type-*
+ *   --bamboo-text-muted → 用 --text-tertiary
+ *   --bamboo-text-secondary → 用 --text-secondary
+ *   --bamboo-primary-dark → 用 --bamboo-dark
+ *   --tag-execute-bg → 用 --bamboo-primary（亮色）/ --bamboo-light（暗色）
+ *   --tag-miss-bg → 用 --ink-pale
+ *   --bamboo-success → 用 --bamboo-primary（当前同值）
+ *   --status-success → 用 --bamboo-primary（当前同值）
+ * ======================================================== */
+:host,
+:root {
+    /* === 隐私模糊强度（防偷窥模式，可变）===
+       由 PrivacyMode.setLevel 写入，单位 px；0 = 关闭（清晰）。
+       仅 [data-private] 元素消费该变量，UI 骨架不受影响。 */
+    --privacy-blur: 10px;
+
+    /* === 主题色相（可变）=== */
+    --accent-hue: 120;  /* 默认竹青绿，可通过 DisplayManager 色相滑块调整 */
+
+    /* === 明度偏移（可变）=== */
+    --accent-lightness-offset: 0%;  /* 默认 0%，可通过 DisplayManager 明度滑块调整（范围 ~-15% ~ +15%）*/
+
+    /* === z-index 层级体系（全局统一，禁止再写裸数字）=== */
+    --z-layer-below: -2;       /* 装饰层/背景装饰 */
+    --z-layer-behind: -1;      /* 背景伪元素/装饰 */
+    --z-layer-base: 0;         /* 正常流 */
+    --z-layer-raised: 1;       /* 轻微抬起（card hover 等）*/
+    --z-layer-floating: 2;     /* 浮动（日期悬浮、toolbar）*/
+    --z-layer-dropdown: 100;   /* 下拉菜单/颜色面板 */
+    --z-layer-keyboard-hint: 900;     /* 键盘快捷键提示 */
+    --z-layer-tooltip: 9999;          /* tooltip / 悬浮预览 / KPI 悬浮 */
+    --z-layer-overlay: 10000;         /* 通用遮罩层（FAB 背景 / skip-link / modal-overlay / 弹层底部）*/
+    --z-layer-modal: 10001;           /* 模态容器 / widget 覆盖 */
+    --z-layer-toast: 10010;           /* Toast 全屏通知 */
+    --z-layer-max: 11000;             /* 最顶层（搜索/日期选择）*/
+
+    /* === 基础色彩系统（HSL 动态生成）=== */
+    --bamboo-deep: hsl(calc(var(--accent-hue) - 7), 40%, calc(25% + var(--accent-lightness-offset)));
+    --bamboo-deep-rgb: 45, 90, 39;
+    --bamboo-dark: hsl(calc(var(--accent-hue) - 8), 39%, calc(34% + var(--accent-lightness-offset)));
+    --bm-primary: hsl(var(--accent-hue), 27%, calc(48% + var(--accent-lightness-offset)));
+    --bamboo-primary: var(--bm-primary); /* alias — 新代码请用 --bm-primary */
+    --bamboo-light: hsl(var(--accent-hue), 33%, calc(61% + var(--accent-lightness-offset)));
+    --bamboo-pale: hsl(var(--accent-hue), 35%, calc(75% + var(--accent-lightness-offset)));
+    --bm-primary-light: hsl(var(--accent-hue), 39%, calc(80% + var(--accent-lightness-offset)));
+    --bamboo-primary-light: var(--bm-primary-light); /* alias — 新代码请用 --bm-primary-light */
+    --bm-primary-rgb: 90, 154, 90;
+    --primary-rgb: var(--bm-primary-rgb); /* alias — 新代码请用 --bm-primary-rgb */
+    --deep-rgb: 45, 90, 39;
+    --danger-rgb: 201, 72, 59;
+    --gold-rgb: 212, 175, 55;
+    /* 中性通道（禁止再写裸 255,255,255 / 0,0,0，统一走令牌） */
+    --white-rgb: 255, 255, 255;
+    --black-rgb: 0, 0, 0;
+    --rice-paper-rgb: 250, 248, 240;
+    /* 纯色实色通道（禁止再写裸 #fff / #000，统一走令牌；暗色下白仍是白，无需重定义） */
+    --white: #ffffff;
+    --black: #000000;
+    /* 纯色不透明表面（亮色纯白 / 暗色深表面，随主题自适应） */
+    --surface-solid: #ffffff;
+    --pale-rgb: 168, 213, 168;
+    --sky-azure-rgb: 135, 206, 235;
+    --health-success-rgb: 126, 211, 33;
+    --ticket-stub-bg-rgb: 148, 198, 148;
+    --dark-surface-mid-rgb: 30, 50, 32;
+    --dark-surface-rgb: 20, 38, 22;
+    --gray-rgb: 149, 165, 166;
+    --danger-alt-rgb: 231, 76, 60;
+    --warning-yellow-rgb: 251, 191, 36;
+    --warning-orange-rgb: 245, 166, 35;
+    --info-blue-rgb: 66, 133, 244;
+    --teal-rgb: 26, 167, 106;
+    --danger-bright-rgb: 239, 68, 68;
+    --amber-rgb: 230, 162, 60;
+    --purple-rgb: 154, 90, 154;
+    --purple-pale-rgb: 196, 138, 196;
+    --mint-rgb: 168, 230, 207;
+    --gold-bright-rgb: 255, 215, 0;
+    --pale-green-rgb: 245, 250, 245;
+    --pale-green-alt-rgb: 248, 252, 248;
+    --surface-deep-rgb: 20, 35, 20;
+    --surface-deep-alt-rgb: 25, 40, 25;
+    --bm-primary-alt-rgb: 107, 174, 107;
+    --primary-alt-rgb: var(--bm-primary-alt-rgb); /* alias — 新代码请用 --bm-primary-alt-rgb */
+    --danger-soft-rgb: 220, 100, 100;
+    --red-pale-rgb: 255, 240, 240;
+    --amber-brown-rgb: 180, 140, 100;
+    --gray-mid-rgb: 90, 90, 90;
+    --green-pale-rgb: 200, 224, 200;
+    --green-bright-rgb: 143, 216, 143;
+    --amber-deep-rgb: 245, 158, 11;
+    --orange-pale-rgb: 252, 191, 73;
+    --blue-alt-rgb: 74, 144, 217;
+    --danger-deep-rgb: 220, 38, 38;
+    --gray-alt-rgb: 107, 114, 128;
+    --red-bright-rgb: 200, 80, 80;
+    --green-alt-rgb: 180, 220, 165;
+    --green-very-bright-rgb: 200, 255, 150;
+    --overdue-bg-rgb: 255, 240, 240;
+    --overdue-bg-mid-rgb: 255, 235, 235;
+    --overdue-bg-light-rgb: 255, 230, 230;
+
+    /* 玉石纹理 — 亮色模式（即将到期 header 淡橙黄渐变） */
+    --jade-cream-rgb: 255, 250, 240;
+    --jade-cream-mid-rgb: 255, 245, 230;
+    --jade-cream-deep-rgb: 255, 240, 220;
+    --jade-warm-rgb: 255, 235, 210;
+
+    --ticket-gold: #B8860B;
+    --bamboo-text-muted: var(--ink-pale); /* DEPRECATED: 用 --text-tertiary */
+    --bamboo-text-secondary: var(--ink-light); /* DEPRECATED: 用 --text-secondary */
+    --bamboo-border: rgba(var(--primary-rgb), 0.25);
+    --bamboo-background: rgba(var(--primary-rgb), 0.06);
+    --bamboo-primary-dark: var(--bamboo-dark); /* DEPRECATED: 用 --bamboo-dark */
+    --bamboo-success: var(--bamboo-primary); /* DEPRECATED: 用 --bamboo-primary */
+    --bamboo-warning: #c9a227;
+    --bamboo-warning-pale: #fff59d;
+    --bamboo-error: #dc3545;
+    --bamboo-card: var(--card-bg);
+    --sky-azure: #87CEEB;
+    --sky-pale: #B8E2F8;
+    --sky-mist: #E8F6FC;
+    --leaf-green: #6B8E23;
+    --leaf-light: #8FBC3A;
+    --rice-paper: #FAF8F0;
+    --ivory: #FFFFF0;
+    --cinnabar: #C9483B;
+    --gold: #D4AF37;
+
+    /* === 健康评分色彩系统 === */
+    --health-danger: #EF4444;
+    --health-warning: #F59E23;
+    --health-success-clr: #7ED321;
+    --health-info: #4A90D9;
+    --health-neutral: #95A5A6;
+    --health-pink: #E91E63;
+    --health-purple: #9C27B0;
+    --health-orange: #FF9800;
+    --health-gold-clr: #D97706;
+
+    /* === 文字色彩系统 === */
+    --ink-dark: #1A1A1A;
+    --ink-medium: #404040;
+    --ink-light: #555555;
+    --ink-pale: #707070;
+
+    /* === 背景色彩系统 - 重新设计：淡雅意境 === */
+    --bg-gradient-start: hsl(var(--accent-hue), 18%, calc(96% + var(--accent-lightness-offset)));
+    --bg-gradient-mid1: hsl(var(--accent-hue), 21%, calc(94% + var(--accent-lightness-offset)));
+    --bg-gradient-mid2: hsl(var(--accent-hue), 17%, calc(90% + var(--accent-lightness-offset)));
+    --bg-gradient-end: hsl(var(--accent-hue), 20%, calc(95% + var(--accent-lightness-offset)));
+    --card-bg: rgba(var(--white-rgb), 0.60);
+    --card-glass: rgba(var(--white-rgb), 0.55);
+    /* 玻璃拟态 fallback：当 backdrop-filter 不被支持或背景过透时，切回不透明表面色 */
+    --card-bg-fallback: var(--surface-solid);
+    /* 浮层/弹层专用底（分类选择、日期范围、排序菜单、导图工具条等压在正文上的面板）：
+       统一不透明跟随色——不再使用玻璃拟态，避免 backdrop-filter 兼容与明暗两态的脆弱性。
+       亮色取极浅色相实心色，既压住底层正文，又跟随调色。 */
+    --bamboo-popup-bg: hsl(var(--accent-hue), 18%, calc(96% + var(--accent-lightness-offset)));
+
+    /* === 文字语义变量 === */
+    --text-primary: var(--ink-dark);
+    --text-secondary: var(--ink-light);
+    --text-tertiary: var(--ink-pale);
+    --text-on-accent: var(--white); /* 强调色背景上的文字（tooltip / 选中按钮 / 状态徽标） */
+
+    /* === 边框与阴影 === */
+    --border-light: rgba(var(--primary-rgb), 0.25);
+    --shadow: 0 20px 40px rgba(var(--deep-rgb), 0.12);
+    
+    /* === 统一过渡动画曲线 === */
+    --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-normal: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-smooth: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-bounce: 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    
+    /* === 点击反馈缩放比例 === */
+    --scale-click: scale(0.96);
+    --scale-tiny: scale(0.98);
+    --scale-small: scale(0.95);
+    
+    /* === 阴影深度系统 === */
+    --shadow-surface: 0 2px 8px rgba(var(--deep-rgb), 0.06), 0 1px 2px rgba(var(--deep-rgb), 0.04);    /* 表层 — 卡片内元素/微小投影 */
+    --shadow-card: 0 4px 16px rgba(var(--deep-rgb), 0.08), 0 2px 4px rgba(var(--deep-rgb), 0.04);      /* 中层 — 可悬停卡片/基础面板 */
+    --shadow-elevated: 0 8px 28px rgba(var(--deep-rgb), 0.12), 0 4px 8px rgba(var(--deep-rgb), 0.06);  /* 高层 — 下拉菜单/弹出层/悬停态 */
+    --shadow-floating: 0 16px 48px rgba(var(--deep-rgb), 0.16), 0 8px 16px rgba(var(--deep-rgb), 0.08); /* 浮层 — 模态框/FAB/浮动面板 */
+    
+    /* === 按钮样式系统 === */
+    --btn-primary-bg: linear-gradient(135deg, var(--bamboo-dark) 0%, var(--bamboo-primary) 100%);
+    --btn-primary-hover: linear-gradient(135deg, var(--bamboo-primary) 0%, var(--bamboo-light) 100%);
+    --btn-secondary-bg: rgba(var(--primary-rgb), 0.1);
+    --btn-secondary-hover: rgba(var(--primary-rgb), 0.2);
+    --btn-outline-border: 2px solid var(--bamboo-primary);
+    --btn-outline-hover: rgba(var(--primary-rgb), 0.1);
+
+    /* === 渐变变量 === */
+    --section-title-gradient: linear-gradient(135deg, rgba(var(--deep-rgb), 0.45) 0%, rgba(var(--primary-rgb), 0.4) 50%, rgba(var(--primary-rgb), 0.35) 100%);
+    --action-bg: linear-gradient(135deg, rgba(var(--primary-rgb), 0.55) 0%, rgba(var(--primary-rgb), 0.5) 100%);
+
+    /* === 表格样式 === */
+    --table-header-bg: rgba(var(--primary-rgb), 0.1);
+    --table-border: rgba(var(--primary-rgb), 0.1);
+
+    /* === 诊断卡片样式 === */
+    --diagnosis-bg: rgba(var(--rice-paper-rgb), 0.8);
+    --diagnosis-border: rgba(var(--primary-rgb), 0.1);
+    --diagnosis-text: var(--ink-dark);
+    --diagnosis-card-good-bg: rgba(var(--primary-rgb), 0.08);
+    --diagnosis-card-warn-bg: rgba(var(--gold-rgb), 0.08);
+
+    /* === 时间线样式 === */
+    --timeline-stat-bg: rgba(var(--primary-rgb), 0.1);
+    --progress-bg: rgba(var(--primary-rgb), 0.1);
+
+    /* === KPI 卡片样式 === */
+    --kpi-up-bg: linear-gradient(180deg, var(--card-bg) 0%, rgba(var(--danger-rgb), 0.1) 100%);
+    --kpi-down-bg: linear-gradient(180deg, var(--card-bg) 0%, rgba(var(--primary-rgb), 0.1) 100%);
+    --kpi-neutral-bg: linear-gradient(180deg, var(--card-bg) 0%, rgba(var(--gold-rgb), 0.1) 100%);
+    --kpi-break-bg: linear-gradient(180deg, var(--card-bg) 0%, rgba(var(--sky-azure-rgb), 0.1) 100%);
+    --kpi-up-border: rgba(var(--danger-rgb), 0.3);
+    --kpi-up-delta-color: var(--cinnabar);
+
+    /* === 呼吸动画 === */
+    --breath-color: rgba(var(--primary-rgb), 0.4);
+
+    /* === 标签样式 === */
+    --tag-execute-bg: var(--bamboo-primary);
+    --tag-miss-bg: var(--ink-pale);
+    --tag-text-light: white;
+
+    /* === 波浪与毛玻璃 === */
+    --wave-color: rgba(var(--primary-rgb), 0.5);
+    --glass-blur: 20px;
+    --glass-highlight-strong: rgba(var(--white-rgb), 0.6);
+    --glass-highlight-medium: rgba(var(--white-rgb), 0.4);
+    --glass-highlight-soft: rgba(var(--white-rgb), 0.2);
+    --glass-highlight-subtle: rgba(var(--white-rgb), 0.1);
+    --glass-highlight-faint: rgba(var(--white-rgb), 0.04);
+    --glass-highlight-wash: rgba(var(--white-rgb), 0.08);
+    /* 预渲染渐变组合：避免浏览器在每帧重新计算 linear-gradient */
+    --glass-card-gradient: linear-gradient(135deg, rgba(var(--white-rgb), 0.25) 0%, rgba(var(--white-rgb), 0.08) 50%, rgba(var(--white-rgb), 0.15) 100%), linear-gradient(45deg, rgba(var(--bamboo-deep-rgb),0.12) 0%, transparent 60%);
+
+    /* === 圆角系统（统一为 2px 倍数，覆盖现网所有取值） ===
+       映射约定（代码禁止再写裸 px 圆角）：
+         2px→--radius-3xs   6px→--radius-2xs   8px→--radius-xs   10px→--radius-sm
+         12px→--radius-md   14px→--radius-lg   16px→--radius-xl   18px→--radius-2xl
+         20px→--radius-3xl  24px→--radius-4xl  28px→--radius-5xl
+    */
+    --radius-3xs: 2px;
+    --radius-2xs: 6px;
+    --radius-xs: 8px;
+    --radius-sm: 10px;
+    --radius-md: 12px;
+    --radius-lg: 14px;
+    --radius-xl: 16px;
+    --radius-2xl: 18px;
+    --radius-3xl: 20px;
+    --radius-4xl: 24px;
+    --radius-5xl: 28px;
+    /* 补充散落档位（代码禁止再用裸 px 圆角） */
+    --radius-1: 1px;
+    --radius-2-5: 2.5px;
+    --radius-3: 3px;
+    --radius-4: 4px;
+    --radius-5: 5px;
+    /* R1 治理补充：代码里实际在用的散落档位，补齐后替换完全等价（零视觉变化） */
+    --radius-7: 7px;
+    --radius-9: 9px;
+    --radius-26: 26px;
+    --radius-38: 38px;
+    --radius-pill: 9999px;
+
+    /* === 圆角语义层（组件级映射，代码应优先使用语义层而非裸 --radius-* 数值） ===
+       数值层 --radius-* 定义于上方，语义层在此映射；暗色 :host(.dark) 继承同名变量，
+       无需重复定义（数值层未在暗色覆写，语义层同样不需要）。 */
+    --radius-card: var(--radius-lg);      /* 14px — 标准卡片圆角 (.bamboo-card / .item-card / .empty-state-card) */
+    --radius-panel: var(--radius-xl);     /* 16px — 面板/区块圆角 (.fab-panel / section panel) */
+    --radius-modal: var(--radius-2xl);    /* 18px — 模态框圆角 (.modal-content) */
+    --radius-control: var(--radius-sm);   /* 10px — 表单控件圆角 (input / select / textarea) */
+    --radius-tooltip: var(--radius-xs);   /* 8px — tooltip / 徽标圆角 */
+
+    /* === 间距系统（统一为 8px 网格） === */
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 20px;
+    --space-6: 24px;
+    --space-7: 28px;
+    --space-8: 32px;
+
+    /* === 字体系统 ===
+       唯一标准：流体 --type-*（带 clamp，自适应视口）。
+       下方 --font-size-* 仅为兼容别名，已映射到 --type-*，新代码禁止直接使用。
+    */
+    --font-family: 'PingFang SC', 'Microsoft YaHei', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-size-scale: 1;
+    --section-gap-scale: 0.8;
+    --font-size-xs: var(--type-xs);
+    --font-size-sm: var(--type-sm);
+    --font-size-base: var(--type-base);
+    --font-size-md: var(--type-md);
+    --font-size-lg: var(--type-lg);
+    --font-size-xl: var(--type-xl);
+    --font-size-2xl: var(--type-2xl);
+    --line-height-tight: 1.3;
+    --line-height-base: 1.5;
+    --line-height-relaxed: 1.75;
+
+    /* === 触控尺寸系统 === */
+    --touch-min: 44px;
+    --touch-comfortable: 48px;
+    --touch-target: 44px;
+
+    /* === Focus 样式系统（统一使用 box-shadow 格式） === */
+    --focus-ring: 0 0 0 2px var(--bamboo-primary);
+    --focus-ring-offset: 0 0 0 4px rgba(var(--primary-rgb), 0.25);
+    --focus-ring-danger: 0 0 0 2px var(--cinnabar);
+    --focus-transition: box-shadow 0.15s ease;
+
+    /* === 状态色系统 === */
+    --status-success: var(--bamboo-primary); /* DEPRECATED: 用 --bamboo-primary */
+    --status-warning: var(--gold);
+    --status-danger: var(--cinnabar);
+    --status-info: #4FC3F7;
+    --status-success-bg: rgba(var(--primary-rgb), 0.1);
+    --status-warning-bg: rgba(var(--gold-rgb), 0.1);
+    --status-danger-bg: rgba(var(--danger-rgb), 0.1);
+    --status-info-bg: rgba(var(--info-rgb), 0.1);
+    --info-rgb: 79, 195, 247;
+    /* === 竹林绿辉光阴影（自适应暗色模式） === */
+    --bamboo-glow-sm: 0 2px 8px rgba(var(--primary-rgb), 0.4);
+    --bamboo-glow-xs: 0 1px 4px rgba(var(--primary-rgb), 0.3);
+
+    /* === 浮层设计令牌（Toast / Confirm / 选择器统一语言：留白素笺 → 统一不透明跟随色，不再用玻璃） === */
+    --overlay-surface: var(--bamboo-popup-bg);
+    --overlay-border-width: 1px;
+    --overlay-border-style: solid;
+    --overlay-border-color: var(--bamboo-border);
+    --overlay-border: var(--overlay-border-width) var(--overlay-border-style) var(--overlay-border-color);
+    --overlay-shadow: 0 6px 28px rgba(26, 40, 24, 0.12);
+    --overlay-shadow-soft: 0 2px 12px rgba(26, 40, 24, 0.08);
+    --ease-cn: cubic-bezier(0.22, 0.61, 0.36, 1);
+
+    /* === 内容宽度系统（用户可调） === */
+    --content-max: 1200px;            /* 标准内容最大宽度（响应式容器基准） */
+    --content-max-wide: 1100px;       /* 宽屏内容最大宽度 */
+    --content-max-width: var(--content-max);
+    --content-max-width-wide: var(--content-max-wide);  /* 宽屏默认，用户设置后此值同步更新 */
+
+    /* === 动效时长系统 === */
+    --duration-instant: 100ms;
+    --duration-fast: 200ms;
+    --duration-normal: 300ms;
+    --duration-slow: 500ms;
+    --duration-slower: 800ms;
+}
+
+/* ========== 暗色模式（竹林星光暗色，完整覆盖所有变量） ========== */
+:host(.dark) {
+    /* 竹林星光 — 深邃、高级、有层次感的暗色背景 */
+    --bm-primary-rgb: 130, 195, 130;
+    --primary-rgb: var(--bm-primary-rgb); /* alias */
+    --deep-rgb: 45, 90, 53;
+    --bamboo-deep-rgb: 45, 90, 53;
+    --danger-rgb: 255, 107, 107;
+    --danger-alt-rgb: 255, 107, 107;
+    --gold-rgb: 255, 217, 61;
+    /* 中性通道（暗色同样禁止裸白/黑字面量） */
+    --white-rgb: 255, 255, 255;
+    --black-rgb: 0, 0, 0;
+    --rice-paper-rgb: 250, 248, 240;
+    /* 纯色不透明表面（暗色深表面，随主题自适应） */
+    --surface-solid: #1c2a1e;
+    --pale-rgb: 184, 216, 184;
+    --sky-azure-rgb: 116, 192, 252;
+    --health-success-rgb: 126, 211, 33;
+    --danger-bright-rgb: 255, 107, 107;
+    --amber-rgb: 245, 166, 35;
+    --purple-rgb: 154, 90, 154;
+    --purple-pale-rgb: 196, 138, 196;
+    --mint-rgb: 168, 230, 207;
+    --gold-bright-rgb: 255, 215, 0;
+    --pale-green-rgb: var(--pale-green-rgb-dark, 30, 50, 32);
+    --pale-green-alt-rgb: var(--pale-green-alt-rgb-dark, 25, 45, 27);
+    --surface-deep-rgb: 15, 25, 15;
+    --overdue-bg-rgb: 75, 50, 50;
+    --overdue-bg-mid-rgb: 65, 45, 45;
+    --overdue-bg-light-rgb: 55, 35, 35;
+    --surface-dark-rgb: 20, 38, 22;
+    --surface-dark-rgb-mid: 25, 48, 28;
+    --surface-dark-rgb-end: 30, 55, 32;
+    --bm-primary-alt-rgb: 130, 195, 130;
+    --primary-alt-rgb: var(--bm-primary-alt-rgb); /* alias */
+    --danger-soft-rgb: 255, 120, 120;
+    --red-pale-rgb: 40, 20, 20;
+    --gray-mid-rgb: 120, 120, 120;
+    --green-pale-rgb: 25, 45, 27;
+    --amber-deep-rgb: 245, 158, 11;
+    --orange-pale-rgb: 180, 120, 50;
+    --blue-alt-rgb: 74, 144, 217;
+    --danger-deep-rgb: 255, 107, 107;
+    --gray-alt-rgb: 149, 165, 166;
+    --red-bright-rgb: 255, 120, 120;
+    --green-alt-rgb: 130, 195, 130;
+    --green-very-bright-rgb: 150, 230, 100;
+    --jade-cream-rgb: 255, 250, 240;
+    --jade-cream-mid-rgb: 255, 245, 230;
+    --jade-cream-deep-rgb: 255, 240, 220;
+    --jade-warm-rgb: 255, 235, 210;
+    --jade-dark-rgb: 65, 55, 45;
+    --jade-dark-mid-rgb: 55, 45, 35;
+    --jade-dark-deep-rgb: 45, 35, 25;
+    --jade-dark-warm-rgb: 75, 60, 45;
+    --jade-dark-warm-mid-rgb: 65, 50, 35;
+    --jade-dark-warm-light-rgb: 55, 42, 28;
+    
+    /* 文字：柔和但清晰，亮度提升以通过 WCAG AA 4.5:1（暗色卡片背景 ~10% L） */
+    --ink-dark: hsl(var(--accent-hue), 18%, calc(91% + var(--accent-lightness-offset)));
+    --ink-medium: hsl(var(--accent-hue), 20%, calc(81% + var(--accent-lightness-offset)));
+    --ink-light: hsl(var(--accent-hue), 17%, calc(70% + var(--accent-lightness-offset)));
+    --ink-pale: hsl(var(--accent-hue), 6%, calc(60% + var(--accent-lightness-offset)));
+    --bamboo-text-muted: hsl(var(--accent-hue), 6%, calc(60% + var(--accent-lightness-offset)));
+    --bamboo-text-secondary: hsl(var(--accent-hue), 20%, calc(81% + var(--accent-lightness-offset)));
+    
+    /* 竹林色调：降低饱和度，增添银灰质感（跟随 --accent-hue） */
+    --bamboo-deep: hsl(calc(var(--accent-hue) + 5), 34%, calc(26% + var(--accent-lightness-offset)));
+    --bamboo-dark: hsl(calc(var(--accent-hue) + 6), 35%, calc(25% + var(--accent-lightness-offset)));
+    --bm-primary: hsl(calc(var(--accent-hue) + 2), 25%, calc(47% + var(--accent-lightness-offset)));
+    --bamboo-primary: var(--bm-primary); /* alias */
+    --bamboo-light: hsl(var(--accent-hue), 39%, calc(65% + var(--accent-lightness-offset)));
+    --bamboo-pale: hsl(var(--accent-hue), 30%, calc(78% + var(--accent-lightness-offset)));
+    --bm-primary-light: rgba(var(--bm-primary-rgb), 0.6);
+    --bamboo-primary-light: var(--bm-primary-light); /* alias */
+    --bamboo-warning: #ffe082;
+    --bamboo-warning-pale: #fffde7;
+    --bamboo-error: #ef5350;
+    --bamboo-success: var(--bamboo-primary);
+    --bamboo-background: rgba(var(--primary-rgb), 0.1);
+    --bamboo-primary-dark: var(--bamboo-dark);
+    --bamboo-card: var(--card-bg);
+    
+    /* 背景层次：深邃午夜绿渐变 —— 明度跨度拉大（7%→16%），中段加一道柔光带，
+       让暗色下的整页页面级渐变清晰可辨，而非近乎平涂的深色 */
+    --bg-gradient-start: hsl(calc(var(--accent-hue) + 16), 30%, calc(13% + var(--accent-lightness-offset)));
+    --bg-gradient-mid1: hsl(calc(var(--accent-hue) + 6), 34%, calc(7% + var(--accent-lightness-offset)));
+    --bg-gradient-mid2: hsl(calc(var(--accent-hue) + 28), 38%, calc(16% + var(--accent-lightness-offset)));
+    --bg-gradient-end: hsl(calc(var(--accent-hue) + 2), 30%, calc(9% + var(--accent-lightness-offset)));
+    
+    /* 卡片：深邃中透出微光，跟随色相和明度 */
+    /* 暗色已全局关闭 backdrop-filter（dark.css :host(.dark) *），原"提高不透明度防模糊伪影"
+       的理由已不存在；此处保留一定透明度，让整页页面级渐变能透过卡片显现 */
+    --card-bg: hsla(var(--accent-hue), 18%, calc(10% + var(--accent-lightness-offset)), 0.60);
+    --card-glass: hsla(var(--accent-hue), 18%, calc(10% + var(--accent-lightness-offset)), 0.84);
+    /* 玻璃拟态 fallback：当 backdrop-filter 不被支持或背景过透时，切回不透明表面色 */
+    --card-bg-fallback: var(--surface-solid);
+    /* 暗色已全局关闭 backdrop-filter（dark.css :host(.dark) *），浮层只能靠 alpha 遮底；
+       而暗色背景下方的正文是亮色的，0.84 仍会透出"幽灵字"，故浮层需不透明。
+       关键：绝不能指 --card-bg-fallback（= --surface-solid: #1c2a1e，写死色、不吃 --accent-hue），
+       否则换色相时浮层掉队。这里直接以 --accent-hue 生成实心色 —— 与 --card-glass 同色相/明度
+       （18% 饱和、10%+lightness 偏移），仅把 alpha 拉满为 1，既守住上一轮"不透明防幽灵字"，
+       又跟随调色。 */
+    --bamboo-popup-bg: hsla(var(--accent-hue), 18%, calc(10% + var(--accent-lightness-offset)), 1);
+
+    /* 文字语义 — 亮度提升至 WCAG AA 4.5:1+ */
+    --text-primary: hsl(var(--accent-hue), 18%, calc(91% + var(--accent-lightness-offset)));
+    --text-secondary: hsl(var(--accent-hue), 15%, calc(74% + var(--accent-lightness-offset)));
+    --text-tertiary: hsl(var(--accent-hue), 11%, calc(66% + var(--accent-lightness-offset)));
+    --text-on-accent: var(--white); /* 暗色下强调色仍为深底，白字保持高对比 */
+    
+    /* 边框：微妙的星光边框 */
+    --border-light: rgba(var(--primary-rgb), 0.2);
+    --bamboo-border: rgba(var(--primary-rgb), 0.25);
+    
+    /* 阴影：深邃但不失层次 */
+    --shadow: 0 20px 40px rgba(var(--black-rgb), 0.4);
+    --shadow-surface: 0 2px 8px rgba(var(--black-rgb), 0.25), 0 1px 2px rgba(var(--black-rgb), 0.15);
+    --shadow-card: 0 4px 16px rgba(var(--black-rgb), 0.3), 0 2px 4px rgba(var(--black-rgb), 0.2);
+    --shadow-elevated: 0 8px 28px rgba(var(--black-rgb), 0.35), 0 4px 8px rgba(var(--black-rgb), 0.25);
+    --shadow-floating: 0 16px 48px rgba(var(--black-rgb), 0.45), 0 8px 16px rgba(var(--black-rgb), 0.3);
+    
+    /* 渐变：星空微光 */
+    --section-title-gradient: linear-gradient(135deg, hsla(calc(var(--accent-hue) + 11), 33%, calc(26% + var(--accent-lightness-offset)), 0.7) 0%, rgba(var(--primary-rgb), 0.6) 50%, rgba(var(--primary-rgb), 0.5) 100%);
+    --action-bg: linear-gradient(135deg, hsla(calc(var(--accent-hue) + 11), 33%, calc(26% + var(--accent-lightness-offset)), 0.7) 0%, rgba(var(--primary-rgb), 0.6) 100%);
+    
+    /* 按钮 */
+    --btn-primary-bg: linear-gradient(135deg, var(--bamboo-dark) 0%, var(--bamboo-primary) 100%);
+    --btn-primary-hover: linear-gradient(135deg, var(--bamboo-primary) 0%, var(--bamboo-light) 100%);
+    --btn-secondary-bg: rgba(var(--primary-rgb), 0.12);
+    --btn-secondary-hover: rgba(var(--primary-rgb), 0.22);
+    --btn-outline-border: 2px solid var(--bamboo-primary);
+    --btn-outline-hover: rgba(var(--primary-rgb), 0.18);
+    
+    /* 表格 */
+    --table-header-bg: rgba(var(--primary-rgb), 0.12);
+    --table-border: rgba(var(--primary-rgb), 0.18);
+    
+    /* 诊断卡片 */
+    --diagnosis-bg: hsla(calc(var(--accent-hue) + 5), 30%, calc(8% + var(--accent-lightness-offset)), 0.92);
+    --diagnosis-border: rgba(var(--primary-rgb), 0.2);
+    --diagnosis-text: hsl(var(--accent-hue), 22%, calc(87% + var(--accent-lightness-offset)));
+    --diagnosis-card-good-bg: rgba(var(--primary-rgb), 0.12);
+    --diagnosis-card-warn-bg: rgba(180, 140, 60, 0.12);
+    
+    /* 时间线与进度 */
+    --timeline-stat-bg: rgba(var(--primary-rgb), 0.1);
+    --progress-bg: rgba(var(--primary-rgb), 0.15);
+    --breath-color: hsla(calc(var(--accent-hue) + 0), 35%, calc(64% + var(--accent-lightness-offset)), 0.4);
+    
+    /* KPI 卡片 */
+    --kpi-up-bg: linear-gradient(180deg, var(--card-bg) 0%, rgba(180, 60, 50, 0.18) 100%);
+    --kpi-down-bg: linear-gradient(180deg, var(--card-bg) 0%, rgba(var(--primary-rgb), 0.18) 100%);
+    --kpi-neutral-bg: linear-gradient(180deg, var(--card-bg) 0%, rgba(180, 150, 60, 0.18) 100%);
+    --kpi-break-bg: linear-gradient(180deg, var(--card-bg) 0%, rgba(100, 180, 200, 0.18) 100%);
+    --kpi-up-border: rgba(180, 60, 50, 0.35);
+    --kpi-down-border: rgba(var(--primary-rgb), 0.35);
+    --kpi-neutral-border: rgba(180, 150, 60, 0.35);
+    --kpi-break-border: rgba(100, 180, 200, 0.35);
+    --kpi-up-delta-color: #E87070;
+    
+    /* 标签 */
+    --tag-execute-bg: var(--bamboo-light);
+    --tag-miss-bg: hsl(var(--accent-hue), 12%, calc(26% + var(--accent-lightness-offset)));
+    --tag-text-light: hsl(var(--accent-hue), 15%, calc(89% + var(--accent-lightness-offset)));
+    
+    /* 波浪与毛玻璃 */
+    --wave-color: rgba(var(--primary-rgb), 0.5);
+    /* 暗色模式降低模糊半径，避免 Chromium backdrop-filter 渲染伪影 */
+    --glass-blur: 12px;
+    /* 暗色 pre-rendered 卡片渐变 — 降低白色分量适配深色背景 */
+    --glass-card-gradient: linear-gradient(135deg, rgba(var(--white-rgb), 0.12) 0%, rgba(var(--white-rgb), 0.04) 50%, rgba(var(--white-rgb), 0.08) 100%), linear-gradient(45deg, rgba(var(--bamboo-deep-rgb), 0.10) 0%, transparent 60%);
+    
+    /* 星空点缀色 */
+    --star-glow: hsla(calc(var(--accent-hue) + 0), 36%, calc(78% + var(--accent-lightness-offset)), 0.6);
+    --star-accent: hsl(var(--accent-hue), 38%, calc(75% + var(--accent-lightness-offset)));
+
+    /* 暗色模式：竹林浅色交互态 */
+    --bamboo-pale-hover: hsl(var(--accent-hue), 28%, calc(88% + var(--accent-lightness-offset)));
+    --bamboo-pale-hover-rgb: 208, 232, 208;
+    --bamboo-pale-active: hsl(var(--accent-hue), 25%, calc(82% + var(--accent-lightness-offset)));
+    --bamboo-pale-highlight: hsl(calc(var(--accent-hue) - 33), 78%, calc(68% + var(--accent-lightness-offset)));
+    --bamboo-pale-highlight-rgb: 160, 216, 120;
+    
+    /* Focus */
+    --focus-ring: 0 0 0 2px var(--bamboo-primary);
+    --focus-ring-offset: 0 0 0 4px rgba(var(--primary-rgb), 0.25);
+    --focus-ring-danger: 0 0 0 2px var(--cinnabar);
+    --focus-transition: box-shadow 0.15s ease;
+    
+    /* 状态色 */
+    --status-success: var(--bamboo-primary);
+    --status-warning: #ffe082;
+    --status-danger: #ef5350;
+    --status-info: #4FC3F7;
+    --status-success-bg: rgba(var(--primary-rgb), 0.15);
+    --status-warning-bg: rgba(var(--gold-rgb), 0.12);
+    --status-danger-bg: rgba(var(--danger-rgb), 0.15);
+    --status-info-bg: rgba(var(--info-rgb, 79, 195, 247), 0.12);
+
+    /* === 浮层设计令牌（Toast / Confirm / 选择器统一语言：留白素笺 → 统一不透明跟随色，不再用玻璃） === */
+    --overlay-surface: var(--bamboo-popup-bg);
+    --overlay-border-width: 1px;
+    --overlay-border-style: solid;
+    --overlay-border-color: var(--bamboo-border);
+    --overlay-border: var(--overlay-border-width) var(--overlay-border-style) var(--overlay-border-color);
+    --overlay-shadow: 0 8px 32px rgba(20, 32, 18, 0.5);
+    --overlay-shadow-soft: 0 2px 12px rgba(20, 32, 18, 0.38);
+    --ease-cn: cubic-bezier(0.22, 0.61, 0.36, 1);
+
+    /* 其他 */
+    --cinnabar: #FF6B6B;
+    --gold: #FFD93D;
+    --sky-azure: #74C0FC;
+    --sky-azure-rgb: 116, 192, 252;
+    --leaf-green: hsl(var(--accent-hue), 23%, calc(65% + var(--accent-lightness-offset)));
+
+    /* === 健康评分色彩系统（暗色同值） === */
+    --health-danger: #EF4444;
+    --health-warning: #F59E23;
+    --health-success-clr: #7ED321;
+    --health-info: #4A90D9;
+    --health-neutral: #95A5A6;
+    --health-pink: #E91E63;
+    --health-purple: #9C27B0;
+    --health-orange: #FF9800;
+    --health-gold-clr: #D97706;
+
+    /* 玉石纹理 — 暗色模式 */
+    --jade-cream-rgb: 40, 55, 40;
+    --jade-cream-mid-rgb: 35, 50, 35;
+    --jade-cream-deep-rgb: 30, 45, 30;
+    --jade-warm-rgb: 35, 48, 32;
+    --jade-dark-rgb: 20, 15, 10;
+    --jade-dark-mid-rgb: 18, 13, 8;
+    --jade-dark-deep-rgb: 15, 10, 5;
+    --jade-dark-warm-rgb: 25, 18, 10;
+    --jade-dark-warm-mid-rgb: 22, 15, 8;
+    --jade-dark-warm-light-rgb: 20, 12, 5;
+
+    /* 竹林装饰效果 — 暗色模式 */
+    /* 暗色流光效果（fab.css glow 动画依赖，缺定义导致 GPU 空跑） */
+    --glow-color-start: hsla(calc(var(--accent-hue) + 0), 45%, calc(60% + var(--accent-lightness-offset)), 0.25);
+    --glow-color-end: hsla(calc(var(--accent-hue) + 0), 35%, calc(75% + var(--accent-lightness-offset)), 0.08);
+    --glow-width: 2px;
+    --glow-opacity: 0.2;
+    --glow-duration: 20s;
+}
+
+
+/* ========== 触控区域最小尺寸（WCAG 2.5.8） ========== */
+:host {
+    --min-touch-target: 48px;
+}
+
+/* ============================================================
+   RESPONSIVE DESIGN TOKENS — Canonical Breakpoint System
+   ============================================================
+   Usage convention across ALL CSS files:
+     @media (max-width: 360px)    → tiny phone  (--bp-xxs, rare)
+     @media (max-width: 480px)    → mobile       (--bp-sm, PRIMARY)
+     @media (max-width: 600px)    → large phone / narrow modal (--bp-md-narrow)
+                                    NOTE: intentionally kept for wallet/shop modal
+                                    where the modal can be ~600px wide at 768px+ viewports.
+                                    Do NOT use for general layout — use 480px instead.
+     @media (max-width: 768px)    → tablet / narrow Obsidian sidebar (--bp-md, PRIMARY)
+     @media (min-width: 1025px)   → wide desktop (--bp-xl-min)
+
+   Mapping of OLD breakpoints found in codebase → NEW canonical values:
+     360  → 360  (kept as --bp-xxs, rare)
+     400  → 480  (merged into mobile)
+     420  → 360  (tiny-phone fallback)
+     480  → 480  (PRIMARY mobile breakpoint)
+     500  → 480  (merged into mobile)
+     560  → 480  (merged into mobile)
+     600  → 600  (kept as --bp-md-narrow, wallet/shop modal only)
+     700  → 768  (merged into tablet)
+     768  → 768  (PRIMARY tablet breakpoint)
+     960  → 768  (merged into tablet)
+     961+ → 1025+ (wide desktop)
+   ============================================================ */
+
+:host {
+    /* Breakpoint reference values (for documentation only — CSS @media
+       cannot use custom properties, so use the literal pixel values above
+       in @media conditions consistently across all files). */
+    --bp-xxs: 360px;       /* tiny phone: < iPhone SE 1st gen */
+    --bp-sm: 480px;        /* PRIMARY mobile breakpoint */
+    --bp-md-narrow: 600px; /* wallet/shop modal only — do NOT use for general layout */
+    --bp-md: 768px;        /* PRIMARY tablet breakpoint */
+    --bp-lg: 1024px;       /* standard desktop breakpoint */
+    --bp-xl-min: 1025px;   /* min for wide desktop */
+
+    /* Canonical breakpoint aliases — Task 6 responsive breakpoint system */
+    --bm-bp-sm: 480px;     /* mobile */
+    --bm-bp-md: 768px;     /* tablet / narrow Obsidian sidebar */
+    --bm-bp-lg: 1024px;    /* desktop */
+
+    /* Progressive-render placeholder min-height — UI Audit 4.5.1 CLS mitigation */
+    --bm-placeholder-min-h: 160px;
+
+    /* Fluid font scale — computed as clamp(min_px, fluid_vw, max_px)
+       where min applies at 320px and max at 1200px viewport width.
+       Use these instead of fixed --font-size-* for body-level text. */
+    --type-xs: calc(clamp(10px, 2.2vw, 12px) * var(--font-size-scale));        /* labels, meta, captions */
+    --type-sm: calc(clamp(12px, 2.6vw, 13px) * var(--font-size-scale));        /* secondary :host text */
+    --type-base: calc(clamp(13px, 2.8vw, 15px) * var(--font-size-scale));      /* primary :host text */
+    --type-md: calc(clamp(14px, 3.2vw, 17px) * var(--font-size-scale));        /* interactive, buttons, section titles */
+    --type-lg: calc(clamp(15px, 3.8vw, 20px) * var(--font-size-scale));        /* subtitles */
+    --type-xl: calc(clamp(18px, 4.8vw, 24px) * var(--font-size-scale));        /* smaller headings */
+    --type-2xl: calc(clamp(20px, 5.5vw, 28px) * var(--font-size-scale));       /* main h1 / hero title */
+    --type-display: calc(clamp(24px, 7vw, 36px) * var(--font-size-scale));     /* hero numbers, display */
+
+    /* ---- Supplementary fluid sizes ----
+       Values clamp(min_px, proportional_vw, max_px).
+       Use these instead of `font-size: XXpx` anywhere a fixed pixel size is used
+       for text that is not an icon/mark/border. */
+    --type-mini:    calc(clamp(8px, 1.8vw, 10px) * var(--font-size-scale));
+    --type-micro:   calc(clamp(9px, 2.0vw, 11px) * var(--font-size-scale));
+    --type-caption: calc(clamp(11px, 2.4vw, 13px) * var(--font-size-scale));
+    --type-body:    calc(clamp(13px, 2.8vw, 15px) * var(--font-size-scale));
+    --type-lead:    calc(clamp(14px, 3.2vw, 17px) * var(--font-size-scale));
+    --type-heading: calc(clamp(16px, 3.8vw, 20px) * var(--font-size-scale));
+    --type-large:   calc(clamp(18px, 4.5vw, 24px) * var(--font-size-scale));
+    --type-hero:    calc(clamp(20px, 5.5vw, 28px) * var(--font-size-scale));
+    --type-mega:    calc(clamp(24px, 7vw, 36px) * var(--font-size-scale));
+    --type-display-big: calc(clamp(32px, 9vw, 48px) * var(--font-size-scale));
+
+    /* Fluid spacing additions (used inside padding/gap declarations) */
+    --fluid-card-padding: clamp(10px, 2.5vw, 16px);
+    --fluid-gap-small: clamp(6px, 1.5vw, 10px);
+    --fluid-gap-med: clamp(8px, 2vw, 14px);
+
+    /* Fluid spacing — for layout-level padding and gaps.
+       Keep component-level small spacing fixed (e.g., 4px inside a button). */
+    --fluid-gutter: clamp(12px, 3vw, 24px);
+    --fluid-stack: clamp(8px, 2vw, 16px);
+    --fluid-section-gap: clamp(16px, 4vw, 32px);
+
+    /* Touch target — minimum interactive area (WCAG 2.5.8).
+       Enforced globally in base.css on button, [role=button], etc. */
+    --touch-target: 44px;
+    --touch-comfortable: 48px;
+
+    /* Icon size scale — single source of truth for inline SVG icon dimensions.
+       Mirrors LucideUtils.SPEC.SIZES; CSS must reference these tokens instead
+       of bare px on `svg` selectors (UI Audit 4.6.3). */
+    --bm-icon-xs: 12px;
+    --bm-icon-sm: 14px;
+    --bm-icon-md: 16px;
+    --bm-icon-lg: 18px;
+    --bm-icon-xl: 20px;
+    --bm-icon-xxl: 24px;
+}
+
+/* Dynamic viewport height — progressive enhancement.
+   100dvh is supported in all modern browsers; we fall back to 100vh for older ones. */
+:host {
+    --viewport-height: 100vh;
+}
+@supports (height: 100dvh) {
+    :host {
+        --viewport-height: 100dvh;
+    }
+}
+
+/* ============================================================
+   A11Y PREFERENCE TOKENS
+   ============================================================ */
+
+/* prefers-contrast: high-contrast mode — ensure text stays readable */
+@media (prefers-contrast: more) {
+    :host {
+        --text-primary: #000000;
+        --text-secondary: #222222;
+    }
+    :host(.dark) {
+        --text-primary: #ffffff;
+        --text-secondary: #e0e0e0;
+    }
+}
+
+/* === 移动端玻璃拟态主动降级（鸿蒙 ArkWeb / 老旧安卓 WebView 性能兜底） ===
+ * 背景：鸿蒙 ArkWeb 对 backdrop-filter 合成开销大，点组件刷新时频繁重采样导致卡顿。
+ * 但 ArkWeb 语法上"支持" backdrop-filter，故 @supports not 不触发，需按平台类主动降级。
+ * 方案（与暗色模式同款 :host() 写法，无 !important，纯变量重绑）：
+ *   1) --glass-blur 置 0 → 所有 blur(var(--glass-blur)) 自动变 blur(0)，消除模糊计算；
+ *   2) --card-glass 转不透明 fallback 底色 → 关模糊后不穿底、对比度充足；
+ *   3) 显式 * { backdrop-filter: none } 关掉合成层（写末尾靠后定义，双保险）。
+ * 桌面端不命中 .platform-mobile，视觉零变化。 */
+:host(.platform-mobile) {
+    --glass-blur: 0px;
+    --card-glass: var(--card-bg-fallback);
+}
+:host(.platform-mobile) * {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+}
+
+</style>
+<style data-src="assets/styles/base.css">
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+/* === 防偷窥隐私模式（PrivacyMode）===
+   仅模糊「文字内容」，不波及图片/媒体/图标按钮/进度图形等 UI 骨架。
+   - [data-private] 作为隐私作用域容器（挂在内容根，如 sectionsContainer）；
+   - 真正被模糊的是作用域内的「文字类元素」：
+       · 显式 data-private-text 标记（PrivacyMode 给纯文本叶子批量补打，零遗漏）；
+       · 以及一组稳定的文字类选择器兜底（标题/描述/数字/行内编辑等）。
+   - 图片(img)、媒体、svg 图标、按钮、进度条均不在白名单内 → 保持清晰可点。
+   强度由 --privacy-blur 变量驱动，transition 跟手。
+
+   注意：webapp 运行于 Shadow DOM，shadowBootstrap 会把 body/documentElement 的
+   class 镜像到 shadow host（#bamboo-shadow-host），故隐私态的 .privacy-on 实际在
+   host 上而非 shadow 内的 body。故需同时匹配 :host(.privacy-on)（shadow 模式）
+   与 body.privacy-on（__BAMBOO_NO_SHADOW__ kill-switch 回退，无 shadow 时）。 */
+:host(.privacy-on) [data-private-text],
+:host(.privacy-on) :is(
+    p, [data-inline-edit],
+    .goal-item-name, .goal-item-daily, .goal-item-date, .goal-item-status, .goal-item-entry,
+    .goal-title, .goal-text,
+    .section-title, .section-desc, .section-settings-title, .section-settings-desc,
+    .health-goal-title, .stat-value, .stat-label,
+    .gho-score, .gho-label, .gho-metric-name, .gho-metric-val, .gho-suggestion-text,
+    .gho-stat-val, .gho-stat-label, .gho-empty-text,
+    .todo-focus-item, .todo-item-text, .todo-title, .todo-desc, .todo-goal-daily,
+    .todo-goal-progress, .todo-goal-source, .todo-stat-num, .todo-stat-label,
+    .todo-group-label, .todo-completed-count,
+    .bamboo-name, .bamboo-time, .bamboo-count, .bamboo-item-time, .bamboo-item-task,
+    .bamboo-item-eval, .bamboo-title, .empty-state-title, .empty-state-desc, .empty-state-hint,
+    .text-block, .card-title, .card-desc, .quote-text, .weather-text,
+    .ticket-time-name, .ticket-time-value, .ticket-highlight-value, .ticket-highlight-label,
+    .ticket-sub-label, .ticket-body-text,
+    .stub-back-ring-text, .stub-back-caption, .stub-back-stat-value, .stub-back-stat,
+    .stub-back-title, .stub-nc-name, .stub-name, .stub-caption, .stub-value,
+    .designer-ticket .ticket-text, .ticket-stub-content,
+    .scroll-note-title, .scroll-note-meta, .scroll-notes-empty
+),
+body.privacy-on [data-private-text],
+body.privacy-on :is(
+    p, [data-inline-edit],
+    .goal-item-name, .goal-item-daily, .goal-item-date, .goal-item-status, .goal-item-entry,
+    .goal-title, .goal-text,
+    .section-title, .section-desc, .section-settings-title, .section-settings-desc,
+    .health-goal-title, .stat-value, .stat-label,
+    .gho-score, .gho-label, .gho-metric-name, .gho-metric-val, .gho-suggestion-text,
+    .gho-stat-val, .gho-stat-label, .gho-empty-text,
+    .todo-focus-item, .todo-item-text, .todo-title, .todo-desc, .todo-goal-daily,
+    .todo-goal-progress, .todo-goal-source, .todo-stat-num, .todo-stat-label,
+    .todo-group-label, .todo-completed-count,
+    .bamboo-name, .bamboo-time, .bamboo-count, .bamboo-item-time, .bamboo-item-task,
+    .bamboo-item-eval, .bamboo-title, .empty-state-title, .empty-state-desc, .empty-state-hint,
+    .text-block, .card-title, .card-desc, .quote-text, .weather-text,
+    .ticket-time-name, .ticket-time-value, .ticket-highlight-value, .ticket-highlight-label,
+    .ticket-sub-label, .ticket-body-text,
+    .stub-back-ring-text, .stub-back-caption, .stub-back-stat-value, .stub-back-stat,
+    .stub-back-title, .stub-nc-name, .stub-name, .stub-caption, .stub-value,
+    .designer-ticket .ticket-text, .ticket-stub-content,
+    .scroll-note-title, .scroll-note-meta, .scroll-notes-empty
+) {
+    filter: blur(var(--privacy-blur));
+    transition: filter 0.18s ease;
+    /* 模糊状态下仍可被点击操作（如切日期、开设置），仅视觉遮挡 */
+    pointer-events: auto;
+}
+/* 尊重用户的「减少动态效果」系统偏好：关闭模糊过渡（直接切） */
+@media (prefers-reduced-motion: reduce) {
+    :host(.privacy-on) [data-private-text],
+    :host(.privacy-on) :is(
+        p, [data-inline-edit],
+        .goal-item-name, .goal-item-daily, .goal-item-date, .goal-item-status, .goal-item-entry,
+        .goal-title, .goal-text,
+        .section-title, .section-desc, .section-settings-title, .section-settings-desc,
+        .health-goal-title, .stat-value, .stat-label,
+        .gho-score, .gho-label, .gho-metric-name, .gho-metric-val, .gho-suggestion-text,
+        .gho-stat-val, .gho-stat-label, .gho-empty-text,
+        .todo-focus-item, .todo-item-text, .todo-title, .todo-desc, .todo-goal-daily,
+        .todo-goal-progress, .todo-goal-source, .todo-stat-num, .todo-stat-label,
+        .todo-group-label, .todo-completed-count,
+        .bamboo-name, .bamboo-time, .bamboo-count, .bamboo-item-time, .bamboo-item-task,
+        .bamboo-item-eval, .bamboo-title, .empty-state-title, .empty-state-desc, .empty-state-hint,
+        .text-block, .card-title, .card-desc, .quote-text, .weather-text
+    ),
+    body.privacy-on [data-private-text],
+    body.privacy-on :is(
+        p, [data-inline-edit],
+        .goal-item-name, .goal-item-daily, .goal-item-date, .goal-item-status, .goal-item-entry,
+        .goal-title, .goal-text,
+        .section-title, .section-desc, .section-settings-title, .section-settings-desc,
+        .health-goal-title, .stat-value, .stat-label,
+        .gho-score, .gho-label, .gho-metric-name, .gho-metric-val, .gho-suggestion-text,
+        .gho-stat-val, .gho-stat-label, .gho-empty-text,
+        .todo-focus-item, .todo-item-text, .todo-title, .todo-desc, .todo-goal-daily,
+        .todo-goal-progress, .todo-goal-source, .todo-stat-num, .todo-stat-label,
+        .todo-group-label, .todo-completed-count,
+        .bamboo-name, .bamboo-time, .bamboo-count, .bamboo-item-time, .bamboo-item-task,
+        .bamboo-item-eval, .bamboo-title, .empty-state-title, .empty-state-desc, .empty-state-hint,
+        .text-block, .card-title, .card-desc, .quote-text, .weather-text
+    ) {
+        transition: none;
+    }
+}
+
+/* 付费激活页永远不被隐私模糊：它包含 <p> 等通用文字标签，必须兜底豁免。
+   本规则位于隐私模糊规则之后，且选择器特异性不低于 [data-private-text]/
+   :is(...) 规则，故无需 !important 即可靠覆盖（后定义者胜出）。 */
+:host(.privacy-on) .bamboo-license-gate,
+:host(.privacy-on) .bamboo-license-gate *,
+body.privacy-on .bamboo-license-gate,
+body.privacy-on .bamboo-license-gate * {
+    filter: none;
+    transition: none;
+}
+
+/* === UI 骨架 / 操作引导文字豁免（Bug 修复）===
+   上面那条 :is(p, ...) 兜底里的裸 `p` 会命中**一切**段落，包括弹窗与菜单里的 UI 文字。
+   markText 的 isSkeleton 只能挡住「自动补标 data-private-text」，挡不住这条 CSS 兜底，
+   于是 UI 文字被误糊。与本文件 .bamboo-license-gate 补丁同理（那里只补了付费页一处）：
+   本规则定义于隐私模糊规则之后、特异性与其相同，按「后定义者胜出」可靠覆盖，无需 !important。
+   已 grep 到的受影响者：confirmDialog 的 .confirm-message、目标编辑器 .tmpl-empty-hint、
+   思维导图画中卷 .tw-mm-empty-*、预览合成 .tw-preview-hint、意境选择器 .scroll-pick-sub。 */
+:host(.privacy-on) :is(.modal-container, .modal-base, .modal-panel, .fab-container, .fab-actions, .tooltip) *,
+:host(.privacy-on) :is(.confirm-message, .tmpl-empty-hint, .tw-mm-empty-title, .tw-mm-empty-sub, .tw-mm-empty-note, .tw-preview-hint, .scroll-pick-sub),
+body.privacy-on :is(.modal-container, .modal-base, .modal-panel, .fab-container, .fab-actions, .tooltip) *,
+body.privacy-on :is(.confirm-message, .tmpl-empty-hint, .tw-mm-empty-title, .tw-mm-empty-sub, .tw-mm-empty-note, .tw-preview-hint, .scroll-pick-sub) {
+    filter: none;
+    transition: none;
+}
+
+/* ============================================================
+   全局基础层（统一收口）
+   - 前半：原 base.css  ——  重置 + PrivacyMode(防偷窥) + UI 骨架/操作引导文字豁免
+   - 后半：原 base-foundation.css  ——  统一可点击交互 / 主题过渡 / 性能动画 /
+            精细化骨架屏 / 玻璃拟态 fallback / 渐进渲染 / 响应式断点 /
+            Focus 可见性系统 / 触控区域保障
+   本文件为三视图共享的「单权威全局文件」。加载顺序与重构前一致：
+   重置 → PrivacyMode → UI 豁免 → foundation 各段。见 scripts/load-matrix.json。
+   ============================================================ */
+
+/* 右栏编辑/预览样式已在方案 C 中移除（深度编辑回归 Obsidian 原生） */
+
+/* 容器查询：画中卷放进左侧栏（约 200-300px 宽）时，番茄钟纵向堆叠、火折子缩小，避免溢出 */
+.scroll-body { container-type: inline-size; }
+
+@media (max-width: 760px) {
+    .scroll-body { grid-template-columns: 1fr; grid-auto-rows: minmax(0, auto); overflow-y: auto; }
+    .scroll-left { border-right: none; border-bottom: 1px solid rgba(96, 132, 96, 0.16); }
+}
+
+/* 窄栏紧凑：由 JS 在 .scroll-body 宽度 ≤340px 时加 .is-narrow 触发（本环境不支持 @container） */
+.scroll-body.is-narrow .scroll-screen { flex-direction: column; align-items: center; gap: 8px; }
+.scroll-body.is-narrow .scroll-firebrand { transform: scale(0.82); transform-origin: top center; }
+.scroll-body.is-narrow .scroll-incense { transform: scale(0.92); }
+
+/* === 统一可点击元素交互 ===
+   裸标签选择器（button/a/select）用 :where() 包裹降为 0,0,0 权重，
+   作为 Shadow DOM 内的零权重默认值；组件类可无权重竞赛地覆写。
+   见 ui-audit-report 4.1.3。 */
+:where(button,
+[role="button"],
+.clickable,
+a,
+select,
+label[for]) {
+    cursor: pointer;
+    transition: color var(--transition-normal), background-color var(--transition-normal), border-color var(--transition-normal), opacity var(--transition-normal), transform var(--transition-normal), box-shadow var(--transition-normal);
+}
+
+:where(button:active,
+[role="button"]:active,
+.clickable:active,
+a:active) {
+    transform: var(--scale-click);
+    opacity: 0.9;
+}
+
+.skip-link {
+    position: absolute;
+    top: -100px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--bamboo-deep);
+    color: var(--white);
+    padding: 12px 24px;
+    border-radius: var(--radius-md);
+    z-index: var(--z-layer-overlay);
+    text-decoration: none;
+    font-weight: 700;
+    font-size: var(--type-md);
+    min-height: var(--touch-target);
+    display: inline-flex;
+    align-items: center;
+    transition: top 0.15s ease-out;
+}
+.skip-link:focus-visible {
+    top: 8px;
+    outline: 3px solid var(--white);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 6px var(--bamboo-deep);
+}
+
+:focus-visible {
+    outline: 2px solid var(--bamboo-primary);
+    outline-offset: 3px;
+    box-shadow: var(--focus-ring-offset);
+}
+
+/* 裸标签 focus-visible 降为 0 权重默认值，组件级焦点环可轻松覆写 */
+:where(button:focus-visible, a:focus-visible) {
+    outline: 2px solid var(--bamboo-primary);
+    outline-offset: 3px;
+    box-shadow: var(--focus-ring-offset);
+}
+
+:focus:not(:focus-visible) {
+    outline: none;
+}
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* === 滚动行为优化 === */
+:host {
+    scroll-behavior: smooth;
+    /* 隐藏滚动条 — 保留滚动功能，仅视觉隐藏 */
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+:host::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+}
+
+/* === 主题切换过渡 — 限定在需要平滑过渡的组件级元素，避免 :host * 全局性能开销 === */
+.container,
+.header,
+.date-nav,
+.bamboo-card,
+.goal-row,
+.kpi-card,
+.section-title,
+.bamboo-garden-section,
+.theme-card,
+.timeline-entry,
+.todo-item,
+.fab-action-btn,
+[class*="-card"],
+[class*="-section"],
+[class*="-panel"] {
+    transition: 
+        background-color var(--transition-smooth),
+        color var(--transition-smooth),
+        border-color var(--transition-smooth),
+        box-shadow var(--transition-smooth);
+}
+
+/* 排除不需要过渡的元素 */
+.modal-overlay,
+.modal-content,
+.fab-container,
+.toast-container,
+.loading::after {
+    transition: none;
+}
+.fab-actions,
+.fab-action-btn,
+.fab-main,
+.fab-main-icon {
+    transition: transform, opacity, box-shadow, border-color, background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* === 性能优化：全局动画控制 === */
+:host(.animations-paused) *,
+:host(.animations-paused) *::before,
+:host(.animations-paused) *::after {
+    animation-play-state: paused;
+}
+
+/* 离屏动效容器暂停 - 替代逐元素 style 设置 */
+.effect-offscreen,
+.effect-offscreen *,
+.effect-offscreen *::before,
+.effect-offscreen *::after {
+    animation-play-state: paused;
+}
+
+:host {
+    font-family: var(--font-family);
+    font-size: var(--type-base);
+    line-height: var(--line-height-base);
+    color: var(--text-primary);
+    min-height: var(--viewport-height);
+    padding: 0;
+    margin: 0;
+    overflow-x: hidden;
+    /* 隔离滚动边界：滚动到主容器顶部/底部时不把滚动传递给 Obsidian 宿主页面（scroll chaining） */
+    overscroll-behavior-y: contain;
+    /* 隐藏滚动条 — 保留滚动功能，仅视觉隐藏 */
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+/* 整页页面级渐变背景：用固定定位的 ::after 承载，而非 :host 的 background +
+   background-attachment: fixed。后者在 shadow 滚动容器（host 同时 position:fixed
+   且 overflow-y:auto）下于部分 webview 不绘制，导致暗色模式直接透出白底。
+   position:fixed 的伪元素背景可稳定绘制，且视觉上同样铺满视口、不随内容滚动。 */
+:host::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -2;
+    pointer-events: none;
+    background: linear-gradient(165deg, var(--bg-gradient-start) 0%, var(--bg-gradient-mid1) 20%, var(--bg-gradient-mid2) 40%, var(--bg-gradient-mid1) 60%, var(--bg-gradient-end) 80%, var(--bg-gradient-start) 100%);
+}
+
+/* :host(shadow host) 自带主题背景兜底：webapp 运行于 Shadow DOM，:root 匹配
+   外层 document 不可见。若 ::after 伪元素因 iOS webview 层叠/position:fixed 不绘制，
+   host 自身也不透出 iframe 默认白底（移动端顶部白遮罩修复）。--surface-solid 随主题
+   自适应（浅色 var(--white) / 暗色 #1c2a1e）。 */ /* lint-disable: R3 仅为注释中的颜色说明文字，非代码 */
+:host {
+    background: var(--surface-solid);
+}
+
+:host::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+}
+
+#main-container {
+    width: 100%;
+    min-height: var(--viewport-height);
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 40px var(--space-6);
+    box-sizing: border-box;
+}
+
+:host::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    /* 重新设计的光影：多层漫反射效果 */
+    background: 
+        radial-gradient(circle at 10% 10%, rgba(var(--white-rgb), 0.8) 0%, transparent 50%),
+        radial-gradient(circle at 90% 20%, rgba(var(--primary-rgb), 0.05) 0%, transparent 40%),
+        radial-gradient(ellipse at 50% 100%, rgba(var(--white-rgb), 0.5) 0%, transparent 60%),
+        radial-gradient(circle at 80% 80%, rgba(var(--pale-rgb), 0.1) 0%, transparent 40%);
+    opacity: 0.8;
+    pointer-events: none;
+    z-index: -1;
+}
+
+/* 黑暗模式下重新设计高级感光影 - 增加亮度与对比度 */
+:host(.dark)::before {
+    display: block;
+    background: 
+        radial-gradient(circle at 50% 0%, rgba(var(--primary-rgb), 0.18) 0%, transparent 55%),
+        radial-gradient(circle at 20% 25%, rgba(var(--primary-rgb), 0.15) 0%, transparent 60%),
+        radial-gradient(circle at 80% 15%, rgba(var(--primary-rgb), 0.06) 0%, transparent 40%),
+        radial-gradient(ellipse at 50% 85%, rgba(var(--deep-rgb), 0.22) 0%, transparent 70%);
+    opacity: 0.85;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    :host::before {
+        animation: bgFloat 20s ease-in-out infinite;
+    }
+}
+
+@keyframes bgFloat {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 0.6; }
+}
+
+:host(.motion-reduced) * { animation: none; transition: none; }
+
+/* 拖动色相/明度滑块期间（html.recoloring）：临时禁用所有过渡。
+   否则每次 input 改色都会重启 color/background-color 过渡动画，等于持续重绘动画而非一次性着色，
+   这是滑块拖动时整页每帧都在跑过渡动画、丝滑度不足的隐藏主因。松手（change）即移除 class 恢复过渡。 */
+/* 用 :not(#recoloring) 把特异性抬到 ID 级 (1,x,x)，压过各组件自己的 transition 声明，
+   从而不必借助 !important —— 拖动调色滑块期间全局停掉过渡，避免每帧重跑动画。 */
+html.recoloring:not(#recoloring), html.recoloring:not(#recoloring) *,
+html.recoloring:not(#recoloring) *::before, html.recoloring:not(#recoloring) *::after {
+    transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    :host(.motion-reduced) *,
+    :host(.motion-reduced) *::before,
+    :host(.motion-reduced) *::after {
+        animation-duration: 0.01ms;
+        animation-iteration-count: 1;
+        transition-duration: 0.01ms;
+        scroll-behavior: auto;
+    }
+
+    .breathePink, .breatheSky, .heartbeat {
+        animation: none;
+    }
+
+    .empty-state::before {
+        animation: none;
+        opacity: 0;
+    }
+
+    .onboarding-highlight {
+        animation: none;
+        box-shadow: 0 0 0 9999px rgba(var(--black-rgb), 0.7);
+    }
+
+    .fadeInUp, .slideUp, .fadeIn {
+        animation: none;
+        opacity: 1;
+        transform: none;
+    }
+
+    .loading-spinner::before {
+        animation: none;
+        border-color: rgba(var(--primary-rgb), 0.3);
+        border-top-color: var(--bamboo-primary);
+    }
+
+    .chart-canvas {
+        transition: none;
+    }
+
+    .fab-main, .fab-action-btn {
+        transition: none;
+    }
+
+    .modal-overlay, .modal-content {
+        transition: none;
+    }
+}
+
+:host(.loading) .container { opacity: 0; }
+.container { transition: opacity 0.3s ease; }
+
+@media print {
+    :host { background: var(--white); }
+    .fab-container { display: none; }
+    .period-content.collapsed { max-height: none; opacity: 1; display: block; }
+    /* 隐藏字体行的显示逻辑由非打印态控制，打印时直接跳过；移除 !important 对 inline style 的覆盖 */
+}
+
+.container {
+    width: 95%;
+    max-width: min(100% - 2rem, var(--content-max-width));
+    margin: var(--space-6) auto 0;
+    background: var(--card-glass);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    /* translateZ(0) 强制 GPU 合成层，避免 Chromium 暗色模式 backdrop-filter 伪影 */
+    transform: translateZ(0);
+    border-radius: var(--radius-3xl);
+    padding: var(--space-7) var(--space-6);
+    box-shadow: var(--shadow);
+    position: relative;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    border: 1px solid rgba(var(--white-rgb), 0.3);
+}
+
+/* === 性能优化：动画元素 GPU 合成层提示 ===
+ * will-change 白名单策略（UI Audit 4.2.3）：禁止在静态组件上常驻 will-change。
+ * 仅在动画活跃态声明 —— :hover / .expanded（components-interaction.css、goals-map.css）
+ * 或 date-transitioning / date-enter（本文件日期切换动画，类名由 renderScheduler
+ * 在动画前后添加/移除）。动画结束 → 类名移除 → will-change 随之失效，合成层释放。
+ * contain: layout style 为廉价 containment，常驻安全，予以保留。 */
+.bamboo-node,
+.goal-row,
+section[data-section-id] {
+    contain: layout style;
+}
+
+/* === 精细化骨架屏 === */
+.skeleton-section {
+    background: var(--card-glass);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border-radius: var(--radius-2xl);
+    padding: var(--space-4);
+    margin-bottom: var(--space-4);
+    border: 1px solid var(--card-border);
+    opacity: 0;
+    transform: translateY(12px);
+    animation: skeletonFadeIn 0.5s ease forwards;
+}
+
+.skeleton-section:nth-child(1) { animation-delay: 0.05s; }
+.skeleton-section:nth-child(2) { animation-delay: 0.12s; }
+.skeleton-section:nth-child(3) { animation-delay: 0.19s; }
+.skeleton-section:nth-child(4) { animation-delay: 0.26s; }
+
+@keyframes skeletonFadeIn {
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* === 玻璃拟态 fallback：backdrop-filter 不被支持或背景过透时使用不透明底色 ===
+   保持玻璃效果在受支持浏览器下不变；仅在 @supports not 时切换，避免文字透底导致对比度不足。 */
+@supports not (backdrop-filter: blur(1px)) {
+    .container,
+    .bamboo-card,
+    .modal-content,
+    .skeleton-section {
+        background: var(--card-bg-fallback);
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
+    }
+}
+
+.skeleton-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    margin-bottom: var(--space-3);
+}
+
+.skeleton-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-lg);
+    background: linear-gradient(90deg, var(--card-border) 25%, rgba(var(--primary-rgb), 0.1) 50%, var(--card-border) 75%);
+    background-size: 200% 100%;
+    animation: skeletonShimmer 1.5s infinite;
+}
+
+.skeleton-title-group {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.skeleton-line {
+    height: 14px;
+    border-radius: var(--radius-md);
+    background: linear-gradient(90deg, var(--card-border) 25%, rgba(var(--primary-rgb), 0.08) 50%, var(--card-border) 75%);
+    background-size: 200% 100%;
+    animation: skeletonShimmer 1.5s infinite;
+}
+
+.skeleton-line.short { width: 40%; }
+.skeleton-line.medium { width: 70%; }
+.skeleton-line.long { width: 100%; }
+
+.skeleton-body {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-top: var(--space-2);
+    border-top: 1px solid var(--card-border);
+}
+
+.skeleton-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+.skeleton-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--card-border);
+    flex-shrink: 0;
+}
+
+@keyframes skeletonShimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* === 渐进渲染占位（UI Audit 4.5.1）===
+   firstPaintProgressive 第二帧才渲染的区块（goals 等）在第一帧插入占位元素，
+   预留 min-height 避免布局抖动（CLS）；第二帧 _doPartialRender 用真实 section 替换。
+   视觉沿用骨架屏 shimmer，保持加载态连贯。 */
+.section-placeholder {
+    min-height: var(--bm-placeholder-min-h, 160px);
+    margin-bottom: var(--space-4);
+    border-radius: var(--radius-2xl);
+    border: 1px solid var(--card-border);
+    background: var(--card-glass);
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    backdrop-filter: blur(var(--glass-blur));
+    position: relative;
+    overflow: hidden;
+}
+
+.section-placeholder::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent 25%, rgba(var(--bm-primary-rgb), 0.06) 50%, transparent 75%);
+    background-size: 200% 100%;
+    animation: skeletonShimmer 1.5s infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .section-placeholder::before {
+        animation: none;
+        display: none;
+    }
+}
+
+/* === 日期切换过渡动画 === */
+#sectionsContainer {
+    position: relative;
+}
+
+#sectionsContainer.date-transitioning section[data-section-id] {
+    will-change: transform, opacity;
+    animation: sectionSlideOutLeft 0.22s ease forwards;
+    animation-delay: calc(var(--section-index, 0) * 0.03s);
+}
+
+#sectionsContainer.date-transitioning.next section[data-section-id] {
+    animation-name: sectionSlideOutLeft;
+}
+
+#sectionsContainer.date-transitioning.prev section[data-section-id] {
+    animation-name: sectionSlideOutRight;
+}
+
+@keyframes sectionSlideOutLeft {
+    to {
+        opacity: 0;
+        transform: translateX(-18px);
+    }
+}
+
+@keyframes sectionSlideOutRight {
+    to {
+        opacity: 0;
+        transform: translateX(18px);
+    }
+}
+
+#sectionsContainer.date-enter section[data-section-id] {
+    will-change: transform, opacity;
+    opacity: 0;
+    animation: sectionSlideInFromRight 0.32s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+    animation-delay: calc(var(--section-index, 0) * 0.05s);
+}
+
+#sectionsContainer.date-enter.next section[data-section-id] {
+    animation-name: sectionSlideInFromRight;
+}
+
+#sectionsContainer.date-enter.prev section[data-section-id] {
+    animation-name: sectionSlideInFromLeft;
+}
+
+@keyframes sectionSlideInFromRight {
+    from {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes sectionSlideInFromLeft {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+section[data-section-id] {
+    --section-index: 0;
+}
+
+section[data-section-id]:nth-child(1) { --section-index: 0; }
+section[data-section-id]:nth-child(2) { --section-index: 1; }
+section[data-section-id]:nth-child(3) { --section-index: 2; }
+section[data-section-id]:nth-child(4) { --section-index: 3; }
+section[data-section-id]:nth-child(5) { --section-index: 4; }
+section[data-section-id]:nth-child(6) { --section-index: 5; }
+section[data-section-id]:nth-child(7) { --section-index: 6; }
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-6);
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    min-height: 24px;
+}
+.header-left {
+    flex: 1 1 200px;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+}
+.header-right {
+    flex: 1 1 200px;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--space-3);
+}
+h1 {
+    font-size: var(--type-2xl);
+    color: var(--bamboo-light);
+    font-weight: 700;
+    letter-spacing: 0.05em;
+}
+.subtitle {
+    font-size: var(--type-xs);
+    color: var(--text-secondary);
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-top: var(--space-1);
+}
+
+/* ============================================================
+   RESPONSIVE — Canonical breakpoints
+   NOTE: @media conditions use literal pixel values (CSS does not
+   permit custom properties inside @media conditions).
+   Keep these in sync with variables.css:
+     ≤480px  → mobile
+     ≤768px  → tablet / narrow Obsidian sidebar
+     ≤1024px → small desktop
+     ≥1025px → wide desktop
+     ≤360px  → tiny phone (rare, emergency only)
+   ============================================================ */
+
+/* Touch targets — global minimum for ALL sizes (WCAG 2.5.8).
+   Mobile rule below bumps to comfortable 48px on small screens.
+   裸标签（button/a/input/select/textarea）用 :where() 降为 0 权重默认值，
+   组件类（.fab-action-btn 等）保持原权重；任一组件类均可无竞赛覆写最小触控尺寸。 */
+:where(button,
+[role="button"],
+a,
+input,
+select,
+textarea),
+.fab-action-btn,
+.quick-nav-btn,
+.goal-row-main,
+.goal-row,
+.bamboo-card,
+.bamboo-card-header,
+.todo-item-action,
+.section-title,
+.section-toggle,
+.date-nav-btn,
+.edit-btn,
+.view-toggle-btn,
+.wallet-action,
+.history-close,
+.modal-close,
+.tooltip-close,
+.kpi-card,
+.history-item,
+.empty-state-card,
+.expand-btn {
+    min-height: var(--touch-target);
+    min-width: var(--touch-target);
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* 伪元素扩展热区：固定小尺寸且布局敏感的交互元素保持视觉尺寸不变 */
+.touch-target-sm,
+.flip-stub-btn,
+.drp-close-btn,
+.drp-nav-btn,
+.display-panel-close,
+.sm-btn,
+.view-toggle-btn-sm,
+.shop-history-arrow {
+    position: relative;
+}
+.touch-target-sm::before,
+.flip-stub-btn::before,
+.drp-close-btn::before,
+.drp-nav-btn::before,
+.display-panel-close::before,
+.sm-btn::before,
+.view-toggle-btn-sm::before,
+.shop-history-arrow::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: var(--touch-target);
+    height: var(--touch-target);
+    transform: translate(-50%, -50%);
+}
+
+/* === MOBILE (≤480px): phone in portrait, tiny Obsidian sidebar === */
+@media (max-width: 480px) {
+    /* Larger comfortable touch targets on mobile */
+    :where(button,
+    [role="button"]),
+    .fab-action-btn {
+        min-height: var(--touch-comfortable);
+        min-width: var(--touch-comfortable);
+    }
+
+    /* Minimum card heights for reliable tap */
+    .bamboo-card {
+        min-height: 88px;
+    }
+
+    /* Body & container: tighter padding, smaller radii */
+    :host {
+        padding: var(--space-4) var(--space-3);
+    }
+
+    #main-container {
+        padding: 0 var(--space-3);
+    }
+
+    .container {
+        padding: var(--fluid-gutter);
+        border-radius: var(--radius-2xl);
+        width: 100%;
+        max-width: 100%;
+    }
+
+    /* Header: stacked on mobile instead of inline */
+    .header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--fluid-stack);
+    }
+    .header-left {
+        justify-content: flex-start;
+        flex: 0 0 auto;
+    }
+    .header-right {
+        justify-content: flex-start;
+        flex: 0 0 auto;
+    }
+
+    /* Date nav: compact gap + sizing */
+    .date-nav-center {
+        gap: 6px;
+    }
+    .date-display-main {
+        font-size: var(--type-md);
+    }
+}
+
+/* === TABLET / NARROW SIDEBAR (≤768px)
+   Rules here ALSO apply to ≤480px due to cascade. */
+@media (max-width: 768px) {
+    #main-container {
+        /* 移动端（含普通 iframe 中央视图）移除顶部留白，避免露出白底 */
+        padding: 0 var(--space-4);
+    }
+
+    .bamboo-card-header {
+        padding: var(--space-1) var(--space-4);
+        min-height: 0;
+        --touch-target: 0; /* lint-disable: R10 局部覆写触控热区令牌（该 header 内不撑 ::before 热区） */
+    }
+
+    /* Ensure text doesn't overflow card edges */
+    .ticket-body,
+    .goal-row-main,
+    .timeline-entry {
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+}
+
+
+/* === WIDE DESKTOP (≥1025px): ensure comfortable reading width === */
+@media (min-width: 1025px) {
+    .container {
+        max-width: min(100% - 2rem, var(--content-max-width-wide));
+    }
+}
+
+/* === TINY VIEWPORT (≤360px): Obsidian 窄侧边栏 / 最小手机。
+   紧急压缩层。避免视觉破坏 — 它应该只是 ≤480px 设计的紧凑版本。
+   目标：ZERO 水平滚动。 */
+@media (max-width: 360px) {
+    :host {
+        padding: var(--space-2) var(--space-1);
+    }
+
+    .container {
+        padding: var(--space-3) var(--space-2);
+        border-radius: var(--radius-xl);
+        max-width: 100%;
+        width: 100%;
+    }
+
+    /* 头部：紧凑堆叠 */
+    .header {
+        gap: var(--space-2);
+    }
+
+    /* 票根时间数值：再紧凑一点 */
+    .ticket-time-value {
+        font-size: var(--type-lg);
+    }
+
+    /* 日期导航：更小的间距 */
+    .date-nav {
+        gap: var(--space-1);
+    }
+    .date-nav-btn {
+        padding: 6px;
+        min-height: var(--touch-comfortable);
+    }
+    .date-display-main {
+        font-size: var(--type-sm);
+    }
+
+    /* 段标题：更紧凑 */
+    .section-title {
+        font-size: var(--type-sm);
+        padding: 6px 10px;
+        min-height: var(--touch-comfortable);
+    }
+}
+
+/* 防止iOS上的高亮 */
+* {
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* === 装饰性 Emoji 隐藏于屏幕阅读器 === */
+.emoji-decorative {
+    font-style: normal;
+}
+
+.emoji-decorative::before {
+    content: attr(data-emoji);
+}
+
+[aria-label*="查看成就"] .emoji-decorative::before { 
+    content: '';
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9H4.5a2.5 2.5 0 0 1 0-5H6'/%3E%3Cpath d='M18 9h1.5a2.5 2.5 0 0 0 0-5H18'/%3E%3Cpath d='M4 22h16'/%3E%3Cpath d='M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22'/%3E%3Cpath d='M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22'/%3E%3Cpath d='M8 2H16'/%3E%3Cpath d='M18 2H16'/%3E%3Cpath d='M6 2H8'/%3E%3C/svg%3E");
+    background-size: contain;
+    background-repeat: no-repeat;
+    vertical-align: middle;
+}
+
+/* ========== Focus 可见性系统 ========== */
+:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+    transition: var(--focus-transition);
+}
+
+/* 裸标签 focus-visible 降为 0 权重默认值，组件级焦点环可无竞赛覆写 */
+:where(button:focus-visible,
+[role="button"]:focus-visible,
+a:focus-visible,
+select:focus-visible,
+input:focus-visible,
+textarea:focus-visible) {
+    outline: none;
+    box-shadow: var(--focus-ring);
+}
+
+/* ========== 触控区域保障 ========== */
+/* NOTE: Global touch target enforcement has moved up to the canonical
+   responsive section. This spot left empty intentionally — previously
+   there was a duplicate `prefers-reduced-motion` block here that we
+   removed because the first instance already covers the same rules. */
+
+/* ========== 全屏模式已移除，宽度由 --content-max-width 统一管理 ========== */
+
+/* 宽度调节过渡 — 仅在用户操作时添加，避免初始化闪烁 */
+.container.display-transition {
+    transition: max-width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+</style>
+<style data-src="assets/styles/module.css">
+/* 竹林模块 · 通用宿主视图样式（module.html）
+
+   本文件只定义「宿主外壳」的样式（铺满容器、滚动、空态提示）。
+   模块自身的界面样式由模块代码内联注入（单文件自包含打包，与主题同构），
+   因此这里刻意不预设任何业务外观，避免与模块 UI 打架。 */
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* 宿主根容器：撑满 iframe，内容超长时内部滚动（不撑破侧栏视图） */
+#module-view-root {
+  height: 100%;
+  overflow: auto;
+}
+
+.module-root {
+  height: 100%;
+}
+
+/* 空态 / 错误态提示（未指定模块、代码缺失、审计拒绝、渲染失败共用） */
+.module-empty {
+  padding: 24px 16px;
+  text-align: center;
+  font-size: 13px;
+  line-height: 1.7;
+  opacity: 0.75;
+}
+
+</style>
+</head>
+<body>
+  <!-- 竹林模块「通用宿主」视图：
+       本页不渲染任何具体业务，只负责承载——宿主把 moduleId 注入后，
+       ModuleManager 取回模块代码并在沙箱内执行，由模块自己 mount 出界面。
+       故依赖极简：仅常量 + 通信层（bridge）+ 模块管理器，不含日报渲染 / FAB 等主应用模块。 -->
+  <div id="module-view-root"></div>
+
+  <script type="module">
+"use strict";(()=>{var U=Object.defineProperty;var h=(n,e)=>{for(var t in e)U(n,t,{get:e[t],enumerable:!0})};var S={};h(S,{CONSTANTS:()=>V});var V={STORAGE:{UNDO_STACK_MAX:50}};var k={};h(k,{StorageKeys:()=>P});var P={SECTION_CONFIG:"section_config",ENABLE_SWIPE:"enableSwipe",WHITENOISE_TYPE:"whitenoise_type",THEME_SETTINGS:"bamboo_theme_settings",WHITENOISE_TIMER:"whitenoise_timer",WHITENOISE_CUSTOM:"whitenoise_custom",WHITENOISE_PLAYING:"whitenoise_playing",DAILY_REVIEW_DATA:"dailyReviewData",THEME:"theme",FAB_POSITION:"fab_position",ARCHIVE_FILTER:"bamboo-archive-filter",AUTO_SAVE_INTERVAL:"autoSaveInterval",WEATHER_CITY:"weather-city",AUTO_BACKUPS:"autoBackups",WEATHER_ENABLED:"weatherEnabled",WEATHER_EXPANDED:"weatherExpanded",QUOTE_SOURCE:"quoteSource",QUOTE_ENABLED:"quoteEnabled",AUTO_SYNC_THEME:"autoSyncTheme",USER_THEME_CHOSEN:"userThemeChosen",CUSTOM_TEMPLATES:"bamboo_custom_templates"},K={get(n,e=null){try{let t=localStorage.getItem(n);return t!==null?t:e}catch{return e}},getJSON(n,e=null){try{let t=localStorage.getItem(n);return t?JSON.parse(t):e}catch{return e}},set(n,e){try{localStorage.setItem(n,e)}catch{}},setJSON(n,e){try{localStorage.setItem(n,JSON.stringify(e))}catch{}},remove(n){try{localStorage.removeItem(n)}catch{}}};window.StorageAdapter=K;window.StorageKeys=P;var A={};h(A,{BridgeStorage:()=>T,storageManager:()=>G});var O="bamboo-license-gate",b=!1;function $(){return b}function I(n){let{root:e,activate:t,importBackup:a}=n,s=e||document;if(s.getElementById(O))return;b=!0;let r=document.createElement("div");r.id=O,r.className="bamboo-license-gate",r.innerHTML=`
+    <div class="blg-card">
+      <div class="blg-header">
+        <h1 class="blg-title">\u7AF9\u6797\u4FEE\u4ED9\u4F20</h1>
+        <p class="blg-subtitle">\u6FC0\u6D3B\u4EE5\u89E3\u9501\u5168\u90E8\u4FEE\u4ED9\u529F\u80FD</p>
+        <p class="blg-hook">\u4E00\u5957\u9B4F\u664B\u98CE\u5EA6\u7684\u4E2A\u4EBA\u76EE\u6807\u7BA1\u7406\u7CFB\u7EDF</p>
+        <div class="blg-intro">
+          \u57FA\u4E8E\u300COGAS\u300D\u7406\u5FF5\uFF0C\u4E13\u4E3A\u4E2A\u4EBA\u6253\u9020\u7684\u4E2D\u56FD\u98CE\u76EE\u6807\u81EA\u52A8\u5316\u5206\u914D\u7BA1\u7406\u7CFB\u7EDF\uFF1A\u4EE5\u76EE\u6807\u7BA1\u7406\u4E3A\u5F15\u64CE\uFF0C\u4E32\u8054\u8D77\u5F85\u529E\u4E0E\u65F6\u95F4\u7EBF\u8BB0\u5F55\u3001\u6DF1\u5EA6\u590D\u76D8\u3001\u7AF9\u6797\u5546\u5E97\u4E0E\u4FEE\u4ED9\u6210\u957F\u4F53\u7CFB\uFF0C\u4E8E\u9B4F\u664B\u98CE\u5EA6\u4E4B\u4E2D\uFF0C\u63A2\u7D22\u4E2D\u56FD\u98CE\u7684\u56FD\u9645\u5316\u8DEF\u7EBF\u3002
+        </div>
+      </div>
+
+      <div class="blg-divider-top"></div>
+
+      <div class="blg-pricing">
+        <div class="blg-price-main">
+          <span class="blg-price-label">\u9650\u65F6\u65E9\u9E1F\u4EF7</span>
+          <span class="blg-price-value">\xA549</span>
+        </div>
+        <div class="blg-price-divider"></div>
+        <div class="blg-price-secondary">
+          <span class="blg-price-label">\u6B63\u5F0F\u4EF7</span>
+          <span class="blg-price-value">\xA59999</span>
+        </div>
+      </div>
+
+      <div class="blg-tags">
+        <span class="blg-tag">\u4E00\u6B21\u6027\u4E70\u65AD</span>
+        <span class="blg-tag">\u6C38\u4E45\u53EF\u7528</span>
+      </div>
+
+      <div class="blg-form">
+        <input
+          class="blg-input"
+          type="text"
+          placeholder="\u8F93\u5165\u6FC0\u6D3B\u7801"
+          autocomplete="off"
+          spellcheck="false"
+        />
+        <button class="blg-btn" type="button">\u6FC0\u6D3B</button>
+      </div>
+
+      <div class="blg-msg" role="status"></div>
+
+      <div class="blg-divider"></div>
+
+      <details class="blg-backup">
+        <summary>\u6362\u8BBE\u5907 / \u6362\u4ED3\u5E93\uFF1F\u7528\u5907\u4EFD\u7801\u4E00\u952E\u6FC0\u6D3B</summary>
+        <input
+          class="blg-backup-input"
+          type="text"
+          placeholder="\u7C98\u8D34\u5907\u4EFD\u7801\uFF08BRIBACK- \u5F00\u5934\uFF09"
+          autocomplete="off"
+          spellcheck="false"
+        />
+        <button class="blg-backup-btn" type="button">\u5BFC\u5165\u5907\u4EFD\u7801</button>
+        <div class="blg-backup-msg" role="status"></div>
+      </details>
+
+      <div class="blg-help">
+        <div class="blg-help-icon">\u{1F4AC}</div>
+        <div class="blg-help-text">
+          <strong>\u9700\u8981\u8D2D\u4E70\uFF1A</strong>
+          \u6DFB\u52A0\u4F5C\u8005\u5FAE\u4FE1 <strong>yanhu94</strong>\uFF0C\u4ED8\u6B3E\u540E\u5373\u53EF\u83B7\u53D6\u4E13\u5C5E\u6FC0\u6D3B\u7801\u4EE5\u53CA\u52A0\u5165\u6838\u5FC3\u793E\u7FA4\u7684\u8D44\u683C\u3002\u6211\u5C06\u5168\u529B\u4E3A\u4F60\u670D\u52A1\u3002
+        </div>
+      </div>
+    </div>
+  `,s.appendChild(r);let o=r.querySelector(".blg-input"),l=r.querySelector(".blg-btn"),d=r.querySelector(".blg-msg");o.focus();let i=(y,u)=>{d.textContent=y||"",d.className="blg-msg"+(u?" blg-msg-"+u:"")},c=async()=>{let y=(o.value||"").trim();if(!y){i("\u8BF7\u8F93\u5165\u6FC0\u6D3B\u7801","error");return}l.disabled=!0,i("\u6821\u9A8C\u4E2D\u2026");try{let u=await t(y);u&&u.ok?(i("\u6FC0\u6D3B\u6210\u529F\uFF0C\u6B63\u5728\u89E3\u9501\u2026","ok"),b=!1,setTimeout(()=>{r.remove(),typeof EventBus<"u"&&EventBus.emit("license:activated",{})},600)):(i(u&&u.error?u.error:"\u6FC0\u6D3B\u7801\u65E0\u6548","error"),l.disabled=!1)}catch(u){i("\u6821\u9A8C\u5931\u8D25\uFF1A"+(u&&u.message?u.message:"\u672A\u77E5\u9519\u8BEF"),"error"),l.disabled=!1}};l.addEventListener("click",c),o.addEventListener("keydown",y=>{y.key==="Enter"&&c()});let g=r.querySelector(".blg-backup-input"),w=r.querySelector(".blg-backup-btn"),x=r.querySelector(".blg-backup-msg"),f=(y,u)=>{x.textContent=y||"",x.className="blg-backup-msg"+(u?" blg-backup-msg-"+u:"")},N=async()=>{if(typeof a!="function"){f("\u5F53\u524D\u73AF\u5883\u4E0D\u652F\u6301\u5907\u4EFD\u7801\u5BFC\u5165","error");return}let y=(g.value||"").trim();if(!y){f("\u8BF7\u7C98\u8D34\u5907\u4EFD\u7801","error");return}w.disabled=!0,f("\u5BFC\u5165\u4E2D\u2026");try{let u=await a(y);u&&u.ok?(f("\u5BFC\u5165\u6210\u529F\uFF0C\u6B63\u5728\u89E3\u9501\u2026","ok"),b=!1,setTimeout(()=>{r.remove(),typeof EventBus<"u"&&EventBus.emit("license:activated",{})},600)):(f(u&&u.error?u.error:"\u5907\u4EFD\u7801\u65E0\u6548","error"),w.disabled=!1)}catch(u){f("\u5BFC\u5165\u5931\u8D25\uFF1A"+(u&&u.message?u.message:"\u672A\u77E5\u9519\u8BEF"),"error"),w.disabled=!1}};w&&g&&(w.addEventListener("click",N),g.addEventListener("keydown",y=>{y.key==="Enter"&&N()}))}function R(n,e,t,a){if(n){b=!1;return}I({root:e,activate:t,importBackup:a})}typeof window<"u"&&(window.bootstrapLicenseGate=R,window.mountLicenseGate=I,window.isLicenseGateActive=$);function J(){return typeof window<"u"&&window.__bambooShadowRoot||null}function z(){return J()||document}function M(n){return z().getElementById(n)}function v(){return typeof document<"u"&&document.getElementById("bamboo-shadow-host")||null}function m(n,e){let t=v();t&&t.style.setProperty(n,e),typeof document<"u"&&document.documentElement&&document.documentElement.style.setProperty(n,e)}function F(){let n=v();if(n){let e={style:{setProperty:(t,a)=>m(t,a),removeProperty:t=>{n&&n.style.removeProperty(t),typeof document<"u"&&document.documentElement&&document.documentElement.style.removeProperty(t)}}};return Object.defineProperty(e,"classList",{configurable:!0,get:()=>n.classList}),e}return document.documentElement}function p(n,e,t){e/=100,t/=100;let a=o=>(o+n/30)%12,s=e*Math.min(t,1-t),r=o=>t-s*Math.max(-1,Math.min(a(o)-3,Math.min(9-a(o),1)));return`${Math.round(255*r(0))}, ${Math.round(255*r(8))}, ${Math.round(255*r(4))}`}function H(n,e=null){let t=F();if(!t)return;let a=typeof e=="number"&&!isNaN(e)?e:0,s=c=>Math.max(0,Math.min(100,c+a)),r=v(),o=r&&r.classList.contains("dark")||typeof document<"u"&&document.documentElement.classList.contains("dark"),l=o?10:0,d=(c,g)=>t.style.setProperty(c,g);d("--primary-rgb",p(n,27,s(48+l)));let i=p(n-7,40,s(25+(o?3:0)));d("--deep-rgb",i),d("--bamboo-deep-rgb",i),d("--pale-rgb",p(n,35,s(75+(o?5:0)))),d("--ticket-stub-bg-rgb",p(n,36,s(68+l))),d("--primary-alt-rgb",p(n,28,s(55+l))),d("--green-pale-rgb",p(n,27,s(83+(o?5:0)))),d("--green-bright-rgb",p(n,47,s(70+(o?8:0)))),d("--green-alt-rgb",p(n-16,44,s(75+(o?7:0)))),d("--green-very-bright-rgb",p(n,72,s(79+(o?6:0)))),d("--surface-dark-rgb",p(n,18,s(10))),d("--surface-dark-rgb-mid",p(n,18,s(13))),d("--surface-dark-rgb-end",p(n,18,s(16))),d("--surface-deep-rgb",p(n,14,s(8))),d("--surface-deep-alt-rgb",p(n,17,s(10))),d("--pale-green-rgb-dark",p(n,18,s(10))),d("--pale-green-alt-rgb-dark",p(n,18,s(13)))}var E=null,W=null,T=class{constructor(){this.ready=!1,this.fallbackMode=!1,this._pendingRequests=new Map,this._goalWriteChain=Promise.resolve(),this.sectionConfig=null,this.customNoises=null,this._messageHandler=this._onMessage.bind(this),window.addEventListener("message",this._messageHandler),this.initPromise=this.initialize()}async initialize(){this.ready=!0,this._host=typeof window<"u"&&(window.parent||window.top||window)||null;try{let e=await this._send("app:ready",{protocolVersion:window.AppProtocol?window.AppProtocol.PROTOCOL_VERSION:1});if(e&&e.sectionConfig&&(this.sectionConfig=e.sectionConfig),e&&e.customThemes&&Array.isArray(e.customThemes)&&this._handleCustomThemes(e.customThemes,e.activeTheme||null),e&&e.customNoises&&Array.isArray(e.customNoises)&&(this.customNoises=e.customNoises,typeof WhiteNoiseManager<"u"&&(WhiteNoiseManager.customNoises=this.customNoises,typeof NoisePanel<"u"&&NoisePanel.panelVisible&&NoisePanel._rebuild())),e&&typeof e.syncPaletteToObsidian=="boolean"&&(this.syncPaletteToObsidian=e.syncPaletteToObsidian),e&&typeof e.isMobile=="boolean"){window.__bambooIsMobile=e.isMobile,this.isMobile=e.isMobile;try{let t=window.__bambooShadowRoot;t&&t.host&&(e.isMobile?t.host.classList.add("platform-mobile"):t.host.classList.remove("platform-mobile"))}catch{}}if(e&&typeof e.isMainLeaf=="boolean"&&(window.__bambooIsMainLeaf=e.isMainLeaf),e&&e.pendingLayoutMode&&(window.__bambooPendingLayoutMode=e.pendingLayoutMode),e&&e.licenseActive===!1)try{let t=typeof window<"u"&&window.__bambooShadowRoot||document;R(!1,t,a=>this.activateLicense(a),a=>this.importBackup(a))}catch(t){console.warn("[Bridge] \u6FC0\u6D3B\u906E\u7F69\u6302\u8F7D\u5931\u8D25:",t&&t.message)}}catch(e){console.warn("[Bridge] Failed to get sectionConfig from plugin:",e.message)}typeof SectionRegistry<"u"&&SectionRegistry.applyBridgeConfig&&SectionRegistry.applyBridgeConfig(),this.syncPaletteToObsidian&&setTimeout(()=>{typeof window.DisplayManager<"u"&&window.DisplayManager._maybeSyncPalette&&window.DisplayManager._maybeSyncPalette()},60),await this._applySavedPalette(),setTimeout(()=>{typeof EventBus<"u"&&EventBus.emit("storage:initialized",{adapter:"bridge",fallback:!1})},0)}async _applySavedPalette(){if(!(typeof window.DisplayManager<"u"))try{let[e,t]=await Promise.all([this._send("storage:getSetting",{key:"displayHue"}),this._send("storage:getSetting",{key:"displayLightness"})]);typeof e=="number"&&Number.isFinite(e)&&m("--accent-hue",String(e)),typeof t=="number"&&Number.isFinite(t)&&m("--accent-lightness-offset",t+"%")}catch{}}_send(e,t){return new Promise((a,s)=>{let r="req_"+Date.now()+"_"+Math.random().toString(36).slice(2,8),o=setTimeout(()=>{this._pendingRequests.delete(r),s(new Error(`Bridge request timeout: ${e}`))},1e4);this._pendingRequests.set(r,{resolve:a,reject:s,timeout:o});let l=this._host||typeof window<"u"&&(window.parent||window.top||window)||null;if(!l||typeof l.postMessage!="function"){clearTimeout(o),this._pendingRequests.delete(r),s(new Error("Bridge host unreachable (no postMessage target)"));return}try{l.postMessage({type:e,id:r,payload:t},"*")}catch(d){clearTimeout(o),this._pendingRequests.delete(r),s(d instanceof Error?d:new Error("Bridge postMessage failed: "+d))}})}_onMessage(e){let t=this._host||typeof window<"u"&&window.parent||null,a=window.AppProtocol?window.AppProtocol.parseAppMessage(e,t):e.source===t?e.data:null;if(!a)return;if(a.type==="theme:syncPaletteEnabled"&&a.payload){this.syncPaletteToObsidian=a.payload.enabled;return}if(!a.id)return;let s=this._pendingRequests.get(a.id);s&&(this._pendingRequests.delete(a.id),clearTimeout(s.timeout),a.error?s.reject(new Error(a.error)):s.resolve(a.payload!==void 0?a.payload:null))}async ensureReady(){this.ready||await this.initPromise}async getDay(e){return await this.ensureReady(),this._send("storage:readDay",{dateKey:e})}async getAllDays(){return await this.ensureReady(),this._send("storage:listDays",{})}async getDayKeys(){return await this.ensureReady(),this._send("storage:getDayKeys",{})}async getDaysPaginated(e=0,t=30){return await this.ensureReady(),this._send("storage:getDaysPaginated",{page:e,pageSize:t})}async putDay(e){return await this.ensureReady(),this._send("storage:writeDay",{dateKey:e.date,data:e})}async deleteDay(e){return await this.ensureReady(),this._send("storage:deleteDay",{dateKey:e})}async getSetting(e){return await this.ensureReady(),this._send("storage:getSetting",{key:e})}async getTypewriterNotes(){return await this.ensureReady(),this._send("storage:getTypewriterNotes",{})}async putTypewriterNotes(e){return await this.ensureReady(),this._send("storage:putTypewriterNotes",{notes:e})}async getTypewriterWritingIndex(){return await this.ensureReady(),this._send("storage:getTypewriterWritingIndex",{})}async putTypewriterWritingIndex(e){return await this.ensureReady(),this._send("storage:putTypewriterWritingIndex",{idx:e})}async getTypewriterWritingDoc(e){return await this.ensureReady(),this._send("storage:getTypewriterWritingDoc",{id:e})}async putTypewriterWritingDoc(e,t){return await this.ensureReady(),this._send("storage:putTypewriterWritingDoc",{id:e,doc:t})}async deleteTypewriterWritingDoc(e){await this.ensureReady();try{return await this._send("storage:deleteTypewriterWritingDoc",{id:e})}catch(t){console.warn("[Bridge] deleteTypewriterWritingDoc \u4E0D\u53EF\u7528:",t&&t.message)}}async getTypewriterMindmapDoc(e){return await this.ensureReady(),this._send("storage:getTypewriterMindmapDoc",{id:e})}async putTypewriterMindmapDoc(e,t){return await this.ensureReady(),this._send("storage:putTypewriterMindmapDoc",{id:e,doc:t})}async deleteTypewriterMindmapDoc(e){await this.ensureReady();try{return await this._send("storage:deleteTypewriterMindmapDoc",{id:e})}catch(t){console.warn("[Bridge] deleteTypewriterMindmapDoc \u4E0D\u53EF\u7528:",t&&t.message)}}async getTypewriterNotesDoc(e){return await this.ensureReady(),this._send("storage:getTypewriterNotesDoc",{id:e})}async putTypewriterNotesDoc(e,t){return await this.ensureReady(),this._send("storage:putTypewriterNotesDoc",{id:e,doc:t})}async deleteTypewriterNotesDoc(e){await this.ensureReady();try{return await this._send("storage:deleteTypewriterNotesDoc",{id:e})}catch(t){console.warn("[Bridge] deleteTypewriterNotesDoc \u4E0D\u53EF\u7528:",t&&t.message)}}async putSetting(e,t){return await this.ensureReady(),this._send("storage:putSetting",{key:e,value:t})}async getAllSettings(){return await this.ensureReady(),this._send("storage:getAllSettings",{})}async getGoals(){return await this.ensureReady(),this._send("storage:getGoals",{})}async putGoals(e){return await this.ensureReady(),this._send("storage:putGoals",{goals:e})}async putGoal(e){return await this.ensureReady(),this._goalWriteChain=this._goalWriteChain.then(async()=>{let t=await this.getGoals()||[],a=t.findIndex(s=>s.id===e.id);return a>=0?t[a]=e:t.push(e),this.putGoals(t)}),this._goalWriteChain}async deleteGoal(e){return await this.ensureReady(),this._goalWriteChain=this._goalWriteChain.then(async()=>{let a=(await this.getGoals()||[]).filter(s=>s.id!==e);return this.putGoals(a)}),this._goalWriteChain}async getPurchaseHistory(){return await this.ensureReady(),this._send("storage:getPurchaseHistory",{})}async putPurchaseHistory(e){return await this.ensureReady(),this._send("storage:putPurchaseHistory",{data:e})}async getIncomeHistory(){return await this.ensureReady(),this._send("storage:getIncomeHistory",{})}async putIncomeHistory(e){return await this.ensureReady(),this._send("storage:putIncomeHistory",{data:e})}async exportAllData(){return await this.ensureReady(),this._send("storage:exportAll",{})}async importData(e,t={}){return await this.ensureReady(),this._send("storage:importAll",{data:e,options:t})}async activateLicense(e){return await this.ensureReady(),this._send("app:activateLicense",{code:e})}async exportBackup(){return await this.ensureReady(),this._send("app:exportBackup",{})}async importBackup(e){return await this.ensureReady(),this._send("app:importBackup",{backup:e})}async moveToCenter(e){return await this.ensureReady(),this._send("app:moveToCenter",{mode:e})}async moveToSidebar(){return await this.ensureReady(),this._send("app:moveToSidebar",{})}async collapseRightSidebar(){return await this.ensureReady(),this._send("app:collapseRightSidebar",{})}async expandRightSidebar(){return await this.ensureReady(),this._send("app:expandRightSidebar",{})}async clearAll(){return await this.ensureReady(),this._send("storage:clearAll",{})}getSectionConfig(){return this.sectionConfig}async saveSectionConfig(e){this.sectionConfig=e;try{return await this._send("app:saveSectionConfig",e)}catch{typeof localStorage<"u"&&StorageAdapter.set(StorageKeys.SECTION_CONFIG,JSON.stringify(e))}}getCustomNoises(){return this.customNoises}async saveCustomNoises(e){this.customNoises=e;try{return await this._send("app:saveCustomNoises",e)}catch{typeof localStorage<"u"&&StorageAdapter.set(StorageKeys.WHITENOISE_CUSTOM,JSON.stringify(e))}}_loadLocalTemplates(){try{let e=StorageAdapter.get(StorageKeys.CUSTOM_TEMPLATES),t=e?JSON.parse(e):[];return Array.isArray(t)?t:[]}catch{return[]}}async getCustomTemplates(){try{return await this._send("storage:getCustomTemplates",{})}catch{return null}}async saveCustomTemplate(e){try{return await this._send("storage:putCustomTemplate",{template:e})}catch{if(typeof localStorage<"u"){let a=this._loadLocalTemplates(),s=a.findIndex(r=>r.id===e.id);s>=0?a[s]=e:a.push(e),StorageAdapter.set(StorageKeys.CUSTOM_TEMPLATES,JSON.stringify(a))}}}async deleteCustomTemplate(e){try{return await this._send("storage:deleteCustomTemplate",{id:e})}catch{if(typeof localStorage<"u"){let a=this._loadLocalTemplates().filter(s=>s.id!==e);StorageAdapter.set(StorageKeys.CUSTOM_TEMPLATES,JSON.stringify(a))}}}async getHealthOverview(){await this.ensureReady();try{return await this._send("app:getHealthOverview",{})}catch(e){return console.warn("[Bridge] app:getHealthOverview \u4E0D\u53EF\u7528\uFF0C\u964D\u7EA7\u4E3A\u672C\u5730\u8BA1\u7B97:",e&&e.message),null}}async getCultivationRealm(){await this.ensureReady();try{return await this._send("app:getCultivationRealm",{})}catch(e){return console.warn("[Bridge] app:getCultivationRealm \u4E0D\u53EF\u7528\uFF0C\u964D\u7EA7\u4E3A null:",e&&e.message),null}}async getBambooCoinBalance(){await this.ensureReady();try{return await this._send("app:getBambooCoinBalance",{})}catch(e){return console.warn("[Bridge] app:getBambooCoinBalance \u4E0D\u53EF\u7528\uFF0C\u964D\u7EA7\u4E3A 0:",e&&e.message),0}}async getBambooCoinAvailableBalance(){await this.ensureReady();try{return await this._send("app:getBambooCoinAvailableBalance",{})}catch(e){return console.warn("[Bridge] app:getBambooCoinAvailableBalance \u4E0D\u53EF\u7528\uFF0C\u964D\u7EA7\u4E3A 0:",e&&e.message),0}}async getFile(e){let t=(e||"").trim();if(!t)return"";await this.ensureReady();try{let a=await this._send("file:get",{filename:t});return typeof a=="string"?a:""}catch(a){return console.warn("[Bridge] getFile("+t+") failed:",a.message),""}}async writeFile(e,t){let a=(e||"").trim();if(!a)return null;await this.ensureReady();try{return await this._send("file:write",{path:a,content:typeof t=="string"?t:""})}catch(s){return console.warn("[Bridge] writeFile \u4E0D\u53EF\u7528:",s&&s.message),null}}async exportMindmap(e,t){let a=(e||"").trim();if(!a)return null;await this.ensureReady();try{return await this._send("app:exportMindmap",{path:a,content:typeof t=="string"?t:""})}catch(s){return console.warn("[Bridge] exportMindmap \u4E0D\u53EF\u7528:",s&&s.message),null}}async toggleZen(){await this.ensureReady();try{let e=await this._send("app:toggleZen",{});return!!(e&&e.zen)}catch(e){return console.warn("[Bridge] toggleZen \u4E0D\u53EF\u7528:",e&&e.message),!1}}async openScrollView(e){await this.ensureReady();try{return await this._send("app:openScroll",{feature:e||null})}catch(t){console.warn("[Bridge] app:openScroll \u4E0D\u53EF\u7528:",t&&t.message)}}async openScrollLeftSidebar(e){await this.ensureReady();try{return await this._send("app:openScrollLeftSidebar",{feature:e||null})}catch(t){console.warn("[Bridge] app:openScrollLeftSidebar \u4E0D\u53EF\u7528:",t&&t.message)}}async requestTheme(){await this.ensureReady();try{return await this._send("app:getTheme",{})}catch(e){console.warn("[Bridge] app:getTheme \u4E0D\u53EF\u7528:",e&&e.message)}}async toggleObsidianTheme(e){try{await this.ensureReady();let t=typeof e=="boolean"?{isDark:e}:{};return await this._send("app:toggleObsidianTheme",t)}catch(t){return console.warn("[Bridge] app:toggleObsidianTheme \u4E0D\u53EF\u7528:",t&&t.message),null}}async openFile(e){await this.ensureReady();try{return await this._send("app:openFile",{path:e})}catch(t){console.warn("[Bridge] app:openFile \u4E0D\u53EF\u7528:",t&&t.message)}}getCurrentAdapterType(){return"bridge"}_handleCustomThemes(e,t=null){if(!(!e||e.length===0)&&!(typeof ThemeEffects>"u")){for(let a of e)try{window.ThemeEffects.registerExternalManifest(a.name,a.meta||{})}catch(s){console.warn(`[Bridge] \u81EA\u5B9A\u4E49\u4E3B\u9898\u6E05\u5355 "${a.name}" \u767B\u8BB0\u5931\u8D25:`,s.message)}if(t&&t.name&&typeof t.code=="string")try{window.ThemeEffects.themes[t.name]||window.ThemeEffects.registerExternal(t.name,t.code)}catch(a){console.warn(`[Bridge] \u6FC0\u6D3B\u4E3B\u9898 "${t.name}" \u6CE8\u518C\u5931\u8D25:`,a.message)}}}async requestThemeCode(e){await this.ensureReady();try{let t=await this._send("theme:load",{name:e});return t&&t.ok&&typeof t.code=="string"?t.code:null}catch(t){return console.warn("[Bridge] \u4E3B\u9898\u4EE3\u7801\u52A0\u8F7D\u5931\u8D25:",e,t&&t.message),null}}async fetchMarketManifest(){await this.ensureReady();try{let e=await this._send("market:manifest",{});if(e&&e.ok&&e.manifest){let t=e.manifest;return t.installed=e.installed||{},t}return null}catch(e){return console.warn("[Bridge] \u5E02\u573A\u6E05\u5355\u62C9\u53D6\u5931\u8D25:",e&&e.message),null}}async installMarketTheme(e,t,a){await this.ensureReady();try{let s=await this._send("market:install",{id:e,url:t,version:a||""});return!!(s&&s.ok)}catch(s){return console.warn("[Bridge] \u4E3B\u9898\u5B89\u88C5\u5931\u8D25:",e,s&&s.message),!1}}async uninstallMarketTheme(e){await this.ensureReady();try{let t=await this._send("market:uninstall",{id:e});return!!(t&&t.ok)}catch(t){return console.warn("[Bridge] \u4E3B\u9898\u5378\u8F7D\u5931\u8D25:",e,t&&t.message),!1}}async fetchModuleMarketManifest(){await this.ensureReady();try{let e=await this._send("module:market:manifest",{});return e&&e.ok&&e.manifest?{manifest:e.manifest,installed:e.installed||{}}:null}catch(e){return console.warn("[Bridge] \u6A21\u5757\u5E02\u573A\u6E05\u5355\u62C9\u53D6\u5931\u8D25:",e&&e.message),null}}async installMarketModule(e,t,a){await this.ensureReady();try{let s=await this._send("module:install",{id:e,url:t,version:a||""});return!!(s&&s.ok)}catch(s){return console.warn("[Bridge] \u6A21\u5757\u5B89\u88C5\u5931\u8D25:",e,s&&s.message),!1}}async uninstallMarketModule(e){await this.ensureReady();try{let t=await this._send("module:uninstall",{id:e});return!!(t&&t.ok)}catch(t){return console.warn("[Bridge] \u6A21\u5757\u5378\u8F7D\u5931\u8D25:",e,t&&t.message),!1}}async listModules(){await this.ensureReady();try{let e=await this._send("module:list",{});return e&&e.ok&&Array.isArray(e.modules)?e.modules:[]}catch(e){return console.warn("[Bridge] \u6A21\u5757\u6E05\u5355\u62C9\u53D6\u5931\u8D25:",e&&e.message),[]}}async loadModuleCode(e){await this.ensureReady();try{let t=await this._send("module:load",{id:e});return t&&t.ok&&typeof t.code=="string"?t.code:(console.warn("[Bridge] \u6A21\u5757\u4EE3\u7801\u52A0\u8F7D\u5931\u8D25:",e),null)}catch(t){return console.warn("[Bridge] \u6A21\u5757\u4EE3\u7801\u52A0\u8F7D\u5931\u8D25:",e,t&&t.message),null}}async saveModuleData(e,t){await this.ensureReady();try{let a=await this._send("module:saveData",{id:e,data:t||{}});return!!(a&&a.ok)}catch(a){return console.warn("[Bridge] \u6A21\u5757\u6570\u636E\u4FDD\u5B58\u5931\u8D25:",e,a&&a.message),!1}}async loadModuleData(e){await this.ensureReady();try{let t=await this._send("module:loadData",{id:e});return t&&t.ok&&t.data||null}catch(t){return console.warn("[Bridge] \u6A21\u5757\u6570\u636E\u8BFB\u53D6\u5931\u8D25:",e,t&&t.message),null}}async moduleListFiles(e,t){await this.ensureReady();try{let a=await this._send("module:listFiles",{folder:e,recursive:!!t});return a&&a.ok&&Array.isArray(a.files)?a.files:[]}catch(a){return console.warn("[Bridge] \u6A21\u5757\u6587\u4EF6\u5217\u8868\u5931\u8D25:",e,a&&a.message),[]}}async moduleReadFile(e){await this.ensureReady();try{let t=await this._send("module:readFile",{path:e});return t&&t.ok&&typeof t.content=="string"?t.content:null}catch(t){return console.warn("[Bridge] \u6A21\u5757\u6587\u4EF6\u8BFB\u53D6\u5931\u8D25:",e,t&&t.message),null}}async moduleOpenFile(e){await this.ensureReady();try{let t=await this._send("module:openFile",{path:e});return!!(t&&t.ok)}catch(t){return console.warn("[Bridge] \u6A21\u5757\u6253\u5F00\u6587\u4EF6\u5931\u8D25:",e,t&&t.message),!1}}async moduleResolveResource(e){await this.ensureReady();try{let t=await this._send("module:resolveResource",{path:e});return t&&t.ok&&typeof t.url=="string"?t.url:null}catch(t){return console.warn("[Bridge] \u6A21\u5757\u8D44\u6E90\u89E3\u6790\u5931\u8D25:",e,t&&t.message),null}}async moduleRenderMarkdown(e){await this.ensureReady();try{let t=await this._send("module:renderMarkdown",e||{});return t&&t.ok&&typeof t.html=="string"?t.html:""}catch(t){return console.warn("[Bridge] \u6A21\u5757 markdown \u6E32\u67D3\u5931\u8D25:",t&&t.message),""}}async moduleWriteFile(e,t){await this.ensureReady();try{let a=await this._send("module:writeFile",{path:e,content:t});return!!(a&&a.ok)}catch(a){return console.warn("[Bridge] \u6A21\u5757\u5199\u6587\u4EF6\u5931\u8D25:",e,a&&a.message),!1}}async moduleOpenReader(e){await this.ensureReady();try{let t=await this._send("module:openReader",{path:e});return!!(t&&t.ok)}catch(t){return console.warn("[Bridge] \u6A21\u5757\u6253\u5F00\u9605\u8BFB\u89C6\u56FE\u5931\u8D25:",e,t&&t.message),!1}}async moduleToggleTheme(e){await this.ensureReady();try{let t=await this._send("module:toggleTheme",{isDark:e});return!!(t&&t.ok)}catch(t){return console.warn("[Bridge] \u6A21\u5757\u5207\u6362\u660E\u6697\u5931\u8D25:",t&&t.message),!1}}async openModule(e,t){await this.ensureReady();try{let a=await this._send("app:openModule",{moduleId:e,location:t||"left"});return!!(a&&a.ok)}catch(a){return console.warn("[Bridge] \u6253\u5F00\u6A21\u5757\u5931\u8D25:",e,a&&a.message),!1}}isFallbackMode(){return this.fallbackMode}destroy(){window.removeEventListener("message",this._messageHandler),this._pendingRequests.clear()}};window.addEventListener("message",n=>{if(n.source!==window.parent)return;let e=n.data;if(!e)return;if(e.type==="theme:followDisabled"){typeof window.DisplayManager<"u"&&window.DisplayManager._restoreUserHue&&window.DisplayManager._restoreUserHue(),typeof window.DisplayManager<"u"&&window.DisplayManager._restoreUserBg&&window.DisplayManager._restoreUserBg(),typeof window.DisplayManager<"u"&&window.DisplayManager._restoreUserText&&window.DisplayManager._restoreUserText();return}if(e.type==="goals:changed"){typeof window.GoalService<"u"&&window.GoalService.load&&window.GoalService.load();return}if(e.type!=="theme:changed")return;if(e.payload&&typeof e.payload.isDark=="boolean")if(typeof store<"u"){let s=store.getState?store.getState():store.state,r=s&&s.ui;r&&r.autoSyncTheme===!1||store.setDarkMode(e.payload.isDark,!0)}else{let s=document.getElementById("bamboo-shadow-host");s&&s.classList.toggle("dark",e.payload.isDark),typeof document<"u"&&document.documentElement&&document.documentElement.classList.toggle("dark",e.payload.isDark)}let t=e.payload&&typeof e.payload.hue=="number"?e.payload.hue:null,a=e.payload&&typeof e.payload.lightnessOffset=="number"?e.payload.lightnessOffset:null;(t!==null||a!==null)&&(typeof window.DisplayManager<"u"&&window.DisplayManager._applyHue?(t!==null&&window.DisplayManager._applyHue(t,!0),a!==null&&window.DisplayManager._applyLightness(a,!0)):typeof m=="function"&&(t!==null&&(m("--accent-hue",String(t)),E=t),a!==null&&(m("--accent-lightness-offset",a+"%"),W=a),E!==null&&H(E,W))),e.payload&&typeof e.payload.bg=="string"&&typeof window.DisplayManager<"u"&&window.DisplayManager._applyObsidianBg&&window.DisplayManager._applyObsidianBg(e.payload.bg,!0),e.payload&&(typeof e.payload.textNormal=="string"||typeof e.payload.textMuted=="string")&&typeof window.DisplayManager<"u"&&window.DisplayManager._applyObsidianText&&window.DisplayManager._applyObsidianText(e.payload.textNormal,e.payload.textMuted,!0)});window.addEventListener("message",n=>{if(n.source!==window.parent)return;let e=n.data;if(!(typeof store>"u"||typeof Handlers>"u"))switch(e.type){case"nav:prevDay":store.navigateDate(-1);break;case"nav:nextDay":store.navigateDate(1);break;case"nav:today":store.goToDate(new Date);break;case"action:openStats":typeof StatsModal<"u"&&StatsModal.open();break;case"action:openSettings":typeof SettingsModal<"u"&&Handlers.openSettingsModal();break}});var G=new T;window.storageManager=G;var C={};h(C,{APP_MESSAGE_TYPES:()=>B,PROTOCOL_VERSION:()=>Y,isKnownType:()=>D,parseAppMessage:()=>q});var Y=1,B=["app:ready","app:close","app:saveSectionConfig","app:saveCustomNoises","app:theme:sync","theme:syncPalette","theme:appDarkMode","app:toggleObsidianTheme","app:listVaultAudioFiles","app:readVaultFile","app:readLocalFile","app:proxyAudioUrl","app:aiImproveGoal","app:moveToCenter","app:moveToSidebar","app:openArchive","app:openScroll","app:openScrollLeftSidebar","app:moveScroll","app:toggleZen","app:collapseRightSidebar","app:expandRightSidebar","app:getTheme","app:openFile","app:exportMindmap","app:getHealthOverview","app:getCultivationRealm","app:getBambooCoinBalance","app:getBambooCoinAvailableBalance","storage:readDay","storage:writeDay","storage:listDays","storage:deleteDay","storage:getSetting","storage:putSetting","storage:getAllSettings","storage:getGoals","storage:putGoals","storage:getPurchaseHistory","storage:putPurchaseHistory","storage:getIncomeHistory","storage:putIncomeHistory","storage:getDayKeys","storage:getDaysPaginated","storage:exportAll","storage:importAll","storage:clearAll","storage:getCustomTemplates","storage:putCustomTemplate","storage:deleteCustomTemplate","storage:getTypewriterNotes","storage:putTypewriterNotes","storage:getTypewriterWritingIndex","storage:putTypewriterWritingIndex","storage:getTypewriterWritingDoc","storage:putTypewriterWritingDoc","storage:deleteTypewriterWritingDoc","storage:getTypewriterMindmapDoc","storage:putTypewriterMindmapDoc","storage:deleteTypewriterMindmapDoc","storage:getTypewriterNotesDoc","storage:putTypewriterNotesDoc","storage:deleteTypewriterNotesDoc","file:list","file:get","file:write","file:delete","file:response","goals:changed","theme:changed","scroll:location","scroll:feature","scroll:zen","theme:followDisabled","theme:syncPaletteEnabled","nav:prevDay","nav:nextDay","nav:today","action:openStats","action:openSettings","market:manifest","market:install","market:uninstall","module:market:manifest","module:install","module:uninstall","module:list","module:load","module:saveData","module:loadData","module:listFiles","module:readFile","module:openFile","module:resolveResource","module:renderMarkdown","module:writeFile","module:openReader","app:openModule","module:context"],j=new Set(B);function D(n){return typeof n!="string"?!1:j.has(n)?!0:n.startsWith("storage:")||n.startsWith("file:")||n.startsWith("market:")||n.startsWith("module:")}function q(n,e){if(!n||n.source!==e)return null;let t=n.data;return!t||typeof t.type!="string"||!D(t.type)?null:{type:t.type,id:typeof t.id=="string"?t.id:void 0,payload:t.payload,protocolVersion:typeof t.protocolVersion=="number"?t.protocolVersion:void 0}}typeof window<"u"&&(window.AppProtocol={PROTOCOL_VERSION:1,APP_MESSAGE_TYPES:B,parseAppMessage:q,isKnownType:D});var L={};h(L,{ModuleManager:()=>_});var _={_mounted:null,_contextPromise:null,_contextResolve:null,async initModuleFab(){let n=typeof window<"u"&&window.storageManager||null;if(!n||typeof n.listModules!="function"){console.warn("[ModuleManager] storageManager \u4E0D\u53EF\u7528\uFF0C\u8DF3\u8FC7 FAB \u6CE8\u5165");return}let e=[];try{e=await n.listModules()}catch(i){console.warn("[ModuleManager] listModules \u5931\u8D25:",i&&i.message);return}if(!e||e.length===0)return;let t=M("fabActions");if(!t){console.warn("[ModuleManager] \u672A\u627E\u5230 #fabActions\uFF08DOM \u6839\uFF1A"+(typeof window<"u"&&window.__bambooShadowRoot?"shadowRoot":"document")+"\uFF09\uFF0C\u8DF3\u8FC7\u6CE8\u5165");return}let a=t.querySelector(".fab-action-group[data-modules-group]");a&&a.remove();let s=document.createElement("div");s.className="fab-action-row",s.setAttribute("data-modules","1");for(let i of e){if(!i.fab||!i.fab.label){console.warn("[ModuleManager] \u6A21\u5757\u300C"+i.id+"\u300D\u7F3A\u5931 fab \u58F0\u660E\uFF0C\u8DF3\u8FC7\u6309\u94AE\u6CE8\u5165");continue}s.appendChild(this._createFabButton(i))}if(s.children.length===0)return;let r=document.createElement("div");r.className="fab-action-group",r.setAttribute("data-modules-group","1");let o=document.createElement("div");o.className="fab-group-label",o.textContent="\u7AF9\u6797\u6A21\u5757",r.appendChild(o),r.appendChild(s);let l=document.createElement("button");l.className="fab-action-btn fab-market-btn",l.setAttribute("role","menuitem"),l.setAttribute("aria-label","\u901B\u6A21\u5757\u5E02\u573A");let d=document.createElement("span");d.className="fab-btn-label",d.textContent="\u901B\u6A21\u5757\u5E02\u573A",l.appendChild(d),l.addEventListener("click",i=>{i.preventDefault(),i.stopPropagation(),typeof FABManager<"u"&&FABManager&&typeof FABManager.close=="function"&&FABManager.close(),_.showModuleMarketPanel()}),r.appendChild(l),t.appendChild(r),typeof FABManager<"u"&&FABManager&&typeof FABManager.positionPanel=="function"&&FABManager.positionPanel()},_createFabButton(n){let e=document.createElement("button");e.className="fab-action-btn",e.setAttribute("role","menuitem"),e.setAttribute("aria-label",n.fab.label||n.name||n.id),e.setAttribute("data-action","module-"+n.id);let t=document.createElement("span");t.className="fab-btn-icon";let a=n.fab.icon||"package";typeof LucideUtils<"u"&&typeof LucideUtils.createIcon=="function"?t.innerHTML=LucideUtils.createIcon(a,{size:18}):t.textContent="\u25C8";let s=document.createElement("span");return s.className="fab-btn-label",s.textContent=n.fab.label||n.name||n.id,e.appendChild(t),e.appendChild(s),e.addEventListener("click",r=>{r.preventDefault(),r.stopPropagation();let o=typeof window<"u"&&window.storageManager||null;o&&typeof o.openModule=="function"&&o.openModule(n.id,n.location||"left"),typeof FABManager<"u"&&FABManager&&typeof FABManager.close=="function"&&FABManager.close()}),e},async showModuleMarketPanel(){let n=this;if(M("panel-module-market"))return;PanelManager.open("module-market","\u7AF9\u6797\u6A21\u5757\u5E02\u573A",'<div class="market-loading">\u6B63\u5728\u4ECE\u7AF9\u6797\u6A21\u5757\u5E02\u573A\u52A0\u8F7D\u2026</div>',{width:"560px"});let t=M("panel-module-market");if(!t)return;let a=t.querySelector(".fab-panel-body");if(!a)return;let s=typeof window<"u"&&window.storageManager||null;if(!s||typeof s.fetchModuleMarketManifest!="function"){a.innerHTML='<div class="market-empty">\u6A21\u5757\u5E02\u573A\u529F\u80FD\u6682\u4E0D\u53EF\u7528</div>';return}try{let r=await s.fetchModuleMarketManifest();if(!r||!r.manifest||!Array.isArray(r.manifest.modules)||r.manifest.modules.length===0){a.innerHTML='<div class="market-empty">\u6A21\u5757\u5E02\u573A\u6682\u65E0\u6A21\u5757</div>';return}n._renderModuleMarketBody(a,r.manifest.modules,r.installed||{})}catch{a.innerHTML='<div class="market-empty">\u6A21\u5757\u5E02\u573A\u52A0\u8F7D\u5931\u8D25\uFF0C\u8BF7\u7A0D\u540E\u91CD\u8BD5</div>'}},_renderModuleMarketBody(n,e,t){let a=this;t=t||{};let s=(e||[]).map(function(r){let o=!!t[r.id],l=r.version||"",d=t[r.id],i=o&&!!l&&(!d||d.version!==l),c='data-id="'+r.id+'"',g;return o?i?g='<button class="market-btn install" '+c+' data-action="update" data-url="'+(r.url||"")+'" data-version="'+l+'">\u66F4\u65B0</button><button class="market-btn uninstall" '+c+">\u5378\u8F7D</button>":g='<button class="market-btn uninstall" '+c+">\u5378\u8F7D</button>":g='<button class="market-btn install" '+c+' data-action="install" data-url="'+(r.url||"")+'" data-version="'+l+'">\u5B89\u88C5</button>','<div class="market-card'+(o?" installed":"")+'"><div class="market-card-main"><div class="market-card-head"><span class="market-card-name">'+(r.name||r.id)+"</span>"+(i?'<span class="market-update-badge">\u53EF\u66F4\u65B0 v'+l+"</span>":"")+"</div>"+(r.author?'<div class="market-card-author">\u4F5C\u8005\uFF1A'+r.author+(l?" \xB7 v"+l:"")+"</div>":"")+'</div><div class="market-card-actions">'+g+"</div></div>"}).join("");n.innerHTML='<div class="market-list">'+s+"</div>",n.querySelectorAll(".market-btn.install").forEach(function(r){r.addEventListener("click",function(){let o=r.getAttribute("data-id"),l=r.getAttribute("data-url"),d=r.getAttribute("data-version")||"",i=r.getAttribute("data-action")==="update";r.disabled||(r.disabled=!0,r.textContent=i?"\u66F4\u65B0\u4E2D\u2026":"\u5B89\u88C5\u4E2D\u2026",window.storageManager.installMarketModule(o,l,d).then(function(c){c?(t[o]={version:d},a._renderModuleMarketBody(n,e,t),Toast.showToast("\u300C"+((e.find(function(g){return g.id===o})||{}).name||o)+"\u300D\u5DF2\u5B89\u88C5\uFF0C\u60AC\u6D6E\u83DC\u5355\u5C06\u51FA\u73B0\u5165\u53E3","success")):(r.disabled=!1,r.textContent=i?"\u66F4\u65B0\u5931\u8D25\uFF0C\u91CD\u8BD5":"\u5B89\u88C5\u5931\u8D25\uFF0C\u91CD\u8BD5")}))})}),n.querySelectorAll(".market-btn.uninstall").forEach(function(r){r.addEventListener("click",function(){let o=r.getAttribute("data-id");r.disabled||(r.disabled=!0,r.textContent="\u5378\u8F7D\u4E2D\u2026",window.storageManager.uninstallMarketModule(o).then(function(l){l?(delete t[o],a._renderModuleMarketBody(n,e,t),Toast.showToast("\u300C"+o+"\u300D\u5DF2\u5378\u8F7D","success")):(r.disabled=!1,r.textContent="\u5378\u8F7D\u5931\u8D25\uFF0C\u91CD\u8BD5")}))})})},async initModuleView(n){let e=await this._waitForModuleContext();if(!e){n&&(n.innerHTML='<div class="module-empty">\u672A\u6307\u5B9A\u8981\u52A0\u8F7D\u7684\u6A21\u5757\u3002<br>\u8BF7\u4ECE\u60AC\u6D6E\u83DC\u5355\u7684\u300C\u6A21\u5757\u5E02\u573A\u300D\u5B89\u88C5\u5E76\u6253\u5F00\u6A21\u5757\u3002</div>');return}await this._mountModule(e,n)},_waitForModuleContext(n=5e3){if(this._contextPromise)return this._contextPromise;let e=this;return this._contextPromise=new Promise(t=>{let a=s=>{if(s.source!==window.parent)return;let r=s.data;r&&r.type==="module:context"&&typeof r.moduleId=="string"&&(window.removeEventListener("message",a),t(r.moduleId))};window.addEventListener("message",a),window.setTimeout(()=>{window.removeEventListener("message",a),t("")},n)}),this._contextPromise},async _mountModule(n,e){let t=typeof window<"u"&&window.storageManager||null;if(!t){e.innerHTML='<div class="module-empty">\u901A\u4FE1\u5C42\u672A\u5C31\u7EEA\uFF0C\u65E0\u6CD5\u52A0\u8F7D\u6A21\u5757\u3002</div>';return}let a=await t.loadModuleCode(n);if(!a){e.innerHTML='<div class="module-empty">\u6A21\u5757\u300C'+this._esc(n)+"\u300D\u7684\u4EE3\u7801\u4E0D\u5B58\u5728\u6216\u5DF2\u635F\u574F\u3002<br>\u53EF\u5230\u300C\u6A21\u5757\u5E02\u573A\u300D\u91CD\u65B0\u5B89\u88C5\u3002</div>";return}if(this._auditModuleCode(n,a)){e.innerHTML='<div class="module-empty">\u6A21\u5757\u300C'+this._esc(n)+"\u300D\u5305\u542B\u88AB\u7981\u6B62\u7684 API \u8C03\u7528\uFF0C\u5DF2\u62D2\u7EDD\u52A0\u8F7D\u3002</div>";return}let s=this._evalModule(n,a);if(!s||typeof s.mount!="function"){e.innerHTML='<div class="module-empty">\u6A21\u5757\u300C'+this._esc(n)+"\u300D\u683C\u5F0F\u4E0D\u6B63\u786E\uFF08\u7F3A\u5C11 mount \u65B9\u6CD5\uFF09\u3002</div>";return}let r=document.createElement("div");r.className="module-root",e.innerHTML="",e.appendChild(r);let o=n;this._mounted={id:o,mod:s,container:r};try{s.mount(r,this._buildApi(o,s))}catch(l){console.error('[ModuleManager] \u6A21\u5757 "'+o+'" mount \u5931\u8D25:',l&&l.message),r.innerHTML='<div class="module-empty">\u6A21\u5757\u300C'+this._esc(o)+"\u300D\u6E32\u67D3\u5931\u8D25\uFF1A"+this._esc(l&&l.message)+"</div>"}},_buildApi(n,e){let t=window.storageManager;return{id:n,name:e&&e.name||n,listFiles:(a,s)=>t.moduleListFiles(a,s),readFile:a=>t.moduleReadFile(a),openFile:a=>t.moduleOpenFile(a),resolveResource:a=>t.moduleResolveResource(a),renderMarkdown:a=>t.moduleRenderMarkdown(a),writeFile:(a,s)=>t.moduleWriteFile(a,s),openReader:a=>t.moduleOpenReader(a),toggleTheme:a=>t.moduleToggleTheme(a),saveData:a=>t.saveModuleData(n,a),loadData:()=>t.loadModuleData(n)}},destroyMounted(){if(this._mounted){try{typeof this._mounted.mod.destroy=="function"&&this._mounted.mod.destroy()}catch(n){console.warn("[ModuleManager] \u6A21\u5757 destroy \u51FA\u9519:",n&&n.message)}this._mounted.container&&(this._mounted.container.innerHTML=""),this._mounted=null}},_auditModuleCode(n,e){let a=e.replace(/`(?:\\.|[^`\\])*`/g,"``").replace(/'(?:\\.|[^'\\])*'/g,"''").replace(/"(?:\\.|[^"\\])*"/g,'""').replace(/\/\*[\s\S]*?\*\//g,"").replace(/\/\/.*$/gm,""),s=[{pattern:/\bwindow\.parent\b/,msg:"window.parent"},{pattern:/\bwindow\.top\b/,msg:"window.top"},{pattern:/\bwindow\.opener\b/,msg:"window.opener"},{pattern:/\bfetch\s*\(/,msg:"fetch()"},{pattern:/\bXMLHttpRequest\b/,msg:"XMLHttpRequest"},{pattern:/\bWebSocket\b/,msg:"WebSocket"},{pattern:/\bdocument\.cookie\b/,msg:"document.cookie"},{pattern:/\beval\s*\(/,msg:"eval()"},{pattern:/\bnew\s+Function\s*\(/,msg:"new Function()"},{pattern:/\bimport\s*\(/,msg:"import()"},{pattern:/\bimport\s+/,msg:"import statement"},{pattern:/\bnavigator\.sendBeacon\b/,msg:"navigator.sendBeacon"}];for(let r of s)if(r.pattern.test(a))return console.warn('[ModuleManager] \u6A21\u5757 "'+n+'" \u5305\u542B\u5371\u9669 API \u8C03\u7528: '+r.msg+"\uFF0C\u5DF2\u62D2\u7EDD\u52A0\u8F7D"),!0;return!1},_evalModule(n,e){try{let t="__bamboo_module_"+String(n).replace(/[^A-Za-z0-9_$]/g,"_"),a=["parent","top","opener","fetch","XMLHttpRequest","WebSocket","eval","import"],s=()=>{let i={};return{getItem:c=>Object.prototype.hasOwnProperty.call(i,c)?i[c]:null,setItem:(c,g)=>{i[c]=String(g)},removeItem:c=>{delete i[c]},clear:()=>{for(let c in i)delete i[c]},key:c=>Object.keys(i)[c]??null,get length(){return Object.keys(i).length}}},r=s(),o=s(),l={};for(let i of a){try{l[i]=window[i]}catch{l[i]=void 0}try{Object.defineProperty(window,i,{value:void 0,configurable:!0,writable:!1})}catch{}}let d=null;try{d=new Function("window","self","localStorage","sessionStorage","indexedDB",e+"; return typeof "+t+' !== "undefined" ? '+t+" : null;")(window,window,r,o,void 0)}finally{for(let i of a)try{Object.defineProperty(window,i,{value:l[i],configurable:!0,writable:!0})}catch{}}return d}catch(t){return console.error('[ModuleManager] \u6267\u884C\u6A21\u5757 "'+n+'" \u65F6\u51FA\u9519:',t&&t.message),null}},_esc(n){return String(n??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")}};window.ModuleManager=_;if(typeof document<"u"){let n=()=>{let e=document.getElementById("module-view-root");e?_.initModuleView(e):_.initModuleFab()};document.readyState==="loading"?document.addEventListener("DOMContentLoaded",n):n()}[S,k,A,C,L].forEach(function(n){Object.keys(n).forEach(function(e){window[e]=n[e]})});window.__WEBAPP_BUNDLE_READY=!0;})();
+
+</script>
+  
+  
+  
+  
+</body>
+</html>

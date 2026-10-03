@@ -193,7 +193,9 @@ export const PersistenceCoordinator = {
     // 顺带激活导图/载入对应文档/刷新 chrome/重置撤销栈——避免与手动切换分叉。
     const savedMode = await TypewriterStore.getMode();
     if (savedMode !== 'notes') {
-      await ctrl.setMode(ctx, savedMode);
+      // ctrl 是 TypewriterFeature 实例，对外暴露的是 _setMode(mode)（见 typewriterFeature.js），
+      // 不存在 setMode(ctx, mode)——旧写法会抛「e.setMode is not a function」导致打字机挂载失败。
+      await ctrl._setMode(savedMode);
     }
   },
   // (was _buildCards)

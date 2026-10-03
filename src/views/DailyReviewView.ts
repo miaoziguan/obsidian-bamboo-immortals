@@ -214,6 +214,15 @@ export class DailyReviewView extends ItemView {
       void plugin?.openScrollAt?.(location ?? 'center', undefined, true);
     };
 
+    // 竹林模块入口：webapp 悬浮菜单的模块按钮 → 插件打开该模块的宿主视图。
+    // 模块按需下载、代码不在主 bundle 内，故此处只转发模块 id（视图侧再经 module:load 取代码）。
+    this.appAPI.onOpenModule = (moduleId, location) => {
+      const plugin = this.plugin as
+        | { openModuleAt?: (loc: string, moduleId: string) => Promise<void> }
+        | undefined;
+      void plugin?.openModuleAt?.(location ?? 'left', moduleId);
+    };
+
     // 健康分单一数据源：webapp 通过 app:getHealthOverview 向插件请求权威健康快照，
     // 彻底消除插件(竹杖芒鞋)与前端(竹林修仙 webapp)各自计算导致的分数漂移。
     this.appAPI.setStrategyOverviewProvider(async () => {

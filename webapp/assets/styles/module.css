@@ -1,0 +1,32 @@
+/* 竹林模块 · 通用宿主视图样式（module.html）
+
+   本文件只定义「宿主外壳」的样式（铺满容器、滚动、空态提示）。
+   模块自身的界面样式由模块代码内联注入（单文件自包含打包，与主题同构），
+   因此这里刻意不预设任何业务外观，避免与模块 UI 打架。 */
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* 宿主根容器：撑满 iframe，内容超长时内部滚动（不撑破侧栏视图） */
+#module-view-root {
+  height: 100%;
+  overflow: auto;
+}
+
+.module-root {
+  height: 100%;
+}
+
+/* 空态 / 错误态提示（未指定模块、代码缺失、审计拒绝、渲染失败共用） */
+.module-empty {
+  padding: 24px 16px;
+  text-align: center;
+  font-size: 13px;
+  line-height: 1.7;
+  opacity: 0.75;
+}

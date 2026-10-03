@@ -340,7 +340,7 @@ export class BambooReaderView extends ItemView {
     const wrap = container.createDiv({ cls: 'bm-error' });
     const icon = wrap.createSpan({ cls: 'bm-error-icon' });
     setIcon(icon, 'alert-triangle');
-    wrap.createEl('div', { text: msg });
+    wrap.createDiv({ text: msg });
   }
 
   /* ── 工具栏 ── */
@@ -507,7 +507,7 @@ export class BambooReaderView extends ItemView {
         const sec = container.createDiv({ cls: 'bm-related' });
         sec.createDiv({ cls: 'bm-related-title', text: '相关阅读' });
         for (const s of scored) {
-          const link = sec.createEl('div', { cls: 'bm-related-link', text: s.a.title });
+          const link = sec.createDiv({ cls: 'bm-related-link', text: s.a.title });
           link.addEventListener('click', () => void this.plugin.openReaderView(s.a.path));
         }
       }

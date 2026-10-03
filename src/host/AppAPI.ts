@@ -868,15 +868,20 @@ export class AppAPI {
         }
       }
       if (markdown == null) { this.respondError(id, 'module:renderMarkdown 缺少 content/path'); return; }
+      // 渲染结果只以 innerHTML 字符串回传 webview，因此不需要 foreign document：
+      // activeDocument 就是 Obsidian 主窗口 document，其元素带 createEl/createDiv 增强。
+      // 挂一个一次性容器，渲染完（无论成败）立即卸载组件并移除节点，不留残留。
+      const el = activeDocument.body.createDiv();
+      const comp = new Component();
+      comp.load();
       try {
-        // 在 webview(activeDocument) 的 foreign document 上创建渲染容器，无法使用 Obsidian 的 createEl，故用原生 createElement
-        // eslint-disable-next-line -- 在 webview/foreign document 上创建容器，Obsidian 的 createEl 不适用
-        const el = activeDocument.createElement('div');
-        const comp = new Component();
         await MarkdownRenderer.render(this.app, markdown, el, sourcePath, comp);
         this.respond(id, { ok: true, html: el.innerHTML, sourcePath });
       } catch (e) {
         this.respondError(id, e instanceof Error ? e.message : '渲染失败');
+      } finally {
+        comp.unload();
+        el.remove();
       }
       return;
     }

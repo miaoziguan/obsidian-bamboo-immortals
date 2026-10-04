@@ -136,6 +136,57 @@
     color: var(--text-primary);
     transform: rotate(90deg);
 }
+/* 标题栏右侧按钮组：动作按钮在左、关闭按钮在最右，共用同一条中线 */
+.fab-panel-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    flex-shrink: 0;
+}
+/* 标题栏动作按钮（如模块市场「刷新清单」）：与关闭按钮同构 —— 同触摸目标尺寸、同悬停底色，
+   但悬停不做旋转，把「旋转」这个语义完整留给刷新进行中的 .is-spinning。 */
+.fab-panel-action {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 6px;
+    min-width: var(--touch-target);
+    min-height: var(--touch-target);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s, color 0.2s, opacity 0.2s;
+}
+.fab-panel-action:hover:not(:disabled) {
+    background: rgba(var(--black-rgb), 0.06);
+    color: var(--text-primary);
+}
+.fab-panel-action:focus-visible {
+    outline: 2px solid var(--bamboo-primary);
+    outline-offset: 2px;
+}
+/* 刷新进行中禁用：只降不透明度保持可见，按钮突然消失会让人以为界面坏了 */
+.fab-panel-action:disabled {
+    cursor: default;
+    opacity: 0.6;
+}
+.fab-panel-action.is-spinning {
+    color: var(--bamboo-primary);
+}
+.fab-panel-action.is-spinning .icon {
+    animation: fab-panel-action-spin 0.9s linear infinite;
+}
+@keyframes fab-panel-action-spin {
+    to { transform: rotate(360deg); }
+}
+/* 系统关掉动效时改用慢速旋转而非静止：静止会丢失「正在刷新」这层反馈 */
+@media (prefers-reduced-motion: reduce) {
+    .fab-panel-action.is-spinning .icon {
+        animation-duration: 2.5s;
+    }
+}
 .fab-panel-body {
     padding: var(--space-4);
     overflow-y: auto;

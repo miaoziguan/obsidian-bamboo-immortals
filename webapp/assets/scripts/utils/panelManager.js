@@ -38,14 +38,26 @@ export const PanelManager = {
             `;
         }
 
+        // 标题栏动作按钮（options.headerActions: [{ id, icon, label, onClick(btn) }]）：
+        // 渲染在关闭按钮左侧，同排。未传则只渲染关闭按钮，结构与旧版一致。
+        // 抽成通用能力而非在模块市场里手工插 DOM，是为了让后续面板（如主题市场）直接复用，
+        // 同时保证按钮能吃到与关闭按钮相同的触摸目标尺寸 / 悬停 / 焦点样式。
+        const actionConfs = Array.isArray(options.headerActions) ? options.headerActions : [];
+        const actionsHtml = actionConfs.map((a) => `
+                    <button class="fab-panel-action" data-panel-action="${a.id}" aria-label="${a.label || a.id}" title="${a.label || a.id}">
+                        ${LucideUtils.createIcon(a.icon || 'circle', { size: 14 })}
+                    </button>`).join('');
+
         panel.innerHTML = `
             <div class="fab-panel-header">
                 <div class="fab-panel-title">
                     ${title}
                 </div>
-                <button class="fab-panel-close" aria-label="关闭">
-                    ${LucideUtils.createIcon('x', { size: 14 })}
-                </button>
+                <div class="fab-panel-header-actions">${actionsHtml}
+                    <button class="fab-panel-close" aria-label="关闭">
+                        ${LucideUtils.createIcon('x', { size: 14 })}
+                    </button>
+                </div>
             </div>
             ${tabsHtml}
             <div class="fab-panel-body">
@@ -77,6 +89,18 @@ export const PanelManager = {
 
         // 绑定关闭事件
         panel.querySelector('.fab-panel-close').onclick = () => this.close();
+
+        // 绑定标题栏动作按钮：按 data-panel-action 回查配置，取 onClick 回调
+        panel.querySelectorAll('.fab-panel-action').forEach((btn) => {
+            const conf = actionConfs.find((a) => a.id === btn.getAttribute('data-panel-action'));
+            if (conf && typeof conf.onClick === 'function') {
+                btn.onclick = (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    conf.onClick(btn);
+                };
+            }
+        });
         
         // 阻止冒泡（除非是 ActionDispatcher 需要处理的动作）
         panel.onclick = (e) => {
@@ -149,7 +173,9 @@ export const PanelManager = {
         };
 
         header.addEventListener('pointerdown', (e) => {
-            if (e.target.closest('.fab-panel-close')) return;
+            // 标题栏内的按钮不是拖拽把手：不排除的话，按下按钮会先进入拖拽态
+            // （面板被拖动），点击动作随之失效。
+            if (e.target.closest('.fab-panel-close, .fab-panel-action')) return;
 
             isDragging = true;
             header.style.cursor = 'grabbing';

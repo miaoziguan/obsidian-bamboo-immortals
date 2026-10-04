@@ -161,25 +161,75 @@ export const ModuleManager = {
         const el = this;
         if (byId('panel-module-market')) return; // 已打开则不重复
         const content = '<div class="market-loading">正在从竹林模块市场加载…</div>';
-        PanelManager.open('module-market', '竹林模块市场', content, { width: '560px' });
+        PanelManager.open('module-market', '竹林模块市场', content, {
+            width: '560px',
+            // 标题栏刷新按钮：清单是远端拉取的，装/卸之后也可能在别处有新版本，
+            // 给一个不必关掉面板重开的就地刷新入口。
+            headerActions: [{
+                id: 'refresh',
+                icon: 'refreshCw',
+                label: '刷新清单',
+                onClick: (btn) => el._refreshModuleMarket(btn)
+            }]
+        });
         const panel = byId('panel-module-market');
         if (!panel) return;
         const body = panel.querySelector('.fab-panel-body');
         if (!body) return;
+        await el._loadModuleMarket(body);
+    },
+
+    /**
+     * 拉取市场清单并渲染。
+     * @param {HTMLElement} body 面板正文容器
+     * @param {Object} [opts] keepContent=true 时保留现有列表（刷新场景，避免闪白）
+     * @returns {Promise<boolean>} 是否成功渲染出新清单
+     */
+    async _loadModuleMarket(body, opts) {
+        const el = this;
+        const keep = !!(opts && opts.keepContent);
         const mgr = (typeof window !== 'undefined' && window.storageManager) || null;
         if (!mgr || typeof mgr.fetchModuleMarketManifest !== 'function') {
             body.innerHTML = '<div class="market-empty">模块市场功能暂不可用</div>';
-            return;
+            return false;
         }
+        // 刷新时保留旧列表，只转图标：先清空再回填会让面板闪一下白，观感更像「卡了一下」
+        if (!keep) body.innerHTML = '<div class="market-loading">正在从竹林模块市场加载…</div>';
         try {
             const data = await mgr.fetchModuleMarketManifest();
             if (!data || !data.manifest || !Array.isArray(data.manifest.modules) || data.manifest.modules.length === 0) {
                 body.innerHTML = '<div class="market-empty">模块市场暂无模块</div>';
-                return;
+                return false;
             }
             el._renderModuleMarketBody(body, data.manifest.modules, data.installed || {});
+            return true;
         } catch (e) {
             body.innerHTML = '<div class="market-empty">模块市场加载失败，请稍后重试</div>';
+            return false;
+        }
+    },
+
+    /** 标题栏「刷新清单」：转图标 → 重拉清单 → 提示结果 */
+    async _refreshModuleMarket(btn) {
+        if (btn && btn.disabled) return;
+        const panel = byId('panel-module-market');
+        const body = panel && panel.querySelector('.fab-panel-body');
+        if (!body) return;
+        if (btn) {
+            btn.disabled = true;
+            btn.classList.add('is-spinning');
+        }
+        const started = Date.now();
+        const ok = await this._loadModuleMarket(body, { keepContent: true });
+        // 网络快时动画会一闪而过，看着像「点了没反应」，补足到至少 550ms 再收
+        const elapsed = Date.now() - started;
+        if (elapsed < 550) await new Promise((r) => setTimeout(r, 550 - elapsed));
+        if (btn) {
+            btn.disabled = false;
+            btn.classList.remove('is-spinning');
+        }
+        if (typeof Toast !== 'undefined' && Toast && typeof Toast.showToast === 'function') {
+            Toast.showToast(ok ? '模块清单已刷新' : '刷新失败，请检查网络后重试', ok ? 'success' : 'error');
         }
     },
 

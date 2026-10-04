@@ -502,6 +502,53 @@ export class ThemeBridge {
     };
   }
 
+  // ===== 插件自有视图（竹杖芒鞋阅读视图）调色 =====
+
+  /**
+   * 阅读视图（BambooReaderView）竹青强调色所依赖的两个宿主变量。
+   *
+   * 与 INJECTED_VARS 分开管理：那 7 个是「Obsidian 原生界面」变量，受
+   * syncPaletteToObsidian 开关控制；这两个是**插件自有视图**变量，始终跟随
+   * webapp 的色相/明度滑块，故 restoreDefaults / restoreAllDefaults 都不碰它们
+   * （否则用户关掉「将调色同步到 Obsidian」时会把阅读视图的跟随一并关掉）。
+   */
+  private static readonly READER_VARS = ['--bm-hue', '--bm-lightness-offset'];
+
+  /** 最近一次写入阅读视图的调色，用于跳过重复 DOM 写，并在 clear 时判断是否需要清理 */
+  private static _lastReaderPalette: { hue: number; lightnessOffset: number } | null = null;
+
+  /**
+   * 把 webapp 调色值写入宿主 body，供阅读视图 CSS 派生竹青强调色。
+   *
+   * 与 applyPalette 的区别是**不受 syncPaletteToObsidian 开关约束**：该开关语义为
+   * 「是否把调色写回 Obsidian 原生界面」，而阅读视图是插件自己的界面；「所有视图
+   * 跟随主视图调色」属插件内部一致性要求（与 AppAPI 的 theme:syncPalette 分支里
+   * 无条件 broadcastTheme 同理）。变量写在 body 上，已打开的阅读视图即时生效——
+   * CSS 变量变更会触发重算与重绘，无需重渲染或重开视图。
+   *
+   * @param hue 色相 0–360
+   * @param lightnessOffset 明度偏移百分比（滑块范围 ±15），内部夹紧到 ±30 防御异常值
+   */
+  static applyReaderPalette(hue: number, lightnessOffset: number): void {
+    if (!Number.isFinite(hue) || !Number.isFinite(lightnessOffset)) return;
+    const lo = Math.max(-30, Math.min(30, lightnessOffset));
+    const h = ((Math.round(hue) % 360) + 360) % 360;
+    const last = ThemeBridge._lastReaderPalette;
+    if (last && last.hue === h && last.lightnessOffset === lo) return;
+    ThemeBridge._lastReaderPalette = { hue: h, lightnessOffset: lo };
+    activeDocument.body.style.setProperty('--bm-hue', String(h));
+    activeDocument.body.style.setProperty('--bm-lightness-offset', lo + '%');
+  }
+
+  /** 清除阅读视图调色变量（插件卸载时调用，避免在 Obsidian body 上留残留行内变量） */
+  static clearReaderPalette(): void {
+    if (!ThemeBridge._lastReaderPalette) return;
+    ThemeBridge._lastReaderPalette = null;
+    for (const key of ThemeBridge.READER_VARS) {
+      activeDocument.body.style.removeProperty(key);
+    }
+  }
+
   /**
    * 应用调色到 Obsidian 原生界面
    * Leading-edge + trailing 防抖：首次调用立即应用（消除滑块拖拽首帧延迟），

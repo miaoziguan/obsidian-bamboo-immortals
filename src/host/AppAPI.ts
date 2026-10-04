@@ -1084,6 +1084,10 @@ export class AppAPI {
     // ---- 调色同步（webapp → Obsidian）----
     if (type === 'theme:syncPalette') {
       const p = payload as { hue: number; lightnessOffset: number; isDark: boolean };
+      // 阅读视图（宿主自有 BambooReaderView）的竹青强调色：始终跟随滑块。
+      // 放在开关判断之外——「将调色同步到 Obsidian」只管原生界面那 7 个变量，
+      // 插件自有视图跟随主视图调色属内部一致性要求（与下方 broadcastTheme 同理）。
+      ThemeBridge.applyReaderPalette(p.hue, p.lightnessOffset);
       if (this.settings.syncPaletteToObsidian) {
         this.themeBridge.applyPalette(p.hue, p.lightnessOffset, p.isDark);
       }

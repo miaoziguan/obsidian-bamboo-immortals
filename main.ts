@@ -349,6 +349,10 @@ export default class BambooReviewPlugin extends Plugin {
     this.pluginUnloading = true;
     // 遍历 registry 清理所有视图实例注入的调色变量（含各自 trailing 防抖定时器）
     ThemeBridge.restoreAllDefaults();
+    // 另清阅读视图专用的 --bm-hue / --bm-lightness-offset：
+    // 它们不在 restoreAllDefaults 范围内（不受同步开关约束、随滑块始终生效），
+    // 卸载时需单独抹掉，否则会在 Obsidian body 上留残留行内变量。
+    ThemeBridge.clearReaderPalette();
   }
 
   /**

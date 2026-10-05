@@ -304,13 +304,15 @@ export const BambooGarden = {
             
             const layerMultiplier = width <= 2 ? 1.3 : (width <= 4 ? 1 : 0.8);
             const swaySpeed = (6 + Math.random() * 4) * layerMultiplier;
-            const static = isStatic[i];
+            // 原名 static：static 是严格模式保留字，而 ES module 恒为严格模式 ——
+            // 该文件作为模块单独加载时会整段解析失败（生产包因 esbuild 重命名才侥幸没炸）。
+            const isStaticOne = isStatic[i];
             
             html += `
                 <div class="bamboo-stalk" style="left: ${left}%; height: ${height}px; width: ${width}px; opacity: ${stalkOpacity}; transform: rotate(${lean}deg);">
-                    <div class="bamboo-inner" ${static ? '' : `style="animation-name: bambooSway${i % 6}; animation-duration: ${swaySpeed}s;"`}>
+                    <div class="bamboo-inner" ${isStaticOne ? '' : `style="animation-name: bambooSway${i % 6}; animation-duration: ${swaySpeed}s;"`}>
                         ${this.createBambooNodes(nodeCount, height)}
-                        ${this.createLeafCluster(height, static)}
+                        ${this.createLeafCluster(height, isStaticOne)}
                     </div>
                 </div>
             `;

@@ -297,29 +297,10 @@ html body .workspace-leaf-content[data-type="bamboo-immortals"] .view-header-tit
   }
 }
 
-/* ===== AI 规划审阅弹窗（竹林设计语言） ===== */
-.bamboo-ai-plan-modal {
-  max-width: 720px;
-  padding: 8px 0;
-}
-.bamboo-ai-plan-modal h2 {
-  font-family: 'PingFang SC', 'Noto Sans SC', 'Microsoft YaHei', -apple-system, BlinkMacSystemFont, sans-serif;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  margin: 0 0 8px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--background-modifier-border);
-  position: relative;
-}
-.bamboo-ai-plan-modal h2::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  bottom: -1px;
-  width: 24px;
-  height: 2px;
-  background: var(--interactive-accent);
-}
+/* ===== AI 规划台（竹林设计语言）=====
+   以下 .bamboo-ai-plan-* 为规划台共用视觉件（由 AgenticPlanController 产出）。
+   原「弹窗形态」专属规则已随 AgenticPlanModal 薄壳删除（该类名现已无任何产出方），
+   删除内容：弹窗限宽 / padding、其 h2 与 h2::before 强调线、input 与 select 的聚焦环。 */
 .bamboo-ai-plan-desc {
   color: var(--text-muted);
   font-size: var(--font-ui-small);
@@ -652,11 +633,6 @@ html body .workspace-leaf-content[data-type="bamboo-immortals"] .view-header-tit
 .bamboo-ai-plan-btn-primary:active {
   transform: translateY(1px);
 }
-.bamboo-ai-plan-modal input:focus,
-.bamboo-ai-plan-modal select:focus {
-  outline: 2px solid var(--interactive-accent);
-  outline-offset: 1px;
-}
 
 /* ===== 对话式规划审阅台（Agentic，Phase 4） ===== */
 /* 弹窗 / 中央窗口共用的基础布局：头部 + 双栏主体 + 底部 */
@@ -698,14 +674,6 @@ html body .workspace-leaf-content[data-type="bamboo-immortals"] .view-header-tit
   flex-direction: column;
   gap: 10px;
   padding-right: 4px;
-}
-
-/* 弹窗形态：限宽，双栏各自滚动（保留你熟悉的原始版面） */
-.bamboo-ai-plan-modal.bamboo-ai-agentic {
-  max-width: 1000px;
-}
-.bamboo-ai-plan-modal .bamboo-ai-agentic-right {
-  height: 64vh;
 }
 
 /* 中央窗口形态（ItemView）：占满整页，双栏在固定高度内各滚各的 */
@@ -827,7 +795,7 @@ html body .workspace-leaf-content[data-type="bamboo-immortals"] .view-header-tit
 }
 
 /* ===== AI 诊断报告弹窗（DiagnosisModal，飞轮：诊断→行动） =====
- * 设计语言：与 AI 规划模块（AgenticPlanModal）统一
+ * 设计语言：与 AI 规划台（PlanEditorView）统一
  *   - 主题色：var(--interactive-accent) — 紫色，Obsidian 默认
  *   - 状态色：保留（绿/黄/红/橙）但柔和化（透明背景 + 字色，无边框）
  *   - 圆角：10-12px · 间距：8pt 网格
@@ -1733,8 +1701,7 @@ html body .workspace-leaf-content[data-type="bamboo-immortals"] .view-header-tit
 .bamboo-reader-view .bm-title{font-size:calc(var(--bm-base-size,16px)*1.6);font-weight:700;line-height:1.4;letter-spacing:.01em;color:var(--text-normal);cursor:default;}
 .bamboo-reader-view .bm-meta{font-size:12px;color:var(--text-muted,#9a9a9a);margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
 .bamboo-reader-view .bm-sep{opacity:.5;}
-.bamboo-reader-view .bm-badge{font-size:11px;padding:1px 7px;border-radius:10px;background:color-mix(in srgb,var(--bm-bamboo) 12%,transparent);color:var(--bm-bamboo-deep);}
-.bamboo-reader-view .bm-updated{font-size:11px;color:var(--text-muted,#9a9a9a);margin:8px 0 0;opacity:.85;}
+.bamboo-reader-view .bm-updated{font-size:11px;color:var(--text-muted,#9a9a9a);margin:22px 0 0;padding-top:10px;border-top:1px solid var(--background-modifier-border,rgba(128,128,128,.2));opacity:.85;text-align:left;}
 .bamboo-reader-view .bm-reader-body{font-size:var(--bm-base-size,16px);line-height:1.75;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;padding:0;}
 .bamboo-reader-view .bm-reader-body p{margin-bottom:1.2em;text-align:justify;overflow-wrap:break-word;}
 .bamboo-reader-view .bm-reader-body h1,.bamboo-reader-view .bm-reader-body h2,.bamboo-reader-view .bm-reader-body h3{line-height:1.4;letter-spacing:.01em;font-weight:600;color:var(--text-normal);}

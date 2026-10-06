@@ -45,7 +45,9 @@ export const GoalService = {
             store.state.globalGoals = [];
         }
         store.notify();
-        // store.notify() 目前无 listener 注册，主动触发全局刷新以保证 AI 写入目标后立即可见
+        // notify 有活订阅者：renderers.connectStoreToRenderScheduler 会把 timeline/todo 置脏，
+        // 但「目标」板块不在该渲染桥范围内，故这里仍需显式 markSectionDirty 保证 AI 写入后立即可见。
+        // （原注释「目前无 listener 注册」是错误的，会导致误判 notify 为空操作。）
         if (typeof markSectionDirty === 'function') {
             markSectionDirty('goals');
             markSectionDirty('todo');

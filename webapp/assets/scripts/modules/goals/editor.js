@@ -1,4 +1,5 @@
 import { $, modalMount } from '../../utils/domRef.js';
+import { addMonthsClamped } from '../../utils/dateUtils.js';
 export const GOAL_TEMPLATES = [
     {
         id: 'blank',
@@ -135,8 +136,8 @@ export const GoalsEditor = {
         if (goal.progress === undefined) goal.progress = 0;
         if (!goal.items) goal.items = [];
         const today = new Date();
-        const oneMonthLater = new Date(today);
-        oneMonthLater.setMonth(oneMonthLater.getMonth() + 1);
+        // 默认结束日 = 同号加一月；目标月无此日则夹到月末（1/31 → 2/28，而非原生 setMonth 溢出的 3/3）
+        const oneMonthLater = addMonthsClamped(today, 1);
         const fmt = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         const defaultStart = fmt(today);
         const defaultEnd = fmt(oneMonthLater);
@@ -212,8 +213,8 @@ export const GoalsEditor = {
         if (!goal.items) goal.items = [];
         const newIdx = goal.items.length;
         const today = new Date();
-        const oneMonthLater = new Date(today);
-        oneMonthLater.setMonth(oneMonthLater.getMonth() + 1);
+        // 同 _ensureGoalDefaults：默认结束日走加月夹取，避免月末新建子项时多算 2~3 天
+        const oneMonthLater = addMonthsClamped(today, 1);
         const fmt = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         goal.items.push({
             name: '新子项目',
@@ -309,7 +310,7 @@ export const GoalsEditor = {
                 <div class="tmpl-body">
                     <div class="tmpl-list" data-pane="builtin">
                         ${builtinTemplates.map(t => `
-                            <div class="tmpl-card" data-tmpl-id="${t.id}">
+                            <div class="tmpl-card" data-tmpl-id="${HTMLUtils.escapeHtmlAttr(t.id)}">
                                 <div class="tmpl-card-icon">${t.icon}</div>
                                 <div class="tmpl-card-info">
                                     <span class="tmpl-card-name">${HTMLUtils.escapeHtml(t.name)}</span>
@@ -320,13 +321,13 @@ export const GoalsEditor = {
                     </div>
                     <div class="tmpl-list tmpl-list-hidden" data-pane="custom">
                         ${customTemplates.length > 0 ? customTemplates.map(t => `
-                            <div class="tmpl-card tmpl-card-custom" data-tmpl-id="${t.id}">
+                            <div class="tmpl-card tmpl-card-custom" data-tmpl-id="${HTMLUtils.escapeHtmlAttr(t.id)}">
                                 <div class="tmpl-card-icon">${t.icon}</div>
                                 <div class="tmpl-card-info">
                                     <span class="tmpl-card-name">${HTMLUtils.escapeHtml(t.name)}</span>
                                     <span class="tmpl-card-desc">${HTMLUtils.escapeHtml(t.desc)}</span>
                                 </div>
-                                <button class="tmpl-card-delete" data-tmpl-del="${t.id}" title="删除模板">${LucideUtils.createIcon('trash', { size: 14 })}</button>
+                                <button class="tmpl-card-delete" data-tmpl-del="${HTMLUtils.escapeHtmlAttr(t.id)}" title="删除模板">${LucideUtils.createIcon('trash', { size: 14 })}</button>
                             </div>
                         `).join('') : `
                             <div class="tmpl-empty">
@@ -466,7 +467,7 @@ export const GoalsEditor = {
                             </div>
                             <div class="tstd-icons">
                                 ${iconOptions.map((name, i) => `
-                                    <button class="tstd-icon-btn ${i === 0 ? 'active' : ''}" data-icon="${name}" title="${name}">
+                                    <button class="tstd-icon-btn ${i === 0 ? 'active' : ''}" data-icon="${HTMLUtils.escapeHtmlAttr(name)}" title="${HTMLUtils.escapeHtmlAttr(name)}">
                                         ${LucideUtils.createIcon(name, { size: 18, strokeWidth: 1.5 })}
                                     </button>
                                 `).join('')}

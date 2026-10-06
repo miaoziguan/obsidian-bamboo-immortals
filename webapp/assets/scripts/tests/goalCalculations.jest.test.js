@@ -5,7 +5,33 @@
  * goalCalculations.js 同时导出 CommonJS（Node/jest）和挂 window（浏览器）。
  */
 const { loadModule } = require('./__helpers__/testUtils');
-const g = loadModule('utils/goalCalculations.js', ['GoalCalculations']).GoalCalculations;
+
+// C 轮去重：formatDate 已收敛到 utils/dateUtils.js，goalCalculations 内部只剩转发。
+// loadModule 会剥离 import，必须注入真实实现，否则 IIFE 在求值期即抛 ReferenceError。
+const { formatDate: realFormatDate } = loadModule('utils/dateUtils.js', ['formatDate']);
+const g = loadModule('utils/goalCalculations.js', ['GoalCalculations'], { formatDate: realFormatDate }).GoalCalculations;
+
+describe('去重守卫：goalCalculations.formatDate 委托 dateUtils', () => {
+    test('应调用注入的 formatDate（唯一实现，不得再内联副本）', () => {
+        const spy = jest.fn(() => 'SPY');
+        // loadModule 的 globals 注入是「写全局」，而本模块的 formatDate 是经 globalThis 惰性
+        // 解析的 —— 用完必须还原，否则会把探针泄漏给本文件后续所有用例。
+        try {
+            const guarded = loadModule('utils/goalCalculations.js', ['GoalCalculations'], { formatDate: spy }).GoalCalculations;
+            expect(guarded.formatDate(new Date(2026, 0, 1))).toBe('SPY');
+            expect(spy).toHaveBeenCalled();
+        } finally {
+            global.formatDate = realFormatDate;
+        }
+    });
+
+    test('带真实实现时：日期 → YYYY-MM-DD，非法输入 → 空串', () => {
+        expect(g.formatDate(new Date(2026, 0, 5))).toBe('2026-01-05');
+        expect(g.formatDate(new Date('invalid'))).toBe('');
+        expect(g.formatDate(null)).toBe('');
+        expect(g.formatDate(undefined)).toBe('');
+    });
+});
 
 describe('goalCalculations 工具函数', () => {
     // ===== formatNumber =====

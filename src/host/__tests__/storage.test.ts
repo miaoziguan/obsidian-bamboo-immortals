@@ -11,7 +11,7 @@ describe('VaultStorage 存储操作', () => {
     await storage.ensureStructure();
   });
 
-  it('ensureStructure 创建 data 和 reviews 目录', async () => {
+  it('ensureStructure 后 putDay / getDay 可正常读写', async () => {
     const day = {
       date: '2026-07-13',
       metrics: { completedTasks: '3/5' },

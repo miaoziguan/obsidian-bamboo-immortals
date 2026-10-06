@@ -2,6 +2,20 @@
  * ShopManager - 竹林商店功能管理
  * 样式完全使用外部 CSS，详见 modal.css 中 "竹林商店 · 响应式样式体系" 部分
  */
+
+/**
+ * 记录归属的本地日历月份（YYYY-MM）。
+ * 写入侧（WalletService.localMonthKey）已按本地日历落库 month，此处首选它；
+ * 仅在其缺失（老数据 / 外部导入）时由 date 兜底 —— 不能用 date.slice(0, 7)，
+ * 那是 UTC 月，会让月首凌晨的消费只在「上月」标签下找得到。
+ */
+function localMonthOf(record) {
+    if (record && record.month) return record.month;
+    const d = new Date(record && record.date);
+    if (isNaN(d.getTime())) return '';
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
 export const ShopManager = {
     // 预设商品列表 - 分2类
     ITEMS: {
@@ -78,14 +92,14 @@ export const ShopManager = {
         const currentLabel = options.find(o => o.value === currentSort).label;
         return `
             <div class="shop-sort-dropdown">
-                <button class="shop-sort-btn" data-sort-category="${category}">
+                <button class="shop-sort-btn" data-sort-category="${HTMLUtils.escapeHtmlAttr(category)}">
                     <span class="shop-sort-label">${currentLabel}</span>
                     <span class="shop-sort-caret">▾</span>
                 </button>
-                <div class="shop-sort-menu" data-sort-menu="${category}">
+                <div class="shop-sort-menu" data-sort-menu="${HTMLUtils.escapeHtmlAttr(category)}">
                     ${options.map(o => `
                         <button class="shop-sort-option ${o.value === currentSort ? 'is-active' : ''}"
-                                data-sort-option="${o.value}" data-sort-category="${category}">${o.label}</button>
+                                data-sort-option="${HTMLUtils.escapeHtmlAttr(o.value)}" data-sort-category="${HTMLUtils.escapeHtmlAttr(category)}">${o.label}</button>
                     `).join('')}
                 </div>
             </div>
@@ -135,7 +149,7 @@ export const ShopManager = {
 
         // 就地更新排序按钮状态（不替换 DOM，避免事件委托失效）
         ['food', 'entertainment'].forEach(category => {
-            const menu = panel.querySelector(`[data-sort-menu="${category}"]`);
+            const menu = panel.querySelector(`[data-sort-menu="${HTMLUtils.escapeHtmlAttr(category)}"]`);
             if (menu) {
                 menu.style.display = 'none'; // 关闭菜单
                 // 更新选项高亮（使用 CSS 类 .is-active 替代内联样式）
@@ -144,7 +158,7 @@ export const ShopManager = {
                 });
             }
             // 更新按钮标签
-            const btn = panel.querySelector(`.shop-sort-btn[data-sort-category="${category}"]`);
+            const btn = panel.querySelector(`.shop-sort-btn[data-sort-category="${HTMLUtils.escapeHtmlAttr(category)}"]`);
             if (btn) {
                 const labelSpan = btn.querySelector('.shop-sort-label');
                 if (labelSpan) {
@@ -428,7 +442,7 @@ export const ShopManager = {
             : 'is-available';
         return `
             <div class="shop-item-card ${locked ? 'is-locked' : ''}"
-                 data-action="shop-buy" data-item-id="${item.id}" data-item-price="${item.price}" data-item-name="${item.name}" data-item-icon="${item.icon}">
+                 data-action="shop-buy" data-item-id="${HTMLUtils.escapeHtmlAttr(item.id)}" data-item-price="${num(item.price)}" data-item-name="${HTMLUtils.escapeHtmlAttr(item.name)}" data-item-icon="${HTMLUtils.escapeHtmlAttr(item.icon)}">
                 <div class="shop-item-icon">${item.icon}</div>
                 <div class="shop-item-info">
                     <div class="shop-item-name">${item.name}</div>
@@ -436,7 +450,7 @@ export const ShopManager = {
                 </div>
                 <div class="shop-item-price-block">
                     <div class="shop-item-price">${item.price}</div>
-                    <div class="shop-item-status ${statusClass}">${statusText}</div>
+                    <div class="shop-item-status ${HTMLUtils.escapeHtmlAttr(statusClass)}">${statusText}</div>
                 </div>
             </div>
         `;
@@ -456,7 +470,7 @@ export const ShopManager = {
             if (sortBtn) {
                 e.stopPropagation();
                 const category = sortBtn.dataset.sortCategory;
-                const menu = panel.querySelector(`[data-sort-menu="${category}"]`);
+                const menu = panel.querySelector(`[data-sort-menu="${HTMLUtils.escapeHtmlAttr(category)}"]`);
 
                 // 关闭其他菜单
                 panel.querySelectorAll('.shop-sort-menu').forEach(m => {
@@ -601,7 +615,7 @@ export const ShopManager = {
         let archiveData = null;
 
         if (month) {
-            const filtered = records.filter(r => (r.month || r.date.slice(0, 7)) === month);
+            const filtered = records.filter(r => localMonthOf(r) === month);
             if (filtered.length > 0) {
                 records = filtered;
             } else if (purchaseHistory.archive && purchaseHistory.archive[month]) {
@@ -688,7 +702,7 @@ export const ShopManager = {
                             const a = purchaseHistory.archive[k];
                             const [, mm] = k.split('-');
                             const active = month === k;
-                            return `<button class="shop-archive-month-btn ${active ? 'is-active' : ''}" data-history-action="month:${k}">${parseInt(mm)}月 · ${a.totalSpent}</button>`;
+                            return `<button class="shop-archive-month-btn ${active ? 'is-active' : ''}" data-history-action="month:${HTMLUtils.escapeHtmlAttr(k)}">${parseInt(mm)}月 · ${a.totalSpent}</button>`;
                         }).join('')}
                     </div>
                 </div>`;
@@ -700,9 +714,9 @@ export const ShopManager = {
         container.innerHTML = `
             <!-- 月份导航 -->
             <div class="shop-history-nav">
-                <button class="${arrowBtnBase}" data-history-action="prev-month" ${!canPrev ? 'disabled' : ''}>${icon('chevronLeft', 16)}</button>
+                <button class="${HTMLUtils.escapeHtmlAttr(arrowBtnBase)}" data-history-action="prev-month" ${!canPrev ? 'disabled' : ''}>${icon('chevronLeft', 16)}</button>
                 <span class="shop-history-month-label">${monthLabel}</span>
-                <button class="${arrowBtnBase}" data-history-action="next-month" ${!canNext ? 'disabled' : ''}>${icon('chevronRight', 16)}</button>
+                <button class="${HTMLUtils.escapeHtmlAttr(arrowBtnBase)}" data-history-action="next-month" ${!canNext ? 'disabled' : ''}>${icon('chevronRight', 16)}</button>
                 ${month ? `<button class="shop-history-all-btn" data-history-action="all">全部</button>` : `<span class="shop-history-current-tag">当前</span>`}
             </div>
             ${summaryHtml}

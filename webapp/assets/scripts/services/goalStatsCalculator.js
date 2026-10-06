@@ -1,11 +1,20 @@
+import { parseLocalDate, diffLocalDays } from '../utils/dateUtils.js';
+
 /**
  * 目标统计计算
  * 纯数据计算，无 DOM 操作，无 this. 引用。
  * 从 StatsModal._getGoalStats 提取。
+ *
+ * 「按天判定」一律走 utils/dateUtils.js 的本地日历口径：`new Date('YYYY-MM-DD')` 按 UTC 午夜
+ * 解析，东八区下等价于把日界挪到本地 08:00（本地 00:00–07:59 所有「还剩/逾期/停滞」整体错 1 档），
+ * 并在当天算出 `-0` —— 而 `-0 < 0 === false`，「逾期不足一天」会静默落进「还剩 0 天」。
  */
 export const GoalStatsCalculator = {
-    calculate(goals) {
-        const now = new Date();
+    /**
+     * @param {Array} goals 目标列表
+     * @param {Date} [now=new Date()] 基准时刻（可显式注入以保证单测确定性；判定一律走本地日历口径）
+     */
+    calculate(goals, now = new Date()) {
         
         const totalGoals = goals.length;
         const completedGoals = goals.filter(g => (g.progress || 0) >= 100).length;
@@ -64,8 +73,9 @@ export const GoalStatsCalculator = {
             }
 
             if (goal.endDate) {
-                const endDate = new Date(goal.endDate);
-                const daysToEnd = Math.ceil((endDate - now) / (1000 * 60 * 60 * 24));
+                const endDate = parseLocalDate(goal.endDate);
+                const daysToEnd = endDate === null ? null : diffLocalDays(now, endDate);
+                if (daysToEnd === null) return; // 非法日期串：跳过（原 NaN 比较的等价显式化）
                 
                 if (daysToEnd < 0) {
                     if ((goal.progress || 0) < 100) {
@@ -90,9 +100,9 @@ export const GoalStatsCalculator = {
         const stagnantGoals = goals.filter(g => {
             if ((g.progress || 0) >= 100) return false;
             if (!g.startDate) return true;
-            const startDate = new Date(g.startDate);
-            const daysSinceStart = Math.ceil((now - startDate) / (1000 * 60 * 60 * 24));
-            return daysSinceStart > 14;
+            const startDate = parseLocalDate(g.startDate);
+            const daysSinceStart = startDate === null ? null : diffLocalDays(startDate, now);
+            return daysSinceStart !== null && daysSinceStart > 14;
         });
 
         const subItemCompletionRate = totalSubItems > 0 ? Math.round((completedSubItems / totalSubItems) * 100) : 0;
@@ -104,9 +114,10 @@ export const GoalStatsCalculator = {
         };
         goals.forEach(g => {
             if (g.startDate && g.endDate) {
-                const start = new Date(g.startDate);
-                const end = new Date(g.endDate);
-                const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+                const start = parseLocalDate(g.startDate);
+                const end = parseLocalDate(g.endDate);
+                const days = start === null || end === null ? null : diffLocalDays(start, end);
+                if (days === null) return; // 非法日期串：跳过（原 NaN 比较的等价显式化）
                 if (days < 30) timeSpanStats.shortTerm++;
                 else if (days <= 90) timeSpanStats.mediumTerm++;
                 else timeSpanStats.longTerm++;

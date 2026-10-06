@@ -3,7 +3,6 @@ import type { BambooReviewSettings } from '../settings/PluginSettings';
 import { AppHost } from '../host/AppHost';
 import { AppAPI } from '../host/AppAPI';
 import type BambooReviewPlugin from '../../main';
-import { LicenseStore } from '../license/licenseStore';
 
 export const VIEW_TYPE_ARCHIVE = 'bamboo-archive';
 
@@ -75,8 +74,7 @@ export class ArchiveView extends ItemView {
       this.saveSettings,
       this.settings.noisePath || '',
       this.app.vault.configDir,
-      (this.plugin as BambooReviewPlugin).license ??
-        new LicenseStore(this.plugin as BambooReviewPlugin)
+      (this.plugin as BambooReviewPlugin).license
     );
     await this.appAPI.ensureStructure();
 
@@ -157,15 +155,6 @@ export class ArchiveView extends ItemView {
       this.iframe.remove();
       this.iframe = null;
     }
-  }
-
-  /** 接收来自插件的导航/操作指令 */
-  sendCommand(type: string): void {
-    if (!this.iframe?.contentWindow) return;
-    this.iframe.contentWindow.postMessage(
-      { type, id: 'cmd_' + Date.now() },
-      '*'
-    );
   }
 
   /** 扫描 Vault 中的自定义主题 */

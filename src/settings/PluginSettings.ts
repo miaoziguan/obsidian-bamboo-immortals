@@ -44,10 +44,6 @@ export interface NoiseItem {
 
 /** 插件设置接口 */
 export interface BambooReviewSettings {
-  /** 数据存储根路径 */
-  dataPath: string;
-  /** 是否自动生成 Markdown 摘要 */
-  enableMarkdownSync: boolean;
   /** 板块管理配置（JSON 解析后结构不固定，使用宽松类型） */
   sectionConfig: Record<string, unknown> | null;
   /** 自定义主题动效文件夹路径（Vault 根目录下的相对路径） */
@@ -110,6 +106,8 @@ export interface BambooReviewSettings {
   smtpUser: string;
   /** 竹林咨询：SMTP 授权码 */
   smtpPass: string;
+  /** 竹林咨询：跳过 TLS 证书校验（仅自建/自签证书的私有服务器需要，默认关闭） */
+  smtpAllowSelfSigned: boolean;
   /**
    * 复盘面板当前是否处于打开状态（内部运行时标记，不在设置 UI 暴露）。
    * 视图 onOpen 置 true、用户主动关闭置 false；插件卸载（禁用/热更新）触发的
@@ -121,8 +119,6 @@ export interface BambooReviewSettings {
 }
 
 export const DEFAULT_SETTINGS: BambooReviewSettings = {
-  dataPath: 'bamboo-review',
-  enableMarkdownSync: true,
   sectionConfig: null,
   themePath: '竹林动效主题',
   noisePath: '',
@@ -146,6 +142,7 @@ export const DEFAULT_SETTINGS: BambooReviewSettings = {
   smtpSecure: true,
   smtpUser: '',
   smtpPass: '',
+  smtpAllowSelfSigned: false,
   scrollDefaultLocation: 'left',
   reviewViewOpen: false,
 };
@@ -161,12 +158,47 @@ export const DEFAULT_SETTINGS: BambooReviewSettings = {
  *   重绘、iframe 联动、动态卡片），因此复杂动态 UI 完全保留。
  * 这样既获得设置搜索能力，又不必把全部自定义 UI 硬塞进声明式控制数组。
  */
+/**
+ * 设置面板落盘防抖。
+ *
+ * 原实现每个 onChange 都 `await this.plugin.saveSettings()`：文本框是**逐键**触发 onChange，
+ * 即每敲一个字符就把整个 data.json 全量序列化并写一次盘（连续输入还会出现多次写交叉）。
+ * 而设置值在内存中已即时生效，写盘只是持久化 —— 用户感知不到这 300ms 的合并。
+ * 关面板时由 PluginSettings.hide() 统一 flush，保证最后一次输入必定落库。
+ */
+const SAVE_DEBOUNCE_MS = 300;
+const _saveTimers = new WeakMap<BambooReviewPlugin, ReturnType<typeof setTimeout>>();
+
+function scheduleSaveSettings(plugin: BambooReviewPlugin): void {
+  const prev = _saveTimers.get(plugin);
+  if (prev) clearTimeout(prev);
+  const timer = setTimeout(() => {
+    _saveTimers.delete(plugin);
+    void plugin.saveSettings();
+  }, SAVE_DEBOUNCE_MS);
+  _saveTimers.set(plugin, timer);
+}
+
+function flushSaveSettings(plugin: BambooReviewPlugin): void {
+  const timer = _saveTimers.get(plugin);
+  if (!timer) return;
+  clearTimeout(timer);
+  _saveTimers.delete(plugin);
+  void plugin.saveSettings();
+}
+
 export class PluginSettings extends PluginSettingTab {
   plugin: BambooReviewPlugin;
 
   constructor(app: App, plugin: BambooReviewPlugin) {
     super(app, plugin);
     this.plugin = plugin;
+  }
+
+  /** 关闭设置面板前补一次落盘：避免最后一次输入还没到防抖窗口就被丢弃 */
+  hide(): void {
+    flushSaveSettings(this.plugin);
+    super.hide();
   }
 
   /** 声明式定义：5 个可搜索的页面，内部仍命令式渲染 */
@@ -254,7 +286,7 @@ class OverviewPage extends SettingPage {
   }
 }
 
-/** 激活页：购买入口 + License 区块 + 数据存储 */
+/** 激活页：购买入口 + License 区块 */
 class LicensePage extends SettingPage {
   constructor(private plugin: BambooReviewPlugin) {
     super();
@@ -280,34 +312,6 @@ class LicensePage extends SettingPage {
       );
 
     this.renderLicenseSection(containerEl);
-
-    // === 数据存储（归入激活 tab 下，作为基础配置） ===
-    new Setting(containerEl).setName('数据存储').setHeading();
-
-    new Setting(containerEl)
-      .setName('数据存储路径')
-      .setDesc('复盘数据在 Vault 中的存储目录（修改后需重启插件）')
-      .addText((text) =>
-        text
-          .setPlaceholder('bamboo-review')
-          .setValue(this.plugin.settings.dataPath)
-          .onChange(async (value) => {
-            this.plugin.settings.dataPath = value || 'bamboo-review';
-            await this.plugin.saveSettings();
-          })
-      );
-
-    new Setting(containerEl)
-      .setName('自动生成 Markdown 摘要')
-      .setDesc('每次保存复盘数据时，自动在 reviews/ 目录下生成可读的 .md 文件')
-      .addToggle((toggle) =>
-        toggle
-          .setValue(this.plugin.settings.enableMarkdownSync)
-          .onChange(async (value) => {
-            this.plugin.settings.enableMarkdownSync = value;
-            await this.plugin.saveSettings();
-          })
-      );
   }
 
   /** 激活区：输入激活码 / 显示状态（原生设置页作为激活的补充入口，主入口在 webapp 内遮罩） */
@@ -465,7 +469,7 @@ class AIPage extends SettingPage {
           .setValue(this.plugin.settings.aiEnabled)
           .onChange(async (value) => {
             this.plugin.settings.aiEnabled = value;
-            await this.plugin.saveSettings();
+            scheduleSaveSettings(this.plugin);
           })
       );
 
@@ -478,7 +482,7 @@ class AIPage extends SettingPage {
           .setValue(this.plugin.settings.aiApiKey)
           .onChange(async (value) => {
             this.plugin.settings.aiApiKey = value.trim();
-            await this.plugin.saveSettings();
+            scheduleSaveSettings(this.plugin);
           })
       )
       .then((setting) => {
@@ -496,7 +500,7 @@ class AIPage extends SettingPage {
           .setValue(this.plugin.settings.aiBaseUrl)
           .onChange(async (value) => {
             this.plugin.settings.aiBaseUrl = value.trim() || 'https://api.deepseek.com/v1';
-            await this.plugin.saveSettings();
+            scheduleSaveSettings(this.plugin);
           })
       );
 
@@ -509,7 +513,7 @@ class AIPage extends SettingPage {
           .setValue(this.plugin.settings.aiModel)
           .onChange(async (value) => {
             this.plugin.settings.aiModel = value.trim() || 'deepseek-chat';
-            await this.plugin.saveSettings();
+            scheduleSaveSettings(this.plugin);
           })
       );
 
@@ -524,7 +528,7 @@ class AIPage extends SettingPage {
           .setValue(this.plugin.settings.aiDecomposeDepth)
           .onChange(async (value) => {
             this.plugin.settings.aiDecomposeDepth = value as '粗' | '中' | '细';
-            await this.plugin.saveSettings();
+            scheduleSaveSettings(this.plugin);
           })
       );
   }
@@ -551,7 +555,7 @@ class AppearancePage extends SettingPage {
           .setValue(this.plugin.settings.themePath)
           .onChange(async (value) => {
             this.plugin.settings.themePath = value || '竹林动效主题';
-            await this.plugin.saveSettings();
+            scheduleSaveSettings(this.plugin);
           })
       );
 
@@ -567,7 +571,7 @@ class AppearancePage extends SettingPage {
           .setValue(this.plugin.settings.noisePath)
           .onChange(async (value) => {
             this.plugin.settings.noisePath = value.trim();
-            await this.plugin.saveSettings();
+            scheduleSaveSettings(this.plugin);
           })
       );
 
@@ -582,7 +586,7 @@ class AppearancePage extends SettingPage {
           .setValue(this.plugin.settings.followObsidianTheme)
           .onChange(async (value) => {
             this.plugin.settings.followObsidianTheme = value;
-            await this.plugin.saveSettings();
+            scheduleSaveSettings(this.plugin);
             if (value) {
               // 立即推送当前主题强调色反推的色相 + 侧边栏背景色温 + 文字色温
               const accent = getComputedStyle(activeDocument.body)
@@ -632,7 +636,7 @@ class AppearancePage extends SettingPage {
           .setValue(this.plugin.settings.syncPaletteToObsidian)
           .onChange(async (value) => {
             this.plugin.settings.syncPaletteToObsidian = value;
-            await this.plugin.saveSettings();
+            scheduleSaveSettings(this.plugin);
             if (!value) {
               // 遍历 registry 清理所有视图实例（含 trailing 防抖定时器），而非仅 default 单例
               ThemeBridge.restoreAllDefaults();
@@ -658,7 +662,7 @@ class AppearancePage extends SettingPage {
           .setValue(this.plugin.settings.scrollDefaultLocation)
           .onChange(async (value) => {
             this.plugin.settings.scrollDefaultLocation = value as ScrollLocation;
-            await this.plugin.saveSettings();
+            scheduleSaveSettings(this.plugin);
           })
       );
   }
@@ -697,7 +701,7 @@ class ConsultPage extends SettingPage {
             .setValue(this.plugin.settings.smtpHost)
             .onChange(async (value) => {
               this.plugin.settings.smtpHost = value.trim() || 'smtp.qq.com';
-              await this.plugin.saveSettings();
+              scheduleSaveSettings(this.plugin);
             })
         );
 
@@ -712,7 +716,7 @@ class ConsultPage extends SettingPage {
             .onChange(async (value) => {
               const n = parseInt(value, 10);
               this.plugin.settings.smtpPort = Number.isFinite(n) && n > 0 ? n : 465;
-              await this.plugin.saveSettings();
+              scheduleSaveSettings(this.plugin);
             });
         });
 
@@ -724,7 +728,19 @@ class ConsultPage extends SettingPage {
             .setValue(this.plugin.settings.smtpSecure)
             .onChange(async (value) => {
               this.plugin.settings.smtpSecure = value;
-              await this.plugin.saveSettings();
+              scheduleSaveSettings(this.plugin);
+            })
+        );
+
+      new Setting(containerEl)
+        .setName('跳过 TLS 证书校验')
+        .setDesc('默认关闭。仅当使用自建/自签证书的私有 SMTP 服务器时才开启——关闭校验会让邮箱授权码暴露给中间人')
+        .addToggle((toggle) =>
+          toggle
+            .setValue(this.plugin.settings.smtpAllowSelfSigned)
+            .onChange(async (value) => {
+              this.plugin.settings.smtpAllowSelfSigned = value;
+              scheduleSaveSettings(this.plugin);
             })
         );
 
@@ -737,7 +753,7 @@ class ConsultPage extends SettingPage {
             .setValue(this.plugin.settings.smtpUser)
             .onChange(async (value) => {
               this.plugin.settings.smtpUser = value.trim();
-              await this.plugin.saveSettings();
+              scheduleSaveSettings(this.plugin);
             })
         );
 
@@ -750,7 +766,7 @@ class ConsultPage extends SettingPage {
             .setValue(this.plugin.settings.smtpPass)
             .onChange(async (value) => {
               this.plugin.settings.smtpPass = value.trim();
-              await this.plugin.saveSettings();
+              scheduleSaveSettings(this.plugin);
             })
         )
         .then((setting) => {

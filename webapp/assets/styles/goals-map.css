@@ -22,7 +22,13 @@
     box-shadow: 0 2px 8px rgba(var(--primary-rgb), 0.15);
     cursor: pointer;
     position: relative;
-    transition: background 0.4s ease-out;
+    /* 此处原有 transition: background 0.4s ease-out，仅服务 .goal-row:hover 的光晕（见下方说明）。
+       已实测：行自身的 background 在运行期只被 :hover 改变——goal-complete / goal-overdue / goal-soon
+       三个状态类只出现在 renderer.js:314 的模板串里（构建期决定，插入后不再切类），且列表刷新走
+       container.innerHTML 整段重建（新节点不会触发过渡）。而基态 2 层 → :hover 3 层，层数不同不可插值，
+       过渡降级为离散：值在 50%（即 200ms）处才翻转。删掉它 = 光晕进出各少 200ms 延迟，且彻底消除
+       这段待机过渡。代价（已知并接受）：亮暗主题切换是同 DOM 切类（state/store.js:833、
+       storage/bridge.js:1101），本行背景不再参与那 0.4s 渐隐，与其余绝大多数元素一样瞬时切换。 */
     contain: layout style paint;
 }
 

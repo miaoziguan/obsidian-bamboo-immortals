@@ -68,6 +68,7 @@ export const PrivacyMode = {
 
     /** 持久化强度并立即应用到 DOM；强度>0 时记住上次强度 */
     setLevel(level) {
+        const wasOn = this.isOn();
         const n = Math.max(this.MIN_LEVEL, Math.min(this.MAX_LEVEL, Math.round(level)));
         this._cached = n;
         if (n > 0) this._lastCached = n;
@@ -76,6 +77,9 @@ export const PrivacyMode = {
             if (n > 0) localStorage.setItem(this.LAST_KEY, String(n));
         } catch (_) {}
         this.apply(n);
+        // 从「关」切到「开」时补一次全量扫描：关闭期间渲染出来的内容没有打过标记
+        // （那时观察器是短路的），开启后必须立即纳入模糊，否则要先改一次强度才生效。
+        if (n > 0 && !wasOn) this.markText();
         return n;
     },
 
@@ -115,7 +119,11 @@ export const PrivacyMode = {
 
     /** 视图初始化时调用：恢复上次状态 */
     init() {
-        this.markText();
+        // 关闭时（首次使用默认为 0）不扫：马赛克由 body / shadow host 上的 .privacy-on 类驱动，
+        // 关着时 data-private-text 标记不会被任何样式消费，纯属白付一次全树 walk。
+        // 动态渲染期间的补标也在 handlers.js 的观察器里按 isOn() 短路；
+        // 从关切到开时由 setLevel 补一次全量，保证已渲染内容立即纳入模糊。
+        if (this.isOn()) this.markText();
         this.apply(this.getLevel());
     },
 
@@ -126,7 +134,7 @@ export const PrivacyMode = {
      * 位置的文字（含待办/时间线板块、动态渲染内容）都被纳入模糊。
      * 仅处理尚未标记的元素，幂等可重复调用（配合动态渲染的 MutationObserver）。
      */
-    markText() {
+    markText(roots) {
         // 作用域：shadow 模式扫 shadow root（注意 ShadowRoot 无 documentElement，
         // 须直接用 sr 本身，而非 sr.documentElement），无 shadow 回退 document
         const sr = window.__bambooShadowRoot;
@@ -159,6 +167,13 @@ export const PrivacyMode = {
             }
             for (const child of Array.from(node.children)) walk(child);
         };
+        // 增量模式：只扫本次新增的挂载点（由 MutationObserver 传入 addedNodes）。
+        // 全树 walk 仅在「视图初始化」与「隐私从关闭切到开启」两种场合必要（见 init / setLevel）；
+        // 日常渲染后的补标走这里，避免每批变更都重扫整个 shadow root。
+        if (Array.isArray(roots)) {
+            roots.forEach((r) => { if (r && r.nodeType === 1) walk(r); });
+            return;
+        }
         for (const child of Array.from(scope.children)) walk(child);
     },
 };

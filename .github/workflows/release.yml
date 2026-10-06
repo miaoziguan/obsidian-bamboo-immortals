@@ -41,6 +41,14 @@ jobs:
       - name: Check webapp load matrix (防漂移)
         run: node scripts/check-load-matrix.mjs
 
+      # webapp/ 被 .eslintrc.cjs 排除在 ESLint 之外，属性上下文转义无任何 lint 保护。
+      # 闸门失败即阻断发布：属性值未转义可被闭合后注入任意事件处理器。
+      - name: Check HTML attribute escaping (防 XSS 回归)
+        run: node scripts/check-html-escape.mjs
+
+      - name: Self-test the escaping gate (闸门自身可靠性)
+        run: node scripts/check-html-escape.mjs --self-test
+
       - name: Type check
         run: npx tsc --noEmit
 

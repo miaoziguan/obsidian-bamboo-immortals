@@ -96,8 +96,11 @@ export const ViewportCuller = {
     });
   },
 
-  /** 把一张模型卡建回 DOM 并挂进挂载表 + 量几何。culling 进屏时调用。 */
-  mountCard(ctx, note) {
+  /** 把一张模型卡建回 DOM 并挂进挂载表 + 量几何。culling 进屏时调用。
+   *  @param {{defer?: boolean}} opts defer=true 时不在本函数内测量，交由 flushMountMeasure
+   *         在本批挂载结束后统一测量 —— 避免「挂 N 卡 = N 次强制重排」。
+   */
+  mountCard(ctx, note, opts = {}) {
     const { state, ctrl } = ctx;
     const _t0 = ctrl._perfBegin();
     const card = ctrl._createCardEl({
@@ -114,9 +117,25 @@ export const ViewportCuller = {
     if (!state.mountedCards) state.mountedCards = new Map();
     if (!state.geo) state.geo = new GeoCache();
     state.mountedCards.set(note.id, card);
-    ctrl._measureCard(card);
+    if (opts.defer) {
+      // 先把所有卡挂完，最后统一测量：offset* 只有第一次读会触发重排，
+      // 其余都命中刚刚算好的布局。
+      if (!state._pendingMeasure) state._pendingMeasure = [];
+      state._pendingMeasure.push(card);
+    } else {
+      ctrl._measureCard(card);
+    }
     ctrl._perfEnd('mount', _t0);
     return card;
+  },
+
+  /** 补做本批「延迟挂载 measurements」的几何测量（见 mountCard 的 opts.defer）。 */
+  flushMountMeasure(ctx) {
+    const { state, ctrl } = ctx;
+    if (!state._pendingMeasure || state._pendingMeasure.length === 0) return;
+    const cards = state._pendingMeasure;
+    state._pendingMeasure = [];
+    for (const card of cards) ctrl._measureCard(card);
   },
 
   /** 量一张卡进几何缓存（坐标取 style.left/top；尺寸取 offset*，一次 reflow 摊销）。 */
@@ -284,13 +303,15 @@ export const ViewportCuller = {
     visible.forEach((id) => {
       if (pinned.has(id) || state.mountedCards.has(id)) return;
       const note = noteIdx.get(id);
-      if (note) { ctrl._mountCard(note); changed = true; }
+      if (note) { ctrl._mountCard(note, { defer: true }); changed = true; }
     });
     pinned.forEach((id) => {
       if (state.mountedCards.has(id)) return;
       const note = noteIdx.get(id);
-      if (note) { ctrl._mountCard(note); changed = true; }
+      if (note) { ctrl._mountCard(note, { defer: true }); changed = true; }
     });
+    // 本批挂载统一测量一次（只触发一次重排），确保后续按需读取几何时都是最新值
+    this.flushMountMeasure(ctx);
     state.mountedCards.forEach((card, id) => {
       if (pinned.has(id)) return;
       if (!visible.has(id)) { ctrl._unmountCard(id); changed = true; }

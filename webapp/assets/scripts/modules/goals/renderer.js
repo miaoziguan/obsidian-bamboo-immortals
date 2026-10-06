@@ -225,7 +225,7 @@ export const GoalsRenderer = {
                         } else {
                             rText = `剩${remaining}天`;
                         }
-                        remainingBadge = `<span class="${rClass}">${rText}</span>`;
+                        remainingBadge = `<span class="${HTMLUtils.escapeHtmlAttr(rClass)}">${rText}</span>`;
                     }
                 }
                 const statusIcon = isPaused
@@ -318,8 +318,8 @@ export const GoalsRenderer = {
                         <div class="goal-row-header">
                             ${categoryTag}
                             <span class="goal-row-title ${isComplete ? 'goal-title-complete' : ''}" data-inline-edit="title" data-goal-id="${HTMLUtils.escapeHtmlAttr(goal.id)}"><span class="goal-row-title-text">${escapeHtml(goal.title)}</span></span>
-                            <span class="goal-priority-tag ${priority}" data-inline-edit="priority" data-goal-id="${HTMLUtils.escapeHtmlAttr(goal.id)}">
-                                <span class="goal-priority-dot ${priority}"></span>${priorityLabel}
+                            <span class="goal-priority-tag ${HTMLUtils.escapeHtmlAttr(priority)}" data-inline-edit="priority" data-goal-id="${HTMLUtils.escapeHtmlAttr(goal.id)}">
+                                <span class="goal-priority-dot ${HTMLUtils.escapeHtmlAttr(priority)}"></span>${priorityLabel}
                             </span>
                             <span class="goal-row-toggle">${LucideUtils.createIcon('chevronRight', { size: 14 })}</span>
                         </div>
@@ -382,9 +382,21 @@ export const GoalsRenderer = {
     //  健康分单一数据源：优先消费插件 app:getHealthOverview 的权威套件
     // ────────────────────────────────────────────────────────────
 
-    /** 目标集合指纹（用于判断缓存是否失效） */
+    /** 目标集合指纹（用于判断健康分快照是否失效） */
     _goalSetKey(goals) {
-        return (goals || []).map(g => g.id + ':' + (g.archived ? 'a' : 'n')).sort().join('|');
+        // 指纹必须覆盖「影响健康分」的字段：L1/L2/L3 由 goal.progress 与各子项的
+        // currentValue/targetValue 决定。原先只含 id + 归档位，导致勾选待办后
+        // 进度变了但 key 不变 → _requestRemoteHealth 直接 return → 健康分环永不刷新。
+        // name 也纳入，以便子项增删/改名时同样失效。
+        return (goals || [])
+            .map((g) => {
+                const items = (g.items || [])
+                    .map((it) => `${it.name}:${it.currentValue || ''}:${it.targetValue || ''}`)
+                    .join(',');
+                return `${g.id}:${g.archived ? 'a' : 'n'}:${g.progress || 0}:${items}`;
+            })
+            .sort()
+            .join('|');
     },
 
     /**
@@ -445,6 +457,13 @@ export const GoalsRenderer = {
             goals,
             (this._remoteHealth && this._remoteHealth.health) || null
         );
+        // 进度/子项值变化后指纹已变 —— 必须重新拉取权威快照，
+        // 否则这里只是用旧快照重绘一遍，环上的数字不会动。
+        // _requestRemoteHealth 内部有 _remoteHealthLoading 去重与 key 比对，
+        // 成功后走 _renderRemoteHealthCard() 完成二次重绘。
+        if (this._remoteHealthGoalKey !== this._goalSetKey(goals)) {
+            this._requestRemoteHealth(goals);
+        }
     },
 
     openHealthScoreDetail() {
@@ -479,7 +498,7 @@ export const GoalsRenderer = {
                 return `
                     <div class="health-goal-item" data-goal-id="${HTMLUtils.escapeHtmlAttr(goal.id)}">
                         <div class="health-goal-title">${escapeHtml(goal.title)}</div>
-                        <div class="health-goal-score" style="color: ${healthScore.color};">
+                        <div class="health-goal-score" style="color: ${HTMLUtils.escapeHtmlAttr(healthScore.color)};">
                             ${healthScore.score}分 · ${healthScore.label}
                         </div>
                         <div class="health-goal-hints">
@@ -504,10 +523,10 @@ export const GoalsRenderer = {
             <div id="tab-content-diagnosis" class="fab-tab-content">
                 <div class="fab-panel-section">
                     <div class="health-section-title">核心体检</div>
-                    <div class="health-overview-large" style="--avg-color: ${set.avgColor};">
-                        <div class="health-score-ring" style="--score: ${set.avgScore}%;">
+                    <div class="health-overview-large" style="--avg-color: ${HTMLUtils.escapeHtmlAttr(set.avgColor)};">
+                        <div class="health-score-ring" style="--score: ${num(set.avgScore)}%;">
                             <div class="health-score-inner">
-                                <div class="health-score-number" style="color: ${set.avgColor};">
+                                <div class="health-score-number" style="color: ${HTMLUtils.escapeHtmlAttr(set.avgColor)};">
                                     ${set.avgScore}
                                     ${set.trend !== 0 ? `
                                         <span class="score-trend" style="color: ${set.trend > 0 ? 'var(--bamboo-primary)' : '#dc3545'}">
@@ -811,7 +830,7 @@ export const GoalsRenderer = {
         }
 
         return `
-            <span class="${cls}"${dataAttrs ? ' ' + dataAttrs : ''}>
+            <span class="${HTMLUtils.escapeHtmlAttr(cls)}"${dataAttrs ? ' ' + dataAttrs : ''}>
                 ${inner}
                 <div class="goal-date-tooltip">
                     <div class="goal-date-tooltip-arrow"></div>

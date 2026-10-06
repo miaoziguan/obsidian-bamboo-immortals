@@ -30,7 +30,7 @@ export const PanelManager = {
             tabsHtml = `
                 <div class="fab-panel-tabs">
                     ${options.tabs.map((tab, index) => `
-                        <div class="fab-panel-tab ${index === 0 ? 'active' : ''}" data-tab="${tab.id}">
+                        <div class="fab-panel-tab ${index === 0 ? 'active' : ''}" data-tab="${HTMLUtils.escapeHtmlAttr(tab.id)}">
                             ${tab.label}
                         </div>
                     `).join('')}
@@ -44,7 +44,7 @@ export const PanelManager = {
         // 同时保证按钮能吃到与关闭按钮相同的触摸目标尺寸 / 悬停 / 焦点样式。
         const actionConfs = Array.isArray(options.headerActions) ? options.headerActions : [];
         const actionsHtml = actionConfs.map((a) => `
-                    <button class="fab-panel-action" data-panel-action="${a.id}" aria-label="${a.label || a.id}" title="${a.label || a.id}">
+                    <button class="fab-panel-action" data-panel-action="${HTMLUtils.escapeHtmlAttr(a.id)}" aria-label="${HTMLUtils.escapeHtmlAttr(a.label || a.id)}" title="${HTMLUtils.escapeHtmlAttr(a.label || a.id)}">
                         ${LucideUtils.createIcon(a.icon || 'circle', { size: 14 })}
                     </button>`).join('');
 
@@ -144,11 +144,16 @@ export const PanelManager = {
         // 允许拖动的最小可见区域（面板不会完全拖出屏幕，至少保留这部分便于找回）
         const MIN_VISIBLE = 64;
 
-        const clampToViewport = (left, top, rect) => {
+        // 拖拽期间面板尺寸恒定（只改 left/top），故宽度在 pointerdown 时一次性量取：
+        // 原实现每个 pointermove 都 getBoundingClientRect()，紧跟在上一次 style 写之后 →
+        // 每次移动都触发一次强制同步重排。
+        let panelWidth = 0;
+
+        const clampToViewport = (left, top) => {
             const maxLeft = window.innerWidth - MIN_VISIBLE;
             const maxTop = window.innerHeight - MIN_VISIBLE;
             return {
-                left: Math.min(Math.max(left, MIN_VISIBLE - rect.width), maxLeft),
+                left: Math.min(Math.max(left, MIN_VISIBLE - panelWidth), maxLeft),
                 top: Math.min(Math.max(top, MIN_VISIBLE), maxTop),
             };
         };
@@ -158,7 +163,7 @@ export const PanelManager = {
             e.preventDefault();
             const left = initialLeft + (e.clientX - startX);
             const top = initialTop + (e.clientY - startY);
-            const clamped = clampToViewport(left, top, panel.getBoundingClientRect());
+            const clamped = clampToViewport(left, top);
             panel.style.left = clamped.left + 'px';
             panel.style.top = clamped.top + 'px';
         };
@@ -185,6 +190,7 @@ export const PanelManager = {
             const rect = panel.getBoundingClientRect();
             initialLeft = rect.left;
             initialTop = rect.top;
+            panelWidth = rect.width;
 
             panel.style.transform = 'none';
             panel.style.left = initialLeft + 'px';

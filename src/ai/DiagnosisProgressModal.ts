@@ -1,7 +1,7 @@
 /**
  * DiagnosisProgressModal — AI 诊断分阶段进度指示（替代 ⑤ 流式 SSE 逐字）
  *
- * 设计语言与 DiagnosisModal / AgenticPlanModal 统一（主题色 / 圆角 / 8pt 网格）。
+ * 设计语言与 DiagnosisModal 及 AI 规划台统一（主题色 / 圆角 / 8pt 网格）。
  * 只做「知道卡在哪一步」的轻量进度，不做逐字流式、不解析半成品 JSON。
  *
  * 用法：

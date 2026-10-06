@@ -64,9 +64,12 @@ export function getHolidays(year: number): Set<string> {
 export function getHolidaysForRange(from: Date, to: Date): Set<string> {
   const lo = Number.isFinite(from.getFullYear()) ? from.getFullYear() : new Date().getFullYear();
   const hi = Number.isFinite(to.getFullYear()) ? to.getFullYear() : lo;
+  // 复用 getHolidays 的年缓存：原实现逐年调 buildHolidays(y)，在「每个子项都算一次
+  // 节假日」的调用模式（DeviationCalculator.buildItemEvidence）下等于按子项数量重建。
+  if (hi === lo) return new Set(getHolidays(lo));
   const set = new Set<string>();
   for (let y = lo; y <= hi; y++) {
-    for (const d of buildHolidays(y)) set.add(d);
+    for (const d of getHolidays(y)) set.add(d);
   }
   return set;
 }

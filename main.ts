@@ -460,6 +460,7 @@ export default class BambooReviewPlugin extends Plugin {
         secure: s.smtpSecure,
         user: s.smtpUser,
         pass: s.smtpPass,
+        allowSelfSignedCert: s.smtpAllowSelfSigned === true,
       },
     };
 
@@ -773,7 +774,7 @@ export default class BambooReviewPlugin extends Plugin {
 
   /**
    * AI 诊断 → 行动闭环：读目标 + 近 14 天数据 → AI 诊断（GoalDiagnoser）→
-   * 只读报告（DiagnosisModal）→ 点「应用」→ 打开 AgenticPlanModal 预填建议指令 →
+   * 只读报告（DiagnosisModal）→ 点「应用」→ 打开规划台（PlanEditorView）预填建议指令 →
    * 确认后写回目标库。编排逻辑在 runDiagnosis（纯函数），此处只注入真实依赖。
    */
   async aiDiagnose(): Promise<void> {
@@ -820,8 +821,6 @@ export default class BambooReviewPlugin extends Plugin {
     const goals = all.filter((g) => !g.archived);
     if (goals.length === 0) return null;
 
-    const daysMap = await storage.getAllDays();
-    const days = Object.values(daysMap);
     // 【口径对齐】只把最近 STAGNATION_WINDOW(60) 天喂给 buildCache。
     // 前端 GoalHealthScore._buildDataCache 同样只回看 60 天，宿主 AI 诊断链路
     // （runDiagnosis）传的也是 60 天窗口。若此处用全历史：
@@ -837,6 +836,10 @@ export default class BambooReviewPlugin extends Plugin {
       return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
     };
     const floorKey = windowKey(windowStart);
+    // 读取面同样按窗口收窄：先 list 拿到日期键（不读内容），只把落在窗口内的文件发起读取，
+    // 而不是像 getAllDays 那样全量读完再由调用方丢弃。结果集等价，老 vault 收益最大。
+    const daysMap = await storage.getDaysSince(floorKey);
+    const days = Object.values(daysMap);
     const windowedDays = days.filter((d) => {
       const k = (d as unknown as { date?: string })?.date;
       return typeof k === 'string' && k >= floorKey;
@@ -911,7 +914,7 @@ export default class BambooReviewPlugin extends Plugin {
 
   /**
    * 战略复盘面板「用 AI 改进」入口：webapp 健康分详情点按钮 → postMessage(app:aiImproveGoal)
-   * → AppAPI.onAiImproveGoal → 此处。复用诊断闭环的 AgenticPlanModal 预填 + 落库链路。
+   * → AppAPI.onAiImproveGoal → 此处。复用诊断闭环的规划台预填 + 落库链路。
    */
   async requestAiImprove(p: { goalId: string; title?: string; hints?: string }): Promise<void> {
     const s = this.settings;
@@ -1104,11 +1107,6 @@ export default class BambooReviewPlugin extends Plugin {
    *  使用 getLeftLeaf(false)：复用左侧栏现有位置作为标签页打开，不新建 split（避免上下分栏）。 */
   async openScrollLeftSidebar(feature?: string): Promise<void> {
     return this.openScrollAt('left', feature);
-  }
-
-  /** 激活或创建画中卷视图，并以右侧栏形态打开（常驻副屏：便签墙 / 香道番茄钟） */
-  async openScrollRightSidebar(feature?: string): Promise<void> {
-    return this.openScrollAt('right', feature);
   }
 
   /**

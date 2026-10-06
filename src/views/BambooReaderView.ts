@@ -1,5 +1,6 @@
-import { ItemView, WorkspaceLeaf, MarkdownRenderer, Component, TFile, setIcon } from 'obsidian';
+import { ItemView, WorkspaceLeaf, MarkdownRenderer, Component, TFile, normalizePath, setIcon } from 'obsidian';
 import type BambooReviewPlugin from '../../main';
+import { diffLocalDays } from '../utils/dateUtils';
 
 export const VIEW_TYPE_BAMBOO_READER = 'bamboo-reader';
 
@@ -18,18 +19,19 @@ const BLOG_MODULE_ID = 'blog';
  *   · 代码块增强（语言标签 + 复制 + 行号）
  *   · 图片懒加载 + 骨架 + 点击放大（lightbox）
  *   · 独立 TOC 侧栏（滚动进度条 + 百分比 + scroll spy 高亮）
- *   · 元信息：作者/日期/分类/字数/阅读时长/标签 + 最后更新提示
+ *   · 元信息：作者/日期/字数/阅读时长（一律通用 frontmatter 键优先，缺失即不渲染，不做硬编码填充）
+ *   · 文章落款：最后更新于（挂在正文之后；时间非法时整行不渲染）
  *   · 内部链接拦截（跨文章在插件内打开）
  *   · 字号缩放 / 专注模式(Esc 退出+持久化) / 阅读进度恢复（按文章路径）
- *   · 上/下篇（按 date）+ 相关阅读（按 tag 重叠）
+ *   · 上/下篇（范围 = 博客模块 rootFolder 目录含子目录；全站一条链，按文件 mtime 与左侧列表同序，不分分类）
+ *   · 相关阅读（按 tag 重叠取 top3，可跨分类；与上下篇彼此独立、互不影响）
  *   · 返回按钮 + 浮动 FAB(↑↓)
  */
 
 interface ArticleMeta {
   title: string;
   date: string;
-  tags: string[];
-  category: string;
+  /** 作者；三级兜底后仍为空则整段不渲染（绝不写死笔名） */
   author: string;
   words: number;
   reading: number;
@@ -38,9 +40,13 @@ interface ArticleMeta {
 interface IndexEntry {
   path: string;
   title: string;
-  date: string;
-  dateTs: number;
-  category: string;
+  /**
+   * 导航排序键 = 文件 mtime。必须与左侧博客列表同源：blog.js 的文章列表是
+   * `items.sort((a,b) => b.mtime - a.mtime)` 且卡片上显示的日期就是 mtime，
+   * 所以「下一篇」必须等于列表里紧邻上方那篇，否则阅读器与列表的次序会对不上。
+   * （不用 ctime：文件被复制/同步/恢复会刷新 ctime，`把自媒体搬进Ob` 就是 slug=07-19 而 ctime=09-15。）
+   */
+  mtime: number;
   tags: string[];
 }
 
@@ -48,6 +54,41 @@ interface TocEntry {
   level: number;
   text: string;
   id: string;
+}
+
+/** frontmatter 归一化结果：阅读器内部的统一元信息结构（详情页与 vault 索引同源） */
+interface FrontmatterInfo {
+  title: string;
+  date: string;
+  tags: string[];
+  author: string;
+}
+
+/** 格式化为 YYYY-MM-DD（YAML 里的裸日期会被 Obsidian 解析成 Date 对象） */
+function formatYmd(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+/** 取所在目录（顶层文件返回空串） */
+function dirOfPath(path: string): string {
+  return path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : '';
+}
+
+/** 标签归一化：兼容 string / string[]（多行 YAML 列表会被 Obsidian 解析成数组）、去 # 前缀与空白、去重 */
+function normalizeTags(input: unknown): string[] {
+  const out: string[] = [];
+  const push = (v: unknown): void => {
+    if (typeof v !== 'string') return;
+    // YAML 里 `bamboo-tags: ""` 是「空值」的常见写法；正则兜底路径拿到的是带引号的原文，
+    // 若不去引号就会把 `""` 本身当成一个标签（metadataCache 路径没这问题，它由 YAML 解析器给出空串）。
+    // 去引号放在去 `#` 之前：`"#tag"` 这种带引号又带井号的写法也能收敛到 `tag`。
+    const t = v.trim().replace(/^['"]|['"]$/g, '').trim().replace(/^#+/, '').trim();
+    if (t && !out.includes(t)) out.push(t);
+  };
+  if (Array.isArray(input)) input.forEach(push);
+  else if (typeof input === 'string') input.split(/[,，\s]+/).forEach(push);
+  return out;
 }
 
 function slugify(text: string): string {
@@ -105,19 +146,14 @@ function estimateReadingTime(words: number): number {
   return Math.max(1, Math.round(words / 350));
 }
 
-function parseDateTs(date: string): number {
-  if (!date) return 0;
-  const t = Date.parse(date.length <= 10 ? date + 'T00:00:00' : date);
-  return Number.isNaN(t) ? 0 : t;
-}
-
 /** 更新时间格式化：今天/昨天 + 时分；更早则完整日期 */
 function formatUpdateTime(ms: number): string {
   const d = new Date(ms);
   if (Number.isNaN(d.getTime())) return '';
   const pad = (n: number) => String(n).padStart(2, '0');
   const now = new Date();
-  const diffDays = Math.floor((now.getTime() - d.getTime()) / 86400000);
+  // 用「日历日差」而非时长差：昨天 23:00 更新、今天 08:00 打开应为「昨天」而不是「今天」
+  const diffDays = diffLocalDays(d, now);
   const time = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
   if (diffDays === 0) return `今天 ${time}`;
   if (diffDays === 1) return `昨天 ${time}`;
@@ -137,6 +173,8 @@ export class BambooReaderView extends ItemView {
   private _contentEl: HTMLElement | null = null;
   private _bodyEl: HTMLElement | null = null;
   private _index: IndexEntry[] | null = null;
+  /** 本次索引实际生效的范围键（rootFolder，或未配置时的当前文章所在目录）：变化即重建 */
+  private _indexRoot = '';
 
   private _tocElements = new Map<string, HTMLElement>();
   private _headingElements: { id: string; el: HTMLElement }[] = [];
@@ -209,6 +247,12 @@ export class BambooReaderView extends ItemView {
     await this.render(container);
     // 侧栏被 Obsidian 原生方式（左栏按钮/快捷键）展开或折叠时，同步「☰ 侧栏」按钮高亮态
     this.registerEvent(this.app.workspace.on('layout-change', () => this.syncSidebarBtn()));
+    // vault 增删改名后作废文章索引：否则「上/下篇」「相关阅读」会一直拿着旧快照
+    // （含已删除文件、缺新建文件），直到重开阅读视图。registerEvent 随视图卸载自动反注册。
+    const dropIndex = () => { this._index = null; };
+    this.registerEvent(this.app.vault.on('create', dropIndex));
+    this.registerEvent(this.app.vault.on('delete', dropIndex));
+    this.registerEvent(this.app.vault.on('rename', dropIndex));
   }
 
   async onClose(): Promise<void> {
@@ -273,12 +317,16 @@ export class BambooReaderView extends ItemView {
       bodyWrap.empty();
       this.renderHeader(topbar, meta);
 
-      const updated = bodyWrap.createDiv({ cls: 'bm-updated' });
-      updated.textContent = '最后更新于 ' + formatUpdateTime(file.stat.mtime);
-
       const body = bodyWrap.createDiv({ cls: 'bm-reader-body markdown-preview-view' });
       this._bodyEl = body;
       await MarkdownRenderer.render(this.app, processed, body, this._path, this._renderComp);
+
+      // 落款：更新时间的归属是「文章结尾」而非开头。原先它建在正文之前，读者一眼看到的是一行
+      // 技术性时间戳挡在标题与正文之间；移到正文之后，它才回到该在的位置（正文末尾的落款）。
+      // formatUpdateTime 对非法时间返回空串，此时整行不渲染 —— 沿用本视图「缺失即不渲染」的约定，
+      // 避免留下「最后更新于 」这种残缺文本。
+      const updatedText = formatUpdateTime(file.stat.mtime);
+      if (updatedText) bodyWrap.createDiv({ cls: 'bm-updated', text: '最后更新于 ' + updatedText });
 
       // 图片懒加载 + 骨架 + lightbox
       body.querySelectorAll('img').forEach((img) => {
@@ -308,8 +356,9 @@ export class BambooReaderView extends ItemView {
       const toc = this.extractToc(processed);
       if (toc.length >= 2) this.renderToc(layout, toc);
 
-      // 上/下篇 + 相关阅读
-      this.renderPrevNextRelated(bodyWrap);
+      // 上/下篇（时间流）与相关阅读（主题网）彼此独立，各自决定是否渲染
+      this.renderPrevNext(bodyWrap);
+      this.renderRelated(bodyWrap);
 
       // 浮动 FAB（挂到 layout 而非滚动内容里，确保固定在视图右下角、不随滚动移动）
       const fab = layout.createDiv({ cls: 'bm-fab' });
@@ -408,24 +457,16 @@ export class BambooReaderView extends ItemView {
     header.createEl('h1', { cls: 'bm-title', text: meta.title });
     header.addEventListener('dblclick', () => this.scrollTo('top'));
     const m = header.createDiv({ cls: 'bm-meta' });
-    // 分隔点只插在「确实渲染出来的两段」之间：可选字段（日期/分类）缺失时不再残留悬空的点，
-    // 避免出现「作者 · · 约 N 字」这种连续双点。
-    const parts: Array<(el: HTMLElement) => void> = [
-      (el) => el.createSpan({ text: meta.author }),
-    ];
+    // 分隔点只插在「确实渲染出来的两段」之间：可选字段（作者/日期）缺失时不再残留悬空的点，
+    // 避免出现「作者 · · 约 N 字」这种连续双点。字数/阅读时长恒有，永远兜住最后一个点。
+    const parts: Array<(el: HTMLElement) => void> = [];
+    if (meta.author) parts.push((el) => el.createSpan({ text: meta.author }));
     if (meta.date) parts.push((el) => el.createSpan({ text: meta.date }));
-    if (meta.category && meta.category !== '未分类') {
-      parts.push((el) => el.createSpan({ cls: 'bm-badge', text: meta.category }));
-    }
     parts.push((el) => el.createSpan({ text: `约 ${formatWordCount(meta.words)} · ${meta.reading} 分钟` }));
     parts.forEach((render, idx) => {
       if (idx > 0) m.createSpan({ cls: 'bm-sep', text: '·' });
       render(m);
     });
-    if (meta.tags.length) {
-      const tr = header.createDiv({ cls: 'bm-meta' });
-      for (const t of meta.tags) tr.createSpan({ cls: 'bm-badge', text: t });
-    }
   }
 
   /* ── TOC 侧栏 ── */
@@ -460,123 +501,251 @@ export class BambooReaderView extends ItemView {
     return entries;
   }
 
-  /* ── 上/下篇 + 相关阅读 ── */
-  private renderPrevNextRelated(container: HTMLElement): void {
+  /* ── 上/下篇（时间流）── */
+  /**
+   * 上一篇 / 下一篇 —— 沿「本博客全部文章」按文件修改时间翻，不按分类切分。
+   *
+   * 【序必须与左侧列表同源】左侧博客列表 = blog.js 的 `sort((a,b) => b.mtime - a.mtime)`，
+   * 卡片上显示的日期也是 mtime。所以这里的链一律按 mtime 倒序，读者在列表里看到某篇的上一格是谁，
+   * 点进正文后「下一篇」就该是谁。不用文章日期（slug 里的日期只代表发布日，被编辑后与列表次序会错开），
+   * 更不用 ctime（文件复制/同步会刷新它，`把自媒体搬进Ob` 就出现 slug=07-19 而 ctime=09-15 的漂移）。
+   *
+   * 【为什么不分分类】本地博客的文章是一串按时间排好的流，读者的「上一篇 / 下一篇」是沿着这条流
+   * 往前走，而不是在某个分类内部打转。曾经按分类过滤过：分类取自目录名时，文章平铺在同一层
+   * → 全归「未分类」→ 恰好等价于全站，看着是对的；一旦分类改从 frontmatter 读，
+   * 就变成「只有同分类的少数几篇能互翻」，大部分文章直接没有上下篇 —— 那是回归。
+   * 分类维度已整体移除：详情页不再展示，也不再参与任何导航。
+   *
+   * 方向：列表按 mtime 倒序（新 → 旧），故「上一篇」= 更早（列表后一项）、「下一篇」= 更新（列表前一项）。
+   * mtime 相同的多篇用路径兜底排序，保证次序稳定、不随文件枚举顺序抖动。
+   *
+   * 与「相关阅读」彼此独立：文章没有标签也照样有上下篇，反之亦然。
+   */
+  private renderPrevNext(container: HTMLElement): void {
     const all = this.buildIndex();
     const cur = all.find((a) => a.path === this._path);
     if (!cur || all.length < 2) return;
-
-    // 同分类按 date 倒序
-    const sameCat = all
-      .filter((a) => a.category === cur.category)
-      .sort((a, b) => b.dateTs - a.dateTs);
-    const ci = sameCat.findIndex((a) => a.path === cur.path);
-    const prev = ci >= 0 && ci < sameCat.length - 1 ? sameCat[ci + 1] : null;
-    const next = ci > 0 ? sameCat[ci - 1] : null;
-
-    if (prev || next) {
-      const nav = container.createDiv({ cls: 'bm-prevnext' });
-      if (prev) {
-        const p = nav.createDiv({ cls: 'bm-pn' });
-        p.createDiv({ cls: 'bm-pn-label', text: '← 上一篇' });
-        p.createDiv({ cls: 'bm-pn-title', text: prev.title });
-        p.addEventListener('click', () => void this.plugin.openReaderView(prev.path));
-      } else {
+    const ordered = all.slice().sort((a, b) => b.mtime - a.mtime || a.path.localeCompare(b.path));
+    const ci = ordered.findIndex((a) => a.path === cur.path);
+    if (ci < 0) return;
+    const prev = ci < ordered.length - 1 ? ordered[ci + 1] : null;
+    const next = ci > 0 ? ordered[ci - 1] : null;
+    if (!prev && !next) return;
+    const nav = container.createDiv({ cls: 'bm-prevnext' });
+    const slot = (label: string, target: IndexEntry | null): void => {
+      if (!target) {
         nav.createDiv({ cls: 'bm-pn bm-pn-empty' });
+        return;
       }
-      if (next) {
-        const n = nav.createDiv({ cls: 'bm-pn' });
-        n.createDiv({ cls: 'bm-pn-label', text: '下一篇 →' });
-        n.createDiv({ cls: 'bm-pn-title', text: next.title });
-        n.addEventListener('click', () => void this.plugin.openReaderView(next.path));
-      } else {
-        nav.createDiv({ cls: 'bm-pn bm-pn-empty' });
-      }
-    }
+      const item = nav.createDiv({ cls: 'bm-pn' });
+      item.createDiv({ cls: 'bm-pn-label', text: label });
+      item.createDiv({ cls: 'bm-pn-title', text: target.title });
+      item.addEventListener('click', () => void this.plugin.openReaderView(target.path));
+    };
+    slot('← 上一篇', prev);
+    slot('下一篇 →', next);
+  }
 
-    // 相关阅读：按 tag 重叠打分 top3
+  /* ── 相关阅读（主题网）── */
+  /**
+   * 相关阅读 —— 按 tag 重叠打分取 top3，**允许跨分类**聚合。
+   * 这正是它区别于上下篇的价值：上下篇是时间流，相关阅读是主题网（同一主题常散落在不同分类里）。
+   * 范围同样是博客目录；本文章无标签、或与他文无重叠时，只是不渲染这一块，不影响上下篇。
+   */
+  private renderRelated(container: HTMLElement): void {
+    const all = this.buildIndex();
+    const cur = all.find((a) => a.path === this._path);
+    if (!cur) return;
     const curTags = new Set(cur.tags);
-    if (curTags.size > 0) {
-      const scored = all
-        .filter((a) => a.path !== cur.path)
-        .map((a) => ({ a, overlap: a.tags.filter((t) => curTags.has(t)).length }))
-        .filter((s) => s.overlap > 0)
-        .sort((x, y) => y.overlap - x.overlap)
-        .slice(0, 3);
-      if (scored.length) {
-        const sec = container.createDiv({ cls: 'bm-related' });
-        sec.createDiv({ cls: 'bm-related-title', text: '相关阅读' });
-        for (const s of scored) {
-          const link = sec.createDiv({ cls: 'bm-related-link', text: s.a.title });
-          link.addEventListener('click', () => void this.plugin.openReaderView(s.a.path));
-        }
-      }
+    if (curTags.size === 0) return;
+    const scored = all
+      .filter((a) => a.path !== cur.path)
+      .map((a) => ({ a, overlap: a.tags.filter((t) => curTags.has(t)).length }))
+      .filter((s) => s.overlap > 0)
+      .sort((x, y) => y.overlap - x.overlap)
+      .slice(0, 3);
+    if (!scored.length) return;
+    const sec = container.createDiv({ cls: 'bm-related' });
+    sec.createDiv({ cls: 'bm-related-title', text: '相关阅读' });
+    for (const s of scored) {
+      const link = sec.createDiv({ cls: 'bm-related-link', text: s.a.title });
+      link.addEventListener('click', () => void this.plugin.openReaderView(s.a.path));
     }
   }
 
-  /** 轻量构建 vault 文章索引（仅解析 frontmatter） */
+  /**
+   * 读取文章 frontmatter —— 阅读器内部唯一的元信息入口（详情页与 vault 索引共用同一份数据）
+   *
+   * 【键名约定：通用键优先】元信息一律先读 Obsidian Properties / Hugo / Jekyll 通行的通用键，
+   * `bamboo-*` 只作为**同语义别名**排在后面兜底（博客模块/bamboo-publisher 写的存量文章照样能读）：
+   *   · 标题 title（→ 文件名）
+   *   · 日期 date / published / created（→ 文件 mtime，与左侧列表显示的是同一个值）
+   *   · 作者 author / authors（→ 博客模块 profile.nickname，仍为空则不显示作者）
+   *   · 标签 tags / tag（字符串或数组，逗号/空白分隔都认）
+   * 这是「面向用户」的取舍：别人不必学我们的私有字段名，写通用键就能用；我们自己的存量字段也不用迁移。
+   *
+   * 【已废弃的私有约定】曾按 `bamboo-slug`（`分类/YYYY-MM-DD-标题`）抽日期、按所在目录名派生分类：
+   * 前者是发布器的内部命名，用户没义务适配，且 slug 里的日期是「发布日」，文章被编辑后会与列表次序脱节；
+   * 后者（分类维度）已整体移除，列表与详情页都不再展示。
+   *
+   * 【为什么必须以 metadataCache 为主源】索引原先是正则解析（parseFrontmatter）的结果，但那只是对
+   * 「传入的 raw」做正则解析，而索引这条路径根本没有 raw（也不可能为建索引去读全库文件）：
+   * frontmatter 块恒为空 → 索引里 tags 恒空 →「相关阅读」按 tag 重叠打分永远是 0，该区块永不出现。
+   * Obsidian 的 metadataCache 在启动时已把全库 frontmatter 解析完并常驻内存，读取同步零 IO，
+   * 正好解开「索引要真数据」与「不能为索引读全库文件」这对矛盾（多行 YAML 列表也被正确解析成数组）。
+   * raw 传入时（详情页）用正则结果补充，覆盖 cache 尚未索引到的新建/刚改文件的空窗。
+   *
+   * 注意：这里解析出的 date 只喂给详情页的元信息展示，**不参与导航排序**；
+   * 上下篇的次序一律用文件 mtime（见 IndexEntry.mtime）。
+   */
+  private readFrontmatter(file: TFile, raw?: string): FrontmatterInfo {
+    const fm: Record<string, unknown> | undefined = this.app.metadataCache.getFileCache(file)?.frontmatter;
+    const fb = this.parseFrontmatter(raw);
+    const str = (key: string): string => {
+      const v = fm ? fm[key] : undefined;
+      if (typeof v === 'string') return v.trim();
+      if (v instanceof Date && !Number.isNaN(v.getTime())) return formatYmd(v);
+      // `authors: [A, B]` 这类数组只取首位：元信息行是单行，多作者并排会挤爆版面
+      if (Array.isArray(v)) {
+        const hit = v.find((it) => typeof it === 'string' && it.trim());
+        if (typeof hit === 'string') return hit.trim();
+      }
+      return '';
+    };
+    const first = (...keys: string[]): string => {
+      for (const k of keys) { const v = str(k); if (v) return v; }
+      return '';
+    };
+    // 空串/空数组不算有效值：`tags: ""` 时还要能落到别名键上
+    const rawTags = [fm ? fm['tags'] : undefined, fm ? fm['tag'] : undefined, fm ? fm['bamboo-tags'] : undefined]
+      .find((v) => normalizeTags(v).length > 0);
+    const tags = normalizeTags(rawTags);
+    for (const t of fb.tags) if (!tags.includes(t)) tags.push(t);
+    return {
+      title: first('title') || fb.title || file.basename,
+      // 三级：通用键 → 正则兜底（cache 尚未索引到的新建/刚改文件）→ 文件 mtime
+      // （末级必须与左侧列表同源，列表卡片上的日期就是 mtime，两处不一致用户一眼能看出）
+      date: first('date', 'published', 'created', 'bamboo-date').slice(0, 10)
+        || fb.date
+        || formatYmd(new Date(file.stat.mtime)),
+      author: first('author', 'authors', 'bamboo-author') || fb.author || this.blogAuthor(),
+      tags,
+    };
+  }
+
+  /**
+   * 博客作者名 —— 取自博客模块自己的 `profile.nickname`（模块设置里的「昵称」）。
+   *
+   * 【为什么不写死】这是要给别人用的插件：兜底值若写成某个固定笔名，任何没写 author 的文章都会被错误署名。
+   * 博客模块本来就有一个「昵称」配置位，那才是作者名该待的地方 —— 用户填一次全站生效，没填就干脆不显示作者。
+   */
+  private blogAuthor(): string {
+    const data = this.plugin.settings?.moduleData?.[BLOG_MODULE_ID];
+    const profile = data ? data['profile'] : undefined;
+    if (!profile || typeof profile !== 'object') return '';
+    const nick = (profile as Record<string, unknown>)['nickname'];
+    return typeof nick === 'string' ? nick.trim() : '';
+  }
+
+  /**
+   * 博客文章根目录 —— 阅读视图的文件范围由博客模块的 rootFolder 决定，不用全库。
+   *
+   * 【为什么必须限定目录】阅读视图的入口是博客模块（module:listFiles { folder, recursive } 列出
+   * 指定目录下的文章），所以「上/下篇」「相关阅读」的候选集也必须落在同一目录内。若按全库建索引，
+   * vault 里的 Excalidraw 画板、日记、其他插件生成的 md 都会被算进来（它们往往共享通用 tag），
+   * 相关阅读会冒出一堆与文章无关的条目。rootFolder 读不到时（模块未装/未配置）退化为
+   * 「当前文章所在目录」，宁可范围保守，也不放大到全库。
+   */
+  private blogRootFolder(): string {
+    const data = this.plugin.settings?.moduleData?.[BLOG_MODULE_ID];
+    const raw = data && typeof data['rootFolder'] === 'string' ? data['rootFolder'].trim() : '';
+    return raw ? normalizePath(raw).replace(/^\/+|\/+$/g, '') : '';
+  }
+
+  /** 该文件是否在博客范围内（root 为空时退化到「当前文章所在目录」） */
+  private inBlogScope(path: string, root: string): boolean {
+    return root ? path === root || path.startsWith(root + '/') : dirOfPath(path) === dirOfPath(this._path);
+  }
+
+  /**
+   * 轻量构建博客目录内的文章索引（元信息取自 metadataCache，同步零 IO，不为建索引读文件）。
+   * _indexRoot 记的是「本次索引实际生效的范围键」—— 有 rootFolder 就记它，没有则记当前文章所在目录；
+   * 这样模块改目录、或未配置时切到别的目录，都能在下次渲染自动重建（无需重启）。
+   */
   private buildIndex(): IndexEntry[] {
-    if (this._index) return this._index;
-    const files = this.app.vault.getMarkdownFiles() || [];
+    const root = this.blogRootFolder();
+    const scope = root || dirOfPath(this._path);
+    if (this._index && this._indexRoot === scope) return this._index;
+    const files = (this.app.vault.getMarkdownFiles() || []).filter((f) => this.inBlogScope(f.path, root));
     this._index = files.map((f) => {
-      const fm = this.parseFrontmatter(f.path);
+      const fm = this.readFrontmatter(f);
       return {
         path: f.path,
-        title: fm.title || f.basename,
-        date: fm.date,
-        dateTs: parseDateTs(fm.date) || f.stat.ctime,
-        category: fm.category,
+        title: fm.title,
+        mtime: f.stat.mtime,
         tags: fm.tags,
       };
     });
+    this._indexRoot = scope;
     return this._index;
   }
 
   private parseArticle(raw: string, file: TFile): ArticleMeta {
-    const fm = this.parseFrontmatter(file.path, raw);
+    const fm = this.readFrontmatter(file, raw);
     const words = countWords(stripFrontmatter(raw));
-    const parts = file.path.split('/');
-    const category = parts.length > 2 ? parts[parts.length - 2] : '未分类';
     return {
-      title: fm.title || file.basename,
+      title: fm.title,
       date: fm.date,
-      tags: fm.tags,
-      category,
-      author: fm.author || '竹杖芒鞋',
+      // author 已由 readFrontmatter 走完「通用键 → 正则 → profile.nickname」三级兜底；此处再兜底就只能是编造的笔名
+      author: fm.author,
       words,
       reading: estimateReadingTime(words),
     };
   }
 
-  /** 简易 frontmatter 解析（扁平键值，仅取需要的字段） */
-  private parseFrontmatter(_path: string, raw?: string): {
-    title: string;
-    date: string;
-    tags: string[];
-    category: string;
-    author: string;
-  } {
+  /** 简易 frontmatter 解析（正则兜底：metadataCache 尚未就绪时用，见 readFrontmatter）。键名约定同 readFrontmatter：通用键优先。 */
+  private parseFrontmatter(raw?: string): FrontmatterInfo {
     let block = '';
     if (raw !== undefined) {
       const m = raw.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?/);
       if (m) block = m[1];
     }
-    let title = '';
-    let date = '';
-    let author = '';
-    let tags: string[] = [];
+    // 键名锚定行首：否则 `subtitle:` 会被 `title\s*:` 命中、`updated_date:` 会被 `date\s*:` 命中
     const get = (k: string) => {
-      const mm = block.match(new RegExp(k + '\\s*:\\s*(.+)'));
-      return mm ? mm[1].trim().replace(/^['"]|['"]$/g, '') : '';
+      const mm = block.match(new RegExp('^[ \\t]*' + k + '[ \\t]*:[ \\t]*(.+)$', 'm'));
+      // 去引号后必须再 trim 一次：`title: "……的 "` 的尾空格在引号**里面**，只做外层 trim 会留下它，
+      // 而 metadataCache 路径（readFrontmatter 的 str()）拿到的是 YAML 解出的字符串并 trim 过 ——
+      // 同一篇文章在「cache 就绪 / 未就绪」两条路径上就会给出不同的值。与 `tags: ""` 是同一类坑。
+      return mm ? mm[1].trim().replace(/^['"]|['"]$/g, '').trim() : '';
     };
-    title = get('title');
-    date = get('date').slice(0, 10);
-    author = get('author');
-    const tg = block.match(/tags\s*:\s*\[([^\]]*)\]/);
-    if (tg) tags = tg[1].split(',').map((s) => s.trim().replace(/^['"]|['"]$/g, '')).filter(Boolean);
-    const parts = _path.split('/');
-    const category = parts.length > 2 ? parts[parts.length - 2] : '未分类';
-    return { title, date, tags, category, author };
+    // tags 三种写法都要认：inline 数组 `tags: [a, b]`、标量 `tags: a, b`、多行列表（下文 `- a`）
+    let tags: string[] = [];
+    const inline = block.match(/^[ \t]*(?:bamboo-)?tags?[ \t]*:[ \t]*\[([^\]]*)\][ \t]*$/m);
+    if (inline) {
+      tags = normalizeTags(inline[1]);
+    } else {
+      const scalar = block.match(/^[ \t]*(?:bamboo-)?tags?[ \t]*:[ \t]*(.+)$/m);
+      if (scalar && !/^\s*\[/.test(scalar[1])) {
+        tags = normalizeTags(scalar[1]);
+      } else {
+        const lines = block.split(/\r?\n/);
+        const start = lines.findIndex((l) => /^[ \t]*(?:bamboo-)?tags?[ \t]*:/.test(l));
+        for (let i = start + 1; start >= 0 && i < lines.length; i += 1) {
+          const m = lines[i].match(/^[ \t]*-[ \t]*(.+)$/);
+          if (!m) break;                       // 多行列表结束
+          for (const t of normalizeTags(m[1])) if (!tags.includes(t)) tags.push(t);
+        }
+      }
+    }
+    // `authors: [A, B]` 这类数组写法只取首位，与 readFrontmatter 里 str() 对数组的处理保持一致
+    const listFirst = (v: string): string => v.replace(/^\[|\]$/g, '').split(/[,，、]/)[0].trim();
+    return {
+      title: get('title'),
+      // 通用键优先、bamboo-* 作别名；**不解析 bamboo-slug**（发布器内部命名，且里面的发布日与列表显示日会脱节）
+      date: (get('date') || get('published') || get('created') || get('bamboo-date')).slice(0, 10),
+      author: get('author') || listFirst(get('authors')) || get('bamboo-author'),
+      tags,
+    };
   }
 
   /* ── 代码块增强 ── */

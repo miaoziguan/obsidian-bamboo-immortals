@@ -41,7 +41,6 @@ export const APP_MESSAGE_TYPES = [
   'app:toggleZen',
   'app:collapseRightSidebar',
   'app:expandRightSidebar',
-  'app:getTheme',
   'app:openFile',
   'app:exportMindmap',
   'app:getHealthOverview',

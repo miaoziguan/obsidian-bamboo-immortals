@@ -211,9 +211,11 @@ export class Store {
                 };
             }
 
+            // 只取最新 PAGE_SIZE 天做首屏预热；更旧的日期不在此加载，而是在 setCurrentDate 时
+            // 由 _ensureCurrentDateLoaded() 逐日补读（dayKeys 是全量键，故任何历史日期都取得到）。
+            // 原有的「加载更多」翻页簇（loadMoreDays + _loadedPages/_hasMoreDays/_loadingMore）
+            // 因此全仓无调用者，已一并移除；宿主 getDaysPaginated 仍保留，供此处轻量预热使用。
             const days = paginated.days;
-            this.state._loadedPages = new Set([0]);
-            this.state._hasMoreDays = paginated.hasMore;
 
             if (Object.keys(days).length > 0) {
                 Object.assign(this.state.data, days);
@@ -651,7 +653,8 @@ export class Store {
     async unarchiveGoal(id) { return GoalService.unarchive(id); }
 
     // ── 钱包 CRUD 向后兼容桥接：实际逻辑已迁入 WalletService ──
-    async updateBalance(amount, type, desc) { return WalletService.updateBalance(amount, type, desc); }
+    // 必须透传 date（完成时刻）：桥少一个形参就会把它丢掉，导致收入落回保存时刻
+    async updateBalance(amount, type, desc, date) { return WalletService.updateBalance(amount, type, desc, date); }
     async addIncomeHistory(income) { return WalletService.addIncomeHistory(income); }
     async removeIncomeHistory(desc) { return WalletService.removeIncomeHistory(desc); }
     async addPurchaseHistory(purchase) { return WalletService.addPurchaseHistory(purchase); }
@@ -759,37 +762,6 @@ export class Store {
             }
         } catch (e) {
             console.warn('[Store] 补读日期失败:', key, e.message);
-        }
-    }
-
-    /**
-     * 加载下一页日期数据（滚动到旧日期时调用）
-     * @returns {Promise<boolean>} 是否还有更多数据
-     */
-    async loadMoreDays() {
-        if (!this.state._hasMoreDays) return false;
-        if (this.state._loadingMore) return false; // 防重复调用
-        this.state._loadingMore = true;
-
-        const pages = [...this.state._loadedPages];
-        const nextPage = pages.length > 0 ? Math.max(...pages) + 1 : 0;
-        if (this.state._loadedPages.has(nextPage)) {
-            this.state._loadingMore = false;
-            return this.state._hasMoreDays;
-        }
-
-        try {
-            const paginated = await storageManager.getDaysPaginated(nextPage, 30);
-            Object.assign(this.state.data, paginated.days);
-            this.state._loadedPages.add(nextPage);
-            this.state._hasMoreDays = paginated.hasMore;
-            this.notify();
-            return paginated.hasMore;
-        } catch (e) {
-            console.warn('[Store] 加载更多日期失败:', e.message);
-            return false;
-        } finally {
-            this.state._loadingMore = false;
         }
     }
 
@@ -967,7 +939,9 @@ export class Store {
     }
 
     async exportData() { return DataIO.exportData(); }
-    async importData(data, opts) { return DataIO.importData(data, opts); }
+    // 说明：原有 importData 转发（→ DataIO.importData）全仓无调用者，已删除。
+    // 真实恢复入口在设置面板：settings-import-data → SettingsModal.openImportPreview
+    // → showImportPreview → 确认后直接 DataIO.importData(backup, { strategy, scope })。
 }
 
 export const store = new Store();

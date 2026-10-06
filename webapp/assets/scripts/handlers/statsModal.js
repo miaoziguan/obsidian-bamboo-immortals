@@ -198,7 +198,7 @@ export const StatsModal = {
                         <div class="category-item">
                             <span class="category-name">${s.category.name}</span>
                             <div class="category-bar-wrapper">
-                                <div class="category-bar" style="width:${s.avgProgress}%;background:${s.category.color};"></div>
+                                <div class="category-bar" style="width:${num(s.avgProgress)}%;background:${HTMLUtils.escapeHtmlAttr(s.category.color)};"></div>
                             </div>
                             <span class="category-value">${s.avgProgress}%</span>
                         </div>
@@ -216,7 +216,7 @@ export const StatsModal = {
                             data-time-span="short" 
                             tabindex="0" 
                             role="button"
-                            aria-label="筛选短期目标（小于30天），当前有${stats.timeSpanStats.shortTerm}个"
+                            aria-label="筛选短期目标（小于30天），当前有${num(stats.timeSpanStats.shortTerm)}个"
                             onclick="StatsModal._filterByTimeSpan('short')"
                             onkeydown="if(event.key === 'Enter' || event.key === ' ') { StatsModal._filterByTimeSpan('short'); event.preventDefault(); }">
                             <div class="time-span-info">
@@ -230,7 +230,7 @@ export const StatsModal = {
                             data-time-span="medium" 
                             tabindex="0" 
                             role="button"
-                            aria-label="筛选中期目标（30-90天），当前有${stats.timeSpanStats.mediumTerm}个"
+                            aria-label="筛选中期目标（30-90天），当前有${num(stats.timeSpanStats.mediumTerm)}个"
                             onclick="StatsModal._filterByTimeSpan('medium')"
                             onkeydown="if(event.key === 'Enter' || event.key === ' ') { StatsModal._filterByTimeSpan('medium'); event.preventDefault(); }">
                             <div class="time-span-info">
@@ -244,7 +244,7 @@ export const StatsModal = {
                             data-time-span="long" 
                             tabindex="0" 
                             role="button"
-                            aria-label="筛选长期目标（大于90天），当前有${stats.timeSpanStats.longTerm}个"
+                            aria-label="筛选长期目标（大于90天），当前有${num(stats.timeSpanStats.longTerm)}个"
                             onclick="StatsModal._filterByTimeSpan('long')"
                             onkeydown="if(event.key === 'Enter' || event.key === ' ') { StatsModal._filterByTimeSpan('long'); event.preventDefault(); }">
                             <div class="time-span-info">
@@ -423,7 +423,7 @@ export const StatsModal = {
                             <span class="cultivation-progress-next">下一层：${next.title} · 还需 ${toNextLayer} 个</span>
                         </div>
                         <div class="cultivation-progress-bar-wrap">
-                            <div class="cultivation-progress-bar" style="width:${progressPercent}%"></div>
+                            <div class="cultivation-progress-bar" style="width:${num(progressPercent)}%"></div>
                         </div>
                         <div class="cultivation-progress-range">
                             <span>${current.goal}</span><span>${next.goal}</span>
@@ -472,7 +472,7 @@ export const StatsModal = {
                                     ${realmLayers.map(l => {
                                         const unlocked = completedGoals >= l.goal;
                                         const active = l.layer === current.layer;
-                                        return `<span class="cultivation-layer-dot ${unlocked ? 'unlocked' : ''} ${active ? 'active' : ''}" title="${l.title} · ${l.goal}个"></span>`;
+                                        return `<span class="cultivation-layer-dot ${unlocked ? 'unlocked' : ''} ${active ? 'active' : ''}" title="${HTMLUtils.escapeHtmlAttr(l.title)} · ${num(l.goal)}个"></span>`;
                                     }).join('')}
                                 </div>
                                 <span class="cultivation-realm-goal">${realmLayers[0].goal}</span>

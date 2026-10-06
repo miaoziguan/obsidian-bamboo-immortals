@@ -13,11 +13,82 @@ describe('GoalStatsCalculator 目标统计计算', () => {
       { id: 'personal', name: '个人', color: '#10B981' },
       { id: 'health', name: '健康', color: '#EF4444' },
     ];
-    calc = loadModule('services/goalStatsCalculator.js', ['GoalStatsCalculator']).GoalStatsCalculator;
+    // 该模块 import 了 utils/dateUtils 的两个函数，而 loadModule 会剥离 import 且不接线
+    // → 按仓库惯例把它们当 globals 注入（同 archiver.jest.test.js 注入 DateRangePicker）
+    const dateUtils = loadModule('utils/dateUtils.js', ['parseLocalDate', 'diffLocalDays']);
+    calc = loadModule('services/goalStatsCalculator.js', ['GoalStatsCalculator'], dateUtils).GoalStatsCalculator;
   });
 
   afterAll(() => {
     delete window.GOAL_CATEGORIES;
+  });
+
+  // ---- A14-2：按天判定走本地日历口径 ----
+  // 基准一律用**显式本地时刻**构造（本地凌晨 2:00）。旧实现把 'YYYY-MM-DD' 按 UTC 午夜解析，
+  // 等价于把日界挪到本地 08:00，此刻所有「还剩/逾期」判定整体错 1 档；当天还会算出 -0。
+  describe('本地日历口径（截止/停滞/跨度）', () => {
+    const now = new Date(2026, 9, 6, 2, 0);
+    const calcAt = (goal) => calc.calculate([goal], now);
+
+    test('今天到期：归 urgent，daysLeft 为 0 且不是 -0', () => {
+      const r = calcAt({ id: '1', progress: 30, endDate: '2026-10-06' });
+      expect(r.urgentGoals.length).toBe(1);
+      expect(r.urgentGoals[0].daysLeft).toBe(0);
+      expect(Object.is(r.urgentGoals[0].daysLeft, -0)).toBe(false);
+      expect(r.overdueGoals.length).toBe(0);
+    });
+
+    test('昨天到期：归 overdue 1 天（旧实现算出 -0 → 误报「还剩 0 天」）', () => {
+      const r = calcAt({ id: '1', progress: 30, endDate: '2026-10-05' });
+      expect(r.overdueGoals.length).toBe(1);
+      expect(r.overdueGoals[0].daysOverdue).toBe(1);
+      expect(r.urgentGoals.length).toBe(0);
+    });
+
+    test('前天到期：daysOverdue 为 2（旧实现少算 1 天）', () => {
+      const r = calcAt({ id: '1', progress: 30, endDate: '2026-10-04' });
+      expect(r.overdueGoals[0].daysOverdue).toBe(2);
+    });
+
+    test('3 天后到期归 urgent（旧实现按 08:00 日界算成 4 天 → 掉进 upcoming）', () => {
+      const r = calcAt({ id: '1', progress: 30, endDate: '2026-10-09' });
+      expect(r.urgentGoals.length).toBe(1);
+      expect(r.urgentGoals[0].daysLeft).toBe(3);
+      expect(r.upcomingGoals.length).toBe(0);
+    });
+
+    test('4 天后到期归 upcoming，天数为 4', () => {
+      const r = calcAt({ id: '1', progress: 30, endDate: '2026-10-10' });
+      expect(r.upcomingGoals.length).toBe(1);
+      expect(r.upcomingGoals[0].daysLeft).toBe(4);
+      expect(r.urgentGoals.length).toBe(0);
+    });
+
+    test('7 天档边界：7 天归 upcoming，8 天不归类', () => {
+      expect(calcAt({ id: '1', progress: 30, endDate: '2026-10-13' }).upcomingGoals.length).toBe(1);
+      const r8 = calcAt({ id: '1', progress: 30, endDate: '2026-10-14' });
+      expect(r8.upcomingGoals.length).toBe(0);
+      expect(r8.urgentGoals.length).toBe(0);
+      expect(r8.overdueGoals.length).toBe(0);
+    });
+
+    test('非法 endDate 串不归类（原为 NaN 静默穿透，现显式跳过）', () => {
+      const r = calcAt({ id: '1', progress: 30, endDate: '2026-02-31' });
+      expect(r.overdueGoals.length).toBe(0);
+      expect(r.urgentGoals.length).toBe(0);
+      expect(r.upcomingGoals.length).toBe(0);
+    });
+
+    test('停滞阈值按本地日历日：第 14 天不算，第 15 天算', () => {
+      expect(calcAt({ id: '1', progress: 30, startDate: '2026-09-22' }).stagnantGoals.length).toBe(0);
+      expect(calcAt({ id: '1', progress: 30, startDate: '2026-09-21' }).stagnantGoals.length).toBe(1);
+    });
+
+    test('跨度档位（30/90 天）在本地日历口径下不变', () => {
+      expect(calcAt({ id: '1', progress: 30, startDate: '2026-01-01', endDate: '2026-01-30' }).timeSpanStats.shortTerm).toBe(1);
+      expect(calcAt({ id: '1', progress: 30, startDate: '2026-01-01', endDate: '2026-04-01' }).timeSpanStats.mediumTerm).toBe(1);
+      expect(calcAt({ id: '1', progress: 30, startDate: '2026-01-01', endDate: '2026-04-02' }).timeSpanStats.longTerm).toBe(1);
+    });
   });
 
   // ---- 空输入 ----

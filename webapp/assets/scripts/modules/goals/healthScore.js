@@ -124,25 +124,25 @@ export const GoalHealthScore = {
 
         return `
             <div class="goal-health-overview"
-                 style="--health-color:${colors.start};--ring-stroke:${colors.start}"
+                 style="--health-color:${HTMLUtils.escapeHtmlAttr(colors.start)};--ring-stroke:${HTMLUtils.escapeHtmlAttr(colors.start)}"
                  role="button"
                  tabindex="0"
-                 aria-label="综合健康分 ${set.avgScore} 分，${set.avgLabel}，共 ${set.count} 个目标。点击查看详细分析"
+                 aria-label="综合健康分 ${num(set.avgScore)} 分，${HTMLUtils.escapeHtmlAttr(set.avgLabel)}，共 ${num(set.count)} 个目标。点击查看详细分析"
                  aria-haspopup="dialog"
                  aria-pressed="false">
                 <div class="gho-left">
                     <div class="gho-ring">
-                        <svg class="gho-svg" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" aria-hidden="true">
+                        <svg class="gho-svg" viewBox="0 0 ${num(size)} ${num(size)}" width="${num(size)}" height="${num(size)}" aria-hidden="true">
                             <defs>
-                                <linearGradient id="${gradientId}" x1="0%" y1="0%" x2="100%" y2="100%">
-                                    <stop offset="0%" stop-color="${colors.start}"/>
-                                    <stop offset="100%" stop-color="${colors.end}"/>
+                                <linearGradient id="${HTMLUtils.escapeHtmlAttr(gradientId)}" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" stop-color="${HTMLUtils.escapeHtmlAttr(colors.start)}"/>
+                                    <stop offset="100%" stop-color="${HTMLUtils.escapeHtmlAttr(colors.end)}"/>
                                 </linearGradient>
                             </defs>
-                            <circle class="gho-bg" cx="${size/2}" cy="${size/2}" r="${r}" fill="none"/>
-                            <circle class="gho-progress" cx="${size/2}" cy="${size/2}" r="${r}" fill="none"
-                                stroke="url(#${gradientId})" stroke-width="${stroke}" stroke-linecap="round"
-                                style="stroke-dasharray:${c};stroke-dashoffset:${off}"/>
+                            <circle class="gho-bg" cx="${size/2}" cy="${size/2}" r="${num(r)}" fill="none"/>
+                            <circle class="gho-progress" cx="${size/2}" cy="${size/2}" r="${num(r)}" fill="none"
+                                stroke="url(#${HTMLUtils.escapeHtmlAttr(gradientId)})" stroke-width="${num(stroke)}" stroke-linecap="round"
+                                style="stroke-dasharray:${num(c)};stroke-dashoffset:${num(off)}"/>
                         </svg>
                         <div class="gho-center">
                             <span class="gho-score">${set.avgScore}</span>
@@ -153,7 +153,7 @@ export const GoalHealthScore = {
                 <div class="gho-divider"></div>
                 <div class="gho-metrics">
                     <div class="gho-metric">
-                        <span class="gho-metric-dot" style="background:${colors.start}"></span>
+                        <span class="gho-metric-dot" style="background:${HTMLUtils.escapeHtmlAttr(colors.start)}"></span>
                         <span class="gho-metric-name">执行</span>
                         <span class="gho-metric-val">${set.L1}</span>
                     </div>
@@ -169,7 +169,7 @@ export const GoalHealthScore = {
                     </div>
                 </div>
                 <div class="gho-divider"></div>
-                <div class="gho-suggestion" title="${suggestion.tip}">
+                <div class="gho-suggestion" title="${HTMLUtils.escapeHtmlAttr(suggestion.tip)}">
                     <span class="gho-suggestion-icon">${LucideUtils.createIcon(suggestion.icon, { size: 12 })}</span>
                     <span class="gho-suggestion-text">${suggestion.text}</span>
                 </div>

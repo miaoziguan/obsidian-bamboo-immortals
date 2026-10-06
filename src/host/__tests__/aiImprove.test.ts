@@ -6,7 +6,7 @@ import { ALL_MESSAGE_TYPES } from '../protocol';
 /**
  * 锁定「战略复盘面板 → AI 改进」入口：
  * webapp 健康分详情点「用 AI 改进」→ postMessage(app:aiImproveGoal)
- * → AppAPI 路由到注入回调 onAiImproveGoal，把目标交给 AgenticPlanModal。
+ * → AppAPI 路由到注入回调 onAiImproveGoal，把目标交给规划台（PlanEditorView）。
  */
 describe('AppAPI · app:aiImproveGoal 路由', () => {
   let api: AppAPI;

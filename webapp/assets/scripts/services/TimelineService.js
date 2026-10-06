@@ -1,3 +1,5 @@
+import { parseTime as parseTimeUtil, calculateCheckInTimes as calculateCheckInTimesUtil } from '../utils/helpers.js';
+
 export const PERIOD_CONFIG = {
     lateNight:  { period: 'lateNight',  name: '凌晨',  time: '00:00 - 04:00', icon: 'moon', eval: 'good', hours: [0, 4] },
     dawn:       { period: 'dawn',       name: '黎明',  time: '04:00 - 05:30', icon: 'sunrise', eval: 'good', hours: [4, 5.5] },
@@ -109,43 +111,24 @@ export const TimelineService = {
         });
     },
 
+    /**
+     * 解析时间字符串 → { hour, minute } | null。
+     *
+     * 实现已收敛到 utils/helpers.js 的 parseTime（C 轮去重）：此前本服务自带一份
+     * 「trim + 非锚定」副本，与 helpers 的「不 trim + 整串锚定」语义不同，而两者分别供
+     * modules/timeline/editor.js（写 data.metrics）与 services/GoalService.js（读 data.metrics）
+     * 使用，同一份数据被两套算法解释。现统一为 helpers 的宽松口径（容忍「09:00 - 12:00」区间，取起点）。
+     */
     parseTime(timeStr) {
-        if (!timeStr || typeof timeStr !== 'string') return null;
-        const match = timeStr.trim().match(/(\d{1,2}):(\d{2})/);
-        if (!match) return null;
-        return { hour: parseInt(match[1]), minute: parseInt(match[2]) };
+        return parseTimeUtil(timeStr);
     },
 
+    /**
+     * 计算首末打卡时间（timeline → { firstCheckIn, lastCheckIn }）。
+     * 实现已收敛到 utils/helpers.js 的同名函数。
+     */
     calculateCheckInTimes(timeline) {
-        if (!timeline || !Array.isArray(timeline)) {
-            return { firstCheckIn: '--:--', lastCheckIn: '--:--' };
-        }
-
-        const allTimes = [];
-        timeline.forEach(period => {
-            if (period.items && Array.isArray(period.items)) {
-                period.items.forEach(item => {
-                    const parsed = this.parseTime(item.time);
-                    if (parsed) allTimes.push(parsed);
-                });
-            }
-        });
-
-        if (allTimes.length === 0) {
-            return { firstCheckIn: '--:--', lastCheckIn: '--:--' };
-        }
-
-        allTimes.sort((a, b) => {
-            if (a.hour !== b.hour) return a.hour - b.hour;
-            return a.minute - b.minute;
-        });
-
-        const formatTime = (t) => `${String(t.hour).padStart(2, '0')}:${String(t.minute).padStart(2, '0')}`;
-
-        return {
-            firstCheckIn: formatTime(allTimes[0]),
-            lastCheckIn: formatTime(allTimes[allTimes.length - 1])
-        };
+        return calculateCheckInTimesUtil(timeline);
     },
 
     updateMetrics(dayData) {

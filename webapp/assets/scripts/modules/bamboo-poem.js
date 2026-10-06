@@ -72,7 +72,7 @@ export const BambooPoem = {
             <div class="bamboo-poem-strip">
                 <div class="bamboo-poem-text">${poemText}</div>
                 <div class="bamboo-poem-meta">
-                    <div class="bamboo-poem-author" data-layout="${mode}">${authorLine}</div>
+                    <div class="bamboo-poem-author" data-layout="${HTMLUtils.escapeHtmlAttr(mode)}">${authorLine}</div>
                     <div class="bamboo-poem-date">${dateText}</div>
                 </div>
             </div>

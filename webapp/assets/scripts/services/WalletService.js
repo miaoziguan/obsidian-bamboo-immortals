@@ -2,6 +2,22 @@
  * WalletService — 余额 / 收支 / 归档 / 统计
  * 从 store.js 抽出的钱包子系统
  */
+
+/**
+ * 本地日历的 YYYY-MM —— 收入/消费归属月份的**唯一口径**。
+ *
+ * 必须用 getFullYear/getMonth（本地），不能用 toISOString().slice(0, 7)（UTC）：
+ * 东八区下「月首 00:00–07:59」的时刻，其 UTC 仍在上一日/上一月，会被静默记进上个月，
+ * 与同月的日记页 key、月报筛选、归档桶全部错位。本子系统其他「按天判定」都用本地日历
+ * （new Date(x).toDateString()、store.getDateKey），口径必须对齐。
+ * 无法解析时返回 ''，由调用方决定「保留」而非落入空键归档桶。
+ */
+function localMonthKey(input) {
+    const d = input instanceof Date ? input : new Date(input);
+    if (isNaN(d.getTime())) return '';
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
 export const WalletService = {
 
     async updateBalance(amount, type = 'manual', desc = '', date = new Date().toISOString()) {
@@ -56,7 +72,9 @@ export const WalletService = {
                 s.stats.todayEarnings = Math.max(0, parseFloat((s.stats.todayEarnings - adjustedEarnings).toFixed(2)));
             }
         }
-        const month = new Date(effDate).toISOString().slice(0, 7);
+        // 月份同样锚定本地日历（旧实现 toISOString().slice(0,7) 取 UTC 月，
+        // 会让月首凌晨完成的收入错归上月 —— 见 localMonthKey 注释）
+        const month = localMonthKey(effDate);
         s.incomeHistory.records.unshift({
             ...income,
             date: effDate,
@@ -88,11 +106,13 @@ export const WalletService = {
 
     async addPurchaseHistory(purchase) {
         const s = store.state;
-        const month = new Date().toISOString().slice(0, 7);
+        // 与收入侧对称：尊重调用方传入的 date（消费发生时刻），缺失才回退保存时刻。
+        // 旧实现把 date 写在展开之后 → 强制覆盖调用方传值；且 month 取 UTC 月。
+        const effDate = purchase.date || new Date().toISOString();
         s.purchaseHistory.records.unshift({
             ...purchase,
-            date: new Date().toISOString(),
-            month
+            date: effDate,
+            month: localMonthKey(effDate)
         });
         await storageManager.putPurchaseHistory(s.purchaseHistory);
         store.notify();
@@ -112,13 +132,16 @@ export const WalletService = {
         let ihChanged = false;
 
         // 购买历史归档
+        // 归属月以 date 推导（本地日历）为准：record.month 可能是旧实现的 UTC 月，
+        // 且 record.date.slice(0,7) 的口径还取决于 date 存的是 UTC ISO 还是本地串。
+        // 两者都取不到时保留在 records —— 否则会落进 ('' 空键) 归档桶污染存档。
         const ph = s.purchaseHistory || { records: [], archive: {} };
         const phToArchive = [];
         const phToKeep = [];
         if (!Array.isArray(ph.records)) ph.records = [];
         for (const record of ph.records) {
-            const m = record.month || record.date.slice(0, 7);
-            if (recentMonths.has(m)) {
+            const m = localMonthKey(record.date) || record.month || '';
+            if (!m || recentMonths.has(m)) {
                 phToKeep.push(record);
             } else {
                 phToArchive.push(record);
@@ -126,7 +149,7 @@ export const WalletService = {
         }
         if (phToArchive.length > 0) {
             for (const record of phToArchive) {
-                const m = record.month || record.date.slice(0, 7);
+                const m = localMonthKey(record.date) || record.month || '';
                 if (!ph.archive[m]) {
                     ph.archive[m] = { totalSpent: 0, totalCount: 0, items: {} };
                 }
@@ -141,14 +164,14 @@ export const WalletService = {
             phChanged = true;
         }
 
-        // 收入历史归档
+        // 收入历史归档（归属月同口径，见上）
         const ih = s.incomeHistory || { records: [], archive: {} };
         const ihToArchive = [];
         const ihToKeep = [];
         if (!Array.isArray(ih.records)) ih.records = [];
         for (const record of ih.records) {
-            const m = record.month || record.date.slice(0, 7);
-            if (recentMonths.has(m)) {
+            const m = localMonthKey(record.date) || record.month || '';
+            if (!m || recentMonths.has(m)) {
                 ihToKeep.push(record);
             } else {
                 ihToArchive.push(record);
@@ -156,7 +179,7 @@ export const WalletService = {
         }
         if (ihToArchive.length > 0) {
             for (const record of ihToArchive) {
-                const m = record.month || record.date.slice(0, 7);
+                const m = localMonthKey(record.date) || record.month || '';
                 if (!ih.archive[m]) {
                     ih.archive[m] = { totalEarned: 0, totalCount: 0 };
                 }

@@ -156,7 +156,7 @@
 - [L5] ⚠️ 部分属实（非整条漏报）— `GoalDiagnoser.ts:255-260`\n  三维摘要要求 `penalty>0 && hint` 才展示，hint 为空时该行不显示——属实；但归因另由 `generateHealthHints` 生成，不能算整条诊断漏报。
 - [L6] ⚠️ 部分属实/夸大（行号修正）— `Suggestion.ts:103-112`\n  「无上限」属实（仅 `Math.max(0, Math.round(v))`）；但负值已被 `v < 0` 前置校验 + `Math.max(0,...)` 双重阻断，不会成负值。行号实为 103-112 分支。
 - [L7] ❌ 误报 — `DiagnosisProgressModal.ts:15-16`（PHASE_ORDER）\n  注释明确「展示顺序（不含 done）」，done 是终态本就不展示；`PHASE_ORDER` 字面量无重复元素，无「重复 phase 渲染异常」。剔除。
-- [L8] ❌ 误报 — `PlanConfirmModal.ts:247-249`\n  `GoalSubItem` 类型（data.ts:43-57）无独立 `reason` 字段，AI 的 `reason` 在 MarkdownPlanner:290 已映射进 `detail`；删 `detail` 即删干净，无残留。剔除。
+- [L8] ❌ 误报 — `PlanConfirmModal.ts:247-249`\n  `GoalSubItem` 类型（data.ts:43-57）无独立 `reason` 字段，AI 的 `reason` 在 MarkdownPlanner:290 已映射进 `detail`；删 `detail` 即删干净，无残留。剔除。（`PlanConfirmModal.ts` 后经复核确认全历史无任何 import / 未进产物，已作为死代码删除，本条仅存历史）
 - [L9] ✅ 确认属实 — `DiagnosisModal.ts:296-299`\n  Modal 层应用按钮直接 `onApply`+`close`，无 `applied` 标记/禁用；因点击即关闭，实际需重开报告才触发，影响有限。
 - [L10] ✅ 确认属实 — `runDiagnosis.ts:145`（及 167/194/152/174/201）\n  `onConfirm: (final) => void deps.writeGoals(final)` 一律 `void` 包裹无 `.catch`，`writeGoals` 拒绝时异常被静默吞掉。
 - [L11] ❌ 误报 — `DeviationCalculator.ts:31-35,84-85`\n  项目无 `.tsx`、非 React 应用，不存在 React `key` 复用机制；下标仅作数据聚合缓存键（确定性映射），与 React key 稳定性无关。剔除。

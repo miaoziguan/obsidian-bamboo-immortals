@@ -39,7 +39,14 @@ interface NetModule {
 /** 经 window.require 惰性加载的 tls 模块形状 */
 interface TlsModule {
   connect(opts: { host: string; port: number; rejectUnauthorized?: boolean }): SmtpSocket;
-  connect(opts: { socket: SmtpSocket; host?: string; port?: number; rejectUnauthorized?: boolean }): SmtpSocket;
+  connect(opts: {
+    socket: SmtpSocket;
+    host?: string;
+    port?: number;
+    /** SNI：证书校验依赖主机名，缺失时会对多域名证书校验失败 */
+    servername?: string;
+    rejectUnauthorized?: boolean;
+  }): SmtpSocket;
 }
 
 /**
@@ -61,6 +68,9 @@ export function isSmtpAvailable(): boolean {
   return typeof (window as unknown as { require?: unknown }).require === 'function';
 }
 
+/** socket 级兜底超时（毫秒） */
+const SMTP_TIMEOUT_MS = 15000;
+
 export interface SmtpConfig {
   host: string;     // SMTP 服务器地址，如 smtp.qq.com
   port: number;     // 通常 465（SSL）或 587（STARTTLS）
@@ -68,6 +78,12 @@ export interface SmtpConfig {
   user: string;     // 邮箱账号（发件人，需完整邮箱如 xxx@qq.com）
   pass: string;     // SMTP 授权码
   fromName?: string; // 发件人显示名（可选）
+  /**
+   * 是否跳过 TLS 证书校验。默认 false（校验开启）。
+   * 仅在自建/自签证书的私有 SMTP 服务器上才应开启 ——
+   * 关闭校验会让授权码（等同邮箱密码）暴露给中间人。
+   */
+  allowSelfSignedCert?: boolean;
 }
 
 export interface SendResult {
@@ -129,15 +145,21 @@ export function sendEmail(
     const net = nodeRequire('net');
     const tls = nodeRequire('tls');
 
-    const conn: SmtpSocket = cfg.secure
-      ? tls.connect({ host, port, rejectUnauthorized: false })
+    // 证书校验默认开启。仅当用户显式开启「允许自签证书」时才关闭 ——
+    // 授权码等同邮箱密码，关闭校验会让它暴露给中间人。
+    const allowSelfSigned = cfg.allowSelfSignedCert === true;
+
+    // 注意用 let：STARTTLS 升级后要把 conn 换成 TLSSocket，
+    // 否则后续命令仍写入已被包裹的原始 socket。
+    let conn: SmtpSocket = cfg.secure
+      ? tls.connect({ host, port, rejectUnauthorized: !allowSelfSigned })
       : net.connect({ host, port });
 
     const trace: string[] = [];
 
     // 状态机步骤
     //   0=等待 banner / 发 EHLO
-    //   1=AUTH LOGIN（或 STARTTLS，待 STARTTLS 升级后重置为 0）
+    //   1=AUTH LOGIN（非 secure 时为 STARTTLS，收到其 220 后升级 TLS 并重置为 0）
     //   2=AUTH 用户名 b64
     //   3=AUTH 密码 b64
     //   4=MAIL FROM
@@ -149,7 +171,11 @@ export function sendEmail(
     let step = 0;
     let buffer = '';
     let answered = false;
-    let secureUpgraded = cfg.secure; // STARTTLS 升级后置 true
+    let secureUpgraded = cfg.secure;      // 已是 TLS（465 直连，或已完成 STARTTLS）
+    let awaitingStartTlsReply = false;    // 已发出 STARTTLS，正等待服务器的 220
+    // 刚建连、尚未收到任何响应时，服务器会先来一个 220 banner。
+    // 它不是对任何命令的应答，绝不能被当成「STARTTLS 被接受」。
+    let sawBanner = false;
 
     const fail = (msg: string) => {
       if (answered) return;
@@ -158,6 +184,11 @@ export function sendEmail(
       resolve({ ok: false, error: msg, trace });
     };
 
+    // 具名处理器：STARTTLS 升级时需要能把它们从旧 socket 上摘掉，
+    // 因此不能写成内联箭头函数（拿不到引用）。
+    const onConnError = (err: Error) => fail(`连接/发送失败：${err.message}`);
+    const onConnClose = () => { if (!answered) fail('连接意外关闭，邮件可能未发送'); };
+
     const sendNext = () => {
       let raw = '';
       switch (step) {
@@ -165,7 +196,16 @@ export function sendEmail(
           raw = `EHLO ${host}\r\n`;
           break;
         case 1:
-          raw = cfg.secure ? 'AUTH LOGIN\r\n' : 'STARTTLS\r\n';
+          // 判断依据必须是 secureUpgraded（实际是否已在 TLS 上），而不是 cfg.secure。
+          // STARTTLS 升级后 cfg.secure 仍为 false，若据此判断会再发一次 STARTTLS，
+          // 服务器此时已在 TLS 上等待 EHLO/AUTH 回应，必然超时 → 587 模式依旧不可用。
+          if (secureUpgraded) {
+            raw = 'AUTH LOGIN\r\n';
+          } else {
+            raw = 'STARTTLS\r\n';
+            // 只有发出了 STARTTLS，其后的 220 才代表「同意升级」
+            awaitingStartTlsReply = true;
+          }
           break;
         case 2:
           raw = b64(cfg.user) + '\r\n'; // AUTH 用户名（收到 334 后发）
@@ -214,7 +254,12 @@ export function sendEmail(
         buffer = buffer.slice(idx + 2);
         const code = parseInt(line.slice(0, 3), 10);
         const cont = line[3] === '-'; // 多行续接（如 EHLO 多条）
-        trace.push(`<<< ${line}`);
+        // 收发双向脱敏：base64 后的账号/授权码不应出现在 trace 里
+        // （服务器回包也可能回显凭据，旧实现只对写出行做替换）。
+        const safeLine = line
+          .split(b64(cfg.pass)).join('***')
+          .split(b64(cfg.user)).join('<user>');
+        trace.push(`<<< ${safeLine}`);
         if (cont) continue; // 多行响应续接，不处理
 
         if (code >= 400) {
@@ -222,22 +267,48 @@ export function sendEmail(
           return;
         }
 
-        // STARTTLS 升级：明文收到 220 后把 socket 升级为 TLS，再重新发 EHLO
-        if (!secureUpgraded && code === 220) {
-          secureUpgraded = true;
-          const tlsSock = tls.connect({ socket: conn, host, rejectUnauthorized: false });
-          tlsSock.setEncoding('utf-8');
-          tlsSock.on('data', handleData);
-          tlsSock.on('error', (err: Error) => fail(`连接/发送失败：${err.message}`));
-          tlsSock.on('close', () => { if (!answered) fail('连接意外关闭，邮件可能未发送'); });
-          step = 0;
-          tlsSock.write(`EHLO ${host}\r\n`);
-          trace.push('>>> (STARTTLS 升级为 TLS 后重发 EHLO)');
+        // 连接 banner：服务器建连后的第一行 greeting，不是对任何命令的应答。
+        // 【关键】必须先于 STARTTLS 判定处理掉。旧实现只判 `code === 220`，
+        // 而 banner 恰好也是 220 且在 step 0 最早到达，于是被误当成「STARTTLS 被接受」，
+        // 在仍是明文的 socket 上发起 TLS 握手 —— 服务器此刻还在等 EHLO 响应，
+        // 握手必然失败，587 模式 100% 不可用（banner 守卫在其之后，永远走不到）。
+        if (!sawBanner && !awaitingStartTlsReply && code === 220) {
+          sawBanner = true;
+          trace.push('<<< (连接 banner，非命令应答，已忽略)');
           return;
         }
 
-        // 连接 banner（连接刚建立时的 220）不是命令响应，不推进 step
-        if (step === 0 && code === 220) return;
+        // STARTTLS 升级：仅当确实已发出 STARTTLS 且收到其 220 时才升级
+        if (!secureUpgraded && awaitingStartTlsReply && code === 220) {
+          awaitingStartTlsReply = false;
+          secureUpgraded = true;
+          // 明文 socket 交由 TLS 接管前，必须摘掉旧监听 ——
+          // 否则升级后同一份数据会被 handleData 处理两次（重复推进状态机）。
+          try {
+            conn.off('data', handleData);
+            conn.off('error', onConnError);
+            conn.off('close', onConnClose);
+            conn.setTimeout(0);
+          } catch { /* noop */ }
+          const tlsSock = tls.connect({
+            socket: conn,
+            host,
+            servername: host,          // SNI：证书校验依赖，必须给
+            rejectUnauthorized: !allowSelfSigned,
+          });
+          tlsSock.setEncoding('utf-8');
+          tlsSock.setTimeout(SMTP_TIMEOUT_MS, () => fail('SMTP 超时：STARTTLS 升级后服务器未响应'));
+          conn = tlsSock;              // 后续命令必须写新的 TLS socket
+          tlsSock.on('data', handleData);
+          tlsSock.on('error', onConnError);
+          tlsSock.on('close', onConnClose);
+          // RFC 3207：TLS Negotiation 之后能力需重新协商，故重置状态并重发 EHLO
+          step = 0;
+          buffer = '';
+          sendNext();
+          trace.push('>>> (STARTTLS 已升级为 TLS，重置状态并重发 EHLO)');
+          return;
+        }
 
         // AUTH LOGIN 的中间应答 334：直接发下一步（用户名/密码），不 step++
         if (code === 334) {
@@ -266,10 +337,10 @@ export function sendEmail(
 
     conn.setEncoding('utf-8');
     conn.on('data', handleData);
-    conn.on('error', (err: Error) => fail(`连接/发送失败：${err.message}`));
-    conn.on('close', () => { if (!answered) fail('连接意外关闭，邮件可能未发送'); });
+    conn.on('error', onConnError);
+    conn.on('close', onConnClose);
     // 整体兜底超时（socket 级，比逐条 readLine 计时更稳）
-    conn.setTimeout(15000, () => fail('SMTP 超时（15s）：服务器未在规定时间内响应，请检查网络/代理或端口配置'));
+    conn.setTimeout(SMTP_TIMEOUT_MS, () => fail('SMTP 超时（15s）：服务器未在规定时间内响应，请检查网络/代理或端口配置'));
 
     // 连接建立后立即触发首次 EHLO（banner 是被动接收，不阻塞）
     const onReady = () => sendNext();

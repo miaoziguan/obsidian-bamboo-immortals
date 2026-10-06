@@ -8,7 +8,7 @@
  *    防止 AI 下轮把用户手动改动覆盖回去；
  *  - 顶部「重置初版」回到 AI 首版；底部「写入目标」确认落库、「取消」退出。
  *
- * 宿主（AgenticPlanModal 弹窗 / PlanEditorView 中央窗口）只负责：
+ * 宿主（PlanEditorView 中央窗口）只负责：
  *   1. 提供挂载根元素（mount）；
  *   2. 提供「关闭请求」回调（onDismiss，落库后或点取消时触发）。
  *
@@ -53,8 +53,6 @@ export interface AgenticPlanOptions {
   initialInstruction?: string;
 }
 
-export type PlanMountVariant = 'modal' | 'view';
-
 export class AgenticPlanController {
   private opts: AgenticPlanOptions;
   session: PlanningSession;
@@ -88,10 +86,10 @@ export class AgenticPlanController {
     );
   }
 
-  /** 把规划台渲染进给定的根元素（弹窗用 contentEl，中央窗口用 view 容器） */
-  mount(root: HTMLElement, variant: PlanMountVariant): void {
+  /** 把规划台渲染进给定的根元素（中央窗口的 view 容器） */
+  mount(root: HTMLElement): void {
     root.empty();
-    root.addClass('bamboo-ai-agentic', variant === 'view' ? 'bamboo-ai-plan-view' : 'bamboo-ai-plan-modal');
+    root.addClass('bamboo-ai-agentic', 'bamboo-ai-plan-view');
 
     // 头部：标题 / 操作条 / 说明（自然文档流，不再 sticky 包裹）
     root.createEl('h2', { text: 'AI 规划助手 · 目标卡片审阅' });

@@ -517,7 +517,7 @@ export const WhiteNoiseManager = {
                     <div class="wn-file-picker-body" style="padding:16px;">
                         <label class="wnfp-field">
                             <span class="wnfp-label">音效名称</span>
-                            <input type="text" id="wnreName" value="${currentName.replace(/"/g, '&quot;')}" style="width:100%;box-sizing:border-box;">
+                            <input type="text" id="wnreName" value="${HTMLUtils.escapeHtmlAttr(currentName)}" style="width:100%;box-sizing:border-box;">
                         </label>
                     </div>
                     <div class="wn-file-picker-footer">

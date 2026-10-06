@@ -1,10 +1,19 @@
 /**
- * MarkdownPlanner — 笔记正文 → 目标卡片规划器（Phase 1）
+ * MarkdownPlanner — 规划器的「提示词 + 回执解析 + 网络原语」层
  *
  * 职责（单一、可单测）：
- *  - buildPrompt：把笔记正文 + 拆解粒度翻译成系统/用户提示词（硬约束 JSON Schema）。
- *  - parseGoals：从模型回执文本中提取 JSON 数组并映射为 GoalItem[]（容忍 ```json 围栏）。
- *  - planFromNote：编排网络请求（requestUrl 绕 CORS）+ 解析 + 失败重试一次。
+ *  - buildPrompt / buildMultiPrompt：把笔记正文（或既有目标清单）+ 拆解粒度翻译成
+ *    系统/用户提示词（硬约束 JSON Schema）。
+ *  - parseGoals / backfillItemDates：从模型回执文本中提取 JSON 数组、映射为 GoalItem[]
+ *    并补齐日期（容忍 ```json 围栏）。
+ *  - 其余导出（AiResponse / AiFetchFn / obsidianRequestFetch / AI_TEMPERATURE /
+ *    PlannerSettings / PlanTarget / extractChatText）为被 PlanningSession（多轮会话，Phase 4）、
+ *    GoalElicitor、GoalDiagnoser 复用的公共件。
+ *
+ * 原「一次性规划主流程（请求 → 解析 → 失败重试一次）」已删除：其唯一生产调用方是 commit
+ * fa8b3b7 移除的「批量重建已规划笔记目标」命令。当时的重试语义并未消失，由 GoalElicitor 的
+ * elicitGoal / splitGoals 两处保留；规划入口现为 PlanningSession + 规划台。
+ * （注释不写已删符号名，保持「grep 标识符查死代码」这条路径干净。）
  *
  * 网络层可注入（fetchFn），便于单测用 fake 替代真实 requestUrl，保持零 Obsidian 运行时依赖。
  */
@@ -449,59 +458,4 @@ export function extractChatText(resp: AiResponse): string {
 
   if (typeof data === 'string') return data;
   return JSON.stringify(data);
-}
-
-/**
- * 规划主流程：调用 AI → 解析 → 失败重试一次。
- * @param content 笔记正文
- * @param settings AI 设置（key / baseUrl / model / depth）
- * @param fetchFn 可注入的 fetch（默认 requestUrl，便于测试）
- */
-export async function planFromNote(
-  content: string,
-  settings: PlannerSettings,
-  fetchFn: AiFetchFn = obsidianRequestFetch,
-  scope: 'note' | 'selection' = 'note'
-): Promise<GoalItem[]> {
-  const url = `${settings.aiBaseUrl.replace(/\/+$/, '')}/chat/completions`;
-  const { system, user } = buildPrompt(content, settings.aiDecomposeDepth, scope);
-
-  const attempt = async (): Promise<AiResponse> => {
-    const resp = await fetchFn({
-      url,
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${settings.aiApiKey}`,
-      },
-      body: JSON.stringify({
-        model: settings.aiModel,
-        messages: [
-          { role: 'system', content: system },
-          { role: 'user', content: user },
-        ],
-        response_format: { type: 'json_object' },
-        temperature: AI_TEMPERATURE,
-      }),
-    });
-    if (resp.status < 200 || resp.status >= 300) {
-      throw new Error(`AI 服务返回 HTTP ${resp.status}`);
-    }
-    return resp;
-  };
-
-  const parseOnce = (resp: AiResponse): GoalItem[] => parseGoals(extractChatText(resp));
-
-  try {
-    return parseOnce(await attempt());
-  } catch (firstErr) {
-    // 重试一次（网络抖动 / 偶发坏 JSON）
-    try {
-      return parseOnce(await attempt());
-    } catch {
-      throw new Error(
-        `AI 规划失败：${firstErr instanceof Error ? firstErr.message : '无法解析返回结果'}。请检查 API Key / 网络，或重试。`
-      );
-    }
-  }
 }

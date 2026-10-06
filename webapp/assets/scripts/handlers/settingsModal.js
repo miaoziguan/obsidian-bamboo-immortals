@@ -48,7 +48,7 @@ export const SettingsModal = {
                             <div class="settings-item-desc">天气显示的默认城市，重启后保留</div>
                         </div>
                         <input type="text" id="defaultCityInput" class="form-input" style="max-width:180px;"
-                            value="${store.state.ui.weatherCity || ''}"
+                            value="${HTMLUtils.escapeHtmlAttr(store.state.ui.weatherCity || '')}"
                             placeholder="城市名，回车保存">
                     </div>
                     <div class="settings-item">
@@ -77,7 +77,7 @@ export const SettingsModal = {
                             <div class="settings-item-desc">指定 Obsidian 笔记名作为自定义语录来源，留空使用内置七贤语录</div>
                         </div>
                         <input type="text" id="quoteSourceInput" class="form-input" style="max-width:220px;"
-                            value="${store.state.ui.quoteSource || ''}"
+                            value="${HTMLUtils.escapeHtmlAttr(store.state.ui.quoteSource || '')}"
                             placeholder="如 竹林语录.md">
                     </div>
                 </div>
@@ -89,7 +89,7 @@ export const SettingsModal = {
                             <div class="settings-item-desc">思维子弹图导出为 Markdown 的落库位置（Vault 相对路径，如 画中卷/子弹笔记 或 思维子弹）</div>
                         </div>
                         <input type="text" id="mmExportFolderInput" class="form-input" style="max-width:220px;"
-                            value="${this.mmExportFolder || '画中卷/子弹笔记'}"
+                            value="${HTMLUtils.escapeHtmlAttr(this.mmExportFolder || '画中卷/子弹笔记')}"
                             placeholder="如 思维子弹">
                     </div>
                 </div>
@@ -127,7 +127,7 @@ export const SettingsModal = {
                                 <option value="00:00" ${cdMode === '00:00' ? 'selected' : ''}>0 点（默认）</option>
                                 <option value="custom" ${cdMode === 'custom' ? 'selected' : ''}>自定义时间</option>
                             </select>
-                            <input type="time" class="form-input settings-time-sm" id="crossDayTime" value="${cdCustom}" ${cdMode === 'custom' ? '' : 'hidden'}>
+                            <input type="time" class="form-input settings-time-sm" id="crossDayTime" value="${HTMLUtils.escapeHtmlAttr(cdCustom)}" ${cdMode === 'custom' ? '' : 'hidden'}>
                         </div>
                     </div>
                 </div>
@@ -139,7 +139,7 @@ export const SettingsModal = {
                             <div class="settings-item-desc">香道番茄钟整支香的燃烧时长（分钟）</div>
                         </div>
                         <input type="number" id="incenseDuration" class="form-input" style="max-width:90px;"
-                            min="1" max="240" step="1" value="${this.incenseDuration}" data-action="settings-set-incense-duration">
+                            min="1" max="240" step="1" value="${HTMLUtils.escapeHtmlAttr(String(this.incenseDuration))}" data-action="settings-set-incense-duration">
                     </div>
                     <div class="settings-item">
                         <div class="settings-item-info">
@@ -147,7 +147,7 @@ export const SettingsModal = {
                             <div class="settings-item-desc">每燃烧多少分钟，一段香灰随风化作大雁飞向远方（分钟）</div>
                         </div>
                         <input type="number" id="incenseGooseInterval" class="form-input" style="max-width:90px;"
-                            min="1" max="120" step="1" value="${this.incenseGooseInterval}" data-action="settings-set-incense-goose">
+                            min="1" max="120" step="1" value="${HTMLUtils.escapeHtmlAttr(String(this.incenseGooseInterval))}" data-action="settings-set-incense-goose">
                     </div>
                 </div>
             </div>
@@ -269,7 +269,7 @@ export const SettingsModal = {
                             <div class="settings-item-desc">当前 ${dataCount} 天，删除指定日期之前的所有记录</div>
                         </div>
                         <div class="settings-clear-row">
-                            <input type="date" class="form-input settings-date-input" id="clearBeforeDate" max="${today}" placeholder="选择截止日期">
+                            <input type="date" class="form-input settings-date-input" id="clearBeforeDate" max="${HTMLUtils.escapeHtmlAttr(today)}" placeholder="选择截止日期">
                             <button class="bm-btn bm-btn--sm bm-btn--danger" data-action="settings-confirm-clear-data">
                                 ${LucideUtils.createIcon('trash', { size: 12 })} 清理
                             </button>
@@ -342,69 +342,85 @@ export const SettingsModal = {
                 { id: 'about', label: '关于' }
             ],
             onOpen: () => {
-                const intervalSelect = byId('autoSaveInterval');
-                if (intervalSelect) {
-                    intervalSelect.addEventListener('change', (e) => {
-                        this.setAutoSaveInterval(e.target.value);
-                    });
-                }
-                const cityInput = byId('defaultCityInput');
-                if (cityInput) {
-                    const saveCity = () => {
-                        const val = (cityInput.value || '').trim();
-                        this.setWeatherCity(val.length > 0 ? val : '');
-                    };
-                    cityInput.addEventListener('blur', saveCity);
-                    cityInput.addEventListener('change', saveCity);
-                    cityInput.addEventListener('keydown', (e) => {
-                        if (e.key === 'Enter') {
-                            e.preventDefault();
-                            cityInput.blur();
-                        }
-                    });
-                }
-                const quoteInput = byId('quoteSourceInput');
-                if (quoteInput) {
-                    const saveQuote = () => {
-                        const val = (quoteInput.value || '').trim();
-                        this.setQuoteSource(val);
-                    };
-                    quoteInput.addEventListener('blur', saveQuote);
-                    quoteInput.addEventListener('change', saveQuote);
-                    quoteInput.addEventListener('keydown', (e) => {
-                        if (e.key === 'Enter') {
-                            e.preventDefault();
-                            quoteInput.blur();
-                        }
-                    });
-                }
-                const mmFolderInput = byId('mmExportFolderInput');
-                if (mmFolderInput) {
-                    const saveFolder = () => {
-                        const val = (mmFolderInput.value || '').trim();
-                        this.setMmExportFolder(val);
-                    };
-                    mmFolderInput.addEventListener('blur', saveFolder);
-                    mmFolderInput.addEventListener('change', saveFolder);
-                    mmFolderInput.addEventListener('keydown', (e) => {
-                        if (e.key === 'Enter') { e.preventDefault(); mmFolderInput.blur(); }
-                    });
-                }
-                // 跨天自动刷新
-                const cdMode = byId('crossDayMode');
-                const cdTime = byId('crossDayTime');
-                if (cdMode && cdTime) {
-                    const saveCrossDay = () => {
-                        const mode = (cdMode.value === 'custom') ? 'custom' : '00:00';
-                        cdTime.hidden = (mode !== 'custom');
-                        const custom = (mode === 'custom') ? (cdTime.value || '00:00') : '00:00';
-                        this.setCrossDaySchedule(mode, custom);
-                    };
-                    cdMode.addEventListener('change', saveCrossDay);
-                    cdTime.addEventListener('change', saveCrossDay);
-                }
+                this._bindGeneralTabInputs();
             }
         });
+    },
+
+    /**
+     * 绑定「通用」Tab 内直接挂在元素上的监听器。
+     *
+     * 这些控件刻意不带 data-action（取值需经各自 setter 做清洗/钳制，如
+     * setIncenseDuration 的范围钳制），因此走不了 ActionDispatcher 的事件委托，
+     * 只能逐元素绑定。
+     *
+     * 【必须与 DOM 同步】_refreshTab('general') 会用 innerHTML 整体替换
+     * #tab-content-general，新节点是「裸」的——监听器随旧节点一并被丢弃。
+     * onOpen 只在面板打开时执行一次，故每次 replaceWith 之后都要重新调用本方法，
+     * 否则表现为「点过某个开关后，本页其余设置项改了没反应且无任何提示」。
+     */
+    _bindGeneralTabInputs() {
+        const intervalSelect = byId('autoSaveInterval');
+        if (intervalSelect) {
+            intervalSelect.addEventListener('change', (e) => {
+                this.setAutoSaveInterval(e.target.value);
+            });
+        }
+        const cityInput = byId('defaultCityInput');
+        if (cityInput) {
+            const saveCity = () => {
+                const val = (cityInput.value || '').trim();
+                this.setWeatherCity(val.length > 0 ? val : '');
+            };
+            cityInput.addEventListener('blur', saveCity);
+            cityInput.addEventListener('change', saveCity);
+            cityInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    cityInput.blur();
+                }
+            });
+        }
+        const quoteInput = byId('quoteSourceInput');
+        if (quoteInput) {
+            const saveQuote = () => {
+                const val = (quoteInput.value || '').trim();
+                this.setQuoteSource(val);
+            };
+            quoteInput.addEventListener('blur', saveQuote);
+            quoteInput.addEventListener('change', saveQuote);
+            quoteInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    quoteInput.blur();
+                }
+            });
+        }
+        const mmFolderInput = byId('mmExportFolderInput');
+        if (mmFolderInput) {
+            const saveFolder = () => {
+                const val = (mmFolderInput.value || '').trim();
+                this.setMmExportFolder(val);
+            };
+            mmFolderInput.addEventListener('blur', saveFolder);
+            mmFolderInput.addEventListener('change', saveFolder);
+            mmFolderInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') { e.preventDefault(); mmFolderInput.blur(); }
+            });
+        }
+        // 跨天自动刷新
+        const cdMode = byId('crossDayMode');
+        const cdTime = byId('crossDayTime');
+        if (cdMode && cdTime) {
+            const saveCrossDay = () => {
+                const mode = (cdMode.value === 'custom') ? 'custom' : '00:00';
+                cdTime.hidden = (mode !== 'custom');
+                const custom = (mode === 'custom') ? (cdTime.value || '00:00') : '00:00';
+                this.setCrossDaySchedule(mode, custom);
+            };
+            cdMode.addEventListener('change', saveCrossDay);
+            cdTime.addEventListener('change', saveCrossDay);
+        }
     },
 
     // ---- 通用 Tab 操作 ----
@@ -861,6 +877,10 @@ export const SettingsModal = {
         const newContent = temp.querySelector(`#tab-content-${tabId}`);
         if (newContent) {
             container.replaceWith(newContent);
+            // 旧节点连同其监听器一起被丢弃，新节点是裸的。
+            // 「通用」Tab 的输入框不走事件委托，必须在此重新绑定，
+            // 否则切走再回来（或点过任一开关触发本方法）后这些设置项静默失效。
+            if (tabId === 'general') this._bindGeneralTabInputs();
         }
     },
 

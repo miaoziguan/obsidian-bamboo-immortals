@@ -9,6 +9,8 @@
  *   FocusTrap.deactivate();
  */
 
+import { deepActiveElement } from './domRef.js';
+
 const FOCUSABLE_SELECTOR = [
     'a[href]',
     'button',
@@ -73,7 +75,9 @@ function handleKeyDown(e) {
 
     const first = focusable[0];
     const last = focusable[focusable.length - 1];
-    const active = document.activeElement;
+    // 必须用 deepActiveElement：shadow 模式下 document.activeElement 恒为 host，
+    // 会让下面的 === 与 contains 判定恒不成立（详见 domRef.deepActiveElement）。
+    const active = deepActiveElement();
 
     if (e.shiftKey) {
         if (active === first || !ctx.root.contains(active)) {
@@ -104,7 +108,7 @@ export const FocusTrap = {
 
         ctx.root = rootElement;
         ctx.options = options || {};
-        ctx.previouslyFocused = options.previouslyFocused || document.activeElement;
+        ctx.previouslyFocused = options.previouslyFocused || deepActiveElement();
         ctx.keyHandler = (e) => handleKeyDown(e);
 
         document.addEventListener('keydown', ctx.keyHandler, true);

@@ -15,7 +15,7 @@ export const TimelineEditor = {
                 ${timeline.map((item, index) => `
                     <div class="item-card">
                         <div class="item-card-content">
-                            <div class="item-card-title">${item.icon} ${escapeHtml(item.name)}</div>
+                            <div class="item-card-title">${escapeHtml(item.icon || '')} ${escapeHtml(item.name)}</div>
                             <div class="item-card-subtitle">${escapeHtml(item.time)} - ${item.items ? item.items.length : 0}个活动</div>
                         </div>
                         <div class="item-card-actions">
@@ -71,7 +71,7 @@ export const TimelineEditor = {
             <div class="form-row">
                 <div class="form-group">
                     <label class="form-label">时段名称</label>
-                    <input type="text" class="form-input" id="tl-name" value="${escapeHtml(item.name)}">
+                    <input type="text" class="form-input" id="tl-name" value="${HTMLUtils.escapeHtmlAttr(item.name)}">
                 </div>
                 <div class="form-group">
                     <label class="form-label">时段类型</label>
@@ -91,11 +91,11 @@ export const TimelineEditor = {
             <div class="form-row">
                 <div class="form-group">
                     <label class="form-label">时间范围</label>
-                    <input type="text" class="form-input" id="tl-time" value="${escapeHtml(item.time)}" placeholder="例如: 09:00 - 12:00">
+                    <input type="text" class="form-input" id="tl-time" value="${HTMLUtils.escapeHtmlAttr(item.time)}" placeholder="例如: 09:00 - 12:00">
                 </div>
                 <div class="form-group">
                     <label class="form-label">图标</label>
-                    <input type="text" class="form-input" id="tl-icon" value="${item.icon}" placeholder="例如: 💼">
+                    <input type="text" class="form-input" id="tl-icon" value="${HTMLUtils.escapeHtmlAttr(item.icon || '')}" placeholder="例如: 💼">
                 </div>
             </div>
 
@@ -119,9 +119,9 @@ export const TimelineEditor = {
             <div style="max-height: 200px; overflow-y: auto; margin-bottom: 12px;">
                 ${items.map((act, idx) => `
                     <div style="display: flex; gap: 8px; margin-bottom: 8px; align-items: center;">
-                        <input type="text" class="form-input" style="width: 60px;" value="${escapeHtml(act.time)}" placeholder="时间" data-activity-time="${idx}">
-                        <input type="text" class="form-input" style="flex: 1;" value="${escapeHtml(act.task)}" placeholder="任务内容" data-activity-task="${idx}">
-                        <input type="text" class="form-input" style="flex: 1;" value="${escapeHtml(act.eval || '')}" placeholder="评价(可选)" data-activity-eval="${idx}">
+                        <input type="text" class="form-input" style="width: 60px;" value="${HTMLUtils.escapeHtmlAttr(act.time)}" placeholder="时间" data-activity-time="${idx}">
+                        <input type="text" class="form-input" style="flex: 1;" value="${HTMLUtils.escapeHtmlAttr(act.task)}" placeholder="任务内容" data-activity-task="${idx}">
+                        <input type="text" class="form-input" style="flex: 1;" value="${HTMLUtils.escapeHtmlAttr(act.eval || '')}" placeholder="评价(可选)" data-activity-eval="${idx}">
                         <button class="bm-btn bm-btn--danger bm-btn--sm" data-action="remove-period-item" data-item-idx="${idx}">✕</button>
                     </div>
                 `).join('')}

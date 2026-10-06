@@ -3,7 +3,6 @@ import type { BambooReviewSettings, ScrollLocation } from '../settings/PluginSet
 import { AppHost } from '../host/AppHost';
 import { AppAPI } from '../host/AppAPI';
 import type BambooReviewPlugin from '../../main';
-import { LicenseStore } from '../license/licenseStore';
 
 export const VIEW_TYPE_SCROLL = 'bamboo-scroll';
 
@@ -298,8 +297,7 @@ export class ScrollView extends ItemView {
       this.saveSettings,
       this.settings.noisePath || '',
       this.app.vault.configDir,
-      (this.plugin as BambooReviewPlugin).license ??
-        new LicenseStore(this.plugin as BambooReviewPlugin),
+      (this.plugin as BambooReviewPlugin).license,
       (loc) => {
         void (async () => {
           try {
@@ -392,12 +390,7 @@ export class ScrollView extends ItemView {
     await this._mountWebapp(container);
   }
 
-  /** 接收来自插件的导航/操作指令 */
-  sendCommand(type: string): void {
-    if (!this.iframe?.contentWindow) return;
-    this.iframe.contentWindow.postMessage(
-      { type, id: 'cmd_' + Date.now() },
-      '*'
-    );
-  }
+  // 说明：原有 sendCommand（向 iframe 投递命令）无任何调用方 —— WebappController 的
+  // CommandTarget 只解析 DailyReviewView 叶子视图（见 src/host/WebappController.ts），
+  // 其余视图仅因结构相同而被动满足接口，故移除。
 }

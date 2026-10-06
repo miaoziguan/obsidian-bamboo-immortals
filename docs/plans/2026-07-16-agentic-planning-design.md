@@ -15,7 +15,7 @@
 |---|---|
 | `src/ai/MarkdownPlanner.ts` | 抽取 `extractChatText(resp)`（OpenAI wrapper + 纯文本兼容），`planFromNote` 复用；导出供 Session 用 |
 | `src/ai/PlanningSession.ts` | **新增**：纯逻辑会话对象，`init/send/applyLocalEdit/reset` + 对话历史维护 |
-| `src/ai/GoalCardValidator.ts` | 迁入 `extractUnit`（从 PlanConfirmModal 复用，避免重复） |
+| `src/ai/GoalCardValidator.ts` | 迁入 `extractUnit`（从 Phase3 的 PlanConfirmModal 复用，避免重复；该文件后经复核确认全历史无引用，已作为死代码删除） |
 | `src/ai/AgenticPlanModal.ts` | **新增**：左侧可编辑目标树 + 右侧对话区 + diff 高亮 + 重置初版 |
 | `src/main.ts` | `aiPlanFromNote` / `aiPlanFromSelection` 改为建 `AgenticPlanModal`（内部持有 Session 并 init） |
 | `styles.css` | 对话面板相关样式 |

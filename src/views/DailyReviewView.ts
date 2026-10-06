@@ -5,7 +5,6 @@ import { AppAPI } from '../host/AppAPI';
 import type { StrategyOverview } from '../ai/strategyOverview';
 import type { CultivationRealm } from '../cultivation';
 import type BambooReviewPlugin from '../../main';
-import { LicenseStore } from '../license/licenseStore';
 
 export const VIEW_TYPE_DAILY_REVIEW = 'bamboo-immortals';
 
@@ -109,8 +108,7 @@ export class DailyReviewView extends ItemView {
       this.saveSettings,
       this.settings.noisePath || '',
       this.app.vault.configDir,
-      (this.plugin as BambooReviewPlugin).license ??
-        new LicenseStore(this.plugin as BambooReviewPlugin)
+      (this.plugin as BambooReviewPlugin).license
     );
     await this.appAPI.ensureStructure();
 

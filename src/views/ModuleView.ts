@@ -3,7 +3,6 @@ import type { BambooReviewSettings } from '../settings/PluginSettings';
 import { AppHost } from '../host/AppHost';
 import { AppAPI } from '../host/AppAPI';
 import type BambooReviewPlugin from '../../main';
-import { LicenseStore } from '../license/licenseStore';
 
 export const VIEW_TYPE_MODULE = 'bamboo-module';
 
@@ -198,8 +197,7 @@ export class ModuleView extends ItemView {
       this.saveSettings,
       this.settings.noisePath || '',
       this.app.vault.configDir,
-      (this.plugin as BambooReviewPlugin).license ??
-        new LicenseStore(this.plugin as BambooReviewPlugin)
+      (this.plugin as BambooReviewPlugin).license
     );
     // 博客模块点文章 → 宿主自建竹杖芒鞋式阅读视图打开（中央）
     api.onOpenReader = (path: string) => {

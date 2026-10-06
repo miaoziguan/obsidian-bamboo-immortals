@@ -1,4 +1,5 @@
 import { byId } from '../utils/domRef.js';
+import { formatDate } from '../utils/dateUtils.js';
 /**
  * DatePicker - 日期选择器面板
  * 使用 PanelManager 实现与竹林商店一致的 fab-panel 风格
@@ -45,15 +46,15 @@ window.DatePicker = {
             
             <div class="wn-section">
                 <div style="display: flex; gap: 6px;" role="group" aria-label="快捷日期选择">
-                    <button class="wn-type-btn" data-action="quick-select-date" data-date="${this._formatDate(this._addDays(today, -7))}" data-label="上周" aria-label="跳转到上周">
+                    <button class="wn-type-btn" data-action="quick-select-date" data-date="${HTMLUtils.escapeHtmlAttr(this._formatDate(this._addDays(today, -7)))}" data-label="上周" aria-label="跳转到上周">
                         ${LucideUtils.createIcon('chevronLeft', { size: 14 })}
                         <span>上周</span>
                     </button>
-                    <button class="wn-type-btn active" data-action="quick-select-date" data-date="${this._formatDate(today)}" data-label="今天" aria-label="跳转到今天">
+                    <button class="wn-type-btn active" data-action="quick-select-date" data-date="${HTMLUtils.escapeHtmlAttr(this._formatDate(today))}" data-label="今天" aria-label="跳转到今天">
                         ${LucideUtils.createIcon('calendar', { size: 14 })}
                         <span>今天</span>
                     </button>
-                    <button class="wn-type-btn" data-action="quick-select-date" data-date="${this._formatDate(this._addDays(today, 7))}" data-label="下周" aria-label="跳转到下周">
+                    <button class="wn-type-btn" data-action="quick-select-date" data-date="${HTMLUtils.escapeHtmlAttr(this._formatDate(this._addDays(today, 7)))}" data-label="下周" aria-label="跳转到下周">
                         ${LucideUtils.createIcon('chevronRight', { size: 14 })}
                         <span>下周</span>
                     </button>
@@ -66,10 +67,8 @@ window.DatePicker = {
     },
 
     _formatDate(date) {
-        const y = date.getFullYear();
-        const m = String(date.getMonth() + 1).padStart(2, '0');
-        const d = String(date.getDate()).padStart(2, '0');
-        return `${y}-${m}-${d}`;
+        // 委托 utils/dateUtils.formatDate（唯一实现）；顺带获得「非法输入 → ''」守卫
+        return formatDate(date);
     },
 
     _addDays(date, days) {
@@ -143,12 +142,12 @@ window.DatePicker = {
             html += `
                 <div class="wn-date-day ${isToday ? 'wn-date-today' : ''} ${isSelected ? 'wn-date-selected' : ''} ${hasTask ? 'wn-date-has-task' : ''}"
                      data-action="quick-select-date" 
-                     data-date="${dateStr}" 
-                     data-label="${this._currentYear}年${this._currentMonth + 1}月${day}日"
+                     data-date="${HTMLUtils.escapeHtmlAttr(dateStr)}" 
+                     data-label="${num(this._currentYear)}年${this._currentMonth + 1}月${num(day)}日"
                      role="gridcell"
-                     aria-label="${tooltipText}"
+                     aria-label="${HTMLUtils.escapeHtmlAttr(tooltipText)}"
                      tabindex="${isSelected ? '0' : '-1'}"
-                     title="${tooltipText}">
+                     title="${HTMLUtils.escapeHtmlAttr(tooltipText)}">
                     <span class="wn-date-num">${day}</span>
                     ${hasTask ? '<span class="wn-date-dot" aria-hidden="true"></span>' : ''}
                 </div>
@@ -188,10 +187,8 @@ window.DatePicker = {
     },
 
     quickSelect(dateStr, label) {
-        const input = byId('date-picker-input');
-        if (input) {
-            input.value = dateStr;
-        }
+        // 面板里已不存在日期输入框（模板只剩 calendarDays / calendarMonth），
+        // 原先回填 byId('date-picker-input') 的两处读写均已移除。
         const [y, m, d] = dateStr.split('-').map(Number);
         const newDate = new Date(y, m - 1, d);
         
@@ -211,44 +208,12 @@ window.DatePicker = {
         PanelManager.close();
     },
 
-    goToSelectedDate() {
-        const input = byId('date-picker-input');
-        if (!input || !input.value) {
-            Toast.showToast('请选择日期', 'warning');
-            return;
-        }
+    // 说明：原有 goToSelectedDate（读取 byId('date-picker-input') 的输入框值跳转）已删除。
+    // 该输入框在面板模板里已不存在（模板只剩 calendarDays / calendarMonth），
+    // 方法体恒在首个 if 处提前 return（Toast + return），是完整的死逻辑；
+    // 跳转能力由 quickSelect（日历格点击）与 goToToday 承担。
 
-        const [y, m, d] = input.value.split('-').map(Number);
-        const newDate = new Date(y, m - 1, d);
-        
-        if (!this._validateDate(newDate)) {
-            Toast.showToast('请输入有效的日期', 'error');
-            return;
-        }
-        
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        newDate.setHours(0, 0, 0, 0);
-        
-        const maxDate = new Date(today);
-        maxDate.setDate(maxDate.getDate() + 365);
-        
-        if (newDate > maxDate) {
-            Toast.showToast('日期不能超过一年后', 'warning');
-            return;
-        }
 
-        const { currentDate } = store.getState();
-        const direction = newDate >= currentDate ? 1 : -1;
-        RenderScheduler.startDateTransition(direction, () => {
-            store.goToDate(newDate);
-            renderDate();
-            markSectionDirty('timeline');
-            markSectionDirty('todo');
-        });
-        PanelManager.close();
-        Toast.showToast('已跳转到选择的日期', 'success');
-    },
 
     goToToday() {
         const today = new Date();
@@ -275,7 +240,6 @@ window.DatePicker = {
 ActionDispatcher.registerMany({
     'quick-select-date': (data) => DatePicker.quickSelect(data.date, data.label),
     'goto-today': () => DatePicker.goToToday(),
-    'goto-selected-date': () => DatePicker.goToSelectedDate(),
     'calendar-prev-month': () => DatePicker._updateCalendar('prev'),
     'calendar-next-month': () => DatePicker._updateCalendar('next')
 });

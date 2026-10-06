@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createMockApp } from '../../../test/mocks/obsidian';
 import { VaultStorage } from '../../storage/VaultStorage';
 import type { DayData, GoalItem } from '../../types/data';
@@ -232,5 +232,90 @@ describe('VaultStorage putDay 写守卫：空壳不覆盖真实内容（时间�
     await expect(storage.putDay(incoming)).resolves.toBeUndefined();
     const back = await storage.getDay('2026-07-28');
     expect((back!.timeline as any[]).length).toBe(1);
+  });
+});
+
+describe('VaultStorage goals 损坏容错：截断 JSON 不再连锁抛错（A7）', () => {
+  let storage: VaultStorage;
+  let mock: ReturnType<typeof createMockApp>;
+
+  beforeEach(() => {
+    mock = createMockApp();
+    storage = new VaultStorage(mock.app as any, 'bamboo-review');
+  });
+
+  // 模拟写入中途被截断：合法 JSON 的前缀
+  const TRUNCATED = '{"goals":[{"id":"g1","title":"读';
+  const STAMP = '20261006-153012';
+
+  /** 备份文件名含本地时间戳，固定系统时间以便断言 */
+  const frozen = async <T>(fn: () => Promise<T>): Promise<T> => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 9, 6, 15, 30, 12));
+    try {
+      return await fn();
+    } finally {
+      vi.useRealTimers();
+    }
+  };
+
+  it('getGoals：截断 JSON 返回 [] 而非抛 SyntaxError（旧实现直接抛，拖垮导出/导入/诊断）', async () => {
+    const path = (storage as any).goalsPath();
+    await mock.adapter.write(path, TRUNCATED);
+    await frozen(async () => {
+      await expect(storage.getGoals()).resolves.toEqual([]);
+    });
+  });
+
+  it('getGoals：损坏原文件被一字不改地备份为 goals.json.corrupt-<ts>，规范路径腾空', async () => {
+    const path = (storage as any).goalsPath();
+    await mock.adapter.write(path, TRUNCATED);
+    await frozen(async () => {
+      await storage.getGoals();
+    });
+    const backup = `${path}.corrupt-${STAMP}`;
+    expect(await mock.adapter.exists(backup)).toBe(true);
+    expect(await mock.adapter.read(backup)).toBe(TRUNCATED); // 内容留档，可人工找回
+    expect(await mock.adapter.exists(path)).toBe(false); // 规范路径已腾空
+  });
+
+  it('putGoals：既有文件损坏时拒绝覆盖（即使本次是非空写入）', async () => {
+    const path = (storage as any).goalsPath();
+    await mock.adapter.write(path, TRUNCATED);
+    await frozen(async () => {
+      await storage.putGoals([{ id: 'new', title: '新目标', subItems: [], category: '学习' } as GoalItem]);
+    });
+    // 本次写入被跳过：规范路径未被写入新内容
+    expect(await mock.adapter.exists(path)).toBe(false);
+    // 原内容仍完整躺在备份里
+    expect(await mock.adapter.read(`${path}.corrupt-${STAMP}`)).toBe(TRUNCATED);
+  });
+
+  it('隔离备份之后写入恢复正常（损坏不再卡死目标数据流）', async () => {
+    const path = (storage as any).goalsPath();
+    await mock.adapter.write(path, TRUNCATED);
+    await frozen(async () => {
+      await storage.getGoals(); // 触发隔离备份
+      await storage.putGoals([{ id: 'g2', title: '恢复后的目标', subItems: [], category: '学习' } as GoalItem]);
+      expect((await storage.getGoals()).map((g) => g.id)).toEqual(['g2']);
+    });
+  });
+
+  it('重构后「数据量悬崖」守卫仍生效：2 条 → 空数组被拦截，用户确认后放行', async () => {
+    await storage.putGoals([
+      { id: 'g1', title: '读书', subItems: [], category: '学习' } as GoalItem,
+      { id: 'g2', title: '跑步', subItems: [], category: '健康' } as GoalItem,
+    ]);
+    await storage.putGoals([]); // 第一次：拦截
+    expect((await storage.getGoals()).length).toBe(2);
+    await storage.putGoals([]); // 用户确认意图：放行
+    expect(await storage.getGoals()).toEqual([]);
+  });
+
+  it('非数组内容（H11）仍返回 []，且不被误判为损坏而挪走文件', async () => {
+    const path = (storage as any).goalsPath();
+    await mock.adapter.write(path, '{"not":"an array"}');
+    expect(await storage.getGoals()).toEqual([]);
+    expect(await mock.adapter.exists(path)).toBe(true); // 合法 JSON 只是结构不符，保留原地
   });
 });

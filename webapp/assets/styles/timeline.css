@@ -1024,6 +1024,29 @@
     pointer-events: none;
 }
 
+/* 悬停光晕层：九段色阶共用一层，强度由 .bamboo-card.<时段> 上的 --bamboo-halo-alpha 给值。
+   定位沿用 --mouse-x / --mouse-y —— renderers.js 把这对属性写在 .bamboo-card-header 上，伪元素继承，
+   故几何与改造前逐像素等价（原来这层光晕是 header background 的第一个图层）。
+   独立成层的原因见下方「悬停光晕」小节：光晕若继续画在 header 的 background 上，而该背景挂着
+   transition: background 0.4s，每次 mousemove 都会重定向这段过渡，变成光标停稳后仍持续约 400ms
+   的渐变插值重绘（radial-gradient 插值不可合成）。 */
+.bamboo-card-header::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background: radial-gradient(
+        circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+        rgba(var(--primary-rgb), var(--bamboo-halo-alpha, 0)) 0%,
+        transparent 60%
+    );
+    opacity: 0;
+}
+.bamboo-card-header:hover::before {
+    opacity: 1;
+}
+
 .bamboo-left {
     display: flex;
     align-items: center;
@@ -1156,52 +1179,21 @@
   transition: background 0.4s ease-out;
 }
 
-/* === 悬停光晕（亮色模式）=== */
-.bamboo-card.lateNight .bamboo-card-header:hover {
-  background:
-    radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(var(--primary-rgb), 0.32) 0%, transparent 60%),
-    rgba(var(--primary-rgb), 0.24);
-}
-.bamboo-card.dawn .bamboo-card-header:hover {
-  background:
-    radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(var(--primary-rgb), 0.24) 0%, transparent 60%),
-    rgba(var(--primary-rgb), 0.16);
-}
-.bamboo-card.earlyMorning .bamboo-card-header:hover {
-  background:
-    radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(var(--primary-rgb), 0.18) 0%, transparent 60%),
-    rgba(var(--primary-rgb), 0.10);
-}
-.bamboo-card.morning .bamboo-card-header:hover {
-  background:
-    radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(var(--primary-rgb), 0.12) 0%, transparent 60%),
-    rgba(var(--primary-rgb), 0.06);
-}
-.bamboo-card.midday .bamboo-card-header:hover {
-  background:
-    radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(var(--primary-rgb), 0.08) 0%, transparent 60%),
-    rgba(var(--primary-rgb), 0.03);
-}
-.bamboo-card.afternoon .bamboo-card-header:hover {
-  background:
-    radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(var(--primary-rgb), 0.12) 0%, transparent 60%),
-    rgba(var(--primary-rgb), 0.06);
-}
-.bamboo-card.dusk .bamboo-card-header:hover {
-  background:
-    radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(var(--primary-rgb), 0.20) 0%, transparent 60%),
-    rgba(var(--primary-rgb), 0.13);
-}
-.bamboo-card.evening .bamboo-card-header:hover {
-  background:
-    radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(var(--primary-rgb), 0.26) 0%, transparent 60%),
-    rgba(var(--primary-rgb), 0.18);
-}
-.bamboo-card.night .bamboo-card-header:hover {
-  background:
-    radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(var(--primary-rgb), 0.32) 0%, transparent 60%),
-    rgba(var(--primary-rgb), 0.24);
-}
+/* === 悬停光晕（亮色模式）===
+   原实现是 9 条 :hover 规则，在 header 的 background 上追加一层径向渐变，并重复写一遍与基态同值的
+   底色层（实测两处底色 α 逐条完全一致，故删除它们对底色零影响）。
+   代价是：--mouse-x/y 每条 mousemove 都会改变 header 的 background-image 计算值，而基态挂着
+   transition: background 0.4s → 这段过渡被反复重定向 → 光标停稳后仍继续插值约 400ms。
+   现由 .bamboo-card-header::before 独立承载光晕（定位属性不变，几何等价），此处只留强度表。 */
+.bamboo-card.lateNight { --bamboo-halo-alpha: 0.32; }
+.bamboo-card.dawn { --bamboo-halo-alpha: 0.24; }
+.bamboo-card.earlyMorning { --bamboo-halo-alpha: 0.18; }
+.bamboo-card.morning { --bamboo-halo-alpha: 0.12; }
+.bamboo-card.midday { --bamboo-halo-alpha: 0.08; }
+.bamboo-card.afternoon { --bamboo-halo-alpha: 0.12; }
+.bamboo-card.dusk { --bamboo-halo-alpha: 0.20; }
+.bamboo-card.evening { --bamboo-halo-alpha: 0.26; }
+.bamboo-card.night { --bamboo-halo-alpha: 0.32; }
 
 /* === 暗色模式 — 竹林色阶 === */
 :host(.dark) .bamboo-card.lateNight .bamboo-card-header {
@@ -1250,52 +1242,18 @@
   transition: background 0.4s ease-out;
 }
 
-/* === 悬停光晕（暗色模式）=== */
-:host(.dark) .bamboo-card.lateNight .bamboo-card-header:hover {
-  background:
-    radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(var(--primary-rgb), 0.30) 0%, transparent 60%),
-    rgba(var(--primary-rgb), 0.22);
-}
-:host(.dark) .bamboo-card.dawn .bamboo-card-header:hover {
-  background:
-    radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(var(--primary-rgb), 0.22) 0%, transparent 60%),
-    rgba(var(--primary-rgb), 0.14);
-}
-:host(.dark) .bamboo-card.earlyMorning .bamboo-card-header:hover {
-  background:
-    radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(var(--primary-rgb), 0.16) 0%, transparent 60%),
-    rgba(var(--primary-rgb), 0.08);
-}
-:host(.dark) .bamboo-card.morning .bamboo-card-header:hover {
-  background:
-    radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(var(--primary-rgb), 0.10) 0%, transparent 60%),
-    rgba(var(--primary-rgb), 0.04);
-}
-:host(.dark) .bamboo-card.midday .bamboo-card-header:hover {
-  background:
-    radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(var(--primary-rgb), 0.06) 0%, transparent 60%),
-    rgba(var(--primary-rgb), 0.02);
-}
-:host(.dark) .bamboo-card.afternoon .bamboo-card-header:hover {
-  background:
-    radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(var(--primary-rgb), 0.10) 0%, transparent 60%),
-    rgba(var(--primary-rgb), 0.04);
-}
-:host(.dark) .bamboo-card.dusk .bamboo-card-header:hover {
-  background:
-    radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(var(--primary-rgb), 0.18) 0%, transparent 60%),
-    rgba(var(--primary-rgb), 0.11);
-}
-:host(.dark) .bamboo-card.evening .bamboo-card-header:hover {
-  background:
-    radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(var(--primary-rgb), 0.24) 0%, transparent 60%),
-    rgba(var(--primary-rgb), 0.16);
-}
-:host(.dark) .bamboo-card.night .bamboo-card-header:hover {
-  background:
-    radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(var(--primary-rgb), 0.30) 0%, transparent 60%),
-    rgba(var(--primary-rgb), 0.22);
-}
+/* === 悬停光晕（暗色模式）===
+   同亮色：原 9 条 :hover 背景规则里重复的底色 α 与暗色基态逐条一致，删除后只覆写强度。
+   选择器特异性高于亮色强度表，故暗色下自动生效。 */
+:host(.dark) .bamboo-card.lateNight { --bamboo-halo-alpha: 0.30; }
+:host(.dark) .bamboo-card.dawn { --bamboo-halo-alpha: 0.22; }
+:host(.dark) .bamboo-card.earlyMorning { --bamboo-halo-alpha: 0.16; }
+:host(.dark) .bamboo-card.morning { --bamboo-halo-alpha: 0.10; }
+:host(.dark) .bamboo-card.midday { --bamboo-halo-alpha: 0.06; }
+:host(.dark) .bamboo-card.afternoon { --bamboo-halo-alpha: 0.10; }
+:host(.dark) .bamboo-card.dusk { --bamboo-halo-alpha: 0.18; }
+:host(.dark) .bamboo-card.evening { --bamboo-halo-alpha: 0.24; }
+:host(.dark) .bamboo-card.night { --bamboo-halo-alpha: 0.30; }
 
 
 

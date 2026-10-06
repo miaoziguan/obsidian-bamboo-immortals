@@ -101,7 +101,7 @@ export const NoisePanel = {
         const builtinItems = WhiteNoiseManager.NOISE_TYPES.map(t => {
             const isActive = currentType === t.id && isPlaying;
             return '<button class="wn-type-btn ' + (isActive ? 'active' : '') + '" data-type="' + t.id + '">' +
-                '<span>' + t.name + '</span>' +
+                '<span>' + HTMLUtils.escapeHtml(t.name) + '</span>' +
             '</button>';
         }).join('');
         const builtinSection = '<div class="wn-section">' +
@@ -113,7 +113,7 @@ export const NoisePanel = {
             const isActive = currentType === t.id && isPlaying;
             return '<button class="wn-type-btn ' + (isActive ? 'active' : '') + '" data-type="' + t.id + '">' +
                 '<span class="wn-btn-content">' +
-                    '<span class="wn-btn-text">' + t.name + '</span>' +
+                    '<span class="wn-btn-text">' + HTMLUtils.escapeHtml(t.name) + '</span>' +
                     '<span class="wn-btn-group">' +
                         '<span class="wn-rename-btn" data-rename="' + t.id + '" title="重命名">' +
                             LucideUtils.createIcon('edit', { size: 10 }) +

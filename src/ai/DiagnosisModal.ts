@@ -1,7 +1,7 @@
 /**
  * DiagnosisModal — AI 诊断只读报告（MVP-1 + UI v2）
  *
- * 设计语言：与 AI 规划模块（AgenticPlanModal）统一
+ * 设计语言：与 AI 规划台（PlanEditorView）统一
  *   - 主题色：var(--interactive-accent)
  *   - 圆角：10-12px
  *   - 间距：8pt 网格

@@ -24,7 +24,7 @@ export const SectionSettings = {
                     <div class="section-settings-desc">${escapeHtml(section.description)}</div>
                 </div>
                 <div class="section-settings-actions">
-                    <button class="section-settings-btn section-settings-btn-hide" data-action="hide-section" data-section-id="${section.id}">
+                    <button class="section-settings-btn section-settings-btn-hide" data-action="hide-section" data-section-id="${HTMLUtils.escapeHtmlAttr(section.id)}">
                         <span class="btn-icon">${LucideUtils.createIcon('xCircle', { size: 16 })}</span>
                         <span class="btn-text">隐藏板块</span>
                     </button>

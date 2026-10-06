@@ -6,6 +6,15 @@ import { DateRangePicker } from './dateRangePicker.js';
  * 从 GoalsRenderer 中拆出，负责归档目标的筛选、查看、批量恢复/删除、撤销等操作。
  * 通过 _renderer 回调与 GoalsRenderer 解耦。
  */
+/**
+ * 已绑定「容器级委托」的容器集合。
+ *
+ * 容器（面板的 .fab-panel-body / 独立页根容器）跨刷新存活，其内部内容每次刷新都被
+ * innerHTML 整体重建。委托挂在容器上，因此只能对同一容器绑定一次；容器被丢弃后
+ * 由 WeakSet 自动回收，无需手动清理。
+ */
+const _delegatedRoots = new WeakSet();
+
 export const GoalsArchiver = {
     /** 回引 GoalsRenderer，用于调用 render() / calcProgress() */
     _renderer: null,
@@ -88,14 +97,14 @@ export const GoalsArchiver = {
                 <div class="arch-filter-toolbar">
                     <div class="arch-filter-search">
                         ${LucideUtils.createIcon('search', { size: 14 })}
-                        <input type="text" class="arch-filter-input" data-filter-key="keyword" placeholder="搜索目标..." value="${escapeHtml(filter.keyword)}">
+                        <input type="text" class="arch-filter-input" data-filter-key="keyword" placeholder="搜索目标..." value="${HTMLUtils.escapeHtmlAttr(filter.keyword)}">
                         ${filter.keyword ? `<button class="arch-icon-btn" data-action="arch-clear-keyword" title="清除">${LucideUtils.createIcon('x', { size: 12 })}</button>` : ''}
                     </div>
                     <div class="arch-filter-field arch-filter-field-select">
                         ${LucideUtils.createIcon('folderOpen', { size: 14 })}
                         <select class="arch-select arch-select-category" data-filter-key="category">
                             <option value="all" ${filter.category === 'all' ? 'selected' : ''}>全部分类</option>
-                            ${categories.map(c => `<option value="${escapeHtml(c.name)}" ${filter.category === c.name ? 'selected' : ''}>${escapeHtml(c.name)}</option>`).join('')}
+                            ${categories.map(c => `<option value="${HTMLUtils.escapeHtmlAttr(c.name)}" ${filter.category === c.name ? 'selected' : ''}>${escapeHtml(c.name)}</option>`).join('')}
                         </select>
                     </div>
                     <div class="arch-filter-field arch-filter-field-date arch-date-trigger" data-action="arch-open-date-picker" title="选择归档日期范围">
@@ -268,7 +277,10 @@ export const GoalsArchiver = {
         }
 
         if (archived.length === 0) {
-            PanelManager.open('archive', LucideUtils.createIcon('archive', { size: 16 }) + '目标归档', this._renderArchiveEmptyState());
+            // 空态同样走 onOpen：容器级委托的绑定状态不应取决于「打开时是否有内容」
+            PanelManager.open('archive', LucideUtils.createIcon('archive', { size: 16 }) + '目标归档', this._renderArchiveEmptyState(), {
+                onOpen: (panel) => this._bindEvents(panel)
+            });
             return;
         }
 
@@ -302,26 +314,45 @@ export const GoalsArchiver = {
 
     // ========== 事件绑定 ==========
 
+    /**
+     * 绑定面板 / 独立页的事件。
+     *
+     * 这里有两类事件，生命周期完全不同，必须分开处理：
+     *
+     *  ① 容器级委托（_bindRootDelegates）：挂在**跨刷新存活**的容器上
+     *     （面板的 .fab-panel-body、独立页根容器）。容器内的内容每次刷新都会被
+     *     innerHTML 整体重建，但容器元素本身不变 —— 因此这类委托**只能绑一次**。
+     *     若跟着刷新重复 addEventListener，同一事件会被处理 N 次（N = 刷新次数）：
+     *     折叠被 toggle 偶数次而失效、恢复/删除被执行多次；而每次执行又会各自触发
+     *     一次刷新，于是 1→2→4→8 翻倍放大。
+     *
+     *  ② 内容级绑定（_bindContentEvents）：挂在每次刷新都会被重建的子节点上
+     *     （搜索框、下拉、日期触发器、卡片复选框…）。旧节点已随 innerHTML 消失，
+     *     所以这类监听**必须每次重新绑定**，否则控件会真的失效。
+     *
+     * 把这两类混在一个方法里，正是「筛选控件正常」与「委托被重复绑定」并存的原因。
+     */
     _bindEvents(root) {
         // 面板模式下取面板内容区；独立页模式下直接操作根容器
         const body = root.querySelector('.fab-panel-body') || root;
         if (!body) return;
 
-        // 搜索输入 — 防抖
-        const searchInput = body.querySelector('.arch-filter-input');
-        if (searchInput) {
-            let timer;
-            searchInput.addEventListener('input', () => {
-                clearTimeout(timer);
-                timer = setTimeout(() => {
-                    this._state.filter.keyword = searchInput.value;
-                    this._saveArchiveFilter();
-                    this._refreshContent();
-                }, 250);
-            });
-        }
+        this._bindRootDelegates(body);
+        this._bindContentEvents(body);
 
-        // 清除关键词
+        this._updateBar(body);
+    },
+
+    /**
+     * ① 容器级委托 —— 同一容器只绑一次（见 _bindEvents 注释）。
+     * 处理函数一律在触发时读取 e.target，不闭包任何会被重建的子节点，
+     * 因此「只绑一次」不会过期。
+     */
+    _bindRootDelegates(body) {
+        if (_delegatedRoots.has(body)) return;
+        _delegatedRoots.add(body);
+
+        // 清除关键词 / 重置筛选 / 清除日期 / 展开条目（属性赋值，天然幂等）
         body.onpointerdown = (e) => {
             const t = e.target;
             if (t.matches('[data-action="arch-clear-keyword"]')) {
@@ -345,6 +376,58 @@ export const GoalsArchiver = {
                 // 复选框在 change 中处理
             }
         };
+
+        // 卡片点击展开/折叠（排除复选框和操作按钮区域）
+        body.addEventListener('click', (e) => {
+            const card = e.target.closest('.arch-card');
+            if (!card) return;
+            // 点击复选框、操作按钮时不触发折叠
+            if (e.target.closest('.arch-check')) return;
+            if (e.target.closest('.arch-expand-actions')) return;
+
+            card.classList.toggle('arch-card-expanded');
+        });
+
+        // 操作按钮（恢复/删除）— 使用事件委托
+        body.addEventListener('click', (e) => {
+            const btn = e.target.closest('[data-action^="archive-"]');
+            if (!btn) return;
+
+            switch (btn.dataset.action) {
+                case 'archive-restore':
+                    this.unarchiveGoal(btn.dataset.goalId);
+                    break;
+                case 'archive-delete':
+                    this.deleteArchivedGoal(btn.dataset.goalId);
+                    break;
+                case 'archive-batch-restore':
+                    this._batchUnarchive([...this._state.selection]);
+                    break;
+                case 'archive-batch-delete':
+                    this._batchDeleteArchived([...this._state.selection]);
+                    break;
+            }
+        });
+    },
+
+    /**
+     * ② 内容级绑定 —— 每次刷新都要重新绑定（见 _bindEvents 注释）。
+     * 这些节点会被 innerHTML 重建，旧监听随旧节点一起消失。
+     */
+    _bindContentEvents(body) {
+        // 搜索输入 — 防抖
+        const searchInput = body.querySelector('.arch-filter-input');
+        if (searchInput) {
+            let timer;
+            searchInput.addEventListener('input', () => {
+                clearTimeout(timer);
+                timer = setTimeout(() => {
+                    this._state.filter.keyword = searchInput.value;
+                    this._saveArchiveFilter();
+                    this._refreshContent();
+                }, 250);
+            });
+        }
 
         // 下拉筛选
         body.querySelectorAll('.arch-select').forEach(sel => {
@@ -397,40 +480,6 @@ export const GoalsArchiver = {
                 this._updateBar(body);
             });
         }
-
-        // 卡片点击展开/折叠（排除复选框和操作按钮区域）
-        body.addEventListener('click', (e) => {
-            const card = e.target.closest('.arch-card');
-            if (!card) return;
-            // 点击复选框、操作按钮时不触发折叠
-            if (e.target.closest('.arch-check')) return;
-            if (e.target.closest('.arch-expand-actions')) return;
-
-            card.classList.toggle('arch-card-expanded');
-        });
-
-        // 操作按钮（恢复/删除）— 使用事件委托
-        body.addEventListener('click', (e) => {
-            const btn = e.target.closest('[data-action^="archive-"]');
-            if (!btn) return;
-
-            switch (btn.dataset.action) {
-                case 'archive-restore':
-                    this.unarchiveGoal(btn.dataset.goalId);
-                    break;
-                case 'archive-delete':
-                    this.deleteArchivedGoal(btn.dataset.goalId);
-                    break;
-                case 'archive-batch-restore':
-                    this._batchUnarchive([...this._state.selection]);
-                    break;
-                case 'archive-batch-delete':
-                    this._batchDeleteArchived([...this._state.selection]);
-                    break;
-            }
-        });
-
-        this._updateBar(body);
     },
 
     _updateBar(body) {
@@ -478,6 +527,8 @@ export const GoalsArchiver = {
         const archived = store.getArchivedGoals();
         if (archived.length === 0) {
             body.innerHTML = this._renderArchiveEmptyState();
+            // 与下方分支口径一致：容器委托只绑一次（幂等），内容级绑定在空态下无事可做
+            this._bindEvents(panel);
             return;
         }
 

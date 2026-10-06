@@ -622,7 +622,6 @@ section[data-section-id] {
 #sectionsContainer.date-transitioning section[data-section-id] {
     will-change: transform, opacity;
     animation: sectionSlideOutLeft 0.22s ease forwards;
-    animation-delay: calc(var(--section-index, 0) * 0.03s);
 }
 
 #sectionsContainer.date-transitioning.next section[data-section-id] {
@@ -651,7 +650,9 @@ section[data-section-id] {
     will-change: transform, opacity;
     opacity: 0;
     animation: sectionSlideInFromRight 0.32s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
-    animation-delay: calc(var(--section-index, 0) * 0.05s);
+    /* 错峰延迟由 JS 内联给出：section 创建时（renderers.js）与日期切换复用/新建时
+       （renderScheduler.js）都会写 style.animationDelay = index * 0.05s，
+       内联优先级高于此处。原来的 --section-index 计算阶梯（含 :nth-child 赋值）因此永不生效，已移除。 */
 }
 
 #sectionsContainer.date-enter.next section[data-section-id] {
@@ -683,18 +684,6 @@ section[data-section-id] {
         transform: translateX(0);
     }
 }
-
-section[data-section-id] {
-    --section-index: 0;
-}
-
-section[data-section-id]:nth-child(1) { --section-index: 0; }
-section[data-section-id]:nth-child(2) { --section-index: 1; }
-section[data-section-id]:nth-child(3) { --section-index: 2; }
-section[data-section-id]:nth-child(4) { --section-index: 3; }
-section[data-section-id]:nth-child(5) { --section-index: 4; }
-section[data-section-id]:nth-child(6) { --section-index: 5; }
-section[data-section-id]:nth-child(7) { --section-index: 6; }
 
 .header {
     display: flex;

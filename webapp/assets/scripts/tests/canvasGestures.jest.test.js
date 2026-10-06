@@ -184,4 +184,38 @@ describe('CanvasGestures 共享手势（C3）', () => {
     hand.destroy();
     host.remove();
   });
+
+  test('三指落下不再叠加第二套捏合：一次移动只应用一次（缩放不被连乘）', () => {
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const log = [];
+    let view = { x: 0, y: 0, scale: 1 };
+    const hand = CanvasGestures.installSpaceHand(host, { isActive: () => true });
+    const detach = CanvasGestures.attach(host, {
+      isActive: () => true,
+      state: hand.state,
+      getView: () => view,
+      setView: (v) => { view = v; log.push(['setView']); },
+      getScale: () => view.scale,
+      zoomAt: () => log.push(['zoom']),
+      panBy: () => {},
+    });
+
+    firePointer(host, 'pointerdown', { pointerId: 1, button: 0, clientX: 100, clientY: 100 });
+    firePointer(host, 'pointerdown', { pointerId: 2, button: 0, clientX: 200, clientY: 200 });
+    // 第三根手指落下：原判断 `ptrs.size >= 2` 会在此再起一套 pinch（两套 window 监听）
+    firePointer(host, 'pointerdown', { pointerId: 3, button: 0, clientX: 300, clientY: 300 });
+
+    log.length = 0;
+    firePointer(window, 'pointermove', { pointerId: 2, clientX: 240, clientY: 240 });
+    firePointer(window, 'pointermove', { pointerId: 2, clientX: 260, clientY: 260 });
+
+    // 只有一套监听 → 第二次移动产生且仅产生一次 zoom / setView
+    expect(log.filter((x) => x[0] === 'zoom').length).toBe(1);
+    expect(log.filter((x) => x[0] === 'setView').length).toBe(1);
+
+    detach();
+    hand.destroy();
+    host.remove();
+  });
 });

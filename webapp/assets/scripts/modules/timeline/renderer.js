@@ -1,4 +1,4 @@
-import { byId, $, $$, modalMount } from '../../utils/domRef.js';
+import { byId } from '../../utils/domRef.js';
 export const TimelineRenderer = {
     _periodsCache: [],
 
@@ -73,7 +73,7 @@ export const TimelineRenderer = {
             
             return `
                 <div class="bamboo-node ${isFocus ? 'focus-now' : ''}" style="animation-delay: ${index * 0.1}s">
-                    <div class="bamboo-card ${period.period}" role="button" tabindex="0" aria-label="${period.name}时间段" data-action="timeline-toggle" data-index="${index}">
+                    <div class="bamboo-card ${HTMLUtils.escapeHtmlAttr(period.period || '')}" role="button" tabindex="0" aria-label="${HTMLUtils.escapeHtmlAttr(period.name)}时间段" data-action="timeline-toggle" data-index="${num(index)}">
                         <div class="bamboo-card-header">
                             <div class="bamboo-left">
                                 <div class="bamboo-info">
@@ -85,7 +85,7 @@ export const TimelineRenderer = {
                                 </div>
                             </div>
                             <div class="bamboo-right">
-                                <span class="bamboo-count" data-count="${count}" data-hint="${hint}">${count}</span>
+                                <span class="bamboo-count" data-count="${num(count)}" data-hint="${HTMLUtils.escapeHtmlAttr(hint)}">${count}</span>
                                 <div class="bamboo-chevron${!isFocus ? ' collapsed' : ''}" id="chevron-${index}">${LucideUtils.createIcon(isFocus ? 'chevronDown' : 'chevronRight', { size: 14 })}</div>
                             </div>
                             <div class="bamboo-leaf">
@@ -172,58 +172,21 @@ export const TimelineRenderer = {
         };
     },
 
+    /**
+     * 委托给全局 tooltip 系统（renderers.js 的 setupBambooTooltips）。
+     *
+     * 时间线原本在这里自建一套 mousemove/mouseover/mouseout 监听；而全局那套是绑在 DOM 根
+     * （getDomRoot()）上的事件委托，#timelinePath 正是它的后代 —— 同一次鼠标移动命中两套
+     * 处理器、操作同一个 .bamboo-tooltip 元素：4 次 rect 读 + 4 次 style 写，读写交替即每个
+     * mousemove 两次强制重排。交给全局系统后行为完全一致，代价减半。
+     */
     setupTooltips() {
-        if (this._tooltipCleanup) this._tooltipCleanup();
-        const container = byId('timelinePath');
-        if (!container) return;
-
-        let tooltip = $('.bamboo-tooltip');
-        if (!tooltip) {
-            tooltip = document.createElement('div');
-            tooltip.className = 'bamboo-tooltip';
-            modalMount().appendChild(tooltip);
+        if (typeof window.setupBambooTooltips === 'function') {
+            window.setupBambooTooltips(); // 内部有 container._tooltipBound 幂等保护
+            return;
         }
-
-        const positionTooltip = (count) => {
-            const rect = count.getBoundingClientRect();
-            const tooltipRect = tooltip.getBoundingClientRect();
-            let left = rect.left + rect.width / 2 - tooltipRect.width / 2;
-            let top = rect.top - tooltipRect.height - 8;
-            left = Math.max(8, Math.min(left, window.innerWidth - tooltipRect.width - 8));
-            top = Math.max(8, top);
-            tooltip.style.left = `${left}px`;
-            tooltip.style.top = `${top}px`;
-        };
-
-        const onMouseMove = (e) => {
-            const count = e.target.closest('.bamboo-count');
-            if (!count) return;
-            positionTooltip(count);
-        };
-        const onMouseEnter = (e) => {
-            const count = e.target.closest('.bamboo-count');
-            if (!count) return;
-            const hint = count.dataset.hint;
-            if (!hint) return;
-            tooltip.textContent = hint;
-            tooltip.style.opacity = '1';
-            positionTooltip(count);
-        };
-        const onMouseLeave = (e) => {
-            const count = e.target.closest('.bamboo-count');
-            if (!count) return;
-            tooltip.style.opacity = '0';
-        };
-
-        container.addEventListener('mousemove', onMouseMove);
-        container.addEventListener('mouseover', onMouseEnter);
-        container.addEventListener('mouseout', onMouseLeave);
-        this._tooltipCleanup = () => {
-            container.removeEventListener('mousemove', onMouseMove);
-            container.removeEventListener('mouseover', onMouseEnter);
-            container.removeEventListener('mouseout', onMouseLeave);
-        };
-    }
+        console.warn('[Timeline] 全局 tooltip 处理器不可用，时间线计数提示未启用');
+    },
 };
 
 ActionDispatcher.registerMany({

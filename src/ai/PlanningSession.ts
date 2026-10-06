@@ -1,7 +1,7 @@
 /**
  * PlanningSession — 对话式规划会话（Agentic，Phase 4）
  *
- * 与 Phase1 `planFromNote`（一次性）不同，本类维护一段多轮对话：
+ * 与早先的「一次性规划」（单轮出结果）不同，本类维护一段多轮对话：
  *  - 首轮 init()：AI 从笔记拆解初版 goals；
  *  - 后续 send(text)：用户用自然语言增 / 删 / 改，AI 返回【全量】最新 goals；
  *  - 手动编辑：直接 mutate `goals`（工作副本），并用 applyLocalEdit 把改动

@@ -146,9 +146,9 @@ export const CardInteractions = {
 
 竹林修仙传的核心闭环由三段串成，本仓库分阶段落地：
 
-1. **规划（Agentic）**：笔记/选区 → `PlanningSession` + `AgenticPlanModal` 从笔记拆解目标树，审阅后写入 `goals.json`。
+1. **规划（Agentic）**：笔记/选区 → `PlanningSession` + 规划台（`PlanEditorView` 中央窗口 + `AgenticPlanController`）从笔记拆解目标树，审阅后写入 `goals.json`。
 2. **执行（webapp）**：每日打卡写 `data/*.json`，`GoalHealthScore` 本地算三层健康分（L1/L2/L3）+ 规则诊断（`webapp/.../goals/healthScore.js`），在「战略复盘」面板展示。
-3. **诊断 → 行动（MVP-1）**：`ai-diagnose` 命令读取 `goals.json` + 近 14 天 `data/*.json`，`DeviationCalculator` 算硬指标（偏差/停滞/趋势），`GoalDiagnoser` 调 AI 做因果归因并产出可操作建议；`DiagnosisModal` 只读展示，「应用」按钮把某目标的建议作为自然语言指令喂给已加载真实树的 `AgenticPlanModal`（`loadGoals` + `initialInstruction`），AI 改树后人工审阅「写入目标」落库。
+3. **诊断 → 行动（MVP-1）**：`ai-diagnose` 命令读取 `goals.json` + 近 14 天 `data/*.json`，`DeviationCalculator` 算硬指标（偏差/停滞/趋势），`GoalDiagnoser` 调 AI 做因果归因并产出可操作建议；`DiagnosisModal` 只读展示，「应用」按钮把某目标的建议作为自然语言指令喂给已加载真实树的规划台（`loadGoals` + `initialInstruction`），AI 改树后人工审阅「写入目标」落库。
 
 ```
 命令 ai-diagnose
@@ -160,7 +160,7 @@ GoalDiagnoser.diagnose（AI 归因 + 可操作建议，复用 requestUrl 绕 COR
    ▼
 DiagnosisModal（只读报告，「应用」按钮）
    ▼ （点应用）
-AgenticPlanModal（loadGoals 真实树 + initialInstruction 预填）
+PlanEditorView 规划台（loadGoals 真实树 + initialInstruction 预填）
    ▼ AI 改树 → 树状 diff 审阅 → 写入目标（putGoals + 刷新 webapp）
 ```
 

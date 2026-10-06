@@ -2,7 +2,7 @@
  * Suggestion — 诊断建议的结构化表示 + 确定性改写（#7）
  *
  * 设计意图：把「自然语言建议」升级为「结构化建议」，使其能**精准命中具体子项**，
- * 而不依赖 AgenticPlanModal 里 AI 对自然语言的二次猜测（diagnosis-action-loop-design §7 风险）。
+ * 而不依赖规划台里 AI 对自然语言的二次猜测（diagnosis-action-loop-design §7 风险）。
  *
  * 关键约束：
  *  - 子项无 id，只能按「子项名（主）/ 下标（备）」确定性匹配；
@@ -58,8 +58,18 @@ export interface ApplyResult {
   message?: string;
 }
 
-function clone(goals: GoalItem[]): GoalItem[] {
-  return JSON.parse(JSON.stringify(goals)) as GoalItem[];
+/**
+ * 结构共享拷贝：浅拷数组 + 只复制「将被改写的那一个目标」，其余目标保持同一引用。
+ *
+ * 原实现是 `JSON.parse(JSON.stringify(全库))`：applySuggestions 折叠 N 条建议 = N 次全库深拷贝。
+ * 契约完全不变 —— 返回**新**数组、绝不 mutate 入参（被改写的目标换成新对象，
+ * 其内部被改的 items 数组 / 数组元素也一律由各 case 生成新值，不做原地写）。
+ */
+function copyWithGoalSharing(goals: GoalItem[], idx: number): { working: GoalItem[]; g: GoalItem } {
+  const working = goals.slice();
+  const g = { ...goals[idx] };
+  working[idx] = g;
+  return { working, g };
 }
 
 function findGoal(goals: GoalItem[], s: Suggestion): GoalItem | undefined {
@@ -92,15 +102,8 @@ export function applySuggestion(s: Suggestion, goals: GoalItem[]): ApplyResult {
     return { goals, applied: false, message: '未找到目标' };
   }
 
-  const working = clone(goals);
-  const g = working.find(
-    (x) =>
-      (s.goalRef.goalId != null && x.id === s.goalRef.goalId) ||
-      x.title === s.goalRef.goalTitle
-  );
-  if (!g) {
-    return { goals, applied: false, message: '未找到目标' };
-  }
+  // 只 shallow-copy 数组 + 命中目标本身；未命中的目标保持原引用。
+  const { working, g } = copyWithGoalSharing(goals, goals.indexOf(goal));
 
   switch (s.action) {
     case 'adjust_dailyMin': {

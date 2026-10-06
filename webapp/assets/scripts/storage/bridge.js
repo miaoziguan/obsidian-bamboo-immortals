@@ -701,16 +701,10 @@ export class BridgeStorage {
     }
   }
 
-  /** 主动请求宿主当前明暗主题（画中卷加载后自行拉取，确保跟随亮暗） */
-  async requestTheme() {
-    await this.ensureReady();
-    try {
-      return await this._send('app:getTheme', {});
-    } catch (e) {
-      console.warn('[Bridge] app:getTheme 不可用:', e && e.message);
-    }
-  }
-
+  // 说明：原 requestTheme（app:getTheme，拉取式主题查询）已连同宿主处理分支与两侧 protocol
+  // 声明一并移除：首屏明暗由宿主 AppAPI.bindIframe 在 iframe 绑定瞬间主动推一次主题覆盖
+  // （含 currentPalette，保证色相/明度首屏即生效），后续由 css-change → pushTheme →
+  // theme:changed 维持；且该消息宿主侧本就只回 { ok: true }，从不返回主题数据。
   /** 切换 Obsidian 明暗主题（画中卷打字机机身开关 / 悬浮菜单「夜间模式」）。
    *
    *  isDark 为「期望明暗」：传布尔则强制切到该值（打字机开关用，其本地 DOM 恒等于 OB 主题）；

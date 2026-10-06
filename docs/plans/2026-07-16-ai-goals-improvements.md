@@ -23,7 +23,7 @@ F. plans-map 失效清理（索引不再无限增长）。
    - `MarkdownPlanner.buildPrompt`：JSON 示例 + 规则 13（≤40 字归纳分析）；规则 10 注明 analysis 例外。
    - `parseGoals`：映射 `analysis`。
    - `GoalCardValidator.sanitizeGoal`：保留 `analysis`（否则被丢未知字段静默丢弃）。
-   - `PlanConfirmModal.renderGoal` + `renderer.js` + CSS：展示 analysis。
+   - `AgenticPlanController.renderGoal`（原 `PlanConfirmModal.renderGoal`，该文件已作为死代码删除）+ `renderer.js` + CSS：展示 analysis。
 4. **C 重建命令** — `main.ts` 注册 `ai-rebuild-goals`，读 plans-map → 逐篇重规划 → `writeAiGoals(silent=true)` → 统一通知。
 5. **E 单元测试** — `sanitizeGoal` 保留 analysis / 丢弃 icon；`deriveStableGoalId` 稳定不碰撞；`shouldSkipPlanned` 各分支。
 6. **F 索引清理** — `writeAiGoals` 写索引前剔除「全部 id 已不在最终目标库」的 entry。

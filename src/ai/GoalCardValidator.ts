@@ -22,7 +22,7 @@ const CATEGORY_SET = new Set<string>(GOAL_CATEGORIES.map((c) => c.id));
 
 /**
  * 从子项名中提取单位（如"每天饮食热量上限(千卡)"→"千卡"，"每天阅读页数"→"页"），用于数字框后缀展示。
- * 被 PlanConfirmModal / AgenticPlanModal 复用。
+ * 被 AgenticPlanController（规划审阅台）复用。
  */
 export function extractUnit(name: string): string {
   // 优先匹配括号中的单位："(千卡)" / "（小时）"

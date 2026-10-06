@@ -62,7 +62,6 @@ interface GoalCompMap {
  *     settings.json  -> 应用设置
  *     themes/        -> 自定义主题 (预留)
  *     reports/       -> 报告 (预留)
- *     reviews/       -> Markdown 摘要
  */
 export class VaultStorage {
   private app: App;
@@ -89,7 +88,6 @@ export class VaultStorage {
       await this.app.vault.adapter.mkdir(this.basePath);
     }
     await this.ensureDir('data');
-    await this.ensureDir('reviews');
     await this.ensureDir('templates');
   }
 
@@ -157,6 +155,41 @@ export class VaultStorage {
           // 解析失败跳过该文件
         }
       });
+
+    await Promise.all(reads);
+    return days;
+  }
+
+  /**
+   * 只读 fromKey（含）之后的日记文件。
+   *
+   * 与 getAllDays() 的唯一差别是**先按 key 过滤、再读内容**：
+   * getAllDays 会把 vault 里全部日记逐个读进来，调用方再在窗口外丢弃 —— 使用年限越长
+   * 浪费越大（几百上千次 IPC）。此处只 list 一次拿到 key 集合，筛出落在窗口内的才发起
+   * 读取。返回内容与 getAllDays 的对应子集完全一致（键取自文件名，解析失败同样跳过）。
+   */
+  async getDaysSince(fromKey: string): Promise<Record<string, DayData>> {
+    if (!fromKey) return this.getAllDays();
+    await this.ensureDir('data');
+    const dataDir = normalizePath(`${this.basePath}/data`);
+    const files = await this.app.vault.adapter.list(dataDir);
+    const days: Record<string, DayData> = {};
+    const targets = files.files.filter((f) => {
+      if (!f.endsWith('.json')) return false;
+      const dateKey = f.split('/').pop()?.replace('.json', '');
+      return typeof dateKey === 'string' && dateKey >= fromKey;
+    });
+
+    const reads = targets.map(async (file) => {
+      const dateKey = file.split('/').pop()?.replace('.json', '');
+      if (!dateKey) return;
+      try {
+        const content: string = await this.app.vault.adapter.read(file);
+        days[dateKey] = JSON.parse(content) as DayData;
+      } catch {
+        // 解析失败跳过该文件（与 getAllDays 行为一致）
+      }
+    });
 
     await Promise.all(reads);
     return days;
@@ -277,23 +310,35 @@ export class VaultStorage {
     // 新实现：按「有效内容量」判断——当本次写入为空壳(score=0)、而磁盘现有文件有内容(score>0)时，
     // 拦截写入，避免时间线/待办勾选被空数据覆盖丢失。
     const newScore = this.dayContentScore(dayData);
+    // 【IPC 合并】原实现对同一个文件发起两轮 exists + read（一轮判空壳、一轮判合并），
+    // 单次 putDay 最多 5 次 IPC。这里只读磁盘一次，两份守卫共用这一份内容。
+    // 两条失败路径的语义分别保留：
+    //   · 文件缺失（exists=false）→ existing 为 null，写流程照常往下走（可新建文件）；
+    //   · 文件损坏（exists=true 但读取/解析抛错）→ newScore===0 时绝不写（保护现有文件，
+    //     留给人工/备份修复），newScore>0 时用本次数据落库（本次内容优先）。
+    let existing: DayData | null = null;
+    let readFailed = false;
+    try {
+      if (await this.app.vault.adapter.exists(path)) {
+        existing = JSON.parse(await this.app.vault.adapter.read(path)) as DayData;
+      }
+    } catch {
+      readFailed = true;
+      existing = null;
+    }
+    const existingScore = existing ? this.dayContentScore(existing) : 0;
+
+    // 写守卫（空壳拦截）：本次为空壳、而磁盘现有文件有内容 → 拦下，
+    // 避免当日时间线/待办勾选被「吃到一半的内存态」清空。
     if (newScore === 0) {
-      try {
-        if (await this.app.vault.adapter.exists(path)) {
-          const existing = JSON.parse(await this.app.vault.adapter.read(path)) as DayData;
-          const existingScore = this.dayContentScore(existing);
-          if (existingScore > 0) {
-            if (!this._warnedPaths.has(path)) {
-              new Notice(
-                `⚠️ 已拦截 ${dateKey} 的空数据覆盖（现有 ${existingScore} 项内容 → 空），已保护当日时间线/待办不丢失。`
-              );
-              this._warnedPaths.add(path);
-            }
-            return;
-          }
+      if (readFailed) return;
+      if (existingScore > 0) {
+        if (!this._warnedPaths.has(path)) {
+          new Notice(
+            `⚠️ 已拦截 ${dateKey} 的空数据覆盖（现有 ${existingScore} 项内容 → 空），已保护当日时间线/待办不丢失。`
+          );
+          this._warnedPaths.add(path);
         }
-      } catch {
-        // 文件存在但读取/解析失败(损坏)：空壳绝不覆盖，保留损坏文件供用户/备份修复，不冒险清空。
         return;
       }
     }
@@ -301,16 +346,8 @@ export class VaultStorage {
     // 本次有内容时，若磁盘已有内容，则「合并」而非整文件替换——
     // 防止 webapp 内存态变成磁盘的子集(部分丢失)时，把磁盘上多出的时间线/待办勾选静默抹掉。
     let finalData: DayData = dayData;
-    try {
-      if (newScore > 0 && (await this.app.vault.adapter.exists(path))) {
-        const existing = JSON.parse(await this.app.vault.adapter.read(path)) as DayData;
-        if (this.dayContentScore(existing) > 0) {
-          finalData = this.mergeDayData(dayData, existing);
-        }
-      }
-    } catch {
-      // 读磁盘失败：不冒险读损坏文件，直接用本次数据落库（本次内容优先）。
-      finalData = dayData;
+    if (newScore > 0 && existing && existingScore > 0) {
+      finalData = this.mergeDayData(dayData, existing);
     }
 
     await this.vaultWrite(path, JSON.stringify(finalData, null, 2));
@@ -422,32 +459,100 @@ export class VaultStorage {
     if (!(await this.app.vault.adapter.exists(path))) {
       return [];
     }
-    const content: string = await this.app.vault.adapter.read(path);
+
+    let content: string;
+    try {
+      content = await this.app.vault.adapter.read(path);
+    } catch {
+      // 读盘失败（权限/并发删除）：按空处理，读取侧不把上层拖垮
+      return [];
+    }
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(content);
+    } catch {
+      // 截断/语法损坏：绝不抛错——exportAllData / importData / runDiagnosis 都直接 await 本方法，
+      // 一处 SyntaxError 会连锁拖垮「导出备份 / 导入 / AI 诊断」（H11 只兜住了「非数组」）。
+      // 原文件一字不改地隔离留档后返回空，既不丢数据也不中断调用方。
+      await this.quarantineCorruptGoals(path, content);
+      return [];
+    }
+
     // 损坏为非数组（null/{}数字）时返回 []，避免下游 as GoalItem[] 后 .map/.length 抛错（H11）
-    const parsed: unknown = JSON.parse(content);
     return Array.isArray(parsed) ? (parsed as GoalItem[]) : [];
   }
 
   async putGoals(goals: GoalItem[]): Promise<void> {
     const path = this.goalsPath();
+    const existing = await this.readExistingGoalsText(path);
 
-    // 写守卫：检测数据量悬崖（N条目标 → 空数组）
-    if (goals.length === 0 && !this._warnedPaths.has(path)) {
+    if (existing !== null) {
+      let parsed: unknown;
+      let corrupt = false;
       try {
-        if (await this.app.vault.adapter.exists(path)) {
-          const existing = JSON.parse(await this.app.vault.adapter.read(path)) as GoalItem[];
-          if (Array.isArray(existing) && existing.length > 0) {
-            new Notice(
-              `⚠️ 检测到目标数据异常清空（${existing.length} 条 → 空），已自动拦截。\n如果确实要清空所有目标，请再次操作。`
-            );
-            this._warnedPaths.add(path);
-            return;
-          }
-        }
-      } catch { /* 文件损坏或不存在，继续正常写入 */ }
+        parsed = JSON.parse(existing);
+      } catch {
+        corrupt = true;
+      }
+
+      // 守卫 ①（损坏保护）：文件存在但无法解析 → 绝不覆盖。
+      // 旧实现把这种情况写在 catch 里、注释「文件损坏或不存在，继续正常写入」，把「损坏」误判成「不存在」：
+      // 于是任何一次写入（含 load 拿到空数组后的迁移回写）都会把用户目标永久抹掉。
+      // 这里改为：隔离留档后跳过本次写入，交由用户修复，或由下次读取拿到空数据后重建。
+      if (corrupt) {
+        await this.quarantineCorruptGoals(path, existing);
+        return;
+      }
+
+      // 守卫 ②：检测数据量悬崖（N条目标 → 空数组）
+      if (goals.length === 0 && Array.isArray(parsed) && parsed.length > 0 && !this._warnedPaths.has(path)) {
+        new Notice(
+          `⚠️ 检测到目标数据异常清空（${parsed.length} 条 → 空），已自动拦截。\n如果确实要清空所有目标，请再次操作。`
+        );
+        this._warnedPaths.add(path);
+        return;
+      }
     }
 
     await this.vaultWrite(path, JSON.stringify(goals, null, 2));
+  }
+
+  /** 读取既有 goals.json 原文；不存在/读取失败/空白内容返回 null（空白视为无数据，可安全写入） */
+  private async readExistingGoalsText(path: string): Promise<string | null> {
+    try {
+      if (!(await this.app.vault.adapter.exists(path))) return null;
+      const raw = await this.app.vault.adapter.read(path);
+      return raw.trim() === '' ? null : raw;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * 把「存在但无法解析」的 goals.json 隔离留档为 goals.json.corrupt-<时间戳>。
+   *
+   * 为什么不能只「返回 []」了事：GoalService.load() 拿到空数组会走 day 数据迁移 → _save() 回写，
+   * 而旧守卫的 catch 又把损坏当「不存在」放行 → 损坏文件被覆盖，用户目标永久丢失。
+   * 所以先写备份、再移除原文件：内容一字不改地留在 vault 里（用户可手动找回），
+   * 规范路径腾空后，读取不再反复报错、写入也不再冒险覆盖。
+   */
+  private async quarantineCorruptGoals(path: string, content: string): Promise<void> {
+    const backup = normalizePath(`${path}.corrupt-${this.corruptStamp(new Date())}`);
+    try {
+      await this.app.vault.adapter.write(backup, content);
+      await this.app.vault.adapter.remove(path);
+      new Notice(`⚠️ 目标数据文件已损坏（无法解析），原文件已备份为 ${backup.slice(backup.lastIndexOf('/') + 1)}。`);
+    } catch {
+      // 备份失败时不删原文件（宁可重复留一份，也不冒险丢内容）
+      new Notice('⚠️ 目标数据文件已损坏（无法解析），且自动备份失败，请手动检查 goals.json。');
+    }
+  }
+
+  /** 备份文件名的本地时间戳：YYYYMMDD-HHmmss */
+  private corruptStamp(d: Date): string {
+    const p = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
   }
 
   // ---- AI 规划侧车索引（plans-map.json）----
@@ -903,7 +1008,4 @@ export class VaultStorage {
         })
     );
   }
-
-  // ---- Markdown 摘要 ----
-
 }

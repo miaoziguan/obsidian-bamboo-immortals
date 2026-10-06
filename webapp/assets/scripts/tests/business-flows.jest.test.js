@@ -8,6 +8,13 @@
 
 const { loadModule } = require('./__helpers__/testUtils');
 
+// C 轮去重后的唯一实现（dateUtils / helpers），供下面 loadModule 注入
+const dateUtilsImpl = loadModule('utils/dateUtils.js', ['formatDate']);
+const helpersImpl = loadModule('utils/helpers.js', ['parseTime', 'calculateCheckInTimes'], {
+    byId: (id) => document.getElementById(id),
+    formatDate: dateUtilsImpl.formatDate
+});
+
 const makeCheckInTimes = (timeline) => {
     const times = [];
     (timeline || []).forEach(period => {
@@ -138,11 +145,16 @@ const installServices = () => {
         recalibrateStats: jest.fn()
     };
     window.WalletService = global.WalletService;
-    loadModule('services/TimelineService.js', []);
+    // 这两个模块的实现已收敛到 helpers / dateUtils（C 轮去重），
+    // loadModule 剥离 import 后须注入真实实现，否则求值期即抛 ReferenceError。
+    loadModule('services/TimelineService.js', [], {
+        parseTimeUtil: helpersImpl.parseTime,
+        calculateCheckInTimesUtil: helpersImpl.calculateCheckInTimes
+    });
     loadModule('services/GoalService.js', []);
     loadModule('services/TodoService.js', []);
     // GoalService._formatDate 已委托给 goalCalculations
-    loadModule('utils/goalCalculations.js', []);
+    loadModule('utils/goalCalculations.js', [], { formatDate: dateUtilsImpl.formatDate });
 };
 
 const flushPromises = async () => {

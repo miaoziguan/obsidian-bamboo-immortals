@@ -625,9 +625,9 @@ export const ThemeEffects = {
 
         const cards = themeList.map(t => `
             <button class="theme-panel-card ${t.id === current ? 'active' : ''} ${t.loaded ? '' : 'theme-unloaded'}"
-                    data-theme="${t.id}"
+                    data-theme="${HTMLUtils.escapeHtmlAttr(t.id)}"
                     data-loaded="${t.loaded ? '1' : '0'}"
-                    title="${t.name}">
+                    title="${HTMLUtils.escapeHtmlAttr(t.name)}">
                 <span class="theme-panel-card-name">${t.name}</span>
                 ${t.license && t.license.indexOf('专享') !== -1 ? '<span class="theme-exclusive-badge">专享</span>' : ''}
                 ${t.loaded ? '' : '<span class="theme-panel-card-badge">待加载</span>'}

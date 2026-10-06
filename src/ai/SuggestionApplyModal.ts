@@ -1,11 +1,11 @@
 /**
  * SuggestionApplyModal — 结构化建议的「改动预览 / 人工闸门」（#7）
  *
- * 区别于 AgenticPlanModal：这里不做 AI 再解释，只是把 applySuggestion 的
+ * 区别于 AI 规划台：这里不做 AI 再解释，只是把 applySuggestion 的
  * 确定性结果**原样呈现**给用户看「到底命中了哪个目标/子项、改了什么」，
  * 由用户确认后落库。保留 diagnosis-action-loop-design §7 的「人工确认是最后闸门」。
  *
- * 可选「用 AI 调整」：把已确定性改写的树交给 AgenticPlanModal 继续精修
+ * 可选「用 AI 调整」：把已确定性改写的树交给 AI 规划台继续精修
  * （仅当用户想要时，默认走确定性路径，不引入 AI 猜测）。
  */
 import { Modal, App } from 'obsidian';

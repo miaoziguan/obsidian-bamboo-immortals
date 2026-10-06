@@ -118,25 +118,9 @@ const ScrollManager = {
     }
   },
 
-  /** 应用明暗：dark 类需同时存在于 shadow host / html / body，暗色规则才完整命中 */
-  _applyDark(isDark) {
-    const host = document.getElementById('bamboo-shadow-host');
-    const els = [document.documentElement, document.body, host].filter(Boolean);
-    els.forEach((el) => el.classList.toggle('dark', !!isDark));
-  },
-
-  /** 主动拉取宿主当前主题并应用（消费 requestTheme 返回值，弥补仅监听广播会漏掉「首帧 / 主题未变化」的窗口） */
-  async _syncTheme() {
-    if (typeof storageManager === 'undefined' || !storageManager.requestTheme) return;
-    try {
-      const res = await storageManager.requestTheme();
-      if (!res) return;
-      const isDark = (typeof res.isDark === 'boolean') ? res.isDark
-                   : (res.payload && typeof res.payload.isDark === 'boolean') ? res.payload.isDark
-                   : undefined;
-      if (typeof isDark === 'boolean') this._applyDark(isDark);
-    } catch (_) { /* 取不到就沿用当前主题 */ }
-  },
+  // 说明：这里原有 _applyDark / _syncTheme 两个方法（主动 requestTheme 拉取主题并 toggle dark 类），
+  // 全仓已无任何调用者：dark 类现由 store.js / bridge.js 的主题广播统一维护，
+  // 滚动视图不再自行同步（见本文件上方的主题职责注释）。已删除。
 
   /**
    * 关闭视图：停表并解绑全部外部监听。
@@ -620,7 +604,6 @@ const ScrollManager = {
         this._firebrandDragging = false;
         firebrand.classList.remove('cap-off', 'dragging', 'near');
         if (this._incenseEl) this._incenseEl.classList.remove('near');
-        if (hint) hint.textContent = '';
         this._playCapSound('close');   // 盖回：略闷的木"嗒"，与拔帽对称
         return;
       }

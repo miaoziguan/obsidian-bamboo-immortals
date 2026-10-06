@@ -69,7 +69,23 @@ export const Handlers = {
             PrivacyMode.init();
             // 动态渲染（AI 规划写入、切日期、待办/时间线回流等）后补标文字叶子，
             // 确保新出现的文字也被纳入模糊。观察整个 shadow root，覆盖任何位置的板块。
-            const mark = () => PrivacyMode.markText();
+            // 增量 + 关闭时短路。
+            // 原实现对每一批 mutation 都做一次「整个 shadow root 的全树 walk」：
+            //   · 隐私关闭时（默认从未设置过 = 0）标记不会被任何样式消费 —— 马赛克由
+            //     body/host 上的 .privacy-on 类驱动 —— 这笔开销对用户零产出；
+            //   · 开启时真正需要处理的也只是新增节点，已标记过的节点不需要反复再扫。
+            // 故这里先按 isOn() 短路，再把本次 addedNodes 交给 markText 增量处理。
+            const mark = (mutations) => {
+                if (!PrivacyMode.isOn()) return;
+                const roots = [];
+                for (const m of mutations || []) {
+                    for (const n of m.addedNodes) {
+                        if (n.nodeType === 1) roots.push(n);
+                        else if (n.nodeType === 3 && n.parentElement) roots.push(n.parentElement);
+                    }
+                }
+                if (roots.length) PrivacyMode.markText(roots);
+            };
             const sr = window.__bambooShadowRoot;
             // 注意：ShadowRoot 没有 documentElement（那是 Document 的属性），必须直接用
             // sr 本身。写成 sr.documentElement 会恒为 undefined，从而静默退化成只观察
@@ -82,8 +98,9 @@ export const Handlers = {
                     subtree: true,
                 });
             }
-            // 首屏渲染可能晚于 init（数据异步到达），下一帧再补一次
-            requestAnimationFrame(mark);
+            // 首屏渲染可能晚于 init（数据异步到达），下一帧再补一次全量。
+            // 关闭时同样跳过（此时标记无用；从关切到开会由 setLevel 补一次全量）。
+            requestAnimationFrame(() => { if (PrivacyMode.isOn()) PrivacyMode.markText(); });
         }
     },
 
@@ -107,9 +124,9 @@ export const Handlers = {
 
         container.innerHTML = `
             <div class="modal-overlay" data-action="close-modal-overlay" role="presentation">
-                <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="${titleId}" data-stop-propagation>
+                <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="${HTMLUtils.escapeHtmlAttr(titleId)}" data-stop-propagation>
                     <div class="modal-header">
-                        <div class="modal-title" id="${titleId}"></div>
+                        <div class="modal-title" id="${HTMLUtils.escapeHtmlAttr(titleId)}"></div>
                         <button class="modal-close" data-action="close-modal" aria-label="关闭弹窗">${LucideUtils.createIcon('x', { size: 16 })}</button>
                     </div>
                     <div class="modal-body" id="modalBody" role="document">
@@ -288,20 +305,17 @@ export const Handlers = {
         if (typeof ThemeSelector !== 'undefined') ThemeSelector.updateDarkModeButton();
     },
 
-    handleImportFile(event) {
-        DataIO.handleImportFile(event);
-    },
-
-    importDataFromTextarea() {
-        DataIO.importFromTextarea();
-    }
+    // 说明：这里原有 handleImportFile / importDataFromTextarea 两个纯转发包装，
+    // 唯一调用方是已删除的 dataIO.openImport 弹窗（含其 file input 的 change 回调），已删除。
+    // （原先直接调 DataIO.importFromTextarea 的 'import-from-textarea' 动作注册也已一并移除：
+    //   真实恢复入口是设置面板 settings-import-data → SettingsModal.openImportPreview，
+    //   它确认后直接 DataIO.importData(backup, { strategy, scope })，不经 DOM 动作派发。）
 };
 
 ActionDispatcher.registerMany({
     'close-modal': () => Handlers.closeModal(),
     'close-modal-overlay': (data, target, e) => Handlers.closeModal(e),
     'export-data': () => DataIO.exportData(),
-    'import-from-textarea': () => DataIO.importFromTextarea(),
     'open-date-picker': () => Handlers.openDatePicker(),
     'open-archive-page': () => {
         if (typeof openArchivePage === 'function') openArchivePage();

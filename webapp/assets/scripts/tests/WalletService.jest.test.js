@@ -83,7 +83,10 @@ describe('WalletService.recalibrateStats 冻结一致性', () => {
     test('recalibrateStats 应校准损坏的余额（派生 = 收入 − 消费）', async () => {
         const state = baseState();
         state.balance = 0; // 损坏：余额被持久化为 0
-        const month = new Date().toISOString().slice(0, 7);
+        // 夹具的 month 也按本地日历造（与写入侧 localMonthKey 同口径）；
+        // recalibrateStats 虽不读 month，但夹具不应复制已修掉的 UTC 切片口径
+        const _n = new Date();
+        const month = `${_n.getFullYear()}-${String(_n.getMonth() + 1).padStart(2, '0')}`;
         const nowIso = new Date().toISOString();
         state.incomeHistory.records = Array.from({ length: 280 }, (_, i) => ({
             amount: 1, desc: `完成 任务${i}`, date: nowIso, month
@@ -148,5 +151,89 @@ describe('WalletService 收入记账日期一致性（跨天不误记）', () =>
         // 昨日那条不同日，不应被去重删除；今日新增一条 => 共 2 条
         const chapterRecs = store.state.incomeHistory.records.filter(r => r.desc === '完成 章节');
         expect(chapterRecs.length).toBe(2);
+    });
+});
+
+describe('WalletService 记账月份锚定本地日历（月首凌晨不错归上月）', () => {
+    // 期望值由本地分量推导，断言与运行时时区无关；在 Asia/Shanghai（本项目开发/CI 环境）下，
+    // 旧实现 new Date(effDate).toISOString().slice(0, 7) 对「月首凌晨」会得到上一个月 → 用例变红。
+    const localMonthOf = (s) => {
+        const d = new Date(s);
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    };
+
+    test.each([
+        ['2026-11-01T00:30:00'], // 月首凌晨：UTC 仍是 10-31
+        ['2026-11-01T07:59:00'], // 跨月边界前一刻
+        ['2026-11-01T08:00:00'], // 边界之后（此时 UTC 才进入 11 月）
+        ['2026-12-01T00:30:00'],
+        ['2026-07-23T01:14:00'], // 既有用例的月中时刻，防回退
+    ])('updateBalance 于 %s 完成时，month 应为该时刻的本地月', async (completionDate) => {
+        const { store } = makeGlobals(baseState());
+        store.state.incomeHistory.records = [];
+        const { WalletService } = loadModule('services/WalletService.js', ['WalletService']);
+
+        await WalletService.updateBalance(1, 'task_complete', '完成 章节', completionDate);
+
+        const rec = store.state.incomeHistory.records[0];
+        expect(rec.date).toBe(completionDate);
+        expect(rec.month).toBe(localMonthOf(completionDate));
+    });
+});
+
+describe('WalletService 消费记账（与收入侧对称）', () => {
+    test('addPurchaseHistory 尊重传入 date，且 month 按本地月归属', async () => {
+        const { store } = makeGlobals(baseState());
+        const { WalletService } = loadModule('services/WalletService.js', ['WalletService']);
+
+        const at = '2026-11-01T00:30:00'; // 月首凌晨
+        await WalletService.addPurchaseHistory({ id: 'snack', name: '美味零食', price: 50, date: at });
+
+        const rec = store.state.purchaseHistory.records[0];
+        expect(rec.date).toBe(at);         // 旧实现会被 new Date().toISOString() 覆盖
+        expect(rec.month).toBe('2026-11'); // 旧实现取 UTC 月 → '2026-10'
+    });
+
+    test('未传 date 时回退保存时刻，month 与该时刻的本地月一致', async () => {
+        const { store } = makeGlobals(baseState());
+        const { WalletService } = loadModule('services/WalletService.js', ['WalletService']);
+
+        await WalletService.addPurchaseHistory({ id: 'cola', name: '可乐', price: 20 });
+
+        const rec = store.state.purchaseHistory.records[0];
+        const d = new Date(rec.date);
+        expect(rec.month).toBe(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+    });
+});
+
+describe('WalletService.archiveOldRecords 归属月按 date 推导', () => {
+    test('date 属近月但 month 被记成旧月时，应保留在 records 而不误归档', async () => {
+        const now = new Date();
+        const state = baseState();
+        state.purchaseHistory = {
+            records: [{ id: 'snack', name: '零食', price: 50, date: now.toISOString(), month: '2000-01' }],
+            archive: {}
+        };
+        const { store } = makeGlobals(state);
+        const { WalletService } = loadModule('services/WalletService.js', ['WalletService']);
+
+        await WalletService.archiveOldRecords();
+
+        // 旧实现信任 record.month → 会把这条近月记录归进 2000-01
+        expect(store.state.purchaseHistory.records.length).toBe(1);
+        expect(store.state.purchaseHistory.archive['2000-01']).toBeUndefined();
+    });
+
+    test('既无 date 也无 month 的记录保留在 records，不落进空键归档桶', async () => {
+        const state = baseState();
+        state.incomeHistory = { records: [{ amount: 5, desc: '完成 任务X' }], archive: {} };
+        const { store } = makeGlobals(state);
+        const { WalletService } = loadModule('services/WalletService.js', ['WalletService']);
+
+        await WalletService.archiveOldRecords();
+
+        // 旧实现 record.date.slice(...) 会直接抛 TypeError；即便不抛也不该落进 ''
+        expect(store.state.incomeHistory.records.length).toBe(1);
+        expect(store.state.incomeHistory.archive['']).toBeUndefined();
     });
 });

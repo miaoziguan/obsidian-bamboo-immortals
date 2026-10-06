@@ -2,6 +2,19 @@
  * MigrationService — 数据版本迁移
  * 从 store.js 中抽取，处理 localStorage → IndexedDB / v1 → v2 → v3 的数据迁移。
  */
+
+/**
+ * 本地日历的 YYYY-MM —— 迁移时补齐历史记录的 month。
+ * 与 WalletService.localMonthKey 同口径：不能用 date.slice(0, 7) / toISOString()，
+ * 那是 UTC 月，会让月首凌晨的历史记录被迁进上个月。
+ * （date 缺失时仍回退「当前月」，只改口径、不改缺值语义。）
+ */
+function localMonthKey(input) {
+    const d = input instanceof Date ? input : new Date(input);
+    if (isNaN(d.getTime())) return '';
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
 export class MigrationService {
     /**
      * @param {object} storeState — Store 的 state 对象引用
@@ -76,7 +89,7 @@ export class MigrationService {
             if (oldPurchases && Array.isArray(oldPurchases) && oldPurchases.length > 0) {
                 const records = oldPurchases.map(r => ({
                     ...r,
-                    month: r.date ? r.date.slice(0, 7) : new Date().toISOString().slice(0, 7)
+                    month: localMonthKey(r.date) || localMonthKey(new Date())
                 }));
                 this._state.purchaseHistory = { records, archive: {} };
                 await storageManager.putPurchaseHistory(this._state.purchaseHistory);
@@ -90,7 +103,7 @@ export class MigrationService {
             if (oldIncomes && Array.isArray(oldIncomes) && oldIncomes.length > 0) {
                 const records = oldIncomes.map(r => ({
                     ...r,
-                    month: r.date ? r.date.slice(0, 7) : new Date().toISOString().slice(0, 7)
+                    month: localMonthKey(r.date) || localMonthKey(new Date())
                 }));
                 this._state.incomeHistory = { records, archive: {} };
                 await storageManager.putIncomeHistory(this._state.incomeHistory);

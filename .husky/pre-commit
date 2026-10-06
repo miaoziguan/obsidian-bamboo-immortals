@@ -1,6 +1,12 @@
-# 门禁：提交前必须通过 lint 与两套测试，避免破窗回归。
+# 门禁：提交前必须通过 lint、属性转义闸门与两套测试，避免破窗回归。
 # 测试已通过 CI 强制（release.yml），此处为本地最后一道防线。
+#
+# check:html-escape 不可省略：webapp/ 被 .eslintrc.cjs 排除在 ESLint 之外，
+# 若无此闸门，属性上下文的未转义插值将完全无人拦截（2026-10-06 审查曾一次
+# 发现 20+ 处，含 3 处真实注入点）。豁免须写进 scripts/html-escape-allow.json
+# 并附 _reason，禁止为了「让闸门变绿」而登记。
 npm run lint
+npm run check:html-escape
 npm run check:load-matrix
 npm run test:host
 npm run test

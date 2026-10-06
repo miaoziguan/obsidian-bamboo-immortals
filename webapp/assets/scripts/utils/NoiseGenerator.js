@@ -196,13 +196,11 @@ export const NoiseGenerator = {
         // 竹林：风声 + 竹叶摩擦 + 偶尔的鸟鸣
         bamboo(data, len, sr) {
             // 基础风声（低频噪声）
-            let windPhase = 0;
             for (let i = 0; i < len; i++) {
                 const t = i / sr;
                 // 风声强度变化（慢速LFO）
                 const windLfo = 0.5 + 0.5 * Math.sin(t * 0.5) * Math.sin(t * 0.3);
                 data[i] = (Math.random() * 2 - 1) * 0.25 * windLfo;
-                windPhase++;
             }
 
             // 竹叶摩擦声（高频瞬态）

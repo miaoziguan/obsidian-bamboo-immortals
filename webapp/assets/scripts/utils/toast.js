@@ -101,7 +101,7 @@ export class ToastManager {
         }
 
         const closeBtn = toast.dismissible
-            ? `<button class="toast-close-btn" aria-label="关闭" data-action="toast-hide" data-toast-id="${toast.id}">×</button>`
+            ? `<button class="toast-close-btn" aria-label="关闭" data-action="toast-hide" data-toast-id="${HTMLUtils.escapeHtmlAttr(toast.id)}">×</button>`
             : '';
 
         element.innerHTML = `

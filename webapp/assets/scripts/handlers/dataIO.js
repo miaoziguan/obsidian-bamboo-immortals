@@ -1,4 +1,3 @@
-import { byId } from '../utils/domRef.js';
 import { TypewriterStore } from '../services/TypewriterStore.js';
 window.DataIO = {
 
@@ -444,100 +443,23 @@ window.DataIO = {
         }
     },
 
-    openExport() {
-        const content = `
-            <div class="form-group">
-                <label class="form-label">导出数据</label>
-                <button class="bm-btn bm-btn--primary btn-block" data-action="export-data">
-                    导出为 JSON 文件
-                </button>
-            </div>
-            <div class="modal-footer">
-                <button class="bm-btn bm-btn--secondary" data-action="close-modal">关闭</button>
-            </div>
-        `;
-        Handlers.openModal(content, '导出分享');
-    },
+    // 说明：这里原有 openExport（导出分享弹窗）与 openImport（导入数据弹窗）两个入口，
+    // 但全仓已无任何触发点（无 data-action、无 onclick、无 JS 调用），属「UI 入口已移除、
+    // 实现遗留」的死代码，已删除。
 
-    openImport() {
-        const content = `
-            <div class="form-group">
-                <label class="form-label">选择要导入的JSON文件</label>
-                <input type="file" class="form-input" id="importFileInput" accept=".json,application/json">
-            </div>
-            <div class="form-group" style="margin-top: 20px;">
-                <label class="form-label">或者粘贴JSON内容</label>
-                <textarea class="form-textarea" id="importTextarea" rows="6" placeholder="粘贴JSON数据..."></textarea>
-            </div>
-            <div class="modal-footer">
-                <button class="bm-btn bm-btn--secondary" data-action="close-modal">取消</button>
-                <button class="bm-btn bm-btn--primary" data-action="import-from-textarea">从文本框导入</button>
-            </div>
-        `;
-        Handlers.openModal(content, '导入数据');
-        const fileInput = byId('importFileInput');
-        if (fileInput) {
-            fileInput.addEventListener('change', (e) => this.handleImportFile(e));
-        }
-    },
+    // 导入/导出目前是一条完整闭环的**活**链路（取证自 settingsModal.js:167-253 / 741-766）：
+    //   导出：settings-export-data → SettingsModal.exportData → DataIO.exportData
+    //   导入：settings-import-data → SettingsModal.openImportPreview → 选 .json
+    //        → showImportPreview → 确认 → silentExport（自动兜底备份）
+    //        → DataIO.importData(backup, { strategy, scope })
+    //   另有 9 个文件级按钮（goals/settings/purchase/income/days）走 exportXxx / importXxxFromFile。
+    //   故下方 importData 有真实 UI 入口，切勿按「无 UI 入口」误判。
 
-    handleImportFile(event) {
-        const file = event.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = async (e) => {
-            const result = await this.importData(e.target.result);
-            if (result.success) {
-                renderAll();
-                Handlers.closeModal();
-                Toast.showToast('数据导入成功', 'success');
-            } else {
-                Toast.showToast('JSON格式错误: ' + result.error, 'error');
-            }
-        };
-        reader.readAsText(file);
-    },
+    // 说明：原有 handleImportFile（读本地文件后 importData）唯一调用方是已删除的 openImport 弹窗，已删除。
 
-    async importFromTextarea() {
-        const textarea = byId('importTextarea');
-        if (!textarea?.value.trim()) {
-            Toast.showToast('请输入要导入的JSON数据', 'warning');
-            return;
-        }
-        const result = await this.importData(textarea.value);
-        if (result.success) {
-            renderAll();
-            Handlers.closeModal();
-            Toast.showToast('数据导入成功', 'success');
-        } else {
-            Toast.showToast('JSON格式错误: ' + result.error, 'error');
-        }
-    },
+    // 说明：原有 quickImportFromFile（临时 <input type=file> 快速导入）无任何调用者，已删除。
 
-    quickImportFromFile() {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = '.json';
-        input.onchange = async (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = async (event) => {
-                try {
-                    const result = await this.importData(event.target.result);
-                    if (result.success) {
-                        Toast.showToast('数据导入成功', 'success');
-                        renderAll();
-                    } else {
-                        Toast.showToast('导入失败: ' + result.error, 'error');
-                    }
-                } catch (err) {
-                    Toast.showToast('导入失败: ' + err.message, 'error');
-                }
-            };
-            reader.readAsText(file);
-        };
-        input.click();
-    }
+    // 说明：原有 importFromTextarea（粘贴备份码文本框）对应的 UI 从未落地，真实恢复入口
+    // （选 .json + 策略/范围选择，见上）功能严格强于它，全仓零调用者，已删除 ——
+    // 连带 handlers.js 的 'import-from-textarea' 动作注册与 store.importData 转发一并移除。
 };

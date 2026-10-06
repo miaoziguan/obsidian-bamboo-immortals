@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 // 回归锁：⑥ 三档代码收敛。write 与 notes 卡片档经统一 _saveCardDoc/_loadCardDoc + 调度器
-// saveDoc/loadDoc 走不同桥，互不串文件；mindmap 因数据模型不同单走 saveMindmap/loadMindmap。
+// saveDoc/loadDoc 走不同桥，互不串文件；mindmap 数据模型不同，单走 saveMindmapGroupDoc/loadMindmapGroupDoc（不经此处）。
 const { loadModule } = require('./__helpers__/testUtils');
 global.MindmapFeature = { isActive: () => false, stats: () => ({ count: 0, depth: 0 }) };
 loadModule('handlers/features/twConfig.js', []);
@@ -53,11 +53,16 @@ test('saveDoc/loadDoc(notes) 走便签桥且独立，不串写作文件', async 
   expect(back.links).toEqual(links);
 });
 
-test('loadDoc(mindmap) 路由到 loadMindmap（数据模型不同，单走）', async () => {
+test('saveDoc/loadDoc 只服务 write/notes：mindmap 不经此路由（走 GroupDoc 通道）', async () => {
   mockStorage();
+  // 曾经的 `kind === 'mindmap'` 分支把参数按卡片档顺序传（canvasOffset→links、links→view、id→style），
+  // 接线即写坏导图视野与样式，且全仓无调用方（ModeController/PersistenceCoordinator 只传 write|notes）。
+  // 这里锁住「不再从这里返回导图文档」。
   const back = await TypewriterStore.loadDoc('mindmap');
-  expect(back).toHaveProperty('nodes');
-  expect(Array.isArray(back.nodes)).toBe(true);
+  expect(back).not.toHaveProperty('nodes');
+  // 导图读写通道仍在（mindmapFeature.js 消费）
+  expect(typeof TypewriterStore.saveMindmapGroupDoc).toBe('function');
+  expect(typeof TypewriterStore.loadMindmapGroupDoc).toBe('function');
 });
 
 test('PersistenceCoordinator.persistDoc(write) 经统一 saveDoc 写入写作桥并带视口/连线', async () => {

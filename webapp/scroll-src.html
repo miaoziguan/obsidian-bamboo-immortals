@@ -29,6 +29,12 @@
 
   <!-- 极简依赖（不含日报渲染 / FAB 模块） -->
   <script type="module" src="assets/scripts/utils/shadowBootstrap.js?__BUILD__"></script>
+  <!-- 必须先于任何使用转义 helper 的模块：htmlUtils.js 在文件末尾才挂
+       window.HTMLUtils / window.escapeHtml / window.num。typewriterFeature 的
+       `maxlength="${num(MAX_LEN)}"` 依赖后者，缺失时画中卷会报「num is not defined」
+       并回退香道。本仓库所有模块都走「先加载 htmlUtils.js 再用裸全局」的约定
+       （无任何模块 import 它），因此每个视图都必须显式引入。 -->
+  <script type="module" src="assets/scripts/utils/htmlUtils.js?__BUILD__"></script>
   <script type="module" src="assets/scripts/utils/constants.js?__BUILD__"></script>
   <script type="module" src="assets/scripts/utils/storageAdapter.js?__BUILD__"></script>
   <script type="module" src="assets/scripts/storage/bridge.js?__BUILD__"></script>

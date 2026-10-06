@@ -1,4 +1,6 @@
 import { byId } from '../utils/domRef.js';
+import { scrollToSection as scrollToSectionImpl } from '../utils/helpers.js';
+
 export const Gestures = {
     minSwipeDistance: 50,
     swipeEnabled: true,
@@ -53,19 +55,9 @@ export const Gestures = {
     },
 
     scrollToSection(id) {
-        const el = byId(id);
-        if (!el || !el.isConnected) return;
-        let rect;
-        try {
-            rect = el.getBoundingClientRect();
-        } catch (e) {
-            return;
-        }
-        if (!rect || (rect.width === 0 && rect.height === 0)) return;
-        const headerOffset = 100;
-        const elementPosition = rect.top;
-        const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
-        window.scrollTo({ top: offsetPosition, behavior: 'smooth' });
+        // 委托 utils/helpers.js 的唯一实现（含 headerOffset=100 与「元素不存在/零尺寸静默返回」守卫）。
+        // 此前本文件与 helpers 各有一份逐字相同的副本，两处都活；现只保留 helpers 一份。
+        scrollToSectionImpl(id);
     },
 
     scrollToTop() {

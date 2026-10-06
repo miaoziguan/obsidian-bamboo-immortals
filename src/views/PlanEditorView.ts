@@ -1,8 +1,7 @@
 /**
  * PlanEditorView — 对话式规划审阅台（Phase 4，中央窗口形态）
  *
- * 与 AgenticPlanModal（弹窗形态）共用 AgenticPlanController：
- * 本视图只把控制器挂到 ItemView 的容器上，并接管「关闭请求」
+ * 本视图把 AgenticPlanController 挂到 ItemView 的容器上，并接管「关闭请求」
  * （确认落库 / 点取消 / 出错时 → detach 本 leaf）。
  *
  * 占满整个编辑器区域，可像普通笔记一样停靠、分屏、关闭，
@@ -76,7 +75,7 @@ export class PlanEditorView extends ItemView {
       // 取消/失败：关闭本标签页（非强制 detach，交给 Obsidian 决定动画/历史）
       (leaf as unknown as { detach: () => void }).detach();
     };
-    this.ctrl.mount(container, 'view');
+    this.ctrl.mount(container);
   }
 
   /** 渲染「遗留标签页」占位页：说明 + 关闭按钮 */

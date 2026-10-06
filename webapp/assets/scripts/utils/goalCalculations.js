@@ -2,9 +2,12 @@
  * 目标相关纯计算工具
  *
  * 抽自 goals/renderer.js（原文件 3233 行）—— 把纯函数集中此处，renderer 只剩 DOM 渲染。
- * 零依赖：只读 goal/item 对象，不碰 store、DOM、事件。
+ * 依赖：仅 utils/dateUtils.js（纯函数、DOM-free）—— 日期格式化已收敛到那唯一实现。
+ * 只读 goal/item 对象，不碰 store、DOM、事件。
  * 浏览器 + Node 测试都可用。
  */
+import { formatDate } from './dateUtils.js';
+
 export const GoalCalculations = (function () {
     'use strict';
 
@@ -47,20 +50,13 @@ export const GoalCalculations = (function () {
     }
 
     /**
-     * 把 Date 格式化为 yyyy-mm-dd
-     * 与 GoalService._formatDate 实现完全一致 —— 抽出后两边都应调用此处。
-     * 抽自 GoalsRenderer._formatDate (renderer.js L129-134) 和 GoalService._formatDate (GoalService.js L503-508)
+     * 把 Date 格式化为 yyyy-mm-dd（非法输入 → ''）。
      *
-     * @param {Date} date
-     * @returns {string} 'YYYY-MM-DD'
+     * 实现已收敛到 utils/dateUtils.js 的 formatDate（= dateKeyOf + 空串适配）。
+     * 历史上本文件、utils/helpers.js、handlers/datePicker.js._formatDate、
+     * modules/goals/dateRangePicker.js 各有一份同源实现，此处为本轮去重后仅保留的转发注释；
+     * 下面的对象字面量仍导出 formatDate，调用方（GoalService._formatDate）无需改动。
      */
-    function formatDate(date) {
-        if (!(date instanceof Date) || isNaN(date.getTime())) return '';
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
-    }
 
     /**
      * 根据子项目的最早 startDate 和最晚 endDate，自动回填目标的 startDate / endDate。

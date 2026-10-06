@@ -191,6 +191,8 @@ export const TypewriterFeature = {
     if (this._cullRo) { this._cullRo.disconnect(); this._cullRo = null; }
     clearTimeout(this._hoverTimer);
     if (this._selKeyHandler) { document.removeEventListener('keydown', this._selKeyHandler); this._selKeyHandler = null; }
+    this._cancelSelBarTick();
+    this._selBarGestureOff();   // 选中 ≥2 时挂的 pointer 监听，卸载时对称摘除
     // C2/C3 共享接线同样挂在 document 上，必须对称摘除：否则每开/关一次视图就多挂一份
     // （CanvasKeys 会因 stopImmediatePropagation 抢在新处理器之前，空格 keydown 亦会叠加）。
     if (this._canvasKeysDetach) { this._canvasKeysDetach(); this._canvasKeysDetach = null; }
@@ -236,7 +238,7 @@ export const TypewriterFeature = {
             </div>
             <div class="tw-screen-input-wrap">
               <div class="tw-screen-msg" id="twScreenMsg"></div>
-              <textarea class="tw-input" id="twInput" maxlength="${MAX_LEN}" placeholder="输入文字打印便签..." spellcheck="false" aria-label="输入文字打印便签"></textarea>
+              <textarea class="tw-input" id="twInput" maxlength="${num(MAX_LEN)}" placeholder="输入文字打印便签..." spellcheck="false" aria-label="输入文字打印便签"></textarea>
               <span class="tw-cursor" id="twCursor" aria-hidden="true"></span>
             </div>
           </div>
@@ -480,7 +482,7 @@ export const TypewriterFeature = {
 
   /** 机身明暗开关：绑定点击并跟随主题变化同步状态。
    *  画中卷 iframe 内没有 store，bridge.js 的 theme:changed 走 else 分支无条件把 .dark
-   *  同步到 <html>/<body>/#bamboo-shadow-host（见 bridge.js / scrollManager._applyDark）；
+   *  同步到 <html>/<body>/#bamboo-shadow-host（见 bridge.js 的主题广播分支）；
    *  观察这几个节点的 class 变化，即可让开关状态始终与实际主题一致。 */
   _bindThemeSwitch() {
     const sw = this._el && this._el.querySelector('#twThemeSwitch');
@@ -1402,11 +1404,54 @@ export const TypewriterFeature = {
     if (n >= 2) {
       bar.querySelector('.tw-sel-merge').textContent = '合并 ' + n + ' 张';
       bar.classList.add('is-on');
+      // 开一个「收尾窗口」：选择/合并/删除等边沿事件之后可能还有布局 settling
+      // （重新排布、卡片重绘），这段时间仍需逐帧跟随；到点后自动停止轮询。
+      this._selBarUntil = Date.now() + 800;
+      this._selBarGestureOn();
       this._scheduleSelBarTick();
     } else {
       bar.classList.remove('is-on');
       this._cancelSelBarTick();
+      this._selBarGestureOff();
     }
+  },
+
+  /**
+   * 选中 ≥2 张期间挂上 document 级 pointer 监听，用来判断是否需要逐帧跟随。
+   *
+   * 浮动条挂在被施加 transform 的 _canvas **内部**（CanvasViewport.apply 写 transform），
+   * 因此：
+   *   · 平移 / 缩放 —— 由 transform 天然带动，不需要任何 JS；
+   *   · 拖拽卡片 ——— 卡片自身坐标在变，才需要逐帧重算。
+   * 原实现一旦选中 ≥2 张就无限循环（每帧 1 次 canvas rect + N 次卡片 rect + 2 次 style 写），
+   * 静止不动时也持续烧 CPU / 电量。这里只在手势进行中与随后的收尾窗口内轮询。
+   */
+  _selBarGestureOn() {
+    if (this._selBarGestureBound || typeof document === 'undefined') return;
+    this._selBarGestureBound = true;
+    const onDown = () => { this._selBarGesture = true; };
+    const onUp = () => {
+      this._selBarGesture = false;
+      // 抬手后留一小段收尾窗口，让卡片落位后的最终位置被采到
+      this._selBarUntil = Date.now() + 300;
+      this._scheduleSelBarTick();
+    };
+    this._selBarGestureHandler = { onDown, onUp };
+    document.addEventListener('pointerdown', onDown, true);
+    document.addEventListener('pointerup', onUp, true);
+    document.addEventListener('pointercancel', onUp, true);
+  },
+
+  _selBarGestureOff() {
+    if (!this._selBarGestureBound) return;
+    this._selBarGestureBound = false;
+    this._selBarGesture = false;
+    if (typeof document === 'undefined' || !this._selBarGestureHandler) return;
+    const { onDown, onUp } = this._selBarGestureHandler;
+    document.removeEventListener('pointerdown', onDown, true);
+    document.removeEventListener('pointerup', onUp, true);
+    document.removeEventListener('pointercancel', onUp, true);
+    this._selBarGestureHandler = null;
   },
 
   _scheduleSelBarTick() {
@@ -1442,7 +1487,10 @@ export const TypewriterFeature = {
     if (topY < 2) topY = maxY - cr.top + 10;           // 贴顶则翻到下方，避免被裁
     bar.style.left = cx + 'px';
     bar.style.top = topY + 'px';
-    if (!once) this._scheduleSelBarTick();
+    if (once) return;
+    // 只有「手势进行中」或「收尾窗口内」才继续排帧；其余时间停止轮询。
+    // 平移/缩放不需要 JS 介入（浮动条随画布 transform 走），静态多选也不该持续开销。
+    if (this._selBarGesture || Date.now() < (this._selBarUntil || 0)) this._scheduleSelBarTick();
   },
 
   /** 在画布上拉出框选矩形（Shift+空白拖拽触发） */
@@ -1738,7 +1786,7 @@ export const TypewriterFeature = {
   _syncLayoutGeo() { return ViewportCuller.syncLayoutGeo({ state: this._state, ctrl: this }); },
 
   /** 把一张模型卡建回 DOM 并挂进挂载表 + 量几何。culling 进屏时调用。 */
-  _mountCard(note) { return ViewportCuller.mountCard({ state: this._state, ctrl: this }, note); },
+  _mountCard(note, opts) { return ViewportCuller.mountCard({ state: this._state, ctrl: this }, note, opts); },
 
   /** 量一张卡进几何缓存（坐标取 style.left/top；尺寸取 offset*，一次 reflow 摊销）。 */
   _measureCard(card) { return ViewportCuller.measureCard({ state: this._state, ctrl: this }, card); },

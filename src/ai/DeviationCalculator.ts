@@ -207,13 +207,41 @@ export function summarize(goals: GoalItem[], cache: DeviationCache, today: Date 
  * 子项级证据：把「真实子项 + 节奏偏差 + 完成记录」算出来，
  * 让 AI 诊断能基于真实数据归因，而不是凭空编造子项。
  */
+/**
+ * 一个目标（含其子项）只算一次节假日集合。
+ *
+ * 以「涉及的日期区间」取并集：把目标自身与所有子项的 start/end 以及 today 都纳入，
+ * 得到覆盖全部查询年份的超集。节假日集合只被按期查询（holidays.has(dateKey)），
+ * 超出查询区间的多余条目不会参与任何计算，故结果与逐项计算完全一致。
+ */
+function buildGoalHolidays(goal: GoalItem, today: Date): Set<string> {
+  let lo = today;
+  let hi = today;
+  const widen = (v?: string) => {
+    const d = parseDate(v);
+    if (!d) return;
+    if (d < lo) lo = d;
+    if (d > hi) hi = d;
+  };
+  widen(goal.startDate);
+  widen(goal.endDate);
+  for (const it of goal.items ?? []) {
+    widen(it.startDate);
+    widen(it.endDate);
+  }
+  return getHolidaysForRange(lo, hi);
+}
+
 export function buildItemEvidence(
   goal: GoalItem,
   cache: DeviationCache,
-  today: Date = new Date()
+  today: Date = new Date(),
+  holidays?: Set<string>
 ): ItemEvidence[] {
   const items = goal.items ?? [];
   const gid = goal.id;
+  // 节假日集合按「目标」复用：原实现在 items.map 内逐项 getHolidaysForRange。
+  const holidaySet = holidays ?? buildGoalHolidays(goal, today);
   return items.map((it, i) => {
     const idx = String(i);
     const done = cache.itemCompletions[gid]?.[idx] ?? 0;
@@ -230,7 +258,7 @@ export function buildItemEvidence(
 
     const start = parseDate(it.startDate ?? goal.startDate);
     const end = parseDate(it.endDate ?? goal.endDate);
-    const holidays = getHolidaysForRange(start ?? today, today);
+    const holidays = holidaySet;
     let pacePct: number | null = null;
     if (start && end && start <= end) {
       const total = countWorkdays(start, end, holidays);
@@ -261,7 +289,9 @@ export function buildItemEvidenceMap(
 ): Record<string, ItemEvidence[]> {
   const out: Record<string, ItemEvidence[]> = {};
   for (const g of goals || []) {
-    const ev = buildItemEvidence(g, cache, today);
+    // 显式传入本目标的节假日集合：即便同一 goal 重复出现也不重复构建。
+    const holidays = buildGoalHolidays(g, today);
+    const ev = buildItemEvidence(g, cache, today, holidays);
     out[g.id] = ev;
     out[g.title] = ev; // 双写：title 作为 AI 异常 title 时的回退索引
   }
@@ -277,7 +307,7 @@ export function formatItemEvidenceForPrompt(
   if (!goals || goals.length === 0) return '（无子项数据）';
   return goals
     .map((g) => {
-      const evs = buildItemEvidence(g, cache, today);
+      const evs = buildItemEvidence(g, cache, today, buildGoalHolidays(g, today));
       const lines = evs.length
         ? evs
             .map(

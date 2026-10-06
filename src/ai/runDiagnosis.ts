@@ -3,7 +3,7 @@
  *
  * 只负责流程决策，不持有任何 Obsidian / DOM 依赖：
  *  - aiEnabled 门禁 → 无目标 → 读 goals + 近 N 天 days → diagnose → 打开只读报告；
- *  - 报告里点「应用」→ 打开 AgenticPlanModal（载入真实树 + 预填建议指令）；
+ *  - 报告里点「应用」→ 打开规划台 PlanEditorView（载入真实树 + 预填建议指令）；
  *  - Agentic 确认 → writeGoals 落库。
  * 所有副作用（读存储 / 打开 Modal / Notice / 落库）均通过 deps 注入，便于单测。
  *
@@ -33,7 +33,7 @@ import { diagnose, type DiagnosisResult, type GoalDiagnosis } from './GoalDiagno
 import { applySuggestion, applySuggestions, type Suggestion } from './Suggestion';
 import { buildCache, buildItemEvidenceMap, type ItemEvidence } from './DeviationCalculator';
 import { TUNING } from './healthScore';
-import type { AgenticPlanOptions } from './AgenticPlanModal';
+import type { AgenticPlanOptions } from './AgenticPlanController';
 
 export interface DiagnosisStorage {
   getGoals(): Promise<GoalItem[]>;

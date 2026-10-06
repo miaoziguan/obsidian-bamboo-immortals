@@ -80,6 +80,11 @@ export const CanvasGestures = {
    */
   attach(host, a) {
     const ptrs = new Map();
+    // 捏合会话的幂等标记。原判断是 `ptrs.size >= 2`：已有两指时第三根手指落下会再起一套
+    // pinch —— 两套 window move/up 监听叠加，一次移动被处理两遍（缩放被连乘两次），
+    // 松指时还可能同时触发两次 startPan（平移量也被加倍）。
+    let pinchActive = false;
+    let endPinch = null;      // 当前捏合会话的摘除函数（见 startPinch）
 
     const isPanIntent = (e) =>
       !!(a.state.spaceDown || a.state.handTool) ||
@@ -93,7 +98,7 @@ export const CanvasGestures = {
       if (a.onPointerDownAny) a.onPointerDownAny(e);
       ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
-      if (ptrs.size >= 2) {                 // 双指 → 捏合（接管，并取消可能已起的框选）
+      if (ptrs.size === 2 && !pinchActive) { // 恰好双指且未处于捏合 → 起捏合（接管，并取消可能已起的框选）
         if (a.onPinchWillStart) a.onPinchWillStart();
         startPinch();
         e.preventDefault();
@@ -131,8 +136,12 @@ export const CanvasGestures = {
     };
 
     const startPinch = () => {
+      if (pinchActive) return;              // 幂等：绝不叠加第二套 move/up 监听
+      pinchActive = true;
       if (a.onPinchStart) a.onPinchStart();
       let last = null;
+      // 会话收尾函数：抬手 / 功能失活兜底 / detach 三条路径都要能整齐摘除，
+      // 否则会留下摘不掉的 window 监听（原实现在「三指」等路径上就有这个洞）。
       const move = (ev) => {
         if (ptrs.has(ev.pointerId)) ptrs.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
         const ps = Array.from(ptrs.values());
@@ -150,14 +159,19 @@ export const CanvasGestures = {
       const up = (ev) => {
         if (ptrs.has(ev.pointerId)) ptrs.delete(ev.pointerId);
         if (ptrs.size >= 2) return;          // 还有两指以上，继续捏合
-        window.removeEventListener('pointermove', move);
-        window.removeEventListener('pointerup', up);
-        window.removeEventListener('pointercancel', up);
+        endPinch();                          // 摘监听 + 复位会话标记，允许下次重新起捏合
         if (a.onPinchEnd) a.onPinchEnd();
         if (ptrs.size === 1) {               // 松一指 → 剩一根续平移，避免「松一指就卡住」
           const p = Array.from(ptrs.values())[0];
           startPan({ clientX: p.x, clientY: p.y });
         }
+      };
+      endPinch = () => {
+        pinchActive = false;
+        endPinch = null;
+        window.removeEventListener('pointermove', move);
+        window.removeEventListener('pointerup', up);
+        window.removeEventListener('pointercancel', up);
       };
       window.addEventListener('pointermove', move);
       window.addEventListener('pointerup', up);
@@ -166,7 +180,12 @@ export const CanvasGestures = {
 
     // 兜底：任何抬起都从指针表移除（即便不是本次平移/捏合的手指），保证 ptrs.size 在收尾时正确
     const onUpGlobal = (ev) => {
-      if (!a.isActive()) { ptrs.clear(); return; }
+      if (!a.isActive()) {
+        ptrs.clear();
+        // 功能失活时会话一并作废：否则 pinchActive 会卡在 true，下次捏合被幂等守卫挡住
+        if (endPinch) endPinch();
+        return;
+      }
       ptrs.delete(ev.pointerId);
     };
 
@@ -175,6 +194,7 @@ export const CanvasGestures = {
     window.addEventListener('pointercancel', onUpGlobal);
 
     return () => {
+      if (endPinch) endPinch();   // 进行中的捏合会话随 attach 一起收尾，不留 window 监听
       host.removeEventListener('pointerdown', onDown);
       window.removeEventListener('pointerup', onUpGlobal);
       window.removeEventListener('pointercancel', onUpGlobal);

@@ -6,7 +6,7 @@
  *  - 用户回答 → 重新评估，直到 diseases 为空（通过）或用户「强制跳过」；
  *  - 通过/跳过：渲染「目标简报」卡片，点「据此继续规划」把简报交给下游拆解器。
  *
- * 设计对齐现有 Modal 范式（PlanConfirmModal / DiagnosisModal）：
+ * 设计对齐现有 Modal 范式（DiagnosisModal 等）：
  *  - 主题色 var(--interactive-accent)、圆角 10-12px、8pt 网格；
  *  - 纯函数逻辑（buildElicitPrompt / parseElicitation / briefToPlanningText）已抽到 GoalElicitor，
  *    本类只负责 UI 编排与状态机。

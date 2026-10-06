@@ -1271,13 +1271,6 @@ export class AppAPI {
       return;
     }
 
-    // ---- 画中卷：主动请求当前主题（webapp 加载后自行拉取，确保跟随亮暗）----
-    if (type === 'app:getTheme') {
-      this.themeBridge.pushTheme(this.settings.followObsidianTheme);
-      this.respond(id, { ok: true });
-      return;
-    }
-
     // ---- 在 Obsidian 原生打开指定 vault 文件（画中卷便签 → 原生 md 编辑器）----
     if (type === 'app:openFile') {
       try {

@@ -1,11 +1,11 @@
 {
   "name": "obsidian-bamboo-review",
-  "version": "3.28.5",
+  "version": "3.28.6",
   "description": "竹林修仙传 - Obsidian 每日复盘插件",
   "main": "main.js",
   "scripts": {
     "dev": "npm run build:webapp && tsc --noEmit && node esbuild.config.mjs",
-    "build": "npm run build:webapp && tsc --noEmit -skipLibCheck && npm run lint && node esbuild.config.mjs production",
+    "build": "npm run build:webapp && tsc --noEmit -skipLibCheck && npm run lint && npm run check:html-escape && node esbuild.config.mjs production",
     "build:webapp": "node scripts/bundle-webapp.mjs",
     "test": "jest",
     "test:coverage": "jest --coverage",
@@ -13,6 +13,9 @@
     "lint": "eslint .",
     "lint:css": "node scripts/lint-css-tokens.mjs",
     "check:load-matrix": "node scripts/check-load-matrix.mjs",
+    "check:html-escape": "node scripts/check-html-escape.mjs",
+    "check:html-escape:report": "node scripts/check-html-escape.mjs --report",
+    "check:html-escape:self-test": "node scripts/check-html-escape.mjs --self-test",
     "format": "prettier --write \"src/**/*.ts\" \"webapp/**/*.js\"",
     "format:check": "prettier --check \"src/**/*.ts\" \"webapp/**/*.js\"",
     "prepare": "husky || true"

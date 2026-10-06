@@ -114,6 +114,40 @@ describe('PrivacyMode 防偷窥模糊', () => {
     }
   });
 
+  test('隐私关闭时不做全树扫描；从关切到开时补一次全量，已开启后不再重复全量', () => {
+    document.body.innerHTML = '<div id="scope"><p id="p1">文本</p></div>';
+    const spyMark = jest.spyOn(PrivacyMode, 'markText');
+    try {
+      PrivacyMode.setLevel(0);
+      spyMark.mockClear();
+      PrivacyMode.init();
+      // 关闭态：标记不会被任何样式消费，扫描是纯浪费
+      expect(spyMark).not.toHaveBeenCalled();
+      PrivacyMode.setLevel(10); // 关 → 开：必须补一次全量，否则已渲染内容不会被糊住
+      expect(spyMark).toHaveBeenCalledTimes(1);
+      expect(document.getElementById('p1').hasAttribute('data-private-text')).toBe(true);
+      spyMark.mockClear();
+      PrivacyMode.setLevel(14); // 已是开启态：只改变量即可，无需再全扫
+      expect(spyMark).not.toHaveBeenCalled();
+    } finally {
+      spyMark.mockRestore();
+      document.body.innerHTML = '';
+    }
+  });
+
+  test('markText(roots) 增量模式：只处理传入的新增子树', () => {
+    document.body.innerHTML =
+      '<div id="scope"><p id="old">旧文本</p><div id="fresh"><p id="newp">新文本</p></div></div>';
+    try {
+      PrivacyMode.markText([document.getElementById('fresh')]);
+      expect(document.getElementById('newp').hasAttribute('data-private-text')).toBe(true);
+      // 兄弟子树未被牵动 —— 这正是相比「每次 mutation 都全树 walk」省下的成本
+      expect(document.getElementById('old').hasAttribute('data-private-text')).toBe(false);
+    } finally {
+      document.body.innerHTML = '';
+    }
+  });
+
   test('markText 跳过 UI 骨架（按钮/媒体保持清晰）', () => {
     document.body.innerHTML =
       '<div id="scope"><p id="txt">文本</p><button id="btn">按钮</button><img id="img" alt="图"></div>';

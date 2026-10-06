@@ -171,10 +171,25 @@ function cleanupGlobals() {
 
 
 function loadStoreModule() {
-    return loadModule('state/store.js', ['Store']);
+    // 必须同时取出 store：模块末尾 `export const store = new Store()`，
+    // 而下方用例直接使用导出的单例（module.store），并非自己 new。
+    return loadModule('state/store.js', ['Store', 'store']);
 }
 
-describe.skip('Store 核心功能', () => {
+/**
+ * 【本套件曾被 describe.skip 禁用，2026-10-06 复启】
+ *
+ * 禁用原因不是用例本身有问题，而是上面 loadModule 的 binding 列表漏了 'store'
+ * （当时只写 ['Store']），于是 module.store 为 undefined，beforeEach 里
+ * `await store.ready()` 抛 TypeError → 27 项用例全部失败 → 被用 describe.skip
+ * 掩盖，且未留任何说明。
+ *
+ * 补上 binding 后 27 项全部通过 —— store 本身没有缺陷，但它的核心逻辑
+ * （数据校验 / V2 迁移 / 导入导出 / 日期导航 / subscribe-notify / 自动保存）
+ * 在这段时间里一直处于**零覆盖**状态。subscribe 与 notify 的两项用例尤其关键：
+ * 它们是 store 发布订阅契约的唯一防线。
+ */
+describe('Store 核心功能', () => {
     let Store, store;
 
     beforeEach(async () => {
@@ -408,14 +423,16 @@ describe.skip('Store 核心功能', () => {
             global.Blob = OrigBlob;
         });
 
+        // store.importData（纯转发 DataIO.importData）已因无产调用者删除；真实恢复入口是设置面板
+        // settings-import-data → SettingsModal 确认后直调 DataIO.importData，故这里改测真实实现，覆盖语义不变。
         test('importData 成功导入应返回 success: true', async () => {
             const jsonData = JSON.stringify({ version: '2.0', days: {} });
-            const result = await store.importData(jsonData);
+            const result = await DataIO.importData(jsonData);
             expect(result.success).toBe(true);
         });
 
         test('importData 无效 JSON 应返回 success: false', async () => {
-            const result = await store.importData('not-valid-json{{{');
+            const result = await DataIO.importData('not-valid-json{{{');
             expect(result.success).toBe(false);
             expect(result.error).toBeDefined();
         });
@@ -488,7 +505,7 @@ describe.skip('Store 核心功能', () => {
                 version: '1.0',
                 days: { '2026-05-18': { date: '2026-05-18', metrics: {} } }
             });
-            const result = await store.importData(v1Data);
+            const result = await DataIO.importData(v1Data);
             expect(result.success).toBe(true);
         });
     });
@@ -585,5 +602,39 @@ describe('saveToStorage 保存隔离（回归）', () => {
         expect(store.saveToStorageLegacy).not.toHaveBeenCalled();
         expect(store._dirtyDays.size).toBe(0);
         expect(store._dirtySettings.size).toBe(0);
+    });
+});
+
+/**
+ * 钱包桥接层 —— 此前**零覆盖**的缺口
+ *
+ * store.updateBalance 是位置参数转发点：GoalService 完成目标时传 4 个参数
+ * （第 4 个是完成时刻 date）。桥少声明一个形参就会静默吞掉它，收入随即落回
+ * 保存时刻的 UTC 时间戳，与「以完成时刻记账」的产品意图相悖 —— 而这条链路
+ * 过去只被 WalletService 的直连用例覆盖，转发本身没有任何用例守护。
+ */
+describe('Store 钱包桥接', () => {
+    let store;
+
+    beforeEach(async () => {
+        jest.resetModules();
+        cleanupGlobals();
+        setupGlobals();
+        document.documentElement.className = '';
+
+        const module = loadStoreModule();
+        store = module.store;
+        await store.ready();
+    });
+
+    test('updateBalance 必须把第 4 个参数（完成时刻）透传给 WalletService', async () => {
+        const at = '2026-11-01T00:30:00';
+
+        await store.updateBalance(1, 'task_complete', '完成 章节', at);
+
+        expect(global.WalletService.updateBalance)
+            .toHaveBeenCalledWith(1, 'task_complete', '完成 章节', at);
+        // 反向断言：实参个数必须是 4，3 个即意味着 date 在桥接处被吞掉
+        expect(global.WalletService.updateBalance.mock.calls[0].length).toBe(4);
     });
 });

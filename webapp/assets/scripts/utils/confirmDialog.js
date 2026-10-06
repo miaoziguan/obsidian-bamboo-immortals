@@ -1,4 +1,4 @@
-import { modalMount } from './domRef.js';
+import { modalMount, deepActiveElement } from './domRef.js';
 export class ConfirmDialog {
     constructor() {
         this.defaults = {
@@ -16,6 +16,11 @@ export class ConfirmDialog {
             focusTrap: true
         };
         this.currentDialog = null;
+        // 本次弹窗是否已 resolve 过。由 cleanupAndResolve 置 true，供 closeCurrent
+        // 判断结束路径：按钮路径已 resolve，Esc/遮罩路径需补发 resolve(false)。
+        // 每次 show() 必须复位——否则上次弹窗点过按钮后本标志恒为 true，
+        // 新弹窗按 Esc 会因 alreadyResolved 而跳过 resolve，使调用方 await 永久悬挂。
+        this._currentResolved = false;
     }
 
     show(options = {}) {
@@ -25,6 +30,10 @@ export class ConfirmDialog {
             if (this.currentDialog) {
                 this.closeCurrent();
             }
+            // 必须在 closeCurrent() 之后复位：旧弹窗的 closeCurrent 已同步把
+            // _currentResolved 快照进 alreadyResolved 并据此决定是否补发 resolve，
+            // 此处重置只影响本次新弹窗。
+            this._currentResolved = false;
 
             const overlay = document.createElement('div');
             overlay.className = 'confirm-overlay';
@@ -43,7 +52,7 @@ export class ConfirmDialog {
                     <h3 class="confirm-title">${HTMLUtils.escapeHtml(config.title)}</h3>
                 </div>
                 <div class="confirm-body">
-                    <p class="confirm-message">${config.message || ''}</p>
+                    <p class="confirm-message">${HTMLUtils.escapeHtml(config.message || '')}</p>
                     ${this._renderExtraOptions(config.extraOptions)}
                 </div>
                 <div class="confirm-footer">
@@ -128,14 +137,14 @@ export class ConfirmDialog {
             }
 
             if (config.focusTrap) {
-                this.trapFocus(dialog, confirmBtn);
+                this.trapFocus(dialog);
             }
 
             confirmBtn.focus();
         });
     }
 
-    trapFocus(dialog, initialFocus) {
+    trapFocus(dialog) {
         const focusableElements = dialog.querySelectorAll(
             'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
         );
@@ -145,15 +154,24 @@ export class ConfirmDialog {
         const firstElement = focusableElements[0];
         const lastElement = focusableElements[focusableElements.length - 1];
 
+        // 【为什么不能用 document.activeElement】shadow 模式下焦点在 shadow 树内时，
+        // 它恒为 shadow host，与 firstElement/lastElement 永不相等、也不被 dialog.contains
+        // 包含 → 两个分支都不成立 → Tab 焦点直接跑出弹窗（aria-modal 被违背），
+        // 且焦点一旦离开 dialog，绑在 dialog 上的监听再也收不到 keydown，
+        // 连 Escape 一起失效。真实元素见 domRef.deepActiveElement。
+        //
+        // 【为什么监听挂 document】陷阱的职责就是「保证焦点不出容器」，
+        // 若把监听挂在可能被逃离的容器自身，就形成了「一旦失效便彻底失效」的死结。
         const trapHandler = (e) => {
             if (e.key === 'Tab') {
+                const active = deepActiveElement();
                 if (e.shiftKey) {
-                    if (document.activeElement === firstElement) {
+                    if (active === firstElement || !dialog.contains(active)) {
                         e.preventDefault();
                         lastElement.focus();
                     }
                 } else {
-                    if (document.activeElement === lastElement) {
+                    if (active === lastElement || !dialog.contains(active)) {
                         e.preventDefault();
                         firstElement.focus();
                     }
@@ -163,7 +181,7 @@ export class ConfirmDialog {
             }
         };
 
-        dialog.addEventListener('keydown', trapHandler);
+        document.addEventListener('keydown', trapHandler, true);
         dialog._focusTrapHandler = trapHandler;
     }
 
@@ -174,7 +192,10 @@ export class ConfirmDialog {
         const alreadyResolved = this._currentResolved;
 
         if (dialog._focusTrapHandler) {
-            dialog.removeEventListener('keydown', dialog._focusTrapHandler);
+            // 监听注册在 document 捕获阶段（见 trapFocus），解绑参数必须完全一致，
+            // 否则关不掉、且下一个弹窗会叠加一个陷阱。
+            document.removeEventListener('keydown', dialog._focusTrapHandler, true);
+            dialog._focusTrapHandler = null;
         }
 
         overlay.classList.remove('confirm-visible');

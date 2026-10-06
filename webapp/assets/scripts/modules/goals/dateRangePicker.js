@@ -1,4 +1,5 @@
 import { modalMount } from '../../utils/domRef.js';
+import { addMonthsClamped, startOfLocalMonth, formatDate } from '../../utils/dateUtils.js';
 /**
  * 日期范围选择器
  * 纯 DOM 弹层，不含 this. 引用，从 GoalsRenderer._showDateRangePicker 提取。
@@ -38,12 +39,7 @@ export const DateRangePicker = {
             return new Date(start.getTime() + 6 * 86400000);
         };
 
-        const formatDate = (date) => {
-            const y = date.getFullYear();
-            const m = String(date.getMonth() + 1).padStart(2, '0');
-            const d = String(date.getDate()).padStart(2, '0');
-            return `${y}-${m}-${d}`;
-        };
+        // formatDate 统一由 utils/dateUtils.js 提供（此处原先内联了一份同源实现，已删除）
 
         const pickerHtml = `
             <div class="drp-overlay"></div>
@@ -253,7 +249,8 @@ export const DateRangePicker = {
             return new Date(d.getFullYear(), endMonth, 0);
         };
 
-        let displayMonth = startDate ? new Date(startDate) : new Date();
+        // 月份指针只携带年月：归一为月首后，翻月运算与月末永不相遇（日号从未被渲染消费）
+        let displayMonth = startOfLocalMonth(startDate) || startOfLocalMonth(new Date());
         const calEl = container.querySelector('#drp-cal');
         renderCalendar(calEl, displayMonth);
 
@@ -267,7 +264,7 @@ export const DateRangePicker = {
                     if (parsed) {
                         startDate = parsed;
                         enforceDateConstraint();
-                        displayMonth = new Date(startDate);
+                        displayMonth = startOfLocalMonth(startDate) || displayMonth;
                         renderCalendar(calEl, displayMonth);
                         updateNavBtns();
                         updateSelectedDisplay();
@@ -290,7 +287,7 @@ export const DateRangePicker = {
                     if (parsed) {
                         endDate = parsed;
                         enforceDateConstraint();
-                        displayMonth = new Date(endDate);
+                        displayMonth = startOfLocalMonth(endDate) || displayMonth;
                         renderCalendar(calEl, displayMonth);
                         updateNavBtns();
                         updateSelectedDisplay();
@@ -377,7 +374,7 @@ export const DateRangePicker = {
                             endDate = new Date(now.getFullYear(), 11, 31);
                             break;
                     }
-                    if (startDate) displayMonth = new Date(startDate);
+                    if (startDate) displayMonth = startOfLocalMonth(startDate) || displayMonth;
                     renderCalendar(calEl, displayMonth);
                     updateNavBtns();
                     updateSelectedDisplay();
@@ -407,7 +404,7 @@ export const DateRangePicker = {
                             break;
                     }
                     enforceDateConstraint();
-                    if (startDate) displayMonth = new Date(startDate);
+                    if (startDate) displayMonth = startOfLocalMonth(startDate) || displayMonth;
                     renderCalendar(calEl, displayMonth);
                     updateNavBtns();
                     updateSelectedDisplay();
@@ -454,7 +451,7 @@ export const DateRangePicker = {
                             break;
                     }
                     enforceDateConstraint();
-                    if (endDate) displayMonth = new Date(endDate);
+                    if (endDate) displayMonth = startOfLocalMonth(endDate) || displayMonth;
                     renderCalendar(calEl, displayMonth);
                     updateNavBtns();
                     updateSelectedDisplay();
@@ -464,12 +461,12 @@ export const DateRangePicker = {
         });
 
         container.querySelector('.drp-prev-month').addEventListener('click', () => {
-            displayMonth.setMonth(displayMonth.getMonth() - 1);
+            displayMonth = addMonthsClamped(displayMonth, -1) || displayMonth;
             renderCalendar(calEl, displayMonth);
             updateNavBtns();
         });
         container.querySelector('.drp-next-month').addEventListener('click', () => {
-            displayMonth.setMonth(displayMonth.getMonth() + 1);
+            displayMonth = addMonthsClamped(displayMonth, 1) || displayMonth;
             renderCalendar(calEl, displayMonth);
             updateNavBtns();
         });
@@ -491,7 +488,7 @@ export const DateRangePicker = {
                         endDate = clickedDate;
                     }
                 }
-                if (clickedDate) displayMonth = new Date(clickedDate);
+                if (clickedDate) displayMonth = startOfLocalMonth(clickedDate) || displayMonth;
                 renderCalendar(calEl, displayMonth);
                 updateNavBtns();
                 updateSelectedDisplay();
@@ -509,7 +506,7 @@ export const DateRangePicker = {
             if (currentTab === 'start') {
                 startDate = clickedDate;
                 enforceDateConstraint();
-                displayMonth = new Date(clickedDate);
+                displayMonth = startOfLocalMonth(clickedDate) || displayMonth;
                 renderCalendar(calEl, displayMonth);
                 updateNavBtns();
                 updateSelectedDisplay();
@@ -519,7 +516,7 @@ export const DateRangePicker = {
             if (currentTab === 'end') {
                 endDate = clickedDate;
                 enforceDateConstraint();
-                displayMonth = new Date(clickedDate);
+                displayMonth = startOfLocalMonth(clickedDate) || displayMonth;
                 renderCalendar(calEl, displayMonth);
                 updateNavBtns();
                 updateSelectedDisplay();

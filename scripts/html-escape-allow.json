@@ -1,0 +1,21 @@
+{
+  "_comment": [
+    "属性转义闸门的豁免清单 —— 由 scripts/check-html-escape.mjs 消费。",
+    "",
+    "【当前状态：空清单，零豁免】",
+    "2026-10-06 建立本闸门时需登记 106 条豁免；同日通过三项改造清零：",
+    "  杠杆 1（改闸门，零业务代码）：识别 map/forEach 回调索引参数（语言定义即数字）、",
+    "    溯源到 const 对象字面量的属性链（colors.start、this.SPEC.FILL）。",
+    "  杠杆 2（num() 数值强制器，htmlUtils.num）：把「运行时才知道是不是数字」的值移出清单，",
+    "    同时修掉 NaN/undefined 产出 style=left:undefined% 这类非法 CSS 的隐患。",
+    "  杠杆 3（老实转义）：把内部字符串成员访问一律 escapeHtmlAttr，",
+    "    不再依赖「看起来是内部值」的脆弱假设 —— priority 的注入点正是靠这种假设长期隐身的。",
+    "",
+    "【登记标准】仅在「用 escapeHtmlAttr 会破坏语义」时才登记，且必须满足：",
+    "  1. _reason 写出该值的定义位置与推导方式，供后人复核；",
+    "  2. 一旦该值可能承载用户输入，必须改为 escapeHtmlAttr 并从本清单移除；",
+    "  3. 优先考虑 num()（数值）或 escapeHtmlAttr（字符串），二者都不适用才登记。",
+    "",
+    "【维护】npm run check:html-escape:report 看命中；闸门行为由 --self-test 保证。"
+  ]
+}

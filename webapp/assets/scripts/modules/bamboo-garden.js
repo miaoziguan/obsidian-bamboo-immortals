@@ -258,7 +258,7 @@ export const BambooGarden = {
         ];
         let html = '';
         for (const s of specs) {
-            html += `<div class="drifting-leaf" style="left:${s.left}%; animation: leafDrift ${s.dur}s linear infinite ${s.delay}s both;"></div>`;
+            html += `<div class="drifting-leaf" style="left:${num(s.left)}%; animation: leafDrift ${num(s.dur)}s linear infinite ${num(s.delay)}s both;"></div>`;
         }
         container.innerHTML = html;
     },
@@ -309,7 +309,7 @@ export const BambooGarden = {
             const isStaticOne = isStatic[i];
             
             html += `
-                <div class="bamboo-stalk" style="left: ${left}%; height: ${height}px; width: ${width}px; opacity: ${stalkOpacity}; transform: rotate(${lean}deg);">
+                <div class="bamboo-stalk" style="left: ${num(left)}%; height: ${num(height)}px; width: ${num(width)}px; opacity: ${num(stalkOpacity)}; transform: rotate(${num(lean)}deg);">
                     <div class="bamboo-inner" ${isStaticOne ? '' : `style="animation-name: bambooSway${i % 6}; animation-duration: ${swaySpeed}s;"`}>
                         ${this.createBambooNodes(nodeCount, height)}
                         ${this.createLeafCluster(height, isStaticOne)}
@@ -382,12 +382,12 @@ export const BambooGarden = {
             
             html += `
                 <div class="bamboo-leaf-tip" style="
-                    top: ${t}px;
-                    left: ${l}px;
-                    height: ${h}px;
-                    --r: ${angle}deg;
+                    top: ${num(t)}px;
+                    left: ${num(l)}px;
+                    height: ${num(h)}px;
+                    --r: ${num(angle)}deg;
                     opacity: ${0.38 + Math.random() * 0.32};
-                    ${isStatic ? '' : `animation: leafTremble ${dur}s ease-in-out infinite ${delay}s;`}
+                    ${isStatic ? '' : `animation: leafTremble ${num(dur)}s ease-in-out infinite ${num(delay)}s;`}
                 "></div>
             `;
         }

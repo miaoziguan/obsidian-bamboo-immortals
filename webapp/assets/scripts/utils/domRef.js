@@ -28,6 +28,21 @@ export function getHost() {
     return (typeof document !== 'undefined' && document.getElementById('bamboo-shadow-host')) || null;
 }
 
+/**
+ * 真正承载页面滚动的元素。
+ *
+ * shadow 模式下滚动容器是 shadow host（`:host` 带 `overflow-y:auto`，见 base.css），
+ * 而不是 window —— 此时 `window.scrollY` 恒为 0，任何基于 `window.scrollY / window.scrollTo`
+ * 的滚动逻辑都不会动（scrollspy 高亮与「跳到某板块」双双失效）。
+ * light DOM / 测试环境回退到 document.scrollingElement（即 <html>），窗口滚动语义不变。
+ */
+export function getScrollHost() {
+    const host = getHost();
+    if (host && typeof host.scrollTop === 'number') return host;
+    if (typeof document !== 'undefined' && document.scrollingElement) return document.scrollingElement;
+    return null;
+}
+
 // document 模式下应挂到 <body>（而非 document 对象本身），shadow 模式挂到 shadowRoot
 function getRootMount() {
     const root = getDomRoot();
@@ -134,4 +149,32 @@ export function isFromTextEntry(e) {
   if (!t) return false;
   const tag = (t.tagName || '').toLowerCase();
   return tag === 'input' || tag === 'textarea' || t.isContentEditable === true;
+}
+
+/**
+ * 取「真实」获得焦点的元素。
+ *
+ * 【为什么不能直接读 document.activeElement】Shadow DOM 下焦点位于 shadow 树内时，
+ * document.activeElement 恒为 shadow host（事件/焦点 retarget 的同一套语义），
+ * 永远不会是 shadow 内部的元素。于是所有
+ *   `active === firstElement` / `root.contains(active)`
+ * 这类判定恒不成立：焦点陷阱会误判成「焦点在容器外」，
+ * 每次 Tab 都强制回首元素（Tab 无法前进）或反向失效让焦点逃出容器。
+ * 与 isFromTextEntry 依赖 composedPath 是同一类问题，故同样收口在本文件。
+ *
+ * 做法：从 document.activeElement 起，若其持有 shadowRoot 就下钻一层
+ * shadowRoot.activeElement，直到不再变化。
+ *
+ * 兼容：kill-switch 关闭 shadow（light DOM / jest）时第一层即为目标元素，
+ * 行为与旧实现完全等价。
+ */
+export function deepActiveElement() {
+    let el = (typeof document !== 'undefined') ? document.activeElement : null;
+    // 上限防御：异常深层嵌套下不让循环失控
+    for (let i = 0; el && el.shadowRoot && i < 16; i++) {
+        const inner = el.shadowRoot.activeElement;
+        if (!inner || inner === el) break;
+        el = inner;
+    }
+    return el;
 }

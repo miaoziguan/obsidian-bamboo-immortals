@@ -1,18 +1,5 @@
-import { describe, it, expect, vi } from 'vitest';
-import {
-  buildPrompt,
-  parseGoals,
-  planFromNote,
-  backfillItemDates,
-  type AiResponse,
-} from '../MarkdownPlanner';
-
-const settings = {
-  aiApiKey: 'sk-test',
-  aiBaseUrl: 'https://api.deepseek.com/v1',
-  aiModel: 'deepseek-chat',
-  aiDecomposeDepth: '中' as const,
-};
+import { describe, it, expect } from 'vitest';
+import { buildPrompt, parseGoals, backfillItemDates } from '../MarkdownPlanner';
 
 describe('buildPrompt', () => {
   it('包含 JSON Schema 与分类枚举', () => {
@@ -266,56 +253,5 @@ describe('子项日期兜底 backfillItemDates（对齐 web「大目标区间=�
     expect(out[0].startDate).toBe('2026-07-18');
     expect(out[0].endDate).toBe('2026-09-12');
     expect(out[0].items![0].startDate).toBe('2026-07-18');
-  });
-});
-
-describe('planFromNote', () => {
-  const openAiWrap = (inner: unknown): AiResponse => ({
-    status: 200,
-    json: { choices: [{ message: { content: JSON.stringify(inner) } }] },
-  });
-
-  it('成功：解析 OpenAI 风格 choices.content', async () => {
-    const fake = vi.fn().mockResolvedValue(
-      openAiWrap({ goals: [{ title: '练琴', category: 'personal', items: [{ name: '每日', dailyMin: '30' }] }] })
-    );
-    const out = await planFromNote('笔记', settings, fake);
-    expect(fake).toHaveBeenCalledTimes(1);
-    expect(out[0].title).toBe('练琴');
-    // 校验 fetch 的 URL 与鉴权头
-    expect(fake.mock.calls[0][0].url).toBe('https://api.deepseek.com/v1/chat/completions');
-    expect(fake.mock.calls[0][0].headers!.Authorization).toBe('Bearer sk-test');
-  });
-
-  it('首次失败重试一次后成功', async () => {
-    const fake = vi
-      .fn()
-      .mockRejectedValueOnce(new Error('network'))
-      .mockResolvedValueOnce(openAiWrap({ goals: [{ title: '重试成功', items: [] }] }));
-    const out = await planFromNote('笔记', settings, fake);
-    expect(fake).toHaveBeenCalledTimes(2);
-    expect(out[0].title).toBe('重试成功');
-  });
-
-  it('两次都失败 → 抛友好错误', async () => {
-    const fake = vi.fn().mockRejectedValue(new Error('boom'));
-    await expect(planFromNote('笔记', settings, fake)).rejects.toThrow(/AI 规划失败/);
-    expect(fake).toHaveBeenCalledTimes(2);
-  });
-
-  it('HTTP 非 2xx → 抛错并重试', async () => {
-    const fake = vi.fn().mockResolvedValue({ status: 401, json: { error: 'unauth' } });
-    await expect(planFromNote('笔记', settings, fake)).rejects.toThrow(/HTTP 401/);
-    expect(fake).toHaveBeenCalledTimes(2);
-  });
-
-  it('scope=selection 透传至请求体 user 消息', async () => {
-    const fake = vi.fn().mockResolvedValue(
-      openAiWrap({ goals: [{ title: '选中转目标', category: 'study', items: [] }] })
-    );
-    await planFromNote('选中内容', settings, fake, 'selection');
-    const body = JSON.parse(fake.mock.calls[0][0].body as string);
-    expect(body.messages[1].content).toContain('选中的一段文本');
-    expect(body.messages[1].content).not.toContain('笔记正文：');
   });
 });

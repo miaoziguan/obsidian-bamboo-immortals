@@ -264,7 +264,7 @@ export const TodoRenderer = {
         const menuItems = [`<div class="todo-focus-item${current ? '' : ' active'}" data-action="todo-focus-item" data-goal-id="">全部目标</div>`].concat(
             Array.from(goalMap.entries()).map(([gid, name]) => {
                 const act = (gid === current) ? ' active' : '';
-                return `<div class="todo-focus-item${act}" data-action="todo-focus-item" data-goal-id="${escapeHtml(gid)}">${escapeHtml(name)}</div>`;
+                return `<div class="todo-focus-item${HTMLUtils.escapeHtmlAttr(act)}" data-action="todo-focus-item" data-goal-id="${HTMLUtils.escapeHtmlAttr(gid)}">${escapeHtml(name)}</div>`;
             })
         ).join('');
 
@@ -296,13 +296,13 @@ export const TodoRenderer = {
             goalMetaLabel += `<span class="todo-goal-progress">${todo.currentValue}/${todo.targetValue}</span>`;
         }
         if (todo.description) {
-            goalMetaLabel += `<span class="todo-goal-source" title="${escapeHtml(todo.description)}">${escapeHtml(todo.description.length > 10 ? todo.description.slice(0, 10) + '…' : todo.description)}</span>`;
+            goalMetaLabel += `<span class="todo-goal-source" title="${HTMLUtils.escapeHtmlAttr(todo.description)}">${escapeHtml(todo.description.length > 10 ? todo.description.slice(0, 10) + '…' : todo.description)}</span>`;
         }
 
         return `
-            <div class="todo-item ${completedClass} ${goalTaskClass} ${archivedClass}" data-todo-index="${index}" data-todo-id="${escapeHtml(todo.id)}" data-todo-type="goal_task">
+            <div class="todo-item ${HTMLUtils.escapeHtmlAttr(completedClass)} ${HTMLUtils.escapeHtmlAttr(goalTaskClass)} ${HTMLUtils.escapeHtmlAttr(archivedClass)}" data-todo-index="${num(index)}" data-todo-id="${HTMLUtils.escapeHtmlAttr(todo.id)}" data-todo-type="goal_task">
                 <button class="todo-checkbox ${isCompleted ? 'checked' : ''}" 
-                        data-action="todo-toggle" data-todo-id="${todo.id}" data-type="goal_task" data-goal-id="${todo.goalId || ''}" data-item-idx="${todo.itemIdx || ''}" data-is-completed="${isCompleted}"
+                        data-action="todo-toggle" data-todo-id="${HTMLUtils.escapeHtmlAttr(todo.id)}" data-type="goal_task" data-goal-id="${HTMLUtils.escapeHtmlAttr(todo.goalId || '')}" data-item-idx="${HTMLUtils.escapeHtmlAttr(String(todo.itemIdx !== undefined ? todo.itemIdx : ''))}" data-is-completed="${HTMLUtils.escapeHtmlAttr(isCompleted)}"
                         aria-label="${isCompleted ? '标记为未完成' : '标记为已完成'}">
                     ${isCompleted ? LucideUtils.createIcon('check', { size: 9 }) : ''}
                 </button>

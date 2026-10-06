@@ -112,14 +112,14 @@ export const SectionManager = {
 
     renderSectionItem(section) {
         return `
-            <div class="sm-item" data-id="${section.id}" draggable="true">
+            <div class="sm-item" data-id="${HTMLUtils.escapeHtmlAttr(section.id)}" draggable="true">
                 <div class="sm-drag-handle">${LucideUtils.createIcon('gripVertical', { size: 14 })}</div>
                 <div class="sm-info">
                     <div class="sm-name">${escapeHtml(section.name)}</div>
                     <div class="sm-desc">${escapeHtml(section.description)}</div>
                 </div>
                 <div class="sm-actions">
-                    <button class="sm-btn sm-btn-hide" data-action="section-manager-hide-section" data-section-id="${section.id}" title="隐藏">
+                    <button class="sm-btn sm-btn-hide" data-action="section-manager-hide-section" data-section-id="${HTMLUtils.escapeHtmlAttr(section.id)}" title="隐藏">
                         ${LucideUtils.createIcon('eyeOff', { size: 16 })}
                     </button>
                 </div>
@@ -129,12 +129,12 @@ export const SectionManager = {
 
     renderHiddenSectionItem(section) {
         return `
-            <div class="sm-item sm-item-hidden" data-id="${section.id}">
+            <div class="sm-item sm-item-hidden" data-id="${HTMLUtils.escapeHtmlAttr(section.id)}">
                 <div class="sm-info">
                     <div class="sm-name">${escapeHtml(section.name)}</div>
                 </div>
                 <div class="sm-actions">
-                    <button class="sm-btn sm-btn-show" data-action="section-manager-show-section" data-section-id="${section.id}" title="显示">
+                    <button class="sm-btn sm-btn-show" data-action="section-manager-show-section" data-section-id="${HTMLUtils.escapeHtmlAttr(section.id)}" title="显示">
                         ${LucideUtils.createIcon('eye', { size: 16 })}
                     </button>
                 </div>

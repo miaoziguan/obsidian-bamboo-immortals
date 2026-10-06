@@ -343,11 +343,15 @@ export const MindmapFeature = {
     this._applyStyleClass();
   },
 
-  /** 离开子弹：落盘（节点 + 连线 + 视野），隐藏层 */
+  /** 离开子弹：先提交半截编辑，再落盘（节点 + 连线 + 视野），隐藏层 */
   deactivate() {
     if (!this._el) return;
     this._active = false;
-    this._commitEdit(true);
+    // 必须「提交」而非「取消」：切档时由 ModeController 调用本方法（其注释即为「半截编辑先提交」），
+    // 而旋钮滚轮拨档不改变焦点 → 不触发 _editBlur → 只能在这里把刚打字、尚未 blur 的文本写回模型。
+    // 此前传 cancel=true，文本既不进 _nodes、下方 _saveNow() 落的也是旧模型，切回导图档 load() 再读回旧文本 = 丢字。
+    // （Esc 的刻意取消语义在 _editKey 中单独保留；_active 已置 false，_commitEdit 末尾的 renderNodes 会早退，不会白重绘。）
+    this._commitEdit();
     this._selId = null;
     this._selLinkIdx = null;
     this._linkFrom = null;
@@ -418,6 +422,9 @@ export const MindmapFeature = {
   /** 切换到指定组：先落盘当前组，再载入目标组并重绘 */
   async switchGroup(id) {
     if (!id || id === this._groupId) return;
+    // 防御：编辑态未 blur 时（现入口都是按钮点击会先触发 blur，此处是兜底）半截编辑必须先写回模型，
+    // 否则下面的 _saveNow() 落的是旧文本，而当前组随即被目标组替换 → 静默丢字。与 deactivate() 同款。
+    if (this._editId) this._commitEdit();
     this._saveNow();
     await TypewriterStore.setMindmapCurrent(id);
     this._groupId = id;
@@ -427,6 +434,8 @@ export const MindmapFeature = {
   },
   /** 新建空白组并切换过去 */
   async newGroup() {
+    // 防御：新组会整体丢弃当前 _nodes，半截编辑必须先落进旧组，否则随 _nodes 一起消失
+    if (this._editId) this._commitEdit();
     this._saveNow();
     const g = await TypewriterStore.createMindmapGroup('未命名思维导图');
     this._groupId = g.id;
@@ -436,6 +445,8 @@ export const MindmapFeature = {
   },
   /** 删除一个组：落盘后清索引与文档，载入新的当前组 */
   async deleteGroup(id) {
+    // 防御：同 switchGroup —— 先把半截编辑写回「当前组」再落盘，避免删除动作顺带丢掉未提交文本
+    if (this._editId) this._commitEdit();
     this._saveNow();
     const res = await TypewriterStore.deleteMindmapGroup(id);
     this._groupId = res.current;
@@ -935,6 +946,9 @@ export const MindmapFeature = {
     this._keyHandler = (e) => this._onKeyDown(e);
     // 捕获阶段：先于便签的画布监听拿到键盘，避免两边同时响应
     document.addEventListener('keydown', this._keyHandler, true);
+
+    // 落盘兜底：页面隐藏/关闭前把防抖窗口内的导图改动写出（与 _keyHandler 对称，teardown 时解绑）
+    this._bindFlushGuard();
 
     // 通用画布键位（⌘±/0、Shift+1/2、H）统一收口到 CanvasKeys（C2）：与便签共用同一份逻辑，
     // 命中且导图激活时 stopImmediatePropagation，避免事件继续到便签处理器造成双响。
@@ -1775,10 +1789,51 @@ export const MindmapFeature = {
     }
   },
 
+  /**
+   * 落盘兜底：页面隐藏/关闭前，把防抖窗口内尚未落盘的导图改动立即写出。
+   *
+   * 为什么导图必须自己挂一份：PersistenceCoordinator.saveNow 遇到 `ctrl._mode === 'mindmap'` 直接 return，
+   * 便签那份 visibilitychange/pagehide 兜底对导图是空转（其注释写明「导图档直接跳过…数据由 MindmapFeature 自管」）。
+   * 导图防抖 400ms（SAVE_DEBOUNCE），「改完立刻关视图/切后台」就会把最后一次改动丢在窗口里。
+   *
+   * 与便签那份的有意差异：仅在确有未落盘状态时才写 —— 既不打扰用户，也避免拿空文档覆盖盘上数据。
+   */
+  _bindFlushGuard() {
+    if (this._flushGuard) return;   // 幂等：重复建层不叠加
+    this._flushGuard = (e) => {
+      // 切回可见无需处理，只在隐藏/卸载时兜底
+      if (e && e.type === 'visibilitychange' && typeof document !== 'undefined' && document.visibilityState === 'visible') return;
+      if (!this._active) return;    // 非导图档：没有本模块的未落盘状态，勿拿旧文档覆盖
+      const openEdit = !!this._editId;
+      if (!openEdit && !this._saveTimer) return;   // 无待落盘/未提交内容：不写盘
+      // 页面真要走了才提交半截编辑；仅切到后台就退出编辑态会打断用户正在进行的输入
+      if (openEdit && e && e.type === 'pagehide') this._commitEdit();
+      this._saveNow();              // 内部自行清 timer；无 _groupId 时自行 return
+    };
+    if (typeof document !== 'undefined') document.addEventListener('visibilitychange', this._flushGuard);
+    if (typeof window !== 'undefined') window.addEventListener('pagehide', this._flushGuard);
+  },
+
+  /** 解绑落盘兜底（与 _bindFlushGuard 对称） */
+  _unbindFlushGuard() {
+    if (!this._flushGuard) return;
+    if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', this._flushGuard);
+    if (typeof window !== 'undefined') window.removeEventListener('pagehide', this._flushGuard);
+    this._flushGuard = null;
+  },
+
   /** 宿主重置（换页/重挂载）时清引用：下次 mount 会重新建层，避免指向已卸载的 DOM */
   teardown() {
+    // 【防丢数据】卸载前兜底：半截编辑先提交、防抖窗口内未落盘的改动立即写出。
+    // 便签侧的 visibilitychange/pagehide 兜底对导图直接 return（PersistenceCoordinator.saveNow 里的
+    // `ctrl._mode === 'mindmap'` 分支，注释为「导图档直接跳过…数据由 MindmapFeature 自管」），
+    // 所以「刚改完就关视图 / 硬关闭」只能由本方法自己兜住，否则最后一次改动会静默丢失。
+    if (this._editId) this._commitEdit();   // 提交后 _scheduleSave() 会挂起新的 timer，故下面重新取
+    const pending = this._saveTimer;
     clearTimeout(this._saveTimer);
     this._saveTimer = 0;
+    if (this._active && pending) this._saveNow();
+    this._unbindFlushGuard();
     if (this._keyHandler) {
       document.removeEventListener('keydown', this._keyHandler, true);
       this._keyHandler = null;

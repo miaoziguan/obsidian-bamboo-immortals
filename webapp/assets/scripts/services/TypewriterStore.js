@@ -294,12 +294,15 @@ export const TypewriterStore = {
       migrate: () => (write ? this._migrateLegacyWriting() : this._migrateLegacyNotes()),
     };
   },
+  // kind 只支持 'write' / 'notes'（卡片档）。思维导图数据模型不同（nodes/links/view/style），
+  // 单独走 saveMindmapGroupDoc / loadMindmapGroupDoc（见 handlers/features/mindmapFeature.js）。
+  // 历史上这里有两个 `kind === 'mindmap'` 分支：参数按卡片档顺序传（canvasOffset→links、
+  // links→view、id→style），接线即写坏导图视野与样式；且全仓无调用方（ModeController /
+  // PersistenceCoordinator 只传 write|notes），已移除。
   async saveDoc(kind, notes, canvasOffset, links, id) {
-    if (kind === 'mindmap') return this.saveMindmap(notes, canvasOffset, links, id);
     return this._saveCardDoc(this._docDesc(kind), notes, canvasOffset, links, id);
   },
   async loadDoc(kind, id) {
-    if (kind === 'mindmap') return this.loadMindmap(id);
     return this._loadCardDoc(this._docDesc(kind), id);
   },
   async _saveCardDoc(desc, notes, canvasOffset, links, id) {

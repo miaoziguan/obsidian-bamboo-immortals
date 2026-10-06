@@ -92,6 +92,7 @@ export const APP_MESSAGE_TYPES = [
   // host → webapp
   'goals:changed',
   'theme:changed',
+  'theme:manifests',
   // 画中卷：宿主注入「停靠位 / 功能选型 / 真实全屏态」
   'scroll:location',
   'scroll:feature',

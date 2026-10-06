@@ -1066,6 +1066,15 @@ window.addEventListener('message', (event) => {
     return;
   }
 
+  // 主题装/卸后宿主补发的最新外部主题清单（原本只在 app:ready 握手时下发一次）
+  if (data.type === 'theme:manifests') {
+    const list = data.payload && data.payload.customThemes;
+    if (Array.isArray(list) && typeof window.ThemeEffects !== 'undefined' && window.ThemeEffects) {
+      window.ThemeEffects.setExternalManifests(list);
+    }
+    return;
+  }
+
   // 目标库变更 → 重读 goals.json 并局部刷新（不触发全局重绘）
   if (data.type === 'goals:changed') {
     if (typeof window.GoalService !== 'undefined' && window.GoalService.load) {

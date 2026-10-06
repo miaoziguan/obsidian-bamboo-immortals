@@ -409,6 +409,24 @@ export class ThemeBridge {
     });
   }
 
+  /**
+   * 通用广播：向所有已打开的 webapp 视图投递一条宿主主动消息。
+   * 目标枚举与 pushTheme 完全一致（已注册 iframe ∪ 文档内 .bamboo-review-frame），
+   * 保证主视图 / 画中卷 / 归档 / 模块宿主都能收到。
+   * 用途举例：主题装/卸后补发一份最新清单（清单原本只在 app:ready 握手时下发）。
+   */
+  broadcastRaw(type: string, payload?: unknown): void {
+    const targets = new Set<HTMLIFrameElement>(ThemeBridge.iframes);
+    activeDocument
+      .querySelectorAll<HTMLIFrameElement>('.bamboo-review-frame')
+      .forEach((f) => targets.add(f));
+    if (targets.size === 0) return;
+    targets.forEach((iframe) => {
+      if (!iframe.contentWindow) return;
+      iframe.contentWindow.postMessage({ type, id: `${type}_${Date.now()}`, payload }, '*');
+    });
+  }
+
   /** 供外部调用：Obsidian 主题变化时触发 */
   onThemeChanged(followObsidianTheme = false): void {
     this.pushTheme(followObsidianTheme);

@@ -10,6 +10,7 @@ import type { CultivationRealm } from '../cultivation';
 import { INBOUND_PREFIXES } from './protocol';
 import { LicenseStore } from '../license/licenseStore';
 import { verifyLicenseKey } from '../license/licenseKey';
+import { marketUrlCandidates, isGithubApiUrl, GITHUB_RAW_ACCEPT } from './marketSources';
 import { encodeBackup, decodeBackup } from '../license/backupCode';
 
 /** Obsidian 插件运行时注入的主窗口 document（非插件沙箱内的 document） */
@@ -386,6 +387,43 @@ export class AppAPI {
 
   /** 消息分发处理 */
   /** 重扫主题文件夹，刷新「本地外部主题」清单与代码缓存（市场装/卸后调用） */
+  /**
+   * 依次尝试各源取回文本（市场清单、主题与模块代码共用）。
+   *
+   * 源展开逻辑见 src/host/marketSources.ts：raw.githubusercontent.com 在部分网络环境
+   * （国内常见）被 DNS 污染解析到 0.0.0.0，直连即失败，故按
+   * 「jsDelivr CDN → GitHub API → 原 raw 链接」依次回退，任一成功即可。
+   */
+  private async _fetchMarketText(rawUrl: string): Promise<string> {
+    const failures: string[] = [];
+    for (const url of marketUrlCandidates(rawUrl)) {
+      try {
+        const headers = isGithubApiUrl(url) ? { Accept: GITHUB_RAW_ACCEPT } : undefined;
+        const resp = await requestUrl({ url, method: 'GET', headers });
+        if (resp.status < 200 || resp.status >= 300) {
+          failures.push(`${url} → HTTP ${resp.status}`);
+          continue;
+        }
+        const text = resp.text;
+        if (typeof text === 'string' && text.trim().length > 0) return text;
+        failures.push(`${url} → 空响应`);
+      } catch (e) {
+        failures.push(`${url} → ${e instanceof Error ? e.message : String(e)}`);
+      }
+    }
+    throw new Error(`所有源均拉取失败（${failures.join('；')}）`);
+  }
+
+  private async _fetchMarketJson(rawUrl: string): Promise<Record<string, unknown>> {
+    const text = await this._fetchMarketText(rawUrl);
+    return JSON.parse(text) as Record<string, unknown>;
+  }
+
+  /** 装/卸后把最新主题清单推给已打开的视图（清单原本只在 app:ready 握手时下发一次） */
+  private _broadcastThemeManifests(): void {
+    this.themeBridge.broadcastRaw('theme:manifests', { customThemes: this.customThemeManifests });
+  }
+
   private async _rescanThemes(): Promise<void> {
     // 候选目录：优先用户配置的 themePath；并兼容实际目录「竹林动效主题」
     // （复盘主题 → 动效主题 改名后的正确目录）与历史默认「竹林复盘主题」。
@@ -667,9 +705,7 @@ export class AppAPI {
     // ---- 模块市场：拉取清单（host 侧 fetch 公开仓库的 manifest.json）----
     if (type === 'module:market:manifest') {
       try {
-        const resp = await requestUrl({ url: MODULE_MARKET_MANIFEST_URL, method: 'GET' });
-        if (resp.status < 200 || resp.status >= 300) throw new Error('HTTP ' + resp.status);
-        const manifest = resp.json as Record<string, unknown>;
+        const manifest = await this._fetchMarketJson(MODULE_MARKET_MANIFEST_URL);
         // 附带「已安装版本表」，webapp 拿它与 manifest 中各模块的 version 比对 → 得出「可更新」
         this.respond(id, { ok: true, manifest, installed: this.settings.moduleInstalled || {} });
       } catch (e) {
@@ -687,11 +723,10 @@ export class AppAPI {
       };
       if (!p.id || !p.url) { this.respondError(id, 'module:install 缺少 id 或 url'); return; }
       try {
-        const resp = await requestUrl({ url: p.url, method: 'GET' });
-        if (resp.status < 200 || resp.status >= 300) throw new Error('HTTP ' + resp.status);
-        const code = resp.text;
+        const code = await this._fetchMarketText(p.url);
         if (!code.includes('__bamboo_module_')) throw new Error('不是有效的竹林模块文件');
         const dir = this._moduleDir();
+        try { await this.vaultAdapter.mkdir(dir); } catch { /* 已存在则忽略 */ }
         await this.vaultAdapter.write(`${dir}/${p.id}.js`, code);
         // 记录本次安装的版本：后续与 manifest 的 version 比对即可判断「可更新」
         if (!this.settings.moduleInstalled) this.settings.moduleInstalled = {};
@@ -711,7 +746,9 @@ export class AppAPI {
       if (!p.id) { this.respondError(id, 'module:uninstall 缺少 id'); return; }
       try {
         const dir = this._moduleDir();
-        await this.vaultAdapter.remove(`${dir}/${p.id}.js`);
+        if (await this._fileExists(`${dir}/${p.id}.js`)) {
+          await this.vaultAdapter.remove(`${dir}/${p.id}.js`);
+        }
         let dirty = false;
         if (this.settings.moduleInstalled) {
           delete this.settings.moduleInstalled[p.id];
@@ -1344,9 +1381,7 @@ export class AppAPI {
     // ---- 主题市场：拉取清单（host 侧 fetch 公开仓库的 manifest.json）----
     if (type === 'market:manifest') {
       try {
-        const resp = await requestUrl({ url: MARKET_MANIFEST_URL, method: 'GET' });
-        if (resp.status < 200 || resp.status >= 300) throw new Error('HTTP ' + resp.status);
-        const manifest = resp.json as Record<string, unknown>;
+        const manifest = await this._fetchMarketJson(MARKET_MANIFEST_URL);
         // 附带「已安装版本表」，webapp 拿它与 manifest 中各主题的 version 比对 → 得出「可更新」
         this.respond(id, { ok: true, manifest, installed: this.settings.marketInstalled || {} });
       } catch (e) {
@@ -1366,18 +1401,20 @@ export class AppAPI {
       const url = p.url;
       if (!tid || !url) { this.respondError(id, 'market:install 缺少 id 或 url'); return; }
       try {
-        const resp = await requestUrl({ url, method: 'GET' });
-        if (resp.status < 200 || resp.status >= 300) throw new Error('HTTP ' + resp.status);
-        const code = resp.text;
+        const code = await this._fetchMarketText(url);
         if (!code.includes('__bamboo_theme_')) throw new Error('不是有效的竹林主题文件');
         const dir = this.settings.themePath || '竹林动效主题';
         const filePath = `${dir}/${tid}.js`;
+        // 首次安装时目录可能尚不存在（用户改过 themePath / 从未装过主题）：
+        // 低层 adapter.write 不保证自动建目录，先 mkdir 再写（与本项目其它写入点一致）。
+        try { await this.vaultAdapter.mkdir(dir); } catch { /* 已存在则忽略 */ }
         await this.vaultAdapter.write(filePath, code);
         // 记录本次安装的版本：后续与 manifest 的 version 比对即可判断「可更新」
         if (!this.settings.marketInstalled) this.settings.marketInstalled = {};
         this.settings.marketInstalled[tid] = { version: p.version || '', installedAt: Date.now() };
         await this.saveSettings();
         await this._rescanThemes();
+        this._broadcastThemeManifests();   // 让其它已打开的视图也看到新主题
         this.respond(id, { ok: true });
       } catch (e) {
         this.respondError(id, e instanceof Error ? e.message : '主题安装失败');
@@ -1393,13 +1430,19 @@ export class AppAPI {
       try {
         const dir = this.settings.themePath || '竹林动效主题';
         const filePath = `${dir}/${tid}.js`;
-        await this.vaultAdapter.remove(filePath);
+        // 文件可能已被手动删除、或 themePath 与当初安装时不同：
+        // 此时 remove 会抛错并让整条卸载失败，故先判存在 —— 不存在时按「已卸载」处理，
+        // 版本记录照常清除，避免残留导致重装后误判「已最新」。
+        if (await this._fileExists(filePath)) {
+          await this.vaultAdapter.remove(filePath);
+        }
         // 同步清除版本记录，避免残留导致重装后误判「已最新」
         if (this.settings.marketInstalled) {
           delete this.settings.marketInstalled[tid];
           await this.saveSettings();
         }
         await this._rescanThemes();
+        this._broadcastThemeManifests();
         this.respond(id, { ok: true });
       } catch (e) {
         this.respondError(id, e instanceof Error ? e.message : '主题卸载失败');

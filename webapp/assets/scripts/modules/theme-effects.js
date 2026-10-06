@@ -428,6 +428,26 @@ export const ThemeEffects = {
         };
     },
 
+    /**
+     * 用宿主下发的清单整体重建 availableExternal（主题装/卸后的广播同步用）。
+     *
+     * 背景：外部主题清单原本只在 app:ready 握手时下发一次，装/卸后其它已打开的视图
+     * （归档 / 画中卷 / 模块宿主）不会收到更新，要重开视图才看到新主题。宿主在装/卸
+     * 后补发 theme:manifests，这里据此整体对齐 —— 同时负责把「宿主清单里已不存在」
+     * 的项摘掉，否则卸载在别的视图里看起来没生效。
+     */
+    setExternalManifests(list) {
+        const next = {};
+        (list || []).forEach((t) => {
+            if (t && t.name) next[t.name] = Object.assign({}, this.availableExternal[t.name] || {}, t, { loaded: !!this.themes[t.name] });
+        });
+        const keep = Object.keys(next);
+        Object.keys(this.availableExternal).forEach((k) => {
+            if (keep.indexOf(k) === -1) delete this.availableExternal[k];
+        });
+        Object.assign(this.availableExternal, next);
+    },
+
     /** 确保某外部主题代码已加载并注册；返回 Promise<boolean> */
     _ensureLoaded(name) {
         const self = this;

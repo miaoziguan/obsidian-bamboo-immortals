@@ -111,6 +111,7 @@ export const ALL_MESSAGE_TYPES = [
   // ---- host → webapp ----
   'goals:changed',
   'theme:changed',
+  'theme:manifests', // 主题装/卸后宿主补发最新外部主题清单（原本只在 app:ready 下发）
   // 画中卷：宿主在 iframe load / app:ready 时把「功能选型 / 停靠位 / 真实全屏态」注入 webapp
   'scroll:location',
   'scroll:feature',

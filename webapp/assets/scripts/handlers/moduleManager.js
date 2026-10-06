@@ -41,10 +41,12 @@ export const ModuleManager = {
         try {
             modules = await mgr.listModules();
         } catch (e) {
+            // 关键：清单拉取失败也要继续往下注入「逛模块市场」入口。
+            // 原写法是失败即 return，与下方「没有已装模块就不注入」叠加后，
+            // 新用户永远看不到市场入口 —— 形成「要装模块得先进市场、进市场得先有模块」
+            // 的死锁，正是「模块市场没有 UI 入口」的根因。
             console.warn('[ModuleManager] listModules 失败:', e && e.message);
-            return;
         }
-        if (!modules || modules.length === 0) return;
 
         // 必须走 DOM 抽象层：shadow 模式下 FAB 位于 shadowRoot 内，
         // document.getElementById 取不到（表现为「日志有模块、却静默不注入」）。
@@ -66,16 +68,16 @@ export const ModuleManager = {
         row.className = 'fab-action-row';
         row.setAttribute('data-modules', '1');
 
-        for (const m of modules) {
+        (modules || []).forEach((m) => {
             if (!m.fab || !m.fab.label) {
-                console.warn('[ModuleManager] 模块「' + m.id + '」缺失 fab 声明，跳过按钮注入');
-                continue;
+                console.warn('[ModuleManager] 模块「' + (m && m.id) + '」缺失 fab 声明，跳过按钮注入');
+                return;
             }
             row.appendChild(this._createFabButton(m));
-        }
-
-        // 没有任何模块声明按钮时不插入空行（避免 FAB 菜单多出一条空白）
-        if (row.children.length === 0) return;
+        });
+        // 即便一个模块按钮都没有也要继续：「逛模块市场」必须始终可见，
+        // 否则未安装任何模块的用户无从进入市场（见上方 listModules 失败处的注释）。
+        // 没有模块按钮时 row 为空，CSS 下不占视觉高度，不会出现空白条。
         // 放进独立分组：严格匹配现有「.fab-action-group > .fab-action-row > .fab-action-btn」
         // 结构，保证 CSS 渲染与静态按钮一致。若直接挂到 fabActions（缺 .fab-action-group 父级），
         // 部分布局/可见性规则会失效，表现为「注入了却看不见」。

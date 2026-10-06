@@ -90,6 +90,8 @@ async function buildSelfContainedHtml(htmlFile, outFile) {
   // 5a. 内联 CSS：<link rel="stylesheet" href="x.css"> → <style>...</style>
   //     同时将 CSS 中的相对图片引用（url('../images/xxx')）转为 base64 data URI，
   //     因为最终 HTML 以 blob URL 加载，相对路径在 blob 上下文中无法解析。
+  //     内联后再做一次 CSS 压缩（见下方统计输出）。
+  const cssStats = { files: 0, raw: 0, min: 0 };
   appHtml = appHtml.replace(/<link\b[^>]*?rel=["']stylesheet["'][^>]*?>/gi, (tag) => {
     const hrefMatch = tag.match(/href=["']([^"']+)["']/i);
     if (!hrefMatch) return tag;
@@ -115,12 +117,38 @@ async function buildSelfContainedHtml(htmlFile, outFile) {
           return _match; // 保留原路径作为降级
         }
       });
+      // 【内联 CSS 压缩】此前样式是**原样**内联的（注释、缩进、换行全在），而它才是各入口
+      // 体积的大头（实测 app / archive / scroll / module 分别省 32% / 32% / 40% / 45%）。
+      // 压缩只去掉空白与注释、不改动任何语义 —— 视觉零风险。
+      // 收益不止是产物变小：原始 HTML 变小后 app / archive 的 gzip 包装产物也更小，
+      // 且 scroll.html 会远离 900KB 的包装阈值（不必再担心加几 KB 样式就触发包装）。
+      cssStats.files += 1;
+      cssStats.raw += Buffer.byteLength(css, "utf-8");
+      try {
+        const minified = esbuild.transformSync(css, { loader: "css", minify: true });
+        if (minified && typeof minified.code === "string" && minified.code.length > 0) {
+          css = minified.code;
+        }
+      } catch (minErr) {
+        // 压缩失败不应阻断构建：回退原始样式，产物依旧可用（只是没省到体积）。
+        console.warn(`[bundle] CSS 压缩失败，回退原始样式: ${clean} (${minErr.message})`);
+      }
+      cssStats.min += Buffer.byteLength(css, "utf-8");
       return `<style data-src="${clean}">\n${css}\n</style>`;
     } catch (e) {
       console.warn(`[bundle] 无法内联 CSS: ${cssPath} (${e.message})`);
       return tag;
     }
   });
+
+  if (cssStats.files > 0) {
+    const saved = cssStats.raw - cssStats.min;
+    console.log(
+      `  ↳ 内联 CSS 压缩: ${cssStats.files} 个文件 ${(cssStats.raw / 1024).toFixed(0)}KB → ` +
+        `${(cssStats.min / 1024).toFixed(0)}KB (-${(saved / 1024).toFixed(0)}KB, ` +
+        `${((saved / cssStats.raw) * 100).toFixed(1)}%)`
+    );
+  }
 
   // 5b. 移除所有外部 <script src>...</script> 完整配对标签（含闭标签，修复原只删开标签导致
   //     残留大量孤立 </script> 的畸形问题）
@@ -138,17 +166,27 @@ async function buildSelfContainedHtml(htmlFile, outFile) {
     appHtml = appHtml.slice(0, firstIndex) + bundleTag + appHtml.slice(firstIndex);
   }
 
-  // R1 gzip 瘦身：仅对超限入口启用，把自包含 HTML 压成极小 loader，
+  // R1 gzip 瘦身：把自包含 HTML 压成极小 loader，
   // 让 iframe 的 data: URL 体积稳定 < 2MB（绕开 blob: 在 ArkWeb 上被拦）。
+  //
+  // 【判定改为「压缩后是否明显更小」而非固定阈值】
+  // 原实现是 `rawBytes > 900KB` 才压缩。内联 CSS 压缩上线后出现了倒挂：
+  // archive 的原始体积由 1130KB 降到 865KB，恰好跌破阈值 → 不再压缩 →
+  // 产物反而从 345KB 涨到 865KB（体积变小却让交付变大）。
+  // 用「压缩收益」判定可自校正：CSS/JS 体积再怎么漂移，都只会取更小的那一种交付。
+  // 下限 200KB：小入口（如 module.html 87KB）不值得为此付一次运行时解压。
   const rawBytes = Buffer.byteLength(appHtml, "utf-8");
-  if (rawBytes > 900 * 1024) {
+  if (rawBytes > 200 * 1024) {
     const wrapped = wrapGzip(appHtml);
     const wrappedBytes = Buffer.byteLength(wrapped, "utf-8");
-    appHtml = wrapped;
-    console.log(
-      `  ↳ R1 gzip 包装: ${(rawBytes / 1024).toFixed(0)}KB → loader ${(wrappedBytes / 1024).toFixed(0)}KB ` +
-      `(运行时 DecompressionStream 解压还原，data: URL 稳 < 2MB)`
-    );
+    // 至少省 32KB 才值这一次 DecompressionStream 解压
+    if (wrappedBytes + 32 * 1024 < rawBytes) {
+      appHtml = wrapped;
+      console.log(
+        `  ↳ R1 gzip 包装: ${(rawBytes / 1024).toFixed(0)}KB → loader ${(wrappedBytes / 1024).toFixed(0)}KB ` +
+        `(运行时 DecompressionStream 解压还原，data: URL 稳 < 2MB)`
+      );
+    }
   }
 
   const appOutFile = path.join(webappDir, outFile);

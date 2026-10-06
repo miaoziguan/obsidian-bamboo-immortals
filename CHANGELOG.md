@@ -1,5 +1,17 @@
 # Changelog
 
+## [3.28.7] — 2026-10-07
+
+### Changed
+- **构建期：内联 CSS 压缩**。各入口内联的样式此前是**原样**内联的（注释、缩进、换行全在），而它才是体积大头——archive 视图内联了 925KB 样式，JS 却只有 171KB。现改用 esbuild 的 CSS 压缩（只去空白与注释，不改语义；失败时告警并回退原始样式，不阻断构建）。
+- **构建期：R1 gzip 包装改为自适应判定**。原固定阈值 `> 900KB` 存在倒挂：CSS 压缩后 archive 原始体积由 1130KB 降到 845KB、恰好跌破阈值 → 反而不再压缩 → 产物由 345KB 涨到 865KB。现改为「压缩后至少省 32KB 才包装」，CSS/JS 体积再怎么漂移都只会取更小的交付。
+
+### Performance
+- 产物体积：app.html 440KB→**359KB**、archive.html 353KB→**240KB**、scroll.html 762KB→**201KB**、module.html 120KB→**87KB**（合计 **−47%**）；webapp.zip 1.96MB→**1.74MB**（−11%）。
+- 注：scroll.html（画中卷）现在同样走 gzip 包装，运行时依赖 `DecompressionStream`（Chromium 80+/iOS 16.4+）；不支持时显示明确提示页而非白屏，与主视图既有的包装路径一致。
+
+---
+
 ## [3.28.6] — 2026-10-07
 
 ### Performance

@@ -606,8 +606,11 @@ export class BambooReaderView extends ItemView {
       if (typeof v === 'string') return v.trim();
       if (v instanceof Date && !Number.isNaN(v.getTime())) return formatYmd(v);
       // `authors: [A, B]` 这类数组只取首位：元信息行是单行，多作者并排会挤爆版面
+      // v 来自 Obsidian 松散类型的前置元数据（any），Array.isArray 后仍是 any[]，
+      // 故 v.find(...) 返回 any —— 直接赋值会触发 no-unsafe-assignment。
+      // 钉成 unknown[] 让 find 返回 unknown，再经 typeof 收窄，消除 any。
       if (Array.isArray(v)) {
-        const hit = v.find((it) => typeof it === 'string' && it.trim());
+        const hit = (v as unknown[]).find((it) => typeof it === 'string' && it.trim());
         if (typeof hit === 'string') return hit.trim();
       }
       return '';

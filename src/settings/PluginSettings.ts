@@ -167,12 +167,16 @@ export const DEFAULT_SETTINGS: BambooReviewSettings = {
  * 关面板时由 PluginSettings.hide() 统一 flush，保证最后一次输入必定落库。
  */
 const SAVE_DEBOUNCE_MS = 300;
-const _saveTimers = new WeakMap<BambooReviewPlugin, ReturnType<typeof setTimeout>>();
+// window.setTimeout/clearTimeout：Obsidian 弹窗（popout window）是独立浏览器窗口，
+// 裸 setTimeout 在该场景下解析到的全局可能错位；全仓其它位置（ThemeBridge/AppHost）也统一用 window. 前缀。
+// 类型按 ThemeBridge 的写法显式取 number（@types/node 会把 Window 上的定时器类型注入成
+// NodeJS.Timeout，导致 setTimeout 的返回值与 clearTimeout 的参数类型对不齐，显式 number 可消歧义）。
+const _saveTimers = new WeakMap<BambooReviewPlugin, number>();
 
 function scheduleSaveSettings(plugin: BambooReviewPlugin): void {
   const prev = _saveTimers.get(plugin);
-  if (prev) clearTimeout(prev);
-  const timer = setTimeout(() => {
+  if (prev) window.clearTimeout(prev);
+  const timer = window.setTimeout(() => {
     _saveTimers.delete(plugin);
     void plugin.saveSettings();
   }, SAVE_DEBOUNCE_MS);
@@ -182,7 +186,7 @@ function scheduleSaveSettings(plugin: BambooReviewPlugin): void {
 function flushSaveSettings(plugin: BambooReviewPlugin): void {
   const timer = _saveTimers.get(plugin);
   if (!timer) return;
-  clearTimeout(timer);
+  window.clearTimeout(timer);
   _saveTimers.delete(plugin);
   void plugin.saveSettings();
 }

@@ -36,6 +36,16 @@ module.exports = {
   ],
   overrides: [
     {
+      // 类型感知 lint：仅在 src 下开启（根配置如 vitest.config.ts 不在 tsconfig 内，
+      // 回落到「无 project」模式，类型感知规则静默跳过，避免报「文件不在 project 中」）。
+      // 开启后 no-unsafe-assignment 等类型感知规则才真正生效（这才是 OB 审核拦 no-unsafe-assignment 的机制）。
+      files: ['src/**/*.ts'],
+      parserOptions: {
+        project: ['./tsconfig.json'],
+        tsconfigRootDir: __dirname,
+      },
+    },
+    {
       // 生产代码：严格
       files: ['src/**/*.ts'],
       excludedFiles: ['src/**/*.test.ts', 'src/**/__tests__/**'],
@@ -45,6 +55,40 @@ module.exports = {
         '@typescript-eslint/no-non-null-assertion': 'warn',
         'no-console': 'warn',
         'no-debugger': 'error',
+        // 类型感知规则（需 parserOptions.project，已在下方 src override 开启）。
+        // 它们不在 @typescript-eslint/recommended 内，必须显式启用——这正是 OB 官方审核系统
+        // 拦 no-unsafe-assignment 的机制；启用后可挡住 any 从 Obsidian API 边界回潮。
+        '@typescript-eslint/no-unsafe-assignment': 'error',
+        '@typescript-eslint/no-unsafe-argument': 'error',
+        '@typescript-eslint/no-unsafe-call': 'error',
+        '@typescript-eslint/no-unsafe-member-access': 'error',
+        '@typescript-eslint/no-unsafe-return': 'error',
+        // Obsidian 弹窗（popout window）是独立浏览器窗口，裸全局定时器会解析错位；官方审核系统据此判 Warning。
+        // 用内置 no-restricted-globals 禁用裸 setTimeout/clearTimeout/setInterval/clearInterval，
+        // 强制写 window. 前缀（成员访问不会被误伤，接口方法签名/类方法实现也非全局引用）。
+        'no-restricted-globals': [
+          'error',
+          {
+            name: 'setTimeout',
+            message:
+              "Use 'window.setTimeout()' instead of 'setTimeout()' for popout window compatibility.",
+          },
+          {
+            name: 'clearTimeout',
+            message:
+              "Use 'window.clearTimeout()' instead of 'clearTimeout()' for popout window compatibility.",
+          },
+          {
+            name: 'setInterval',
+            message:
+              "Use 'window.setInterval()' instead of 'setInterval()' for popout window compatibility.",
+          },
+          {
+            name: 'clearInterval',
+            message:
+              "Use 'window.clearInterval()' instead of 'clearInterval()' for popout window compatibility.",
+          },
+        ],
       },
     },
     {

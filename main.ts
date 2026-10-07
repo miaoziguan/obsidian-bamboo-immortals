@@ -90,6 +90,9 @@ export default class BambooReviewPlugin extends Plugin {
   pluginUnloading = false;
   /** 重载后的面板恢复只执行一次（onLayoutReady 可能多次触发） */
   private reviewViewRecovered = false;
+  /** 打开模块视图的并发守卫：openModuleAt 是 async，重入时两次调用都会判成「没开过」
+   *  而各自新建 leaf。按 moduleId 记住在飞的请求，同模块重入直接复用同一个 promise。 */
+  private openingModules = new Map<string, Promise<void>>();
 
   async onload(): Promise<void> {
     // 加载设置
@@ -1250,14 +1253,40 @@ export default class BambooReviewPlugin extends Plugin {
       new Notice('未指定要打开的模块');
       return;
     }
+    // 并发守卫：本方法是 async，重入时两次调用都会走到「没找到已有 leaf」的分支，
+    // 各自新建一个 leaf —— 直接表现为「点一次开出两个窗」。同模块已有请求在飞时
+    // 复用它的 promise，保证「同一模块至多一个 leaf」不被并发击穿。
+    const inFlight = this.openingModules.get(moduleId);
+    if (inFlight) return inFlight;
+    const task = this._openModuleAtInner(loc, moduleId).finally(() => {
+      this.openingModules.delete(moduleId);
+    });
+    this.openingModules.set(moduleId, task);
+    return task;
+  }
+
+  /** openModuleAt 的实际实现（已由并发守卫包裹，勿直接调用） */
+  private async _openModuleAtInner(loc: ScrollLocation, moduleId: string): Promise<void> {
     ModuleView.pendingModuleId = moduleId;
     const { workspace } = this.app;
 
     const existing = workspace.getLeavesOfType(VIEW_TYPE_MODULE);
 
+    // 【根因修复】去重不再只依赖 view.getModuleId()：该值来自 setState()（Obsidian 布局
+    // 恢复时才回填）或 iframe load/app:ready（更晚），而 leaf 早在布局恢复阶段就已出现在
+    // getLeavesOfType 里 —— 重启后若用户在恢复完成前点开模块，读到的还是空串，判定
+    // 「没开过」→ 新建 leaf；随后旧 leaf 恢复完成、自己也填上 moduleId → 两个窗台。
+    // 主判定改用 leaf 的持久化视图状态：leaf 一出现即可读，不依赖视图是否已实例化。
+    const matchesModule = (l: WorkspaceLeaf): boolean => {
+      const vs = l.getViewState() as { state?: { moduleId?: string } } | null;
+      const st = vs?.state?.moduleId;
+      if (typeof st === 'string' && st) return st === moduleId;
+      // 兜底：视图已实例化时读实例值（同会话内新建的 leaf 走这条）
+      return (l.view instanceof ModuleView) && l.view.getModuleId() === moduleId;
+    };
+
     // 同一模块至多一个 leaf：已开则复用（不论当前停靠在哪个栏）
-    let target: WorkspaceLeaf | null =
-      existing.find((l) => (l.view instanceof ModuleView) && l.view.getModuleId() === moduleId) ?? null;
+    let target: WorkspaceLeaf | null = existing.find(matchesModule) ?? null;
     const wasReused = !!target;
 
     if (!target) {

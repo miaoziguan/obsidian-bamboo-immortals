@@ -451,6 +451,18 @@ export class AppAPI {
         }
         if (found) {
           this.setCustomThemes(themes);
+          // 回填：磁盘存在主题但无版本记录（老版本遗留，早于 marketInstalled 字段）→ 补空版本，
+          // 使「已安装」仍判得出、且「可更新」统一走 rec.version !== ver（不再依赖 !rec 兜底），
+          // 避免卸载删记录后被误判为「老版本可更新」。
+          if (!this.settings.marketInstalled) this.settings.marketInstalled = {};
+          let dirty = false;
+          for (const t of themes) {
+            if (!this.settings.marketInstalled[t.name]) {
+              this.settings.marketInstalled[t.name] = { version: '', installedAt: 0 };
+              dirty = true;
+            }
+          }
+          if (dirty) { await this.saveSettings(); }
           return;
         }
       } catch {
@@ -1383,7 +1395,7 @@ export class AppAPI {
       try {
         const manifest = await this._fetchMarketJson(MARKET_MANIFEST_URL);
         // 附带「已安装版本表」，webapp 拿它与 manifest 中各主题的 version 比对 → 得出「可更新」
-        this.respond(id, { ok: true, manifest, installed: this.settings.marketInstalled || {} });
+        this.respond(id, { ok: true, manifest, installed: this.settings.marketInstalled || {}, installedIds: this.customThemeManifests.map((t) => t.name) });
       } catch (e) {
         this.respondError(id, e instanceof Error ? e.message : '市场清单拉取失败');
       }

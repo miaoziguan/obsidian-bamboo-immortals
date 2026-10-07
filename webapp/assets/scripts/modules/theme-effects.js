@@ -442,8 +442,18 @@ export const ThemeEffects = {
             if (t && t.name) next[t.name] = Object.assign({}, this.availableExternal[t.name] || {}, t, { loaded: !!this.themes[t.name] });
         });
         const keep = Object.keys(next);
+        // 把「宿主清单里已不存在」的外部主题从两块内存注册表一起摘掉：
+        // availableExternal（待加载）与 themes（已加载实例）。否则卸载在别的视图里看起来没生效，
+        // 且已卸载主题仍会出现在主题切换面板、甚至可被切回（直到视图重建）。
+        // 内置主题从不在 availableExternal 中，故循环只影响外部主题，不会误清内置。
         Object.keys(this.availableExternal).forEach((k) => {
-            if (keep.indexOf(k) === -1) delete this.availableExternal[k];
+            if (keep.indexOf(k) === -1) {
+                if (k === this.currentTheme) { try { this.switchTheme('bamboo'); } catch (e) {} }
+                const t = this.themes[k];
+                if (t && typeof t.destroy === 'function') { try { t.destroy(); } catch (e) {} }
+                delete this.themes[k];
+                delete this.availableExternal[k];
+            }
         });
         Object.assign(this.availableExternal, next);
     },
@@ -858,7 +868,7 @@ export const ThemeEffects = {
                 body.innerHTML = '<div class="market-empty">市场暂无主题</div>';
                 return false;
             }
-            el._renderMarketBody(body, manifest.themes, manifest.installed || {});
+            el._renderMarketBody(body, manifest.themes, manifest.installed || {}, manifest.installedIds || []);
             return true;
         }).catch(function() {
             body.innerHTML = '<div class="market-empty">市场加载失败，请稍后重试</div>';
@@ -899,17 +909,21 @@ export const ThemeEffects = {
      * @param {Array} themes manifest 中的主题条目（含 version）
      * @param {Object} installed 宿主持久化的「已安装版本表」：id → { version }
      */
-    _renderMarketBody(body, themes, installed) {
+    _renderMarketBody(body, themes, installed, installedIds) {
         const el = this;
         installed = installed || {};
+        // 「已安装」以宿主下发的权威清单（磁盘扫描结果 customThemeManifests）为准，
+        // 不再依赖客户端内存注册表（availableExternal / themes），从机制上杜绝两套来源不一致。
+        const installedSet = new Set(installedIds || []);
         const cards = themes.map(function(t) {
-            // 已安装：主题文件被扫进清单（待加载）或已注册（当前/已加载）
-            const isInstalled = !!el.availableExternal[t.id] || !!el.themes[t.id];
+            const isInstalled = installedSet.has(t.id);
             const exclusive = t.license && t.license.indexOf('专享') !== -1;
             const ver = t.version || '';
             const rec = installed[t.id];
-            // 可更新：已安装 且线上声明了版本 且（无安装记录 = 老版本遗留 / 记录版本与线上不一致）
-            const hasUpdate = isInstalled && !!ver && (!rec || rec.version !== ver);
+            // 可更新：已安装 且线上声明了版本 且 记录版本与线上不一致。
+            // 老版本遗留（磁盘有文件但无记录）已由宿主在重扫时回填空版本，故不再用 !rec 兜底，
+            // 避免「刚卸载（记录被删）→ 被误判为可更新」的歧义。
+            const hasUpdate = isInstalled && !!ver && !!rec && rec.version !== ver;
             const act = 'data-id="' + t.id + '"';
             let btn;
             if (!isInstalled) {
@@ -950,6 +964,7 @@ export const ThemeEffects = {
                     if (ok) {
                         el.registerExternalManifest(id, entry || {});
                         installed[id] = { version: ver };
+                        installedSet.add(id);
                         // 更新且该主题正在显示：内存里注册的还是旧代码 → 注销后重新拉取并挂载，让新版本立即生效
                         if (isUpdate && el.currentTheme === id) {
                             const oldT = el.themes[id];
@@ -961,7 +976,7 @@ export const ThemeEffects = {
                                 if (ok2) el._mountTheme(id);
                             });
                         }
-                        el._renderMarketBody(body, themes, installed);
+                        el._renderMarketBody(body, themes, installed, installedSet);
                         Toast.showToast('「' + (entry ? entry.name : id) + '」' +
                             (isUpdate ? '已更新' : '已安装，可在主题面板切换'), 'success');
                     } else {
@@ -979,9 +994,17 @@ export const ThemeEffects = {
                 window.storageManager.uninstallMarketTheme(id).then(function(ok) {
                     if (ok) {
                         if (el.currentTheme === id) { try { el.switchTheme('bamboo'); } catch (e) {} }
+                        // 同步摘掉客户端内存注册表（availableExternal + 已加载实例），否则主题面板仍可按到它、
+                        // 且 setExternalManifests 跨视图广播时非当前视图的已加载实例不会被清掉
                         if (el.availableExternal[id]) delete el.availableExternal[id];
+                        if (el.themes[id]) {
+                            const t = el.themes[id];
+                            if (t && typeof t.destroy === 'function') { try { t.destroy(); } catch (e) {} }
+                            delete el.themes[id];
+                        }
                         delete installed[id];
-                        el._renderMarketBody(body, themes, installed);
+                        installedSet.delete(id);
+                        el._renderMarketBody(body, themes, installed, installedSet);
                         Toast.showToast('「' + id + '」已卸载', 'success');
                     } else {
                         btn.disabled = false; btn.textContent = '卸载失败，重试';

@@ -243,7 +243,7 @@ export const ModuleManager = {
             const isInstalled = !!installed[t.id];
             const ver = t.version || '';
             const rec = installed[t.id];
-            const hasUpdate = isInstalled && !!ver && (!rec || rec.version !== ver);
+            const hasUpdate = isInstalled && !!ver && rec.version !== ver;
             const act = 'data-id="' + t.id + '"';
             let btn;
             if (!isInstalled) {
@@ -282,6 +282,9 @@ export const ModuleManager = {
                     if (ok) {
                         installed[id] = { version: ver };
                         el._renderModuleMarketBody(body, modules, installed);
+                        // 同步刷新悬浮菜单：让新装模块的 FAB 按钮立即出现（否则要等 reload，
+                        // 而下方 toast 还写着「悬浮菜单将出现入口」，不刷就是误导）
+                        el.initModuleFab();
                         Toast.showToast('「' + ((modules.find(function (x) { return x.id === id; }) || {}).name || id) +
                             '」已安装，悬浮菜单将出现入口', 'success');
                     } else {
@@ -300,6 +303,9 @@ export const ModuleManager = {
                     if (ok) {
                         delete installed[id];
                         el._renderModuleMarketBody(body, modules, installed);
+                        // 同步刷新悬浮菜单：清掉已卸载模块的 FAB 按钮（否则它残留在菜单里直到 reload，
+                        // 与主题市场当初 el.themes 没清那类「卸载后看起来没生效」同源）
+                        el.initModuleFab();
                         Toast.showToast('「' + id + '」已卸载', 'success');
                     } else {
                         b.disabled = false; b.textContent = '卸载失败，重试';

@@ -429,8 +429,6 @@ export const ModuleManager = {
              * @param {boolean} [isDark] 指定目标明暗；省略则取反当前
              */
             toggleTheme: (isDark) => mgr.moduleToggleTheme(isDark),
-    setTheme: (p) => mgr.moduleSetTheme(p),
-    getTheme: () => mgr.moduleGetTheme(),
             /** 持久化模块自己的数据（data: URL 下无 localStorage，由宿主代管） */
             saveData: (data) => mgr.saveModuleData(id, data),
             /** 读回模块自己的数据；无数据时为 null */

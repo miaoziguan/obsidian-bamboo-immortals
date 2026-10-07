@@ -1168,44 +1168,6 @@ export class AppAPI {
       return;
     }
 
-    // ---- 模块能力：设置主题调色（色相 + 明度偏移），替代显示设置面板的调色旋钮 ----
-    // 与 theme:syncPalette 同源：阅读视图始终跟随，原生界面视「同步到 Obsidian」开关，
-    // 并广播给所有已打开视图（含画中卷独立 iframe）。
-    if (type === 'module:setTheme') {
-      const p = (payload && typeof payload === 'object' ? payload : {}) as { hue?: number; lightnessOffset?: number };
-      if (typeof p.hue !== 'number' || !Number.isFinite(p.hue)) {
-        this.respondError(id, 'module:setTheme 缺少合法 hue');
-        return;
-      }
-      const lo = Number.isFinite(p.lightnessOffset as number) ? (p.lightnessOffset as number) : 0;
-      const isDark = activeDocument.body.classList.contains('theme-dark');
-      ThemeBridge.applyReaderPalette(p.hue, lo);
-      if (this.settings.syncPaletteToObsidian) {
-        this.themeBridge.applyPalette(p.hue, lo, isDark);
-      }
-      ThemeBridge.broadcastTheme(isDark, { hue: p.hue, lightnessOffset: lo });
-      this.respond(id, { ok: true });
-      return;
-    }
-
-    // ---- 模块能力：读取当前主题调色（供模块初始化微调滑块等）----
-    if (type === 'module:getTheme') {
-      const isDark = activeDocument.body.classList.contains('theme-dark');
-      const last = this.themeBridge.currentPalette;
-      let hue = 152;
-      let lightnessOffset = 0;
-      if (last && Number.isFinite(last.hue)) {
-        hue = last.hue;
-        lightnessOffset = last.lightnessOffset;
-      } else {
-        const accent = getComputedStyle(activeDocument.body).getPropertyValue('--interactive-accent').trim();
-        const h = accent ? ThemeBridge.rgbToHue(accent) : null;
-        if (h != null && Number.isFinite(h)) hue = h;
-      }
-      this.respond(id, { ok: true, palette: { hue, lightnessOffset, isDark } });
-      return;
-    }
-
     // ---- 应用内手动切换明暗（如悬浮菜单夜间模式）----
     // webapp 的 store.setDarkMode 仅在用户手动切换时发出本消息（宿主推送不触发），
     // 由宿主广播给所有视图，确保画中卷等独立 iframe 跟随应用明暗，不依赖 Obsidian 系统主题。

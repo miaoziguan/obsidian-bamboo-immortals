@@ -1021,36 +1021,6 @@ export class BridgeStorage {
     }
   }
 
-  /**
-   * 模块能力：设置主题调色（色相 + 明度偏移）。
-   * 直接走与显示设置面板同源的管线（theme:syncPalette），故能真正替代面板调色旋钮。
-   * @param {{hue:number, lightnessOffset?:number}} palette
-   * @returns {Promise<boolean>} 是否成功
-   */
-  async moduleSetTheme(palette) {
-    await this.ensureReady();
-    try {
-      const resp = await this._send('module:setTheme', palette || {});
-      return !!(resp && resp.ok);
-    } catch (e) {
-      console.warn('[Bridge] 模块设色失败:', e && e.message);
-      return false;
-    }
-  }
-
-  /** 读取当前主题调色 {hue, lightnessOffset, isDark}，供模块初始化微调滑块等 */
-  async moduleGetTheme() {
-    await this.ensureReady();
-    try {
-      const resp = await this._send('module:getTheme', {});
-      if (resp && resp.ok) return resp.palette || null;
-      return null;
-    } catch (e) {
-      console.warn('[Bridge] 读取主题色失败:', e && e.message);
-      return null;
-    }
-  }
-
   /** 请求宿主打开某模块视图（悬浮菜单模块按钮） */
   async openModule(moduleId, location) {
     await this.ensureReady();

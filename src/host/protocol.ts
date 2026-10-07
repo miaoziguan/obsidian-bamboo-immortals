@@ -140,6 +140,8 @@ export const ALL_MESSAGE_TYPES = [
   'module:openFile',        // 用 Obsidian 原生视图打开文件
   'module:resolveResource', // 把 vault 内文件路径解析成 webview 可加载的资源 URL（头像/封面等）
   'module:toggleTheme',     // 模块切换 Obsidian 基础明暗（博客模块「快门」改作明暗开关用）
+  'module:setTheme',        // 模块设置主题调色（色相 + 明度偏移），替代显示设置面板的调色旋钮
+  'module:getTheme',        // 模块读取当前主题调色
   // ---- 竹林模块系统（host → webapp）----
   'module:context',         // 宿主注入当前 leaf 承载的 moduleId
 ] as const;

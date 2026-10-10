@@ -21,6 +21,8 @@
 
 // 存储契约收敛到 TypewriterStore（schema/版本/校验/备份/读后写，绕开只认数组的专用方法）
 import { TypewriterStore } from '../../services/TypewriterStore.js';
+// HTML 安全数字插值（项目约定工具；htmlUtils.HTMLUtils.num）
+import { HTMLUtils } from '../../utils/htmlUtils.js';
 // P8 空间索引：把「每张卡 occupy 的网格单元」建索引，cull/框选/命中从 O(n) 降到 O(可视)
 import { SpatialIndex } from '../../services/SpatialIndex.js';
 import { GeoCache } from '../../services/GeoCache.js';
@@ -37,6 +39,8 @@ import { PersistenceCoordinator } from './PersistenceCoordinator.js';
 // 只在旋钮拨到子弹位时挂载显示。便签侧因此彻底不用再管它：
 // 不再有「进入导图前的自由布局快照」，也不再改写便签坐标。
 import { MindmapFeature } from './mindmapFeature.js';
+// 便签模式「素材市场」UI + 落卡（照主题动效同构；分发仓库见 bamboo-material-market/）
+import { MaterialMarket } from './materialMarket.js';
 // 连线层（便签与思维子弹共用的「节点-线」渲染/交互/控件）
 import { LinkLayer } from '../../services/LinkLayer.js';
 // 写作档便签的纯逻辑数据模型（与 MindmapDoc 同构）：读档净化 / 不可变增改 / 落盘形状。
@@ -51,7 +55,7 @@ import { UndoStack } from '../../services/undoStack.js';
 import { ICON_LAYERS, ICON_FONT, ICON_GRID, ICON_PRINT, ICON_X, ICON_FONT_DOWN, ICON_FONT_UP, ICON_ZOOM_OUT, ICON_ZOOM_IN, ICON_PAPER, ICON_EXPORT, ICON_PREVIEW, ICON_MOVE_UP, ICON_MOVE_DOWN, ICON_LV_UP, ICON_LV_DOWN, ICON_ROTATE } from './twConfig.js';
 import { STACK_STEP, STACK_LEVELS, TYPE_SPEED, MAX_LEN, NOTE_CAP, WRITE_FLOW_GAP, SAVE_DEBOUNCE, LOD_DENSITY, LOD_DENSITY_EXIT, ZOOM_MIN, ZOOM_MAX, ZOOM_STEP } from './twConfig.js';
 import { FONT_SCALES, FONT_SCALE_DEFAULT_IDX, FONT_SCALE_LABELS, CARD_SCALES, CARD_SCALE_LABELS, CARD_SCALE_DEFAULT_IDX } from './twConfig.js';
-import { FONTS, FONT_LABELS, FONT_FEEDBACK } from './twConfig.js';
+import { FONTS, FONT_LABELS, FONT_FEEDBACK, MARKET_FONTS } from './twConfig.js';
 import { PAPERS, PAPER_LABELS, PAPER_FEEDBACK, PAPER_TITLES } from './twConfig.js';
 import { LEVELS, LEVEL_LABELS, LEVEL_FEEDBACK, LEVEL_GROUPS, LEVEL_LADDER } from './twConfig.js';
 
@@ -238,7 +242,7 @@ export const TypewriterFeature = {
             </div>
             <div class="tw-screen-input-wrap">
               <div class="tw-screen-msg" id="twScreenMsg"></div>
-              <textarea class="tw-input" id="twInput" maxlength="${num(MAX_LEN)}" placeholder="输入文字打印便签..." spellcheck="false" aria-label="输入文字打印便签"></textarea>
+              <textarea class="tw-input" id="twInput" maxlength="${HTMLUtils.escapeHtmlAttr(HTMLUtils.num(MAX_LEN))}" placeholder="输入文字打印便签..." spellcheck="false" aria-label="输入文字打印便签"></textarea>
               <span class="tw-cursor" id="twCursor" aria-hidden="true"></span>
             </div>
           </div>
@@ -312,7 +316,11 @@ export const TypewriterFeature = {
       this._cullRo.observe(this._canvas);
     }
     this._mountZoomUI();
+    this._initMaterialMarket();   // 素材市场：挂抽屉 + 画布 drop 落卡 + 绑定缩放条市场按钮
   },
+
+  /** 素材市场：挂载 UI（右侧抽屉 + 画布 drop 落卡），绑定缩放条市场按钮 */
+  _initMaterialMarket() { MaterialMarket.init(this, this._el); },
 
   /** 缩放控件（便签模式）：− / 百分比(重置) / + / 适应内容。
    *  挂 wrap（层根）而非 canvas —— 后者带 transform，控件会跟着一起缩放/平移。 */
@@ -339,6 +347,8 @@ export const TypewriterFeature = {
           1 / CanvasViewport.getScale(ctrl));
       },
       fit: () => ctrl._fitNotesToView(),
+      // 素材市场入口：点击缩放条市场按钮即开/关右侧抽屉（由 CanvasZoomUI 统一分发，避免多 bar 选择器歧义）
+      onMarket: () => MaterialMarket.toggle(),
     });
   },
 
@@ -616,10 +626,11 @@ export const TypewriterFeature = {
       if (this._mode === 'mindmap') { this._exportMindmap(); return; }   // 导图模式：第二个键改为「导出为 Markdown」
       // MD可视化写作模式：第二个键 = 保存快照（当前卡片合成整篇 Markdown，写入带时间戳的独立笔记，不覆盖源笔记）
       if (this._mode === 'write') { this._saveSnapshot(); return; }
-      this._fontIdx = (this._fontIdx + 1) % FONTS.length;
-      const f = FONTS[this._fontIdx];
-      this._el.querySelector('#twFontLabel').textContent = FONT_LABELS[f];
-      this._showScreenMsg('FONT: ' + FONT_FEEDBACK[f], 1000);
+      const fonts = FONTS.concat(MARKET_FONTS);
+      this._fontIdx = (this._fontIdx + 1) % fonts.length;
+      const f = fonts[this._fontIdx];
+      this._el.querySelector('#twFontLabel').textContent = FONT_LABELS[f] || f;
+      this._showScreenMsg('FONT: ' + (FONT_FEEDBACK[f] || f), 1000);
     });
 
     // 第三个键：便签模式=一键排版（网格）；思维子弹模式=一键自动布局（多种布局循环）。两者互不干扰。
@@ -848,7 +859,7 @@ export const TypewriterFeature = {
     this._ensureAudio();
     this._playFeedSound();
     const canvas = this._canvas;
-    const font = FONTS[this._fontIdx];
+    const font = FONTS.concat(MARKET_FONTS)[this._fontIdx];
     const paper = PAPERS[this._paperIdx];
     const date = this._now();
     const id = WritingDoc.newId();

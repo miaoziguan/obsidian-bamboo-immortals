@@ -436,7 +436,7 @@ export class AppAPI {
    * bamboo-review/（本插件的全部用户数据）、其他插件的 main.js……
    * 画中卷的 file:* 协议早已做了「作用域 + 遍历 + 扩展名」三重防护，module:* 此前一道都没有。
    *
-   * 这里统一拦两级：路径遍历（`..` 分段）+ `.obsidian/` 配置目录（红线）。
+   * 这里统一拦两级：路径遍历（`..` 分段）+ 用户的配置目录（默认 `.obsidian`，可自定义 → 以 Vault#configDir 为准）。
    * 其余路径保持开放 —— 博客模块需要操作用户自己的笔记。
    */
   private assertSafeModulePath(raw: string, label = '模块文件路径'): string {
@@ -444,8 +444,10 @@ export class AppAPI {
     if (!v) throw new Error(`${label}不能为空`);
     if (v.split(/[\\/]+/).some((seg) => seg === '..')) throw new Error('路径遍历禁止');
     const norm = normalizePath(v);
-    if (norm === '.obsidian' || norm.startsWith('.obsidian/')) {
-      throw new Error('禁止访问 Obsidian 配置目录（.obsidian）');
+    // 配置目录红线：用户可能自定义配置目录（默认 .obsidian），必须以 Vault#configDir 为准，不可硬编码
+    const configDir = this.app.vault.configDir;
+    if (norm === configDir || norm.startsWith(configDir + '/')) {
+      throw new Error('禁止访问 Obsidian 配置目录（' + configDir + '）');
     }
     return norm;
   }

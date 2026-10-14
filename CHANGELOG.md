@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.28.16] — 2026-10-14
+
+### Fixed
+- 修复 Obsidian 发布校验的两条 lint（发布健康项）：① `src/utils/assetId.ts` 的 `eslint-disable-next-line no-control-regex` 补描述（`undescribed-directive` 规则要求）；② `src/host/AppAPI.ts` 的模块路径安全校验改用 `Vault#configDir` 替换硬编码 `.obsidian` —— 用户可自定义配置目录，硬编码会让「禁止访问配置目录」这条红线防护失效，故属**真实安全改进**而非单纯lint消音。
+
+---
+
 ## [3.28.15] — 2026-10-14
 
 ### Chore

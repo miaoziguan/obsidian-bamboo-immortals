@@ -19,7 +19,7 @@ export function assertSafeAssetId(id: string, label = '素材 id'): string {
   if (v.includes('..')) throw new Error(`${label}不能包含 ".."`);
   if (v.length > 120) throw new Error(`${label}过长`);
   // 控制字符
-  // eslint-disable-next-line no-control-regex
+  // eslint-disable-next-line no-control-regex -- 控制字符无法用肉眼排除，必须显式匹配；no-control-regex 对合法白名单属误报
   if (/[\u0000-\u001f\u007f]/.test(v)) throw new Error(`${label}含控制字符`);
   return v;
 }

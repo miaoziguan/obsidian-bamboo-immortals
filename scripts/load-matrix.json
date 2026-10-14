@@ -44,6 +44,7 @@
     "scroll-overlay.css",
     "scroll-pager.css",
     "scroll-workbench.css",
+    "toast.css",
     "tooltip.css",
     "variables.css"
   ],

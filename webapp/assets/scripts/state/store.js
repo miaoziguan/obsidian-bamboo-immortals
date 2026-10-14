@@ -535,6 +535,11 @@ export class Store {
                 // 仅当 dayData 也失败时，才兜底写 localStorage（与 Vault 不互通，属最后手段）
                 console.warn('[Store] 部分保存失败，兜底写入 localStorage:', errors.join('; '));
                 this.saveToStorageLegacy();
+                // 失败必须让用户看见：localStorage 与 Vault 不互通，
+                // 静默失败会让用户以为数据已存进 Vault，从而放心关闭/切换。
+                if (typeof Toast !== 'undefined' && Toast.showToast) {
+                    Toast.showToast('部分数据保存失败（' + errors.join('；') + '），已临时存入本地，请重试', 'error');
+                }
             }
 
             // 4) 全部尝试完成后清脏标记（dayData 已优先落 Vault，不受 settings/goals 失败牵连）
@@ -582,9 +587,12 @@ export class Store {
         }
         // 离线模式：拉长 debounce 到 10s（反正写不进 Vault，避免无效等待）
         const defaultInterval = this.storageType === 'localstorage-offline' ? 10000 : 2000;
-        const interval = (typeof SettingsModal !== 'undefined' && SettingsModal.autoSaveInterval)
-            ? SettingsModal.autoSaveInterval
-            : defaultInterval;
+        // 自动保存间隔：真源是原生设置（app:getSettings 快照），读不到再回退默认
+        const nativeSettings = (typeof storageManager !== 'undefined' && storageManager.getAppSettingsSync)
+            ? storageManager.getAppSettingsSync()
+            : null;
+        const nativeInterval = nativeSettings ? Number(nativeSettings.autoSaveInterval) : NaN;
+        const interval = Number.isFinite(nativeInterval) && nativeInterval > 0 ? nativeInterval : defaultInterval;
         this.state.autoSaveTimer = setTimeout(async () => {
             if (this.storageType === 'indexeddb') {
                 await this.saveToStorage();
@@ -942,9 +950,48 @@ export class Store {
     // 说明：原有 importData 转发（→ DataIO.importData）全仓无调用者，已删除。
     // 真实恢复入口在设置面板：settings-import-data → SettingsModal.openImportPreview
     // → showImportPreview → 确认后直接 DataIO.importData(backup, { strategy, scope })。
+
+    /**
+     * 立即写出「防抖窗口内尚未落盘」的改动（关闭前 / 页面隐藏前调用）。
+     *
+     * 为什么必须有：本 store 的保存走 scheduleAutoSave()（默认 2s 防抖，离线 10s）。
+     * 「刚改完就关视图 / 退 Obsidian / 跨天刷新」时定时器还没触发、页面就被销毁 ——
+     * 最后一次改动会静默丢失。画中卷的便签档 / 导图档各自都挂了同款兜底，主存储此前漏了。
+     *
+     * 无待落盘改动（!isDirty）时不做任何写盘 —— 既省一次无谓 IO，也避免拿空数据覆盖盘上内容。
+     */
+    flushPendingSave() {
+        if (!this.state.isDirty) return;
+        if (this.state.autoSaveTimer) {
+            clearTimeout(this.state.autoSaveTimer);
+            this.state.autoSaveTimer = null;
+        }
+        Promise.resolve(
+            this.storageType === 'indexeddb' ? this.saveToStorage() : this.saveToStorageLegacy()
+        ).catch(() => { /* 落盘失败不阻断卸载 */ });
+    }
+
+    /**
+     * 挂上落盘兜底监听（visibilitychange + pagehide），覆盖「切走 / 退出 / 页面跳转」。
+     * 「关闭视图（iframe 被移除）」不触发这两个事件，由宿主 detach() 前推 app:beforeDetach 兜住。
+     */
+    bindFlushGuard() {
+        if (this._flushHandler) return; // 幂等
+        if (typeof document === 'undefined' && typeof window === 'undefined') return;
+        this._flushHandler = () => {
+            // 切回可见无需处理，只在隐藏 / 卸载时兜底
+            if (typeof document !== 'undefined' && document.visibilityState === 'visible') return;
+            this.flushPendingSave();
+        };
+        if (typeof document !== 'undefined') document.addEventListener('visibilitychange', this._flushHandler);
+        if (typeof window !== 'undefined') window.addEventListener('pagehide', this._flushHandler);
+    }
 }
 
 export const store = new Store();
+
+// 开机即挂上落盘兜底（与便签档 / 导图档同款机制，主存储此前缺失）
+store.bindFlushGuard();
 
 window.store = store;
 

@@ -108,8 +108,17 @@ export const CardInteractions = {
 - `state`：`NotesState` 实例，对共享**数据**的读写全走 `state.*`。
 - `ctrl`：宿主 `TypewriterFeature`，对宿主**行为/字段**的访问走 `ctrl._xxx`（如 `_createCardEl`、
   `_scheduleRenderLinks`、`_canvas`、`_zTop`…）。
-- 模块内互调：`this.method(ctx, …)`；跨子系统回宿主委托：`ctrl._delegate()`。
+- 模块内互调：`this.method(ctx, …)`；跨子系统回宿主：**同样走 `ctrl._xxx`** ——
+  feature 上有一条对应的**手写一行委托壳**（如 `_scheduleRenderLinks() { return LinkLayer.scheduleRender({…}) }`）。
+  全文并无 `ctrl._delegate()` 这个方法（2026-10-14 更正：此处原文档写错了，实现里不存在）。
 - 这样模块不再假设 `this` 隐式等于宿主，数据真源在 NotesState、行为真源在宿主，二者皆显式注入。
+
+> **关于解耦程度的诚实说明**：上表是**文件级**解耦，不是行为解耦。方法体被搬进独立文件，
+> 但调用面（约 120 条手写委托壳）、状态面（`_resetState` 的 60+ 字段）与生命周期（mount/unmount）
+> 仍全部焊在 `TypewriterFeature` 这一个对象上；子系统内部又全字段回读 `ctrl._*`。
+> 真正起作用的状态解耦是 **B5（NotesState 状态单主）**，不是 B1。
+> 壳方法名是字符串键面、无编译期校验，改错只有跑到那刻才发现 —— 这也是为什么
+> `modeBoundary.jest.test.js` 要锁策略表点名的那几个 action。
 
 已按此约定迁移的模块（全部接收 `ctx`）：
 

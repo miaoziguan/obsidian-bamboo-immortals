@@ -80,7 +80,6 @@ function setup() {
   Tw._zTop = 0;
   Tw._notes = [];   // _exitEdit 会用 WritingDoc.setText 同步模型，规范模型须先就位
   Tw._scheduleSave = jest.fn();
-  Tw._finishTyping = jest.fn();
   Tw._makeCanvasDraggable(); // 注册根级指针监听（含本次修复的捕获退出逻辑）
   return { Tw, card, canvas, beeper };
 }

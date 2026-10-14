@@ -91,6 +91,9 @@ export const APP_MESSAGE_TYPES = [
   'file:response',
   // host → webapp
   'goals:changed',
+  // 【防丢数据】宿主即将销毁本 iframe（关闭视图 / 插件重载）→ 通知 webapp 立即落盘。
+  // 关闭视图不触发 pagehide，若不通知，主存储防抖窗口（默认 2s）内的最后一次改动会丢失。
+  'app:beforeDetach',
   'theme:changed',
   'theme:manifests',
   // 画中卷：宿主注入「停靠位 / 功能选型 / 真实全屏态」
@@ -127,6 +130,10 @@ export const APP_MESSAGE_TYPES = [
   'app:openModule',
   // ---- 竹林模块系统（host → webapp）----
   'module:context',
+  // ---- 便签素材市场（webapp → host）----
+  'material:manifest',
+  'material:install',
+  'material:load',
 ];
 
 const KNOWN = new Set(APP_MESSAGE_TYPES);
@@ -139,7 +146,8 @@ export function isKnownType(type) {
     type.startsWith('storage:') ||
     type.startsWith('file:') ||
     type.startsWith('market:') ||
-    type.startsWith('module:')
+    type.startsWith('module:') ||
+    type.startsWith('material:')
   );
 }
 

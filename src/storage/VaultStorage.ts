@@ -1,5 +1,6 @@
 import { App, normalizePath, TFile, Notice, parseYaml, stringifyYaml } from 'obsidian';
 import { ImportValidator } from './ImportValidator';
+import { assertSafeAssetId } from '../utils/assetId';
 import type {
   DayData,
   GoalItem,
@@ -24,6 +25,24 @@ export function assertSafeDocId(id: string): string {
     throw new Error(`非法文档 id：${typeof id === 'string' ? JSON.stringify(id) : String(id)}`);
   }
   return id;
+}
+
+/**
+ * 日期键安全校验（每日数据 `data/<dateKey>.json`）。
+ *
+ * dateKey 同样直接参与路径拼接，且来自 webapp 传参（storage:readDay / writeDay /
+ * deleteDay）—— 与文档 id 是同一类风险：`../../x` 会拼出越界路径，
+ * **读可读到库内任意 .json，删更可直接删掉任意 .json**。
+ *
+ * 字符集与 assertSafeDocId 一致：放行 `2026-01-05`（以及 `2026-1-5` 这类手建文件名），
+ * 拦掉斜杠、点号等一切可构成路径的成分。getAllDays / getDayKeys 等是直接读文件名、
+ * 不经本函数，故历史上手建的怪文件名仍能被正常列出。
+ */
+function assertSafeDateKey(dateKey: string): string {
+  if (typeof dateKey !== 'string' || !/^[A-Za-z0-9_-]{1,64}$/.test(dateKey)) {
+    throw new Error(`非法 dateKey：${typeof dateKey === 'string' ? JSON.stringify(dateKey) : String(dateKey)}`);
+  }
+  return dateKey;
 }
 
 /** 将 unknown 收窄为普通对象（含字符串索引），非对象/数组/null 返回 null */
@@ -66,27 +85,57 @@ interface GoalCompMap {
 export class VaultStorage {
   private app: App;
   private basePath: string;
+  /** 便签档存储目录（相对 basePath 的子目录），由 AppAPI 注入，默认 typewriter-notes */
+  private _notesFolder: string;
+  /** 思维子弹档存储目录（相对 basePath 的子目录），由 AppAPI 注入，默认 typewriter-mindmap */
+  private _mindmapFolder: string;
   /** 写守卫：已警告过的路径，第二次写入放行（用户确认意图） */
   private _warnedPaths = new Set<string>();
 
-  constructor(app: App, basePath = 'bamboo-review') {
+  constructor(
+    app: App,
+    basePath = 'bamboo-review',
+    writingFolder = 'typewriter-writing',
+    notesFolder = 'typewriter-notes',
+    mindmapFolder = 'typewriter-mindmap'
+  ) {
     this.app = app;
-    this.basePath = normalizePath(basePath);
+    // 兜底：basePath 绝不允许为空 / '.' / '/' —— 那等于指向 Vault 根，
+    // 届时 clearAll() 的 rmdir(basePath, true) 会把整个库删掉（数据安全红线）。
+    const bp = normalizePath(basePath || 'bamboo-review');
+    this.basePath = !bp || bp === '.' || bp === '/' ? 'bamboo-review' : bp;
+    this._writingFolder = normalizePath(writingFolder || 'typewriter-writing');
+    this._notesFolder = normalizePath(notesFolder || 'typewriter-notes');
+    this._mindmapFolder = normalizePath(mindmapFolder || 'typewriter-mindmap');
+  }
+
+  /**
+   * 逐级创建目录：adapter.mkdir 只建最后一层，祖先不存在时会失败。
+   *
+   * dataPath 允许嵌套（如「画中卷/数据」——normalizeDirInput 明确放行、设置页也宣称
+   * 支持任意 Vault 相对路径），若只用单层 mkdir，首次 ensureStructure / vaultWrite
+   * 就会因祖先目录缺失而抛错，整个数据根建不起来。
+   * 与 AppAPI.mkdirP 同一套防护（即便某些版本 mkdir 本身递归，本函数也只是无害空转）。
+   */
+  private async mkdirP(dir: string): Promise<void> {
+    const n = normalizePath(dir);
+    if (!n || n === '.') return;
+    const parts = n.split('/');
+    for (let i = 1; i <= parts.length; i++) {
+      const d = parts.slice(0, i).join('/');
+      if (await this.app.vault.adapter.exists(d)) continue;
+      try { await this.app.vault.adapter.mkdir(d); } catch { /* 已存在则忽略 */ }
+    }
   }
 
   /** 确保目录存在 */
   private async ensureDir(dir: string): Promise<void> {
-    const path = normalizePath(`${this.basePath}/${dir}`);
-    if (!(await this.app.vault.adapter.exists(path))) {
-      await this.app.vault.adapter.mkdir(path);
-    }
+    await this.mkdirP(normalizePath(`${this.basePath}/${dir}`));
   }
 
   /** 确保基础目录结构存在 */
   async ensureStructure(): Promise<void> {
-    if (!(await this.app.vault.adapter.exists(this.basePath))) {
-      await this.app.vault.adapter.mkdir(this.basePath);
-    }
+    await this.mkdirP(this.basePath);
     await this.ensureDir('data');
     await this.ensureDir('templates');
   }
@@ -107,21 +156,31 @@ export class VaultStorage {
     }
 
     const parentPath = normalized.substring(0, normalized.lastIndexOf('/'));
-    if (parentPath && !(await this.app.vault.adapter.exists(parentPath))) {
-      await this.app.vault.adapter.mkdir(parentPath);
-    }
+    if (parentPath) await this.mkdirP(parentPath);
 
+    // 历史遗留分支（磁盘有文件但 Obsidian 缓存没有）：vault.create 要求目标不存在，故先 remove。
+    // 但「先删后建」一旦 create 失败（磁盘满 / 权限），原内容就没了 —— 先读出兜底，
+    // 失败时立即恢复，把丢失窗口从「原文件已删」缩到「恢复也失败」这一极端情况。
+    let prev: string | null = null;
     if (await this.app.vault.adapter.exists(normalized)) {
+      prev = await this.app.vault.adapter.read(normalized).catch(() => null);
       await this.app.vault.adapter.remove(normalized);
     }
-
-    await this.app.vault.create(normalized, content);
+    try {
+      await this.app.vault.create(normalized, content);
+    } catch (e) {
+      if (prev !== null) {
+        try { await this.app.vault.adapter.write(normalized, prev); } catch { /* 恢复也失败：只能抛给上层 */ }
+      }
+      throw e;
+    }
   }
 
   // ---- 每日数据 (days) ----
 
   private dayPath(dateKey: string): string {
-    return normalizePath(`${this.basePath}/data/${dateKey}.json`);
+    // dateKey 来自 webapp 传参，必须先校验再拼路径（防路径遍历：读/写/删越界 .json）
+    return normalizePath(`${this.basePath}/data/${assertSafeDateKey(dateKey)}.json`);
   }
 
   async getDay(dateKey: string): Promise<DayData | null> {
@@ -129,12 +188,11 @@ export class VaultStorage {
     if (!(await this.app.vault.adapter.exists(path))) {
       return null;
     }
-    try {
-      const content: string = await this.app.vault.adapter.read(path);
-      return JSON.parse(content) as DayData;
-    } catch {
-      return null;
-    }
+    // 解析失败先隔离留档，再按「无数据」返回：
+    // 否则 webapp 拿到 null 后会当新数据写入，把损坏内容静默覆盖掉。
+    const parsed = await this.readJsonFile(path, '日数据');
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
+    return parsed as DayData;
   }
 
   async getAllDays(): Promise<Record<string, DayData>> {
@@ -148,11 +206,10 @@ export class VaultStorage {
       .map(async (file) => {
         const dateKey = file.split('/').pop()?.replace('.json', '');
         if (!dateKey) return;
-        try {
-          const content: string = await this.app.vault.adapter.read(file);
-          days[dateKey] = JSON.parse(content) as DayData;
-        } catch {
-          // 解析失败跳过该文件
+        // 与 getDay 一致：解析失败先隔离留档，避免「看不见又被静默覆盖」
+        const parsed = await this.readJsonFile(file, '日数据');
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          days[dateKey] = parsed as DayData;
         }
       });
 
@@ -538,14 +595,49 @@ export class VaultStorage {
    * 规范路径腾空后，读取不再反复报错、写入也不再冒险覆盖。
    */
   private async quarantineCorruptGoals(path: string, content: string): Promise<void> {
+    await this.quarantineCorruptFile(path, content, '目标数据');
+  }
+
+  /**
+   * 把「存在但无法解析」的文件隔离留档为 <path>.corrupt-<时间戳>，再移除原文件。
+   *
+   * 泛化自 goals 的处理。完整 rationale（goals 专属，保留备查）：
+   *   为什么不能只「返回 []」了事 —— GoalService.load() 拿到空数组会走 day 数据迁移 → _save() 回写，
+   *   而旧守卫的 catch 又把损坏当「不存在」放行 → 损坏文件被覆盖，用户目标永久丢失。
+   * 所以：先写备份、再移除原文件。内容一字不改地留在 vault 里（用户可手动找回），
+   * 规范路径腾空后，读取不再反复报错、写入也不再冒险覆盖。
+   *
+   * 备份失败时**不删原文件**（宁可重复留一份，也不冒险丢内容）。
+   */
+  private async quarantineCorruptFile(path: string, content: string, label: string): Promise<void> {
     const backup = normalizePath(`${path}.corrupt-${this.corruptStamp(new Date())}`);
+    const name = backup.slice(backup.lastIndexOf('/') + 1);
     try {
       await this.app.vault.adapter.write(backup, content);
       await this.app.vault.adapter.remove(path);
-      new Notice(`⚠️ 目标数据文件已损坏（无法解析），原文件已备份为 ${backup.slice(backup.lastIndexOf('/') + 1)}。`);
+      new Notice(`⚠️ ${label}文件已损坏（无法解析），原文件已备份为 ${name}。`);
     } catch {
-      // 备份失败时不删原文件（宁可重复留一份，也不冒险丢内容）
-      new Notice('⚠️ 目标数据文件已损坏（无法解析），且自动备份失败，请手动检查 goals.json。');
+      new Notice(`⚠️ ${label}文件已损坏（无法解析），且自动备份失败，请手动检查 ${name.replace(/\.corrupt-.*$/, '')}。`);
+    }
+  }
+
+  /**
+   * 读并解析一个 JSON 文件；读失败或解析失败一律返回 null。
+   * 与裸 read+JSON.parse 的关键区别：**解析失败会先把原文件隔离留档**，
+   * 否则调用方按「无数据」处理后，下一次写入会把损坏内容静默覆盖 → 永久丢失且无从恢复。
+   */
+  private async readJsonFile(path: string, label: string): Promise<unknown> {
+    let content: string;
+    try {
+      content = await this.app.vault.adapter.read(path);
+    } catch {
+      return null; // 读失败（权限 / 并发删除）：按无数据处理
+    }
+    try {
+      return JSON.parse(content) as unknown;
+    } catch {
+      await this.quarantineCorruptFile(path, content, label);
+      return null;
     }
   }
 
@@ -595,8 +687,67 @@ export class VaultStorage {
   // 每组卡片(重，且无上限)放独立文件 typewriter-writing/<id>.json。
   // 这样「保存」只重写该组文件，不再把多组卡片塞进 settings.json 导致每次保存全量重写（性能隐患的根源）。
   // 旧版曾把整组写作数据塞进 settings.json 的 typewriter:writing，由 webapp 侧首启自动迁移（见 TypewriterStore._migrateLegacyWriting）。
-  private typewriterWritingDocPath(id: string): string {
-    return normalizePath(`${this.basePath}/typewriter-writing/${assertSafeDocId(id)}.json`);
+  // 写作档存储目录：原生设置 writeStoreFolder（相对 basePath 的子目录，默认 typewriter-writing），
+  // 由 AppAPI 构造时注入（与 dataPath 同源）。兼容上一版直接写入 bamboo-review/settings.json 的旧值（getSetting 回退）。
+  private _writingFolder: string;           // 注入值（已 normalizePath）
+  private _writingFolderResolved = false;   // 旧键回退是否已尝试
+  private _writingMigrated = false;
+
+  /** 解析写作档存储目录（相对 basePath 的子路径）；注入值优先，缺省/默认态回落上一版遗留键。 */
+  private async resolveWritingFolder(): Promise<string> {
+    if (this._writingFolder && this._writingFolder !== 'typewriter-writing') return this._writingFolder;
+    // 回落：上一版曾把 writeStoreFolder 直接写入 bamboo-review/settings.json，沿用旧值避免孤儿档
+    if (!this._writingFolderResolved) {
+      this._writingFolderResolved = true;
+      try {
+        const s = await this.getSetting('writeStoreFolder');
+        const norm = typeof s === 'string' && s.trim() ? this.safeSubFolder(s.trim()) : '';
+        if (norm && norm !== 'typewriter-writing') this._writingFolder = norm;
+      } catch { /* 读不到就用注入的默认值 */ }
+    }
+    return this._writingFolder || 'typewriter-writing';
+  }
+
+  /** 把用户填写的目录收敛为安全子路径：去反斜杠/前导斜杠、禁 ..、去尾斜杠；非法返回 '' */
+  private safeSubFolder(name: string): string {
+    const n = name.replace(/\\/g, '/').replace(/^\/+/, '').replace(/\/+$/, '');
+    if (!n || n.includes('..')) return '';
+    return n;
+  }
+
+  /**
+   * 目录切换时把旧默认目录 typewriter-writing/ 里的写作档复制到新目录（一次性，会话内只跑一次）。
+   * 只搬「新目录里还没有」的文件，已存在则跳过 —— 可重复执行、幂等。复制式（不删旧档），零丢失优先。
+   */
+  private async ensureWritingFolderMigrated(): Promise<void> {
+    if (this._writingMigrated) return;
+    this._writingMigrated = true;
+    try {
+      const folder = await this.resolveWritingFolder();
+      if (folder === 'typewriter-writing') return; // 默认目录，无需迁移
+      const base = normalizePath(this.basePath);
+      const oldDir = normalizePath(`${base}/typewriter-writing`);
+      if (!(await this.app.vault.adapter.exists(oldDir))) return;
+      const list = await this.app.vault.adapter.list(oldDir);
+      for (const oldPath of list.files) {
+        if (!oldPath.endsWith('.json')) continue;
+        const id = oldPath.split('/').pop()?.replace(/\.json$/, '');
+        if (!id) continue;
+        let safeId: string;
+        try { safeId = assertSafeDocId(id); } catch { continue; }
+        const newPath = normalizePath(`${base}/${folder}/${safeId}.json`);
+        if (await this.app.vault.adapter.exists(newPath)) continue;
+        try {
+          const content = await this.app.vault.adapter.read(oldPath);
+          await this.vaultWrite(newPath, content); // 仅复制，不删旧档（零丢失）
+        } catch { /* 单档失败跳过 */ }
+      }
+    } catch { /* 迁移不应阻断正常读写 */ }
+  }
+
+  private async typewriterWritingDocPath(id: string): Promise<string> {
+    const folder = await this.resolveWritingFolder();
+    return normalizePath(`${this.basePath}/${folder}/${assertSafeDocId(id)}.json`);
   }
 
   async getTypewriterWritingIndex(): Promise<unknown> {
@@ -608,52 +759,47 @@ export class VaultStorage {
   }
 
   async getTypewriterWritingDoc(id: string): Promise<{ version: number; notes: unknown[]; links: unknown[]; canvasOffset: { x: number; y: number } | null } | null> {
-    const path = this.typewriterWritingDocPath(id);
+    await this.ensureWritingFolderMigrated();
+    const path = await this.typewriterWritingDocPath(id);
     if (!(await this.app.vault.adapter.exists(path))) return null;
-    try {
-      const content = await this.app.vault.adapter.read(path);
-      const parsed: unknown = content ? JSON.parse(content) : null;
-      if (!parsed || typeof parsed !== 'object' || !Array.isArray((parsed as Record<string, unknown>).notes)) return null;
-      return parsed as { version: number; notes: unknown[]; links: unknown[]; canvasOffset: { x: number; y: number } | null };
-    } catch {
-      return null;
-    }
+    // 解析失败先隔离留档：否则 webapp 会按「无此档」新建并覆盖，损坏内容永久丢失
+    const parsed = await this.readJsonFile(path, '写作档');
+    if (!parsed || typeof parsed !== 'object' || !Array.isArray((parsed as Record<string, unknown>).notes)) return null;
+    return parsed as { version: number; notes: unknown[]; links: unknown[]; canvasOffset: { x: number; y: number } | null };
   }
 
   async putTypewriterWritingDoc(id: string, doc: unknown): Promise<void> {
-    // vaultWrite 会自动创建不存在的父目录（typewriter-writing/），无需预先 mkdir
-    await this.vaultWrite(this.typewriterWritingDocPath(id), JSON.stringify(doc, null, 2));
+    // vaultWrite 会自动创建不存在的父目录（可配置目录），无需预先 mkdir
+    await this.ensureWritingFolderMigrated();
+    await this.vaultWrite(await this.typewriterWritingDocPath(id), JSON.stringify(doc, null, 2));
   }
 
   async deleteTypewriterWritingDoc(id: string): Promise<void> {
-    const path = this.typewriterWritingDocPath(id);
+    const path = await this.typewriterWritingDocPath(id);
     if (await this.app.vault.adapter.exists(path)) {
       await this.app.vault.adapter.remove(path);
     }
   }
 
   // ---- 画中卷·思维子弹（多组导图：每组独立文件 + 轻量索引）----
-  // 与写作档完全同构：索引(轻量)走 settings.json；每组文档放独立文件 typewriter-mindmap/<id>.json，
+  // 与写作档完全同构：索引(轻量)走 settings.json；每组文档放独立文件 <mindmapFolder>/<id>.json，
   // 避免多组 + 大文档把 settings.json 撑大、每次保存整文件重写（性能悬崖）。
+  // 存储目录：原生设置 mindmapStoreFolder（相对 basePath 的子目录，默认 typewriter-mindmap），由 AppAPI 注入。
   private typewriterMindmapDocPath(id: string): string {
-    return normalizePath(`${this.basePath}/typewriter-mindmap/${assertSafeDocId(id)}.json`);
+    return normalizePath(`${this.basePath}/${this._mindmapFolder}/${assertSafeDocId(id)}.json`);
   }
 
   async getTypewriterMindmapDoc(id: string): Promise<{ version: number; nodes: unknown[]; links: unknown[]; view: { x: number; y: number } | null; style: number } | null> {
     const path = this.typewriterMindmapDocPath(id);
     if (!(await this.app.vault.adapter.exists(path))) return null;
-    try {
-      const content = await this.app.vault.adapter.read(path);
-      const parsed: unknown = content ? JSON.parse(content) : null;
-      if (!parsed || typeof parsed !== 'object' || !Array.isArray((parsed as Record<string, unknown>).nodes)) return null;
-      return parsed as { version: number; nodes: unknown[]; links: unknown[]; view: { x: number; y: number } | null; style: number };
-    } catch {
-      return null;
-    }
+    // 解析失败先隔离留档（与写作档一致）
+    const parsed = await this.readJsonFile(path, '思维子弹档');
+    if (!parsed || typeof parsed !== 'object' || !Array.isArray((parsed as Record<string, unknown>).nodes)) return null;
+    return parsed as { version: number; nodes: unknown[]; links: unknown[]; view: { x: number; y: number } | null; style: number };
   }
 
   async putTypewriterMindmapDoc(id: string, doc: unknown): Promise<void> {
-    // vaultWrite 会自动创建不存在的父目录（typewriter-mindmap/），无需预先 mkdir
+    // vaultWrite 会自动创建不存在的父目录（mindmapStoreFolder 目录），无需预先 mkdir
     await this.vaultWrite(this.typewriterMindmapDocPath(id), JSON.stringify(doc, null, 2));
   }
 
@@ -665,20 +811,17 @@ export class VaultStorage {
   }
 
   // 便签组文档：每组独立文件，索引(轻量)放 settings.json（与写作/导图同构）
+  // 存储目录：原生设置 notesStoreFolder（相对 basePath 的子目录，默认 typewriter-notes），由 AppAPI 注入。
   private typewriterNotesDocPath(id: string): string {
-    return normalizePath(`${this.basePath}/typewriter-notes/${assertSafeDocId(id)}.json`);
+    return normalizePath(`${this.basePath}/${this._notesFolder}/${assertSafeDocId(id)}.json`);
   }
   async getTypewriterNotesDoc(id: string): Promise<{ version: number; notes: unknown[]; links: unknown[]; canvasOffset: { x: number; y: number; scale?: number } | null } | null> {
     const path = this.typewriterNotesDocPath(id);
     if (!(await this.app.vault.adapter.exists(path))) return null;
-    try {
-      const content = await this.app.vault.adapter.read(path);
-      const parsed = (content ? JSON.parse(content) : null) as { version: number; notes: unknown[]; links: unknown[]; canvasOffset: { x: number; y: number; scale?: number } | null } | null;
-      if (!parsed || !Array.isArray(parsed.notes)) return null;
-      return parsed;
-    } catch {
-      return null;
-    }
+    // 解析失败先隔离留档（与写作档一致）
+    const parsed = await this.readJsonFile(path, '便签档');
+    if (!parsed || typeof parsed !== 'object' || !Array.isArray((parsed as Record<string, unknown>).notes)) return null;
+    return parsed as { version: number; notes: unknown[]; links: unknown[]; canvasOffset: { x: number; y: number; scale?: number } | null };
   }
   async putTypewriterNotesDoc(id: string, doc: unknown): Promise<void> {
     await this.vaultWrite(this.typewriterNotesDocPath(id), JSON.stringify(doc, null, 2));
@@ -720,8 +863,27 @@ export class VaultStorage {
 
   async putSetting(key: string, value: unknown): Promise<void> {
     const path = normalizePath(this.settingsPath());
-    const abstract = this.app.vault.getAbstractFileByPath(path);
 
+    // 盘上内容损坏时绝不能照旧写入 —— 两个分支都算：
+    //   · TFile 分支：旧实现在 process 回调里把损坏当空对象 → 写入 {key: value}，
+    //     把「其它所有设置键」一起抹掉（主题 / 音源 / 市场安装记录全没）；
+    //   · 非 TFile 分支：走 vaultWrite 整体替换 → 同样抹掉。
+    // 统一先隔离留档，再按全新文件重建这一个键。
+    const cur = await this.app.vault.adapter.read(path).catch(() => null);
+    if (cur !== null && cur.trim()) {
+      let ok = false;
+      try {
+        const p: unknown = JSON.parse(cur);
+        ok = !!p && typeof p === 'object' && !Array.isArray(p);
+      } catch { ok = false; }
+      if (!ok) {
+        await this.quarantineCorruptFile(path, cur, '设置');
+        await this.vaultWrite(path, JSON.stringify({ [key]: value }, null, 2));
+        return;
+      }
+    }
+
+    const abstract = this.app.vault.getAbstractFileByPath(path);
     if (abstract instanceof TFile) {
       // vault.process 原子 read-modify-write，杜绝竞态丢数据
       await this.app.vault.process(abstract, (data) => {
@@ -747,15 +909,11 @@ export class VaultStorage {
     if (!(await this.app.vault.adapter.exists(path))) {
       return {};
     }
-    try {
-      const content: string = await this.app.vault.adapter.read(path);
-      const parsed: unknown = JSON.parse(content);
-      // parse 成功但非对象（如 "abc" / 数字 / 数组）会被 {...existing} 展开导致合并错乱，按损坏兜底
-      if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return {};
-      return parsed as AppSettings;
-    } catch {
-      return {};
-    }
+    // 解析失败先隔离留档再按空设置返回：否则 putSetting 会把其它设置键一起抹掉
+    const parsed = await this.readJsonFile(path, '设置');
+    // parse 成功但非对象（如 "abc" / 数字 / 数组）会被 {...existing} 展开导致合并错乱，按损坏兜底
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+    return parsed as AppSettings;
   }
 
   /**
@@ -763,17 +921,12 @@ export class VaultStorage {
    * 磁盘文件损坏（JSON 解析失败 / 非对象 / records 非数组）时归一化为空记录，
    * 以免 webapp 遍历 records 抛出 "s.records is not iterable" 而使首页全空白。
    */
-  private static parseHistory(content: string): PurchaseHistory | IncomeHistory | null {
-    let parsed: Record<string, unknown> | null = null;
-    try {
-      parsed = JSON.parse(content) as Record<string, unknown>;
-    } catch {
-      return { records: [] };
+  private static normalizeHistory(parsed: unknown): PurchaseHistory | IncomeHistory {
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+      && Array.isArray((parsed as Record<string, unknown>).records)) {
+      return parsed as PurchaseHistory;
     }
-    if (!parsed || typeof parsed !== 'object' || !Array.isArray(parsed.records)) {
-      return { records: [] };
-    }
-    return parsed;
+    return { records: [] };
   }
 
   // ---- 购买历史 (purchase-history.json) ----
@@ -787,10 +940,8 @@ export class VaultStorage {
     if (!(await this.app.vault.adapter.exists(path))) {
       return null;
     }
-    const content: string = await this.app.vault.adapter.read(path);
-    // 防御：磁盘文件可能损坏（records 非数组 / 非对象 / 解析失败），
-    // 归一化为空记录，避免 webapp 遍历 records 时崩溃导致首页全空白
-    return VaultStorage.parseHistory(content);
+    // 解析失败先隔离留档再归一化为空记录：否则下次 putPurchaseHistory 会静默覆盖掉损坏内容
+    return VaultStorage.normalizeHistory(await this.readJsonFile(path, '购买历史'));
   }
 
   async putPurchaseHistory(data: PurchaseHistory): Promise<void> {
@@ -809,10 +960,8 @@ export class VaultStorage {
     if (!(await this.app.vault.adapter.exists(path))) {
       return null;
     }
-    const content: string = await this.app.vault.adapter.read(path);
-    // 防御：磁盘文件可能损坏（records 非数组 / 非对象 / 解析失败），
-    // 归一化为空记录，避免 webapp 遍历 records 时崩溃导致首页全空白
-    return VaultStorage.parseHistory(content);
+    // 解析失败先隔离留档再归一化为空记录（同上，避免被静默覆盖）
+    return VaultStorage.normalizeHistory(await this.readJsonFile(path, '收入历史'));
   }
 
   async putIncomeHistory(data: IncomeHistory): Promise<void> {
@@ -822,14 +971,61 @@ export class VaultStorage {
 
   // ---- 导出/导入 ----
 
+  /** 读出指定目录下全部 .json 文档：key = 文件名去扩展名，value = 解析后的对象（单个损坏文件跳过） */
+  private async readDocsIn(folder: string): Promise<Record<string, unknown>> {
+    const dir = normalizePath(`${this.basePath}/${folder}`);
+    if (!(await this.app.vault.adapter.exists(dir))) return {};
+    const list = await this.app.vault.adapter.list(dir);
+    const out: Record<string, unknown> = {};
+    for (const file of list.files) {
+      if (!file.endsWith('.json')) continue;
+      const id = file.split('/').pop()?.replace(/\.json$/, '') ?? '';
+      if (!id) continue;
+      try {
+        const parsed: unknown = JSON.parse(await this.app.vault.adapter.read(file));
+        if (parsed && typeof parsed === 'object') out[id] = parsed;
+      } catch { /* 单个文件损坏：跳过，不阻塞整包导出 */ }
+    }
+    return out;
+  }
+
+  /**
+   * 删除目录下「不在 keep 集合中」的指定扩展名文件。
+   *
+   * 用于「先写后清」的收尾：先把新数据全部写入（同名自然覆盖），再删掉备份里没有的旧文件。
+   * 相比「先清后写」（rmdir 整个目录再逐条写），中途失败的最坏结果从
+   * 「旧数据已删、新数据未写完 → 净丢失」降级为「新旧混合、一条不丢」。
+   */
+  private async removeStaleIn(dir: string, keep: Set<string>, ext: string): Promise<void> {
+    if (!(await this.app.vault.adapter.exists(dir))) return;
+    const list = await this.app.vault.adapter.list(dir);
+    await Promise.all(
+      list.files
+        .filter((f) => f.toLowerCase().endsWith(ext))
+        .map((f) => {
+          const name = f.split('/').pop()?.replace(new RegExp(`\\${ext}$`, 'i'), '') ?? '';
+          if (!name || keep.has(name)) return Promise.resolve();
+          return this.app.vault.adapter.remove(f).catch(() => { /* 已删除则忽略 */ });
+        })
+    );
+  }
+
   async exportAllData(): Promise<ExportShape> {
-    const [days, goals, settings, purchaseHistory, incomeHistory, customTemplates] = await Promise.all([
+    const writingFolder = await this.resolveWritingFolder();
+    const [
+      days, goals, settings, purchaseHistory, incomeHistory, customTemplates,
+      typewriterWritingDocs, typewriterNotesDocs, typewriterMindmapDocs, typewriterNotes,
+    ] = await Promise.all([
       this.getAllDays(),
       this.getGoals(),
       this.getAllSettings(),
       this.getPurchaseHistory(),
       this.getIncomeHistory(),
       this.getCustomTemplates(),
+      this.readDocsIn(writingFolder),
+      this.readDocsIn(this._notesFolder),
+      this.readDocsIn(this._mindmapFolder),
+      this.getTypewriterNotes(),
     ]);
 
     return {
@@ -842,6 +1038,11 @@ export class VaultStorage {
       purchaseHistory,
       incomeHistory,
       customTemplates,
+      // 画中卷三模式的程序数据（此前备份完全不含，重置/换设备后无法恢复 —— 历史缺口）
+      typewriterWritingDocs,
+      typewriterNotesDocs,
+      typewriterMindmapDocs,
+      typewriterNotes,
     };
   }
 
@@ -857,11 +1058,14 @@ export class VaultStorage {
       const days = (record.days && typeof record.days === 'object' && !Array.isArray(record.days))
         ? record.days
         : {};
-      if (strategy === 'overwrite') {
-        await this.clearAllDays();
-      }
+      // 先写后清：overwrite 语义 = 「最终只剩备份里的这些天」。
+      // 旧实现先 rmdir(data) 再逐条写，中途失败（磁盘满 / 重载 / 某天异常）会留下
+      // 「旧数据已删、新数据未写完」的净丢失；先写后清最坏只是新旧混合，一条不丢。
       for (const day of Object.values(days)) {
         await this.putDay(day);
+      }
+      if (strategy === 'overwrite') {
+        await this.removeStaleIn(normalizePath(`${this.basePath}/data`), new Set(Object.keys(days)), '.json');
       }
     }
 
@@ -904,26 +1108,54 @@ export class VaultStorage {
       const incoming: CustomTemplate[] = Array.isArray(record.customTemplates)
         ? record.customTemplates
         : [];
-      if (strategy === 'overwrite') {
-        await this.clearAllTemplates();
-      }
+      // 先写后清（同上：避免「已删未写」的净丢失）
       for (const tpl of incoming) {
         if (tpl && tpl.id) await this.putCustomTemplate(tpl);
       }
+      if (strategy === 'overwrite') {
+        await this.removeStaleIn(this.templateDir(), new Set(incoming.map((t) => t.id)), '.md');
+      }
+    }
+
+    // ── 画中卷三模式的程序数据（早期版本备份完全不含这些，属历史缺口）──
+    // id 由 ImportValidator.normalizeDocMap 收敛为安全字符集；put* 内部还会再 assert 一次。
+    const writingFolder = await this.resolveWritingFolder();
+    if (record.typewriterWritingDocs !== undefined) {
+      const docs = ImportValidator.normalizeDocMap(record.typewriterWritingDocs);
+      // 先写后清（同上）
+      for (const [id, doc] of Object.entries(docs)) {
+        await this.putTypewriterWritingDoc(id, doc);
+      }
+      if (strategy === 'overwrite') {
+        await this.removeStaleIn(normalizePath(`${this.basePath}/${writingFolder}`), new Set(Object.keys(docs)), '.json');
+      }
+    }
+    if (record.typewriterNotesDocs !== undefined) {
+      const docs = ImportValidator.normalizeDocMap(record.typewriterNotesDocs);
+      for (const [id, doc] of Object.entries(docs)) {
+        await this.putTypewriterNotesDoc(id, doc);
+      }
+      if (strategy === 'overwrite') {
+        await this.removeStaleIn(normalizePath(`${this.basePath}/${this._notesFolder}`), new Set(Object.keys(docs)), '.json');
+      }
+    }
+    if (record.typewriterMindmapDocs !== undefined) {
+      const docs = ImportValidator.normalizeDocMap(record.typewriterMindmapDocs);
+      for (const [id, doc] of Object.entries(docs)) {
+        await this.putTypewriterMindmapDoc(id, doc);
+      }
+      if (strategy === 'overwrite') {
+        await this.removeStaleIn(normalizePath(`${this.basePath}/${this._mindmapFolder}`), new Set(Object.keys(docs)), '.json');
+      }
+    }
+    if (record.typewriterNotes !== undefined) {
+      // 旧版单文件便签存储：仅接受数组；非数组视为无数据，避免把盘上内容覆盖成 null
+      await this.putTypewriterNotes(Array.isArray(record.typewriterNotes) ? record.typewriterNotes : []);
     }
 
     // 导入代表一次全新数据集合，旧 plans-map.json 的 contentHash→goalIds 映射已不可信；
     // 重置幂等索引，避免「AI 规划显示已规划却不写入目标」的孤儿阻塞（H3）
     await this.putPlansIndex({});
-  }
-
-  /** 仅清空所有日数据（overwrite 导入 days 前调用，不影响 goals/settings） */
-  async clearAllDays(): Promise<void> {
-    const dataDir = normalizePath(`${this.basePath}/data`);
-    if (await this.app.vault.adapter.exists(dataDir)) {
-      await this.app.vault.adapter.rmdir(dataDir, true);
-    }
-    await this.ensureDir('data');
   }
 
   async clearAll(): Promise<void> {
@@ -940,7 +1172,8 @@ export class VaultStorage {
   }
 
   private templatePath(id: string): string {
-    return normalizePath(`${this.templateDir()}/${id}.md`);
+    // id 直接参与路径拼接：模板 id 可能来自外部消息，未校验则 `../x` 可越界写/删任意 .md
+    return normalizePath(`${this.templateDir()}/${assertSafeAssetId(id, '模板 id')}.md`);
   }
 
   /** 解析模板 markdown 的 frontmatter；损坏/无 frontmatter 返回 null */
@@ -993,19 +1226,4 @@ export class VaultStorage {
     }
   }
 
-  /** 清空全部自定义模板（overwrite 导入前调用，不影响其它数据） */
-  async clearAllTemplates(): Promise<void> {
-    const dir = this.templateDir();
-    if (!(await this.app.vault.adapter.exists(dir))) return;
-    const list = await this.app.vault.adapter.list(dir);
-    await Promise.all(
-      list.files
-        .filter((f) => f.endsWith('.md'))
-        .map(async (file) => {
-          if (await this.app.vault.adapter.exists(file)) {
-            await this.app.vault.adapter.remove(file);
-          }
-        })
-    );
-  }
 }

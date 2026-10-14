@@ -18,60 +18,24 @@ import { isFromTextEntry } from '../../utils/domRef.js';
 import { CanvasViewport } from '../../services/CanvasViewport.js';
 import { CanvasGestures } from '../../services/CanvasGestures.js';
 import { CanvasKeys } from '../../services/CanvasKeys.js';
+// 三档差异真源（P2 · A 类）：卡片交互归属 / 连线定序，一律查表
+import { ModePolicy } from './modePolicy.js';
+
+/** 【连线定序】连线是文章顺序的输入之一：增 / 删连线后按 orderIds（连线优先 → 回退阅读序）
+ *  重算一次 seq，并显式刷徽标。真值仍落在 seq 上（读取方 O(1)、不每帧现推），
+ *  连线只在变更瞬间参与推导。
+ *  是否启用由策略表决定（linksDefineOrder）—— 原先这条规则连同 _mode === 'write'
+ *  在 addLink / removeLink / removeLinksOfData 里各写一遍，加档位时极易只改其中一处。 */
+function reseqByLinks(ctrl) {
+  if (!ModePolicy.linksDefineOrder(ctrl._mode)) return;
+  ctrl._notes = WritingDoc.setOrder(ctrl._notes, WritingDoc.orderIds(ctrl._notes, ctrl._links));
+  ctrl._refreshWriteOrder();
+}
 
 export const CardInteractions = {
   // (was _makeDraggable)
   makeDraggable(ctx, card) {
     const { state, ctrl } = ctx;
-    const canvas = ctrl._canvas;
-    let dragging = false;
-    let startX = 0, startY = 0;
-    let moved = false;   // 区分「轻点」与「拖动」：轻点 = 钉住外围工具条
-    let raf = 0;
-    let dx = 0, dy = 0;     // 本帧位移（画布局部 px，已按缩放比换算）
-    let dragSet = null;     // 拖动集合快照：[{card, lx, ly}]（成组移动用）
-    const apply = () => {
-      raf = 0;
-      if (!dragSet) return;
-      dragSet.forEach((d) => {
-        d.card.style.left = (d.lx + dx) + 'px';
-        d.card.style.top = (d.ly + dy) + 'px';
-      });
-      ctrl._scheduleRenderLinks();   // 便签移动，连线端点跟随
-    };
-    const onMove = (e) => {
-      if (!dragging) return;
-      if (Math.abs(e.clientX - startX) > 4 || Math.abs(e.clientY - startY) > 4) moved = true;
-      // 无限画布：坐标相对 .tw-canvas（含其 transform 平移），不 clamp。
-      // 画布带缩放后「屏幕位移 ≠ 局部位移」：必须除以缩放比，
-      // 否则放大后拖不动（位移被放大）、缩小后拖过头。
-      const s = CanvasViewport.getScale(ctrl);
-      dx = (e.clientX - startX) / s;
-      dy = (e.clientY - startY) / s;
-      if (!raf) raf = requestAnimationFrame(apply);
-    };
-    const onUp = () => {
-      dragging = false;
-      if (raf) { cancelAnimationFrame(raf); raf = 0; }
-      if (moved && dragSet) {
-        dragSet.forEach((d) => {
-          // 连续编辑改走 WritingDoc 原语：拖动结束即把最终落点写回规范模型
-          ctrl._notes = WritingDoc.setPos(ctrl._notes, d.card.dataset.id,
-            parseFloat(d.card.style.left) || 0, parseFloat(d.card.style.top) || 0);
-        });
-        dragSet.forEach((d) => ctrl._measureCard(d.card)); // 拖完重测几何→刷新 geo+空间索引（修复剔除/连线端点陈旧）
-        ctrl._scheduleRenderLinks();
-      }
-      card.classList.remove('dragging');
-      card.style.willChange = '';   // 拖拽结束撤掉合成层提升
-      document.removeEventListener('pointermove', onMove);
-      document.removeEventListener('pointerup', onUp);
-      if (moved) ctrl._scheduleSave();  // 真拖动落盘
-      else ctrl._pinOnly(card);         // 轻点：钉住工具条（触屏无 hover 时的入口）
-      ctrl._draggingSet = null;         // 拖拽结束：解除钉屏
-      ctrl._scheduleCull();             // 重算挂载：被拖出视野的卡卸载
-      dragSet = null;
-    };
     const onDown = (e) => {
       if (e.target.closest('button, .tw-card-resize, .tw-card-rotate, .tw-card-link')) return; // 删除/字级/缩放/连线锚点不触发拖拽
       // 编辑态下点在文本区不拖拽（让浏览器处理选字/光标）；点标题或纸边仍可移动便签
@@ -79,31 +43,88 @@ export const CardInteractions = {
       // Shift 点击 = 切换选中（不进入拖拽）；其余点击决定选择集
       if (e.shiftKey) { ctrl._toggleSelect(card); return; }
       if (!ctrl._selected || !ctrl._selected.has(card)) ctrl._selectOnly(card);
-      // 拖动集合 = 当前选中集（含本卡）；若本卡未选中则上方已使其成为唯一选中
-      const set = (ctrl._selected && ctrl._selected.size) ? ctrl._selected : new Set([card]);
-      dragging = true;
-      moved = false;
-      startX = e.clientX;
-      startY = e.clientY;
-      dx = 0; dy = 0;
-      dragSet = Array.from(set).map((c) => ({
-        card: c,
-        lx: parseFloat(c.style.left) || 0,
-        ly: parseFloat(c.style.top) || 0,
-      }));
-      ctrl._draggingSet = new Set(dragSet.map((d) => d.card.dataset.id));  // 拖拽中：这些卡钉在屏上，剔除跳过
-      card.classList.add('dragging');
-      card.style.willChange = 'transform';   // 仅拖拽期间临时提升，松手即撤
-      card.style.zIndex = String(++ctrl._zTop);
-      // 拖拽置顶后同步层叠快照，避免 mouseleave 时把便签回落回旧层级
-      if (card.dataset.zLifted === '1') card._zPrev = card.style.zIndex;
-      e.preventDefault();
-      document.addEventListener('pointermove', onMove);
-      document.addEventListener('pointerup', onUp);
+      // 拖动集合 = 当前选中集（卡片 + 贴纸，统一选区）；startGroupDrag 内部处理整体平移与分类型落盘
+      CardInteractions.startGroupDrag(ctx, e, card);
     };
     card.addEventListener('pointerdown', onDown);
-  
   },
+
+  /**
+   * 统一选区的「整体拖动」：拖动 primaryEl 时把当前选中集（卡片 + 贴纸）一起平移。
+   * 坐标在 .tw-canvas 内容空间（含 transform 平移 / 缩放），屏幕位移需除以缩放比。
+   * 落盘分流：卡片 → WritingDoc.setPos + _scheduleSave；贴纸 → rec.x/rec.y + _saveStickers。
+   * 供卡片（makeDraggable）与贴纸（MaterialMarket._makeStickerDraggable）共用，保证混合选区一视同仁。
+   */
+  startGroupDrag(ctx, e, primaryEl) {
+    const ctrl = ctx.ctrl;
+    const mm = ctrl._materialMarket || null;
+    const set = (ctrl._selected && ctrl._selected.size) ? ctrl._selected : new Set([primaryEl]);
+    let dragging = true, moved = false, startX = e.clientX, startY = e.clientY, dx = 0, dy = 0, raf = 0;
+    let dragSet = Array.from(set).map((el) => ({
+      el,
+      lx: parseFloat(el.style.left) || 0,
+      ly: parseFloat(el.style.top) || 0,
+    }));
+    // 拖拽中：选中的卡钉在屏上、剔除跳过（贴纸不在剔除系统内，其 undefined id 自然忽略）
+    ctrl._draggingSet = new Set(dragSet.map((d) => d.el.dataset && d.el.dataset.id).filter(Boolean));
+    primaryEl.classList.add('dragging');
+    primaryEl.style.willChange = 'transform';   // 仅拖拽期间临时提升，松手即撤
+    primaryEl.style.zIndex = String(++ctrl._zTop);
+    // 拖拽置顶后同步层叠快照，避免 mouseleave 时把元素回落回旧层级
+    if (primaryEl.dataset.zLifted === '1') primaryEl._zPrev = primaryEl.style.zIndex;
+    const apply = () => {
+      raf = 0;
+      dragSet.forEach((d) => {
+        d.el.style.left = (d.lx + dx) + 'px';
+        d.el.style.top = (d.ly + dy) + 'px';
+      });
+      // 同一帧内同步重画连线：与卡片位移同帧完成，消除「卡片先动、连线冻住/慢一帧、松手才追」的滞后感
+      if (ctrl._linkLayer && typeof ctrl._linkLayer.render === 'function') ctrl._linkLayer.render();
+    };
+    const onMove = (ev) => {
+      if (!dragging) return;
+      if (Math.abs(ev.clientX - startX) > 4 || Math.abs(ev.clientY - startY) > 4) moved = true;
+      // 无限画布：坐标相对 .tw-canvas（含其 transform 平移），不 clamp。
+      // 画布带缩放后「屏幕位移 ≠ 局部位移」：必须除以缩放比，否则放大后拖不动、缩小后拖过头。
+      const s = CanvasViewport.getScale(ctrl);
+      dx = (ev.clientX - startX) / s;
+      dy = (ev.clientY - startY) / s;
+      if (!raf) raf = requestAnimationFrame(apply);
+    };
+    const onUp = () => {
+      dragging = false;
+      if (raf) { cancelAnimationFrame(raf); raf = 0; }
+      if (moved && dragSet) {
+        let stickerMoved = false;
+        dragSet.forEach((d) => {
+          if (d.el.classList && d.el.classList.contains('bm-sticker')) {
+            const rec = mm && mm.recForEl(d.el);
+            if (rec) { rec.x = parseFloat(d.el.style.left) || 0; rec.y = parseFloat(d.el.style.top) || 0; stickerMoved = true; }
+          } else {
+            const id = d.el.dataset && d.el.dataset.id;
+            if (id) ctrl._notes = WritingDoc.setPos(ctrl._notes, id, parseFloat(d.el.style.left) || 0, parseFloat(d.el.style.top) || 0);
+          }
+        });
+        // 卡片拖完重测几何 → 刷新 geo + 空间索引（修复剔除 / 连线端点陈旧）；贴纸不在剔除系统内，跳过
+        dragSet.forEach((d) => { if (d.el.classList && !d.el.classList.contains('bm-sticker')) ctrl._measureCard(d.el); });
+        ctrl._scheduleRenderLinks();   // 便签移动，连线端点跟随
+        if (mm && stickerMoved) mm._saveStickers();
+      }
+      primaryEl.classList.remove('dragging');
+      primaryEl.style.willChange = '';
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerup', onUp);
+      if (moved) ctrl._scheduleSave();
+      else if (primaryEl.classList.contains('tw-card')) ctrl._pinOnly(primaryEl);   // 轻点：钉住工具条（触屏无 hover 入口）；贴纸无此概念
+      ctrl._draggingSet = null;     // 拖拽结束：解除钉屏
+      ctrl._scheduleCull();         // 重算挂载：被拖出视野的卡卸载
+      dragSet = null;
+    };
+    e.preventDefault();
+    document.addEventListener('pointermove', onMove);
+    document.addEventListener('pointerup', onUp);
+  },
+
   // (was _makeCanvasDraggable)
   // 画布级手势（平移 / 双指捏合 / 空格抓手 / 滚轮）统一走共享 CanvasGestures（C3 机制收敛），
   // 模式专属的「卡片拖拽 / 框选」经 onEmptyPointerDown 回调注入，避免三模式各自维护一份漂移。
@@ -120,18 +141,19 @@ export const CardInteractions = {
 
     // 双击空白：归位所有便签到视野中心(fit-all)；无便签则复位画布
     root.addEventListener('dblclick', (e) => {
-      if (ctrl._mode === 'mindmap') return;                 // 导图模式：归位交互属于导图，便签不接手
+      // 导图有自己文档与手势：归位交互归导图，卡片侧不接手（判据查表，与 undo / 排版守卫同源）
+      if (!ModePolicy.usesCardInteractions(ctrl._mode)) return;
       if (e.target.closest('.tw-card, button, .tw-card-resize, input, textarea')) return;
       ctrl._recenterNotes();
     });
 
     // 空格=临时抓手 / Hand 工具：统一接线（含状态对象 state，供 attach 读取）
-    const hand = CanvasGestures.installSpaceHand(root, { isActive: () => ctrl._mode !== 'mindmap' });
+    const hand = CanvasGestures.installSpaceHand(root, { isActive: () => ModePolicy.usesCardInteractions(ctrl._mode) });
     ctrl._hand = hand;
 
     // 滚轮：统一接线（⌘/Ctrl=缩放、Shift=横移、普通=平移；Alt+滚轮也走正常平移，单卡缩放快捷键已移除）
     ctrl._wheelDetach = CanvasGestures.installWheel(root, {
-      isActive: () => ctrl._mode !== 'mindmap',
+      isActive: () => ModePolicy.usesCardInteractions(ctrl._mode),
       getView: () => ({
         x: CanvasViewport.getOffset(ctrl).x,
         y: CanvasViewport.getOffset(ctrl).y,
@@ -143,7 +165,7 @@ export const CardInteractions = {
 
     // 平移 / 捏合 / 空白判定：统一接管；空缺点交给便签的「清选 + 框选」
     const detach = CanvasGestures.attach(root, {
-      isActive: () => ctrl._mode !== 'mindmap',
+      isActive: () => ModePolicy.usesCardInteractions(ctrl._mode),
       state: hand.state,
       getView: () => ({
         x: CanvasViewport.getOffset(ctrl).x,
@@ -255,14 +277,22 @@ export const CardInteractions = {
   // (was _deleteSelected)
   deleteSelected(ctx) {
     const { state, ctrl } = ctx;
+    const mm = ctrl._materialMarket || null;
     if (!ctrl._selected || !ctrl._selected.size) return false;
     if (ctrl._undoStack) ctrl._undoStack.push();   // 整批一次快照：撤销时一起回来
-    // 先快照成数组再删：_removeCard 会改动 _selected，边遍历 Set 边删会漏
-    Array.from(ctrl._selected).forEach((c) => ctrl._removeCard(c));
+    // 先快照成数组再删：_removeCard / removeStickerEl 会改动 _selected 或 DOM，边遍历 Set 边删会漏
+    // 统一选区：卡片走 _removeCard（含连线/子卡级联），贴纸走 MaterialMarket.removeStickerEl
+    Array.from(ctrl._selected).forEach((el) => {
+      if (el.classList && el.classList.contains('bm-sticker')) {
+        if (mm) mm.removeStickerEl(el);
+      } else {
+        ctrl._removeCard(el);
+      }
+    });
     ctrl._clearSelection();
     ctrl._scheduleSave();
     return true;
-  
+
   },
   // (was _marqueeEdgeDir) 框选时指针相对「视口(固定、不随画布平移)」的边缘方向（Figma 式自动平移触发）
   //   ⚠️ 必须用视口 rect，绝不能用被 transform 的画布 rect：画布 rect 含 canvasOffset 偏移，
@@ -297,7 +327,8 @@ export const CardInteractions = {
     // 视口（固定、不随画布平移）：边缘判定必须基于它，不能用被 transform 的画布 rect
     const vpRect = (canvas.parentElement || canvas).getBoundingClientRect();
     let lastX = e.clientX, lastY = e.clientY;
-    let rafId = 0;
+    let rafId = 0;         // 自动平移动画
+    let refreshRaf = 0;    // 框选矩形刷新（rAF 合帧，与拖拽/缩放/选区条一致）
 
     const EDGE = 48;   // 距视口边缘多近开始自动平移
     const MAX = 26;    // 每帧最大平移像素
@@ -314,6 +345,10 @@ export const CardInteractions = {
       ctrl._marqueeRect = r;
       badge.textContent = (ctrl._countInRect ? ctrl._countInRect(r) : 0) + '';
     };
+
+    // rAF 合帧刷新：把一帧内多次 pointermove 收敛为一次 refresh（读 canvas rect + 写 4 样式 + 计数查询），
+    // 与 group-drag/resize/选区条同模式，消除框选逐事件的 read-after-write 强制回流。
+    const scheduleRefresh = () => { if (refreshRaf) return; refreshRaf = requestAnimationFrame(() => { refreshRaf = 0; refresh(); }); };
 
     // 指针是否贴「视口」边缘 → 自动平移方向（在左/上缘往对应方向平移露出那侧内容）
     const edgeDir = () => CardInteractions.marqueeEdgeDir(lastX, lastY, vpRect, EDGE);
@@ -332,13 +367,15 @@ export const CardInteractions = {
 
     const move = (ev) => {
       lastX = ev.clientX; lastY = ev.clientY;
-      refresh();
+      scheduleRefresh();
       if (edgeDir() && !rafId) rafId = requestAnimationFrame(tick);
     };
     const up = () => {
       document.removeEventListener('pointermove', move);
       document.removeEventListener('pointerup', up);
       if (rafId) cancelAnimationFrame(rafId);
+      if (refreshRaf) { cancelAnimationFrame(refreshRaf); refreshRaf = 0; }
+      refresh();   // 松手前同步刷一次，保证 _marqueeRect 反映最新指针位置（_selectInRect 依赖它）
       if (ctrl._marquee) { ctrl._marquee.remove(); ctrl._marquee = null; }
       // 被双指捏合接管（_cancelMarquee）：不做任何选中变更，避免捏合时把已选清空
       if (ctrl._marqueeCancelled) { ctrl._marqueeCancelled = false; ctrl._marqueeRect = null; return; }
@@ -406,8 +443,21 @@ export const CardInteractions = {
         card.classList.add('selected');
       }
     });
+    // 贴纸：与卡片同一内容坐标系，矩形相交即纳入统一选区（便签档专属装饰，非便签档不挂载故无需判定档位）
+    const mm = ctrl._materialMarket;
+    if (mm && mm._canvasStickers) {
+      for (const rec of mm._canvasStickers) {
+        if (!rec.el) continue;
+        const ix = rec.x + rec.w >= r.x && rec.x <= r.x + r.w && rec.y + rec.h >= r.y && rec.y <= r.y + r.h;
+        if (ix) {
+          if (!ctrl._selected) ctrl._selected = new Set();
+          ctrl._selected.add(rec.el);
+          rec.el.classList.add('selected');
+        }
+      }
+    }
     if (ctrl._updateSelBar) ctrl._updateSelBar();
-  
+
   },
   // (was _revealSelection)
   revealSelection(ctx) {
@@ -469,7 +519,7 @@ export const CardInteractions = {
       // 撤销 / 重做：Cmd/Ctrl+Z、Cmd/Ctrl+Shift+Z。
       // 导图模式下让位给 MindmapFeature（它有自己的文档与历史），否则一次按键会被两边各撤一次。
       if ((e.metaKey || e.ctrlKey) && (e.key === 'z' || e.key === 'Z')) {
-        if (ctrl._mode === 'mindmap') return;
+        if (!ModePolicy.usesCardInteractions(ctrl._mode)) return;
         e.preventDefault();
         ctrl._undoRedo(e.shiftKey ? 'redo' : 'undo');
         return;
@@ -497,7 +547,7 @@ export const CardInteractions = {
     // stopImmediatePropagation，会把新 handler 挡掉），故先销毁旧的。
     if (ctrl._canvasKeysDetach) { ctrl._canvasKeysDetach(); ctrl._canvasKeysDetach = null; }
     ctrl._canvasKeysDetach = CanvasKeys.bind({
-      isActive: () => ctrl._mode !== 'mindmap',
+      isActive: () => ModePolicy.usesCardInteractions(ctrl._mode),
       zoomByCenter: (f) => ctrl._zoomByCenter(f),
       zoomReset: () => ctrl._zoomReset(),
       fitView: () => ctrl._fitNotesToView(),
@@ -702,10 +752,6 @@ export const CardInteractions = {
     ctrl._exitAllEdits();
     const text = card.querySelector('.tw-card-text');
     if (!text) return;
-    // 若还在打字动画中就进入编辑：先补齐全文并停表。
-    // 否则逐字写入会持续覆写 contentEditable —— 光标被打飞、用户输入与动画互覆，
-    // 且 pendingText 一除，落盘就会拿到「半截 + 手输」的残缺内容。
-    ctrl._finishTyping(card);
     card.classList.add('editing');
     ctrl._editingId = card.dataset.id;   // 编辑中：钉在屏上，剔除跳过
     text.setAttribute('contenteditable', 'true'); // 所见即所得：直接在纸样内改，样式已就位
@@ -722,8 +768,10 @@ export const CardInteractions = {
     // 表现为 Escape 退出失效、输入不自动落盘。处理器存到 card._editHandlers 以便对称移除。
     const onInput = (e) => {
       if (e && e.isComposing) { ctrl._scheduleSave(); return; }  // 输入法组字中：先不截断
-      ctrl._enforceEditLimit(text);
-      ctrl._notes = WritingDoc.setText(ctrl._notes, card.dataset.id, text.innerText);  // 连续编辑改走 WritingDoc 原语
+      // innerText 是强制同步布局读：常规（未超限）只读一次；仅当超限才走截断+选区间恢复（罕见，容忍二次读）
+      let full = text.innerText;
+      if (full.length > MAX_LEN) { ctrl._enforceEditLimit(text); full = text.innerText; }
+      ctrl._notes = WritingDoc.setText(ctrl._notes, card.dataset.id, full);  // 连续编辑改走 WritingDoc 原语
       ctrl._scheduleSave();
     };
     const onKey = (e) => {
@@ -809,12 +857,7 @@ export const CardInteractions = {
       (l.from === fromId && l.to === toId) || (l.from === toId && l.to === fromId));
     if (dup) return false;
     ctrl._links.push({ from: fromId, to: toId, route: 'bezier', bend: 0, dash: 'solid' });
-    // 【连线定序】连线是文章顺序的输入之一：增/删连线后按 orderIds（连线优先 → 回退阅读序）
-    // 重算一次 seq。真值仍落在 seq 上（读取方 O(1)、不每帧现推），连线只在变更瞬间参与推导。
-    if (ctrl._mode === 'write') {
-      ctrl._notes = WritingDoc.setOrder(ctrl._notes, WritingDoc.orderIds(ctrl._notes, ctrl._links));
-      ctrl._refreshWriteOrder();   // 顺序真变了（连线定序）→ 显式刷徽标（已从渲染路径解耦）
-    }
+    reseqByLinks(ctrl);   // 顺序真变了（连线定序）→ 重算 seq 并刷徽标
     return true;
   
   },
@@ -823,11 +866,8 @@ export const CardInteractions = {
     const { state, ctrl } = ctx;
     ctrl._links = ctrl._links.filter((l) =>
       !((l.from === fromId && l.to === toId) || (l.from === toId && l.to === fromId)));
-    // 【连线定序】删连线同样要重算 seq（连线是顺序输入之一），与 addLink 同一处理
-    if (ctrl._mode === 'write') {
-      ctrl._notes = WritingDoc.setOrder(ctrl._notes, WritingDoc.orderIds(ctrl._notes, ctrl._links));
-      ctrl._refreshWriteOrder();
-    }
+    // 【连线定序】删连线同样要重算 seq，与 addLink 同一处理（单一实现）
+    reseqByLinks(ctrl);
   
   },
   // (was _removeLinksOfData)
@@ -835,11 +875,8 @@ export const CardInteractions = {
     const { state, ctrl } = ctx;
     if (!cardId) return;
     ctrl._links = ctrl._links.filter((l) => l.from !== cardId && l.to !== cardId);
-    // 【连线定序】级联删线同样重算 seq，与 addLink / removeLink 保持一致
-    if (ctrl._mode === 'write') {
-      ctrl._notes = WritingDoc.setOrder(ctrl._notes, WritingDoc.orderIds(ctrl._notes, ctrl._links));
-      ctrl._refreshWriteOrder();
-    }
+    // 【连线定序】级联删线同样重算 seq，与 addLink / removeLink 保持一致（单一实现）
+    reseqByLinks(ctrl);
   
   },
   // (was _ensureNotesVisible)
@@ -899,7 +936,7 @@ export const CardInteractions = {
     const canvas = ctrl._canvas;
     if (!canvas) return;
     // 导图有自己的文档与布局，排版只管便签：导图模式下直接提示，不静默切换模式（更不再丢弃导图）
-    if (ctrl._mode === 'mindmap') { ctrl._showScreenMsg('先拨回便签画布再排版', 1200); return; }
+    if (!ModePolicy.usesCardInteractions(ctrl._mode)) { ctrl._showScreenMsg('先拨回便签画布再排版', 1200); return; }
     const seq = ctrl._orderCards();                        // 全部卡（模型，剔除态完整）
     const selCount = ctrl._selected ? ctrl._selected.size : 0;
     // 只有选中 ≥2 张才「对选中组」排版；选中 0 张或仅 1 张，都按全局排版处理。

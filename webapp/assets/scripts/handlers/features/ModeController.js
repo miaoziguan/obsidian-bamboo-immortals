@@ -1,8 +1,10 @@
 // ModeController — 从 typewriterFeature 巨型单例（B1 解耦）抽出的子系统。
 // 方法体逐字搬运，所有内部调用经 ctrl._xxx 由 feature 委托壳自动解析回原对象。
 // 共享常量（裸名引用由本 import 提供；测试 harness 剥离 import 时由 twConfig 挂 globalThis 兜底）
-import { ICON_LAYERS, ICON_FONT, ICON_GRID, ICON_PRINT, ICON_X, ICON_FONT_DOWN, ICON_FONT_UP, ICON_ZOOM_OUT, ICON_ZOOM_IN, ICON_PAPER, ICON_EXPORT, ICON_PREVIEW, ICON_MOVE_UP, ICON_MOVE_DOWN, ICON_LV_UP, ICON_LV_DOWN, ICON_ROTATE } from './twConfig.js';
-import { STACK_STEP, STACK_LEVELS, TYPE_SPEED, MAX_LEN, DRAFT_MAX_LEN, NOTE_CAP, WRITE_FLOW_GAP, SAVE_DEBOUNCE, LOD_DENSITY, ZOOM_MIN, ZOOM_MAX, ZOOM_STEP } from './twConfig.js';
+import { ICON_PRINT, ICON_X, ICON_FONT_DOWN, ICON_FONT_UP, ICON_ZOOM_OUT, ICON_ZOOM_IN, ICON_PAPER, ICON_MOVE_UP, ICON_MOVE_DOWN, ICON_LV_UP, ICON_LV_DOWN, ICON_ROTATE } from './twConfig.js';
+import { STACK_STEP, STACK_LEVELS, TYPE_SPEED, NOTE_CAP, WRITE_FLOW_GAP, SAVE_DEBOUNCE, LOD_DENSITY, ZOOM_MIN, ZOOM_MAX, ZOOM_STEP } from './twConfig.js';
+// 三档差异真源（P2）：抬头 / 输入上限 / 元信息条 / 机身键语义 / 文档种类 / 装饰归属 → 全部查表
+import { ModePolicy, META_IDS } from './modePolicy.js';
 import { FONT_SCALES, FONT_SCALE_DEFAULT_IDX, FONT_SCALE_LABELS, CARD_SCALES, CARD_SCALE_LABELS, CARD_SCALE_DEFAULT_IDX } from './twConfig.js';
 import { FONTS, FONT_LABELS, FONT_FEEDBACK } from './twConfig.js';
 import { PAPERS, PAPER_LABELS, PAPER_FEEDBACK, PAPER_TITLES } from './twConfig.js';
@@ -20,18 +22,18 @@ export const ModeController = {
   // (was _cycleMode)
   cycleMode(ctx, dir) {
     const { state, ctrl } = ctx;
-    const order = ['notes', 'write', 'mindmap'];
-    const cur = Math.max(0, order.indexOf(ctrl._mode));
     const step = dir >= 0 ? 1 : -1;
-    ctrl._setMode(order[(cur + step + order.length) % order.length]);
-  
+    // 切档含 await：期间的连拨不再静默丢弃，而是累积净步数，待当前切档完成后接续（避免快速拨动丢档）
+    if (ctrl._switching) { ctrl._pendingModeDir = (ctrl._pendingModeDir || 0) + step; return; }
+    // 拨齿顺序与合法性都由策略表持有（MODE_ORDER），此处不再自带一份数组
+    ctrl._setMode(ModePolicy.next(ctrl._mode, step));
+
   },
   // (was _setMode)
   async setMode(ctx, mode) {
     const { state, ctrl } = ctx;
     if (!ctrl._canvas) return;
-    const order = ['notes', 'write', 'mindmap'];
-    if (order.indexOf(mode) < 0 || mode === ctrl._mode) return;
+    if (!ModePolicy.isMode(mode) || mode === ctrl._mode) return;
     const knob = ctrl._el && ctrl._el.querySelector('#twKnob');
     const prev = ctrl._mode;
     // 切档含 await（要读盘）：期间再拨会与上一次的读写交叉，两份文档互相覆盖。
@@ -59,6 +61,9 @@ export const ModeController = {
       ctrl._clearSelection();
 
       ctrl._mode = mode;
+      // 【档位所有权】贴纸是便签档专属装饰：离开便签档立即摘除（写作档与导图档都不该看到）。
+      // 不能依赖 _buildCards([]) 顺带清场 —— 它只清 .tw-card，贴纸会滞留在共享画布上。
+      if (!ModePolicy.ownsStickers(mode) && typeof ctrl._detachStickers === 'function') await ctrl._detachStickers();
       // 导图自绘层；便签/写作共用同一张卡片画布作为渲染介质，但数据各存各的
       ctrl._canvas.hidden = ctrl._mode === 'mindmap';
       // 写作档外观必须**先于**载入卡片生效：_loadDoc 会量卡片尺寸并做「带入视野」校正，
@@ -66,15 +71,11 @@ export const ModeController = {
       ctrl._refreshWriteMode();
 
       if (knob) {
+        const kP = ModePolicy.of(mode);
         knob.dataset.mode = mode;
-        knob.classList.toggle('is-on', ctrl._mode === 'mindmap');
-        knob.setAttribute('aria-pressed', ctrl._mode === 'mindmap' ? 'true' : 'false');
-        const TITLES = {
-          notes: '拨动齿轮：便签画布 / MD可视化写作 / 思维子弹',
-          write: 'MD可视化写作：给每张卡定级别，最后连成一篇 Markdown',
-          mindmap: '思维子弹：打字后回车新建节点',
-        };
-        knob.title = TITLES[mode] || TITLES.notes;
+        knob.classList.toggle('is-on', kP.id === 'mindmap');
+        knob.setAttribute('aria-pressed', kP.id === 'mindmap' ? 'true' : 'false');
+        knob.title = kP.knobTitle;
       }
       if (ctrl._mode === 'mindmap') {
         MindmapFeature.activate();
@@ -106,29 +107,37 @@ export const ModeController = {
         }
         await ctrl._loadDoc(mode);
         if (ctrl._undoStack) ctrl._undoStack.reset();
+        // 贴纸不属于卡片文档、不会随 _loadDoc 回来 → 切回便签档要按当前组把贴纸挂回去。
+        // 走 ctrl 委托壳（_reloadStickers）而非全局探测：模块作用域里 typeof MaterialMarket
+        // 探不到值，旧写法让这条重建长期静默失效（现象即「切走再切回看不到，重启才又能看到」）。
+        if (ModePolicy.ownsStickers(mode) && typeof ctrl._reloadStickers === 'function') {
+          await ctrl._reloadStickers();
+        }
       }
 
       ctrl._applyModeChrome();       // 载入后再刷一次：计数/元信息取自刚载入的新文档真值
       ctrl._scheduleRenderLinks();
-      const MSGS = {
-        notes: '已回到便签画布',
-        write: 'MD可视化写作：用卡片上的级别钮定 H1–H6 / 正文 / 引用',
-        mindmap: '思维子弹模式：打字后回车新建节点',
-      };
-      ctrl._showScreenMsg(MSGS[mode] || '', mode === 'mindmap' ? 1800 : 1900);
+      const msgP = ModePolicy.of(mode);
+      ctrl._showScreenMsg(msgP.msg || '', msgP.msgMs || 1900);
       TypewriterStore.setMode(mode).catch(() => {});   // 持久化档位，下次启动恢复（best-effort）
     } finally {
       ctrl._switching = false;
+      // 接续连拨：把切档期间累积的净步数一次性落到最新档位（3 档循环，净步数已含方向）
+      const pending = ctrl._pendingModeDir || 0;
+      ctrl._pendingModeDir = 0;
+      if (pending) {
+        const st = pending > 0 ? 1 : -1;
+        let target = ctrl._mode;
+        for (let k = 0; k < Math.abs(pending); k += 1) target = ModePolicy.next(target, st);
+        if (target && target !== ctrl._mode) this.setMode(ctx, target);
+      }
     }
   
   },
   // (was _getDocKind)
   getDocKind(ctx) {
     const { state, ctrl } = ctx;
-    if (ctrl._mode === 'mindmap') return 'mindmap';
-    if (ctrl._mode === 'write') return 'write';
-    if (ctrl._mode === 'notes') return 'notes';
-    return null;
+    return ModePolicy.docKind(ctrl._mode);
   
   },
   // (was _ensureDocCorner)
@@ -426,6 +435,10 @@ export const ModeController = {
       await ctrl._persistDoc('notes');
       await TypewriterStore.setNotesCurrent(id);
       await ctrl._loadDoc('notes');
+      // 贴纸按便签组独立持久化：切组后按新组重建（贴纸属于某一组，不跨组串味）
+      if (typeof ctrl._reloadStickers === 'function') {
+        await ctrl._reloadStickers();
+      }
       if (ctrl._undoStack) ctrl._undoStack.reset();
       ctrl._scheduleRenderLinks();
       await ctrl._refreshDocBtnLabel();
@@ -447,6 +460,10 @@ export const ModeController = {
       await ctrl._persistDoc('notes');
       await TypewriterStore.createNotesGroup('未命名便签');
       await ctrl._loadDoc('notes');
+      // 同上：新建组是空组，重建即清掉上一组残留的贴纸
+      if (typeof ctrl._reloadStickers === 'function') {
+        await ctrl._reloadStickers();
+      }
       if (ctrl._undoStack) ctrl._undoStack.reset();
       await ctrl._refreshDocBtnLabel();
       await ctrl._renderDocPanel();
@@ -591,8 +608,9 @@ export const ModeController = {
     const root = ctrl._el;
     if (!root) return;
     ctrl._ensureDocCorner();   // 先确保画布角控件已创建，下面的 set('#twDocCorner') 才不会因元素不存在而跳过
-    const mm = ctrl._mode === 'mindmap';
-    const wr = ctrl._mode === 'write';
+    // 【P2】三档差异一律查策略表（modePolicy.js），不再在本函数里散落 if (_mode === 'x')
+    const P = ModePolicy.of(ctrl._mode);
+    const mm = P.id === 'mindmap';
     // 缩放条互斥：便签与导图各有一条（分别挂在 wrap 与 .tw-mm 上）。
     // 只显示当前模式对应的那条，否则导图模式下会叠出两条重叠的缩放条。
     // （导图层在便签模式下 layer.hidden = true，其缩放条随之隐藏，无需额外处理。）
@@ -600,90 +618,44 @@ export const ModeController = {
       const c = root.children[i];
       if (c && c.classList && c.classList.contains('tw-zoom-bar')) c.hidden = mm;
     }
-    const T = {
-      notes: { title: '凝墨成笺', ph: '输入文字打印便签...' },
-      // 抬头「列锦成文」：列锦是古典修辞格——意象并置、如锦缎铺陈，正合本模式
-      // 「一张张卡片平铺陈列」的可视化特质（而非线性的珠串）；成文=落成一篇 Markdown。
-      // 与便签「凝墨成笺」、子弹「枝连成图」同为「X → 成 Y」的四字结构，同一套诗意命名。
-      write: { title: '列锦成文', ph: '输入文字打印卡片...' },
-      mindmap: { title: '枝连成图', ph: '输入文字新建节点...' },
-    }[ctrl._mode] || { title: '凝墨成笺', ph: '输入文字打印便签...' };
+    // 素材市场按钮：仅「拥有装饰物（贴纸）」的档位可见 —— 目前只有便签档
+    const mktBtn = root.querySelector('.tw-zoom-market');
+    if (mktBtn) mktBtn.hidden = !P.ownsStickers;
+    // 档位专属装饰层（贴纸属于便签档）：非便签档整层隐藏 ——
+    // 从渲染树上保证不串档，而不是只靠「逐个摘除」（P1）。
+    if (typeof ctrl._syncDecoLayer === 'function') ctrl._syncDecoLayer();
     const set = (sel, fn) => { const el = root.querySelector(sel); if (el) fn(el); };
-    set('#twScreenTitle', (el) => { el.textContent = T.title; });
+    set('#twScreenTitle', (el) => { el.textContent = P.screen.title; });
     // 元信息分档：便签=FONT·PAPER；写作=卡片·连线；导图=子弹·连线。
     // 此前写作档借用便签那条（显隐判据只是「非导图」），漏出 FONT·PAPER ——
     // 而写作档根本没有字体/纸样：工具条两键已改作预览/导出，卡片的纸样钮也被隐藏。
-    set('#twMetaNotes', (el) => { el.hidden = mm || wr; });
-    set('#twMetaWrite', (el) => { el.hidden = !wr; });
-    set('#twMetaMindmap', (el) => { el.hidden = !mm; });
+    META_IDS.forEach((id) => set(id, (el) => { el.hidden = id !== P.meta; }));
     const input = ctrl._input;
     if (input) {
-      // 输入框上限按档位切换：便签档 = 单卡上限 500（写不下即截）；写作档 = 草稿箱上限，
+      // 输入框上限按档位切换：便签档 = 单卡上限（写不下即截）；写作档 = 草稿箱上限，
       // 允许整篇长文粘进来，打印时再由 splitDraft 拆成多块（单卡仍 ≤ MAX_LEN）。
-      input.maxLength = wr ? DRAFT_MAX_LEN : MAX_LEN;
-      input.placeholder = T.ph;
-      input.setAttribute('aria-label', T.ph.replace('...', ''));
+      input.maxLength = P.input.maxLen;
+      input.placeholder = P.screen.ph;
+      input.setAttribute('aria-label', P.screen.ph.replace('...', ''));
       input.value = (ctrl._draft && ctrl._draft[ctrl._mode]) || '';
     }
-    // #twPaper 三档语义不同：便签=切换便签样式；写作=整篇预览；导图=切换子弹样式。
-    set('#twPaper', (el) => {
+    // 机身键三档语义不同（纸样 / 字体 / 排版 / 打印）：一律查表，不再逐个 if 分支。
+    const applyBtn = (sel, b) => set(sel, (el) => {
       el.disabled = false;
-      if (ctrl._mode === 'write') {
-        el.title = '整篇预览：按连线顺序查看合成后的 Markdown（只读，不落盘）';
-        el.setAttribute('aria-label', '整篇预览');
-        el.innerHTML = ICON_PREVIEW;
-      } else if (mm) {
-        el.title = '切换子弹样式';
-        el.setAttribute('aria-label', '切换子弹样式');
-        el.innerHTML = ICON_LAYERS;
-      } else {
-        el.title = '切换便签样式';
-        el.setAttribute('aria-label', '切换便签样式');
-        el.innerHTML = ICON_LAYERS;
-      }
+      el.title = b.title;
+      el.setAttribute('aria-label', b.aria);
+      el.innerHTML = b.icon;
     });
-    // #twFont 三档语义不同：便签=切换字体；写作=保存快照（带时间戳的独立笔记）；导图=导出为 Markdown。
-    set('#twFont', (el) => {
-      el.disabled = false;
-      if (mm) {
-        el.title = '导出为 Markdown 笔记（落库到 Vault）';
-        el.setAttribute('aria-label', '导出为 Markdown');
-        el.innerHTML = ICON_EXPORT;
-      } else if (ctrl._mode === 'write') {
-        el.title = '把卡片连成整篇 Markdown 并新建笔记';
-        el.setAttribute('aria-label', '生成 Markdown 笔记');
-        el.innerHTML = ICON_EXPORT;
-      } else {
-        el.title = '切换字体';
-        el.setAttribute('aria-label', '切换字体');
-        el.innerHTML = ICON_FONT;
-      }
-    });
-    // #twArrange 三档语义不同：便签=一键排版（网格）；写作=顺流重排（文章顺序→竖向阅读流）；
-    // 导图=一键自动布局（多种布局循环）。
-    set('#twArrange', (el) => {
-      el.disabled = false;
-      if (mm) {
-        el.title = '一键自动布局（多种布局循环：树状 / 横向 / 放射）';
-        el.setAttribute('aria-label', '一键自动布局');
-        el.innerHTML = ICON_LAYERS;
-      } else if (ctrl._mode === 'write') {
-        el.title = '排版轮换：顺流竖排 ⇄ 分幕（按同级标题切块并网格排布；点击切换，选中≥2张时只排选中组）';
-        el.setAttribute('aria-label', '排版轮换（顺流竖排 / 分幕）');
-        el.innerHTML = ICON_GRID;
-      } else {
-        el.title = '一键排版：便签排成整齐网格（选中≥2张时只排选中组）';
-        el.setAttribute('aria-label', '一键排版');
-        el.innerHTML = ICON_GRID;
-      }
-    });
-    // 写作卡片组切换控件：仅写作模式可见，浮于画布右上角（异步刷新组名，不阻塞 Chrome）
+    applyBtn('#twPaper', P.buttons.paper);
+    applyBtn('#twFont', P.buttons.font);
+    applyBtn('#twArrange', P.buttons.arrange);
+    // 文档组切换角控件：档位有文档种类才可见，浮于画布右上角（异步刷新组名，不阻塞 Chrome）
     set('#twDocCorner', (el) => {
-      const kind = ctrl._mode === 'mindmap' ? 'mindmap' : (ctrl._mode === 'write' ? 'write' : (ctrl._mode === 'notes' ? 'notes' : null));
+      const kind = P.docKind;
       el.hidden = !kind;
       if (kind) ctrl._refreshDocBtnLabel();
     });
-    set('#twPrint', (el) => { el.title = mm ? '新建节点' : '打印'; });
+    set('#twPrint', (el) => { el.title = P.buttons.print.title; });
     ctrl._refreshScreenMeta();
   
   },
@@ -746,7 +718,6 @@ export const ModeController = {
     const { state, ctrl } = ctx;
     // 【P8 视口剔除】文本/层级必须来自模型真源，绝不能再读 c.el.dataset/innerText：
     // 离屏卡被剔、c.el 为 null，读 DOM 会抛「Cannot read dataset of null」→ 导出/快照/预览直接崩。
-    // 仅「正在打字动画中」的卡用 dataset.pendingText（此时它必在屏、被钉屏，不会是离屏卡）。
     const byId = ctrl._notes ? new Map(ctrl._notes.map((n) => [n.id, n])) : null;
     const blocks = [];
     let olN = 0;   // 有序列表跨卡连续累加（非全局阅读序 i），避免编号错位/跳号
@@ -754,9 +725,7 @@ export const ModeController = {
       const id = c.id;
       let text = '';
       let lv = 'p';
-      if (c.el && c.el.dataset && c.el.dataset.pendingText != null) {
-        text = c.el.dataset.pendingText;          // 打字中途：未落模型，用 DOM 暂存全文
-      } else if (byId) {
+      if (byId) {
         const note = byId.get(id);
         if (note) { text = note.text || ''; lv = note.level || 'p'; }   // 真源：模型
       } else if (c.el) {
@@ -818,8 +787,11 @@ export const ModeController = {
       .replace(/\s+/g, ' ')
       .replace(/^[.\s]+|[.\s]+$/g, '')
       .slice(0, 40) || '未命名思维导图';
-    // 落库位置：设置弹窗里的「子弹导出目录」（Vault 相对路径），默认 思维子弹
-    const folder = ((window.SettingsModal && window.SettingsModal.mmExportFolder) || '思维子弹').replace(/^\/+/, '');
+    // 落库位置：原生「导出」页的「思维子弹模式导出目录」为唯一真源，读不到再回退设置面板字段/默认
+    const fsBridge = window.storageManager;
+    const folder = (fsBridge && typeof fsBridge.getExportFolder === 'function')
+      ? await fsBridge.getExportFolder('mmExportFolder', '思维子弹')
+      : ((window.SettingsModal && window.SettingsModal.mmExportFolder) || '思维子弹').replace(/^\/+/, '');
     // 与写作「保存快照」完全对齐：每次导出生成带时间戳的独立笔记（思维子弹/<组名> 快照 <时间>.md），
     // 互不覆盖，自然形成可回看的版本历史。
     const d = new Date();

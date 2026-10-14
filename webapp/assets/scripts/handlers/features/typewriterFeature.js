@@ -13,7 +13,7 @@
  *  - 卡片逐字缓慢打出（50ms），带脉冲光标；可拖拽到任意位置；可移除。
  *
  * 持久化：写好的便签经 bridge → VaultStorage 落盘到 vault（独立 typewriter-notes.json），
- * 下次打开画中卷自动重建（直接显示全文，不重放打字动画），最多保留 NOTE_CAP 张。
+ * 下次打开画中卷自动重建（直接显示全文，不重放打字动画）。张数不设上限（见 twConfig.NOTE_CAP）。
  *
  * 隐私兼容：工作台根 class 为 .scroll-workbench，PrivacyMode.markText 会照常补打
  * data-private-text，进而被 base.css 隐私模糊规则命中（纳入模糊）。
@@ -41,6 +41,8 @@ import { PersistenceCoordinator } from './PersistenceCoordinator.js';
 import { MindmapFeature } from './mindmapFeature.js';
 // 便签模式「素材市场」UI + 落卡（照主题动效同构；分发仓库见 bamboo-material-market/）
 import { MaterialMarket } from './materialMarket.js';
+// 三档差异真源（P2）：机身键语义 / 装饰归属 / 卡片交互归属等，一律查表
+import { ModePolicy } from './modePolicy.js';
 // 连线层（便签与思维子弹共用的「节点-线」渲染/交互/控件）
 import { LinkLayer } from '../../services/LinkLayer.js';
 // 写作档便签的纯逻辑数据模型（与 MindmapDoc 同构）：读档净化 / 不可变增改 / 落盘形状。
@@ -53,7 +55,7 @@ import { UndoStack } from '../../services/undoStack.js';
 
 // B1 单一真源：原内联常量（图标/堆叠/缩放/字级/纸样/级别）收敛到 twConfig.js，本文件改为导入，不再重复定义
 import { ICON_LAYERS, ICON_FONT, ICON_GRID, ICON_PRINT, ICON_X, ICON_FONT_DOWN, ICON_FONT_UP, ICON_ZOOM_OUT, ICON_ZOOM_IN, ICON_PAPER, ICON_EXPORT, ICON_PREVIEW, ICON_MOVE_UP, ICON_MOVE_DOWN, ICON_LV_UP, ICON_LV_DOWN, ICON_ROTATE } from './twConfig.js';
-import { STACK_STEP, STACK_LEVELS, TYPE_SPEED, MAX_LEN, NOTE_CAP, WRITE_FLOW_GAP, SAVE_DEBOUNCE, LOD_DENSITY, LOD_DENSITY_EXIT, ZOOM_MIN, ZOOM_MAX, ZOOM_STEP } from './twConfig.js';
+import { STACK_STEP, STACK_LEVELS, MAX_LEN, NOTE_CAP, WRITE_FLOW_GAP, SAVE_DEBOUNCE, LOD_DENSITY, LOD_DENSITY_EXIT, ZOOM_MIN, ZOOM_MAX, ZOOM_STEP } from './twConfig.js';
 import { FONT_SCALES, FONT_SCALE_DEFAULT_IDX, FONT_SCALE_LABELS, CARD_SCALES, CARD_SCALE_LABELS, CARD_SCALE_DEFAULT_IDX } from './twConfig.js';
 import { FONTS, FONT_LABELS, FONT_FEEDBACK, MARKET_FONTS } from './twConfig.js';
 import { PAPERS, PAPER_LABELS, PAPER_FEEDBACK, PAPER_TITLES } from './twConfig.js';
@@ -73,7 +75,6 @@ export const TypewriterFeature = {
     this._wheelDetach = null;          // C3 共享滚轮接线
     this._gestureDetach = null;        // C3 共享指针手势接线
     this._hand = null;                 // C3 空格/抓手状态对象
-    this._timers = [];                 // 所有卡片打字计时器，供 unmount 精确清理
     this._selBarEl = null;             // 多选浮动操作条（≥2 张时浮出）
     this._selBarRAF = 0;               // 操作条跟随定位的 rAF 句柄
     this._zTop = 10;
@@ -83,6 +84,7 @@ export const TypewriterFeature = {
     this._mode = 'notes';              // 红色齿轮旋钮三档权威状态（见 _setMode）
     this._layoutMode = 'flow';         // 写作档排版档位：'flow' 顺流竖排 / 'acts' 分幕（点 #twArrange 轮换）
     this._switching = false;           // 切档重入锁
+    this._pendingModeDir = 0;          // 切档期间连拨的累积净步数：切完后接续，避免快速拨动丢档
     this._levelMenu = null;            // 类型选择浮层（全画布共用一个，按需创建）
     this._levelMenuCard = null;        // 浮层当前作用于哪张卡
     this._levelMenuDocHandler = null;  // 【B5 修复】原先 unmount 漏归零，现已收口到此处
@@ -95,15 +97,9 @@ export const TypewriterFeature = {
     this._ro = null;                   // 联动缩放 ResizeObserver（_observeScale 创建，unmount/resetState 断开）
     this._audioCtx = null;             // 吐纸音效的 Web Audio 上下文
     this._links = [];                  // 便签连线：[{from,to}]
-    this._linkSvg = null;              // 连线 SVG 层
-    this._linkEls = [];                // 每条连线的 SVG 元素引用
-    this._linkSigCache = '';           // 上次渲染的连线结构签名
-    this._ctlEls = null;               // hover 控件的元素引用表
-    this._linkRaf = 0;                 // 重绘节流
-    this._linkRo = null;               // 观察卡片尺寸变化 → 自动重绘连线
-    this._hoverLink = null;            // 当前悬浮的连线 {from,to}
-    this._hoverTimer = null;           // 收起悬浮控件的防抖
-    this._ctlHover = false;            // 指针是否停在连线的控件上
+    // 注：连线层的 SVG / 元素引用 / rAF / hover timer / ResizeObserver 全部归 LinkLayer 内部持有
+    // （P8 抽取），feature 不再有对应字段。B1 抽取时这里漏删了 9 个死字段，导致 unmount 的
+    // 「清理」打在空气上（RO 实际从未断开）—— 已删，清理改走 this._linkLayer.destroy()。
     this._selected = null;             // 多选集合：Set<HTMLElement>
     this._marquee = null;              // 框选矩形 DOM
     this._marqueeRect = null;          // 框选矩形几何
@@ -124,7 +120,6 @@ export const TypewriterFeature = {
     this._perfOn = false;              // 性能埋点开关
     this._perf = null;                 // key → { n, total, max }
     this._draggingSet = null;          // 拖拽中的卡 id 集（钉屏）
-    this._typingIds = null;            // 打字动画中的卡 id 集（钉屏）
     this._editingId = null;            // 正在编辑的卡 id（钉屏）
     this._cullRaf = 0;
     this._CULL_MARGIN = 240;           // 视口外预取边距(px)
@@ -150,18 +145,9 @@ export const TypewriterFeature = {
     this._bindFlushGuards();   // 落盘兜底：页面隐藏/卸载前 flush 防抖窗口内未落盘的编辑
   },
 
-  /** 退出：清理全部打字计时器与 DOM 监听，释放引用 */
+  /** 退出：清理 DOM 监听，释放引用 */
   unmount() {
-    // —— 先收尾副作用（清 timer / 落盘 / 断 observer / 移除监听 / teardown）——
-    this._timers.forEach((t) => { try { clearInterval(t); } catch (_) { /* 忽略 */ } });
-    this._timers = [];
-    // 【防丢数据】打字动画中途卸载：把 pendingText（目标全文）回填模型，否则正在打出的卡会丢未落盘的全文
-    if (this._typingIds && this._typingIds.size) {
-      this._typingIds.forEach((id) => {
-        const el = this._mountedCards && this._mountedCards.get(id);
-        if (el && el._typing) this._finishTyping(el);
-      });
-    }
+    // —— 先收尾副作用（断 observer / 移除监听 / teardown）——
     if (this._msgTimer) { try { clearTimeout(this._msgTimer); } catch (_) { /* 忽略 */ } this._msgTimer = null; }
     // 【P0】退出前无条件落盘一次（fire-and-forget：宿主仍在，bridge 可用）。
     // 原先只在 _saveTimer 存在时才写，若用户恰好在打字动画途中关闭/切走视图，
@@ -175,13 +161,16 @@ export const TypewriterFeature = {
     if (this._levelMenu) { this._levelMenu.remove(); this._levelMenu = null; }
     MindmapFeature.teardown();   // 导图层的 DOM 引用一并清掉，下次 mount 重建
     if (this._audioCtx) { try { this._audioCtx.close(); } catch (_) { /* 忽略 */ } this._audioCtx = null; }
-    if (this._linkRo) { this._linkRo.disconnect(); this._linkRo = null; }
+    // 连线层的真实句柄（ResizeObserver / rAF / hover timer / 元素引用）全在 LinkLayer 内部，
+    // 必须调它自己的 destroy()。原先这里断的是 feature 的 _linkRo / _linkRaf / _hoverTimer
+    // 三个**死字段**（_resetState 声明后从未赋值）→ 清理打在空气上，RO 实际从未断开，
+    // 表现为卸载后仍持有全部历史卡片的强引用。destroy() 全仓此前零调用。
+    if (this._linkLayer && typeof this._linkLayer.destroy === 'function') this._linkLayer.destroy();
     if (this._fitRo) { this._fitRo.disconnect(); this._fitRo = null; }
     if (this._ro) { this._ro.disconnect(); this._ro = null; }
     if (this._themeMo) { this._themeMo.disconnect(); this._themeMo = null; }
     // 历史只属于本次会话的文档：卸载即弃，避免重挂载后把旧状态的快照带回来
     if (this._undoStack) { this._undoStack.reset(); this._undoStack = null; }
-    if (this._linkRaf) { cancelAnimationFrame(this._linkRaf); this._linkRaf = 0; }
     if (this._geo && this._geo.flushRaf) cancelAnimationFrame(this._geo.flushRaf);
     // 调试出口：控制台可直接 __twPerf.on() → 操作一会儿 → __twPerf.report() 实测
     if (typeof window !== 'undefined') {
@@ -193,7 +182,6 @@ export const TypewriterFeature = {
       };
     }
     if (this._cullRo) { this._cullRo.disconnect(); this._cullRo = null; }
-    clearTimeout(this._hoverTimer);
     if (this._selKeyHandler) { document.removeEventListener('keydown', this._selKeyHandler); this._selKeyHandler = null; }
     this._cancelSelBarTick();
     this._selBarGestureOff();   // 选中 ≥2 时挂的 pointer 监听，卸载时对称摘除
@@ -322,6 +310,46 @@ export const TypewriterFeature = {
   /** 素材市场：挂载 UI（右侧抽屉 + 画布 drop 落卡），绑定缩放条市场按钮 */
   _initMaterialMarket() { MaterialMarket.init(this, this._el); },
 
+  /** 贴纸（便签档专属装饰）的档位所有权：委托给 MaterialMarket。
+   *  ModeController 按本文件约定只认 ctrl._xxx 委托壳 —— 不直接探测全局 MaterialMarket：
+   *  在模块作用域里那个 typeof 探测取不到值，旧写法会让「切回便签档重建贴纸」静默失效。 */
+  _detachStickers() { return MaterialMarket.detachStickers(); },
+  _reloadStickers() { return MaterialMarket.reloadStickers(); },
+  /** 装饰层（贴纸）跟随档位显隐：贴纸属于便签档，其余档位整层隐藏 */
+  _syncDecoLayer() { MaterialMarket.syncDecoLayer(this._mode); },
+
+  /** 机身键分派（P2 · A 类）：三档语义不同，但「按哪个方法」由策略表点名，
+   *  不在事件回调里散落 if (_mode === 'x')。action 名必须能在本对象上解析 ——
+   *  由 modeBoundary 单测 B4 守住（防拼写 / 漏实现）。 */
+  _runModeAction(key) {
+    const a = ModePolicy.of(this._mode).buttons[key].action;
+    if (a && typeof this[a] === 'function') this[a]();
+  },
+
+  /** 便签档 · 第一个键：循环纸样（含市场纸纹）并更新屏幕 PAPER 标签。
+   *  只影响「之后打印」的卡片，已生成的卡片保持其打印时的样式（各自 data-paper 固定）。 */
+  _cyclePaper() {
+    this._paperIdx = (this._paperIdx + 1) % PAPERS.length;
+    const p = PAPERS[this._paperIdx];
+    this._el.querySelector('#twPaperLabel').textContent = PAPER_LABELS[p];
+    this._showScreenMsg('PAPER: ' + PAPER_FEEDBACK[p], 1000);
+  },
+
+  /** 便签档 · 第二个键：循环字体（含市场字体）并更新屏幕 FONT 标签 */
+  _cycleFont() {
+    const fonts = FONTS.concat(MARKET_FONTS);
+    this._fontIdx = (this._fontIdx + 1) % fonts.length;
+    const f = fonts[this._fontIdx];
+    this._el.querySelector('#twFontLabel').textContent = FONT_LABELS[f] || f;
+    this._showScreenMsg('FONT: ' + (FONT_FEEDBACK[f] || f), 1000);
+  },
+
+  /** 导图档 · 第一个键：切换子弹样式 */
+  _cycleBulletStyle() { MindmapFeature.cycleStyle(); },
+
+  /** 导图档 · 第三个键：一键切换连线形态（曲线 ⇄ 直线） */
+  _cycleLinkRoute() { MindmapFeature.cycleLinkRoute(); },
+
   /** 缩放控件（便签模式）：− / 百分比(重置) / + / 适应内容。
    *  挂 wrap（层根）而非 canvas —— 后者带 transform，控件会跟着一起缩放/平移。 */
   _mountZoomUI() {
@@ -356,6 +384,11 @@ export const TypewriterFeature = {
   _refreshKnobs() {
     if (!this._el) return;
     this._el.querySelectorAll('.tw-card-rotate, .tw-card-link').forEach((k) => this._applyKnobSize(k));
+  },
+  /** 给单张卡的控件（旋转钮/连线锚点）定尺寸：新挂载时调用，配合 apply 的 scale 门控避免每 pan 帧全画布重算 */
+  _sizeCardKnobs(card) {
+    if (!card || !card.querySelectorAll) return;
+    card.querySelectorAll('.tw-card-rotate, .tw-card-link').forEach((k) => this._applyKnobSize(k));
   },
 
   /** 缩放变化后同步缩放控件的百分比显示 */
@@ -621,29 +654,13 @@ export const TypewriterFeature = {
       doPrint();
     });
 
-    // 第二个键：便签模式=切换字体；思维子弹模式=导出为 Markdown 落库（两者互不干扰）。
-    this._bindRbtn('#twFont', () => {
-      if (this._mode === 'mindmap') { this._exportMindmap(); return; }   // 导图模式：第二个键改为「导出为 Markdown」
-      // MD可视化写作模式：第二个键 = 保存快照（当前卡片合成整篇 Markdown，写入带时间戳的独立笔记，不覆盖源笔记）
-      if (this._mode === 'write') { this._saveSnapshot(); return; }
-      const fonts = FONTS.concat(MARKET_FONTS);
-      this._fontIdx = (this._fontIdx + 1) % fonts.length;
-      const f = fonts[this._fontIdx];
-      this._el.querySelector('#twFontLabel').textContent = FONT_LABELS[f] || f;
-      this._showScreenMsg('FONT: ' + (FONT_FEEDBACK[f] || f), 1000);
-    });
+    // 第二个键：便签=切换字体；写作=保存快照（当前卡片合成整篇 Markdown，写入带时间戳的
+    // 独立笔记，不覆盖源笔记）；导图=导出为 Markdown 落库。分派交给策略表，不在此分档。
+    this._bindRbtn('#twFont', () => this._runModeAction('font'));
 
-    // 第三个键：便签模式=一键排版（网格）；思维子弹模式=一键自动布局（多种布局循环）。两者互不干扰。
-    this._bindRbtn('#twArrange', () => {
-      if (this._mode === 'mindmap') {
-        const label = MindmapFeature.cycleLayout();
-        this._showScreenMsg(label ? ('LAYOUT: ' + label) : '画布为空', 1400);
-        return;
-      }
-      // MD可视化写作模式：第三个键 = 排版轮换（顺流竖排 ⇄ 分幕），画布即文章骨架
-      if (this._mode === 'write') { this._cycleWriteLayout(); return; }
-      this._arrangeNotes();
-    });
+    // 第三个键：便签=一键排版（网格）；写作=排版轮换（顺流竖排 ⇄ 分幕，画布即文章骨架）；
+    // 导图=一键自动布局（多种布局循环）。分派交给策略表。
+    this._bindRbtn('#twArrange', () => this._runModeAction('arrange'));
 
     // 红色齿轮旋钮：三档循环。点一下拨一齿；在旋钮上滚轮同样拨齿（上滚=后退，下滚=前进），
     // 滚轮方向即拨动方向 —— 与真实旋钮一致，也顺手给了键盘/触控板之外的第三种拨法。
@@ -660,22 +677,17 @@ export const TypewriterFeature = {
       this._cycleMode(e.deltaY > 0 ? 1 : -1);
     }, { passive: false });
 
-    // 便签样式切换：循环全部 PAPERS，并更新屏幕 PAPER 标签。
-    // 只影响「之后打印」的卡片，已生成的卡片保持其打印时的样式（各自 data-paper 固定）。
-    this._bindRbtn('#twPaper', () => {
-      if (this._mode === 'write') { this._openPreviewModal(); return; }  // 写作档：第一个键改为「整篇预览」
-      if (this._mode === 'mindmap') { MindmapFeature.cycleStyle(); return; }   // 导图模式：第一个键改为切换子弹样式
-      this._paperIdx = (this._paperIdx + 1) % PAPERS.length;
-      const p = PAPERS[this._paperIdx];
-      this._el.querySelector('#twPaperLabel').textContent = PAPER_LABELS[p];
-      this._showScreenMsg('PAPER: ' + PAPER_FEEDBACK[p], 1000);
-    });
+    // 第一个键：便签=切换便签样式；写作=整篇预览；导图=切换子弹样式。分派交给策略表。
+    this._bindRbtn('#twPaper', () => this._runModeAction('paper'));
 
     // 「整篇预览」弹窗：写作档专用，便签/导图模式不绑定（#twPaper 仍是切纸样/子弹样式）
     const previewModal = this._el.querySelector('#twPreviewModal');
     if (previewModal) {
       previewModal.addEventListener('click', (e) => { if (e.target === previewModal) this._closePreviewModal(); });
       previewModal.querySelector('#twPreviewClose').addEventListener('click', () => this._closePreviewModal());
+      // 滚轮留在预览窗内滚动（只读框 overflow:auto）：不得冒泡到画布 wrap，
+      // 否则会被 CanvasGestures 的滚轮平移劫持——预览框滚不动、反而整卷画布在动（与素材抽屉/缩放条同一约定）。
+      previewModal.addEventListener('wheel', (e) => e.stopPropagation(), { passive: true });
       // Esc 关闭：keydown 从只读框冒泡到弹窗，焦点在框内也生效
       previewModal.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') { e.preventDefault(); this._closePreviewModal(); }
@@ -690,6 +702,21 @@ export const TypewriterFeature = {
     msg.classList.add('on');
     if (this._msgTimer) clearTimeout(this._msgTimer);
     this._msgTimer = setTimeout(() => msg.classList.remove('on'), duration);
+  },
+  /** 落盘失败的用户可见提示。
+   *  【防丢数据】此前整条保存链路（防抖回调 / saveNow）既无 try/catch 也无 .catch，
+   *  失败只表现为 unhandled rejection —— 用户完全无感，直到下次打开画中卷才发现少了一块。
+   *  落盘是静默自动行为，失败必须显式告知，否则等于把数据丢失藏在背后。
+   *  Toast 优先（不依赖画中卷是否仍挂载），回退到屏幕消息条。 */
+  _showSaveFailed(scope) {
+    const text = (scope || '便签') + '保存失败，请检查 vault 写入权限';
+    try {
+      if (typeof Toast !== 'undefined' && Toast && typeof Toast.showToast === 'function') {
+        Toast.showToast(text, 'error');
+        return;
+      }
+    } catch (_) { /* Toast 不可用则回退 */ }
+    try { if (this._el) this._showScreenMsg(text, 2600); } catch (_) { /* 已卸载则忽略 */ }
   },
 
   /** 文件名时间戳：YYYYMMDD-HHMM（避免与导出头里的人类可读时间重复） */
@@ -753,6 +780,81 @@ export const TypewriterFeature = {
 
   /** 兜底：把 Markdown 作为 .md 文件下载到本地（桥不可用环境） */
     _downloadMarkdown(filename, content) { return ModeController.downloadMarkdown({ state: this._state, ctrl: this }, filename, content); },
+
+  /** 单张（或框选多张）便签 → 一篇 Markdown，落库到 Vault 的「便签」目录。
+   *  入口：卡片 hover 浮现的「导出」按钮。框选 ≥2 张时点任意一张 → 合成一篇；否则只导出该张。
+   *  文件头带 YAML frontmatter（单张：id/纸样/字体/创建时间；多张：导出时间/卡片数/ids）。 */
+    async _exportCard(card) {
+    const sel = this._selected;
+    const useSel = !!(sel && sel.size >= 2 && sel.has(card));
+    const targets = useSel ? Array.from(sel) : [card];
+    const ids = new Set();
+    targets.forEach((c) => { const id = c && c.dataset && c.dataset.id; if (id) ids.add(id); });
+    // 【P8 视口剔除】走 _orderCards()（模型派生，含离屏卡）再按选中过滤，保顺序且不全漏
+    const ordered = this._orderCards().filter((c) => ids.has(c.id));
+    if (!ordered.length) { this._showScreenMsg('没有可导出的卡片', 1200); return; }
+    const byId = new Map(this._notes.map((n) => [n.id, n]));
+    const now = new Date();
+    const ts = this._stamp(now);
+    const firstNote = byId.get(ordered[0].id);
+    const base = this._safeName(firstNote && firstNote.text ? firstNote.text : '');
+    // 落库位置：原生「导出」页的「便签模式导出目录」为唯一真源，读不到再回退设置面板字段/默认；剥离前导斜杠
+    const fsBridge = window.storageManager;
+    const folder = (fsBridge && typeof fsBridge.getExportFolder === 'function')
+      ? await fsBridge.getExportFolder('noteExportFolder', '便签')
+      : ((window.SettingsModal && window.SettingsModal.noteExportFolder) || '便签').replace(/^\/+/, '');
+    const path = folder + '/' + base + ' ' + ts + '.md';
+    const body = this._buildCardsMarkdown(ordered);
+    const content = this._noteFrontmatter(ordered, byId, now) + '\n' + body;
+    const sm = window.storageManager;
+    const done = (p) => { if (sm && sm.openFile) sm.openFile(p); this._showScreenMsg('已导出到：' + p, 1800); };
+    if (sm && typeof sm.exportMindmap === 'function') {
+      Promise.resolve(sm.exportMindmap(path, content)).then((r) => {
+        if (r && r.ok) done(path);
+        else this._downloadMarkdown(path, content);
+      }).catch(() => this._downloadMarkdown(path, content));
+    } else {
+      this._downloadMarkdown(path, content);
+    }
+  },
+
+  /** 时间戳 YYYYMMDD-HHmmss（与快照命名一致，便于同目录排序） */
+    _stamp(d) {
+    const p = (n) => String(n).padStart(2, '0');
+    return d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + '-' + p(d.getHours()) + p(d.getMinutes()) + p(d.getSeconds());
+  },
+
+  /** 从卡片正文取首行非空文字作文件名（清洗非法字符、截断 40 字），空则回落「便签」 */
+    _safeName(text) {
+    const line = (text || '').split('\n').map((s) => s.trim()).find((s) => s.length) || '';
+    const clean = line.replace(/[\\/:*?"<>|\r\n]+/g, '').trim().slice(0, 40);
+    return clean || '便签';
+  },
+
+  /** 构建导出 .md 的文件头 YAML frontmatter */
+    _noteFrontmatter(ordered, byId, now) {
+    const iso = now.toISOString();
+    if (ordered.length === 1) {
+      const n = byId.get(ordered[0].id) || {};
+      return [
+        '---',
+        'id: ' + (n.id || ''),
+        '纸样: ' + (n.paper || ''),
+        '字体: ' + (n.font || ''),
+        '创建时间: ' + (n.date || ''),
+        '导出时间: ' + iso,
+        '---',
+      ].join('\n');
+    }
+    const ids = ordered.map((c) => c.id);
+    return [
+      '---',
+      '导出时间: ' + iso,
+      '卡片数: ' + ids.length,
+      'ids: [' + ids.join(', ') + ']',
+      '---',
+    ].join('\n');
+  },
 
   /** MD可视化写作模式：第一个机身键打开的「整篇预览」。
    *  按连线顺序（无连线则回退阅读顺序）把卡片合成整篇 Markdown 展示，
@@ -826,9 +928,12 @@ export const TypewriterFeature = {
     this._showScreenMsg('IMPORTED ' + chunks.length + ' BLOCKS', 2200);
   },
 
-  /** 面板语义随模式切换：屏幕标题/右侧元信息、输入框 placeholder 与草稿、按钮可用性。
-   *  纸样/字体/排版只对便签有意义，导图模式下必须置灰 —— 否则用户点了会作用到看不见的便签上，
-   *  这正是「两个模式互相干扰」的典型表现。 */
+  /** 面板语义随模式切换：屏幕标题/右侧元信息、输入框 placeholder 与草稿、机身键语义。
+   *  三个机身键（纸样/字体/排版）经 ModePolicy 策略表分派，**三档各自都有真实动作**：
+   *  便签=切纸样/切字体/一键排版；写作=整篇预览/存快照/顺流⇄分幕；导图=子弹样式/导出落库/曲线⇄直线。
+   *  故它们永远可用（`el.disabled = false` 是无条件重置），没有任何一档需要置灰。
+   *  【2026-10-14 更正】此处原注释写「纸样/字体/排版只对便签有意义，导图模式下必须置灰」——
+   *  那是策略表上线前的过时描述，与实现相反：真置灰会让导图档这三个键变不可用，属功能倒退。 */
     _applyModeChrome() { return ModeController.applyModeChrome({ state: this._state, ctrl: this }); },
 
   /** 屏幕右上角元信息按档回显：导图=子弹数/连线数；写作=卡片数/连线数；便签是静态的 FONT·PAPER。
@@ -941,40 +1046,15 @@ export const TypewriterFeature = {
 
     const textEl = card.querySelector('.tw-card-text');
 
-    // 吐字与否按模式分流：
-    //  写作档 —— 卡片是「文章的一块」，逐字吐字（TYPE_SPEED=50ms/字，一张长卡要几秒）
-    //            会拖慢连续成文，故直接落全文一次性展现。
-    //            刻意保留吐纸入场 .tw-feed：它不是逐字累进，不拖慢阅读，且让新卡有
-    //            「落到画布上」的存在感（_reflowWriteOrder 也依赖卡片已是最终尺寸）。
-    //  便签档 —— 保留逐字打字的设备签名动效（PWM 脉冲光标 + 字一个个蹦出来）。
-    if (this._mode === 'write') {
-      textEl.textContent = text;
-      this._scheduleSave();
-      // 追加到文末的新卡多半在视野之外，且此刻文本刚落定、卡片才是最终高度 ——
-      // 必须等到这里再校正，否则按空卡高度算是白校正一次（成文流会看着是断的）。
-      // 批量导入时由调用方统一校正首块，避免逐张校正导致画布乱跳，故可跳过此处。
-      if (!(opts && opts.skipEnsureVisible)) this._ensureCardVisible(card);
-    } else {
-      textEl.classList.add('is-typing');
-
-      // 打字动画与模型解耦：目标全文暂存到 dataset.pendingText，
-      // 供导图导出/预览在读序中优先读取（见 getSeedSource / ModeController 导出），避免「打字中途导出」拿到半截字。
-      // 模型 this._notes 在 _finishTyping 才同步全文并落盘；卸载时会先把 pendingText 回填模型再兜底落盘，故不会丢数据。
-      card.dataset.pendingText = text;
-      if (!this._typingIds) this._typingIds = new Set();
-      this._typingIds.add(id);   // 打字中：钉在屏上，剔除跳过（避免动画被打断/焦点丢失）
-      this._scheduleSave();
-      // 新便签进画布
-
-      // 逐字缓慢打出；打完即补齐全文并落盘
-      let i = 0;
-      const timer = setInterval(() => {
-        if (i >= text.length) { this._finishTyping(card); return; }
-        textEl.textContent += text[i++];
-      }, TYPE_SPEED);
-      card._typing = { timer, textEl, text };
-      this._timers.push(timer);
-    }
+    // 两档都即时落全文：捕获/阅读零等待。便签曾有的逐字打字（"设备签名"表演）连同一整套
+    // pendingText / 计时器 / 钉屏状态机，已作为过度工程移除。
+    // 刻意保留吐纸入场 .tw-feed（上方）：它不是逐字累进、不拖慢阅读，让新卡有「落到画布上」的存在感。
+    textEl.textContent = text;
+    this._scheduleSave();
+    // 追加到文末的新卡多半在视野之外，且此刻文本刚落定、卡片才是最终高度 ——
+    // 必须等到这里再校正，否则按空卡高度算是白校正一次（成文流会看着是断的）。
+    // 批量导入时由调用方统一校正首块，避免逐张校正导致画布乱跳，故可跳过此处。
+    if (this._mode === 'write' && !(opts && opts.skipEnsureVisible)) this._ensureCardVisible(card);
 
     // 清空输入，便于连续生成
     this._input.value = '';
@@ -985,27 +1065,8 @@ export const TypewriterFeature = {
 
     // 超出上限删最早（DOM 顺序即时间序），并在落盘时同步
     this._enforceCap();
+    this._applyLod();   // 新建后复算 LOD：写作档靠打字涨过 120 张时 dense 降级及时生效（否则停滞到下次重建）
     return card;
-  },
-
-  /** 结束某张卡片的打字动画：停表、补齐全文、清 pendingText 并落盘。
-   *  动画自然结束、或用户中途进入编辑时调用 —— 后者若不先补齐，
-   *  逐字写入会持续覆写 contentEditable，光标被打飞、内容残缺。 */
-  _finishTyping(card) {
-    const t = card._typing;
-    if (!t) return;
-    card._typing = null;
-    try { clearInterval(t.timer); } catch (_) { /* 忽略 */ }
-    const k = this._timers.indexOf(t.timer);
-    if (k >= 0) this._timers.splice(k, 1);
-    t.textEl.textContent = t.text;          // 补齐全文，杜绝残留半截字
-    t.textEl.classList.remove('is-typing');
-    delete card.dataset.pendingText;        // 全文已进 DOM，之后以 DOM（可编辑）为准
-    this._notes = WritingDoc.setText(this._notes, card.dataset.id, t.text);  // 打字完成：同步模型
-    if (this._typingIds) this._typingIds.delete(card.dataset.id);
-    this._measureCard(card);   // 全文落定，重测几何（尺寸变终值）
-    this._scheduleSave();
-    if (typeof PrivacyMode !== 'undefined') PrivacyMode.markText();
   },
 
   // —— 吐纸音效（Web Audio 轻量合成，无需外部音频文件，对齐 incense 火折子音效范式） ——
@@ -1203,15 +1264,7 @@ export const TypewriterFeature = {
   getSeedSource() {
     // 【P8 视口剔除】卡片文本必须来自模型真源，不能读 querySelectorAll('.tw-card')：
     // 离屏卡被剔不在 DOM → 读 DOM 会漏掉这些卡，喂出的导图树残缺。
-    // 仅「正在打字动画中」的卡用 dataset.pendingText（此时必在屏、被钉屏，不会是离屏卡）。
-    const mounted = this._mountedCards || new Map();
-    const cards = (this._notes || []).map((n) => {
-      const el = mounted.get(n.id);
-      const text = (el && el.dataset && el.dataset.pendingText != null)
-        ? el.dataset.pendingText
-        : (n.text || '');
-      return { id: n.id, text };
-    });
+    const cards = (this._notes || []).map((n) => ({ id: n.id, text: n.text || '' }));
     return { cards, links: (this._links || []).slice() };
   },
 
@@ -1268,7 +1321,6 @@ export const TypewriterFeature = {
       card.remove();
     } else {
       // 离屏卡无 DOM：仅清指向它的瞬时集合引用（_disposeCard 无 card 时不处理集合）
-      if (this._typingIds) this._typingIds.delete(id);
       if (this._editingId === id) this._editingId = null;
     }
     if (this._mountedCards) this._mountedCards.delete(id);
@@ -1331,7 +1383,9 @@ export const TypewriterFeature = {
    *  少于 2 张仅提示、不改动、不进撤销栈。锚卡保留 DOM 并刷新文本；被并卡清 DOM/几何/选中。
    */
   _mergeSelected() {
-    const cards = (this._selected && this._selected.size) ? Array.from(this._selected) : [];
+    const sel = (this._selected && this._selected.size) ? Array.from(this._selected) : [];
+    // 合并只针对便签卡（贴纸无合并语义）：从统一选区中排除贴纸（bm-sticker 是贴纸的确切标识），其余皆按卡片处理，避免误删贴纸 DOM
+    const cards = sel.filter((c) => !(c.classList && c.classList.contains('bm-sticker')));
     if (cards.length < 2) { this._showScreenMsg('至少选中 2 张才能合并', 1200); return; }
     const ids = cards.map((c) => c.dataset && c.dataset.id).filter(Boolean);
     const r = WritingDoc.mergeNotes(this._notes, this._links, ids);
@@ -1375,6 +1429,9 @@ export const TypewriterFeature = {
     this._updateSelBar();             // 合并后选中<2，浮动条自动收起
   },
 
+  /** 整体拖动入口：卡片与贴纸共用（统一选区），实际逻辑在 CardInteractions.startGroupDrag */
+  _startGroupDrag(e, primaryEl) { CardInteractions.startGroupDrag({ state: this._state, ctrl: this }, e, primaryEl); },
+
   /** 删除当前选中的所有便签（级联删连线） */
     _deleteSelected() { const r = CardInteractions.deleteSelected({ state: this._state, ctrl: this }); this._updateSelBar(); return r; },
 
@@ -1411,9 +1468,17 @@ export const TypewriterFeature = {
   _updateSelBar() {
     const bar = this._ensureSelBar();
     if (!bar) return;
-    const n = this._selected ? this._selected.size : 0;
+    const sel = (this._selected && this._selected.size) ? Array.from(this._selected) : [];
+    const n = sel.length;
+    // 合并只针对便签卡（贴纸无合并语义）；统一选区内卡片数 <2 时不提供合并（隐藏按钮）
+    // 卡片 = 非贴纸（bm-sticker 是贴纸确切标识），与 _mergeSelected 同口径
+    const cardCount = sel.filter((c) => !(c.classList && c.classList.contains('bm-sticker'))).length;
+    const mergeBtn = bar.querySelector('.tw-sel-merge');
     if (n >= 2) {
-      bar.querySelector('.tw-sel-merge').textContent = '合并 ' + n + ' 张';
+      if (mergeBtn) {
+        if (cardCount >= 2) { mergeBtn.style.display = ''; mergeBtn.textContent = '合并 ' + cardCount + ' 张'; }
+        else { mergeBtn.style.display = 'none'; }
+      }
       bar.classList.add('is-on');
       // 开一个「收尾窗口」：选择/合并/删除等边沿事件之后可能还有布局 settling
       // （重新排布、卡片重绘），这段时间仍需逐帧跟随；到点后自动停止轮询。
@@ -1798,6 +1863,7 @@ export const TypewriterFeature = {
 
   /** 把一张模型卡建回 DOM 并挂进挂载表 + 量几何。culling 进屏时调用。 */
   _mountCard(note, opts) { return ViewportCuller.mountCard({ state: this._state, ctrl: this }, note, opts); },
+  _flushMountMeasure() { return ViewportCuller.flushMountMeasure({ state: this._state, ctrl: this }); },
 
   /** 量一张卡进几何缓存（坐标取 style.left/top；尺寸取 offset*，一次 reflow 摊销）。 */
   _measureCard(card) { return ViewportCuller.measureCard({ state: this._state, ctrl: this }, card); },

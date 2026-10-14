@@ -319,3 +319,23 @@ describe('VaultStorage goals 损坏容错：截断 JSON 不再连锁抛错（A7�
     expect(await mock.adapter.exists(path)).toBe(true); // 合法 JSON 只是结构不符，保留原地
   });
 });
+
+describe('VaultStorage 自定义 basePath（dataPath 功能基础：数据目录可配置）', () => {
+  it('自定义 basePath 时所有数据文件落在指定目录，而非默认 bamboo-review/', async () => {
+    const { app, adapter } = createMockApp();
+    const storage = new VaultStorage(app as any, 'my-custom-data');
+    await storage.putDay({ date: '2026-01-01', weekday: '周三', note: 'x', metrics: {}, timeline: [] } as unknown as DayData);
+    await storage.putGoals([{ id: 'g1', title: 't', subItems: [], category: '学习' } as unknown as GoalItem]);
+    expect(await adapter.exists('my-custom-data/data/2026-01-01.json')).toBe(true);
+    expect(await adapter.exists('my-custom-data/goals.json')).toBe(true);
+    // 默认目录不应被写入
+    expect(await adapter.exists('bamboo-review/data/2026-01-01.json')).toBe(false);
+  });
+
+  it('不传 basePath 时回落默认 bamboo-review（向后兼容，现有 vault 行为不变）', async () => {
+    const { app, adapter } = createMockApp();
+    const storage = new VaultStorage(app as any); // 不传，用默认
+    await storage.putDay({ date: '2026-02-02', weekday: '周四', note: 'y', metrics: {}, timeline: [] } as unknown as DayData);
+    expect(await adapter.exists('bamboo-review/data/2026-02-02.json')).toBe(true);
+  });
+});

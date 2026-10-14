@@ -13,6 +13,14 @@ export const Gestures = {
     },
 
     loadSettings() {
+        // 滑动开关：真源是原生设置（app:getSettings 快照），读不到再回退旧存储
+        const native = (typeof storageManager !== 'undefined' && storageManager.getAppSettingsSync)
+            ? storageManager.getAppSettingsSync()
+            : null;
+        if (native && typeof native.enableSwipe === 'boolean') {
+            this.swipeEnabled = native.enableSwipe;
+            return;
+        }
         const saved = StorageAdapter.get(StorageKeys.ENABLE_SWIPE);
         this.swipeEnabled = saved !== 'false';
     },

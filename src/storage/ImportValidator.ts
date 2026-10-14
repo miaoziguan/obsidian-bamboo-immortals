@@ -33,6 +33,10 @@ const KNOWN_FIELDS = [
   'purchaseHistory',
   'incomeHistory',
   'customTemplates',
+  'typewriterWritingDocs',
+  'typewriterNotesDocs',
+  'typewriterMindmapDocs',
+  'typewriterNotes',
 ] as const;
 
 /**
@@ -73,6 +77,14 @@ interface ValidatedImport {
   purchaseHistory?: PurchaseHistory;
   incomeHistory?: IncomeHistory;
   customTemplates?: CustomTemplate[];
+  /** 画中卷·写作档（key 为文档 id，已收敛为安全字符集） */
+  typewriterWritingDocs?: Record<string, unknown>;
+  /** 画中卷·便签组文档 */
+  typewriterNotesDocs?: Record<string, unknown>;
+  /** 画中卷·思维子弹文档 */
+  typewriterMindmapDocs?: Record<string, unknown>;
+  /** 画中卷·便签旧版单文件存储 */
+  typewriterNotes?: unknown[];
 }
 
 export const ImportValidator = {
@@ -92,7 +104,7 @@ export const ImportValidator = {
     const hasKnownField = KNOWN_FIELDS.some((f) => record[f] !== undefined);
     if (!hasKnownField) {
       throw new ImportValidationError(
-        '备份文件无效：未找到任何可识别的数据字段（days / goals / settings / purchaseHistory / incomeHistory / customTemplates）'
+        '备份文件无效：未找到任何可识别的数据字段（days / goals / settings / purchaseHistory / incomeHistory / customTemplates / typewriter*Docs）'
       );
     }
 
@@ -126,6 +138,27 @@ export const ImportValidator = {
       result.customTemplates = sanitizeValue(
         ImportValidator.normalizeTemplates(record.customTemplates)
       ) as CustomTemplate[];
+    }
+    // 画中卷三模式的程序数据（早期版本备份不含这些字段 —— 属历史缺口，旧备份会自动跳过）
+    if (record.typewriterWritingDocs !== undefined) {
+      result.typewriterWritingDocs = sanitizeValue(
+        ImportValidator.normalizeDocMap(record.typewriterWritingDocs)
+      ) as Record<string, unknown>;
+    }
+    if (record.typewriterNotesDocs !== undefined) {
+      result.typewriterNotesDocs = sanitizeValue(
+        ImportValidator.normalizeDocMap(record.typewriterNotesDocs)
+      ) as Record<string, unknown>;
+    }
+    if (record.typewriterMindmapDocs !== undefined) {
+      result.typewriterMindmapDocs = sanitizeValue(
+        ImportValidator.normalizeDocMap(record.typewriterMindmapDocs)
+      ) as Record<string, unknown>;
+    }
+    if (record.typewriterNotes !== undefined) {
+      result.typewriterNotes = sanitizeValue(
+        Array.isArray(record.typewriterNotes) ? record.typewriterNotes : []
+      ) as unknown[];
     }
 
     return result;
@@ -213,5 +246,25 @@ export const ImportValidator = {
         return obj as unknown as CustomTemplate;
       })
       .filter((t): t is CustomTemplate => t !== null);
+  },
+
+  /**
+   * 归一化「画中卷文档映射」（typewriterWritingDocs / typewriterNotesDocs / typewriterMindmapDocs）。
+   *  - 必须是对象；非对象（数组/字符串等）→ 空映射，不污染 Vault
+   *  - key（文档 id）必须匹配安全字符集：id 会参与路径拼接（`{dir}/{id}.json`），
+   *    `../x` 之类的 id 一律丢弃（与 VaultStorage.assertSafeDocId 同一套字符集）
+   *  - value 必须是非 null 的普通对象，否则跳过该条
+   */
+  normalizeDocMap(docs: unknown): Record<string, unknown> {
+    if (!docs || typeof docs !== 'object' || Array.isArray(docs)) return {};
+    const raw = docs as Record<string, unknown>;
+    const out: Record<string, unknown> = {};
+    for (const id of Object.keys(raw)) {
+      if (!/^[A-Za-z0-9_-]{1,64}$/.test(id)) continue;
+      const v = raw[id];
+      if (!v || typeof v !== 'object' || Array.isArray(v)) continue;
+      out[id] = v;
+    }
+    return out;
   },
 };

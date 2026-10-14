@@ -69,6 +69,15 @@ export const MindmapDoc = {
     return nodes.map((n) => (n.id === id ? Object.assign({}, n, { color: color || '' }) : n));
   },
 
+  /** 批量改色（colors: Map<id,color>，'' = 默认）：单趟 map 取代逐颗 setColor 的 O(K·N) */
+  setColors(nodes, colors) {
+    if (!colors || typeof colors.get !== 'function' || colors.size === 0) return nodes;
+    return nodes.map((n) => {
+      const c = colors.get(n.id);
+      return c !== undefined ? Object.assign({}, n, { color: c || '' }) : n;
+    });
+  },
+
   setText(nodes, id, text) {
     return nodes.map((n) => (n.id === id ? Object.assign({}, n, { text: text || '' }) : n));
   },

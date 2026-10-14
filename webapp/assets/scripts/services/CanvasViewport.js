@@ -65,8 +65,10 @@ export const CanvasViewport = {
     const s = this.getScale(ctrl);
     ctrl._canvas.style.transform = `translate(${off.x}px, ${off.y}px) scale(${s})`;
     if (ctrl._scheduleCull) ctrl._scheduleCull();
-    // 缩放变化后刷新「不随缩放变大」的控件（外围圆钮等），保持其屏幕尺寸恒定
-    if (typeof ctrl._refreshKnobs === 'function') {
+    // 控件（外围圆钮等）尺寸只在「缩放变化」时需重算以保持屏幕尺寸恒定；pan 不改变 scale，
+    // 逐个重算纯属浪费（每帧 O(n) querySelectorAll + 8n 样式写）——新挂载卡已在 mountCard 自行定尺寸。
+    if (typeof ctrl._refreshKnobs === 'function' && s !== ctrl._knobScale) {
+      ctrl._knobScale = s;
       try { ctrl._refreshKnobs(); } catch (_) { /* 不阻塞缩放 */ }
     }
     if (typeof ctrl._syncZoomUI === 'function') {

@@ -182,7 +182,8 @@
 .tw-card-zoom-in,
 .tw-card-move,
 .tw-card-lv,
-.tw-card-split {
+.tw-card-split,
+.tw-card-export {
   
   width: clamp(18px, calc(20px * var(--tw-scale, 1)), 24px);
   height: clamp(18px, calc(20px * var(--tw-scale, 1)), 24px);
@@ -211,7 +212,8 @@
 .tw-card-zoom-in svg,
 .tw-card-move svg,
 .tw-card-lv svg,
-.tw-card-split svg {
+.tw-card-split svg,
+.tw-card-export svg {
   width: clamp(16px, calc(18px * var(--tw-scale, 1)), 22px);
   height: clamp(16px, calc(18px * var(--tw-scale, 1)), 22px);
   flex: none;
@@ -260,6 +262,9 @@
 :host(.dark) .tw-card-level:hover { color: #f2efe6; }
 
 .tw-card-del:hover { color: rgb(var(--danger-rgb)); }
+/* 导出与删除同为「语义色 hover」，但一律不铺底 —— 与同排裸图标钮一致（曾唯一带 background 填充，显异类）。
+   语义色由令牌自身随明暗切换（亮 --primary-rgb=90,154,90 / 暗 130,195,130），无需另写暗色 hover。 */
+.tw-card-export:hover { color: rgb(var(--primary-rgb)); }
 .tw-card-font:hover,
 .tw-card-paper:hover,
 .tw-card-zoom-out:hover,
@@ -271,7 +276,8 @@
 .tw-card-font:active,
 .tw-card-zoom-out:active,
 .tw-card-zoom-in:active,
-.tw-card-split:active { transform: scale(0.92); }
+.tw-card-split:active,
+.tw-card-export:active { transform: scale(0.92); }
 .tw-card-font:disabled,
 .tw-card-zoom-out:disabled,
 .tw-card-zoom-in:disabled {
@@ -287,7 +293,8 @@
 .tw-card-zoom-in:focus-visible,
 .tw-card-move:focus-visible,
 .tw-card-lv:focus-visible,
-.tw-card-split:focus-visible {
+.tw-card-split:focus-visible,
+.tw-card-export:focus-visible {
   outline: 2px solid rgb(var(--primary-rgb));
   outline-offset: 1px;
 }
@@ -1535,11 +1542,13 @@
 :host(.dark) .tw-card-zoom-in,
 :host(.dark) .tw-card-move,
 :host(.dark) .tw-card-lv,
-:host(.dark) .tw-card-split { color: #cdc8bb; }
+:host(.dark) .tw-card-split,
+:host(.dark) .tw-card-export { color: #cdc8bb; }
 :host(.dark) .tw-card-paper:hover,
 :host(.dark) .tw-card-font:hover,
 :host(.dark) .tw-card-zoom-out:hover,
-:host(.dark) .tw-card-zoom-in:hover { color: #f2efe6; }
+:host(.dark) .tw-card-zoom-in:hover,
+:host(.dark) .tw-card-split:hover { color: #f2efe6; }
 
 /* ===== LOD（Level of Detail）分级渲染 =====
    对标 tldraw 的 Level of Detail / built-in shape simplifications。
@@ -1683,3 +1692,213 @@
    [hidden]{display:none}，导致「导图模式下两条缩放条同时可见且重叠」。
    仓库其余组件均有同类显式规则，此处补齐。 */
 .tw-zoom-bar[hidden] { display: none; }
+/* 同类兜底：市场按钮也是 button（display:inline-flex），需显式规则才能被 hidden 真正隐藏
+   —— 否则写作模式（bar 可见）里市场按钮会一直露出来。 */
+.tw-zoom-bar .tw-zoom-market[hidden] { display: none; }
+
+/* ===== 便签模式·素材市场（右侧抽屉 + 素材卡 + 贴纸落卡）=====
+   抽屉定位于 .scroll-typewriter-feature 右侧（黄区），展开时 translateX(0)。 */
+.bm-market-drawer {
+  /* 顶部让出工具行（缩放条 / 便签组名与窗口切换控件），抽屉整体矮一截，避免遮挡 */
+  position: absolute; top: 52px; right: 0; bottom: 0; width: 360px; max-width: 88%;
+  background: var(--card-bg, #1b1b1b); color: var(--text-primary, #eee);
+  border-left: 1px solid var(--border-light, rgba(255,255,255,.08));
+  /* 不加投影：平铺贴合更干净；关闭态用 visibility 彻底隐藏，避免边缘/背景泄漏成一条「阴影」 */
+  transform: translateX(101%); visibility: hidden;
+  transition: transform .28s ease, visibility .28s ease; z-index: 50;
+  display: flex; flex-direction: column;
+}
+.bm-market-drawer.is-open { transform: translateX(0); visibility: visible; }
+.bm-market-head { flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-bottom: 1px solid var(--border-light, rgba(255,255,255,.08)); }
+.bm-market-title { font: 600 14px/1.2 var(--font-ui, system-ui); letter-spacing: .06em; }
+/* 头部动作按钮（刷新 ⟳ / 关闭 ×）：与市场标题栏 .fab-panel-close / .fab-panel-action 完全同规格
+   —— 无边框透明底、圆形触摸目标、悬停淡底；关闭按钮悬停旋转 90°，语义与市场一致。 */
+.bm-market-close,
+.bm-market-refresh {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 6px; min-width: var(--touch-target, 32px); min-height: var(--touch-target, 32px);
+  border: 0; border-radius: 50%; background: transparent;
+  color: var(--text-secondary, rgba(255,255,255,.6));
+  line-height: 1; cursor: pointer;
+  transition: background-color .2s, color .2s, opacity .2s, transform .2s;
+}
+/* 头部按钮内图标：与卡片按钮同走 Lucide 描边图标体系，锁定尺寸避免受全局 .icon 影响 */
+.bm-market-close .icon,
+.bm-market-refresh .icon { width: 16px; height: 16px; display: block; }
+/* 刷新：绕过宿主 TTL 缓存强制重拉（margin-left:auto → 标题靠左、两个按钮靠右） */
+.bm-market-refresh { margin-left: auto; }
+.bm-market-close:hover,
+.bm-market-refresh:hover { background: rgba(var(--black-rgb, 0,0,0), .06); color: var(--text-primary, #eee); }
+.bm-market-close:hover { transform: rotate(90deg); }
+.bm-market-close:focus-visible,
+.bm-market-refresh:focus-visible { outline: 2px solid var(--bamboo-primary, #7d9b6a); outline-offset: 2px; }
+.bm-market-body { flex: 1 1 auto; overflow-y: auto; padding: 10px; }
+.market-loading, .market-empty { padding: 24px 12px; color: rgba(255,255,255,.5); font-size: 13px; text-align: center; }
+.bm-market-body .market-list { display: flex; flex-direction: column; gap: 10px; }
+/* 形态筛选：细分段控件 —— 一个圆角描边框 + 竖线分隔（是「一个控件」而非三个按钮）；
+   激活段＝柔绿浅底 + 竹绿字（不用实心重绿，避免过沉）；计数小一号、降透明度 */
+.bm-market-filters {
+  display: inline-flex; flex-wrap: nowrap; align-items: stretch;
+  margin: 0 0 12px; max-width: 100%;
+  border: 1px solid rgba(0,0,0,.14); border-radius: 9px;
+  background: rgba(0,0,0,.02); overflow: hidden;
+}
+.bm-market-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 5px 12px; margin: 0; border: 0; background: transparent;
+  color: rgba(0,0,0,.55); font: 500 12px/1.2 var(--font-ui, system-ui);
+  cursor: pointer; transition: background .15s, color .15s;
+}
+.bm-market-chip + .bm-market-chip { border-left: 1px solid rgba(0,0,0,.12); }
+.bm-market-chip:hover { background: rgba(0,0,0,.05); color: rgba(0,0,0,.78); }
+.bm-market-chip.is-active { background: rgba(125,155,106,.16); color: #5f7d4f; }
+.bm-market-chip-count { font-size: 11px; opacity: .6; }
+.bm-market-chip.is-active .bm-market-chip-count { opacity: .85; }
+/* 系列分组：按 manifest 的 series 字段归拢（无 series 的归入「其他素材」），组头可折叠 */
+.bm-market-group { margin: 0 0 14px; }
+.bm-market-group:last-child { margin-bottom: 0; }
+.bm-market-group-head {
+  display: flex; align-items: center; gap: 7px; width: 100%;
+  margin: 0 0 8px; padding: 6px 8px;
+  background: transparent; border: 0; border-radius: 8px;
+  color: var(--text-primary, #2b2b2b); font: 600 12px/1.2 var(--font-ui, system-ui);
+  letter-spacing: .06em; text-align: left; cursor: pointer;
+}
+.bm-market-group-head:hover { background: rgba(0,0,0,.045); }
+.bm-market-group-arrow {
+  flex: 0 0 auto; width: 0; height: 0;
+  border-left: 5px solid currentColor; border-top: 3.5px solid transparent; border-bottom: 3.5px solid transparent;
+  transform: rotate(90deg); transition: transform .16s ease; opacity: .75;
+}
+.bm-market-group.is-collapsed .bm-market-group-arrow { transform: rotate(0); }
+.bm-market-group-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bm-market-group-count {
+  flex: 0 0 auto; font: 500 11px/1.6 var(--font-ui, system-ui); padding: 0 7px;
+  border-radius: 999px; background: rgba(0,0,0,.06); color: rgba(0,0,0,.55);
+}
+.bm-market-group.is-collapsed .market-list { display: none; }
+.bm-market-body .market-card { display: flex; gap: 10px; align-items: stretch; background: rgba(0,0,0,.03); border: 1px solid var(--border-light, rgba(0,0,0,.1)); border-radius: 10px; padding: 8px; }
+.bm-market-body .market-card.installed { border-color: rgba(31,150,90,.45); cursor: grab; }
+.bm-market-body .market-card.installed:active { cursor: grabbing; }
+.bm-market-thumb { flex: 0 0 auto; width: 96px; height: 96px; border-radius: 8px; overflow: hidden; background: rgba(0,0,0,.03); display: flex; align-items: center; justify-content: center; }
+/* 缩略图内的 SVG 强制填满：素材若漏写尺寸（或被优化工具删掉 width/height），
+   浏览器会退回固有尺寸（= viewBox 像素）而被 overflow:hidden 裁成「放大错位」。
+   与画布的 .bm-sticker svg 兜底规则对齐，把这类问题从插件侧一并消掉。 */
+.bm-market-thumb svg { width: 100%; height: 100%; display: block; }
+/* schema 预留 previewUrl 时按 URL 懒加载的缩略图（与内联 SVG 同一尺寸约束） */
+.bm-market-thumb-img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.bm-market-thumb-empty { color: rgba(0,0,0,.35); font-size: 12px; }
+.bm-market-body .market-card-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.bm-market-body .market-card-head { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.bm-market-body .market-card-name { font-weight: 600; font-size: 13px; }
+.bm-material-type { font-size: 11px; padding: 1px 6px; border-radius: 999px; background: rgba(0,0,0,.06); }
+.bm-market-body .market-card-author { font-size: 11px; color: rgba(0,0,0,.5); }
+.bm-market-hint { margin-top: 6px; font-size: 11px; color: #1c7a4a; }
+.bm-market-body .market-card-actions { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; }
+/* 素材市场操作按钮：圆形图标按钮（下载/更新/删除/不可用），与画中卷整体圆钮风格统一 */
+.bm-market-body .market-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; padding: 0; border-radius: 50%;
+  font-size: var(--type-xs, 12px); cursor: pointer; border: 1px solid transparent;
+  transition: background-color .18s ease, border-color .18s ease, color .18s ease, box-shadow .18s ease, transform .12s ease;
+}
+.bm-market-body .market-btn svg { width: 17px; height: 17px; display: block; }
+.bm-market-body .market-btn:active { transform: translateY(1px); }
+.bm-market-body .market-btn:disabled { opacity: .55; cursor: default; transform: none; }
+.bm-market-body .market-btn.install {
+  background: var(--bamboo-primary, #7d9b6a);
+  color: var(--text-on-accent, #fff);
+  box-shadow: 0 1px 2px rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.18);
+}
+.bm-market-body .market-btn.install:hover:not(:disabled) {
+  filter: brightness(1.06);
+  box-shadow: 0 2px 8px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.24);
+}
+.bm-market-body .market-btn.uninstall {
+  background: rgba(0,0,0,.05); border-color: rgba(0,0,0,.18); color: rgba(0,0,0,.55);
+}
+.bm-market-body .market-btn.uninstall:hover:not(:disabled) {
+  background: rgba(0,0,0,.1); border-color: rgba(0,0,0,.32); color: rgba(0,0,0,.8);
+}
+/* D · minAppVersion 门控：宿主版本不足被禁用的素材卡 */
+.bm-market-hint.is-blocked { color: #c0392b; }
+.bm-market-body .market-btn.install.is-blocked { background: rgba(0,0,0,.08); border-color: rgba(0,0,0,.12); color: rgba(0,0,0,.45); box-shadow: none; filter: none; }
+
+/* 暗色模式：还原为亮字 + 淡白描底（沿用原配色） */
+:host(.dark) .bm-market-group-head { color: var(--text-primary, #eee); }
+:host(.dark) .bm-market-group-head:hover { background: rgba(255,255,255,.06); }
+:host(.dark) .bm-market-group-count { background: rgba(255,255,255,.12); color: rgba(255,255,255,.7); }
+:host(.dark) .bm-market-filters { border-color: rgba(255,255,255,.16); background: rgba(255,255,255,.04); }
+:host(.dark) .bm-market-chip { color: rgba(255,255,255,.62); }
+:host(.dark) .bm-market-chip + .bm-market-chip { border-left-color: rgba(255,255,255,.14); }
+:host(.dark) .bm-market-chip:hover { background: rgba(255,255,255,.08); color: rgba(255,255,255,.85); }
+:host(.dark) .bm-market-chip.is-active { background: rgba(125,155,106,.28); color: #a8c497; }
+:host(.dark) .bm-market-body .market-card { background: rgba(255,255,255,.04); border-color: rgba(255,255,255,.08); }
+:host(.dark) .bm-market-body .market-card.installed { border-color: rgba(127,214,160,.5); }
+:host(.dark) .bm-market-thumb { background: rgba(255,255,255,.04); }
+:host(.dark) .bm-market-thumb-empty { color: rgba(255,255,255,.3); }
+:host(.dark) .bm-material-type { background: rgba(255,255,255,.12); }
+:host(.dark) .bm-market-body .market-card-author { color: rgba(255,255,255,.5); }
+:host(.dark) .bm-market-hint { color: #7fd6a0; }
+:host(.dark) .bm-market-body .market-btn.install { background: var(--bamboo-primary, #7d9b6a); color: var(--text-on-accent, #fff); }
+:host(.dark) .bm-market-body .market-btn.uninstall { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.25); color: rgba(255,255,255,.75); }
+:host(.dark) .bm-market-body .market-btn.uninstall:hover:not(:disabled) { background: rgba(255,255,255,.14); border-color: rgba(255,255,255,.4); color: #fff; }
+:host(.dark) .bm-market-hint.is-blocked { color: #ff9b9b; }
+:host(.dark) .bm-market-body .market-btn.install.is-blocked { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.12); color: rgba(255,255,255,.4); }
+/* 贴纸：装饰层，独立拖拽，不入便签模型 */
+/* 阴影走体系 --shadow-card 档位：贴纸与便签卡片同处画布、同为可拖动元素，故取「中层·可悬停卡片」，
+   不用 elevated/floating（那是下拉菜单与模态框的层级）。
+   贴纸是「图形」而非卡片面板 → 用 drop-shadow 贴合素材轮廓（box-shadow 会在不规则素材外露出方角），
+   与体系里图形类元素（timeline / modals / garden）同法；明暗各取该 token 的对应取值。 */
+/* ===== 便签档装饰层：贴纸的专属挂载容器（P1 所有权显式化）=====
+   贴纸属于便签档，不再直写共享画布（那张画布三档共用）。
+   刻意不设 z-index / transform / overflow：不新建层叠上下文，
+   贴纸的 z（++_zTop）仍在画布层叠上下文里与卡片按同一序列排序，改造前后层级一致。
+   层本身 pointer-events:none —— 否则一层 inset:0 的覆盖层会把卡片的拖拽与点击全吞掉；
+   只有层内元素（贴纸及其四角手柄）接收指针事件。 */
+.tw-deco-layer { position: absolute; inset: 0; pointer-events: none; }
+.tw-deco-layer[hidden] { display: none; }
+.tw-deco-layer > * { pointer-events: auto; }
+
+.bm-sticker {
+  position: absolute; width: 120px; height: 120px; cursor: move; user-select: none;
+  filter: drop-shadow(0 4px 16px rgba(var(--deep-rgb), 0.08)) drop-shadow(0 2px 4px rgba(var(--deep-rgb), 0.04));
+}
+:host(.dark) .bm-sticker {
+  filter: drop-shadow(0 4px 16px rgba(var(--black-rgb), 0.30)) drop-shadow(0 2px 4px rgba(var(--black-rgb), 0.20));
+}
+.bm-sticker svg, .bm-sticker > div, .bm-sticker-content, .bm-sticker-content > div { width: 100%; height: 100%; display: block; }
+/* 贴纸删除钮：默认隐藏，悬停贴纸时显现（贴纸会持久化，必须能删） */
+.bm-sticker-del {
+  position: absolute; top: -8px; right: -8px; width: 22px; height: 22px;
+  border-radius: 50%; border: 1px solid rgba(255,255,255,.28);
+  background: rgba(0,0,0,.55); color: #fff; font-size: 15px; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; opacity: 0; transition: opacity .15s ease; z-index: 2;
+}
+.bm-sticker:hover .bm-sticker-del { opacity: 1; }
+.bm-sticker-del:hover { background: rgba(200,60,60,.9); }
+/* 旋转（左上）/ 缩放（右下）手柄：同删除钮，悬停贴纸时显现 */
+.bm-sticker-rotate, .bm-sticker-resize {
+  position: absolute; width: 22px; height: 22px; padding: 0;
+  border-radius: 50%; border: 1px solid rgba(255,255,255,.28);
+  background: rgba(0,0,0,.55); color: #fff; font-size: 12px; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; opacity: 0; transition: opacity .15s ease; z-index: 2;
+}
+.bm-sticker-rotate { top: -8px; left: -8px; cursor: grab; }
+.bm-sticker-resize { bottom: -8px; right: -8px; cursor: nwse-resize; }
+.bm-sticker:hover .bm-sticker-rotate, .bm-sticker:hover .bm-sticker-resize { opacity: 1; }
+.bm-sticker-rotate:hover, .bm-sticker-resize:hover { background: rgba(60,140,200,.9); }
+/* 翻转（左下）手柄：切换水平/垂直镜像，仅作用于内容层，不波及旋转与四角手柄 */
+.bm-sticker-flip {
+  position: absolute; bottom: -8px; left: -8px; padding: 0;
+  width: 22px; height: 22px; border-radius: 50%; border: 1px solid rgba(255,255,255,.28);
+  background: rgba(0,0,0,.55); color: #fff; font-size: 14px; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; opacity: 0; transition: opacity .15s ease; z-index: 2;
+}
+.bm-sticker:hover .bm-sticker-flip { opacity: 1; }
+.bm-sticker-flip:hover { background: rgba(60,140,200,.9); }
+/* 缩放条「素材市场」入口：区别于缩放按钮的强调色 */
+.tw-zoom-bar .tw-zoom-market { color: var(--accent, #6fae8f); }

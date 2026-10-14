@@ -66,6 +66,14 @@ export class LinkLayer {
     clearTimeout(this._hoverTimer);
     this._hoverTimer = 0;
     if (this._linkRaf) { cancelAnimationFrame(this._linkRaf); this._linkRaf = 0; }
+    // 元素引用一并断掉：否则 destroy 后若 render() 仍被（同步）调用，会拿旧的 _linkEls
+    // 去写已 detach 的 DOM。此前只清了 _svg/_ctlSvg 句柄，这些全留着。
+    this._linkEls = [];
+    this._ctlEls = null;
+    this._hitCache = null;
+    this._hoverLink = null;
+    this._ctlHover = false;
+    this._linkSigCache = '';
     this._svg = null;
     this._ctlSvg = null;
   }
@@ -201,13 +209,14 @@ export class LinkLayer {
       });
       this._linkEls = items.map((it, i) => this.buildLink(svg, it, geoms[i]));
       this._linkSigCache = sig;
+      // 「连线对 → 元素」索引仅在结构变化时重建（供 setActive / highlightFor 命中）。
+      // reusable 时元素映射不变，拖拽每帧无需重建——省去每帧 O(L) 的 Map 分配。
+      this._byPair = new Map();
+      items.forEach((it, i) => {
+        const g = this._linkEls[i];
+        if (g) this._byPair.set(it.l.from + '>' + it.l.to, [g.hit, g.path, g.src, g.arrow]);
+      });
     }
-    // 重建「连线对 → 元素」索引，供 setActive / highlightFor 直接命中，省去每次 hover 的 querySelectorAll
-    this._byPair = new Map();
-    items.forEach((it, i) => {
-      const g = this._linkEls[i];
-      if (g) this._byPair.set(it.l.from + '>' + it.l.to, [g.hit, g.path, g.src, g.arrow]);
-    });
     if (this._hoverLink) this.renderControls(this._hoverLink.from, this._hoverLink.to);
   }
 
@@ -626,6 +635,15 @@ export class LinkLayer {
       this._linkRo = new ResizeObserver(() => this._scheduleRenderLinks());
     }
     this._linkRo.observe(el);
+  }
+
+  /** watchSize 的配对解除：卡片卸载（视口剔除）时必须调用。
+   *  【根因】原先只 observe 不 unobserve：写作档 WRITE_NO_CULL_MAX=300 以下不剔除、超阈值后
+   *  每轮 cull churn 都给这个共享 RO 新增一条对**已 detach 卡片**的强引用观察 —— 长时间平移后
+   *  观察列表只增不减，且每次触发都在已销毁的 container 上排 rAF。这是全板块唯一无界增长的资源。
+   *  ResizeObserver 无「按元素查询是否被观察」的 API，故由调用方保证 mount/unmount 严格配对。 */
+  unwatchSize(el) {
+    if (this._linkRo) this._linkRo.unobserve(el);
   }
 
   // ===== 拖拽连接（从锚点，或 Shift/Alt 从节点本体） =====

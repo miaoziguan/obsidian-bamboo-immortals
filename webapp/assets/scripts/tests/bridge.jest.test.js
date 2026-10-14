@@ -119,3 +119,49 @@ describe('bridge.js 协议接收端', () => {
     });
   });
 });
+
+// 【防丢数据】app:beforeDetach 必须同时兜住画中卷·打字机。
+// 根因：TypewriterFeature.unmount() 内含 _saveNow 兜底落盘，但生产代码从未被调用
+// （scrollManager 只 mount、宿主 onClose 只 detach iframe），scroll bundle 又不加载
+// store.js —— 于是关闭视图时防抖窗口内（便签/写作 350ms、子弹 400ms）的最后一次编辑
+// 随 iframe 销毁而永久丢失。宿主 detach() 已留 400ms 回传窗口，故只需在此同步触发。
+describe('app:beforeDetach 兜住打字机防抖窗口', () => {
+  let unmountSpy;
+
+  beforeEach(() => {
+    unmountSpy = jest.fn();
+    globalThis.TypewriterFeature = { _el: {}, unmount: unmountSpy };
+  });
+
+  afterEach(() => {
+    delete globalThis.TypewriterFeature;
+  });
+
+  test('已挂载（_el 存在）→ 调 unmount（触发 _saveNow 兜底落盘 + 断 observer）', () => {
+    const evt = new MessageEvent('message', { source: window, data: { type: 'app:beforeDetach' } });
+    window.dispatchEvent(evt);
+    expect(unmountSpy).toHaveBeenCalledTimes(1);
+  });
+
+  test('未挂载（_el 为空）→ 不调 unmount（避免对未初始化单例做完整卸载）', () => {
+    globalThis.TypewriterFeature = { _el: null, unmount: unmountSpy };
+    const evt = new MessageEvent('message', { source: window, data: { type: 'app:beforeDetach' } });
+    window.dispatchEvent(evt);
+    expect(unmountSpy).not.toHaveBeenCalled();
+  });
+
+  test('unmount 抛错不阻断卸载流程（不得向上抛）', () => {
+    globalThis.TypewriterFeature = {
+      _el: {},
+      unmount: () => { throw new Error('boom'); },
+    };
+    const evt = new MessageEvent('message', { source: window, data: { type: 'app:beforeDetach' } });
+    expect(() => window.dispatchEvent(evt)).not.toThrow();
+  });
+
+  test('打字机模块不存在（纯香道视图）→ 静默跳过', () => {
+    delete globalThis.TypewriterFeature;
+    const evt = new MessageEvent('message', { source: window, data: { type: 'app:beforeDetach' } });
+    expect(() => window.dispatchEvent(evt)).not.toThrow();
+  });
+});

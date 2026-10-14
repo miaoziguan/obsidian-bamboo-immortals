@@ -26,11 +26,23 @@ const CONTROL_SEL = [
   '.tw-mm-search', '.tw-mm-toolbar',
 ].join(',');
 
+// 浮层/控件上的滚轮：归其自身滚动（整篇预览只读框、素材抽屉、缩放条、模态对话/菜单），
+// 不得被画布平移劫持 —— 与上面的 CONTROL_SEL（指针侧豁免）对称，补齐滚轮侧的同类豁免。
+// 回归点：「整篇预览」弹窗在 wrap 内、其 .tw-preview-body 是 overflow:auto 的可滚只读框；
+//        若滚轮在此被 preventDefault，预览框滚不动、反而整卷画布在动。
+const WHEEL_EXEMPT_SEL = [
+  '.tw-preview-modal', '.bm-market-drawer', '.tw-zoom-bar',
+  '.tw-level-menu', '[role="dialog"]', '[role="menu"]',
+].join(',');
+
 export const CanvasGestures = {
   /** 滚轮：⌘/Ctrl=以光标为焦点缩放；Shift=横移；普通=平移。（单卡缩放快捷键已移除，Alt+滚轮按普通平移处理） */
   installWheel(host, a) {
     const onWheel = (e) => {
       if (!a.isActive()) return;
+      // 浮层/控件内的滚轮交给其自身（可滚动只读框等），不驱动画布平移/缩放
+      const t = e.target;
+      if (t && typeof t.closest === 'function' && t.closest(WHEEL_EXEMPT_SEL)) return;
       e.preventDefault();
       if (e.metaKey || e.ctrlKey) a.zoomAt(e.clientX, e.clientY, CanvasViewport.wheelFactor(e.deltaY));
       else if (e.shiftKey)        a.panBy(-e.deltaY, 0);

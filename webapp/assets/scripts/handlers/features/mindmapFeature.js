@@ -81,17 +81,23 @@ export const MindmapFeature = {
   _spatial: null,           // SpatialIndex：节点几何空间索引（剔除 + 框选/命中 共用，消除 O(N) 全量扫描）
   _spatialDirty: true,      // 结构变更后置脏，下次查询前惰性重建（O(N) 一次，之后查询 O(log N)）
   _nodeMap: null,           // id -> node 映射（_rebuildSpatial 顺带构建，供剔除 O(1) 反查节点对象）
+  _nodeMapSrc: null,        // _nodeMap 对应的 _nodes 引用：引用一变即惰性重建，保证 _nodeById 既 O(1) 又始终最新
   _selSet: null,            // 框选多选集合：Set<id>（思维子弹模式框选删除用）
   _marquee: null,           // 框选矩形 DOM
   _marqueeRect: null,       // 框选矩形几何（画布局部 px）
   _editId: null,
   _undoStack: null,         // 撤销/重做栈（仅导图文档；便签那份在 TypewriterFeature）
   _ctrl: null,              // 宿主（便签功能实例），经 ctx.ctrl 注入，用于提示条与种子数据
-  _layoutIdx: 0,            // 当前自动布局模式索引（循环用）
+  _layoutCursor: { structured: 0, flat: 0 },   // 自动布局循环游标：结构组 / 扁平组各自独立推进
   LAYOUT_MODES: [           // 一键自动布局的可用模式（循环顺序）
+    // 结构布局：只吃 links，要求图里真有层次（判据见 MindmapLayout.isStructured）
     { id: 'tree', label: '树状 ↓' },
     { id: 'horizontal', label: '横向 →' },
     { id: 'radial', label: '放射 ◎' },
+    // 扁平布局：图里没层次时循环这两项。此时跑结构布局必然退化 ——
+    // 树状只是「排成一行」，放射会把所有子弹算到原点、叠成一坨。
+    { id: 'grid', label: '网格 ▦', flat: true },
+    { id: 'ring', label: '环形 ○', flat: true },
   ],
 
   // ===== 生命周期 =====
@@ -394,18 +400,44 @@ export const MindmapFeature = {
   /** 防抖落盘（拖动/编辑时高频触发，只在停手后写一次） */
   _scheduleSave() {
     clearTimeout(this._saveTimer);
-    this._saveTimer = setTimeout(() => this._saveNow(), this.SAVE_DEBOUNCE);
+    this._saveTimer = setTimeout(() => {
+      // 【防丢数据】回调也要有错误面：_saveNow 内部只覆盖落盘本身，这里兜住前置抛错，
+      // 避免 unhandled rejection 把失败藏起来。
+      Promise.resolve(this._saveNow()).catch((e) => {
+        console.error('[Mindmap] 防抖落盘失败', e);
+        this._showSaveFailed();
+      });
+    }, this.SAVE_DEBOUNCE);
+  },
+
+  /** 落盘失败的用户可见提示（子弹档无屏幕消息条，Toast 优先） */
+  _showSaveFailed() {
+    const text = '思维子弹保存失败，请检查 vault 写入权限';
+    try {
+      if (typeof Toast !== 'undefined' && Toast && typeof Toast.showToast === 'function') {
+        Toast.showToast(text, 'error');
+        return;
+      }
+    } catch (_) { /* Toast 不可用则仅记日志 */ }
+    console.error('[Mindmap] ' + text);
   },
 
   _saveNow() {
     clearTimeout(this._saveTimer);
     this._saveTimer = 0;
-    if (!this._nodes || !this._groupId) return;
+    if (!this._nodes || !this._groupId) return Promise.resolve(false);
     // 只要「有平移」或「缩放非 1」就落盘：否则只改了缩放级别会被整份丢掉
     const hasView = this._view && (this._view.x || this._view.y || (this._view.scale && this._view.scale !== 1));
-    TypewriterStore.saveMindmapGroupDoc(this._groupId, {
+    // 【防丢数据】返回 Promise 并自带错误面：此前 fire-and-forget 且无 catch，
+    // ① 卸载兜底（teardown）与防抖路径都无法知晓成败；
+    // ② 失败只表现为 unhandled rejection，用户无感。
+    return Promise.resolve(TypewriterStore.saveMindmapGroupDoc(this._groupId, {
       nodes: this._nodes, links: this._links,
       view: hasView ? this._view : null, style: this._style,
+    })).catch((e) => {
+      console.error('[Mindmap] 子弹落盘失败', e);
+      this._showSaveFailed();
+      return false;
     });
   },
 
@@ -585,10 +617,12 @@ export const MindmapFeature = {
     el.style.top = Math.round(landY) + 'px';
     el.style.transform = 'scale(1)';
     el.style.opacity = '1';
-    // 飞行期间每帧重绘连线，使线头跟住飞入的子弹（left/top 会被 offsetLeft/offsetTop 读到）
+    // 飞行期间每帧重绘连线，使线头跟住飞入的子弹（left/top 会被 offsetLeft/offsetTop 读到）；
+    // 但孤立新子弹根本没有连线可跟随，跳过每帧 O(E) 重绘，免去无谓开销（连续新建时尤其明显）
+    const hasLinks = this._links.some((l) => l.from === id || l.to === id);
     let raf = 0;
     const tick = () => { this._linkLayer.render(); raf = requestAnimationFrame(tick); };
-    raf = requestAnimationFrame(tick);
+    if (hasLinks) raf = requestAnimationFrame(tick);
     let cleaned = false;
     const done = (e) => {
       if (cleaned) return;
@@ -631,7 +665,7 @@ export const MindmapFeature = {
 
   /** 按数据坐标落位一颗子弹（位置即数据） */
   _placeNode(id) {
-    const n = this._nodes.find((x) => x.id === id);
+    const n = this._nodeById(id);
     const el = this._els.get(id);
     if (!n || !el) return;
     el.style.left = Math.round(n.x) + 'px';
@@ -686,16 +720,22 @@ export const MindmapFeature = {
       const h = (g ? g.hh * 2 : 0) || MindmapDoc.EST_H;
       sp.insert(n.id, n.x, n.y, w, h, 0);
     }
+    this._nodeMapSrc = this._nodes;   // _nodeMap 已同步到当前 _nodes，供 _nodeById 免重建直接命中
     this._spatialDirty = false;
   },
 
   /** 索引待重建则惰性重建（消灭全网遍历）。 */
   _ensureSpatial() { if (this._spatialDirty) this._rebuildSpatial(); },
 
-  /** id → node 对象（O(1)，失败回退 find）。 */
+  /** id → node 对象：惰性 id→node 映射，_nodes 引用一变即重建（O(N) 一次，之后 O(1)），既快又始终最新。 */
   _nodeById(id) {
-    if (this._nodeMap && this._nodeMap.has(id)) return this._nodeMap.get(id);
-    return this._nodes.find((n) => n.id === id) || null;
+    if (this._nodeMapSrc !== this._nodes) {
+      const m = new Map();
+      if (this._nodes) for (const n of this._nodes) m.set(n.id, n);
+      this._nodeMap = m;
+      this._nodeMapSrc = this._nodes;
+    }
+    return this._nodeMap.get(id) || null;
   },
 
   _cullView() {
@@ -800,7 +840,7 @@ export const MindmapFeature = {
     list.forEach((id) => {
       const el = this._els.get(id);
       if (!el) return;
-      const n = this._nodes.find((x) => x.id === id);
+      const n = this._nodeById(id);
       if (!n) return;
       this._paintNode(el, n);
       this._placeNode(id);
@@ -1041,6 +1081,7 @@ export const MindmapFeature = {
     let dropTargetEl = null;   // 拖放连线的目标高亮
     let raf = 0;              // rAF 节流：把「连线重绘 + 命中测试」合并到每帧一次，避免 pointermove 高频抖动/回流
     let lastEv = null;
+    let curDx = 0, curDy = 0;   // 最近一次位移：flush 时统一写位置，节点与连线严格同帧
     // 单颗拖动时让被拖元素对命中测试透明，便于检测「丢在谁身上」
     if (!dragSet) nodeEl.style.pointerEvents = 'none';
     if (this._toolbar) this._toolbar.hidden = true;   // 拖拽时收起浮动工具条，落点后再出现
@@ -1056,8 +1097,13 @@ export const MindmapFeature = {
         if (dropTargetEl) dropTargetEl.classList.add('is-drop-target');
       }
     };
-    const flush = () => {        // 每帧只跑一次：重画连线（含端点几何）+ 命中测试
+    const flush = () => {        // 每帧一次：先写节点位置，再同帧画连线 + 命中测试（节点与连线严格同帧，消除滞后）
       raf = 0;
+      starts.forEach((s) => {
+        if (!s.el.classList.contains('is-dragging')) s.el.classList.add('is-dragging');
+        s.el.style.left = (s.left + curDx) + 'px';
+        s.el.style.top = (s.top + curDy) + 'px';
+      });
       this._linkLayer.render();
       if (lastEv) updateDropHint(lastEv);
     };
@@ -1067,12 +1113,7 @@ export const MindmapFeature = {
       const dx = (ev.clientX - x0) / s, dy = (ev.clientY - y0) / s;
       if (!moved && Math.abs(dx) + Math.abs(dy) < 3) return;
       moved = true;
-      // 仅写节点位置（落到下一帧统一读），避免「写 → 读 offset → 强制回流」在同一事件里反复发生
-      starts.forEach((s) => {
-        s.el.classList.add('is-dragging');
-        s.el.style.left = (s.left + dx) + 'px';
-        s.el.style.top = (s.top + dy) + 'px';
-      });
+      curDx = dx; curDy = dy;   // 只记录位移；位置写入 + 连线重绘都落到 flush 同一帧（节点与连线同步，无滞后）
       lastEv = ev;
       if (!raf) raf = requestAnimationFrame(flush);
     };
@@ -1080,7 +1121,8 @@ export const MindmapFeature = {
       this._dragSet = null;
       document.removeEventListener('pointermove', move);
       document.removeEventListener('pointerup', up);
-      if (raf) { cancelAnimationFrame(raf); raf = 0; }   // 丢弃未执行的重绘，改用下面的终态渲染
+      if (raf) { cancelAnimationFrame(raf); raf = 0; }   // 丢弃未执行的重绘
+      if (moved) flush();   // 补一次最终「写位置 + 画连线」（用最新 curDx/curDy），保证后续 elementFromPoint/setPos 读到终态
       if (dropTargetEl) { dropTargetEl.classList.remove('is-drop-target'); dropTargetEl = null; }
       if (!dragSet) nodeEl.style.pointerEvents = '';
       // 拖放连线：单颗拖动且松手落在另一颗子弹上 → 连线并弹回原位
@@ -1173,7 +1215,7 @@ export const MindmapFeature = {
     this._select(id);
     const t = el._text;
     t.classList.remove('is-placeholder');
-    const n = this._nodes.find((x) => x.id === id);
+    const n = this._nodeById(id);
     t.textContent = n ? n.text : '';
     t.contentEditable = 'plaintext-only';
     el.classList.add('is-editing');
@@ -1463,7 +1505,17 @@ export const MindmapFeature = {
     const ids = this.getSelectedIds();
     if (!ids.length) return;
     this._mutate(() => {
-      ids.forEach((id) => this._setNodeColor(id, color));
+      // 单趟批量写色（O(N)），取代逐颗 setColor 的 O(K·N)；DOM 侧仍逐颗更新内联变量
+      const colors = new Map();
+      ids.forEach((id) => colors.set(id, color || ''));
+      this._nodes = MindmapDoc.setColors(this._nodes, colors);
+      ids.forEach((id) => {
+        const el = this._els.get(id);
+        if (el) {
+          if (color) el.style.setProperty('--mm-accent', color);
+          else el.style.removeProperty('--mm-accent');
+        }
+      });
       this._scheduleSave();
       this._msg(color ? '已改色' : '已恢复默认色');
     });
@@ -1495,7 +1547,7 @@ export const MindmapFeature = {
     const map = new Map();          // oldId → newId
     this._mutate(() => {
       ids.forEach((oid) => {
-        const on = this._nodes.find((n) => n.id === oid);
+        const on = this._nodeById(oid);
         if (!on) return;
         this._nodes = MindmapDoc.addNode(this._nodes, on.text || '', on.x + 30, on.y + 36, on.color || '');
         const nid = this._nodes[this._nodes.length - 1].id;
@@ -1715,7 +1767,11 @@ export const MindmapFeature = {
     const targetSet = targetIds ? new Set(targetIds) : null;
     const subNodes = targetSet ? nodes.filter((n) => targetSet.has(n.id)) : nodes;
     const subLinks = targetSet ? links.filter((l) => targetSet.has(l.from) && targetSet.has(l.to)) : links;
-    const pos = MindmapLayout.compute(mode, subNodes, subLinks);
+    // 结构布局只吃 links：结构不足时兜底为网格，避免退化成「一行」或「叠在一点」。
+    // 判据按**参与排版的这张子图**算（选区可能只含孤立子弹），不是按整图。
+    const spec = (this.LAYOUT_MODES || []).find((x) => x.id === mode);
+    const effMode = (spec && !spec.flat && !MindmapLayout.isStructured(subNodes, subLinks)) ? 'grid' : mode;
+    const pos = MindmapLayout.compute(effMode, subNodes, subLinks);
     if (!pos || !pos.size) return '';
     if (targetSet) {
       // 锚定：保持选中集合在原位置附近（质心对齐），未选中节点不动
@@ -1740,22 +1796,61 @@ export const MindmapFeature = {
     this.render();
     if (!targetSet) this._centerView();   // 局部排版不挪动视口
     this._scheduleSave();
-    const m = (this.LAYOUT_MODES || []).find((x) => x.id === mode) || (this.LAYOUT_MODES || [])[0];
+    // 标签报「实际生效」的模式：结构不足被兜底成网格时，提示要说实话
+    const m = (this.LAYOUT_MODES || []).find((x) => x.id === effMode) || (this.LAYOUT_MODES || [])[0];
     return m ? m.label : '';
   },
 
   /** 循环切换布局模式并应用；有选区时只对选区排版。返回模式标签（选区前加「选区」），画布为空返回 ''。 */
   cycleLayout() {
-    const modes = this.LAYOUT_MODES || [];
+    const all = this.LAYOUT_MODES || [];
+    if (!all.length || !(this._nodes || []).length) return '';
+    // 结构不足（子弹之间基本没连线）时只循环扁平布局：结构布局只吃 links，此时跑它没有意义
+    // —— 树状退化成「排成一行」、放射退化成「全部叠在原点」。有层次才循环树 / 横向 / 放射。
+    const flat = !MindmapLayout.isStructured(this._nodes, this._links);
+    const modes = all.filter((m) => (!!m.flat) === flat);
     if (!modes.length) return '';
-    const idx = (this._layoutIdx || 0) % modes.length;
+    if (!this._layoutCursor) this._layoutCursor = { structured: 0, flat: 0 };
+    const key = flat ? 'flat' : 'structured';
+    const idx = (this._layoutCursor[key] || 0) % modes.length;
     const scope = this._getLayoutScope();
     const partial = scope.size > 0;
     // 自动布局会重写所有（或选区）子弹的坐标、并可能重新居中视野，不可逆 —— 变更留档
     let label = '';
-    if (this._nodes.length) this._mutate(() => { label = this.autoLayout(modes[idx].id, partial ? scope : null); });
-    this._layoutIdx = (idx + 1) % modes.length;
+    this._mutate(() => { label = this.autoLayout(modes[idx].id, partial ? scope : null); });
+    this._layoutCursor[key] = (idx + 1) % modes.length;
     return label ? (partial ? '选区 ' + label : label) : '';
+  },
+
+  // ── 说明：一键自动布局已**摘除机身键接线** ──
+  // 第三个键改作「切换连线形态」（见 cycleLinkRoute）。原因：布局只吃 links，而自由导图
+  // 常常没有层次，跑结构布局必然退化（树状=一行、放射=叠一点），对打字流建出来的图几乎没有价值。
+  // 此处保留为纯模块备用（mindmapLayout.js 与其单测齐全）；若确认不再需要，
+  // 可连同 LAYOUT_MODES / _layoutCursor / autoLayout / cycleLayout 一并删除。
+
+  /** 【第三个机身键 · 导图档】一键切换连线形态：曲线 ⇄ 直线。
+   *  与布局不同，它不依赖任何结构信息 —— 任何时候按下都有确定、可见、可撤销的变化。
+   *  - 无选区 → 切换整张图；有选区 → 只切换两端都在选区内的连线（口径同自动布局的 _getLayoutScope）；
+   *  - 目标形态按当前**多数**决定（多数是曲线 → 全改直，反之亦然）。这样连按能稳定来回翻，
+   *    而不是「逐条各自循环」——后者按下去你根本不知道会变成什么样；
+   *  - bend 原样保留：改直后再改回曲线，仍是原来的弯曲量（LinkLayer 画直线时本就不读 bend）。 */
+  cycleLinkRoute() {
+    const links = this._links || [];
+    if (!links.length) { this._msg('还没有连线'); return ''; }
+    const scope = this._getLayoutScope();
+    const inScope = (l) => !scope.size || (scope.has(l.from) && scope.has(l.to));
+    const targets = links.filter(inScope);
+    if (!targets.length) { this._msg('选区内没有连线'); return ''; }
+    const straightCount = targets.filter((l) => l.route === 'straight').length;
+    const next = straightCount > targets.length / 2 ? 'bezier' : 'straight';
+    // 会重写（选）全部连线的走向，不可逆 —— 变更留档，与播种 / 布局同一约定
+    this._mutate(() => {
+      this._links = links.map((l) => (inScope(l) ? Object.assign({}, l, { route: next }) : l));
+    });
+    this.render();
+    this._scheduleSave();
+    this._msg((scope.size ? '选区连线：' : '连线：') + (next === 'straight' ? '全部改直' : '全部改曲'));
+    return next === 'straight' ? '直线' : '曲线';
   },
 
   // ===== 空态与一次性种子 =====

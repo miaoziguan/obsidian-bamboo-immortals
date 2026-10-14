@@ -472,13 +472,37 @@ describe('Store 核心功能', () => {
             jest.useRealTimers();
         });
 
-        test('scheduleAutoSave 有 SettingsModal.autoSaveInterval 时应使用自定义间隔', () => {
+        test('scheduleAutoSave 应读取原生设置的 autoSaveInterval（已收归原生设置页）', () => {
             jest.useFakeTimers();
-            global.SettingsModal = { autoSaveInterval: 5000 };
+            const prevSync = storageManager.getAppSettingsSync;
+            storageManager.getAppSettingsSync = jest.fn(() => ({ autoSaveInterval: 5000 }));
             store.scheduleAutoSave();
             expect(store.state.isDirty).toBe(true);
-            delete global.SettingsModal;
+            expect(storageManager.getAppSettingsSync).toHaveBeenCalled();
+            if (prevSync) storageManager.getAppSettingsSync = prevSync;
+            else delete storageManager.getAppSettingsSync;
             jest.useRealTimers();
+        });
+
+        test('flushPendingSave 有待落盘改动时应立即写出（关闭/隐藏前兜底）', () => {
+            jest.useFakeTimers();
+            store.state.isDirty = true;
+            store.state.autoSaveTimer = setTimeout(() => {}, 2000);
+            const spy = jest.spyOn(store, 'saveToStorage').mockResolvedValue(undefined);
+            store.storageType = 'indexeddb';
+            store.flushPendingSave();
+            expect(spy).toHaveBeenCalled();
+            expect(store.state.autoSaveTimer).toBeNull(); // 防抖定时器应被清掉
+            spy.mockRestore();
+            jest.useRealTimers();
+        });
+
+        test('flushPendingSave 无待落盘改动时不写盘（避免空数据覆盖）', () => {
+            store.state.isDirty = false;
+            const spy = jest.spyOn(store, 'saveToStorage').mockResolvedValue(undefined);
+            store.flushPendingSave();
+            expect(spy).not.toHaveBeenCalled();
+            spy.mockRestore();
         });
     });
 

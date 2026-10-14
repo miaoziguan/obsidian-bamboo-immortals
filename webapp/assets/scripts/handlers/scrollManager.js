@@ -396,7 +396,17 @@ const ScrollManager = {
    * 优先 bridge(VaultStorage)，回退 localStorage；非法/缺失用默认值。
    */
   async _loadSettings() {
+    // 真源是原生设置（app:getSettings），读不到再回退旧版散装键 / localStorage
+    let native = null;
+    try {
+      if (typeof storageManager !== 'undefined' && storageManager.getAppSettings) {
+        const r = await storageManager.getAppSettings();
+        native = (r && r.settings) ? r.settings : null;
+      }
+    } catch (_) { /* 忽略 */ }
     const readMin = async (key, def) => {
+      const nv = native ? Number(native[key]) : NaN;
+      if (Number.isFinite(nv) && nv > 0) return nv;
       let raw = null;
       try {
         if (typeof storageManager !== 'undefined' && storageManager.getSetting) {

@@ -27,6 +27,7 @@ export class BridgeStorage {
     this._pendingRequests = new Map();
     this._goalWriteChain = Promise.resolve();
     this.sectionConfig = null;  // 从插件持久化层恢复的板块配置
+    this._appSettingsCache = null; // 原生设置快照（app:getSettings），供同步上下文读取
     this.customNoises = null;   // 从插件持久化层恢复的自定义音源
     this._messageHandler = this._onMessage.bind(this);
 
@@ -51,6 +52,8 @@ export class BridgeStorage {
       if (readyResp && readyResp.sectionConfig) {
         this.sectionConfig = readyResp.sectionConfig;
       }
+      // 预热原生设置快照：滑动切换日期 / 自动保存间隔 / 香道时长已收归原生「外观」页
+      this.getAppSettings().catch(() => { /* 预热失败不影响握手 */ });
       // 处理插件推送的自定义主题
       if (readyResp && readyResp.customThemes && Array.isArray(readyResp.customThemes)) {
         this._handleCustomThemes(readyResp.customThemes, readyResp.activeTheme || null);
@@ -85,6 +88,11 @@ export class BridgeStorage {
             else sr.host.classList.remove('platform-mobile');
           }
         } catch (_) {}
+      }
+      // 宿主插件版本：供素材 minAppVersion 门控（素材声明的最低宿主版本高于当前 → 拒绝装载）
+      if (readyResp && typeof readyResp.appVersion === 'string' && readyResp.appVersion) {
+        this.appVersion = readyResp.appVersion;
+        window.__bambooAppVersion = readyResp.appVersion;
       }
       // 视图位置感知：当前视图是否在主工作区（中央）。侧边栏时为 false，
       // webapp 进入横向/看板模式时据此请求宿主把视图移动到中央。
@@ -222,6 +230,30 @@ export class BridgeStorage {
       : (event.source === expectedSource ? event.data : null));
     if (!data) return;
 
+    // 【防丢数据】宿主即将销毁本 iframe（关闭视图 / 插件重载）：
+    // 立即把主存储防抖窗口内未落盘的改动写出（关闭视图不触发 pagehide，故由宿主显式通知）。
+    if (data.type === 'app:beforeDetach') {
+      try {
+        if (typeof store !== 'undefined' && typeof store.flushPendingSave === 'function') {
+          store.flushPendingSave();
+        }
+      } catch (_) { /* 落盘失败不阻断卸载 */ }
+      // 画中卷·打字机有自己独立的持久化通道（便签/写作 350ms、子弹 400ms 防抖），
+      // 且 scroll bundle 不加载 store.js —— 上面那段对它本就是空操作。
+      // 而 TypewriterFeature.unmount() 生产代码里从未被调用（scrollManager 只 mount、
+      // 宿主 onClose 只 detach iframe），于是 unmount 内的 _saveNow 兜底落盘、
+      // 各 ResizeObserver 断开、文档级监听摘除全是死代码：关闭视图时防抖窗口内的
+      // 最后一次编辑随 iframe 销毁而永久丢失。
+      // 宿主 detach() 已留 400ms 回传窗口（DETACH_FLUSH_GRACE_MS）且写入在宿主侧完成，
+      // 故在此同步触发即可；iframe 随后必被销毁（关闭）或替换（reloadWebapp），
+      // 完整卸载语义正确，重开会走全新 mount。
+      try {
+        const Tw = (typeof window !== 'undefined' && window.TypewriterFeature) || null;
+        if (Tw && typeof Tw.unmount === 'function' && Tw._el) Tw.unmount();
+      } catch (_) { /* 落盘失败不阻断卸载 */ }
+      return;
+    }
+
     // 调色联动开关更新
     if (data.type === 'theme:syncPaletteEnabled' && data.payload) {
       this.syncPaletteToObsidian = data.payload.enabled;
@@ -294,6 +326,19 @@ export class BridgeStorage {
   async getSetting(key) {
     await this.ensureReady();
     return this._send('storage:getSetting', { key });
+  }
+
+  async getAppSettings() {
+    await this.ensureReady();
+    const r = await this._send('app:getSettings', {});
+    this._appSettingsCache = (r && r.settings) ? r.settings : null;
+    return r;
+  }
+
+  /** 原生设置快照（同步读取）：滑动开关 / 自动保存间隔等需在同步上下文取值的消费方用它。
+   *  握手完成后由 initialize() 预热，并在每次 getAppSettings() 时刷新。 */
+  getAppSettingsSync() {
+    return this._appSettingsCache;
   }
 
   async getTypewriterNotes() {
@@ -668,6 +713,25 @@ export class BridgeStorage {
     }
   }
 
+  /**
+   * 取「导出目录」：以**原生设置**（app:getSettings）为唯一真源。
+   *
+   * 背景（断链修复）：原生「导出」页是用户改目录的地方，但 webapp 侧的
+   * window.SettingsModal.*ExportFolder 只在设置面板里被赋值才会更新（且其 init() 从未被调用），
+   * 直接用该字段会永远停在硬编码默认值，导致改了原生设置、导出却仍落到默认目录。
+   * @param key 'mmExportFolder' | 'noteExportFolder' | 'writeExportFolder'
+   */
+  async getExportFolder(key, fallback) {
+    try {
+      const r = await this.getAppSettings();
+      const s = (r && r.settings) ? r.settings : null;
+      const v = s ? s[key] : null;
+      if (typeof v === 'string' && v.trim()) return v.trim().replace(/^\/+/, '');
+    } catch (e) { /* 桥不可用 → 走下面的本地回退 */ }
+    const local = (window.SettingsModal && window.SettingsModal[key]) || '';
+    return String(local || fallback || '').replace(/^\/+/, '');
+  }
+
   /** 画中卷·打字机「一键全屏」：折叠/恢复 Obsidian 左右侧栏（宿主记录进入前状态，退出按原状恢复）。
    *  @returns {Promise<boolean>} 切换后是否处于全屏态 */
   async toggleZen() {
@@ -777,15 +841,19 @@ export class BridgeStorage {
     }
   }
 
-  /** 主题市场：拉取清单（宿主侧 fetch 公开仓库的 manifest.json） */
-  async fetchMarketManifest() {
+  /** 主题市场：拉取清单（宿主侧 fetch 公开仓库的 manifest.json）
+   *  @param {boolean} [refresh] 为 true 时通知宿主绕过清单 TTL 缓存强制重新拉取 */
+  async fetchMarketManifest(refresh) {
     await this.ensureReady();
     try {
-      const resp = await this._send('market:manifest', {});
+      const resp = await this._send('market:manifest', { refresh: !!refresh });
       if (resp && resp.ok && resp.manifest) {
         const m = resp.manifest;
-        // 宿主随清单带回「已安装版本表」（id → { version }），供面板比对出「可更新」
+        // 宿主随清单带回「已安装版本表」（id → { version }）与「已装 id 列表」，
+        // 供面板比对出「已安装 / 可更新」。installedIds 用于判定 isInstalled，
+        // 必须一并透传——否则刷新后 installedSet 为空，已装主题会被误显示为「安装」。
         m.installed = resp.installed || {};
+        m.installedIds = resp.installedIds || [];
         return m;
       }
       return null;
@@ -816,6 +884,48 @@ export class BridgeStorage {
     } catch (e) {
       console.warn('[Bridge] 主题卸载失败:', id, e && e.message);
       return false;
+    }
+  }
+
+  // —— 便签模式「素材市场」(bamboo-material-market) —— 与主题市场同构，仅事件/仓库不同
+  /** 便签素材市场：拉取清单（宿主侧 fetch 公开仓库的 manifest.json） */
+  async fetchMaterialMarketManifest(refresh) {
+    await this.ensureReady();
+    try {
+      const resp = await this._send('material:manifest', { refresh: !!refresh });
+      if (resp && resp.ok && resp.manifest) {
+        const m = resp.manifest;
+        m.installed = resp.installed || {};
+        return { manifest: m, installed: m.installed };
+      }
+      return { manifest: { materials: [] }, installed: {} };
+    } catch (e) {
+      console.warn('[Bridge] 素材市场清单拉取失败:', e && e.message);
+      return { manifest: { materials: [] }, installed: {} };
+    }
+  }
+
+  /** 便签素材市场：安装（宿主下载 .js 源码，返回文本） */
+  async installMarketMaterial(id, url, version) {
+    await this.ensureReady();
+    try {
+      const resp = await this._send('material:install', { id, url, version: version || '' });
+      return (resp && resp.ok) ? (resp.code || '') : null;
+    } catch (e) {
+      console.warn('[Bridge] 素材安装失败:', id, e && e.message);
+      return null;
+    }
+  }
+
+  /** 便签素材市场：读回已安装素材源码（宿主侧本地文件） */
+  async loadMarketMaterialCode(id) {
+    await this.ensureReady();
+    try {
+      const resp = await this._send('material:load', { id });
+      return (resp && resp.ok) ? (resp.code || null) : null;
+    } catch (e) {
+      console.warn('[Bridge] 素材读回失败:', id, e && e.message);
+      return null;
     }
   }
 

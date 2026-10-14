@@ -1,16 +1,15 @@
 import { byId, $ } from '../utils/domRef.js';
 export const SettingsModal = {
-    enableSwipe: true,
-    autoSaveInterval: 2000,
-    incenseDuration: 60,      // 香总时长（分钟）
-    incenseGooseInterval: 10, // 化雁间隔（分钟）
+    // 注：滑动切换日期 / 自动保存间隔 / 一炷香总时长 / 化雁间隔 已迁至原生「外观」页，
+    // 由 bridge.getAppSettingsSync()（及各消费方）直接读取原生设置，此处不再保留字段与 UI。
+    // 以下三个导出目录仅作「桥不可用」时的回退值；真源是原生设置页（见 bridge.getExportFolder）
     mmExportFolder: '思维子弹', // 思维子弹导出为 Markdown 的落库目录（Vault 相对路径，默认落到 vault 根）
+    noteExportFolder: '便签',  // 便签导出为 Markdown 的落库目录（Vault 相对路径，默认落到 vault 根）
+    writeExportFolder: 'MD可视化写作', // 写作模式（MD可视化写作）整篇快照导出为 Markdown 的落库目录（Vault 相对路径）
 
     // ---- Tab 内容渲染 ----
 
     _renderGeneralTab() {
-        const swipeChecked = this.enableSwipe ? 'checked' : '';
-        const currentInterval = this.autoSaveInterval;
         const { ui } = store.getState();
         const syncChecked = ui.autoSyncTheme ? 'checked' : '';
         // 跨天自动刷新当前配置（从 CrossDayRefresh 全局读取，未就绪则用默认 0 点）
@@ -82,41 +81,7 @@ export const SettingsModal = {
                     </div>
                 </div>
                 <div class="fab-panel-section">
-                    <div class="fab-panel-section-title">思维子弹</div>
-                    <div class="settings-item">
-                        <div class="settings-item-info">
-                            <div class="settings-item-label">子弹导出目录</div>
-                            <div class="settings-item-desc">思维子弹图导出为 Markdown 的落库位置（Vault 相对路径，如 画中卷/子弹笔记 或 思维子弹）</div>
-                        </div>
-                        <input type="text" id="mmExportFolderInput" class="form-input" style="max-width:220px;"
-                            value="${HTMLUtils.escapeHtmlAttr(this.mmExportFolder || '画中卷/子弹笔记')}"
-                            placeholder="如 思维子弹">
-                    </div>
-                </div>
-                <div class="fab-panel-section">
                     <div class="fab-panel-section-title">交互行为</div>
-                    <div class="settings-item">
-                        <div class="settings-item-info">
-                            <div class="settings-item-label">滑动切换日期</div>
-                            <div class="settings-item-desc">左右滑动切换日期</div>
-                        </div>
-                        <label class="toggle-switch">
-                            <input type="checkbox" ${swipeChecked} data-action="settings-toggle-swipe">
-                            <span class="toggle-slider"></span>
-                        </label>
-                    </div>
-                    <div class="settings-item">
-                        <div class="settings-item-info">
-                            <div class="settings-item-label">自动保存间隔</div>
-                            <div class="settings-item-desc">数据修改后延迟保存的时间</div>
-                        </div>
-                        <select class="form-input settings-select-sm" id="autoSaveInterval" data-action="settings-set-autosave-interval">
-                            <option value="1000" ${currentInterval === 1000 ? 'selected' : ''}>1秒</option>
-                            <option value="2000" ${currentInterval === 2000 ? 'selected' : ''}>2秒</option>
-                            <option value="5000" ${currentInterval === 5000 ? 'selected' : ''}>5秒</option>
-                            <option value="10000" ${currentInterval === 10000 ? 'selected' : ''}>10秒</option>
-                        </select>
-                    </div>
                     <div class="settings-item">
                         <div class="settings-item-info">
                             <div class="settings-item-label">跨天自动刷新</div>
@@ -129,25 +94,6 @@ export const SettingsModal = {
                             </select>
                             <input type="time" class="form-input settings-time-sm" id="crossDayTime" value="${HTMLUtils.escapeHtmlAttr(cdCustom)}" ${cdMode === 'custom' ? '' : 'hidden'}>
                         </div>
-                    </div>
-                </div>
-                <div class="fab-panel-section">
-                    <div class="fab-panel-section-title">静坐一炉香</div>
-                    <div class="settings-item">
-                        <div class="settings-item-info">
-                            <div class="settings-item-label">一炷香总时长</div>
-                            <div class="settings-item-desc">香道番茄钟整支香的燃烧时长（分钟）</div>
-                        </div>
-                        <input type="number" id="incenseDuration" class="form-input" style="max-width:90px;"
-                            min="1" max="240" step="1" value="${HTMLUtils.escapeHtmlAttr(String(this.incenseDuration))}" data-action="settings-set-incense-duration">
-                    </div>
-                    <div class="settings-item">
-                        <div class="settings-item-info">
-                            <div class="settings-item-label">化雁间隔</div>
-                            <div class="settings-item-desc">每燃烧多少分钟，一段香灰随风化作大雁飞向远方（分钟）</div>
-                        </div>
-                        <input type="number" id="incenseGooseInterval" class="form-input" style="max-width:90px;"
-                            min="1" max="120" step="1" value="${HTMLUtils.escapeHtmlAttr(String(this.incenseGooseInterval))}" data-action="settings-set-incense-goose">
                     </div>
                 </div>
             </div>
@@ -351,7 +297,7 @@ export const SettingsModal = {
      * 绑定「通用」Tab 内直接挂在元素上的监听器。
      *
      * 这些控件刻意不带 data-action（取值需经各自 setter 做清洗/钳制，如
-     * setIncenseDuration 的范围钳制），因此走不了 ActionDispatcher 的事件委托，
+     * 天气城市的空值处理），因此走不了 ActionDispatcher 的事件委托，
      * 只能逐元素绑定。
      *
      * 【必须与 DOM 同步】_refreshTab('general') 会用 innerHTML 整体替换
@@ -360,12 +306,6 @@ export const SettingsModal = {
      * 否则表现为「点过某个开关后，本页其余设置项改了没反应且无任何提示」。
      */
     _bindGeneralTabInputs() {
-        const intervalSelect = byId('autoSaveInterval');
-        if (intervalSelect) {
-            intervalSelect.addEventListener('change', (e) => {
-                this.setAutoSaveInterval(e.target.value);
-            });
-        }
         const cityInput = byId('defaultCityInput');
         if (cityInput) {
             const saveCity = () => {
@@ -396,18 +336,6 @@ export const SettingsModal = {
                 }
             });
         }
-        const mmFolderInput = byId('mmExportFolderInput');
-        if (mmFolderInput) {
-            const saveFolder = () => {
-                const val = (mmFolderInput.value || '').trim();
-                this.setMmExportFolder(val);
-            };
-            mmFolderInput.addEventListener('blur', saveFolder);
-            mmFolderInput.addEventListener('change', saveFolder);
-            mmFolderInput.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') { e.preventDefault(); mmFolderInput.blur(); }
-            });
-        }
         // 跨天自动刷新
         const cdMode = byId('crossDayMode');
         const cdTime = byId('crossDayTime');
@@ -425,25 +353,6 @@ export const SettingsModal = {
 
     // ---- 通用 Tab 操作 ----
 
-    toggleSwipe(enabled) {
-        this.enableSwipe = enabled;
-        StorageAdapter.set(StorageKeys.ENABLE_SWIPE, enabled ? 'true' : 'false');
-        if (typeof storageManager !== 'undefined' && storageManager.putSetting) {
-            storageManager.putSetting('enableSwipe', enabled ? 'true' : 'false').catch(() => {});
-        }
-        Toast.showToast(enabled ? '滑动切换已启用' : '滑动切换已关闭', 'success');
-    },
-
-    setAutoSaveInterval(value) {
-        const num = parseInt(value);
-        this.autoSaveInterval = num;
-        StorageAdapter.set(StorageKeys.AUTO_SAVE_INTERVAL, value);
-        if (typeof storageManager !== 'undefined' && storageManager.putSetting) {
-            storageManager.putSetting('autoSaveInterval', num).catch(() => {});
-        }
-        Toast.showToast(`自动保存间隔设为 ${num / 1000} 秒`, 'success');
-    },
-
     setCrossDaySchedule(mode, custom) {
         // 持久化与定时器排期由独立引擎 CrossDayRefresh 负责
         if (typeof window !== 'undefined' && window.CrossDayRefresh && typeof window.CrossDayRefresh.setSchedule === 'function') {
@@ -451,34 +360,6 @@ export const SettingsModal = {
         }
         const label = (mode === 'custom') ? `自定义时间 ${custom}` : '0 点（默认）';
         Toast.showToast(`跨天自动刷新设为 ${label}`, 'success');
-    },
-
-    // ---- 香道番茄钟设置 ----
-
-    _persistIncense(key, value) {
-        StorageAdapter.set(key, String(value));
-        if (typeof storageManager !== 'undefined' && storageManager.putSetting) {
-            storageManager.putSetting(key, value).catch(() => {});
-        }
-    },
-
-    setIncenseDuration(value) {
-        let n = parseInt(value, 10);
-        if (!Number.isFinite(n) || n < 1) n = 1;
-        if (n > 240) n = 240;
-        this.incenseDuration = n;
-        this._persistIncense('incenseDuration', n);
-        if (typeof Toast !== 'undefined') Toast.showToast(`一炷香时长设为 ${n} 分钟`, 'success');
-    },
-
-    setIncenseGooseInterval(value) {
-        let n = parseInt(value, 10);
-        if (!Number.isFinite(n) || n < 1) n = 1;
-        if (n > 120) n = 120;
-        if (n > this.incenseDuration) n = this.incenseDuration; // 间隔不得超过总时长
-        this.incenseGooseInterval = n;
-        this._persistIncense('incenseGooseInterval', n);
-        if (typeof Toast !== 'undefined') Toast.showToast(`化雁间隔设为 ${n} 分钟`, 'success');
     },
 
     // ---- 通用 Tab 操作（主题同步）----
@@ -538,18 +419,6 @@ export const SettingsModal = {
             Toast.showToast(trimmed.length > 0 ? ('语录来源：' + trimmed) : '语录来源已清除', 'success');
         }
         this._refreshTab('general');
-    },
-
-    // ---- 思维子弹导出目录 ----
-    async setMmExportFolder(raw) {
-        let norm = (raw || '').trim().replace(/\\/g, '/').replace(/^\/+/, '');
-        if (norm.includes('..')) norm = '';           // 禁止路径遍历
-        if (!norm) norm = '思维子弹';                   // 空/非法回退默认
-        this.mmExportFolder = norm;
-        try { if (typeof storageManager !== 'undefined' && storageManager.putSetting) await storageManager.putSetting('mmExportFolder', norm); } catch (_) {}
-        if (typeof Toast !== 'undefined' && typeof Toast.showToast === 'function') {
-            Toast.showToast('子弹导出目录：' + norm, 'success');
-        }
     },
 
     // ---- 数据 Tab 操作 ----
@@ -884,64 +753,13 @@ export const SettingsModal = {
         }
     },
 
-    // ---- 初始化 ----
-
-    async init() {
-        // 优先从 bridge (VaultStorage) 读取 autoSaveInterval
-        if (typeof storageManager !== 'undefined' && storageManager.getSetting) {
-            try {
-                const bridgeInterval = await storageManager.getSetting('autoSaveInterval');
-                if (bridgeInterval && typeof bridgeInterval === 'number') {
-                    this.autoSaveInterval = bridgeInterval;
-                }
-            } catch {}
-        }
-        // fallback 到 localStorage
-        if (this.autoSaveInterval === 2000) {
-            const savedInterval = StorageAdapter.get(StorageKeys.AUTO_SAVE_INTERVAL);
-            if (savedInterval) {
-                this.autoSaveInterval = parseInt(savedInterval);
-            }
-        }
-        if (StorageAdapter.get(StorageKeys.ENABLE_SWIPE) === 'false') {
-            this.enableSwipe = false;
-        }
-        // 香道番茄钟：优先 bridge(VaultStorage)，回退 localStorage
-        try {
-            if (typeof storageManager !== 'undefined' && storageManager.getSetting) {
-                const d = await storageManager.getSetting('incenseDuration');
-                if (d && typeof d === 'number') this.incenseDuration = d;
-                const g = await storageManager.getSetting('incenseGooseInterval');
-                if (g && typeof g === 'number') this.incenseGooseInterval = g;
-            }
-        } catch {}
-        if (this.incenseDuration === 60) {
-            const sd = StorageAdapter.get('incenseDuration');
-            if (sd) this.incenseDuration = parseInt(sd, 10) || 60;
-        }
-        if (this.incenseGooseInterval === 10) {
-            const sg = StorageAdapter.get('incenseGooseInterval');
-            if (sg) this.incenseGooseInterval = parseInt(sg, 10) || 10;
-        }
-        // 思维子弹导出目录：优先 bridge，回退 localStorage
-        try {
-            if (typeof storageManager !== 'undefined' && storageManager.getSetting) {
-                const f = await storageManager.getSetting('mmExportFolder');
-                if (typeof f === 'string' && f) this.mmExportFolder = f;
-            }
-        } catch {}
-        if (!this.mmExportFolder) {
-            const lf = StorageAdapter.get('mmExportFolder');
-            if (lf) this.mmExportFolder = lf;
-        }
-    }
+    // 注：这里原本有 init() 负责"启动时把已存设置填回界面"，但它全仓从未被调用
+    // （导出目录已改由 bridge.getExportFolder() 直接读原生设置；香道时长由 ScrollManager 自行读取），
+    // 属死代码，已移除 —— 移除不改变任何运行时行为。
 };
 
 ActionDispatcher.registerMany({
-    'settings-toggle-swipe': (_ds, target) => SettingsModal.toggleSwipe(target.checked),
-    'settings-set-autosave-interval': (_ds, target) => SettingsModal.setAutoSaveInterval(target.value),
-    'settings-set-incense-duration': (_ds, target) => SettingsModal.setIncenseDuration(target.value),
-    'settings-set-incense-goose': (_ds, target) => SettingsModal.setIncenseGooseInterval(target.value),
+
     'settings-toggle-sync-theme': (_ds, target) => SettingsModal.toggleSyncTheme(target.checked),
     'settings-toggle-weather': (_ds, target) => SettingsModal.toggleWeather(target.checked),
     'settings-toggle-weather-expanded': (_ds, target) => SettingsModal.toggleWeatherExpanded(target.checked),

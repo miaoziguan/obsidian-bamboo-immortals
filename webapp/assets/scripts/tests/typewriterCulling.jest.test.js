@@ -82,19 +82,6 @@ describe('P8 剔除态全路径审计', () => {
     expect(out).toContain('丙');
   });
 
-  test('_buildCardsMarkdown 优先用打字中途的 pendingText', () => {
-    culledFixture();
-    // 模拟一张正在打字动画中（在屏）的卡：el 有 pendingText，模型 text 还是旧的
-    const fakeEl = document.createElement('div');
-    fakeEl.dataset.pendingText = '刚打的全文';
-    feature._mountedCards.set('a', fakeEl);
-    feature._notes[0].text = '旧全文';
-    const ordered = feature._orderCards();
-    const out = feature._buildCardsMarkdown(ordered);
-    expect(out).toContain('刚打的全文');
-    expect(out).not.toContain('旧全文');
-  });
-
   test('_refreshScreenMeta 卡片计数读模型 _notes.length（剔除态不全为可见卡）', () => {
     culledFixture();
     feature._mode = 'write';
@@ -1240,5 +1227,49 @@ describe('框选边缘判定 marqueeEdgeDir（基于固定视口，不随画布�
     // 指针在视口右中部 clientX=900 → 内容坐标 lx=900-(-3000)=3900 > 1000-48 → 误触发漂移。
     // 新实现只看固定视口，clientX=900 落在视口内 → null（不漂移）。
     expect(global.CardInteractions.marqueeEdgeDir(900, 400, vp, EDGE)).toBeNull();
+  });
+});
+
+// 便签张数不设限（2026-10-14 用户决定）。
+// 背景：原 NOTE_CAP=50，动机注释称「防 vault 文件无限膨胀」，实测不成立
+//（1000 张满卡 0.72MB / stringify 1.2ms；便签档视口剔除全程开启，stress 压测即 N=1000）。
+// 真正被牺牲的是「超限删最早」这一销毁性行为 —— 不设限即彻底消除它。
+// 此锁防止后人按原注释的动机把数字改回小值（那会重新引入静默删数据）。
+describe('便签张数不设限', () => {
+  test('NOTE_CAP = Infinity', () => {
+    expect(global.NOTE_CAP).toBe(Infinity);
+  });
+
+  test('超 50 张不删任何卡（enforceCap 成 no-op，销毁性行为不再发生）', () => {
+    // 用真实的 ViewportCuller.enforceCap + 真实 NOTE_CAP，而非打桩
+    const notes = Array.from({ length: 60 }, (_, i) => ({ id: 'n' + i, x: 0, y: i * 100, text: 't' }));
+    const removed = [];
+    const ctx = {
+      state: { mode: 'notes', notes },
+      ctrl: {
+        _undoStack: null,
+        _removeNoteById: (id) => removed.push(id),
+        _scheduleSave: () => {},
+      },
+    };
+    global.ViewportCuller.enforceCap(ctx, global.NOTE_CAP);
+    expect(removed).toEqual([]);          // 一张都不删
+    expect(notes.length).toBe(60);        // 模型完好
+  });
+
+  test('上限机制本身仍可配置：传入有限 cap 时按最早序移除（保留为可选安全阀）', () => {
+    const notes = Array.from({ length: 60 }, (_, i) => ({ id: 'n' + i, x: 0, y: i * 100, text: 't' }));
+    const removed = [];
+    const ctx = {
+      state: { mode: 'notes', notes },
+      ctrl: {
+        _undoStack: null,
+        _removeNoteById: (id) => removed.push(id),
+        _scheduleSave: () => {},
+        _showScreenMsg: () => {},
+      },
+    };
+    global.ViewportCuller.enforceCap(ctx, 50);
+    expect(removed).toEqual(['n0', 'n1', 'n2', 'n3', 'n4', 'n5', 'n6', 'n7', 'n8', 'n9']);  // 最早 10 张
   });
 });

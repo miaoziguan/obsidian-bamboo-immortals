@@ -32,11 +32,16 @@ export const CanvasZoomUI = {
 
     const bar = document.createElement('div');
     bar.className = 'tw-zoom-bar';
+    // 素材市场按钮：仅当 adapter 提供 onMarket 回调时才生成（导图层那条 bar 不传 → 不生成按钮，
+    // 从根上避免「同一 wrap 下多条形 bar，querySelector 命中错按钮」的问题）。
+    const marketBtn = (typeof adapter.onMarket === 'function')
+      ? '<button type="button" class="tw-zoom-btn tw-zoom-market" data-act="market" title="素材市场" aria-label="素材市场"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 9v12"/></svg></button>'
+      : '';
     bar.innerHTML = `
       <button type="button" class="tw-zoom-btn" data-act="out"  title="缩小" aria-label="缩小">−</button>
       <button type="button" class="tw-zoom-val" data-act="reset" title="点击重置为 100%" aria-label="重置缩放为 100%">100%</button>
       <button type="button" class="tw-zoom-btn" data-act="in"   title="放大" aria-label="放大">+</button>
-      <button type="button" class="tw-zoom-btn" data-act="fit"  title="适应内容" aria-label="适应内容">⤢</button>`;
+      <button type="button" class="tw-zoom-btn" data-act="fit"  title="适应内容" aria-label="适应内容">⤢</button>` + marketBtn;
     host.appendChild(bar);
 
     const valEl = bar.querySelector('.tw-zoom-val');
@@ -58,6 +63,7 @@ export const CanvasZoomUI = {
         else if (act === 'out') adapter.zoomAtCenter(1 / this.STEP);
         else if (act === 'reset') adapter.reset();
         else if (act === 'fit') adapter.fit();
+        else if (act === 'market' && typeof adapter.onMarket === 'function') adapter.onMarket();
       } catch (err) { /* 缩放控件失败不应影响画布 */ }
       sync();
     });

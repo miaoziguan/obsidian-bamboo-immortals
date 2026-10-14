@@ -18,7 +18,7 @@
  * 全部不可变：增改返回新数组/新对象，绝不就地改（与 MindmapDoc 同一不变量——将来若接撤销栈、
  * 或做「屏外卡片卸载」的视口剔除，就不需要担心 DOM 把数据带偏，几何缓存也才有唯一真源）。
  */
-import { FONTS, PAPERS, LEVELS, ZOOM_MIN, ZOOM_MAX, MAX_LEN, WRITING_SCHEMA_VERSION } from './twConfig.js';
+import { FONTS, PAPERS, MARKET_PAPERS, MARKET_FONTS, LEVELS, ZOOM_MIN, ZOOM_MAX, MAX_LEN, WRITING_SCHEMA_VERSION } from './twConfig.js';
 export const WritingDoc = {
   VERSION: WRITING_SCHEMA_VERSION,     // v2 = x/y/canvasOffset 统一绝对 px（与 TypewriterStore.WRITING_VERSION 同值，单一真源在 twConfig）
   ZOOM_MIN,                           // 手动缩放下界（小签 ~180px 宽）
@@ -26,6 +26,9 @@ export const WritingDoc = {
   MAX_LEN,                            // 单卡最大字数（截断由输入层负责，模型层只导出）
   FONTS,
   PAPERS,
+  // 市场纸样/字体是运行时注册的（registerMarketPaper/Font 往 twConfig 的同一数组 push），故动态引用而非快照
+  MARKET_PAPERS,
+  MARKET_FONTS,
   LEVELS,
   EST_W: 200,                // 估算宽（只用于 freeSpot，真实尺寸由 DOM 量）
   EST_H: 120,                // 估算高
@@ -142,8 +145,13 @@ export const WritingDoc = {
     (Array.isArray(notes) ? notes : []).forEach((n) => {
       if (!n || typeof n.id !== 'string' || !n.id || seen.has(n.id)) return;
       seen.add(n.id);
-      const font = this.FONTS.indexOf(n.font) >= 0 ? n.font : 'classic';
-      const paper = this.PAPERS.indexOf(n.paper) >= 0 ? n.paper : 'plain';
+      // 【市场纸样/字体持久化】原逻辑按内置 FONTS/PAPERS 清单校正，凡市场素材一律回落 classic/plain
+      // —— 这会在 loadDoc 归一化时把「已持久化的市场纸样」静默销毁，导致「梦珑皮肤重启后变默认」。
+      // 改为：只兜底真正缺值（非字符串/空串）的情况，非空字符串一律保留原值。内置纸样本就是非空串、
+      // 市场纸样同样保留；素材注册（registerMarketPaper）是异步的，loadDoc 跑在恢复前 MARKET_PAPERS 可能
+      // 仍空，故不能依赖它判定 —— 保留原值后，恢复注册并注入 CSS 时卡片自动套上。
+      const font = (typeof n.font === 'string' && n.font) ? n.font : 'classic';
+      const paper = (typeof n.paper === 'string' && n.paper) ? n.paper : 'plain';
       const level = this.LEVELS.indexOf(n.level) >= 0 ? n.level : 'p';
       out.push({
         id: n.id,
@@ -449,12 +457,15 @@ export const WritingDoc = {
   },
 
   setFont(notes, id, font) {
-    const f = this.FONTS.indexOf(font) >= 0 ? font : 'classic';
+    // 内置字体 ∪ 市场字体（后者运行时注册）；否则回落 classic。市场字体曾被误判为非法→静默丢字体。
+    const f = (this.FONTS.indexOf(font) >= 0 || (this.MARKET_FONTS || []).indexOf(font) >= 0) ? font : 'classic';
     return notes.map((n) => (n.id === id ? Object.assign({}, n, { font: f }) : n));
   },
 
   setPaper(notes, id, paper) {
-    const p = this.PAPERS.indexOf(paper) >= 0 ? paper : 'plain';
+    // 内置纸样 ∪ 市场纸样（后者运行时注册）；否则回落 plain。
+    // 市场纸样曾被误判为非法 → 静默转成 plain，是「市场皮肤无法持久化、重启变默认」的根因。
+    const p = (this.PAPERS.indexOf(paper) >= 0 || (this.MARKET_PAPERS || []).indexOf(paper) >= 0) ? paper : 'plain';
     return notes.map((n) => (n.id === id ? Object.assign({}, n, { paper: p }) : n));
   },
 
@@ -484,6 +495,15 @@ export const WritingDoc = {
   setPos(notes, id, x, y) {
     return notes.map((n) => (n.id === id
       ? Object.assign({}, n, { x: Math.round(x), y: Math.round(y) }) : n));
+  },
+
+  /** 批量写位置（pos: Map<id,{x,y}>）：单趟 map 取代「逐卡 setPos」的 O(n²)，顺流/分幕重排用 */
+  setPositions(notes, pos) {
+    if (!pos || typeof pos.get !== 'function' || pos.size === 0) return notes;
+    return notes.map((n) => {
+      const p = pos.get(n.id);
+      return p ? Object.assign({}, n, { x: Math.round(p.x), y: Math.round(p.y) }) : n;
+    });
   },
 
   /** 删一张卡片：**连带删掉与它相关的所有连线**（否则会留下指向空气的线） */

@@ -24,6 +24,12 @@ import { FONTS, PAPERS, MARKET_PAPERS, MARKET_FONTS, registerMarketPaper, unregi
 import { TypewriterStore } from '../../services/TypewriterStore.js';
 // 素材 SVG 注入前的实例隔离（id 前缀 + <style> 作用域沙箱）
 import { SvgIsolate } from '../../utils/svgIsolate.js';
+// 素材 minAppVersion 门控：宿主版本低于素材要求时明确拒绝装载（而不是渲染到一半崩坏）
+import { meetsMinVersion } from '../../utils/semver.js';
+// 动态 <style>/查询须走 shadow 抽象层：画中卷运行在 Shadow DOM 内，市场纸纹 css 若插到 document.head 将穿透不进 shadow 内的 .tw-card
+import { getStyleMount, byId } from '../../utils/domRef.js';
+
+import { LucideUtils } from '../../utils/lucideUtils.js';
 
 export const MaterialMarket = {
   _ctrl: null,
@@ -35,14 +41,18 @@ export const MaterialMarket = {
   _fonts: {},     // name -> material（type=font，css 已注入）
   _templates: {}, // name -> material（type=template）
   _installed: {}, // id -> material（全部已下载，含 __code 源码）
+  _installedVersions: {}, // id -> { version, installedAt }（宿主权威版本表，用于「可更新」判定）
   _canvasStickers: [], // 画布贴纸：{ id, material, x, y, z, w, h, rot, el }（独立持久化，不入便签模型；永远浮于卡片之上）
   _menu: null,         // 右键层级菜单 DOM
   _menuCloser: null,   // 菜单关闭监听
   _collapsed: {},      // 系列分组折叠态：series 名 -> true（未分组素材用 __other__），持久化到 marketSeriesCollapsed
+  _typeFilter: '',     // 形态筛选：'' = 全部；'sticker' 贴纸 | 'paper' 皮肤 | 'font' 字体 | 'template' 模板（仅本次会话，不持久化）
+  _persistedMeta: {},  // 已安装素材的 {version, installedAt} 快照（持久化时保留宿主写入的元数据，避免被覆盖）
 
   /** feature.mount 时调用：记 ctrl/wrap，挂抽屉与画布 drop 监听（幂等） */
   init(ctrl, host) {
     this._ctrl = ctrl;
+    ctrl._materialMarket = this;   // 回指：卡片侧（统一选区 / 整体拖动 / Delete）可一致操作贴纸
     this._wrap = host.querySelector('.scroll-typewriter-feature') || host;
     // 幂等：抽屉已挂且仍在 DOM 中则复用（重复 init 不产生孤儿抽屉）
     if (!this._drawer || !this._drawer.isConnected) {
@@ -70,12 +80,17 @@ export const MaterialMarket = {
     drawer.innerHTML =
       '<div class="bm-market-head">' +
         '<span class="bm-market-title">素材市场</span>' +
-        '<button type="button" class="bm-market-close" aria-label="收起素材市场">×</button>' +
+        '<button type="button" class="bm-market-refresh" aria-label="刷新素材清单" title="刷新">' + LucideUtils.createIcon('refreshCw', { size: 16, strokeWidth: 1.8 }) + '</button>' +
+        '<button type="button" class="bm-market-close" aria-label="收起素材市场" title="收起">' + LucideUtils.createIcon('x', { size: 16, strokeWidth: 1.8 }) + '</button>' +
       '</div>' +
       '<div class="bm-market-body"><div class="market-loading">正在从竹林素材市场加载…</div></div>';
     wrap.appendChild(drawer);
     this._drawer = drawer;
     this._bodyEl = drawer.querySelector('.bm-market-body');
+    // 刷新：绕过宿主 TTL 缓存强制重拉清单（作者更新后立即看到「可更新」）
+    drawer.querySelector('.bm-market-refresh').addEventListener('click', () => {
+      this._loadMarket(true);
+    });
     drawer.querySelector('.bm-market-close').addEventListener('click', () => {
       drawer.classList.remove('is-open');
     });
@@ -84,7 +99,7 @@ export const MaterialMarket = {
     drawer.addEventListener('wheel', (e) => e.stopPropagation(), { passive: true });
   },
 
-  async _loadMarket() {
+  async _loadMarket(force) {
     const mgr = (typeof window !== 'undefined' && window.storageManager) || null;
     if (!mgr || typeof mgr.fetchMaterialMarketManifest !== 'function') {
       this._bodyEl.innerHTML = '<div class="market-empty">素材市场功能暂不可用</div>';
@@ -93,11 +108,12 @@ export const MaterialMarket = {
     this._bodyEl.innerHTML = '<div class="market-loading">正在从竹林素材市场加载…</div>';
     let data;
     try {
-      data = await mgr.fetchMaterialMarketManifest();
+      data = await mgr.fetchMaterialMarketManifest(!!force);
     } catch (e) {
       this._bodyEl.innerHTML = '<div class="market-empty">素材市场加载失败，请稍后重试</div>';
       return;
     }
+    this._installedVersions = (data && data.installed) || {}; // 宿主权威版本表 → 「可更新」判定
     const list = (data && data.manifest && data.manifest.materials) || [];
     if (!list.length) {
       this._bodyEl.innerHTML = '<div class="market-empty">素材市场暂无素材</div>';
@@ -107,14 +123,62 @@ export const MaterialMarket = {
     this._renderMarketBody(list);
   },
 
+  /** 当前宿主插件版本（bridge 经 app:ready 下发）；未下发时返回空串 → 门控按「无从比较」放行，不误杀 */
+  _appVersion() {
+    return (typeof window !== 'undefined' && window.__bambooAppVersion) || '';
+  },
+
+  /** 形态筛选 chips：只列清单中真实存在的形态并附数量，避免空分类占位（贴纸 / 皮肤 / 字体 / 模板） */
+  _typeChipsHtml(list) {
+    const LABEL = { sticker: '贴纸', paper: '皮肤', font: '字体', template: '模板' };
+    const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const counts = new Map();
+    list.forEach((m) => { const t = m.type || ''; counts.set(t, (counts.get(t) || 0) + 1); });
+    const cur = this._typeFilter || '';
+    const items = [['', '全部', list.length]].concat(
+      ['sticker', 'paper', 'font', 'template'].filter((t) => counts.has(t)).map((t) => [t, LABEL[t] || t, counts.get(t)])
+    );
+    return '<div class="bm-market-filters" role="tablist" aria-label="按形态筛选素材">' +
+      items.map((it) => {
+        const on = cur === it[0];
+        return '<button type="button" class="bm-market-chip' + (on ? ' is-active' : '') + '" data-type="' + esc(it[0]) + '"' +
+          ' role="tab" aria-selected="' + (on ? 'true' : 'false') + '" title="只看' + esc(it[1]) + '">' +
+          esc(it[1]) + '<span class="bm-market-chip-count">' + it[2] + '</span></button>';
+      }).join('') +
+      '</div>';
+  },
+
+  /** chips 点击 → 切换形态筛选并重绘（筛选态仅本次会话有效，不做持久化） */
+  _bindTypeChips(list) {
+    this._bodyEl.querySelectorAll('.bm-market-chip').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const t = btn.getAttribute('data-type') || '';
+        if (this._typeFilter === t) return;
+        this._typeFilter = t;
+        this._renderMarketBody(list);
+      });
+    });
+  },
+
   _renderMarketBody(list) {
     const el = this;
+    // D · 宿主版本（bridge 经 app:ready 下发）；未下发时为空串 → 门控放行，不误杀
+    const appVer = this._appVersion();
     // 文本统一转义：原实现 name/author 未转义，新增 series 入 DOM 时一并补上
     const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    // 形态筛选 chips → 先按当前筛选过滤，再按 series 分组（分组主轴仍是 series，形态只作筛选）
+    const chips = this._typeChipsHtml(list);
+    const view = this._typeFilter ? list.filter((m) => (m.type || '') === this._typeFilter) : list;
+    if (!view.length) {
+      this._bodyEl.innerHTML = chips + '<div class="market-empty">该分类暂无素材</div>';
+      this._bindTypeChips(list);
+      return;
+    }
     // 按 series 分组：组顺序与组内顺序都沿用 manifest 原顺序；无 series 的归入「其他素材」
     const order = [];
     const buckets = new Map();
-    list.forEach((m) => {
+    view.forEach((m) => {
       const key = m.series || '';
       if (!buckets.has(key)) { buckets.set(key, []); order.push(key); }
       buckets.get(key).push(m);
@@ -126,28 +190,51 @@ export const MaterialMarket = {
       const cards = items.map((m) => {
         const i = seq++;
         const installed = !!this._installed[m.id];
+        // D · minAppVersion 门控：素材要求的宿主版本高于当前 → 明确拒绝（不下载 / 不入沙箱 / 不可拖）
+        const need = m.minAppVersion || '';
+        const blocked = !meetsMinVersion(appVer, need);
+        // C · schema 预留 previewUrl：优先内联预览（素材自带 / 已装源码回填），缺失再按 URL 懒加载
         const preview = installed && this._installed[m.id].preview ? this._installed[m.id].preview : (m.preview || '');
         const thumb = preview
           ? '<div class="bm-market-thumb">' + SvgIsolate.isolate(preview, 'mt' + i + '-') + '</div>'
-          : '<div class="bm-market-thumb bm-market-thumb-empty">无预览</div>';
+          : (m.previewUrl
+              ? '<div class="bm-market-thumb"><img class="bm-market-thumb-img" loading="lazy" decoding="async" alt="" src="' + esc(m.previewUrl) + '"></div>'
+              : '<div class="bm-market-thumb bm-market-thumb-empty">无预览</div>');
         const typeLabel = m.type === 'sticker' ? '贴纸'
           : (m.type === 'paper' ? '皮肤'
             : (m.type === 'font' ? '字体'
               : (m.type === 'template' ? '模板' : (m.type || ''))));
-        const btn = installed
-          ? '<button class="market-btn uninstall" data-id="' + esc(m.id) + '">删除</button>'
-          : '<button class="market-btn install" data-id="' + esc(m.id) + '" data-url="' + esc(m.url || '') + '" data-version="' + esc(m.version || '') + '">下载</button>';
-        const dragAttr = installed ? ' draggable="true"' : '';
+        // B · 「可更新」：以宿主权威版本表比对（与主题 / 模块市场同式）
+        const ver = m.version || '';
+        const rec = this._installedVersions[m.id];
+        const hasUpdate = installed && !!ver && !!rec && rec.version !== ver;
+        const ICON = {
+          download: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>',
+          trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>',
+          ban: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>'
+        };
+        const btn = blocked
+          ? '<button class="market-btn install is-blocked" disabled data-id="' + esc(m.id) + '" title="不可用" aria-label="不可用">' + ICON.ban + '</button>'
+          : (!installed
+              ? '<button class="market-btn install" data-id="' + esc(m.id) + '" data-url="' + esc(m.url || '') + '" data-version="' + esc(ver) + '" data-min-app="' + esc(need) + '" title="下载" aria-label="下载">' + ICON.download + '</button>'
+              : (hasUpdate
+                  ? '<button class="market-btn install" data-action="update" data-id="' + esc(m.id) + '" data-url="' + esc(m.url || '') + '" data-version="' + esc(ver) + '" data-min-app="' + esc(need) + '" title="更新" aria-label="更新">' + ICON.download + '</button>' +
+                    '<button class="market-btn uninstall" data-id="' + esc(m.id) + '" title="删除" aria-label="删除">' + ICON.trash + '</button>'
+                  : '<button class="market-btn uninstall" data-id="' + esc(m.id) + '" title="删除" aria-label="删除">' + ICON.trash + '</button>'));
+        const dragAttr = installed && !blocked ? ' draggable="true"' : '';
         return '<div class="market-card bm-material-card' + (installed ? ' installed' : '') + '"' + dragAttr +
           ' data-id="' + esc(m.id) + '" data-type="' + esc(m.type || '') + '">' +
           thumb +
           '<div class="market-card-main">' +
             '<div class="market-card-head">' +
               '<span class="market-card-name">' + esc(m.name || m.id) + '</span>' +
+              (hasUpdate ? '<span class="market-update-badge">可更新 v' + esc(ver) + '</span>' : '') +
               '<span class="bm-material-type">' + typeLabel + '</span>' +
             '</div>' +
             (m.author ? '<div class="market-card-author">作者：' + esc(m.author) + (m.version ? ' · v' + esc(m.version) : '') + '</div>' : '') +
-            (installed ? '<div class="bm-market-hint">拖入画布使用</div>' : '') +
+            (blocked
+              ? '<div class="bm-market-hint is-blocked">需插件 ≥ v' + esc(need) + '</div>'
+              : (installed ? '<div class="bm-market-hint">拖入画布使用</div>' : '')) +
           '</div>' +
           '<div class="market-card-actions">' + btn + '</div>' +
         '</div>';
@@ -162,7 +249,9 @@ export const MaterialMarket = {
           '<div class="market-list">' + cards + '</div>' +
         '</div>';
     }).join('');
-    this._bodyEl.innerHTML = groups;
+    this._bodyEl.innerHTML = chips + groups;
+    // 形态 chips 点击 → 切换筛选并重绘
+    this._bindTypeChips(list);
 
     // 组头点击 → 折叠/展开（卡片始终渲染，靠 CSS 隐藏，切换无需重绘）
     this._bodyEl.querySelectorAll('.bm-market-group-head').forEach((h) => {
@@ -181,7 +270,7 @@ export const MaterialMarket = {
     this._bodyEl.querySelectorAll('.market-btn.install').forEach((b) => {
       b.addEventListener('click', (e) => {
         e.stopPropagation();
-        el._install(b.getAttribute('data-id'), b.getAttribute('data-url'), b.getAttribute('data-version') || '');
+        el._install(b.getAttribute('data-id'), b.getAttribute('data-url'), b.getAttribute('data-version') || '', b.getAttribute('data-action') === 'update', b.getAttribute('data-min-app') || '');
       });
     });
     this._bodyEl.querySelectorAll('.market-btn.uninstall').forEach((b) => {
@@ -199,30 +288,36 @@ export const MaterialMarket = {
     });
   },
 
-  async _install(id, url, ver) {
+  async _install(id, url, ver, isUpdate, minApp) {
     const mgr = (typeof window !== 'undefined' && window.storageManager) || null;
     if (!mgr || typeof mgr.installMarketMaterial !== 'function') return;
+    // D · 门控兜底：渲染层已禁用按钮，这里再挡一层（防外部直接调用 / 旧 DOM），并给出明确提示
+    if (!meetsMinVersion(this._appVersion(), minApp)) {
+      if (typeof Toast !== 'undefined') Toast.showToast('该素材需插件 ≥ v' + (minApp || '?') + '，请先更新插件', 'error');
+      return;
+    }
     const code = await mgr.installMarketMaterial(id, url, ver);
     if (!code) { if (typeof Toast !== 'undefined') Toast.showToast('下载失败', 'error'); return; }
     const material = this._sandboxEval(code, id);
     if (!material) { if (typeof Toast !== 'undefined') Toast.showToast('素材格式错误', 'error'); return; }
     material.__code = code;
+    material.version = ver || '';   // 记下版本：_persist 写回 materialInstalled 时保留，供「可更新」比对
     this._installed[id] = material;
     this._registerInstalled(material, id);
     await this._persist();
     await this._rerender();
-    if (typeof Toast !== 'undefined') Toast.showToast('「' + (material.name || id) + '」已下载，拖入画布使用', 'success');
+    if (typeof Toast !== 'undefined') Toast.showToast('「' + (material.name || id) + '」' + (isUpdate ? '已更新到 v' + (ver || '最新') : '已下载，拖入画布使用'), 'success');
   },
 
   async _uninstall(id) {
     const m = this._installed[id];
     if (!m) return;
     if (m.type === 'paper') {
-      const style = document.getElementById('bm-paper-' + id);
+      const style = byId('bm-paper-' + id);
       if (style) style.remove();
       unregisterMarketPaper(m.name);
     } else if (m.type === 'font') {
-      const style = document.getElementById('bm-font-' + id);
+      const style = byId('bm-font-' + id);
       if (style) style.remove();
       unregisterMarketFont(m.name);
     }
@@ -254,13 +349,15 @@ export const MaterialMarket = {
     }
   },
 
-  /** 注入素材 css()（纸纹 / 字体共用：@font-face、data-paper/data-font 规则等） */
+  /** 注入素材 css()（纸纹 / 字体共用：@font-face、data-paper/data-font 规则等）。
+   *  【Shadow DOM】画中卷跑在 shadowRoot 内，动态 <style> 必须插到 shadowRoot（getStyleMount）；
+   *  插到 document.head 会因 shadow 封装穿透不进 .tw-card —— 纸纹/字体 css 全部失效（paper 类素材首曝此坑）。 */
   _registerStyle(material, styleId) {
-    let style = document.getElementById(styleId);
+    let style = byId(styleId);
     if (!style) {
       style = document.createElement('style');
       style.id = styleId;
-      document.head.appendChild(style);
+      getStyleMount().appendChild(style);
     }
     style.textContent = material.css ? material.css() : '';
   },
@@ -269,17 +366,31 @@ export const MaterialMarket = {
     const mgr = (typeof window !== 'undefined' && window.storageManager) || null;
     if (!mgr || typeof mgr.fetchMaterialMarketManifest !== 'function') return;
     const data = await mgr.fetchMaterialMarketManifest();
+    this._installedVersions = (data && data.installed) || {};
     const list = (data && data.manifest && data.manifest.materials) || [];
     this._renderMarketBody(list);
   },
 
-  /** 持久化：只记 id/版本 —— 素材源码已落盘在宿主「竹林便签素材」目录，重载后经 material:load 按 id 读回 */
+  /** 持久化：只记 id/版本 —— 素材源码已落盘在宿主「竹林便签素材」目录，重载后经 material:load 按 id 读回。
+   *  【键必须与宿主一致】宿主 material:install 写的是 materialInstalled（对象 id→{version,installedAt}）；
+   *  早先这里写 installedMaterials(数组) 与宿主不同键、且该键从未落盘，导致重载后恢复读空、
+   *  素材不注册、CSS 不注入（市场皮肤重启丢失的根因）。故改写同一键，并保留宿主已写入的
+   *  version / installedAt（不清空，否则「可更新」检测失效）；卸载时也靠它把条目摘掉。 */
   async _persist() {
     try {
       const mgr = (typeof window !== 'undefined' && window.storageManager) || null;
       if (mgr && typeof mgr.putSetting === 'function') {
-        const arr = Object.keys(this._installed).map((id) => ({ id, version: this._installed[id].version || '' }));
-        await mgr.putSetting('installedMaterials', arr);
+        const prev = this._persistedMeta || {};
+        const obj = {};
+        Object.keys(this._installed).forEach((id) => {
+          const old = prev[id] || {};
+          obj[id] = {
+            version: (this._installed[id] && this._installed[id].version) || old.version || '',
+            installedAt: old.installedAt || Date.now(),
+          };
+        });
+        await mgr.putSetting('materialInstalled', obj);
+        this._persistedMeta = obj;
       }
     } catch (e) {
       console.warn('[MaterialMarket] 持久化失败:', e && e.message);
@@ -313,8 +424,21 @@ export const MaterialMarket = {
   async _restoreInstalled() {
     try {
       const mgr = (typeof window !== 'undefined' && window.storageManager) || null;
-      const saved = mgr && typeof mgr.getSetting === 'function' ? await mgr.getSetting('installedMaterials') : null;
-      const arr = Array.isArray(saved) ? saved : [];
+      // 【持久化键对齐】宿主持久化的权威键是 materialInstalled（对象 id→{version,installedAt}，
+      // 见 AppAPI 的 material:install）。早先这里读 installedMaterials(数组)——与宿主不同键、
+      // 且从未落盘 → 永远读空 → 素材不注册、CSS 不注入（市场皮肤重启丢失的根因）。
+      // 现以 materialInstalled 为准，并兼容历史键 installedMaterials(数组)。
+      let saved = null;
+      if (mgr && typeof mgr.getSetting === 'function') {
+        saved = await mgr.getSetting('materialInstalled');
+        if (!saved) saved = await mgr.getSetting('installedMaterials');
+      }
+      const arr = Array.isArray(saved)
+        ? saved
+        : (saved && typeof saved === 'object'
+            ? Object.keys(saved).map((id) => Object.assign({ id }, saved[id] || {}))
+            : []);
+      this._persistedMeta = (!Array.isArray(saved) && saved && typeof saved === 'object') ? saved : {};
       for (const item of arr) {
         if (!item || !item.id) continue;
         let code = item.code || '';
@@ -325,6 +449,13 @@ export const MaterialMarket = {
         try {
           const material = this._sandboxEval(code, item.id);
           if (!material) continue;
+          // D · minAppVersion 门控：已装素材要求的宿主版本高于当前 → 不注册（不注入 CSS、不入纸纹/字体列表），
+          //     避免依赖新版宿主 API 的素材把画布渲染坏。源码保留，升级插件后自动可用。
+          const need = material.minAppVersion || '';
+          if (!meetsMinVersion(this._appVersion(), need)) {
+            console.warn('[MaterialMarket] 素材 "' + item.id + '" 需插件 ≥ v' + need + '，当前 v' + this._appVersion() + '，本轮不加载');
+            continue;
+          }
           material.__code = code;
           this._installed[item.id] = material;
           this._registerInstalled(material, item.id);
@@ -332,6 +463,8 @@ export const MaterialMarket = {
           console.warn('[MaterialMarket] 恢复素材失败:', item.id, e && e.message);
         }
       }
+      const ids = Object.keys(this._installed);
+      console.log('[MaterialMarket] 已恢复素材 ' + ids.length + ' 个: ' + (ids.join(', ') || '(无)'));
     } catch (e) {
       console.warn('[MaterialMarket] 读取已安装素材失败:', e && e.message);
     }
@@ -380,17 +513,44 @@ export const MaterialMarket = {
 
   // —— 画布 drop 落卡 ——
   _bindCanvasDrop() {
-    const ctrl = this._ctrl;
-    const canvas = ctrl._canvas;
-    if (!canvas) return;
-    canvas.addEventListener('dragover', (e) => {
-      if (e.dataTransfer && Array.prototype.indexOf.call(e.dataTransfer.types, 'text/plain') !== -1) {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = 'copy';
-      }
-    });
-    canvas.addEventListener('drop', (e) => {
-      const raw = e.dataTransfer.getData('text/plain');
+    const wrap = this._wrap;
+    if (!wrap) return;
+    // 治本：事件委托到稳定祖先（feature 根，切组/重挂都不动它），不再绑死某个具体 canvas 节点；
+    // 先移除旧监听，避免 init 重跑 / 多实例时 handler 累加。
+    //
+    // 【命中判定为什么不能用 .tw-canvas】
+    // .tw-canvas 是「无限画布」的坐标容器：position:relative + 由 JS 施加 transform: translate(panX,panY)
+    // （仅平移，见 _applyCanvasTransform），且 background:transparent。因此它的 DOM 矩形
+    // （getBoundingClientRect）会随画布平移漂到可视区之外，肉眼既看不出它的边界，也无法用它判定落点。
+    // 实测：画布被平移到 rect=[214,1050,…]、而用户在可视区 y≈400 处拖放 → 用 canvas 矩形/子树判定会
+    // 误判为“不在画布上” → dragover 不 preventDefault → 浏览器不 firing drop → 表现为“拖不进来”。
+    //
+    // 正解：凡落在 feature 根(wrap) 内、且不在素材抽屉 / 预览弹窗等 chrome 上，一律视为可落卡区。
+    // 落点坐标仍以 canvas.getBoundingClientRect() 换算（该矩形已含 translate，减左/上即得画布局部坐标，
+    // 除以缩放比后与卡片坐标系一致）——松手在哪，贴纸就落在哪。
+    if (this._onDragOver) {
+      wrap.removeEventListener('dragover', this._onDragOver);
+      wrap.removeEventListener('drop', this._onDrop);
+    }
+    const isDropZone = (e) => {
+      const t = e.target;
+      if (!t || !t.closest) return false;
+      if (t.closest('.bm-market-drawer')) return false;   // 素材抽屉自身：不落卡
+      if (t.closest('.tw-preview-modal')) return false;   // 整篇预览弹窗：不落卡
+      return true;
+    };
+    this._onDragOver = (e) => {
+      if (!isDropZone(e)) return;
+      e.preventDefault();
+      if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+    };
+    this._onDrop = (e) => {
+      if (!isDropZone(e)) return;
+      const ctrl = this._ctrl;
+      const canvas = ctrl && ctrl._canvas;
+      if (!canvas) return;
+      let raw = '';
+      try { raw = e.dataTransfer ? e.dataTransfer.getData('text/plain') : ''; } catch (_) {}
       if (!raw) return;
       e.preventDefault();
       let payload;
@@ -405,8 +565,7 @@ export const MaterialMarket = {
       const targetCard = e.target.closest && e.target.closest('.tw-card');
       if (material.type === 'paper') {
         if (targetCard) {
-          targetCard.dataset.paper = material.name;
-          targetCard.style.setProperty('--tw-card-paper', material.name);
+          this._applyMaterialToCard(targetCard, { paper: material.name });
           if (typeof Toast !== 'undefined') Toast.showToast('已套用「' + material.name + '」皮肤', 'success');
         } else {
           this._spawnCard(material.name, (typeof FONTS !== 'undefined' && FONTS[ctrl._fontIdx]) || 'classic', x, y);
@@ -415,7 +574,7 @@ export const MaterialMarket = {
         this._dropSticker(material, x, y, payload.id);
       } else if (material.type === 'font') {
         if (targetCard) {
-          targetCard.dataset.font = material.name;
+          this._applyMaterialToCard(targetCard, { font: material.name });
           if (typeof Toast !== 'undefined') Toast.showToast('已套用「' + material.name + '」字体', 'success');
         } else {
           this._spawnCard((typeof PAPERS !== 'undefined' && PAPERS[ctrl._paperIdx]) || 'plain', material.name, x, y);
@@ -423,14 +582,15 @@ export const MaterialMarket = {
       } else if (material.type === 'template') {
         const preset = material.preset || {};
         if (targetCard) {
-          if (preset.paper) { targetCard.dataset.paper = preset.paper; targetCard.style.setProperty('--tw-card-paper', preset.paper); }
-          if (preset.font) targetCard.dataset.font = preset.font;
+          this._applyMaterialToCard(targetCard, { paper: preset.paper, font: preset.font });
           if (typeof Toast !== 'undefined') Toast.showToast('已套用模板「' + material.name + '」', 'success');
         } else {
           this._spawnCard(preset.paper || 'plain', preset.font || ((typeof FONTS !== 'undefined' && FONTS[ctrl._fontIdx]) || 'classic'), x, y);
         }
       }
-    });
+    };
+    wrap.addEventListener('dragover', this._onDragOver);
+    wrap.addEventListener('drop', this._onDrop);
   },
 
   /** 在画布 (x,y) 处新建一张指定纸纹 / 字体的空白便签（复用 feature 的建卡 / 登记管线） */
@@ -462,6 +622,30 @@ export const MaterialMarket = {
     if (typeof ctrl._scheduleSave === 'function') ctrl._scheduleSave();
   },
 
+  /** 把纸样 / 字体落到已有卡片：既改 DOM，也写回便签模型并落盘。
+   *  只改 dataset 不落盘的话，重启后卡片按模型里的旧值重建，市场皮肤/字体会丢失。 */
+  _applyMaterialToCard(targetCard, patch) {
+    const ctrl = this._ctrl;
+    const id = targetCard && targetCard.dataset && targetCard.dataset.id;
+    if (!id) return;
+    if (patch.paper) {
+      targetCard.dataset.paper = patch.paper;
+      targetCard.style.setProperty('--tw-card-paper', patch.paper);
+      // 非破坏性：直接写模型、保留市场纸样原值，不再经 setPaper 回落 plain。
+      // 素材注册（registerMarketPaper）是异步的（_restoreAll 不阻塞挂载），启动竞态/
+      // 恢复未完成时 MARKET_PAPERS 可能为空，setPaper 会把已装纸样静默销毁 → 持久化丢。
+      // 用户明确拖入套用即应落盘；CSS 是 shadow 内全局样式表（按 data-paper 命中），
+      // 素材注册后已渲染卡片会自动套上，无需回退到 plain。
+      ctrl._notes = ctrl._notes.map(n => n.id === id ? { ...n, paper: patch.paper } : n);
+    }
+    if (patch.font) {
+      targetCard.dataset.font = patch.font;
+      ctrl._notes = ctrl._notes.map(n => n.id === id ? { ...n, font: patch.font } : n);
+    }
+    if (typeof ctrl._invalidateGeo === 'function') ctrl._invalidateGeo(id);   // 纸样改了 padding/比例 → 尺寸变
+    if (typeof ctrl._scheduleSave === 'function') ctrl._scheduleSave();
+  },
+
   // ===== 画布贴纸：独立 DOM + 独立持久化（按便签组存），不入便签模型 =====
 
   /** 在画布 (x,y) 处落一张贴纸；materialId＝素材 id（只持久化 id，不持久化 DOM） */
@@ -480,7 +664,7 @@ export const MaterialMarket = {
     }
     const rec = { id: 'stk-' + Math.random().toString(36).slice(2, 9), material: materialId || material.name, x, y, z: 0, w, h, rot: 0, flipX: false, flipY: false, el: null };
     const el = this._buildStickerEl(ctrl, material, rec);
-    ctrl._canvas.appendChild(el);
+    (this._ensureDecoLayer(ctrl) || ctrl._canvas).appendChild(el);
     rec.el = el;
     this._canvasStickers.push(rec);
     await this._saveStickers();
@@ -562,36 +746,17 @@ export const MaterialMarket = {
   },
 
   _makeStickerDraggable(ctrl, el, rec) {
-    let dragging = false, sx = 0, sy = 0, lx = 0, ly = 0, raf = 0;
-    const apply = () => { raf = 0; el.style.left = lx + 'px'; el.style.top = ly + 'px'; };
     el.addEventListener('pointerdown', (e) => {
-      if (e.target.closest('button')) return;
+      if (e.target.closest('button')) return;   // 旋转/缩放/翻转/删除按钮不触发拖拽
       // 关键：不冒泡到画布 —— 贴纸不是 .tw-card，冒泡上去会被判定为「拖空白」而启动框选 / 平移。
       // （同 CanvasZoomUI 缩放条与卡片浮层的既有约定：浮层内交互一律 stopPropagation。）
       e.stopPropagation();
-      dragging = true; sx = e.clientX; sy = e.clientY;
-      lx = parseFloat(el.style.left) || 0; ly = parseFloat(el.style.top) || 0;
-      el.style.zIndex = String(++ctrl._zTop);
-      if (rec) rec.z = Number(el.style.zIndex);
-      e.preventDefault();
-      document.addEventListener('pointermove', onMove);
-      document.addEventListener('pointerup', onUp);
+      // 统一选区：Shift 点击切换选中；否则若未选中则设为唯一选中，随后整体拖动。
+      // 与便签卡同套语义 —— 选中集（_selected）可同时含卡片与贴纸，拖动/删除一视同仁。
+      if (e.shiftKey) { if (ctrl) ctrl._toggleSelect(el); return; }
+      if (!ctrl || !ctrl._selected || !ctrl._selected.has(el)) { if (ctrl) ctrl._selectOnly(el); }
+      if (ctrl) ctrl._startGroupDrag(e, el);   // 委托统一整体拖动（含本贴纸 + 其余选中项）
     });
-    const onMove = (e) => {
-      if (!dragging) return;
-      const s = CanvasViewport.scaleOf(ctrl._canvasOffset) || 1;
-      lx += (e.clientX - sx) / s; ly += (e.clientY - sy) / s;
-      sx = e.clientX; sy = e.clientY;
-      if (!raf) raf = requestAnimationFrame(apply);
-    };
-    const onUp = () => {
-      dragging = false;
-      if (raf) { cancelAnimationFrame(raf); raf = 0; }
-      document.removeEventListener('pointermove', onMove);
-      document.removeEventListener('pointerup', onUp);
-      // 拖完落盘：位置持久化，重载 / 切组后仍在原处
-      if (rec) { rec.x = lx; rec.y = ly; this._saveStickers(); }
-    };
   },
 
   /** 贴纸旋转：绕中心取角度增量（数学同便签 makeRotatable，含 ±180° 跳变归一、Shift 吸附 15°） */
@@ -732,16 +897,63 @@ export const MaterialMarket = {
     this._canvasStickers = [];
   },
 
-  /** 恢复当前便签组的贴纸（须在已安装素材恢复之后，否则拿不到 render） */
+  /** 按 DOM 元素反查贴纸记录（卡片侧统一拖动时定位 rec） */
+  recForEl(el) { return this._canvasStickers.find((s) => s.el === el) || null; },
+
+  /** 删除单张贴纸（供统一选区的 Delete 调用）：摘除 DOM + 移出记录 + 落盘 */
+  removeStickerEl(el) {
+    const rec = this.recForEl(el);
+    if (!rec) return false;
+    const i = this._canvasStickers.indexOf(rec);
+    if (i >= 0) this._canvasStickers.splice(i, 1);
+    if (el && el.parentNode) el.parentNode.removeChild(el);
+    this._saveStickers();
+    return true;
+  },
+
+  /** 便签档装饰层：贴纸的专属挂载容器（P1 · 所有权显式化）。
+   *  共享画布是便签 / 写作 / 导图三档共用的渲染介质，贴纸若直写画布，
+   *  「属于便签档的装饰」会在切档后滞留到别的档位（P0 只能靠逐个摘除兜底）。
+   *  该层刻意不设 z-index / transform / overflow —— 不新建层叠上下文，
+   *  贴纸的 z（++_zTop）仍在画布层叠上下文里与卡片按同一序列排序，改造前后层级行为一致。 */
+  _ensureDecoLayer(ctrl) {
+    if (!ctrl || !ctrl._canvas) return null;
+    let layer = ctrl._canvas.querySelector('.tw-deco-layer[data-mode="notes"]');
+    if (!layer || !layer.isConnected) {
+      layer = document.createElement('div');
+      layer.className = 'tw-deco-layer';
+      layer.dataset.mode = 'notes';
+      ctrl._canvas.appendChild(layer);
+    }
+    return layer;
+  },
+
+  /** 档位切换：装饰层只跟随它所属的档位显示（贴纸属于便签档）。
+   *  即便有残留内容，非便签档也看不见 —— 从「渲染树」而非「逐个摘除」上保证不串档。 */
+  syncDecoLayer(mode) {
+    const ctrl = this._ctrl;
+    if (!ctrl || !ctrl._canvas) return;
+    const layer = ctrl._canvas.querySelector('.tw-deco-layer[data-mode="notes"]');
+    if (layer) layer.hidden = mode !== 'notes';
+  },
+
+  /** 恢复当前便签组的贴纸（须在已安装素材恢复之后，否则拿不到 render）。
+   *  【档位所有权】贴纸是「便签档专属装饰」，非便签档一律不挂载（只清场）。
+   *  判定要卡在每个 await 之后复检：启动恢复与切档是并发的，档位可能在等待期间被改写，
+   *  只在函数入口判一次仍会把贴纸挂进已经切走的档位（写作档画布）。 */
   async _restoreStickers() {
     try {
+      const ctrl = this._ctrl;
+      // 闸门①：进来时已不是便签档 → 清场返回（覆盖「贴纸恢复晚于档位恢复」的启动竞态）
+      if (!ctrl || ctrl._mode !== 'notes') { this._clearStickerDom(); return; }
       this._clearStickerDom();
       const mgr = (typeof window !== 'undefined' && window.storageManager) || null;
       if (!mgr || typeof mgr.getSetting !== 'function') return;
       const arr = await mgr.getSetting(await this._stickerKey());
       if (!Array.isArray(arr) || !arr.length) return;
-      const ctrl = this._ctrl;
-      if (!ctrl || !ctrl._canvas) return;
+      // 闸门②：上面两个 await 期间可能已切到写作 / 导图档 —— 此刻挂载就会漏进别的档位
+      if (ctrl._mode !== 'notes') return;
+      if (!ctrl._canvas) return;
       for (const s of arr) {
         const material = this._installed[s.material];
         if (!material) continue;   // 素材已删除 / 未安装 → 不重建
@@ -750,7 +962,7 @@ export const MaterialMarket = {
         // 沿用旧值会让贴纸被新卡片压在下面 —— 即「切走再切回贴纸不见了，重启才回来」。
         const rec = { id: s.id, material: s.material, x: Number(s.x) || 0, y: Number(s.y) || 0, z: 0, w: Number(s.w) || 120, h: Number(s.h) || 120, rot: Number(s.rot) || 0, flipX: !!s.fx, flipY: !!s.fy, el: null };
         const el = this._buildStickerEl(ctrl, material, rec);
-        ctrl._canvas.appendChild(el);
+        (this._ensureDecoLayer(ctrl) || ctrl._canvas).appendChild(el);
         rec.el = el;
         this._canvasStickers.push(rec);
       }
@@ -763,6 +975,15 @@ export const MaterialMarket = {
 
   /** 供外部（切便签组）调用：按新组重建贴纸 */
   async reloadStickers() { await this._restoreStickers(); },
+
+  /** 供外部（离开便签档）调用：把贴纸从画布摘掉。
+   *  不能依赖 _buildCards 顺带清场 —— 它只清 .tw-card，贴纸会滞留在写作档画布上。
+   *  摘之前先 flush 内存里未落盘的改动；且仅在确有贴纸时才写盘，
+   *  否则连续切档（便签→写作→导图）会用空数组覆盖掉该组已存的贴纸。 */
+  async detachStickers() {
+    if (this._canvasStickers && this._canvasStickers.length) await this._saveStickers();
+    this._clearStickerDom();
+  },
 
   /** 启动恢复：先素材后贴纸（贴纸渲染依赖已安装素材） */
   async _restoreAll() {

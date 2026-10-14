@@ -160,6 +160,12 @@ export const ViewportCuller = {
     const card = state.mountedCards.get(id);
     if (!card) return false;
     ctrl._disposeCard(card);
+    // 【根因】配对解除 ResizeObserver：LinkLayer.watchSize 在挂载时 observe 了这张卡，
+    // 只 remove 不 unobserve 会让共享 RO 一直持有已销毁卡片的强引用 —— 写作档超
+    // WRITE_NO_CULL_MAX 后每轮 cull churn 都新增一条，长时间平移后观察列表无界增长。
+    if (ctrl._linkLayer && typeof ctrl._linkLayer.unwatchSize === 'function') {
+      ctrl._linkLayer.unwatchSize(card);
+    }
     card.remove();
     state.mountedCards.delete(id);
     return true;
@@ -194,7 +200,6 @@ export const ViewportCuller = {
     const s = new Set();
     if (state.selected) state.selected.forEach((c) => { if (c.dataset && c.dataset.id) s.add(c.dataset.id); });
     if (ctrl._draggingSet) ctrl._draggingSet.forEach((id) => s.add(id));
-    if (ctrl._typingIds) ctrl._typingIds.forEach((id) => s.add(id));
     if (ctrl._editingId) s.add(ctrl._editingId);
     return s;
   },
@@ -325,7 +330,8 @@ export const ViewportCuller = {
     ctrl._perfEnd('cull', _t0);
   },
 
-  /** 超出上限删最早（以「模型真源 state.notes 的数组序」为时间序；cap 由宿主传入，避免本模块依赖 NOTE_CAP 常量）。 */
+  /** 超上限时移除最早的一批（以「模型真源 state.notes 的数组序」为时间序；cap 由宿主传入，避免本模块依赖 NOTE_CAP 常量）。
+   *  注：现行 cap = Infinity（便签不设限），本函数实际不会触发；保留它是为了上限仍可配置。 */
   enforceCap(ctx, cap) {
     const { state, ctrl } = ctx;
     if (state.mode === 'write') return;
@@ -347,14 +353,6 @@ export const ViewportCuller = {
     const { state, ctrl } = ctx;
     if (!card) return;
     const id = card.dataset && card.dataset.id;
-    if (card._typing) {
-      try { clearInterval(card._typing.timer); } catch (_) { /* 忽略 */ }
-      if (ctrl._timers) {
-        const k = ctrl._timers.indexOf(card._typing.timer);
-        if (k >= 0) ctrl._timers.splice(k, 1);
-      }
-      card._typing = null;
-    }
     if (card._editHandlers || card._editBlur) {
       const text = card.querySelector('.tw-card-text');
       if (text) {
@@ -369,7 +367,6 @@ export const ViewportCuller = {
       card._editBlur = null;
     }
     if (id) {
-      if (ctrl._typingIds) ctrl._typingIds.delete(id);
       if (ctrl._editingId === id) ctrl._editingId = null;
       if (state.selected) state.selected.delete(card);
     }
@@ -386,7 +383,7 @@ export const ViewportCuller = {
     if (!id) return;
     if (ctrl._pinnedIds(ctx).has(id)) return;
     const g = state.geo ? state.geo.get(id) : null;
-    const n = (state.notes || []).find((x) => x.id === id);
+    const n = (typeof ctrl._noteIndex === 'function') ? ctrl._noteIndex().get(id) : (state.notes || []).find((x) => x.id === id);
     const rawL = (g ? g.x : (n && typeof n.x === 'number' ? n.x : 0));
     const rawT = (g ? g.y : (n && typeof n.y === 'number' ? n.y : 0));
     const w = g ? g.w : 340;

@@ -1055,22 +1055,22 @@
 .market-card-name { font-weight: 600; font-size: var(--type-md); }
 .market-card-author { font-size: var(--type-caption); color: var(--text-muted); margin-top: 2px; }
 .market-card-actions { flex-shrink: 0; display: flex; align-items: center; gap: 6px; }
-/* 市场操作按钮：精致胶囊（子弹）形，模块市场 / 主题市场共用 */
+/* 市场操作按钮：圆形图标按钮（安装/更新/卸载），模块 / 主题市场共用，与素材市场统一 */
 .market-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 5px 15px;
-    border-radius: var(--radius-pill);
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border-radius: 50%;
     font-size: var(--type-xs);
-    font-weight: 600;
-    letter-spacing: 0.02em;
-    line-height: 1.5;
     cursor: pointer;
     border: 1px solid transparent;
     transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease,
         box-shadow 0.18s ease, transform 0.12s ease;
 }
+.market-btn svg { width: 17px; height: 17px; display: block; }
 .market-btn:active { transform: translateY(1px); }
 .market-btn:disabled { opacity: 0.55; cursor: default; transform: none; }
 .market-btn.install {

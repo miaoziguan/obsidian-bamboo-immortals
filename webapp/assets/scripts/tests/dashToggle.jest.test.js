@@ -84,9 +84,6 @@ function setup() {
     onChange: () => {},
   });
   Tw._links = [{ from: 'a', to: 'b', route: 'bezier', bend: 0, dash: 'dashed' }];
-  Tw._hoverLink = { from: 'a', to: 'b' };
-  Tw._hoverTimer = null;
-  Tw._ctlHover = false;
   return Tw;
 }
 

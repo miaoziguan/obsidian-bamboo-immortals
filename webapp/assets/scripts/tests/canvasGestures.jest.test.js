@@ -106,6 +106,28 @@ describe('CanvasGestures 共享手势（C3）', () => {
     expect(calls).toEqual([['pan', -0, -10]]);   // 单卡缩放快捷键已移除：Alt+滚轮按普通平移处理
   });
 
+  test('滚轮：浮层/对话框内的滚轮不被画布平移劫持（回归：整篇预览窗滚不动）', () => {
+    const calls = [];
+    const host = document.createElement('div');
+    const overlay = document.createElement('div');
+    overlay.className = 'tw-preview-modal';
+    const body = document.createElement('textarea');
+    overlay.appendChild(body);
+    host.appendChild(overlay);
+    document.body.appendChild(host);
+    CanvasGestures.installWheel(host, {
+      isActive: () => true,
+      getView: () => ({ x: 0, y: 0, scale: 1 }),
+      zoomAt: () => calls.push(['zoom']),
+      panBy: () => calls.push(['pan']),
+    });
+    const fire = (el) => el.dispatchEvent(new window.WheelEvent('wheel', { bubbles: true, cancelable: true, deltaY: 40 }));
+    fire(body);
+    expect(calls).toEqual([]);            // 浮层内滚轮不驱动画布（交由只读框自身滚动）
+    fire(host);
+    expect(calls).toEqual([['pan']]);     // 画布自身的滚轮仍照常平移
+  });
+
   test('空格抓手：state.spaceDown 随按键切换并加 is-hand', () => {
     const host = document.createElement('div');
     document.body.appendChild(host);

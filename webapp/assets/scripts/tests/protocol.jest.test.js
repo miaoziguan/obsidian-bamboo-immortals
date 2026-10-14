@@ -42,6 +42,8 @@ describe('protocol.js 协议单一事实源', () => {
       'theme:changed', 'theme:followDisabled', 'theme:syncPaletteEnabled',
       'nav:prevDay', 'nav:nextDay', 'nav:today',
       'action:openStats', 'action:openSettings',
+      // 关闭视图前的落盘通知（防丢数据）：未登记会被 parseAppMessage 静默丢弃
+      'app:beforeDetach',
     ];
     for (const t of must) expect(APP_MESSAGE_TYPES).toContain(t);
   });

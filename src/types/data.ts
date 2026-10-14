@@ -157,6 +157,18 @@ export interface ExportShape {
   incomeHistory: IncomeHistory | null;
   /** 自定义目标模板（vault 内 templates/*.md 的序列化快照） */
   customTemplates?: CustomTemplate[];
+  /**
+   * 画中卷·写作档：每组独立 .json 的序列化快照（key 为文档 id）。
+   * 默认目录 typewriter-writing（可在「数据」页改）。
+   * 早期版本的备份不含这些字段 —— 那是个真实缺口：重置/换设备后画中卷档无法恢复。
+   */
+  typewriterWritingDocs?: Record<string, unknown>;
+  /** 画中卷·便签组文档（默认目录 typewriter-notes） */
+  typewriterNotesDocs?: Record<string, unknown>;
+  /** 画中卷·思维子弹文档（默认目录 typewriter-mindmap） */
+  typewriterMindmapDocs?: Record<string, unknown>;
+  /** 画中卷·便签旧版单文件存储（typewriter-notes.json，尚未迁移的用户数据仍在这里） */
+  typewriterNotes?: unknown[];
 }
 
 // =====================================================================

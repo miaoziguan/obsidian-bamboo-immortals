@@ -1,4 +1,6 @@
 import { App, PluginSettingTab, Setting, Notice, Modal, SettingPage, SettingDefinitionItem } from 'obsidian';
+import { normalizeDirInput, migrateDataDir, bindFolderMigration } from './folderMigration';
+import { EXPORT_FOLDER_DEFAULTS } from './legacySettings';
 import type BambooReviewPlugin from '../../main';
 import { ThemeBridge } from '../bridge/ThemeBridge';
 import { arrayBufferToBase64 } from '../utils/base64';
@@ -46,7 +48,7 @@ export interface NoiseItem {
 export interface BambooReviewSettings {
   /** 板块管理配置（JSON 解析后结构不固定，使用宽松类型） */
   sectionConfig: Record<string, unknown> | null;
-  /** 自定义主题动效文件夹路径（Vault 根目录下的相对路径） */
+  /** 主题动效文件夹路径（Vault 根目录下的相对路径） */
   themePath: string;
   /** 白噪音文件夹路径（Vault 根目录下的相对路径，留空则扫描全库） */
   noisePath: string;
@@ -63,6 +65,11 @@ export interface BambooReviewSettings {
    * 与主题市场（marketInstalled）分开存放，避免两类市场的版本记录互相覆盖。
    */
   moduleInstalled?: Record<string, { version: string; installedAt: number }>;
+  /**
+   * 便签素材市场：已安装素材的版本记录（素材 id → { version, installedAt }）。
+   * 与主题/模块市场分开存放，避免三类市场的版本记录互相覆盖。
+   */
+  materialInstalled?: Record<string, { version: string; installedAt: number }>;
   /**
    * 模块文件夹路径（Vault 相对路径）。留空时回落到默认管理区 <configDir>/bamboo-review/modules，
    * 收拢在插件数据同域、不再散落 vault 根目录；设置具体路径则完全自定义（此时不做旧目录迁移）。
@@ -116,6 +123,32 @@ export interface BambooReviewSettings {
   /** 画中卷默认打开位置（left/center/right），由视图内移动按钮或设置面板写入 */
   scrollDefaultLocation: ScrollLocation;
   reviewViewOpen: boolean;
+  /** 复盘面板内左右滑动切换日期（原 webapp 设置项，已收归原生设置） */
+  enableSwipe: boolean;
+  /** 数据修改后延迟自动保存的时间（毫秒）。可选 1000/2000/5000/10000 */
+  autoSaveInterval: number;
+  /** 静坐一炉香：整支香的燃烧时长（分钟，1~240；原 webapp 设置项，已收归原生设置） */
+  incenseDuration: number;
+  /** 静坐一炉香：每燃烧多少分钟化一次雁（分钟，1~120 且不超过总时长） */
+  incenseGooseInterval: number;
+  /** 插件数据根目录（Vault 相对路径）。所有竹林数据（日记/目标/画中卷/设置/收支等）存于此目录。
+   *  留空或保持默认 'bamboo-review' 即存放于库根 bamboo-review/。修改后自动复制现有数据到新目录。 */
+  dataPath: string;
+  /** 写作档（MD可视化写作，每组独立 .json）的程序数据存储目录（相对 dataPath 的子目录）。
+   *  默认 typewriter-writing；修改后自动把旧档复制到新目录，重启插件生效（与 dataPath 同机制）。 */
+  writeStoreFolder: string;
+  /** 便签档（便签模式，每组独立 .json）的程序数据存储目录（相对 dataPath 的子目录）。
+   *  默认 typewriter-notes；修改后自动把旧档复制到新目录，重启插件生效（与 writeStoreFolder 同机制）。 */
+  notesStoreFolder: string;
+  /** 思维子弹档（思维子弹模式，每组独立 .json）的程序数据存储目录（相对 dataPath 的子目录）。
+   *  默认 typewriter-mindmap；修改后自动把旧档复制到新目录，重启插件生效（与 writeStoreFolder 同机制）。 */
+  mindmapStoreFolder: string;
+  /** 思维子弹导出为 Markdown 的落库目录（Vault 相对路径，默认 思维子弹） */
+  mmExportFolder: string;
+  /** 便签导出为 Markdown 的落库目录（Vault 相对路径，默认 便签） */
+  noteExportFolder: string;
+  /** 写作模式整篇快照导出为 Markdown 的落库目录（Vault 相对路径，默认 MD可视化写作） */
+  writeExportFolder: string;
 }
 
 export const DEFAULT_SETTINGS: BambooReviewSettings = {
@@ -125,6 +158,7 @@ export const DEFAULT_SETTINGS: BambooReviewSettings = {
   noiseItems: [],
   marketInstalled: {},
   moduleInstalled: {},
+  materialInstalled: {},
   modulePath: '',
   moduleData: {},
   syncPaletteToObsidian: false,
@@ -145,13 +179,24 @@ export const DEFAULT_SETTINGS: BambooReviewSettings = {
   smtpAllowSelfSigned: false,
   scrollDefaultLocation: 'left',
   reviewViewOpen: false,
+  enableSwipe: true,
+  autoSaveInterval: 2000,
+  incenseDuration: 60,
+  incenseGooseInterval: 10,
+  dataPath: 'bamboo-review',
+  writeStoreFolder: 'typewriter-writing',
+  notesStoreFolder: 'typewriter-notes',
+  mindmapStoreFolder: 'typewriter-mindmap',
+  mmExportFolder: '思维子弹',
+  noteExportFolder: '便签',
+  writeExportFolder: 'MD可视化写作',
 };
 
 /**
  * PluginSettings - Obsidian 原生设置面板（1.13.0+ 声明式 + 命令式子页）
  *
  * 采用 Obsidian 1.13 推荐架构：
- * - 顶层 getSettingDefinitions() 返回 5 个 SettingDefinitionPage，
+ * - 顶层 getSettingDefinitions() 返回 6 个 SettingDefinitionPage，
  *   每个 page 的 name/desc 进入设置搜索索引，消除官方 lint 提示；
  * - 每个 page 通过 `page: () => new XxxPage()` 工厂返回一个命令式 SettingPage
  *   子类，在子类的 display() 里沿用原 renderXxxTab 的命令式逻辑（含页内
@@ -211,7 +256,10 @@ export class PluginSettings extends PluginSettingTab {
       { type: 'page', name: '概览', desc: '关于竹林修仙传与作者信息', page: () => new OverviewPage(this.plugin) },
       { type: 'page', name: '激活', desc: '购买激活、备份码与多设备同步', page: () => new LicensePage(this.plugin) },
       { type: 'page', name: 'AI 规划', desc: '自然语言转目标卡片的 AI 配置', page: () => new AIPage(this.plugin) },
-      { type: 'page', name: '外观', desc: '主题动效、白噪音与调色联动', page: () => new AppearancePage(this.plugin) },
+      { type: 'page', name: '外观与交互', desc: '配色联动、界面与交互偏好', page: () => new AppearancePage(this.plugin) },
+      { type: 'page', name: '资源', desc: '主题动效与白噪音等资源文件的存放目录', page: () => new ResourcePage(this.plugin) },
+      { type: 'page', name: '数据', desc: '数据存储目录与数据迁移', page: () => new DataPage(this.plugin) },
+      { type: 'page', name: '导出', desc: '思维子弹/便签/写作导出为 Markdown 的落库目录', page: () => new ExportPage(this.plugin) },
       { type: 'page', name: '竹林咨询', desc: '邮箱 SMTP 发件配置', page: () => new ConsultPage(this.plugin) },
     ];
   }
@@ -226,6 +274,7 @@ class OverviewPage extends SettingPage {
 
   display(): void {
     const containerEl = this.containerEl;
+    containerEl.addClass('bamboo-settings-page');
     new Setting(containerEl).setName('关于').setHeading();
 
     // ───── 卡片 1：插件简介 ─────
@@ -300,6 +349,7 @@ class LicensePage extends SettingPage {
   display(): void {
     const containerEl = this.containerEl;
     containerEl.empty();
+    containerEl.addClass('bamboo-settings-page');
     new Setting(containerEl).setName('激活').setHeading();
 
     // 购买激活入口（轻量模式：付款后私聊作者拿码）
@@ -463,6 +513,7 @@ class AIPage extends SettingPage {
 
   display(): void {
     const containerEl = this.containerEl;
+    containerEl.addClass('bamboo-settings-page');
     new Setting(containerEl).setName('AI 规划（自然语言 → 目标卡片）').setHeading();
 
     new Setting(containerEl)
@@ -538,46 +589,17 @@ class AIPage extends SettingPage {
   }
 }
 
-/** 外观页：主题动效 + 白噪音 + 调色联动 */
+/** 外观与交互页：调色联动 / 界面布局 / 交互行为 / 静坐一炉香（主题·白噪音资源目录已移至 ResourcePage） */
 class AppearancePage extends SettingPage {
   constructor(private plugin: BambooReviewPlugin) {
     super();
-    this.title = '外观';
+    this.title = '外观与交互';
   }
 
   display(): void {
     const containerEl = this.containerEl;
-    // === 主题动效 ===
-    new Setting(containerEl).setName('主题动效').setHeading();
-
-    new Setting(containerEl)
-      .setName('自定义主题路径')
-      .setDesc('Vault 根目录下存放自定义主题 .js 文件的文件夹（修改后需重启插件）')
-      .addText((text) =>
-        text
-          .setPlaceholder('竹林动效主题')
-          .setValue(this.plugin.settings.themePath)
-          .onChange(async (value) => {
-            this.plugin.settings.themePath = value || '竹林动效主题';
-            scheduleSaveSettings(this.plugin);
-          })
-      );
-
-    // === 白噪音 ===
-    new Setting(containerEl).setName('白噪音').setHeading();
-
-    new Setting(containerEl)
-      .setName('白噪音文件夹')
-      .setDesc('Vault 根目录下的相对路径，指定后仅扫描该文件夹内的音频文件。留空则扫描整个库（修改后需重启插件）')
-      .addText((text) =>
-        text
-          .setPlaceholder('白噪音 或留空扫描全库')
-          .setValue(this.plugin.settings.noisePath)
-          .onChange(async (value) => {
-            this.plugin.settings.noisePath = value.trim();
-            scheduleSaveSettings(this.plugin);
-          })
-      );
+    containerEl.addClass('bamboo-settings-page');
+    // ───── 主题/白噪音资源目录已移至独立的「资源」页（ResourcePage）─────
 
     // === 调色联动 ===
     new Setting(containerEl).setName('调色联动').setHeading();
@@ -654,7 +676,9 @@ class AppearancePage extends SettingPage {
           })
       );
 
-    // === 画中卷停靠位置 ===
+    // === 界面布局 ===
+    new Setting(containerEl).setName('界面布局').setHeading();
+
     new Setting(containerEl)
       .setName('画中卷默认打开位置')
       .setDesc('画中卷（便签墙 / 香道）打开时默认停靠的位置；在视图内用标签页按钮移动后也会更新此项')
@@ -669,7 +693,225 @@ class AppearancePage extends SettingPage {
             scheduleSaveSettings(this.plugin);
           })
       );
+
+    // === 交互行为 ===
+    new Setting(containerEl).setName('交互行为').setHeading();
+
+    new Setting(containerEl)
+      .setName('滑动切换日期')
+      .setDesc('复盘面板内左右滑动切换日期；关闭后只能用日期选择器切换')
+      .addToggle((toggle) =>
+        toggle.setValue(this.plugin.settings.enableSwipe !== false).onChange(async (value) => {
+          this.plugin.settings.enableSwipe = value;
+          scheduleSaveSettings(this.plugin);
+        })
+      );
+
+    new Setting(containerEl)
+      .setName('自动保存间隔')
+      .setDesc('数据修改后延迟保存的时间')
+      .addDropdown((drop) =>
+        drop
+          .addOption('1000', '1 秒')
+          .addOption('2000', '2 秒')
+          .addOption('5000', '5 秒')
+          .addOption('10000', '10 秒')
+          .setValue(String(this.plugin.settings.autoSaveInterval || 2000))
+          .onChange(async (value) => {
+            this.plugin.settings.autoSaveInterval = parseInt(value, 10) || 2000;
+            scheduleSaveSettings(this.plugin);
+          })
+      );
+
+    // === 静坐一炉香 ===
+    new Setting(containerEl).setName('静坐一炉香').setHeading();
+
+    new Setting(containerEl)
+      .setName('一炷香总时长')
+      .setDesc('香道番茄钟整支香的燃烧时长（分钟，1~240）')
+      .addText((text) =>
+        text
+          .setPlaceholder('60')
+          .setValue(String(this.plugin.settings.incenseDuration || 60))
+          .onChange(async (value) => {
+            this.plugin.settings.incenseDuration = Math.min(240, Math.max(1, parseInt(value, 10) || 60));
+            scheduleSaveSettings(this.plugin);
+          })
+      );
+
+    new Setting(containerEl)
+      .setName('化雁间隔')
+      .setDesc('每燃烧多少分钟，一段香灰随风化作大雁飞向远方（分钟，1~120，且不超过总时长）')
+      .addText((text) =>
+        text
+          .setPlaceholder('10')
+          .setValue(String(this.plugin.settings.incenseGooseInterval || 10))
+          .onChange(async (value) => {
+            const dur = this.plugin.settings.incenseDuration || 60;
+            this.plugin.settings.incenseGooseInterval = Math.min(120, Math.min(dur, Math.max(1, parseInt(value, 10) || 10)));
+            scheduleSaveSettings(this.plugin);
+          })
+      );
   }
+
+}
+
+/** 资源页：主题动效与白噪音等资源文件的存放目录（输入型资源目录） */
+class ResourcePage extends SettingPage {
+  constructor(private plugin: BambooReviewPlugin) {
+    super();
+    this.title = '资源';
+  }
+
+  display(): void {
+    const containerEl = this.containerEl;
+    containerEl.addClass('bamboo-settings-page');
+    // === 主题动效 ===
+    new Setting(containerEl).setName('主题动效').setHeading();
+
+    new Setting(containerEl)
+      .setName('主题动效文件夹')
+      .setDesc('Vault 根目录下存放主题动效 .js 文件的文件夹（修改后需重启插件）')
+      .addText((text) =>
+        text
+          .setPlaceholder('竹林动效主题')
+          .setValue(this.plugin.settings.themePath)
+          .onChange((value) => {
+            const old = this.plugin.settings.themePath || '竹林动效主题';
+            const next = normalizeDirInput(value, '竹林动效主题');
+            this.plugin.settings.themePath = next;
+            scheduleSaveSettings(this.plugin);
+            // 主题 .js 是用户资产：换目录时把旧目录里的主题一并搬过去（复制式，不删旧档）。
+            // 否则旧目录不在 _rescanThemes 的扫描候选里，已装主题会"凭空消失"。
+            if (next !== old) {
+              void migrateDataDir(this.plugin.app, old, next).catch(() => { /* 迁移失败不阻断设置保存 */ });
+            }
+          })
+      );
+
+    // === 白噪音 ===
+    new Setting(containerEl).setName('白噪音').setHeading();
+
+    new Setting(containerEl)
+      .setName('白噪音文件夹')
+      .setDesc('Vault 根目录下的相对路径，指定后仅扫描该文件夹内的音频文件。留空则扫描整个库（修改后需重启插件）')
+      .addText((text) =>
+        text
+          .setPlaceholder('白噪音 或留空扫描全库')
+          .setValue(this.plugin.settings.noisePath)
+          .onChange((value) => {
+            this.plugin.settings.noisePath = normalizeDirInput(value, '');
+            scheduleSaveSettings(this.plugin);
+          })
+      );
+  }
+}
+
+/** 数据页：数据存储目录（竹林全部业务数据的 Vault 相对根路径）+ 后续迁移/备份类功能的分组位 */
+class DataPage extends SettingPage {
+  constructor(private plugin: BambooReviewPlugin) {
+    super();
+    this.title = '数据';
+  }
+
+  display(): void {
+    const containerEl = this.containerEl;
+    containerEl.addClass('bamboo-settings-page');
+    new Setting(containerEl).setName('数据根目录').setHeading();
+
+    // 数据存储目录（根）：迁移时递归整树复制（含子目录）
+    new Setting(containerEl)
+      .setName('数据存储目录')
+      .setDesc('竹林修仙传全部数据（日记/目标/画中卷/设置/收支等）存放的 Vault 相对路径。留空或保持默认「bamboo-review」即存于库根 bamboo-review/；修改后自动把现有数据（含子目录）复制到新目录，重启插件生效。')
+      .addText((text) => {
+        text
+          .setPlaceholder('bamboo-review')
+          .setValue(this.plugin.settings.dataPath || 'bamboo-review')
+          .onChange((value) => {
+            this.plugin.settings.dataPath = normalizeDirInput(value, 'bamboo-review');
+            scheduleSaveSettings(this.plugin);
+          });
+        bindFolderMigration(
+          text,
+          () => this.plugin.settings.dataPath || 'bamboo-review',
+          (oldVal, newVal) => migrateDataDir(this.plugin.app, oldVal, newVal)
+        );
+        return text;
+      });
+
+    // ── 画中卷各模式的存档目录（均相对「数据存储目录」）──
+    new Setting(containerEl).setName('画中卷模式存档目录').setHeading();
+
+    type StoreKey = 'writeStoreFolder' | 'notesStoreFolder' | 'mindmapStoreFolder';
+    const storeFolders: Array<{ key: StoreKey; name: string; def: string; desc: string }> = [
+      { key: 'writeStoreFolder', name: 'MD 可视化写作存档目录', def: 'typewriter-writing', desc: '写作档（MD可视化写作，每组独立 .json）的程序数据存储位置（相对「数据存储目录」的子路径，默认 typewriter-writing）。修改后自动把旧档复制到新目录，重启插件生效。' },
+      { key: 'notesStoreFolder', name: '便签模式存档目录', def: 'typewriter-notes', desc: '便签档（便签模式，每组独立 .json）的程序数据存储位置（相对「数据存储目录」的子路径，默认 typewriter-notes）。修改后自动把旧档复制到新目录，重启插件生效。' },
+      { key: 'mindmapStoreFolder', name: '思维子弹模式存档目录', def: 'typewriter-mindmap', desc: '思维子弹档（每组独立 .json）的程序数据存储位置（相对「数据存储目录」的子路径，默认 typewriter-mindmap）。修改后自动把旧档复制到新目录，重启插件生效。' },
+    ];
+
+    for (const it of storeFolders) {
+      new Setting(containerEl)
+        .setName(it.name)
+        .setDesc(it.desc)
+        .addText((text) => {
+          text
+            .setPlaceholder(it.def)
+            .setValue(this.plugin.settings[it.key] || it.def)
+            .onChange((value) => {
+              this.plugin.settings[it.key] = normalizeDirInput(value, it.def);
+              scheduleSaveSettings(this.plugin);
+            });
+          bindFolderMigration(
+            text,
+            () => this.plugin.settings[it.key] || it.def,
+            (oldVal, newVal) => {
+              const base = this.plugin.settings.dataPath || 'bamboo-review';
+              return migrateDataDir(this.plugin.app, `${base}/${oldVal}`, `${base}/${newVal}`);
+            }
+          );
+          return text;
+        });
+    }
+  }
+
+}
+
+/** 导出页：三类 Markdown 导出的落库目录（Vault 相对路径）。仅影响"导出到 Vault"的目标位置，不迁移既有文件。 */
+class ExportPage extends SettingPage {
+  constructor(private plugin: BambooReviewPlugin) {
+    super();
+    this.title = '导出';
+  }
+
+  display(): void {
+    const containerEl = this.containerEl;
+    containerEl.addClass('bamboo-settings-page');
+    new Setting(containerEl).setName('画中卷打字机板块导出目录').setHeading();
+
+    const items: Array<{ key: 'mmExportFolder' | 'noteExportFolder' | 'writeExportFolder'; name: string; desc: string; placeholder: string }> = [
+      { key: 'mmExportFolder', name: '思维子弹模式导出目录', desc: '思维子弹图导出为 Markdown 的落库位置（Vault 相对路径，如 画中卷/子弹笔记 或 思维子弹）', placeholder: '如 思维子弹' },
+      { key: 'noteExportFolder', name: '便签模式导出目录', desc: '便签（单张/框选多张）导出为 Markdown 的落库位置（Vault 相对路径，如 画中卷/便签MD 或 便签）', placeholder: '如 便签' },
+      { key: 'writeExportFolder', name: 'MD 可视化写作模式导出目录', desc: '写作模式（MD可视化写作）整篇快照导出为 Markdown 的落库位置（Vault 相对路径，默认 MD可视化写作）', placeholder: '如 MD可视化写作' },
+    ];
+
+    for (const it of items) {
+      new Setting(containerEl)
+        .setName(it.name)
+        .setDesc(it.desc)
+        .addText((text) =>
+          text
+            .setPlaceholder(it.placeholder)
+            .setValue(this.plugin.settings[it.key] || EXPORT_FOLDER_DEFAULTS[it.key])
+            .onChange(async (value) => {
+              const norm = (value || '').trim().replace(/\\/g, '/').replace(/^\/+/, '').replace(/\/+$/, '');
+              if (norm.includes('..')) return; // 禁止路径遍历，忽略非法输入
+              this.plugin.settings[it.key] = norm || EXPORT_FOLDER_DEFAULTS[it.key];
+              scheduleSaveSettings(this.plugin);
+            })
+        );
+    }
+  }
+
 }
 
 /** 竹林咨询页（零依赖、独立隔离渲染） */
@@ -681,6 +923,7 @@ class ConsultPage extends SettingPage {
 
   display(): void {
     const containerEl = this.containerEl;
+    containerEl.addClass('bamboo-settings-page');
     try {
       new Setting(containerEl).setName('竹林咨询（邮箱 SMTP 配置）').setHeading();
 
@@ -801,7 +1044,7 @@ class PurchaseModal extends Modal {
 
     // 价格
     const priceBox = contentEl.createDiv({ cls: 'bamboo-purchase-price' });
-    priceBox.createSpan({ text: '限时早鸟价 ¥49', cls: 'bamboo-purchase-early' });
+    priceBox.createSpan({ text: '限时早鸟价 ¥59', cls: 'bamboo-purchase-early' });
     priceBox.createSpan({ text: ' / 正式价 ¥9999', cls: 'bamboo-purchase-regular' });
     contentEl.createEl('p', {
       text: '一次性买断，无订阅、无有效期。付款后获得专属激活码，离线激活、永久可用。',

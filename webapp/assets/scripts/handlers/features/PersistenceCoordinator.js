@@ -32,15 +32,20 @@ export const PersistenceCoordinator = {
   scheduleSave(ctx) {
     const { state, ctrl } = ctx;
     // 切档窗口内丢弃落盘：_setMode 先把 _mode 翻成新档、_loadDoc 的 await 才把 _notes 换成新档，
-    // 这段窗口内若仍有旧档的打字计时器触发 save，会用「新档 key + 旧档数据」盖写新档（档位串味）。
-    // 旧档已在 _persistDoc(prev) 用 pendingText 完整落盘，故直接丢弃窗口内的 save 安全。
+    // 这段窗口内触发的 save 会用「新档 key + 旧档数据」盖写新档（档位串味）。
+    // 旧档已在 _persistDoc(prev) 完整落盘，故直接丢弃窗口内的 save 安全。
     if (ctrl._switching) return;
     if (ctrl._saveTimer) clearTimeout(ctrl._saveTimer);
     ctrl._saveTimer = setTimeout(() => {
       ctrl._saveTimer = null;
-      ctrl._saveNow();
+      // 【防丢数据】防抖回调同样要有错误面：saveNow 内部的 catch 只覆盖落盘本身，
+      // 这里的 .catch 兜住 _collectNotes 等前置步骤抛错的情况，避免 unhandled rejection。
+      Promise.resolve(ctrl._saveNow()).catch((e) => {
+        console.error('[Typewriter] 防抖落盘失败', e);
+        ctrl._showSaveFailed('便签');
+      });
     }, SAVE_DEBOUNCE);
-  
+
   },
   // (was _saveNow)
   async saveNow(ctx) {
@@ -53,8 +58,15 @@ export const PersistenceCoordinator = {
     // 彻底绕开只认数组的 putTypewriterNotes，TS 端再也无法因结构假设清空数据。
     const off = ctrl._canvasOffset || { x: 0, y: 0 };
     // 收敛：write/notes 走同一套 saveDoc（mindmap 已在顶部 return，不至此）
-    await TypewriterStore.saveDoc(ctrl._mode, notes, off, ctrl._links);
-  
+    // 【防丢数据】落盘是静默自动行为，失败必须让用户看见：此前此处无 try/catch，
+    // 失败只表现为 unhandled rejection，用户直到下次打开才发现数据少了一块。
+    try {
+      await TypewriterStore.saveDoc(ctrl._mode, notes, off, ctrl._links);
+    } catch (e) {
+      console.error('[Typewriter] 便签/写作落盘失败', e);
+      ctrl._showSaveFailed('便签');
+    }
+
   },
   // (was _persistDoc)
   async persistDoc(ctx, mode) {
@@ -76,10 +88,7 @@ export const PersistenceCoordinator = {
     const w = cr.width || 1;
     const h = cr.height || 1;
     const notes = convertRatioCoords(data.notes || [], data.version, w, h);
-    // 先停掉进行中的打字计时器：否则它们会继续往已被移除的卡片里写字
-    ctrl._timers.forEach((t) => { try { clearInterval(t); } catch (_) { /* 忽略 */ } });
-    ctrl._timers = [];
-    Array.from(canvas.querySelectorAll('.tw-card')).forEach((c) => c.remove());
+    // 不再在此处全量清卡：buildCards(:91) 会清 mountedCards/geo 并移除 .tw-card，此处重复纯属多一次 O(N) 遍历
     ctrl._clearSelection();
     // 信任边界：读档数据经 WritingDoc.normalize 净化；从此 ctrl._notes 为规范模型
     const doc = WritingDoc.normalize(notes, data.links || [], data.canvasOffset || { x: 0, y: 0 });
@@ -120,9 +129,6 @@ export const PersistenceCoordinator = {
   restoreSnapshot(ctx, s) {
     const { state, ctrl } = ctx;
     if (!s || !ctrl._canvas) return;
-    // 必须先停掉进行中的打字计时器：否则它们会继续往已被移除的卡片里写字
-    ctrl._timers.forEach((t) => { try { clearInterval(t); } catch (_) { /* 忽略 */ } });
-    ctrl._timers = [];
     Array.from(ctrl._canvas.querySelectorAll('.tw-card')).forEach((c) => c.remove());
     ctrl._clearSelection();
     ctrl._links = (s.links || []).map((l) => Object.assign({}, l));
@@ -181,17 +187,21 @@ export const PersistenceCoordinator = {
     ctrl._seedSpatial(); // 【P8 空间索引】恢复后重建索引（_buildCards 会逐个测量→精确入格）
     ctrl._links = doc.links;
     ctrl._canvasOffset = doc.canvasOffset;
-    ctrl._buildCards(ctrl._notes, false, w, h);   // 坐标已是绝对 px
-    ctrl._applyCanvasTransform();
-    ctrl._renderLinks();   // 便签就位后再画连线（端点依赖布局尺寸）
-    ctrl._ensureNotesVisible();  // 便签若在视野外，自动归位（不必再手动双击空白）
-
-    // 迁移：比例→px 换算完成后立刻以 v2 落盘，避免每次打开都重算
-    if ((Number(version) || 1) < 2 && ctrl._notes.length) ctrl._scheduleSave();
+    // 先读上次退出档位：若在写作/思维子弹，跳过便签档的建卡/画线/归位——
+    // 否则启动会先建一整档便签 DOM、随即又被下面的 _setMode 拆掉重建，白付一倍成本并闪一下便签。
+    const savedMode = await TypewriterStore.getMode();
+    const skipNotesBuild = (savedMode === 'write' || savedMode === 'mindmap');
+    if (!skipNotesBuild) {
+      ctrl._buildCards(ctrl._notes, false, w, h);   // 坐标已是绝对 px
+      ctrl._applyCanvasTransform();
+      ctrl._renderLinks();   // 便签就位后再画连线（端点依赖布局尺寸）
+      ctrl._ensureNotesVisible();  // 便签若在视野外，自动归位（不必再手动双击空白）
+      // 迁移：比例→px 换算完成后立刻以 v2 落盘，避免每次打开都重算
+      if ((Number(version) || 1) < 2 && ctrl._notes.length) ctrl._scheduleSave();
+    }
 
     // 子模式持久化：恢复上次退出时的档位（默认便签）。复用 setMode 完整切换逻辑，
     // 顺带激活导图/载入对应文档/刷新 chrome/重置撤销栈——避免与手动切换分叉。
-    const savedMode = await TypewriterStore.getMode();
     if (savedMode !== 'notes') {
       // ctrl 是 TypewriterFeature 实例，对外暴露的是 _setMode(mode)（见 typewriterFeature.js），
       // 不存在 setMode(ctx, mode)——旧写法会抛「e.setMode is not a function」导致打字机挂载失败。
@@ -215,8 +225,9 @@ export const PersistenceCoordinator = {
         nn.x = (typeof n.x === 'number') ? n.x * w : (w - 340) / 2;
         nn.y = (typeof n.y === 'number') ? n.y * h : 24;
       }
-      ctrl._mountCard(nn);
+      ctrl._mountCard(nn, { defer: true });   // 批量测量：先全挂完再统一测，避免「挂 N 卡 = N 次强制重排」
     });
+    ctrl._flushMountMeasure();               // 统一补做本批几何测量（一次 reflow 摊销，恢复/切档/撤销更顺滑）
     ctrl._applyLod();
   
   },
@@ -251,7 +262,12 @@ export const PersistenceCoordinator = {
     const p2 = (n) => String(n).padStart(2, '0');
     const ts = `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())} ${p2(d.getHours())}.${p2(d.getMinutes())}.${p2(d.getSeconds())}.${String(d.getMilliseconds()).padStart(3, '0')}`;
     const snapName = `${base} 快照 ${ts}`;
-    const snapPath = `MD可视化写作/${snapName}.md`;
+    // 写作模式整篇快照的导出目录：以原生「导出」页的设置为唯一真源，读不到再回退设置面板字段/默认
+    const fsBridge = window.storageManager;
+    const folder = (fsBridge && typeof fsBridge.getExportFolder === 'function')
+      ? await fsBridge.getExportFolder('writeExportFolder', 'MD可视化写作')
+      : ((window.SettingsModal && window.SettingsModal.writeExportFolder) || 'MD可视化写作').replace(/^\/+/, '');
+    const snapPath = `${folder}/${snapName}.md`;
     ctrl._showScreenMsg('SAVING SNAPSHOT...', 1200);
     try {
       const sm = window.storageManager;
@@ -310,9 +326,10 @@ export const PersistenceCoordinator = {
     if (!useActs) {
       // ① 顺流竖排：左对齐 x=0，y 按各卡实际高度累加
       let y = 0, maxW = 0;
+      const pos = new Map();   // 本批新位置：先算完，循环后单趟写回模型（O(n)，取代逐卡 setPos 的 O(n²)）
       target.forEach((c) => {
         const s = sizeOf(c);
-        ctrl._notes = WritingDoc.setPos(ctrl._notes, c.id, 0, y);   // 位置即数据：同步模型（含离屏卡）
+        pos.set(c.id, { x: 0, y });                                   // 位置即数据（含离屏卡）
         const el = c.el;
         if (el) {
           el.style.left = '0px'; el.style.top = y + 'px';            // 在屏卡同步 DOM
@@ -321,6 +338,7 @@ export const PersistenceCoordinator = {
         maxW = Math.max(maxW, s.w);
         y += s.h + GAP;
       });
+      ctrl._notes = WritingDoc.setPositions(ctrl._notes, pos);
       totalW = maxW; totalH = y - GAP;
     } else {
       // ② 分幕：每幕先量块宽/块高 → 网格换行 → 幕内竖流（y 仍按 seq 累加，顺序不破）
@@ -346,11 +364,12 @@ export const PersistenceCoordinator = {
       totalW = usedCols * blockW + (usedCols - 1) * ACT_GAP;
       totalH = y + rowH;
 
+      const pos = new Map();   // 同顺流：先算完所有落点，循环后单趟写回模型（O(n)）
       acts.groups.forEach((a, ai) => {
         let cy = a.y;
         a.cards.forEach((c) => {
           const s = sizeOf(c);
-          ctrl._notes = WritingDoc.setPos(ctrl._notes, c.id, a.x, cy);
+          pos.set(c.id, { x: a.x, y: cy });
           const el = c.el;
           if (el) {
             el.style.left = a.x + 'px'; el.style.top = cy + 'px';
@@ -360,6 +379,7 @@ export const PersistenceCoordinator = {
           cy += s.h + GAP;
         });
       });
+      ctrl._notes = WritingDoc.setPositions(ctrl._notes, pos);
     }
 
     ctrl._syncLayoutGeo();                          // 位置已改写 → 几何缓存/空间索引同步（否则连线端点指向重排前的幽灵位置）

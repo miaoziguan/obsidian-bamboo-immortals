@@ -4,12 +4,14 @@ import { AppHost } from './src/host/AppHost';
 import { WebappController } from './src/host/WebappController';
 import { ThemeBridge } from './src/bridge/ThemeBridge';
 import { LicenseStore } from './src/license/licenseStore';
+import { setHostAppVersion } from './src/host/AppAPI';
 import {
   PluginSettings,
   DEFAULT_SETTINGS,
   type BambooReviewSettings,
   type ScrollLocation,
 } from './src/settings/PluginSettings';
+import { normalizeLegacySettings } from './src/settings/legacySettings';
 import { VaultStorage } from './src/storage/VaultStorage';
 import { type PlannerSettings } from './src/ai/MarkdownPlanner';
 // 注意：goalId / idempotency 看似小模块，但被本文件真正使用（非孤儿）：
@@ -106,6 +108,8 @@ export default class BambooReviewPlugin extends Plugin {
 
     const pluginDir = this.manifest.dir || '';
     const version = this.manifest.version || '';
+    // 注入插件版本：随 app:ready 下发 webapp，用于素材 minAppVersion 门控
+    setHostAppVersion(version);
 
     // 后台预拉取 webapp：插件加载即触发，打开视图前大概率已就绪，消除「打开空白」体感。
     // 失败不阻塞 onload，打开视图时 buildBlobUrl 会再次尝试。
@@ -664,7 +668,7 @@ export default class BambooReviewPlugin extends Plugin {
     goals: GoalItem[]
   ): Promise<void> {
     // 统一写入 webapp 实际读取的默认路径（bamboo-review），确保 AI 写入的目标与界面读取一致。
-    const storage = new VaultStorage(this.app);
+    const storage = new VaultStorage(this.app, this.settings.dataPath || 'bamboo-review');
     const existing = await storage.getGoals();
 
     // 幂等：同一来源 + 相同内容已规划过，且目标仍全部存在 → 跳过；
@@ -788,7 +792,7 @@ export default class BambooReviewPlugin extends Plugin {
       aiModel: s.aiModel,
       aiDecomposeDepth: s.aiDecomposeDepth,
     };
-    const storage = new VaultStorage(this.app);
+    const storage = new VaultStorage(this.app, this.settings.dataPath || 'bamboo-review');
     const progress = new DiagnosisProgressModal(this.app);
     progress.open();
     await runDiagnosis({
@@ -816,7 +820,7 @@ export default class BambooReviewPlugin extends Plugin {
    * 即竹杖芒鞋「一键重新诊断」的底层实现。未安装目标数据或无目标时返回 null。
    */
   async getStrategyOverview(): Promise<StrategyOverview | null> {
-    const storage = new VaultStorage(this.app);
+    const storage = new VaultStorage(this.app, this.settings.dataPath || 'bamboo-review');
     const all = await storage.getGoals();
     if (!all || all.length === 0) return null;
 
@@ -859,7 +863,7 @@ export default class BambooReviewPlugin extends Plugin {
    * 仅当无法读取目标数据（如竹林未启用）时返回 null。
    */
   async getCultivationRealm(): Promise<CultivationRealm | null> {
-    const storage = new VaultStorage(this.app);
+    const storage = new VaultStorage(this.app, this.settings.dataPath || 'bamboo-review');
     const goals = (await storage.getGoals()) ?? [];
     const toN = (v: unknown): number =>
       typeof v === 'number' ? v : parseFloat(String(v ?? '')) || 0;
@@ -873,7 +877,7 @@ export default class BambooReviewPlugin extends Plugin {
    * 未设置时返回 0（而非 null），使展示端无需区分「未启用」与「0 余额」。
    */
   async getBambooCoinBalance(): Promise<number | null> {
-    const storage = new VaultStorage(this.app);
+    const storage = new VaultStorage(this.app, this.settings.dataPath || 'bamboo-review');
     const raw = await storage.getSetting('balance');
     if (raw == null) return 0;
     const n = typeof raw === 'number' ? raw : Number(raw);
@@ -887,7 +891,7 @@ export default class BambooReviewPlugin extends Plugin {
    * 未启用 / 无余额设置时返回 0。
    */
   async getBambooCoinAvailableBalance(): Promise<number | null> {
-    const storage = new VaultStorage(this.app);
+    const storage = new VaultStorage(this.app, this.settings.dataPath || 'bamboo-review');
     const raw = await storage.getSetting('balance');
     const total = raw == null ? 0 : typeof raw === 'number' ? raw : Number(raw);
     const income = await storage.getIncomeHistory();
@@ -909,7 +913,7 @@ export default class BambooReviewPlugin extends Plugin {
 
   /** 诊断建议应用后的落库：写 goals.json + 刷新常驻视图（不碰幂等索引/ sourceRef） */
   private async writeDiagnosedGoals(goals: GoalItem[]): Promise<void> {
-    const storage = new VaultStorage(this.app);
+    const storage = new VaultStorage(this.app, this.settings.dataPath || 'bamboo-review');
     await storage.putGoals(goals);
     this.webapp.notifyGoalsChanged();
     new Notice(`已写入 ${goals.length} 个目标（应用 AI 诊断建议）`);
@@ -925,7 +929,7 @@ export default class BambooReviewPlugin extends Plugin {
       new Notice('先到设置里开启 AI 规划，才能用 AI 改进目标');
       return;
     }
-    const storage = new VaultStorage(this.app);
+    const storage = new VaultStorage(this.app, this.settings.dataPath || 'bamboo-review');
     const goals = await storage.getGoals();
     if (goals.length === 0) {
       new Notice('你还没有目标，先跑一次 AI 规划');
@@ -988,7 +992,7 @@ export default class BambooReviewPlugin extends Plugin {
       new Notice('AI 规划未启用：请先在插件设置中开启并填写 API Key');
       return;
     }
-    const storage = new VaultStorage(this.app);
+    const storage = new VaultStorage(this.app, this.settings.dataPath || 'bamboo-review');
     const allGoals = await storage.getGoals();
     // 归档目标不进规划台编辑（避免误改/误删）；但写回时必须并回，否则 putGoals 整体覆盖会丢失它们
     const activeGoals = allGoals.filter((g) => !g.archived);
@@ -1349,6 +1353,11 @@ export default class BambooReviewPlugin extends Plugin {
   /** 加载设置 */
   async loadSettings(): Promise<void> {
     this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData()) as BambooReviewSettings;
+    // 把上一版「散装键」（旧 bamboo-review/settings.json）一次性归一到原生设置 —— 开机即迁移，
+    // 不再依赖「用户打开某个设置页」（资源/数据/导出/外观三链路的旧值都靠这里兜底）。
+    try {
+      if (await normalizeLegacySettings(this.app, this.settings)) await this.saveSettings();
+    } catch { /* 无 settings.json 或读取失败：不影响启动，用默认值即可 */ }
   }
 
   /** 保存设置 */

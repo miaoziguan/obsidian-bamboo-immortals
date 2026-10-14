@@ -22,6 +22,8 @@ export const ICON_ZOOM_IN = `<svg viewBox="0 0 24 24" fill="none" stroke="curren
 export const ICON_PAPER = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3.5" width="11" height="11" rx="2"/><path d="M15 8.5H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h7"/></svg>`;
 export const ICON_EXPORT = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>`;
 export const ICON_PREVIEW = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>`;
+// 连线形态（直线 / 曲线）：上直下弯，一眼读出「切换的是线的走向」
+export const ICON_LINK_ROUTE = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h18"/><path d="M3 16q9-8 18 0"/></svg>`;
 export const ICON_MOVE_UP = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V6"/><path d="m5 13 7-7 7 7"/></svg>`;
 export const ICON_MOVE_DOWN = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v14"/><path d="m5 11 7 7 7-7"/></svg>`;
 export const ICON_LV_UP = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 13 6-6 6 6"/><path d="m6 19 6-6 6 6"/></svg>`;
@@ -35,7 +37,14 @@ export const STACK_LEVELS = 6;    // 叠放档位数：超过后回到最底层�
 export const TYPE_SPEED = 50;     // 每字间隔(ms)：缓慢打出的节奏（对齐 pager 原版）
 export const MAX_LEN = 500;       // 单卡最大字数（便签档输入框上限同此值）
 export const DRAFT_MAX_LEN = 20000; // 写作档输入框「草稿箱」上限：整篇长文可粘进来，打印时再由 splitDraft 拆成多块（单卡仍 ≤ MAX_LEN）
-export const NOTE_CAP = 50;       // 便签上限：防 vault 文件无限膨胀（超出删最早）
+// 便签张数上限：**不设限**（2026-10-14 应用户决定）。
+// 原为 50，动机注释写「防 vault 文件无限膨胀」——实测该动机不成立：
+//   1000 张满卡(500字)仅 0.72MB / stringify 1.2ms；2000 张 1.44MB / 2.3ms。
+// 且性能前提早已就绪：便签档视口剔除全程开启（scheduleCull 只豁免写作档），
+// stress 压测用的就是 N=1000；undo 栈 20 层 × 1000 张实测仅多占 3.2MB 堆。
+// 真正被牺牲掉的是「超限删最早」这一销毁性行为（toast 曾自称"归档"却无归档文件），
+// 不设限即彻底消除它。上限机制本身保留可配置：改回一个有限数字即可恢复（见 enforceCap）。
+export const NOTE_CAP = Infinity;
 export const WRITE_FLOW_GAP = 24; // 写作档「文章流」卡片间距
 export const SAVE_DEBOUNCE = 350; // 写盘防抖(ms)，合并拖拽/删除等连续操作
 
@@ -79,6 +88,17 @@ export const PAPER_LABELS = { plain: "素笺", night: "夜光", shuyan: "书燕"
 export const PAPER_FEEDBACK = { plain: "素笺 PLAIN", night: "夜光 NIGHT", shuyan: "书燕 SHUYAN", redsilk: "红绸 REDSILK", ruoshui: "若水 RUOSHUI", tengyun: "腾云 TENGYUN", juhuo: "举火 JUHUO", yingyue: "映月 YINGYUE" };
 export const PAPER_TITLES = { plain: "Bamboo Immortals", night: "Bamboo Immortals", shuyan: "BAMBOO IMMORTALS", redsilk: "BAMBOO IMMORTALS", ruoshui: "BAMBOO IMMORTALS", tengyun: "BAMBOO IMMORTALS", juhuo: "BAMBOO IMMORTALS", yingyue: "BAMBOO IMMORTALS" };
 
+// 市场素材动态注册表：下载的纸纹 / 字体并入「切换便签样式 / 切换字体」循环（内置 + 市场）。
+// 由 materialMarket.js 在安装 / 卸载时调用；applyPaper、bindPaperSwitch、字体循环等消费。
+export const MARKET_PAPERS = [];
+export const MARKET_FONTS = [];
+export function registerMarketPaper(name) { if (name && MARKET_PAPERS.indexOf(name) < 0) MARKET_PAPERS.push(name); }
+export function unregisterMarketPaper(name) { const i = MARKET_PAPERS.indexOf(name); if (i >= 0) MARKET_PAPERS.splice(i, 1); }
+export function registerMarketFont(name) { if (name && MARKET_FONTS.indexOf(name) < 0) MARKET_FONTS.push(name); }
+export function unregisterMarketFont(name) { const i = MARKET_FONTS.indexOf(name); if (i >= 0) MARKET_FONTS.splice(i, 1); }
+export function allPapers() { return PAPERS.concat(MARKET_PAPERS); }
+export function allFonts() { return FONTS.concat(MARKET_FONTS); }
+
 // MD可视化写作模式：结构级别
 export const LEVELS = ["p", "h1", "h2", "h3", "h4", "h5", "h6", "quote", "ul", "ol", "task"];
 export const LEVEL_LABELS = { p: "正文", h1: "H1", h2: "H2", h3: "H3", h4: "H4", h5: "H5", h6: "H6", quote: "引用", ul: "列表", ol: "编号", task: "任务" };
@@ -117,6 +137,7 @@ if (typeof globalThis !== 'undefined') {
   globalThis.ICON_PAPER = ICON_PAPER;
   globalThis.ICON_EXPORT = ICON_EXPORT;
   globalThis.ICON_PREVIEW = ICON_PREVIEW;
+  globalThis.ICON_LINK_ROUTE = ICON_LINK_ROUTE;
   globalThis.ICON_MOVE_UP = ICON_MOVE_UP;
   globalThis.ICON_MOVE_DOWN = ICON_MOVE_DOWN;
   globalThis.ICON_LV_UP = ICON_LV_UP;
@@ -150,6 +171,14 @@ if (typeof globalThis !== 'undefined') {
   globalThis.PAPER_LABELS = PAPER_LABELS;
   globalThis.PAPER_FEEDBACK = PAPER_FEEDBACK;
   globalThis.PAPER_TITLES = PAPER_TITLES;
+  globalThis.MARKET_PAPERS = MARKET_PAPERS;
+  globalThis.MARKET_FONTS = MARKET_FONTS;
+  globalThis.registerMarketPaper = registerMarketPaper;
+  globalThis.unregisterMarketPaper = unregisterMarketPaper;
+  globalThis.registerMarketFont = registerMarketFont;
+  globalThis.unregisterMarketFont = unregisterMarketFont;
+  globalThis.allPapers = allPapers;
+  globalThis.allFonts = allFonts;
   globalThis.LEVELS = LEVELS;
   globalThis.LEVEL_LABELS = LEVEL_LABELS;
   globalThis.LEVEL_FEEDBACK = LEVEL_FEEDBACK;

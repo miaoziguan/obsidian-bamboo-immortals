@@ -11,6 +11,9 @@
 <!-- 字体：纯系统字体栈（见 base.css --tw-font-*），不加载 Google Fonts，离线 / 中国大陆均可一致呈现 -->
 <link rel="stylesheet" href="assets/styles/variables.css?__BUILD__">
 <link rel="stylesheet" href="assets/styles/base.css?__BUILD__">
+<!-- 通知组件样式：ModuleManager 会用 Toast（modules/* 也大量调用），此前只引 JS 未引 CSS，
+     与画中卷同一处缺口 —— 通知会退化成文档流里的普通块（无定位 / 无图标布局）。 -->
+<link rel="stylesheet" href="assets/styles/toast.css?__BUILD__">
 <link rel="stylesheet" href="assets/styles/module.css?__BUILD__">
 </head>
 <body>

@@ -108,8 +108,26 @@ describe('WritingDoc 纯逻辑（自由模型）', () => {
       );
       expect(out.notes.map((n) => n.id)).toEqual(['a', 'b']);         // 重复 id 去重
       expect(out.notes[0]).toMatchObject({ id: 'a', text: '甲', x: 1, y: 2, font: 'modern', paper: 'night', level: 'h2', zoom: 1.5 });
-      // 非法枚举回落默认、越界被钳（zoom 99→2.4、rot 540→-180，与 _applyRot 归一一致）
-      expect(out.notes[1]).toMatchObject({ font: 'classic', paper: 'plain', level: 'p', zoom: 2.4, rot: -180 });
+      // 越界被钳（zoom 99→2.4、rot 540→-180，与 _applyRot 归一一致）；level 非枚举回落 'p'。
+      // 注意：font/paper 现只兜底「非字符串/空串」，非空字符串一律保留原值（含市场纸样/字体），
+      // 不再按内置清单把市场素材静默回落 classic/plain —— 否则 loadDoc 会销毁已持久化的梦珑等皮肤。
+      expect(out.notes[1]).toMatchObject({ font: '未知字体', paper: '未知纸', level: 'p', zoom: 2.4, rot: -180 });
+      // 真正缺值才回落默认（非字符串 / 空串）
+      const empty = WritingDoc.normalize([{ id: 'c', font: 123, paper: '', level: 'p' }], []);
+      expect(empty.notes[0]).toMatchObject({ font: 'classic', paper: 'plain' });
+    });
+
+    test('normalize 保留市场纸样/字体（不按内置清单回落 plain/classic）', () => {
+      // 模拟 loadDoc 在素材恢复前跑（MARKET_PAPERS 可能仍空）：市场纸样必须原值保留，
+      // 待 registerMarketPaper 注册并注入 CSS 后卡片自动套上。这是「梦珑皮肤重启后变默认」的根因修复。
+      const out = WritingDoc.normalize(
+        [{ id: 'm', text: '梦珑', paper: '梦珑竹叶', font: '梦珑书法' }],
+        []
+      );
+      expect(out.notes[0]).toMatchObject({ paper: '梦珑竹叶', font: '梦珑书法' });
+      // 内置纸样同样保留
+      const builtin = WritingDoc.normalize([{ id: 'b', paper: 'night', font: 'modern' }], []);
+      expect(builtin.notes[0]).toMatchObject({ paper: 'night', font: 'modern' });
     });
 
     test('canvasOffset 净化：缺省 0,0、非法值兜底（含 scale）', () => {

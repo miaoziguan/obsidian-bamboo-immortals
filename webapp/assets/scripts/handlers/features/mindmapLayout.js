@@ -27,7 +27,31 @@ export const MindmapLayout = {
     const placed = new Set();
     const xOf = new Map(), yOf = new Map();
 
-    if (mode === 'radial') {
+    if (mode === 'grid') {
+      // 网格：无层次时的体面摆法（替代「结构布局退化成一行」）。
+      // 按当前视觉顺序入格（先上后下、同行先左后右），保留用户原本的大致空间意图，
+      // 而不是按创建顺序乱排 —— 否则「一键整理」会把辛苦摆好的相对位置全部打乱。
+      const order = nodes.slice().sort((a, b) => {
+        const ay = Number(a.y) || 0, by = Number(b.y) || 0;
+        if (Math.abs(ay - by) > NH * 0.6) return ay - by;
+        return (Number(a.x) || 0) - (Number(b.x) || 0);
+      });
+      const cols = Math.max(1, Math.ceil(Math.sqrt(order.length)));
+      order.forEach((n, i) => {
+        xOf.set(n.id, (i % cols) * (NW + HGAP));
+        yOf.set(n.id, Math.floor(i / cols) * (NH + VGAP));
+      });
+    } else if (mode === 'ring') {
+      // 环形：所有子弹等角分布在圆周上（无层次的头脑风暴式摆法）。
+      // 半径由周长反推，保证相邻节点间距不小于一个节点宽，点多时自动撑大而不是挤成一团。
+      const n = Math.max(1, nodes.length);
+      const R = Math.max(240, (n * (NW + HGAP)) / (Math.PI * 2));
+      nodes.forEach((nd, i) => {
+        const a = (i / n) * Math.PI * 2 - Math.PI / 2;   // 从正上方起顺时针
+        xOf.set(nd.id, Math.round(R * Math.cos(a)));
+        yOf.set(nd.id, Math.round(R * Math.sin(a)));
+      });
+    } else if (mode === 'radial') {
       const leafCursor = { i: 0 };
       let leafCount = 0;
       const markLeaves = (id) => {
@@ -61,7 +85,17 @@ export const MindmapLayout = {
         xOf.set(id, Math.round(r * Math.cos(a)));
         yOf.set(id, Math.round(r * Math.sin(a)));
       };
-      roots.forEach((r) => assign(r, 0, 0, Math.PI * 2));
+      // 多根时不能再都放 depth=0：r = depth*RING 会让每个根都算出原点坐标（重叠成一坨）。
+      // 单根 → 居中；多根 → 各占一个角度扇区、分布在第 1 环上。
+      if (roots.length === 1) {
+        assign(roots[0], 0, 0, Math.PI * 2);
+      } else {
+        roots.forEach((r, i) => {
+          const a0 = (i / roots.length) * Math.PI * 2;
+          const a1 = ((i + 1) / roots.length) * Math.PI * 2;
+          assign(r, 1, a0, a1);
+        });
+      }
     } else {
       let cursor = 0;
       const place = (id, depth) => {
@@ -101,5 +135,28 @@ export const MindmapLayout = {
       });
     }
     return out;
+  },
+
+  /**
+   * 结构充分性判据：结构布局（树 / 水平 / 放射）只吃 links —— 图里没有层次时它们必然退化：
+   * 0 连线的图里每个节点都是根，树状退化成「排成一行」，放射退化成「全部叠在原点」。
+   * 判据：存在有效边（两端都在图上、非自环），且被连线覆盖的节点占比**严格过半** ——
+   * 取严格大于而非 ≥：4 颗子弹只有 1 条边（覆盖恰好一半）算不上结构，跑树状仍大半是散点。
+   * 不足 → 应改走扁平布局（grid / ring），而不是硬跑结构布局。
+   */
+  isStructured(nodes, links) {
+    const list = nodes || [];
+    if (!list.length) return false;
+    const byId = new Set(list.map((n) => n.id));
+    let edges = 0;
+    const covered = new Set();
+    (links || []).forEach((l) => {
+      if (!byId.has(l.from) || !byId.has(l.to) || l.from === l.to) return;
+      edges += 1;
+      covered.add(l.from);
+      covered.add(l.to);
+    });
+    if (!edges) return false;
+    return (covered.size / list.length) > 0.5;
   },
 };

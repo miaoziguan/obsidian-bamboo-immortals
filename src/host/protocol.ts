@@ -27,6 +27,8 @@ export const INBOUND_PREFIXES = [
   'market:',
   // 竹林模块系统：按需下载的模块经 module:* 与宿主通信（清单/安装/卸载/加载/能力调用）
   'module:',
+  // 便签素材市场：贴纸/皮肤/字体/模板经 material:* 与宿主通信（清单/安装/读回）
+  'material:',
 ] as const;
 
 // ============================================================
@@ -142,6 +144,10 @@ export const ALL_MESSAGE_TYPES = [
   'module:toggleTheme',     // 模块切换 Obsidian 基础明暗（博客模块「快门」改作明暗开关用）
   // ---- 竹林模块系统（host → webapp）----
   'module:context',         // 宿主注入当前 leaf 承载的 moduleId
+  // ---- 便签素材市场（webapp → host）----
+  'material:manifest',      // 拉取素材市场清单（宿主侧 requestUrl）
+  'material:install',       // 下载素材 .js 写入素材目录，并回传源码供 webapp 立即沙箱执行
+  'material:load',          // 按 id 取回已安装素材源码（重载后恢复本地库）
 ] as const;
 
 export type AppMessageType = (typeof ALL_MESSAGE_TYPES)[number];

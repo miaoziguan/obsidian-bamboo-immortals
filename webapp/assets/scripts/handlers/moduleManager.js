@@ -245,16 +245,20 @@ export const ModuleManager = {
             const rec = installed[t.id];
             const hasUpdate = isInstalled && !!ver && rec.version !== ver;
             const act = 'data-id="' + t.id + '"';
+            const ICON = {
+                download: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>',
+                trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>'
+            };
             let btn;
             if (!isInstalled) {
                 btn = '<button class="market-btn install" ' + act + ' data-action="install" data-url="' +
-                    (t.url || '') + '" data-version="' + ver + '">安装</button>';
+                    (t.url || '') + '" data-version="' + ver + '" title="安装" aria-label="安装">' + ICON.download + '</button>';
             } else if (hasUpdate) {
                 btn = '<button class="market-btn install" ' + act + ' data-action="update" data-url="' +
-                    (t.url || '') + '" data-version="' + ver + '">更新</button>' +
-                    '<button class="market-btn uninstall" ' + act + '>卸载</button>';
+                    (t.url || '') + '" data-version="' + ver + '" title="更新" aria-label="更新">' + ICON.download + '</button>' +
+                    '<button class="market-btn uninstall" ' + act + ' title="卸载" aria-label="卸载">' + ICON.trash + '</button>';
             } else {
-                btn = '<button class="market-btn uninstall" ' + act + '>卸载</button>';
+                btn = '<button class="market-btn uninstall" ' + act + ' title="卸载" aria-label="卸载">' + ICON.trash + '</button>';
             }
             return '<div class="market-card' + (isInstalled ? ' installed' : '') + '">' +
                 '<div class="market-card-main">' +

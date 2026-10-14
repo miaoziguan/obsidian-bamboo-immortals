@@ -5,7 +5,7 @@ import { ICON_LAYERS, ICON_FONT, ICON_GRID, ICON_PRINT, ICON_X, ICON_FONT_DOWN, 
 import { STACK_STEP, STACK_LEVELS, TYPE_SPEED, MAX_LEN, NOTE_CAP, WRITE_FLOW_GAP, SAVE_DEBOUNCE, LOD_DENSITY, ZOOM_MIN, ZOOM_MAX, ZOOM_STEP } from './twConfig.js';
 import { FONT_SCALES, FONT_SCALE_DEFAULT_IDX, FONT_SCALE_LABELS, CARD_SCALES, CARD_SCALE_LABELS, CARD_SCALE_DEFAULT_IDX } from './twConfig.js';
 import { FONTS, FONT_LABELS, FONT_FEEDBACK } from './twConfig.js';
-import { PAPERS, PAPER_LABELS, PAPER_FEEDBACK, PAPER_TITLES } from './twConfig.js';
+import { PAPERS, PAPER_LABELS, PAPER_FEEDBACK, PAPER_TITLES, MARKET_PAPERS } from './twConfig.js';
 import { LEVELS, LEVEL_LABELS, LEVEL_FEEDBACK, LEVEL_GROUPS, LEVEL_LADDER } from './twConfig.js';
 import { TypewriterStore } from '../../services/TypewriterStore.js';
 import { SpatialIndex } from '../../services/SpatialIndex.js';
@@ -75,6 +75,7 @@ export const CardViewManager = {
         <button type="button" class="tw-card-zoom-out" aria-label="缩小便签">${ICON_ZOOM_OUT}</button>
         <button type="button" class="tw-card-zoom-in" aria-label="放大便签">${ICON_ZOOM_IN}</button>
         <button type="button" class="tw-card-split" aria-label="按段落拆分">${ICON_SPLIT}</button>
+        <button type="button" class="tw-card-export" aria-label="导出为 Markdown">${ICON_EXPORT}</button>
         <button type="button" class="tw-card-del" aria-label="移除卡片">${ICON_X}</button>
       </div>`;
 
@@ -134,6 +135,12 @@ export const CardViewManager = {
       e.stopPropagation();
       // 留档逻辑收口在 _splitCard 内（仅真正拆开时才 push，单段落卡不进撤销栈）
       ctrl._splitCard(card);
+    });
+    const expBtn = card.querySelector('.tw-card-export');
+    if (expBtn) expBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      // hover 浮现的导出钮：把当前卡（或框选的多张）导出为 Markdown 落库 Vault
+      ctrl._exportCard(card);
     });
     ctrl._makeDraggable(card);
     ctrl._makeResizable(card);
@@ -234,14 +241,24 @@ export const CardViewManager = {
   // (was _applyPaper)
   applyPaper(ctx, card, paper) {
     const { state, ctrl } = ctx;
-    const p = (PAPERS.indexOf(paper) >= 0) ? paper : 'plain';
+    const valid = PAPERS.indexOf(paper) >= 0 || MARKET_PAPERS.indexOf(paper) >= 0;
+    // 【市场纸样持久化】未知纸样多见于「启动竞态」：素材注册 registerMarketPaper() 是异步的
+    // （_restoreAll 不阻塞挂载），卡片往往先重建完。此时若回落 'plain' 并写回模型，
+    // 会把已持久化的市场纸样覆盖掉 —— 这正是「梦珑皮肤重启后变默认」的根因。
+    // 故：无效时保留原值（让其命中稍后注入的 CSS），且【不】写回模型，保住持久化值。
+    const p = valid ? paper : (paper || 'plain');
     card.dataset.paper = p;
     const title = card.querySelector('.tw-card-title');
     if (title) title.textContent = PAPER_TITLES[p] || PAPER_TITLES.plain;
     const btn = card.querySelector('.tw-card-paper');
     if (btn) btn._tipText = `切换便签样式（当前：${PAPER_LABELS[p] || p}）`;
     ctrl._refreshTip();
-    ctrl._notes = WritingDoc.setPaper(ctrl._notes, card.dataset.id, p);
+    // 【市场纸样持久化·修正】原先只在 valid（素材已注册进 MARKET_PAPERS）时才写模型，
+    // 否则「保留旧值不写回」。但素材注册 registerMarketPaper 是异步的（_restoreAll 不阻塞挂载），
+    // 用户在恢复完成前用按钮切市场纸样 → valid 为 false → 不写回 → 重启丢失。改为：始终直接写回
+    // 原值（非破坏性，不再经 setPaper 回落 plain）。CSS 是 shadow 内全局样式表，素材注册后
+    // 已渲染卡片自动套上，无需卡注册时机。
+    ctrl._notes = ctrl._notes.map(n => n.id === card.dataset.id ? { ...n, paper: p } : n);
     ctrl._invalidateGeo(card.dataset.id);   // 纸样改了 padding/比例 → 尺寸变，几何失效
     return p;
     
@@ -254,14 +271,14 @@ export const CardViewManager = {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       const cur = card.dataset.paper || 'plain';
-      const next = PAPERS[(PAPERS.indexOf(cur) + 1) % PAPERS.length];
+      const all = PAPERS.concat(MARKET_PAPERS);
+      const next = all[(all.indexOf(cur) + 1) % all.length];
       ctrl._applyPaper(card, next);
-      ctrl._applyFontScale(card, Number(card.dataset.fontIdx));  // ① 夹回新纸样的字级上限
+      // ① 夹回新纸样的字级上限。读「权威持久值 fontScale」经 _fontIdxOf 派生索引（自带 isFinite 兜底），
+      // 而非读派生的 fontIdx 缓存——避免 fontIdx 缺失时传入 NaN、被 applyFontScale 兜底成默认档并写回存储、静默写坏该卡字号。
+      ctrl._applyFontScale(card, ctrl._fontIdxOf(card.dataset.fontScale, next));
       ctrl._scheduleRenderLinks();                                // ② 尺寸/比例变了，端点重算
       ctrl._scheduleSave();
-      if (typeof Toast !== 'undefined') {
-        Toast.showToast('已切换为「' + (PAPER_LABELS[next] || next) + '」', 'success');
-      }
     });
   
   },

@@ -11,6 +11,13 @@
 <!-- 字体：纯系统字体栈（见 base.css --tw-font-*），不加载 Google Fonts，离线 / 中国大陆均可一致呈现 -->
 <link rel="stylesheet" href="assets/styles/variables.css?__BUILD__">
 <link rel="stylesheet" href="assets/styles/base.css?__BUILD__">
+<!-- 通知 / 确认框组件样式：本视图此前漏链（只引了 utils/toast.js 却没有这份 CSS）。
+     后果不只是"提示不好看"：.toast-container 的 position:fixed + top/right 全部缺失，
+     容器退化成 shadow root 文档流里的普通块级元素 → 通知堆在画布左上角，
+     且 .toast-icon / .toast-body / .toast-close-btn 无布局，关闭按钮变成裸的原生按钮。
+     位置放在 base.css 之后、各组件样式之前：toast.css 内同时带有 .btn 定义，
+     后置的 forms.css / modal-base.css 仍优先生效，不改变现有按钮观感。 -->
+<link rel="stylesheet" href="assets/styles/toast.css?__BUILD__">
 <link rel="stylesheet" href="assets/styles/scroll-overlay.css?__BUILD__">
 <link rel="stylesheet" href="assets/styles/incense.css?__BUILD__">
 

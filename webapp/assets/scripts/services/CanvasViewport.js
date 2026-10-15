@@ -130,6 +130,22 @@ export const CanvasViewport = {
     return { x: r.left + x * s, y: r.top + y * s };
   },
 
+  /** 可见视口中心（屏幕坐标）：画布「布局盒」（未受 translate/scale 影响）的中心。
+   *  这是 fitView / recenter / 一键排版共用的同一基准（canvas.clientWidth/Height = 布局宽高），
+   *  故 fit 居中后以本点为焦点缩放不会跑位。
+   *  ⚠️ 切勿改用 canvas.getBoundingClientRect() 的中心：那是「变换后」的盒（rect.left 已含 tx、
+   *  width 已乘 s），会随平移量漂移；点 +/- 时以此为中心等于「缩放到画布内容中心」，
+   *  而该点常在屏幕外 → 内容「放大即跑位」，须双击 fit 才回中（本函数即修此 bug）。 */
+  viewportCenter(canvas, view) {
+    if (!canvas) return null;
+    const r = canvas.getBoundingClientRect();
+    const s = this.scaleOf(view);
+    const vx = (view && Number(view.x)) || 0;
+    const vy = (view && Number(view.y)) || 0;
+    // rect.left = 布局左 + tx ⇒ 布局左 = rect.left - tx；布局宽 = rect.width / s
+    return { x: (r.left - vx) + (r.width / s) / 2, y: (r.top - vy) + (r.height / s) / 2 };
+  },
+
   /** 以屏幕点为焦点缩放，返回新 view（原 view 不变）。 */
   zoomedView(canvas, view, clientX, clientY, factor) {
     if (!canvas) return view;

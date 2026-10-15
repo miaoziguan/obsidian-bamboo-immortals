@@ -91,6 +91,33 @@ test('zoomAt 受上下限钳制', () => {
   expect(CanvasViewport.getScale(ctrl)).toBe(CanvasViewport.MIN);
 });
 
+// 回归：「放大即跑位」——按钮/键盘缩放必须锚定「可见视口中心」，
+// 而可见视口中心 = 画布布局盒中心，与当前平移/缩放无关（不能用 getBoundingClientRect 的中心）。
+test('viewportCenter：始终返回画布布局盒中心，不随平移/缩放漂移', () => {
+  [{ x: 0, y: 0, scale: 1 }, { x: -370, y: 210, scale: 1.25 }, { x: 900, y: -640, scale: 0.4 }]
+    .forEach((o) => {
+      const { CanvasViewport, canvas, ctrl } = setup(o);
+      const c = CanvasViewport.viewportCenter(canvas, ctrl._canvasOffset);
+      expect(c.x).toBeCloseTo(LAYOUT_W / 2, 6);
+      expect(c.y).toBeCloseTo(LAYOUT_H / 2, 6);
+    });
+  // canvas 缺失时安全返回 null（不得抛错）
+  expect(CanvasViewport.viewportCenter(null, { x: 0, y: 0, scale: 1 })).toBe(null);
+});
+
+test('以 viewportCenter 为焦点缩放：可见视口中心的内容保持不动（原地放大）', () => {
+  const { CanvasViewport, canvas, ctx, ctrl } = setup({ x: -370, y: 210, scale: 1 });
+  const p = CanvasViewport.viewportCenter(canvas, ctrl._canvasOffset);
+  expect(p.x).toBeCloseTo(LAYOUT_W / 2, 6);       // 焦点即可见视口中心
+  const before = CanvasViewport.screenToCanvas(ctx, p.x, p.y);
+  CanvasViewport.zoomAt(ctx, p.x, p.y, 1.25);
+  const after = CanvasViewport.screenToCanvas(ctx, p.x, p.y);
+  expect(after.x).toBeCloseTo(before.x, 6);
+  expect(after.y).toBeCloseTo(before.y, 6);
+  // getScale 也确认确实放大了（而非因上下限原地不动）
+  expect(CanvasViewport.getScale(ctrl)).toBeCloseTo(1.25, 6);
+});
+
 test('panBy 保留缩放比；平移量按屏幕像素累加', () => {
   const { CanvasViewport, ctx, ctrl } = setup({ x: 10, y: 10, scale: 1.5 });
   CanvasViewport.panBy(ctx, 50, -20);

@@ -362,20 +362,19 @@ export const TypewriterFeature = {
       getCanvas: () => ctrl._canvas,
       getView: () => ctrl._canvasOffset,
       setView: (v) => CanvasViewport.set({ state: ctrl._state, ctrl }, v.x, v.y, v.scale),
-      // 以画布中心为焦点缩放（点按钮没有光标位置，中心缩放最符合预期）
+      // 以「可见视口中心」为焦点缩放（点按钮没有光标位置，中心缩放最符合预期）。
+      // 焦点必须取画布「布局盒」中心（CanvasViewport.viewportCenter），不能用
+      // canvas.getBoundingClientRect() 的中心——后者随平移 tx/ty 漂移，会让内容「放大即跑位」。
       zoomAtCenter: (f) => {
-        const c = ctrl._canvas;
-        if (!c) return;
-        const r = c.getBoundingClientRect();
-        CanvasViewport.zoomAt({ state: ctrl._state, ctrl }, r.left + r.width / 2, r.top + r.height / 2, f);
+        const p = CanvasViewport.viewportCenter(ctrl._canvas, ctrl._canvasOffset);
+        if (!p) return;
+        CanvasViewport.zoomAt({ state: ctrl._state, ctrl }, p.x, p.y, f);
       },
       reset: () => {
-        const c = ctrl._canvas;
-        if (!c) return;
-        const r = c.getBoundingClientRect();
+        const p = CanvasViewport.viewportCenter(ctrl._canvas, ctrl._canvasOffset);
+        if (!p) return;
         // 保持视口中心的内容不动，仅把缩放比归位 100%
-        CanvasViewport.zoomAt({ state: ctrl._state, ctrl }, r.left + r.width / 2, r.top + r.height / 2,
-          1 / CanvasViewport.getScale(ctrl));
+        CanvasViewport.zoomAt({ state: ctrl._state, ctrl }, p.x, p.y, 1 / CanvasViewport.getScale(ctrl));
       },
       fit: () => ctrl._fitNotesToView(),
       // 素材市场入口：点击缩放条市场按钮即开/关右侧抽屉（由 CanvasZoomUI 统一分发，避免多 bar 选择器歧义）
@@ -399,21 +398,18 @@ export const TypewriterFeature = {
     if (this._zoomUI && typeof this._zoomUI.sync === 'function') this._zoomUI.sync();
   },
 
-  /** 以画布中心为焦点缩放（键盘/按钮等没有光标位置的入口） */
+  /** 以「可见视口中心」为焦点缩放（键盘/按钮等没有光标位置的入口；焦点须为布局盒中心，见 CanvasViewport.viewportCenter） */
   _zoomByCenter(factor) {
-    const c = this._canvas;
-    if (!c) return;
-    const r = c.getBoundingClientRect();
-    CanvasViewport.zoomAt({ state: this._state, ctrl: this }, r.left + r.width / 2, r.top + r.height / 2, factor);
+    const p = CanvasViewport.viewportCenter(this._canvas, this._canvasOffset);
+    if (!p) return;
+    CanvasViewport.zoomAt({ state: this._state, ctrl: this }, p.x, p.y, factor);
   },
 
   /** 缩放归位 100%（保持视口中心的内容不动） */
   _zoomReset() {
-    const c = this._canvas;
-    if (!c) return;
-    const r = c.getBoundingClientRect();
-    CanvasViewport.zoomAt({ state: this._state, ctrl: this }, r.left + r.width / 2, r.top + r.height / 2,
-      1 / CanvasViewport.getScale(this));
+    const p = CanvasViewport.viewportCenter(this._canvas, this._canvasOffset);
+    if (!p) return;
+    CanvasViewport.zoomAt({ state: this._state, ctrl: this }, p.x, p.y, 1 / CanvasViewport.getScale(this));
   },
 
   /** 适应选区（Shift+2）：把当前选中的卡片居中并缩放到合适；无选中则退回适应全部。 */

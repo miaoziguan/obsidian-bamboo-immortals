@@ -184,37 +184,34 @@ export const MindmapFeature = {
       getCanvas: () => mm._canvas,
       getView: () => mm._view,
       setView: (v) => mm._setView(v.x, v.y, v.scale),
+      // 焦点取画布「布局盒」中心（可见视口中心）；用 getBoundingClientRect() 中心会随平移漂移
       zoomAtCenter: (f) => {
-        const c = mm._canvas;
-        if (!c) return;
-        const r = c.getBoundingClientRect();
-        mm._zoomAt(r.left + r.width / 2, r.top + r.height / 2, f);
+        const p = CanvasViewport.viewportCenter(mm._canvas, mm._view);
+        if (!p) return;
+        mm._zoomAt(p.x, p.y, f);
       },
       reset: () => {
-        const c = mm._canvas;
-        if (!c) return;
-        const r = c.getBoundingClientRect();
+        const p = CanvasViewport.viewportCenter(mm._canvas, mm._view);
+        if (!p) return;
         // 保持视口中心内容不动，仅把缩放比归位 100%
-        mm._zoomAt(r.left + r.width / 2, r.top + r.height / 2, 1 / CanvasViewport.scaleOf(mm._view));
+        mm._zoomAt(p.x, p.y, 1 / CanvasViewport.scaleOf(mm._view));
       },
       fit: () => mm._fitToView(),
     });
   },
 
-  /** 以画布中心为焦点缩放（键盘/按钮等没有光标位置的入口） */
+  /** 以可见视口中心为焦点缩放（键盘/按钮等没有光标位置的入口；焦点须为布局盒中心） */
   _zoomByCenter(factor) {
-    const c = this._canvas;
-    if (!c) return;
-    const r = c.getBoundingClientRect();
-    this._zoomAt(r.left + r.width / 2, r.top + r.height / 2, factor);
+    const p = CanvasViewport.viewportCenter(this._canvas, this._view);
+    if (!p) return;
+    this._zoomAt(p.x, p.y, factor);
   },
 
   /** 缩放归位 100%（保持视口中心的内容不动） */
   _zoomReset() {
-    const c = this._canvas;
-    if (!c) return;
-    const r = c.getBoundingClientRect();
-    this._zoomAt(r.left + r.width / 2, r.top + r.height / 2, 1 / CanvasViewport.scaleOf(this._view));
+    const p = CanvasViewport.viewportCenter(this._canvas, this._view);
+    if (!p) return;
+    this._zoomAt(p.x, p.y, 1 / CanvasViewport.scaleOf(this._view));
   },
 
   /** 适应内容：按全部子弹包围盒算出「居中 + 缩放」的视口。 */

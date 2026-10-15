@@ -152,10 +152,10 @@ export const PopupPositioner = (function () {
     };
 })();
 
-// 浏览器 + Node 双导出
+// 浏览器全局挂点。
+// 不再写 module.exports：本文件顶部有 export，已是 ESM，其中 module 是未定义的全局变量，
+// 该分支在浏览器里恒为假（死代码），且会让 esbuild 报 commonjs-variable-in-esm 告警。
+// 测试侧统一走 loadModule（剥离 export 后取顶层绑定），不依赖 CommonJS 导出。
 if (typeof window !== 'undefined') {
     window.PopupPositioner = PopupPositioner;
-}
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = PopupPositioner;
 }

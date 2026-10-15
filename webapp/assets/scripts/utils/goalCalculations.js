@@ -125,12 +125,10 @@ export const GoalCalculations = (function () {
     };
 })();
 
-// 浏览器环境挂到 window；Node（jest 测试）跳过
+// 浏览器环境挂到 window。
+// 不再写 module.exports：本文件顶部有 export，已是 ESM，其中 module 是未定义的全局变量，
+// 该分支在浏览器里恒为假（死代码），且会让 esbuild 报 commonjs-variable-in-esm 告警。
+// 测试侧统一走 loadModule（剥离 export 后取顶层绑定），不依赖 CommonJS 导出。
 if (typeof window !== 'undefined') {
     window.GoalCalculations = GoalCalculations;
-}
-
-// CommonJS 导出（Node / jest 用），不污染浏览器全局
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = GoalCalculations;
 }

@@ -1,5 +1,16 @@
 # Changelog
 
+## [3.28.18] — 2026-10-16
+
+### Fixed
+- **画中卷：画布放大后内容跑位（原地缩放失效）**：缩放条 `+` / `−`、点击百分比重置、键盘 `⌘±` / `⌘0` 这类「无光标位置」的入口，此前把缩放焦点取成了 `canvas.getBoundingClientRect()` 的中心 —— 那是**变换后**的包围盒（`rect.left` 已含平移 `tx`、`width` 已乘 `scale`），会随平移漂移；内容被拖到视野时该点常在屏幕外，于是放大后内容飞到一角，必须双击（走 fit，用布局盒居中）才回中。现统一改用新增的 `CanvasViewport.viewportCenter()`：返回画布**布局盒**中心的屏幕坐标，与 `fitView` / `recenter` / 一键排版同一基准，缩放后可见中心的内容保持不动。便签画布与思维子弹各 4 处；滚轮 / 双指本就以光标 / 中点为焦点，未改动。
+
+### Chore
+- **合并重复的 `_stamp` 定义**：`typewriterFeature.js` 里曾有两份同名 `_stamp`（无参版被有参版静默覆盖，成死代码），且若按无参版调用会因入参 `undefined` 抛 `TypeError`。现合并为唯一定义，入参可选（缺省取当前时间）。
+- **构建告警清零**：`popupPositioner` / `goalCalculations` / `dataValidator` 三个文件顶部有 `export`（已是 ESM），尾部却保留 `if (module.exports)` 分支 —— ESM 里 `module` 未定义，该分支恒为假（死代码），且令 esbuild 每档报 `commonjs-variable-in-esm`。已删除（保留 `window.X` 挂点）；测试统一走 `loadModule`，不依赖 CommonJS 导出。
+
+---
+
 ## [3.28.17] — 2026-10-15
 
 ### Fixed

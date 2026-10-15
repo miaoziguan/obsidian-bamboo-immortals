@@ -550,6 +550,13 @@ export class Store {
             this.state.isDirty = false;
         } catch (e) {
             console.error('Failed to save to storage:', e);
+            // 【P1-4】「全部保存失败」此前比「部分保存失败」更安静 —— 只有 console.error。
+            // 落盘是静默自动行为，失败必须让用户看见，否则用户以为存了、下次打开才发现没落盘。
+            try {
+                if (typeof Toast !== 'undefined' && Toast && typeof Toast.showToast === 'function') {
+                    Toast.showToast('数据保存失败，本次改动可能未写入 Vault，请检查插件与存储状态', 'error');
+                }
+            } catch (_) { /* 提示本身失败不阻断降级保存 */ }
             this.saveToStorageLegacy();
         }
     }

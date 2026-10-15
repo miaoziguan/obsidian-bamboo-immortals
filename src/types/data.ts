@@ -53,6 +53,10 @@ export interface GoalSubItem {
   dailyMin?: string;
   // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents -- 允许 webapp/导入透传的任意节奏字符串，运行时由 cleanDailyMin/sanitize 回落合法值
   taskDayType?: TaskDayType | string;
+  /** 排期配置：custom_week=星期几（'1,3,5'）、custom_month=每月哪几天（'1,15'）、interval=每隔 N 天。
+   *  【P0-3】webapp 侧（GoalService / editor）早已在用，但 AI 侧此前根本不携带此字段，
+   *  自定义排期从 AI 规划路径无法表达 —— 类型先补齐，与运行时对齐。 */
+  taskDayConfig?: string;
   /** 规划来源标注（仅审阅展示/日报，可选） */
   sourceRef?: string;
 }

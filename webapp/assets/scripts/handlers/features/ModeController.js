@@ -669,7 +669,9 @@ export const ModeController = {
       let s = { count: 0, links: 0 };
       if (MindmapFeature.isActive && MindmapFeature.isActive()) s = MindmapFeature.stats();
       set('#twNodeCount', String(s.count));
-      set('#twLinkCount', String(s.links));
+      // 【P1-9】此前误写 #twLinkCount（那是**写作档** meta 里的元素，见 typewriterFeature.js:227），
+      // 导图档 meta 里的连线计数元素实为 #twDepthCount（:228）→ 导图连了多少条线都显示「连线 0」。
+      set('#twDepthCount', String(s.links));
       return;
     }
     if (ctrl._mode === 'write') {

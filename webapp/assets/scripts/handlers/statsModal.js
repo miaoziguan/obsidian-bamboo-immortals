@@ -389,9 +389,8 @@ export const StatsModal = {
         return CultivationData.getRealmData(completedGoals);
     },
 
-    _checkBreakthrough(oldCompleted, newCompleted) {
-        return CultivationData.checkBreakthrough(oldCompleted, newCompleted);
-    },
+    // 【P1-5】_checkBreakthrough 已随 CultivationData.checkBreakthrough 一并删除（死代码，
+    // 且产品确认境界突破不需要 toast 庆祝）。境界可视化走 _renderCultivationHTML。
 
     _renderCultivationHTML() {
         const goals = store.getGlobalGoals();

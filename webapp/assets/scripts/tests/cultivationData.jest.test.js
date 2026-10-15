@@ -1,6 +1,10 @@
 /**
  * CultivationData 修仙境界体系单测
- * 纯数据 + 纯计算，checkBreakthrough 需 mock Toast。
+ * 纯数据 + 纯计算。
+ *
+ * 【P1-5】原 checkBreakthrough（突破/升层时弹 toast 庆祝）是死代码且产品确认不需要
+ * 庆祝式反馈，已删除；其对应用例一并移除。境界可视化改由「我的成就」面板的
+ * 100 层点 + 十重天体系表呈现。
  */
 const { loadModule } = require('./__helpers__/testUtils');
 
@@ -113,39 +117,6 @@ describe('CultivationData 修仙境界体系', () => {
   test('allLayers 返回完整 100 层引用', () => {
     const r = CD.getRealmData(0);
     expect(r.allLayers.length).toBe(100);
-  });
-
-  // ---- checkBreakthrough ----
-  test('无突破时不调用 Toast', () => {
-    window.Toast.showToast.mockClear();
-    CD.checkBreakthrough(0, 0);
-    expect(window.Toast.showToast).not.toHaveBeenCalled();
-  });
-
-  test('小境界突破（同境界内晋级）toast 含 layer 和 title', () => {
-    window.Toast.showToast.mockClear();
-    // completedGoals 从 0→1：从层1→层2（仍在凡尘）
-    CD.checkBreakthrough(0, 1);
-    expect(window.Toast.showToast).toHaveBeenCalledTimes(1);
-    const [msg] = window.Toast.showToast.mock.calls[0];
-    expect(msg).toContain('第2层');
-    expect(msg).toContain('心有所向');
-  });
-
-  test('大境界突破（跨境界）toast 含"突破X境"', () => {
-    window.Toast.showToast.mockClear();
-    // 凡尘第10层 goal=9，completedGoals=10 → 练气第11层
-    CD.checkBreakthrough(9, 10);
-    expect(window.Toast.showToast).toHaveBeenCalledTimes(1);
-    const [msg] = window.Toast.showToast.mock.calls[0];
-    expect(msg).toContain('突破练气境');
-    expect(msg).toContain('引气入体');
-  });
-
-  test('降级不触发 toast', () => {
-    window.Toast.showToast.mockClear();
-    CD.checkBreakthrough(10, 5);
-    expect(window.Toast.showToast).not.toHaveBeenCalled();
   });
 
   // ---- 积分制验证 ----

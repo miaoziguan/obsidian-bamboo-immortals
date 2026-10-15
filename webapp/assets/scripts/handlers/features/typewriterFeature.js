@@ -229,7 +229,10 @@ export const TypewriterFeature = {
               </span>
             </div>
             <div class="tw-screen-input-wrap">
-              <div class="tw-screen-msg" id="twScreenMsg"></div>
+              <!-- 【P1-2】加 role=status + aria-live：_showScreenMsg 是画中卷全部操作反馈的出口
+                   （撤销/重做/排版/换纸/导出…共 44+ 处），此前它只改 textContent，读屏用户
+                   完全收不到播报；且本视图不像主视图那样有 sr-announcements 容器。 -->
+              <div class="tw-screen-msg" id="twScreenMsg" role="status" aria-live="polite"></div>
               <textarea class="tw-input" id="twInput" maxlength="${HTMLUtils.escapeHtmlAttr(HTMLUtils.num(MAX_LEN))}" placeholder="输入文字打印便签..." spellcheck="false" aria-label="输入文字打印便签"></textarea>
               <span class="tw-cursor" id="twCursor" aria-hidden="true"></span>
             </div>

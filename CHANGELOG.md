@@ -1,5 +1,21 @@
 # Changelog
 
+## [3.28.17] — 2026-10-15
+
+### Fixed
+- **无障碍（a11y）**：① 跳转链接（skip-link）原指向不存在的 `#main-content`，改为真实存在的 `#reviewContainer`，键盘首个 Tab 不再失效；② 画中卷操作反馈区（`#twScreenMsg`）加 `role="status" aria-live="polite"`，撤销/排版/换纸/导出等 40+ 处反馈对读屏可见；③ 日期选择器补完整键盘导航（←→±1天、↑↓±7天、PageUp/Down 翻月、Enter/Space 选中，roving tabindex 契约落地）；④ 主面板「全部保存失败」与「时间线保存/删除失败」此前只有 console.error、无任何用户提示，现补 Toast（成功有提示、失败也应有）。
+- **画中卷暗色失效**：13 处孤立的 `.theme-dark` 规则补 `:host(.dark)` 并列兜底（scroll-pager 9 + toast 4），窄栏/暗色下不再"亮着"。
+- **画中卷连线计数**：统计元素 id 由写作档专用的 `#twLinkCount` 改为导图档实际渲染的 `#twDepthCount`，计数不再恒为 0。
+- **日期「回到今天」**：`dateDisplay` 接线 `DatePicker.goToToday()`，鼠标点击与键盘 Enter/Space 均生效，兑现其自带的 `aria-label` 承诺。
+- **境界突破死代码**：删除从未触发的庆祝分支（`CultivationData.checkBreakthrough` + `StatsModal` 转发壳 + 4 条测试），境界可视化（100 层点 + 十重天表）保留。
+- **「改数值提示是否重算截止日」无反应**：根因是 `manuallySetDate` 被误当成触发门槛——新建目标自动补的默认日期不带该标记，导致用户以为"设过日期"却永远等不到询问。现改为：只要有目标值+每日量且推算结果会变就必定弹窗；选「保持不变」才置位标记（以后自动推导不再动它）；推算不出时 Toast 说明原因而非静默。
+
+### Changed
+- **AI 目标规划校验**：量化子项缺起始/目标值时给出提醒（否则进度锁死 0% 却显示"已量化"）；习惯类不误报。重规划替换旧目标时 Notice 告知"替换了 N 个，其中 M 个已有进度未保留"。
+- **窄栏居中**：画中卷顶栏（`.scroll-body.is-narrow`）与首页 header 天气+语录（容器实际宽度 ≤460px 的 `.rw-460`）在窄栏下由两端对齐改为居中；宽栏排版不变。首页居中基于面板真实宽度触发（非视口 query），Obsidian 窄侧栏在宽屏下也能正确生效。
+
+---
+
 ## [3.28.16] — 2026-10-14
 
 ### Fixed

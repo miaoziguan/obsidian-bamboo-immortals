@@ -20,7 +20,7 @@
 
 import { requestUrl } from 'obsidian';
 import { GOAL_CATEGORIES, type GoalCategory, type GoalItem, type GoalSubItem } from '../types/data';
-import { cleanDailyMin } from './GoalCardValidator';
+import { cleanDailyMin, normalizeTaskDay } from './GoalCardValidator';
 import { FRAMEWORKS, type FrameworkType } from './frameworks';
 
 /** 拆解粒度 → 建议子项数量区间描述 */
@@ -304,12 +304,16 @@ export function parseGoals(rawText: unknown): GoalItem[] {
     const items = Array.isArray(goal.items)
       ? (goal.items as Record<string, unknown>[]).map((it, ii): GoalSubItem => {
           const item = it ?? {};
+          // 【P0-3】排期归一化 + 携带 config：此前把 AI 的 weekly/monthly/custom 原样透传，
+          // 落到调度器 default 分支（return true）→「每周体检一次」被当成每天任务派发。
+          const day = normalizeTaskDay(item.taskDayType, item.taskDayConfig);
           return {
             name: typeof item.name === 'string' && item.name ? item.name : `子项${ii + 1}`,
             targetValue: typeof item.targetValue === 'string' ? item.targetValue : '',
             currentValue: typeof item.currentValue === 'string' ? item.currentValue : '',
             dailyMin: cleanDailyMin(item.dailyMin),
-            taskDayType: typeof item.taskDayType === 'string' ? item.taskDayType : 'daily',
+            taskDayType: day.taskDayType,
+            taskDayConfig: day.taskDayConfig,
             startDate: typeof item.startDate === 'string' ? item.startDate : undefined,
             endDate: typeof item.endDate === 'string' ? item.endDate : undefined,
             detail: typeof item.reason === 'string' ? item.reason : undefined,

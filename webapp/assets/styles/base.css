@@ -708,6 +708,24 @@ section[data-section-id] {
     justify-content: flex-end;
     gap: var(--space-3);
 }
+
+/* 窄栏（容器实际宽度 ≤460px，由 displayManager._applyResponsiveClasses 加 .rw-460，
+   基于面板真实宽度而非视口 —— 故 Obsidian 窄侧栏在宽屏下也能正确触发）：
+   原 .header 用 space-between、.header-right 用 flex-end，窄栏换行后天气靠左、语录靠右，
+   既不居中也不协调。改为整体居中（不换行时把两块作为一个组居中；换行后每行内容居中）。
+   宽栏（>460px）保持原两端对齐，不受影响。 */
+.rw-460 .header {
+    justify-content: center;
+}
+.rw-460 .header-left {
+    justify-content: center;   /* 原 flex-start → 居中 */
+}
+.rw-460 .header-right {
+    justify-content: center;   /* 原 flex-end → 居中 */
+}
+.rw-460 .weather-widget {
+    margin-right: 0;           /* 消除换行后天气相对行中心的 8px 偏移 */
+}
 h1 {
     font-size: var(--type-2xl);
     color: var(--bamboo-light);

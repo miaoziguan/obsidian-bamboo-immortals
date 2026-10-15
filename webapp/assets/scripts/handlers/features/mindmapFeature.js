@@ -461,6 +461,11 @@ export const MindmapFeature = {
     await TypewriterStore.setMindmapCurrent(id);
     this._groupId = id;
     await this.load();
+    // 【P0-2】换组即换文档：撤销栈里的快照属于**旧组**。原先此处不 reset，于是切到新组后
+    // 按 Cmd+Z 会经 _restoreSnapshot 把旧组节点写进 _nodes，再随 _scheduleSave() 落到
+    // **当前（新）组**的文件上 —— 静默覆盖新组内容，且 redo 只在内存、再操作一次即清空。
+    // 便签/写作档切档一直有 reset（ModeController 7 处），导图此前是唯一漏掉的。
+    if (this._undoStack) this._undoStack.reset();
     this.render();
     this._applyStyleClass();
   },
@@ -472,6 +477,7 @@ export const MindmapFeature = {
     const g = await TypewriterStore.createMindmapGroup('未命名思维导图');
     this._groupId = g.id;
     this._nodes = []; this._links = []; this._view = null; this._style = MM_STYLE_AVAILABLE[0];
+    if (this._undoStack) this._undoStack.reset();   // 同上：新组是全新文档，旧组快照不可在此复活
     this.render();
     this._applyStyleClass();
   },
@@ -483,6 +489,7 @@ export const MindmapFeature = {
     const res = await TypewriterStore.deleteMindmapGroup(id);
     this._groupId = res.current;
     await this.load();
+    if (this._undoStack) this._undoStack.reset();   // 同上：删组后载入的是另一份文档
     this.render();
     this._applyStyleClass();
     return res;

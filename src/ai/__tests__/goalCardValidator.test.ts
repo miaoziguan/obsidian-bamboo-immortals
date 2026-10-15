@@ -5,6 +5,7 @@ import {
   validateGoals,
   classifyCompleteness,
   cleanDailyMin,
+  normalizeTaskDay,
   DEFAULT_TASK_DAY_TYPE,
 } from '../GoalCardValidator';
 import { GOAL_CATEGORIES } from '../../types/data';
@@ -97,7 +98,9 @@ describe('classifyCompleteness', () => {
       title: 't',
       category: 'study',
       endDate: '2026-08-01',
-      items: [{ name: 'sub', dailyMin: '2', taskDayType: 'daily' }],
+      // 【P1-6】补 startValue / targetValue：已量化的子项若缺目标值，进度会永远锁死 0%
+      // （GoalService 的累加分支要求二者其一非空），故「信息齐全」的基准必须真齐全。
+      items: [{ name: 'sub', dailyMin: '2', taskDayType: 'daily', startValue: '0', targetValue: '100' }],
       ...over,
     });
 
@@ -105,6 +108,21 @@ describe('classifyCompleteness', () => {
     const r = classifyCompleteness(base());
     expect(r.level).toBe('complete');
     expect(r.missing).toEqual([]);
+  });
+
+  it('【P1-6】已量化子项缺起始/目标值 → thin 且提示"目标值"（否则进度锁死 0%）', () => {
+    const r = classifyCompleteness(
+      base({ items: [{ name: 'sub', dailyMin: '2', taskDayType: 'daily' }] })
+    );
+    expect(r.level).toBe('thin');
+    expect(r.missing.some((m) => m.startsWith('目标值'))).toBe(true);
+  });
+
+  it('【P1-6】未量化的习惯类子项（无 dailyMin）不因缺目标值报缺 —— 避免误报', () => {
+    const r = classifyCompleteness(
+      base({ items: [{ name: '每天冥想', dailyMin: '', taskDayType: 'daily' }] })
+    );
+    expect(r.missing.some((m) => m.startsWith('目标值'))).toBe(false);
   });
 
   it('缺截止日 + 每日量 → thin 且列出缺失', () => {
@@ -160,5 +178,46 @@ describe('classifyCompleteness', () => {
   it('GOAL_CATEGORIES 与 webapp 枚举一致（回归护栏）', () => {
     const ids = GOAL_CATEGORIES.map((c) => c.id).sort();
     expect(ids).toEqual(['finance', 'health', 'other', 'personal', 'study', 'work']);
+  });
+});
+
+describe('normalizeTaskDay（P0-3 排期节奏归一化）', () => {
+  it('weekly → custom_week + 默认周一（不再落 default 导致每天出现）', () => {
+    expect(normalizeTaskDay('weekly')).toEqual({ taskDayType: 'custom_week', taskDayConfig: '1' });
+  });
+
+  it('monthly → custom_month + 默认 1 号', () => {
+    expect(normalizeTaskDay('monthly')).toEqual({ taskDayType: 'custom_month', taskDayConfig: '1' });
+  });
+
+  it('AI 自带的 config 优先采用', () => {
+    expect(normalizeTaskDay('weekly', '3,5')).toEqual({ taskDayType: 'custom_week', taskDayConfig: '3,5' });
+  });
+
+  it('调度器原生枚举原样透传（含 config）', () => {
+    expect(normalizeTaskDay('interval', '7')).toEqual({ taskDayType: 'interval', taskDayConfig: '7' });
+    expect(normalizeTaskDay('workday')).toEqual({ taskDayType: 'workday', taskDayConfig: '' });
+    expect(normalizeTaskDay('weekend')).toEqual({ taskDayType: 'weekend', taskDayConfig: '' });
+  });
+
+  it('custom / 未知 / 空值 → daily（显式退化，而非落 default 隐式兜底）', () => {
+    expect(normalizeTaskDay('custom').taskDayType).toBe('daily');
+    expect(normalizeTaskDay('乱写的').taskDayType).toBe('daily');
+    expect(normalizeTaskDay('').taskDayType).toBe('daily');
+  });
+
+  it('大小写与空格不敏感', () => {
+    expect(normalizeTaskDay('  WEEKLY ')).toEqual({ taskDayType: 'custom_week', taskDayConfig: '1' });
+  });
+
+  it('刻意不映射为 interval：子项 startDate 常缺失会让 interval 分支 return false（永不出现）', () => {
+    // 见 GoalService.isTodayTaskDay 的 interval 分支：!startDate → return false
+    expect(normalizeTaskDay('weekly').taskDayType).not.toBe('interval');
+  });
+
+  it('sanitizeSubItem 会带上 taskDayConfig（此前 AI 侧根本不携带）', () => {
+    const it = sanitizeSubItem({ name: '每周体检', taskDayType: 'weekly' }, 0);
+    expect(it.taskDayType).toBe('custom_week');
+    expect(it.taskDayConfig).toBe('1');
   });
 });

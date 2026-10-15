@@ -63,6 +63,46 @@ export function cleanDailyMin(raw: unknown): string {
   return valid ? valid[0] : '';
 }
 
+/**
+ * 【P0-3】排期节奏归一化：把 AI / 外部可能写出的节奏，映射到调度器**真正认得**的枚举。
+ *
+ * 背景：调度器 `GoalService.isTodayTaskDay` 只认
+ *   daily / workday / weekend / custom_week / custom_month / interval
+ * 六档，其余一律落到 `default: return true`。而提示词允许 AI 输出
+ *   weekly / monthly / custom（MarkdownPlanner.ts:170,401）
+ * —— 于是「每周体检一次」被当成每天任务派发，"每周"语义彻底丢失。
+ * 同时 taskDayConfig 此前在 AI 侧根本不被携带，自定义排期无法表达。
+ *
+ * 映射（刻意**避开**依赖 startDate 的 interval：子项 startDate 常缺失，
+ * 而 interval 分支遇 `!startDate` 会直接 return false，任务将**永不出现**，
+ * 这比"每天出现"更糟）：
+ *   weekly  → custom_week  + '1'   （每周一；只按星期几判定，不依赖 startDate）
+ *   monthly → custom_month + '1'   （每月 1 号；只按日号判定，不依赖 startDate）
+ *   custom  → daily                （无 config 可依，显式退化而非落 default 隐式兜底）
+ */
+export function normalizeTaskDay(
+  rawType: unknown,
+  rawConfig: unknown = ''
+): { taskDayType: string; taskDayConfig: string } {
+  const t = str(rawType).trim().toLowerCase();
+  const c = str(rawConfig).trim();
+  switch (t) {
+    case 'workday': return { taskDayType: 'workday', taskDayConfig: '' };
+    case 'weekend': return { taskDayType: 'weekend', taskDayConfig: '' };
+    case 'weekly': return { taskDayType: 'custom_week', taskDayConfig: c || '1' };
+    case 'monthly': return { taskDayType: 'custom_month', taskDayConfig: c || '1' };
+    case 'custom_week':
+    case 'custom_month':
+    case 'interval':
+      return { taskDayType: t, taskDayConfig: c };
+    case 'custom':
+    case 'daily':
+    default:
+      // custom 无 config 可依 → 显式 daily；其余未知值同 daily，不再让 default 分支隐式兜底
+      return { taskDayType: 'daily', taskDayConfig: '' };
+  }
+}
+
 /** 判断每日量是否已量化（纯数字，非空） */
 function isQuantified(v: unknown): boolean {
   return typeof v === 'string' && /^\d+(\.\d+)?$/.test(v.trim());
@@ -71,6 +111,7 @@ function isQuantified(v: unknown): boolean {
 /** 校验并补齐单个子项 */
 export function sanitizeSubItem(raw: unknown, idx: number): GoalSubItem {
   const it = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
+  const day = normalizeTaskDay(it.taskDayType ?? DEFAULT_TASK_DAY_TYPE, it.taskDayConfig);
   return {
     name: str(it.name) || `子项${idx + 1}`,
     percent: typeof it.percent === 'number' ? it.percent : undefined,
@@ -81,7 +122,8 @@ export function sanitizeSubItem(raw: unknown, idx: number): GoalSubItem {
     targetValue: str(it.targetValue),
     currentValue: str(it.currentValue),
     dailyMin: cleanDailyMin(it.dailyMin),
-    taskDayType: str(it.taskDayType) || DEFAULT_TASK_DAY_TYPE,
+    taskDayType: day.taskDayType,
+    taskDayConfig: day.taskDayConfig,
     sourceRef: str(it.sourceRef) || undefined,
   };
 }
@@ -150,6 +192,19 @@ export function classifyCompleteness(goal: GoalItem): CompletenessResult {
   if (items.length > 0) {
     const unquantified = items.filter((it) => !isQuantified(it.dailyMin)).length;
     if (unquantified > 0) missing.push(`每日量（${unquantified} 个子项未量化）`);
+
+    // 【P1-6】起始值/目标值缺失 → 子项进度永远锁死 0%：
+    // GoalService.completeGoalTask 的累加分支要求 startValue 或 targetValue 非空，
+    // 否则勾选只加竹币、currentValue / percent 纹丝不动，目标永远无法 100%（也不计入境界）。
+    // 而此前校验器不查这一项，审阅台照样显示「✓ 已量化，可写入」。
+    // 仅对**已量化**的子项检查：纯习惯类目标（无 dailyMin）本就不走数值进度，不误报。
+    const noTarget = items.filter(
+      (it) =>
+        isQuantified(it.dailyMin) &&
+        str(it.startValue).trim() === '' &&
+        str(it.targetValue).trim() === ''
+    ).length;
+    if (noTarget > 0) missing.push(`目标值（${noTarget} 个子项缺起始/目标值，进度将始终为 0%）`);
 
     const hasRhythm = items.every((it) => it.taskDayType && String(it.taskDayType).trim() !== '');
     if (!hasRhythm) missing.push('节奏');

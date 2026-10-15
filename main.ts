@@ -692,8 +692,22 @@ export default class BambooReviewPlugin extends Plugin {
     // 由新目标以新派生 id 上位，避免「旧标题残留 + 新标题」形成双条
     const newTitles = new Set(goals.map((g) => g.title));
     const merged = new Map<string, GoalItem>();
+    // 【P1-6】统计被替换的旧目标。此前这一步完全静默：用户改一句笔记再跑规划，
+    // 旧标题目标连同其完成度 / 日期 / 每日量一起消失，用户事后才发现进度没了。
+    // 这里不阻断流程（替换是幂等重规划的既定语义），但必须让用户知情。
+    let replaced = 0;
+    let replacedWithProgress = 0;
     for (const g of existing) {
-      if (g.sourceRef === sourceRef && g.title && !newTitles.has(g.title)) continue;
+      if (g.sourceRef === sourceRef && g.title && !newTitles.has(g.title)) {
+        replaced++;
+        const hasProgress = (g.items ?? []).some(
+          (it) =>
+            (it.currentValue !== undefined && String(it.currentValue).trim() !== '') ||
+            (it.percent ?? 0) > 0
+        );
+        if (hasProgress) replacedWithProgress++;
+        continue;
+      }
       if (g.id) merged.set(g.id, g);
     }
 
@@ -726,7 +740,17 @@ export default class BambooReviewPlugin extends Plugin {
     // 局部刷新常驻视图（host→webapp goals:changed）
     this.webapp.notifyGoalsChanged();
 
-    new Notice(`已写入 ${withRef.length} 个目标到「竹林修仙传」`);
+    // 【P1-6】把「替换了几个旧目标、其中几个带进度」摊给用户，不再静默吞掉进度
+    if (replacedWithProgress > 0) {
+      new Notice(
+        `已写入 ${withRef.length} 个目标。⚠️ 替换了 ${replaced} 个同来源旧目标，` +
+        `其中 ${replacedWithProgress} 个已有进度（未保留，如需保留请先手动调整标题）。`
+      );
+    } else if (replaced > 0) {
+      new Notice(`已写入 ${withRef.length} 个目标（替换了 ${replaced} 个同来源旧目标）。`);
+    } else {
+      new Notice(`已写入 ${withRef.length} 个目标到「竹林修仙传」`);
+    }
   }
 
   /** 把审阅后的目标追加写入目标库（零污染：existing + parsed）并更新幂等索引 */

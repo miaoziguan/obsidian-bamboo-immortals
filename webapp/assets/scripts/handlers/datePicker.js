@@ -13,6 +13,7 @@ window.DatePicker = {
         const { currentDate } = store.getState();
         this._currentYear = currentDate.getFullYear();
         this._currentMonth = currentDate.getMonth();
+        this._kbdCursor = null;   // 【P1-1】每次打开重置键盘游标（roving tabindex 从选中日开始）
 
         // 获取有任务的日期列表
         this._datesWithTasks = this._getDatesWithTasks();
@@ -146,7 +147,7 @@ window.DatePicker = {
                      data-label="${num(this._currentYear)}年${this._currentMonth + 1}月${num(day)}日"
                      role="gridcell"
                      aria-label="${HTMLUtils.escapeHtmlAttr(tooltipText)}"
-                     tabindex="${isSelected ? '0' : '-1'}"
+                     tabindex="${(this._kbdCursor || currentStr) === dateStr ? '0' : '-1'}"
                      title="${HTMLUtils.escapeHtmlAttr(tooltipText)}">
                     <span class="wn-date-num">${day}</span>
                     ${hasTask ? '<span class="wn-date-dot" aria-hidden="true"></span>' : ''}
@@ -232,10 +233,88 @@ window.DatePicker = {
         PanelManager.close();
     },
 
+    /** 【P1-1】键盘游标：role="grid" 声明了 roving tabindex 契约，此前却零 keydown 实现，
+     *  键盘用户只能 Tab 到「当前选中日」一格，其余 30 格 tabindex=-1 完全不可达。 */
+    _kbdCursor: null,
+
+    /** 移动键盘游标（自动跨月），重绘后把焦点落回对应格 */
+    _moveKbdCursor(deltaDays) {
+        const base = this._kbdCursor
+            ? new Date(this._kbdCursor + 'T00:00:00')
+            : new Date(store.getState().currentDate);
+        if (isNaN(base.getTime())) return;
+        base.setDate(base.getDate() + deltaDays);
+
+        const y = base.getFullYear();
+        const m = base.getMonth();
+        if (y !== this._currentYear || m !== this._currentMonth) {
+            // 跨月：先把视图切到目标月，游标再落上去
+            this._currentYear = y;
+            this._currentMonth = m;
+        }
+        this._kbdCursor = this._formatDate(base);
+        this._refreshGrid();
+        this._focusKbdCursor();
+    },
+
+    /** 重绘日历格与月份标题 */
+    _refreshGrid() {
+        const grid = byId('calendarDays');
+        if (grid) grid.innerHTML = this._generateCalendarDays();
+        const month = byId('calendarMonth');
+        if (month) month.textContent = `${this._currentYear}年${this._currentMonth + 1}月`;
+    },
+
+    /** 把 tabindex=0 与实际焦点交给游标所在格 */
+    _focusKbdCursor() {
+        if (!this._kbdCursor) return;
+        const grid = byId('calendarDays');
+        const cell = grid && grid.querySelector(`[data-date="${this._kbdCursor}"]`);
+        if (cell) {
+            cell.tabIndex = 0;
+            cell.focus();
+        }
+    },
+
+    /** 日历键盘导航：方向键移动 / PageUp-Down 翻月 / Enter-Space 选中 */
+    _onCalendarKeydown(e) {
+        const grid = byId('calendarDays');
+        if (!grid || !grid.contains(e.target)) return;   // 面板未打开或焦点不在日历上
+
+        const step = (e.key === 'ArrowLeft') ? -1
+            : (e.key === 'ArrowRight') ? 1
+            : (e.key === 'ArrowUp') ? -7
+            : (e.key === 'ArrowDown') ? 7
+            : 0;
+
+        if (step !== 0) {
+            e.preventDefault();
+            this._moveKbdCursor(step);
+            return;
+        }
+        if (e.key === 'PageUp' || e.key === 'PageDown') {
+            e.preventDefault();
+            this._updateCalendar(e.key === 'PageUp' ? 'prev' : 'next');
+            this._focusKbdCursor();
+            return;
+        }
+        if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+            e.preventDefault();
+            const target = this._kbdCursor || e.target.getAttribute('data-date');
+            if (!target) return;
+            const cell = grid.querySelector(`[data-date="${target}"]`);
+            this.quickSelect(target, (cell && cell.getAttribute('data-label')) || target);
+        }
+    },
+
     _validateDate(date) {
         return date instanceof Date && !isNaN(date.getTime());
     }
 };
+
+// 【P1-1】绑定一次即可：#calendarDays 的 innerHTML 会被重建，但监听挂在 document 上不受影响；
+// 面板未打开时 calendarDays 不存在，_onCalendarKeydown 会直接 return。
+document.addEventListener('keydown', (e) => DatePicker._onCalendarKeydown(e));
 
 ActionDispatcher.registerMany({
     'quick-select-date': (data) => DatePicker.quickSelect(data.date, data.label),

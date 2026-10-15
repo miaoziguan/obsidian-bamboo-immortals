@@ -72,25 +72,13 @@ export const CultivationData = (() => {
             return { current, next, layersInCurrentRealm, allLayers: layers };
         },
 
-        /** 检测境界突破并 toast 提示 */
-        checkBreakthrough(oldCompleted, newCompleted) {
-            const oldData = this.getRealmData(oldCompleted);
-            const newData = this.getRealmData(newCompleted);
-            if (newData.current.layer > oldData.current.layer) {
-                const isRealmBreak = newData.current.realm !== oldData.current.realm;
-                if (isRealmBreak) {
-                    Toast.showToast(
-                        `突破${newData.current.realm}境 · ${newData.current.title}`,
-                        'success'
-                    );
-                } else {
-                    Toast.showToast(
-                        `第${newData.current.layer}层 · ${newData.current.title}`,
-                        'success'
-                    );
-                }
-            }
-        }
+        // 【P1-5 已删除】原 checkBreakthrough（突破境界 / 升层时弹 toast「庆祝」）。
+        // 删除理由（2026-10-15 产品确认）：
+        //   1. 它是死代码 —— 生产零调用，全仓仅单测在测；
+        //   2. 境界突破不需要「庆祝式」反馈 —— 境界/层数在「我的成就」面板里已用
+        //      100 个层点点亮 + 十重天体系表完整可视化，用户想看随时可看，
+        //      不必再用一条 toast 打断当下操作。
+        // 若将来要恢复，注意它依赖全局 Toast，且调用方需自行比对 old/new completedGoals。
     };
 })();
 

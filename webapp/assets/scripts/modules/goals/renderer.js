@@ -1408,6 +1408,39 @@ export const GoalsRenderer = {
             autoCalcEndDate:        (i) => this._autoCalcEndDate(i),
             autoCalcGoalDateRange:  (g) => this.autoCalcGoalDateRange(g),
             renderSingleGoal:       (id) => this.renderSingleGoal(id),
+            confirmRecalcEndDate:   (savedEnd, preview, editLabel) =>
+                this._confirmRecalcEndDate(savedEnd, preview, editLabel),
+            notifyEndDateStatic:    (savedEnd, editLabel) => {
+                // 手动日期存在、但按每日量推算不出新日期时，告诉用户为什么截止日不动
+                try {
+                    Toast.showToast(
+                        `截止日未变化（${savedEnd}）：该子项缺目标值或每日量，无法按进度推算`,
+                        'info'
+                    );
+                } catch (_) { /* 提示失败不阻断编辑 */ }
+            },
+        });
+    },
+
+    /**
+     * 手动截止日遇到数值变化时的询问（P0-1 配套）。
+     *
+     * P0-1 之后手动日期不再被改数值时静默覆盖，但它也就此锁定、不跟随数值变化。
+     * 这里把两个日期摊开给用户看 —— 现在的手动日期 vs 若重算会变成哪天 —— 由用户决定。
+     * 对话框不可用时返回 false（保守保持手动日期，绝不擅自改用户设过的日期）。
+     */
+    _confirmRecalcEndDate(savedEnd, preview, editLabel, same) {
+        const CD = (typeof window !== 'undefined') ? window.ConfirmDialog : null;
+        if (!CD || typeof CD.confirm !== 'function') return Promise.resolve(false);
+        return CD.confirm({
+            title: same ? '解除截止日的手动锁定？' : '按新数值重算截止日？',
+            // same：按天数取整后与手动日期相同 —— 此时询问的价值是「是否解除锁定」，
+            // 解除后以后改数值截止日会自动跟随，不必再手动改。
+            message: same
+                ? `这个子项的截止日是你手动设定的（${savedEnd}），按每日量重算后仍是同一天。是否解除手动锁定？解除后，以后改数值时截止日会自动跟随。`
+                : `这个子项的截止日是你手动设定的（${savedEnd}）。${editLabel}已更新，若按每日量重算，截止日会变为 ${preview}。`,
+            confirmText: same ? '解除锁定' : '重算截止日',
+            cancelText: '保持手动日期',
         });
     },
 

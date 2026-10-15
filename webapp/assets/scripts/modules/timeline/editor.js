@@ -54,7 +54,16 @@ export const TimelineEditor = {
         store.updateDayData({ timeline: data.timeline, metrics: data.metrics }).then(() => {
             markSectionDirty('timeline');
             this.renderForm();
-        }).catch(e => console.error('[Bamboo] 保存时间线失败:', e));
+        }).catch(e => {
+            console.error('[Bamboo] 保存时间线失败:', e);
+            // 【P1-4】成功会 Toast「时段已保存」，失败却只有 console.error —— 成功/失败反馈不对称，
+            // 且表单照常重渲染，用户无法区分「已保存」与「保存失败」。
+            try {
+                if (typeof Toast !== 'undefined' && Toast && typeof Toast.showToast === 'function') {
+                    Toast.showToast('时段保存失败，请重试', 'error');
+                }
+            } catch (_) { /* 提示本身失败不阻断 */ }
+        });
     },
 
     editItem(index) {
@@ -185,7 +194,16 @@ export const TimelineEditor = {
             markSectionDirty('timeline');
             this.renderList();
             Toast.showToast('时段已保存', 'success');
-        }).catch(e => console.error('[Bamboo] 保存时间线失败:', e));
+        }).catch(e => {
+            console.error('[Bamboo] 保存时间线失败:', e);
+            // 【P1-4】成功会 Toast「时段已保存」，失败却只有 console.error —— 成功/失败反馈不对称，
+            // 且表单照常重渲染，用户无法区分「已保存」与「保存失败」。
+            try {
+                if (typeof Toast !== 'undefined' && Toast && typeof Toast.showToast === 'function') {
+                    Toast.showToast('时段保存失败，请重试', 'error');
+                }
+            } catch (_) { /* 提示本身失败不阻断 */ }
+        });
     },
 
     deleteItem(index) {
@@ -200,7 +218,15 @@ export const TimelineEditor = {
         store.updateDayData({ timeline: data.timeline, metrics: data.metrics }).then(() => {
             markSectionDirty('timeline');
             this.renderList();
-        }).catch(e => console.error('[Bamboo] 删除时间线时段失败:', e));
+        }).catch(e => {
+            console.error('[Bamboo] 删除时间线时段失败:', e);
+            // 【P1-4】同上：删除失败此前完全静默，用户以为删了。
+            try {
+                if (typeof Toast !== 'undefined' && Toast && typeof Toast.showToast === 'function') {
+                    Toast.showToast('时段删除失败，请重试', 'error');
+                }
+            } catch (_) { /* 提示本身失败不阻断 */ }
+        });
         });
     }
 };

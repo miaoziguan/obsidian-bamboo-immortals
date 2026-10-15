@@ -374,7 +374,8 @@ body:not(.dark) .tw-screen-msg {
     /* CRT 屏幕中心极淡荧光绿辉光（仅为内容发光感） */
     inset 0 0 40px rgba(var(--green-very-bright-rgb), 0.06);
 }
-.theme-dark .tw-screen-top { color: rgba(var(--green-very-bright-rgb), 0.7); }
+.theme-dark .tw-screen-top,
+:host(.dark) .tw-screen-top { color: rgba(var(--green-very-bright-rgb), 0.7); }
 /* 暗色屏幕：隐藏右侧玻璃高光，避免凹陷玻璃被方向性照亮出现"右侧翘起" */
 .theme-dark .tw-screen-glare,
 :host(.dark) .tw-screen-glare { display: none; }
@@ -442,8 +443,21 @@ body:not(.dark) .tw-case-right {
 .tw-screen-top > span,
 .tw-screen-font { white-space: nowrap; }
 .tw-screen-font { color: rgb(var(--bamboo-deep-rgb)); opacity: 0.85; }
-.theme-dark .tw-screen-font { color: rgb(var(--green-very-bright-rgb)); opacity: 0.8; }
+.theme-dark .tw-screen-font,
+:host(.dark) .tw-screen-font { color: rgb(var(--green-very-bright-rgb)); opacity: 0.8; }
 .tw-batt { opacity: 0.6; }
+
+/* 窄栏（.scroll-body ≤340px，由 scrollManager 的 ResizeObserver 加 .is-narrow）：
+   顶栏由「两端对齐」改为「居中」，并允许两块之间折行。
+   原为 space-between + nowrap —— 窄栏下标题与 FONT/纸张信息被推向两端，放不下时
+   直接溢出屏幕；居中才是窄栏下的合理排版。
+   注意：单块内部仍保持 nowrap（.tw-screen-top > span / .tw-screen-font 的既有规则），
+   避免出现「凝墨成笺FONT:」粘连；这里只让两块之间可以上下堆叠。 */
+.scroll-body.is-narrow .tw-screen-top {
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.15em 0.5em;
+}
 
 .tw-screen-input-wrap { position: relative; min-height: 5.4em; height: 5.4em; }
 .tw-input {
@@ -463,22 +477,27 @@ body:not(.dark) .tw-case-right {
   caret-color: rgb(var(--bamboo-deep-rgb));
   text-shadow: none;
 }
-.theme-dark .tw-input {
+.theme-dark .tw-input,
+:host(.dark) .tw-input {
   color: rgb(var(--green-very-bright-rgb));
   caret-color: rgb(var(--green-very-bright-rgb));
   text-shadow: 0 0 6px rgba(var(--green-very-bright-rgb), 0.4);
 }
 .tw-input::placeholder { color: rgba(var(--bamboo-deep-rgb), 0.5); text-transform: uppercase; }
-.theme-dark .tw-input::placeholder { color: rgba(var(--green-very-bright-rgb), 0.5); }
+.theme-dark .tw-input::placeholder,
+:host(.dark) .tw-input::placeholder { color: rgba(var(--green-very-bright-rgb), 0.5); }
 .tw-input::selection { background: rgb(var(--bamboo-deep-rgb)); color: var(--white); }
-.theme-dark .tw-input::selection { background: rgb(var(--green-very-bright-rgb)); color: var(--black); }
+.theme-dark .tw-input::selection,
+:host(.dark) .tw-input::selection { background: rgb(var(--green-very-bright-rgb)); color: var(--black); }
 /* 黑屏细滚动条（文字超屏时不突兀） */
 .tw-input { scrollbar-width: thin; scrollbar-color: rgba(var(--bamboo-deep-rgb),0.25) transparent; }
 .tw-input::-webkit-scrollbar { width: 6px; }
 .tw-input::-webkit-scrollbar-track { background: transparent; }
 .tw-input::-webkit-scrollbar-thumb { background: rgba(var(--bamboo-deep-rgb),0.25); border-radius: var(--radius-3); }
-.theme-dark .tw-input { scrollbar-color: rgba(var(--green-very-bright-rgb),0.25) transparent; }
-.theme-dark .tw-input::-webkit-scrollbar-thumb { background: rgba(var(--green-very-bright-rgb),0.25); }
+.theme-dark .tw-input,
+:host(.dark) .tw-input { scrollbar-color: rgba(var(--green-very-bright-rgb),0.25) transparent; }
+.theme-dark .tw-input::-webkit-scrollbar-thumb,
+:host(.dark) .tw-input::-webkit-scrollbar-thumb { background: rgba(var(--green-very-bright-rgb),0.25); }
 
 /* 屏幕光标（聚焦时右上角脉冲点） */
 .tw-cursor {
@@ -490,7 +509,8 @@ body:not(.dark) .tw-case-right {
   opacity: 0;
   pointer-events: none;
 }
-.theme-dark .tw-cursor {
+.theme-dark .tw-cursor,
+:host(.dark) .tw-cursor {
   background: rgb(var(--green-very-bright-rgb));
 }
 .tw-cursor.on { opacity: 0.5; }
@@ -1169,7 +1189,8 @@ body.dark .tw-theme-switch#twZenSwitch[aria-checked="true"]:hover {
   z-index: -1;
 }
 /* 暗色模式：桌面投影转深黑（下沉），避免浅绿光晕在暗背景上发亮 */
-.theme-dark .tw-desk-shadow {
+.theme-dark .tw-desk-shadow,
+:host(.dark) .tw-desk-shadow {
   background:
     repeating-linear-gradient(90deg,
       rgba(var(--black-rgb), 0.10) 0px,

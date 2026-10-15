@@ -718,13 +718,6 @@ export const TypewriterFeature = {
     try { if (this._el) this._showScreenMsg(text, 2600); } catch (_) { /* 已卸载则忽略 */ }
   },
 
-  /** 文件名时间戳：YYYYMMDD-HHMM（避免与导出头里的人类可读时间重复） */
-  _stamp() {
-    const d = new Date();
-    const p = (n) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
-  },
-
   /** 思维子弹模式：第二个机身键 = 把子弹图导出为 Markdown 并落库到 Vault（画中卷/子弹笔记/）。
    *  便签模式不触发本方法（#twFont 在便签模式仍是切换字体），故完全不干扰便签功能。
    *  落库成功后在 Obsidian 打开该笔记；若桥不可用则兜底下载 .md 并复制到剪贴板。 */
@@ -817,10 +810,13 @@ export const TypewriterFeature = {
     }
   },
 
-  /** 时间戳 YYYYMMDD-HHmmss（与快照命名一致，便于同目录排序） */
-    _stamp(d) {
+  /** 时间戳 YYYYMMDD-HHmmss（文件名 / 快照命名一致，便于同目录排序）。
+   *  d 缺省取当前时间：此处曾有两份同名定义（无参版被有参版静默覆盖成死代码，
+   *  且若按无参版调用会因 d 为 undefined 抛 TypeError），现合并为唯一定义。 */
+  _stamp(d) {
+    const date = d || new Date();
     const p = (n) => String(n).padStart(2, '0');
-    return d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + '-' + p(d.getHours()) + p(d.getMinutes()) + p(d.getSeconds());
+    return `${date.getFullYear()}${p(date.getMonth() + 1)}${p(date.getDate())}-${p(date.getHours())}${p(date.getMinutes())}${p(date.getSeconds())}`;
   },
 
   /** 从卡片正文取首行非空文字作文件名（清洗非法字符、截断 40 字），空则回落「便签」 */

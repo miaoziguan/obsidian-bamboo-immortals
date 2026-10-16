@@ -124,6 +124,14 @@ export const TypewriterFeature = {
     this._cullRaf = 0;
     this._CULL_MARGIN = 240;           // 视口外预取边距(px)
     this._flushHandler = null;         // 落盘兜底监听（visibilitychange/pagehide）
+    // 文档组（ModeController）运行期字段：unmount 必须归零，否则重挂载时 ensureDocCorner 的
+    // `if (ctrl._docCorner || !ctrl._el) return` 会早退 → 右上角组切换入口永久消失（须整页刷新）。
+    // 直接在此移除 document 捕获监听（_docDocHandler）并 null 字段，避免依赖 ModeController 全局
+    // （_resetState 在模块加载期即被顶层调用，那时 ModeController 未必就绪，调用其 hideDocPanel 会抛 ReferenceError）。
+    if (this._docDocHandler) document.removeEventListener('pointerdown', this._docDocHandler, true);
+    this._docDocHandler = null;
+    this._docCorner = null;
+    this._docPanel = null;
   },
 
   /** 接入画中卷功能舞台 */

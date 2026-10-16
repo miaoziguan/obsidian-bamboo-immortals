@@ -192,4 +192,24 @@ describe('分幕：reflowWriteOrder acts 分支布局', () => {
     expect(pos('c').x).toBe(pos('d').x);
     expect(pos('c').y).toBeLessThan(pos('d').y);
   });
+
+  test('actCountInfo：用「派生卡对象(无 level)」作 target 也能数真幕（修复前恒 0）', () => {
+    // 真实场景下 target 是 _orderCards() 派生的 {el,id,seq,x,y}，本无 level 字段；
+    // 旧实现直接读 g.cards[0].level → 恒 undefined → 幕数恒显示 0。修复后 splitActs 把幕级标题
+    // 的 level 挂到每幕首卡，actCountInfo 据此正确计数。
+    const ctrl = { _noteIndex: () => new Map([
+      ['a', { level: '' }], ['b', { level: 'h2' }], ['c', { level: '' }], ['d', { level: 'h2' }],
+    ]) };
+    const target = [
+      { id: 'a', el: null, seq: 0, x: 0, y: 0 },
+      { id: 'b', el: null, seq: 1, x: 0, y: 10 },
+      { id: 'c', el: null, seq: 2, x: 0, y: 20 },
+      { id: 'd', el: null, seq: 3, x: 0, y: 30 },
+    ];
+    const acts = PersistenceCoordinator.splitActs({ ctrl }, target);
+    expect(acts.level).toBe(2);
+    const info = PersistenceCoordinator.actCountInfo(acts);
+    expect(info.actCount).toBe(2);   // 2 个 h2 真幕
+    expect(info.hasIntro).toBe(true); // 有引子块 a
+  });
 });

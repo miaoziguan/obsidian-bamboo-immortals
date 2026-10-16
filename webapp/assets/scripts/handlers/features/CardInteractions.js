@@ -536,8 +536,8 @@ export const CardInteractions = {
         if (ctrl._selected && ctrl._selected.size) { e.preventDefault(); ctrl._deleteSelected(); }
         return;
       }
-      // F：便签被拖出视野后，重新归位到视野中心
-      if (e.key === 'f' || e.key === 'F') { e.preventDefault(); ctrl._recenterNotes(); }
+      // F：便签被拖出视野后，重新归位到视野中心（Cmd/Ctrl+F 是宿主查找快捷键，必须放行，不在此拦截）
+      if ((e.key === 'f' || e.key === 'F') && !e.metaKey && !e.ctrlKey) { e.preventDefault(); ctrl._recenterNotes(); }
     };
     document.addEventListener('keydown', ctrl._selKeyHandler);
 
@@ -631,8 +631,10 @@ export const CardInteractions = {
       startY = e.clientY;
       startZoom = ctrl._clampZoom(card.dataset.zoom);
       pendingZoom = startZoom;
+      // 基准 = 拖拽起始的「视觉宽度」(屏幕像素，已含画布缩放与卡片缩放)；pendingZoom 按视觉宽度比例变化，
+      // 与画布缩放/卡片缩放解耦——此前多除了一次 startZoom，导致已缩放过的卡片再次拖拽时灵敏度翻 startZoom 倍。
       const w = card.getBoundingClientRect().width || card.offsetWidth;
-      baseW = (w || 340) / startZoom;
+      baseW = (w || 340);
       card.classList.add('is-resizing');
       card.style.zIndex = String(++ctrl._zTop);
       document.addEventListener('pointermove', onMove);

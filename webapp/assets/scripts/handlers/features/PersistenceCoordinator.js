@@ -434,8 +434,14 @@ export const PersistenceCoordinator = {
     target.forEach((c) => {
       const n = noteIdx.get(c.id);
       const k = n ? levelOf(n.level) : 0;
-      if (k === level || !cur) { cur = { cards: [c] }; groups.push(cur); }   // 新幕（或首个引子块）
-      else { cur.cards.push(c); }                                            // 归入当前幕
+      // 把「幕级标题」的 level 挂到每幕首卡：actCountInfo 据此数真幕（排除引子块）。
+      // 此前直接读 g.cards[0].level，但 cards 是 _orderCards 派生的 {el,id,seq,x,y}，本无 level → 恒 undefined → 幕数恒 0。
+      if (k === level || !cur) {
+        cur = { cards: [{ id: c.id, el: c.el, seq: c.seq, x: c.x, y: c.y, level: (n ? n.level : null) }] };
+        groups.push(cur);
+      } else {
+        cur.cards.push(c);
+      }
     });
     return { level, groups };
   },

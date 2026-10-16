@@ -257,8 +257,10 @@ export class AppHost {
     try {
       const html = await adapter.read(normalizePath(`${this.webappDir}/app.html`));
       if (typeof html !== 'string' || html.length < 1000) return false;
-      // 自包含页面必含 <script（内联 bundle），无则视为损坏
-      return html.includes('<script');
+      // 自包含页面必含 <script（内联 bundle）且与配对 </script>、</html> 闭合；三者缺一不可。
+      // 历史并发下载可能中途中断：仅头部完整时旧校验会误判「健康」、绝不触发联网自愈（视图永久空白）。
+      // 半截文件必然缺失 </script> / </html> 其一或全部，据此识别并触发重下。
+      return html.includes('<script') && html.includes('</script>') && html.includes('</html>');
     } catch {
       return false;
     }

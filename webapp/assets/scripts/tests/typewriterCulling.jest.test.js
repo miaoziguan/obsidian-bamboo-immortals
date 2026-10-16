@@ -1272,4 +1272,38 @@ describe('便签张数不设限', () => {
     global.ViewportCuller.enforceCap(ctx, 50);
     expect(removed).toEqual(['n0', 'n1', 'n2', 'n3', 'n4', 'n5', 'n6', 'n7', 'n8', 'n9']);  // 最早 10 张
   });
+
+  test('ensureCardVisible：缩放≠1 时归位约束须乘缩放比 s（修复前按 s=1 算错）', () => {
+    // 注入 CanvasViewport 全局，使 ensureCardVisible 走真实 getScale（而非回退常量 1）
+    global.CanvasViewport = loadModule('services/CanvasViewport.js', ['CanvasViewport']).CanvasViewport;
+    const canvas = document.createElement('div');
+    Object.defineProperty(canvas, 'clientWidth', { configurable: true, value: 1000 });
+    Object.defineProperty(canvas, 'clientHeight', { configurable: true, value: 1000 });
+    feature._canvas = canvas;
+    feature._canvasOffset = { x: 0, y: 0, scale: 2 };
+    let captured = null;
+    feature._setCanvasOffset = (x, y) => { captured = { x, y }; };
+    feature._pinnedIds = () => new Set();
+    const geo = new GeoCache();
+    geo.set('a', { x: 1000, y: 1000, w: 340, h: 200, rot: 0 });
+    const state = {
+      geo,
+      notes: [{ id: 'a', x: 1000, y: 1000 }],
+      canvasOffset: { x: 0, y: 0, scale: 2 },
+      mountedCards: new Map(),
+      spatial: new SpatialIndex(512),
+    };
+    feature._noteIndex = () => {
+      const m = new Map();
+      state.notes.forEach((n) => m.set(n.id, n));
+      return m;
+    };
+    ViewportCuller.ensureCardVisible({ state, ctrl: feature }, 'a');
+    expect(captured).not.toBeNull();
+    // s=2 时：ox = min(VW-M-s(rawL+w), max(M-s*rawL, 0))
+    //   = min(1000-24-2*1340, max(24-2000,0)) = min(-1704, 0) = -1704
+    //   oy = min(1000-24-2*1200, max(24-2000,0)) = min(-1424, 0) = -1424
+    expect(captured.x).toBe(-1704);
+    expect(captured.y).toBe(-1424);
+  });
 });

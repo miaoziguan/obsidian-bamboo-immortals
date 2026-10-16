@@ -390,16 +390,19 @@ export const ViewportCuller = {
     const h = g ? g.h : 200;
     const off = state.canvasOffset || { x: 0, y: 0 };
     const M = 24;
+    // 缩放比：卡片在屏幕上的尺寸 = 布局尺寸 * s，约束须用 s 把「可见区(布局像素)」换算到「画布坐标」。
+    // 此前漏乘 s（等价硬编码 s=1），缩放≠100% 时归位算错 / 卡片不进视野。
+    const s = (typeof CanvasViewport !== 'undefined') ? CanvasViewport.getScale(ctrl) : 1;
     let ox = off.x, oy = off.y;
-    if (h + 2 * M < VH) {
-      oy = Math.min(VH - M - h - rawT, Math.max(M - rawT, oy));
+    if (s * h + 2 * M < VH) {
+      oy = Math.min(VH - M - s * (rawT + h), Math.max(M - s * rawT, oy));
     } else {
-      oy = M - rawT;
+      oy = M - s * rawT;
     }
-    if (w + 2 * M < VW) {
-      ox = Math.min(VW - M - w - rawL, Math.max(M - rawL, ox));
+    if (s * w + 2 * M < VW) {
+      ox = Math.min(VW - M - s * (rawL + w), Math.max(M - s * rawL, ox));
     } else {
-      ox = M - rawL;
+      ox = M - s * rawL;
     }
     if (ox === off.x && oy === off.y) return;
     ctrl._setCanvasOffset(ox, oy);

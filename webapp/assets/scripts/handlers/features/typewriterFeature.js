@@ -986,7 +986,11 @@ export const TypewriterFeature = {
     } else {
       const beeperEl = this._el.querySelector('.tw-beeper');
       const br = beeperEl.getBoundingClientRect();
-      const deviceCenterX = br.left + br.width / 2 - cr.left;
+      // 出纸口中心在「屏幕」上的 X；换算回「画布坐标」须扣除缩放比 s（getBoundingClientRect 的
+      // left/width 都是屏幕像素，rect 已含 scale）。此前用屏幕像素差直接当画布坐标，缩放≠100% 时错位。
+      const s = CanvasViewport.getScale(this);
+      const cxCanvas = (br.left + br.width / 2 - cr.left) / s;   // 出纸口中心的画布 X
+      const canvasH = cr.height / s;                              // 画布内容高度（rect 高度已含 scale）
       // 吐纸位叠放：新纸一律落在出纸口正上方（寻呼机中轴、画布中央略偏上），
       // 只逐张做小幅上错位 —— 像纸一张张叠出来，能看到下面还压着纸。
       // 刻意不做「互不重叠」的搬移：那样纸就不是从打印机吐出来的了，
@@ -996,9 +1000,9 @@ export const TypewriterFeature = {
       // 写入档不做错位，新卡从文章流起点（或锚点）干净接续。
       const stackOffset = (this._mode === 'write')
         ? 0
-        : ((STACK_LEVELS - 1) / 2 - stackIdx) * STACK_STEP;  // 新纸逐张上叠
-      card.style.left = (deviceCenterX - cw / 2) + 'px';
-      card.style.top = ((cr.height - ch) / 2 - 24 + stackOffset) + 'px';
+        : ((STACK_LEVELS - 1) / 2 - stackIdx) * STACK_STEP;  // 新纸逐张上叠（内容像素）
+      card.style.left = (cxCanvas - cw / 2) + 'px';
+      card.style.top = ((canvasH - ch) / 2 - 24 + stackOffset) + 'px';
       card.style.bottom = 'auto';
     }
     // 连续编辑改走 WritingDoc 原语：新卡即时进入规范模型（x/y 取刚算出的落点、

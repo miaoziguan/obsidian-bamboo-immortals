@@ -2020,12 +2020,15 @@ export class AppAPI {
         const files = [];
         for (const name of entries.files) {
           if (!name.toLowerCase().endsWith('.md')) continue;
-          const fullPath = normalizePath(`${dir}/${name}`);
+          // adapter.list 返回的是相对 vault 根的全路径（已含 dir，见 1864 注释），无需再拼 dir；
+          // 重复拼接会得到 `画中卷/画中卷/x.md`，stat 必失败 → mtime/size 误为 0、回传 path 错误。
+          const fullPath = normalizePath(name);
+          const base = name.substring(name.lastIndexOf('/') + 1);
           try {
             const st = await adapter.stat(fullPath);
-            files.push({ name, path: fullPath, mtime: st?.mtime ?? 0, size: st?.size ?? 0 });
+            files.push({ name: base, path: fullPath, mtime: st?.mtime ?? 0, size: st?.size ?? 0 });
           } catch {
-            files.push({ name, path: fullPath, mtime: 0, size: 0 });
+            files.push({ name: base, path: fullPath, mtime: 0, size: 0 });
           }
         }
         files.sort((a, b) => b.mtime - a.mtime);

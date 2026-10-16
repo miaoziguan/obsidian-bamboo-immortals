@@ -143,7 +143,9 @@ export class AppHost {
     // 极端环境对 data: URL 长度设限（通常 2MB+），超界回退 blob:。
     if (dataUrl.length > 2 * 1024 * 1024) {
       const blob = new Blob([html], { type: 'text/html' });
-      return URL.createObjectURL(blob);
+      const url = URL.createObjectURL(blob);
+      this.blobUrls.push(url);   // 登记，供 destroy() 统一 revoke（此前漏登记 → 每次重建视图都泄漏一份）
+      return url;
     }
     return dataUrl;
   }

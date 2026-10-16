@@ -542,12 +542,20 @@ export class Store {
                 }
             }
 
-            // 4) 全部尝试完成后清脏标记（dayData 已优先落 Vault，不受 settings/goals 失败牵连）
-            this._dirtyDays.clear();
-            this._dirtySettings.clear();
-            this._goalsDirty = false;
-            this._didInitialSave = true;
-            this.state.isDirty = false;
+            // 4) 仅「成功入 Vault」的类别清脏标记；失败者保留脏标记，下次保存重试入 Vault。
+            //    此前无条件全清：任一步失败改动的 Vault 侧永久丢失（只剩与 Vault 不互通的
+            //    localStorage 兜底），且无重试机会 —— 即「静默丢最后一次编辑」。
+            const dayOk = dirtyDays.length === 0 || !errors.some((e) => e.startsWith('dayData:'));
+            const goalsOk = !goalsDirty || !errors.some((e) => e.startsWith('goals:'));
+            const settingsOk = Object.keys(dirtySettings).length === 0 || !errors.some((e) => e.startsWith('settings:'));
+            if (dayOk) this._dirtyDays.clear();
+            if (settingsOk) this._dirtySettings.clear();
+            if (goalsOk) this._goalsDirty = false;
+            // 仅当关键数据(dayData)成功落地，才认为「已完成初始保存」；否则保留标志，
+            // 下次保存仍触发 goals 强制写等首存安全逻辑。
+            if (dayOk) this._didInitialSave = true;
+            // 仍有失败 → 保持 isDirty，让 UI 继续提示未保存（避免误以为已存进 Vault）。
+            this.state.isDirty = errors.length > 0;
         } catch (e) {
             console.error('Failed to save to storage:', e);
             // 【P1-4】「全部保存失败」此前比「部分保存失败」更安静 —— 只有 console.error。

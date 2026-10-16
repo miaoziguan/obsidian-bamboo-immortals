@@ -1091,7 +1091,7 @@ export const MindmapFeature = {
     if (this._toolbar) this._toolbar.hidden = true;   // 拖拽时收起浮动工具条，落点后再出现
     const updateDropHint = (ev) => {
       if (dragSet) return;
-      const under = document.elementFromPoint(ev.clientX, ev.clientY);
+      const under = this._elementFromPoint(ev.clientX, ev.clientY);
       const tgt = under && under.closest('.tw-mm-node');
       const tid = tgt && tgt.dataset.id;
       const next = (tid && tid !== id) ? tgt : null;
@@ -1131,7 +1131,7 @@ export const MindmapFeature = {
       if (!dragSet) nodeEl.style.pointerEvents = '';
       // 拖放连线：单颗拖动且松手落在另一颗子弹上 → 连线并弹回原位
       if (!dragSet && moved) {
-        const under = document.elementFromPoint(ev.clientX, ev.clientY);
+        const under = this._elementFromPoint(ev.clientX, ev.clientY);
         const tgt = under && under.closest('.tw-mm-node');
         const tid = tgt && tgt.dataset.id;
         if (tid && tid !== id) {
@@ -1215,8 +1215,11 @@ export const MindmapFeature = {
     const el = this._els.get(id);
     if (!el || !el._text) return;
     this._exitConnectMode();
-    this._editId = id;
+    // 先 _select（守卫会在「正在编辑别的节点」时先 commitEdit），再记 _editId；
+    // 顺序颠倒会让守卫 `this._editId && this._editId !== id` 恒为 false → 旧编辑不提交、
+    // 随后 focus 触发旧节点 blur 误把新节点编辑态关掉，且旧节点 keydown/blur 监听永不移除。
     this._select(id);
+    this._editId = id;
     const t = el._text;
     t.classList.remove('is-placeholder');
     const n = this._nodeById(id);
@@ -1656,6 +1659,17 @@ export const MindmapFeature = {
     this._searchIdx = -1;
   },
 
+  /** 命中测试：优先走 shadowRoot.elementFromPoint（画中卷运行在 Shadow DOM 内，
+   *  document.elementFromPoint 跨不过 shadow 边界，会恒返回 host → closest('.tw-mm-node') 为 null）。
+   *  与 LinkLayer.nodeAtPoint 同一写法；无 shadow 时回退 document。 */
+  _elementFromPoint(cx, cy) {
+    const sr = window.__bambooShadowRoot;
+    if (sr && typeof sr.elementFromPoint === 'function') {
+      try { return sr.elementFromPoint(cx, cy); } catch (_) { /* 取不到回退 */ }
+    }
+    return document.elementFromPoint(cx, cy);
+  },
+
   /** 在画布上拉出框选矩形（Shift+空白拖拽触发，几何对齐便签模式 _startMarquee） */
   _startMarquee(e, additive) {
     const canvas = this._canvas;
@@ -1682,13 +1696,29 @@ export const MindmapFeature = {
     const up = () => {
       document.removeEventListener('pointermove', move);
       document.removeEventListener('pointerup', up);
+      this._marqueeMove = null;
+      this._marqueeUp = null;
       if (this._marquee) { this._marquee.remove(); this._marquee = null; }
       this._selectInRect(this._marqueeRect || { x: sx0, y: sy0, w: 0, h: 0 }, additive);
       this._marqueeRect = null;
     };
+    this._marqueeMove = move;
+    this._marqueeUp = up;
     document.addEventListener('pointermove', move);
     document.addEventListener('pointerup', up);
     move(e);
+  },
+
+  /** 取消进行中的框选（双指捏合手势开始时由 onPinchWillStart 调用）。
+   *  此前 _cancelMarquee 未定义、typeof 守卫静默空转，导致捏合时框选不取消、松手误选一片。
+   *  监听器引用保存在 _marqueeMove/_marqueeUp 上，以便精确移除（move/up 是闭包、无法按引用之外移除）。 */
+  _cancelMarquee() {
+    if (this._marqueeMove) document.removeEventListener('pointermove', this._marqueeMove);
+    if (this._marqueeUp) document.removeEventListener('pointerup', this._marqueeUp);
+    this._marqueeMove = null;
+    this._marqueeUp = null;
+    if (this._marquee) { this._marquee.remove(); this._marquee = null; }
+    this._marqueeRect = null;
   },
 
   /** 框选矩形与子弹求交，选中相交者（矩形与子弹包围盒相交即算） */

@@ -1,5 +1,26 @@
 # Changelog
 
+## [3.28.19] — 2026-10-16
+
+### Fixed
+- **高危：数据安全**
+  - `AppAPI.file:list` 对已是 vault 全路径的条目二次拼接目录（`画中卷/画中卷/x.md`）→ `stat` 失败、`mtime/size` 误为 0、回传 `path` 错误。现直接用 list 返回的全路径。
+  - `store` 保存失败仍无条件清空全部脏标记 → Vault 侧改动永久丢失且无重试（静默丢最后一次编辑）。现仅「成功入 Vault」的类别清脏标记，失败者保留下次重试。
+  - `AppHost` blob URL 漏登记 `blobUrls` → `destroy()` 的 `revokeObjectURL` 是死代码，每次重建视图泄漏一份（webapp 含大量中文易越过 2MB 阈值走 blob）。现生成即登记。
+- **高危：功能失效**
+  - 思维子弹拖放连线用 `document.elementFromPoint`，默认 Shadow DOM 下跨不过边界 → 命中恒 `null`、连线整体失效。现新增 shadow 感知的 `_elementFromPoint`（与 `LinkLayer` 同写法）。
+  - 思维子弹 `_enterEdit` 先写 `_editId` 再 `_select`，使「切换编辑先提交」守卫恒失效 → 旧编辑不提交、`blur` 误关新编辑态、旧节点监听器泄漏。现已调序。
+  - 思维子弹捏合手势开始时调 `_cancelMarquee`，但该方法未定义 → 框选不取消、松手误选一片。现新增 `_cancelMarquee` 并保存监听器引用以便精确移除。
+- **高危：坐标纪律（缩放≠100% 才暴露）**
+  - 便签新卡落点用含缩放的屏幕像素差当画布坐标、且缩放后高度与未缩放高度混用 → 错位并被持久化。现已按缩放比换算回画布坐标。
+  - `ViewportCuller.ensureCardVisible` 归位约束漏乘缩放比（等价硬编码 `s=1`）→ 缩放≠100% 卡片不进视野。现已补 `s`。
+- **中危**
+  - 文档组（ModeController）`_docCorner/_docPanel` 未在 `unmount`/`_resetState` 归零 → 重挂载后右上角组切换入口永久消失；同步移除 `document` 捕获监听避免泄漏。
+  - 便签档 `F` 快捷键无修饰键守卫 → 吞掉 `Cmd/Ctrl+F` 宿主查找。已加 meta/ctrl 守卫放行。
+  - `AppHost` 健康校验识别不了「头部完整、尾部缺失」的半截文件 → 自愈永不触发、视图永久空白。已补 `</script>`/`</html>` 闭合判定。
+  - `PersistenceCoordinator.actCountInfo` 读派生卡对象不存在的 `.level` → 幕数恒显示 0。已由 `splitActs` 把幕级标题 `level` 挂到每幕首卡修正。
+  - 改尺寸拖拽基准含多余缩放 → 已缩放过的卡片再次拖拽手感失真。已改为视觉宽度基准。
+
 ## [3.28.18] — 2026-10-16
 
 ### Fixed

@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.28.20] — 2026-10-17
+
+### Changed
+- **合规（Obsidian 审核建议）**：
+  - 阅读器偏好（目录显隐 / 字号 / 阅读进度）由 `window.localStorage` 改为官方 `app.loadLocalStorage` / `app.saveLocalStorage`，不再直接触达浏览器存储（消除「Local Storage」提示）。
+  - 链接解析改用 `metadataCache.getFirstLinkpathDest`；文章索引改为只递归博客根目录（`TFolder`）收集，不再 `vault.getMarkdownFiles()` 全量枚举（消除「Vault Enumeration」提示，也减少大 vault 遍历开销）。
+
 ## [3.28.19] — 2026-10-16
 
 ### Fixed

@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf, MarkdownRenderer, Component, TFile, normalizePath, setIcon } from 'obsidian';
+import { ItemView, WorkspaceLeaf, MarkdownRenderer, Component, TFile, TFolder, normalizePath, setIcon } from 'obsidian';
 import type BambooReviewPlugin from '../../main';
 import { diffLocalDays } from '../utils/dateUtils';
 
@@ -242,7 +242,7 @@ export class BambooReaderView extends ItemView {
     this._focusPrev = null;
     container.removeClass('bm-focus');
     // 读取目录显隐偏好（用户设置，跨次打开保留）
-    this._tocHidden = window.localStorage.getItem('bamboo-reader-toc') === 'off';
+    this._tocHidden = this.app.loadLocalStorage('bamboo-reader-toc') === 'off';
     container.toggleClass('bm-hide-toc', this._tocHidden);
     await this.render(container);
     // 侧栏被 Obsidian 原生方式（左栏按钮/快捷键）展开或折叠时，同步「☰ 侧栏」按钮高亮态
@@ -665,11 +665,6 @@ export class BambooReaderView extends ItemView {
     return raw ? normalizePath(raw).replace(/^\/+|\/+$/g, '') : '';
   }
 
-  /** 该文件是否在博客范围内（root 为空时退化到「当前文章所在目录」） */
-  private inBlogScope(path: string, root: string): boolean {
-    return root ? path === root || path.startsWith(root + '/') : dirOfPath(path) === dirOfPath(this._path);
-  }
-
   /**
    * 轻量构建博客目录内的文章索引（元信息取自 metadataCache，同步零 IO，不为建索引读文件）。
    * _indexRoot 记的是「本次索引实际生效的范围键」—— 有 rootFolder 就记它，没有则记当前文章所在目录；
@@ -679,7 +674,7 @@ export class BambooReaderView extends ItemView {
     const root = this.blogRootFolder();
     const scope = root || dirOfPath(this._path);
     if (this._index && this._indexRoot === scope) return this._index;
-    const files = (this.app.vault.getMarkdownFiles() || []).filter((f) => this.inBlogScope(f.path, root));
+    const files = this.collectMarkdownFiles(root);
     this._index = files.map((f) => {
       const fm = this.readFrontmatter(f);
       return {
@@ -691,6 +686,33 @@ export class BambooReaderView extends ItemView {
     });
     this._indexRoot = scope;
     return this._index;
+  }
+
+  /**
+   * 只枚举博客范围内的 markdown，不触碰整个 vault。
+   * root 存在：递归 root 目录及其子目录。
+   * root 为空：仅当前文章所在目录（不递归）。
+   */
+  private collectMarkdownFiles(root: string): TFile[] {
+    const out: TFile[] = [];
+    const collectFrom = (folder: TFolder, recursive: boolean) => {
+      for (const child of folder.children) {
+        if (child instanceof TFolder) {
+          if (recursive) collectFrom(child, true);
+        } else if (child instanceof TFile && child.extension === 'md') {
+          out.push(child);
+        }
+      }
+    };
+    if (root) {
+      const base = this.app.vault.getAbstractFileByPath(root);
+      if (base instanceof TFolder) collectFrom(base, true);
+    } else {
+      const dir = dirOfPath(this._path);
+      const folder = dir ? this.app.vault.getAbstractFileByPath(dir) : this.app.vault.getRoot();
+      if (folder instanceof TFolder) collectFrom(folder, false);
+    }
+    return out;
   }
 
   private parseArticle(raw: string, file: TFile): ArticleMeta {
@@ -832,8 +854,9 @@ export class BambooReaderView extends ItemView {
     if (!target) return null;
     const direct = this.app.vault.getAbstractFileByPath(target);
     if (direct instanceof TFile) return direct.path;
-    const byBase = this.app.vault.getMarkdownFiles().find((f) => f.basename === target || f.path === target);
-    return byBase ? byBase.path : null;
+    // 用 metadataCache 解析链接（官方 API），不枚举全 vault
+    const dest = this.app.metadataCache.getFirstLinkpathDest(target, this._path);
+    return dest ? dest.path : null;
   }
 
   /* ── 滚动（进度条 / 百分比 / scroll spy / FAB / 进度保存） ── */
@@ -875,7 +898,7 @@ export class BambooReaderView extends ItemView {
   /* ── 字号 ── */
   private changeFont(delta: -1 | 0 | 1): void {
     const next = delta === 0 ? 16 : Math.max(12, Math.min(22, this.loadFontSize() + delta * 2));
-    window.localStorage.setItem('bamboo-reader-fontsize', String(next));
+    this.app.saveLocalStorage('bamboo-reader-fontsize', next);
     this.applyFontSize();
   }
 
@@ -888,8 +911,8 @@ export class BambooReaderView extends ItemView {
   }
 
   private loadFontSize(): number {
-    const v = window.localStorage.getItem('bamboo-reader-fontsize');
-    const n = v ? parseInt(v, 10) : 16;
+    const v = this.app.loadLocalStorage('bamboo-reader-fontsize') as number | string | null;
+    const n = v == null ? 16 : typeof v === 'number' ? v : parseInt(v, 10);
     return Number.isFinite(n) ? n : 16;
   }
 
@@ -954,18 +977,18 @@ export class BambooReaderView extends ItemView {
     this._tocHidden = !this._tocHidden;
     this._container?.toggleClass('bm-hide-toc', this._tocHidden);
     this._tocBtn?.toggleClass('is-on', !this._tocHidden);
-    window.localStorage.setItem('bamboo-reader-toc', this._tocHidden ? 'off' : 'on');
+    this.app.saveLocalStorage('bamboo-reader-toc', this._tocHidden ? 'off' : 'on');
   }
 
   /* ── 进度 ── */
   private loadProgress(path: string): number {
-    const v = window.localStorage.getItem('bamboo-reader-progress-' + path);
-    const n = v ? parseInt(v, 10) : 0;
+    const v = this.app.loadLocalStorage('bamboo-reader-progress-' + path) as number | string | null;
+    const n = v == null ? 0 : typeof v === 'number' ? v : parseInt(v, 10);
     return Number.isFinite(n) ? n : 0;
   }
 
   private saveProgress(path: string, top: number): void {
-    window.localStorage.setItem('bamboo-reader-progress-' + path, String(Math.round(top)));
+    this.app.saveLocalStorage('bamboo-reader-progress-' + path, Math.round(top));
   }
 
   private async openInObsidian(): Promise<void> {

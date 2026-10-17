@@ -1048,7 +1048,7 @@ export class AppAPI {
         if (!(await this.app.vault.adapter.exists(target))) {
           // wikilink / 仅笔记名：按 basename 查找（模块内 [[笔记]] 跳转）
           const base = (p.path.split('#')[0].split('/').pop()) || p.path;
-          const hit = this.app.vault.getMarkdownFiles().find((f) => f.basename === base);
+          const hit = this.app.metadataCache.getFirstLinkpathDest(base, sourcePath);
           if (hit) target = hit.path;
         }
         try {
@@ -1088,9 +1088,7 @@ export class AppAPI {
       if (!tf) {
         // wikilink / 仅笔记名：按 basename 查找（模块内 markdown 的 [[笔记]] 跳转）
         const base = path.split('#')[0].split('/').pop() || path;
-        const hit = this.app.vault.getMarkdownFiles().find(
-          (f) => f.basename === base || f.path === normalizePath(path)
-        );
+        const hit = this.app.metadataCache.getFirstLinkpathDest(base, '');
         if (hit) tf = hit;
       }
       if (!tf) { this.respondError(id, '文件不存在：' + path); return; }

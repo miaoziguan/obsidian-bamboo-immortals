@@ -393,7 +393,7 @@ export class ThemeBridge {
       // 确保手动调色优先于主题反推色相。
       if (palette && Number.isFinite(palette.hue)) payload.hue = palette.hue;
       if (palette && Number.isFinite(palette.lightnessOffset)) payload.lightnessOffset = palette.lightnessOffset;
-      if (palette && Number.isFinite(palette.saturation as number)) payload.saturation = palette.saturation as number;
+      if (palette && Number.isFinite(palette.saturation)) payload.saturation = palette.saturation;
       this._themeCacheKey = signature;
       this._themeCachePayload = payload;
     }

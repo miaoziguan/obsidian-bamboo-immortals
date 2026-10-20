@@ -19,7 +19,7 @@
 
 /* 左栏：竹影终端 · 香道番茄钟（Pip-Boy 风 × 竹林雅致） */
 .scroll-left {
-    border-right: 1px solid rgba(96, 132, 96, 0.16);
+    border-right: 1px solid hsla(var(--accent-hue), 20%, 50%, 0.16);
     padding: 16px;
     display: flex;
     min-height: 0;
@@ -71,9 +71,9 @@
 .scroll-screen {
     /* 青烟三色确有使用，保留；--bamboo / --bamboo-deep / --ink / --ink-light / --jade
        已随 R10 治理移除（零引用或遮蔽全局令牌），详见 base.css 同名清理说明。 */
-    --smoke-a: rgba(168,197,173,0.4);
-    --smoke-b: rgba(197,214,202,0.15);
-    --smoke-c: rgba(224,235,227,0);
+    --smoke-a: hsla(calc(var(--accent-hue) + 40), 22%, calc(72% + var(--accent-lightness-offset, 0%)), 0.4);
+    --smoke-b: hsla(calc(var(--accent-hue) + 40), 18%, calc(80% + var(--accent-lightness-offset, 0%)), 0.15);
+    --smoke-c: hsla(calc(var(--accent-hue) + 40), 22%, calc(90% + var(--accent-lightness-offset, 0%)), 0);
 }
 
 /* 控制区：竹制火折子（可拔帽） */
@@ -119,7 +119,7 @@
     height: 64px;
     display: block;
     overflow: visible; /* 斜举后火焰/筒身可能探出 32×64 视口，避免被裁切 */
-    filter: drop-shadow(0 3px 6px rgba(90,130,95,0.28));
+    filter: drop-shadow(0 3px 6px hsla(var(--accent-hue), 30%, 30%, 0.28));
 }
 /* 火绒：帽未开时藏起，拔帽后显火 */
 .scroll-firebrand .flame {
@@ -168,23 +168,24 @@
 .scroll-firebrand.cap-off .flame-inner,
 .scroll-firebrand.cap-off .flame-spark { animation-play-state: running; }
 /* 火折子配色：随主体色相 + 明度联动（HSL 派生，与香插同源）。
-   竹身/竹帽为青竹材质（色相约 +30 跟随主体），火苗为暖橙（色相约 -95/-75 跟随主体）。
+   竹身/竹帽为青竹材质（色相约 +30 跟随主体）；火苗/火星为物理暖橙（固定值，不跟随主体色相——
+   火是物理色，按用户要求保持硬编码，避免换主题时火也跟着变色的违和）。
    注意：SVG 呈现属性不解析 var()，故 fill/stroke 与渐变 stop-color 一律由 CSS 施加。 */
 .scroll-firebrand {
-  --fb-bamboo-1: hsl(calc(var(--accent-hue) + 35), 14%, calc(63% + var(--accent-lightness-offset)));
-  --fb-bamboo-2: hsl(calc(var(--accent-hue) + 32), 21%, calc(72% + var(--accent-lightness-offset)));
-  --fb-bamboo-3: hsl(calc(var(--accent-hue) + 33), 18%, calc(57% + var(--accent-lightness-offset)));
-  --fb-bamboo-stroke: hsl(calc(var(--accent-hue) + 35), 19%, calc(46% + var(--accent-lightness-offset)));
-  --fb-bamboo-top: hsl(calc(var(--accent-hue) + 32), 18%, calc(62% + var(--accent-lightness-offset)));
-  --fb-cap-1: hsl(calc(var(--accent-hue) + 32), 18%, calc(60% + var(--accent-lightness-offset)));
-  --fb-cap-2: hsl(calc(var(--accent-hue) + 32), 20%, calc(67% + var(--accent-lightness-offset)));
-  --fb-cap-3: hsl(calc(var(--accent-hue) + 30), 18%, calc(51% + var(--accent-lightness-offset)));
-  --fb-cap-edge: hsl(calc(var(--accent-hue) + 30), 16%, calc(54% + var(--accent-lightness-offset)));
-  --fb-cap-knob: hsl(calc(var(--accent-hue) + 32), 18%, calc(62% + var(--accent-lightness-offset)));
-  --fb-cap-knob-stroke: hsl(calc(var(--accent-hue) + 38), 21%, calc(37% + var(--accent-lightness-offset)));
-  --fb-flame-outer: hsl(calc(var(--accent-hue) + -95), 100%, calc(62% + var(--accent-lightness-offset)));
-  --fb-flame-inner: hsl(calc(var(--accent-hue) + -75), 100%, calc(70% + var(--accent-lightness-offset)));
-  --fb-spark: hsl(calc(var(--accent-hue) + -84), 100%, calc(75% + var(--accent-lightness-offset)));
+  --fb-bamboo-1: hsl(calc(var(--accent-hue) + 35), min(100%, calc(14% * var(--accent-saturation-scale, 1))), calc(63% + var(--accent-lightness-offset)));
+  --fb-bamboo-2: hsl(calc(var(--accent-hue) + 32), min(100%, calc(21% * var(--accent-saturation-scale, 1))), calc(72% + var(--accent-lightness-offset)));
+  --fb-bamboo-3: hsl(calc(var(--accent-hue) + 33), min(100%, calc(18% * var(--accent-saturation-scale, 1))), calc(57% + var(--accent-lightness-offset)));
+  --fb-bamboo-stroke: hsl(calc(var(--accent-hue) + 35), min(100%, calc(19% * var(--accent-saturation-scale, 1))), calc(46% + var(--accent-lightness-offset)));
+  --fb-bamboo-top: hsl(calc(var(--accent-hue) + 32), min(100%, calc(18% * var(--accent-saturation-scale, 1))), calc(62% + var(--accent-lightness-offset)));
+  --fb-cap-1: hsl(calc(var(--accent-hue) + 32), min(100%, calc(18% * var(--accent-saturation-scale, 1))), calc(60% + var(--accent-lightness-offset)));
+  --fb-cap-2: hsl(calc(var(--accent-hue) + 32), min(100%, calc(20% * var(--accent-saturation-scale, 1))), calc(67% + var(--accent-lightness-offset)));
+  --fb-cap-3: hsl(calc(var(--accent-hue) + 30), min(100%, calc(18% * var(--accent-saturation-scale, 1))), calc(51% + var(--accent-lightness-offset)));
+  --fb-cap-edge: hsl(calc(var(--accent-hue) + 30), min(100%, calc(16% * var(--accent-saturation-scale, 1))), calc(54% + var(--accent-lightness-offset)));
+  --fb-cap-knob: hsl(calc(var(--accent-hue) + 32), min(100%, calc(18% * var(--accent-saturation-scale, 1))), calc(62% + var(--accent-lightness-offset)));
+  --fb-cap-knob-stroke: hsl(calc(var(--accent-hue) + 38), min(100%, calc(21% * var(--accent-saturation-scale, 1))), calc(37% + var(--accent-lightness-offset)));
+  --fb-flame-outer: hsl(24, 100%, 62%);
+  --fb-flame-inner: hsl(42, 100%, 70%);
+  --fb-spark: hsl(33, 100%, 75%);
 }
 .scroll-firebrand .fb-body { stroke: var(--fb-bamboo-stroke); }
 .scroll-firebrand .fb-stroke { stroke: var(--fb-bamboo-stroke); }
@@ -573,170 +574,172 @@
    cs-rim 口沿 / cs-hole 插香孔 / cs-accent 点缀（竹叶·铜绿·瓣尖·石筋·开片·流釉）。 */
 .scroll-censer {
     /* 默认 = 青瓷竹节 */
-    --cs-1: hsl(calc(var(--accent-hue) + 31), 23.6%, calc(82.5% + var(--accent-lightness-offset)));
-    --cs-2: hsl(calc(var(--accent-hue) + 23), 21.3%, calc(76.1% + var(--accent-lightness-offset)));
-    --cs-3: hsl(calc(var(--accent-hue) + 22), 19.5%, calc(69.8% + var(--accent-lightness-offset)));
-    --cs-4: hsl(calc(var(--accent-hue) + 28), 19.1%, calc(63.1% + var(--accent-lightness-offset)));
-    --cs-pool-a: hsla(calc(var(--accent-hue) + 33), 18.4%, calc(48% + var(--accent-lightness-offset)), 0.15);
-    --cs-pool-b: hsla(calc(var(--accent-hue) + 30), 23.8%, calc(41.2% + var(--accent-lightness-offset)), 0.3);
-    --cs-line: hsla(calc(var(--accent-hue) + 23), 20%, calc(39.2% + var(--accent-lightness-offset)), 0.16);
-    --cs-rim: hsla(calc(var(--accent-hue) + 24), 17.2%, calc(28.4% + var(--accent-lightness-offset)), 0.25);
-    --cs-hole: hsla(calc(var(--accent-hue) + 20), 17.6%, calc(33.3% + var(--accent-lightness-offset)), 0.3);
-    --cs-accent: hsla(calc(var(--accent-hue) + 17), 17.9%, calc(38.2% + var(--accent-lightness-offset)), 0.5);
-    --cs-accent-2: hsla(calc(var(--accent-hue) + 17), 14.3%, calc(48% + var(--accent-lightness-offset)), 0.35);
+    --cs-1: hsl(calc(var(--accent-hue) + 31), min(100%, calc(23.6% * var(--accent-saturation-scale, 1))), calc(82.5% + var(--accent-lightness-offset)));
+    --cs-2: hsl(calc(var(--accent-hue) + 23), min(100%, calc(21.3% * var(--accent-saturation-scale, 1))), calc(76.1% + var(--accent-lightness-offset)));
+    --cs-3: hsl(calc(var(--accent-hue) + 22), min(100%, calc(19.5% * var(--accent-saturation-scale, 1))), calc(69.8% + var(--accent-lightness-offset)));
+    --cs-4: hsl(calc(var(--accent-hue) + 28), min(100%, calc(19.1% * var(--accent-saturation-scale, 1))), calc(63.1% + var(--accent-lightness-offset)));
+    --cs-pool-a: hsla(calc(var(--accent-hue) + 33), min(100%, calc(18.4% * var(--accent-saturation-scale, 1))), calc(48% + var(--accent-lightness-offset)), 0.15);
+    --cs-pool-b: hsla(calc(var(--accent-hue) + 30), min(100%, calc(23.8% * var(--accent-saturation-scale, 1))), calc(41.2% + var(--accent-lightness-offset)), 0.3);
+    --cs-line: hsla(calc(var(--accent-hue) + 23), min(100%, calc(20% * var(--accent-saturation-scale, 1))), calc(39.2% + var(--accent-lightness-offset)), 0.16);
+    --cs-rim: hsla(calc(var(--accent-hue) + 24), min(100%, calc(17.2% * var(--accent-saturation-scale, 1))), calc(28.4% + var(--accent-lightness-offset)), 0.25);
+    --cs-hole: hsla(calc(var(--accent-hue) + 20), min(100%, calc(17.6% * var(--accent-saturation-scale, 1))), calc(33.3% + var(--accent-lightness-offset)), 0.3);
+    --cs-accent: hsla(calc(var(--accent-hue) + 17), min(100%, calc(17.9% * var(--accent-saturation-scale, 1))), calc(38.2% + var(--accent-lightness-offset)), 0.5);
+    --cs-accent-2: hsla(calc(var(--accent-hue) + 17), min(100%, calc(14.3% * var(--accent-saturation-scale, 1))), calc(48% + var(--accent-lightness-offset)), 0.35);
 }
 /* 太湖灵石：白润青玉 + 浅色石筋（瘦皱漏透，温润如玉，留青玉味） */
 .cs-stone {
-    --cs-1: hsl(calc(var(--accent-hue) + 26), 16.3%, calc(91.6% + var(--accent-lightness-offset)));
-    --cs-2: hsl(calc(var(--accent-hue) + 30), 13.9%, calc(85.9% + var(--accent-lightness-offset)));
-    --cs-3: hsl(calc(var(--accent-hue) + 27), 9.1%, calc(76.3% + var(--accent-lightness-offset)));
-    --cs-4: hsl(calc(var(--accent-hue) + 35), 6.1%, calc(61.6% + var(--accent-lightness-offset)));
-    --cs-pool-a: hsla(calc(var(--accent-hue) + 38), 12.2%, calc(59.8% + var(--accent-lightness-offset)), 0.14);
-    --cs-pool-b: hsla(calc(var(--accent-hue) + 41), 11.1%, calc(49.4% + var(--accent-lightness-offset)), 0.28);
-    --cs-line: hsla(calc(var(--accent-hue) + 36), 10.2%, calc(48% + var(--accent-lightness-offset)), 0.26);
-    --cs-rim: hsla(calc(var(--accent-hue) + 36), 12.2%, calc(40.2% + var(--accent-lightness-offset)), 0.3);
-    --cs-hole: hsla(calc(var(--accent-hue) + 37), 11.9%, calc(37.8% + var(--accent-lightness-offset)), 0.42);
-    --cs-accent: hsla(calc(var(--accent-hue) + 26), 30.4%, calc(95.5% + var(--accent-lightness-offset)), 0.6);
+    --cs-1: hsl(calc(var(--accent-hue) + 26), min(100%, calc(16.3% * var(--accent-saturation-scale, 1))), calc(91.6% + var(--accent-lightness-offset)));
+    --cs-2: hsl(calc(var(--accent-hue) + 30), min(100%, calc(13.9% * var(--accent-saturation-scale, 1))), calc(85.9% + var(--accent-lightness-offset)));
+    --cs-3: hsl(calc(var(--accent-hue) + 27), min(100%, calc(9.1% * var(--accent-saturation-scale, 1))), calc(76.3% + var(--accent-lightness-offset)));
+    --cs-4: hsl(calc(var(--accent-hue) + 35), min(100%, calc(6.1% * var(--accent-saturation-scale, 1))), calc(61.6% + var(--accent-lightness-offset)));
+    --cs-pool-a: hsla(calc(var(--accent-hue) + 38), min(100%, calc(12.2% * var(--accent-saturation-scale, 1))), calc(59.8% + var(--accent-lightness-offset)), 0.14);
+    --cs-pool-b: hsla(calc(var(--accent-hue) + 41), min(100%, calc(11.1% * var(--accent-saturation-scale, 1))), calc(49.4% + var(--accent-lightness-offset)), 0.28);
+    --cs-line: hsla(calc(var(--accent-hue) + 36), min(100%, calc(10.2% * var(--accent-saturation-scale, 1))), calc(48% + var(--accent-lightness-offset)), 0.26);
+    --cs-rim: hsla(calc(var(--accent-hue) + 36), min(100%, calc(12.2% * var(--accent-saturation-scale, 1))), calc(40.2% + var(--accent-lightness-offset)), 0.3);
+    --cs-hole: hsla(calc(var(--accent-hue) + 37), min(100%, calc(11.9% * var(--accent-saturation-scale, 1))), calc(37.8% + var(--accent-lightness-offset)), 0.42);
+    --cs-accent: hsla(calc(var(--accent-hue) + 26), min(100%, calc(30.4% * var(--accent-saturation-scale, 1))), calc(95.5% + var(--accent-lightness-offset)), 0.6);
     --cs-accent-2: transparent;
 }
 /* 笔山：温润白玉山子（连绵峰谷，中间谷插香；水头足、油脂光泽，絮棉与淡沁） */
 .cs-bianshan {
-    --cs-1: hsl(calc(var(--accent-hue) + -30), 18.2%, calc(95.7% + var(--accent-lightness-offset)));
-    --cs-2: hsl(calc(var(--accent-hue) + -40), 7.3%, calc(92% + var(--accent-lightness-offset)));
-    --cs-3: hsl(calc(var(--accent-hue) + -60), 5.1%, calc(84.7% + var(--accent-lightness-offset)));
-    --cs-4: hsl(calc(var(--accent-hue) + -84), 7.8%, calc(74.9% + var(--accent-lightness-offset)));
-    --cs-pool-a: hsla(calc(var(--accent-hue) + 0), 2.9%, calc(60% + var(--accent-lightness-offset)), 0.16);
-    --cs-pool-b: hsla(calc(var(--accent-hue) + -75), 3.4%, calc(45.5% + var(--accent-lightness-offset)), 0.3);
-    --cs-line: hsla(calc(var(--accent-hue) + -75), 3.3%, calc(47.1% + var(--accent-lightness-offset)), 0.2);
-    --cs-rim: hsla(calc(var(--accent-hue) + -75), 3.6%, calc(43.9% + var(--accent-lightness-offset)), 0.26);
-    --cs-hole: hsla(calc(var(--accent-hue) + -75), 3.7%, calc(42.4% + var(--accent-lightness-offset)), 0.34);
-    --cs-accent: hsla(calc(var(--accent-hue) + 0), 0%, calc(100% + var(--accent-lightness-offset)), 0.55);
-    --cs-accent-2: hsla(calc(var(--accent-hue) + -84), 8.6%, calc(77.3% + var(--accent-lightness-offset)), 0.28);
+    --cs-1: hsl(calc(var(--accent-hue) + -30), min(100%, calc(18.2% * var(--accent-saturation-scale, 1))), calc(95.7% + var(--accent-lightness-offset)));
+    --cs-2: hsl(calc(var(--accent-hue) + -40), min(100%, calc(7.3% * var(--accent-saturation-scale, 1))), calc(92% + var(--accent-lightness-offset)));
+    --cs-3: hsl(calc(var(--accent-hue) + -60), min(100%, calc(5.1% * var(--accent-saturation-scale, 1))), calc(84.7% + var(--accent-lightness-offset)));
+    --cs-4: hsl(calc(var(--accent-hue) + -84), min(100%, calc(7.8% * var(--accent-saturation-scale, 1))), calc(74.9% + var(--accent-lightness-offset)));
+    --cs-pool-a: hsla(calc(var(--accent-hue) + 0), min(100%, calc(2.9% * var(--accent-saturation-scale, 1))), calc(60% + var(--accent-lightness-offset)), 0.16);
+    --cs-pool-b: hsla(calc(var(--accent-hue) + -75), min(100%, calc(3.4% * var(--accent-saturation-scale, 1))), calc(45.5% + var(--accent-lightness-offset)), 0.3);
+    --cs-line: hsla(calc(var(--accent-hue) + -75), min(100%, calc(3.3% * var(--accent-saturation-scale, 1))), calc(47.1% + var(--accent-lightness-offset)), 0.2);
+    --cs-rim: hsla(calc(var(--accent-hue) + -75), min(100%, calc(3.6% * var(--accent-saturation-scale, 1))), calc(43.9% + var(--accent-lightness-offset)), 0.26);
+    --cs-hole: hsla(calc(var(--accent-hue) + -75), min(100%, calc(3.7% * var(--accent-saturation-scale, 1))), calc(42.4% + var(--accent-lightness-offset)), 0.34);
+    --cs-accent: hsla(calc(var(--accent-hue) + 0), min(100%, calc(0% * var(--accent-saturation-scale, 1))), calc(100% + var(--accent-lightness-offset)), 0.55);
+    --cs-accent-2: hsla(calc(var(--accent-hue) + -84), min(100%, calc(8.6% * var(--accent-saturation-scale, 1))), calc(77.3% + var(--accent-lightness-offset)), 0.28);
 }
 /* 青玉叶：淡青玉，水头通透、油脂温润（一片立叶，极简不堆砌） */
 .cs-yezi {
-    --cs-1: hsl(calc(var(--accent-hue) + 28), 22%, calc(88.4% + var(--accent-lightness-offset)));
-    --cs-2: hsl(calc(var(--accent-hue) + 27), 18.7%, calc(81.2% + var(--accent-lightness-offset)));
-    --cs-3: hsl(calc(var(--accent-hue) + 26), 14.3%, calc(71.2% + var(--accent-lightness-offset)));
-    --cs-4: hsl(calc(var(--accent-hue) + 33), 14.1%, calc(59.8% + var(--accent-lightness-offset)));
-    --cs-pool-a: hsla(calc(var(--accent-hue) + 36), 13.6%, calc(56.9% + var(--accent-lightness-offset)), 0.14);
-    --cs-pool-b: hsla(calc(var(--accent-hue) + 34), 14.3%, calc(43.9% + var(--accent-lightness-offset)), 0.4);
-    --cs-line: hsla(calc(var(--accent-hue) + 34), 11.6%, calc(52.5% + var(--accent-lightness-offset)), 0.26);
-    --cs-rim: hsla(calc(var(--accent-hue) + 37), 11.5%, calc(44.3% + var(--accent-lightness-offset)), 0.3);
-    --cs-hole: hsla(calc(var(--accent-hue) + 37), 12.6%, calc(40.4% + var(--accent-lightness-offset)), 0.45);
-    --cs-accent: hsla(calc(var(--accent-hue) + 30), 36.4%, calc(95.7% + var(--accent-lightness-offset)), 0.6);
-    --cs-accent-2: hsla(calc(var(--accent-hue) + 36), 18.2%, calc(78.4% + var(--accent-lightness-offset)), 0.3);
+    --cs-1: hsl(calc(var(--accent-hue) + 28), min(100%, calc(22% * var(--accent-saturation-scale, 1))), calc(88.4% + var(--accent-lightness-offset)));
+    --cs-2: hsl(calc(var(--accent-hue) + 27), min(100%, calc(18.7% * var(--accent-saturation-scale, 1))), calc(81.2% + var(--accent-lightness-offset)));
+    --cs-3: hsl(calc(var(--accent-hue) + 26), min(100%, calc(14.3% * var(--accent-saturation-scale, 1))), calc(71.2% + var(--accent-lightness-offset)));
+    --cs-4: hsl(calc(var(--accent-hue) + 33), min(100%, calc(14.1% * var(--accent-saturation-scale, 1))), calc(59.8% + var(--accent-lightness-offset)));
+    --cs-pool-a: hsla(calc(var(--accent-hue) + 36), min(100%, calc(13.6% * var(--accent-saturation-scale, 1))), calc(56.9% + var(--accent-lightness-offset)), 0.14);
+    --cs-pool-b: hsla(calc(var(--accent-hue) + 34), min(100%, calc(14.3% * var(--accent-saturation-scale, 1))), calc(43.9% + var(--accent-lightness-offset)), 0.4);
+    --cs-line: hsla(calc(var(--accent-hue) + 34), min(100%, calc(11.6% * var(--accent-saturation-scale, 1))), calc(52.5% + var(--accent-lightness-offset)), 0.26);
+    --cs-rim: hsla(calc(var(--accent-hue) + 37), min(100%, calc(11.5% * var(--accent-saturation-scale, 1))), calc(44.3% + var(--accent-lightness-offset)), 0.3);
+    --cs-hole: hsla(calc(var(--accent-hue) + 37), min(100%, calc(12.6% * var(--accent-saturation-scale, 1))), calc(40.4% + var(--accent-lightness-offset)), 0.45);
+    --cs-accent: hsla(calc(var(--accent-hue) + 30), min(100%, calc(36.4% * var(--accent-saturation-scale, 1))), calc(95.7% + var(--accent-lightness-offset)), 0.6);
+    --cs-accent-2: hsla(calc(var(--accent-hue) + 36), min(100%, calc(18.2% * var(--accent-saturation-scale, 1))), calc(78.4% + var(--accent-lightness-offset)), 0.3);
 }
 
-/* 粉彩莲台：釉上粉彩的粉润（瓣根淡、瓣中玻璃白、瓣尖胭脂晕；花心淡黄绿，釉面玻璃光） */
+/* 粉彩莲台：釉上粉彩的粉润（瓣根淡、瓣中玻璃白、瓣尖胭脂晕；花心淡黄绿，釉面玻璃光）。
+   注意：色相已固定为默认竹青绿基准 120° 下的粉调（不跟随色相滑块），否则莲台会随主题变蓝，失其本色。 */
 .cs-liantai {
-    --cs-1: hsl(calc(var(--accent-hue) + -105), 50%, calc(96.9% + var(--accent-lightness-offset)));
-    --cs-2: hsl(calc(var(--accent-hue) + -128), 40.5%, calc(92.7% + var(--accent-lightness-offset)));
-    --cs-3: hsl(calc(var(--accent-hue) + -135), 40.7%, calc(84.1% + var(--accent-lightness-offset)));
-    --cs-4: hsl(calc(var(--accent-hue) + -136), 36.6%, calc(72.2% + var(--accent-lightness-offset)));
-    --cs-pool-a: hsla(calc(var(--accent-hue) + -136), 15.6%, calc(53.5% + var(--accent-lightness-offset)), 0.14);
-    --cs-pool-b: hsla(calc(var(--accent-hue) + -139), 15.9%, calc(45.7% + var(--accent-lightness-offset)), 0.28);
-    --cs-line: hsla(calc(var(--accent-hue) + -137), 32.3%, calc(61.2% + var(--accent-lightness-offset)), 0.26);
-    --cs-rim: hsla(calc(var(--accent-hue) + -139), 25%, calc(54.5% + var(--accent-lightness-offset)), 0.28);
-    --cs-hole: hsla(calc(var(--accent-hue) + -141), 21.3%, calc(46.9% + var(--accent-lightness-offset)), 0.4);
-    --cs-accent: hsla(calc(var(--accent-hue) + -137), 40.6%, calc(62.4% + var(--accent-lightness-offset)), 0.5);
-    --cs-accent-2: hsla(calc(var(--accent-hue) + -139), 49.2%, calc(74.5% + var(--accent-lightness-offset)), 0.3);
+    --cs-1: hsl(calc(120 + -105), min(100%, calc(50% * var(--accent-saturation-scale, 1))), calc(96.9% + var(--accent-lightness-offset)));
+    --cs-2: hsl(calc(120 + -128), min(100%, calc(40.5% * var(--accent-saturation-scale, 1))), calc(92.7% + var(--accent-lightness-offset)));
+    --cs-3: hsl(calc(120 + -135), min(100%, calc(40.7% * var(--accent-saturation-scale, 1))), calc(84.1% + var(--accent-lightness-offset)));
+    --cs-4: hsl(calc(120 + -136), min(100%, calc(36.6% * var(--accent-saturation-scale, 1))), calc(72.2% + var(--accent-lightness-offset)));
+    --cs-pool-a: hsla(calc(120 + -136), min(100%, calc(15.6% * var(--accent-saturation-scale, 1))), calc(53.5% + var(--accent-lightness-offset)), 0.14);
+    --cs-pool-b: hsla(calc(120 + -139), min(100%, calc(15.9% * var(--accent-saturation-scale, 1))), calc(45.7% + var(--accent-lightness-offset)), 0.28);
+    --cs-line: hsla(calc(120 + -137), min(100%, calc(32.3% * var(--accent-saturation-scale, 1))), calc(61.2% + var(--accent-lightness-offset)), 0.26);
+    --cs-rim: hsla(calc(120 + -139), min(100%, calc(25% * var(--accent-saturation-scale, 1))), calc(54.5% + var(--accent-lightness-offset)), 0.28);
+    --cs-hole: hsla(calc(120 + -141), min(100%, calc(21.3% * var(--accent-saturation-scale, 1))), calc(46.9% + var(--accent-lightness-offset)), 0.4);
+    --cs-accent: hsla(calc(120 + -137), min(100%, calc(40.6% * var(--accent-saturation-scale, 1))), calc(62.4% + var(--accent-lightness-offset)), 0.5);
+    --cs-accent-2: hsla(calc(120 + -139), min(100%, calc(49.2% * var(--accent-saturation-scale, 1))), calc(74.5% + var(--accent-lightness-offset)), 0.3);
 }
 
 /* 暗色模式：整体提亮一档并加强点缀，避免铜炉/灵石在深底上糊成一团 */
 :host(.dark) .scroll-censer {
-    --cs-1: hsl(calc(var(--accent-hue) + 28), 29.2%, calc(87.3% + var(--accent-lightness-offset)));
-    --cs-2: hsl(calc(var(--accent-hue) + 25), 24.1%, calc(78.8% + var(--accent-lightness-offset)));
-    --cs-3: hsl(calc(var(--accent-hue) + 33), 23.1%, calc(69.4% + var(--accent-lightness-offset)));
-    --cs-4: hsl(calc(var(--accent-hue) + 34), 16.6%, calc(56.3% + var(--accent-lightness-offset)));
-    --cs-pool-a: hsla(calc(var(--accent-hue) + 33), 22%, calc(59.8% + var(--accent-lightness-offset)), 0.2);
-    --cs-pool-b: hsla(calc(var(--accent-hue) + 30), 20.8%, calc(47.1% + var(--accent-lightness-offset)), 0.35);
-    --cs-line: hsla(calc(var(--accent-hue) + 30), 21.1%, calc(62.7% + var(--accent-lightness-offset)), 0.22);
-    --cs-rim: hsla(calc(var(--accent-hue) + 30), 17.4%, calc(54.9% + var(--accent-lightness-offset)), 0.32);
-    --cs-hole: hsla(calc(var(--accent-hue) + 26), 14.9%, calc(46.1% + var(--accent-lightness-offset)), 0.4);
-    --cs-accent: hsla(calc(var(--accent-hue) + 20), 20%, calc(55.9% + var(--accent-lightness-offset)), 0.5);
-    --cs-accent-2: hsla(calc(var(--accent-hue) + 20), 24.3%, calc(63.7% + var(--accent-lightness-offset)), 0.35);
+    --cs-1: hsl(calc(var(--accent-hue) + 28), min(100%, calc(29.2% * var(--accent-saturation-scale, 1))), calc(87.3% + var(--accent-lightness-offset)));
+    --cs-2: hsl(calc(var(--accent-hue) + 25), min(100%, calc(24.1% * var(--accent-saturation-scale, 1))), calc(78.8% + var(--accent-lightness-offset)));
+    --cs-3: hsl(calc(var(--accent-hue) + 33), min(100%, calc(23.1% * var(--accent-saturation-scale, 1))), calc(69.4% + var(--accent-lightness-offset)));
+    --cs-4: hsl(calc(var(--accent-hue) + 34), min(100%, calc(16.6% * var(--accent-saturation-scale, 1))), calc(56.3% + var(--accent-lightness-offset)));
+    --cs-pool-a: hsla(calc(var(--accent-hue) + 33), min(100%, calc(22% * var(--accent-saturation-scale, 1))), calc(59.8% + var(--accent-lightness-offset)), 0.2);
+    --cs-pool-b: hsla(calc(var(--accent-hue) + 30), min(100%, calc(20.8% * var(--accent-saturation-scale, 1))), calc(47.1% + var(--accent-lightness-offset)), 0.35);
+    --cs-line: hsla(calc(var(--accent-hue) + 30), min(100%, calc(21.1% * var(--accent-saturation-scale, 1))), calc(62.7% + var(--accent-lightness-offset)), 0.22);
+    --cs-rim: hsla(calc(var(--accent-hue) + 30), min(100%, calc(17.4% * var(--accent-saturation-scale, 1))), calc(54.9% + var(--accent-lightness-offset)), 0.32);
+    --cs-hole: hsla(calc(var(--accent-hue) + 26), min(100%, calc(14.9% * var(--accent-saturation-scale, 1))), calc(46.1% + var(--accent-lightness-offset)), 0.4);
+    --cs-accent: hsla(calc(var(--accent-hue) + 20), min(100%, calc(20% * var(--accent-saturation-scale, 1))), calc(55.9% + var(--accent-lightness-offset)), 0.5);
+    --cs-accent-2: hsla(calc(var(--accent-hue) + 20), min(100%, calc(24.3% * var(--accent-saturation-scale, 1))), calc(63.7% + var(--accent-lightness-offset)), 0.35);
 }
 :host(.dark) .cs-stone {
-    --cs-1: hsl(calc(var(--accent-hue) + 27), 16.4%, calc(89.2% + var(--accent-lightness-offset)));
-    --cs-2: hsl(calc(var(--accent-hue) + 24), 10%, calc(80.4% + var(--accent-lightness-offset)));
-    --cs-3: hsl(calc(var(--accent-hue) + 30), 7.6%, calc(69% + var(--accent-lightness-offset)));
-    --cs-4: hsl(calc(var(--accent-hue) + 37), 5.8%, calc(55.9% + var(--accent-lightness-offset)));
-    --cs-pool-a: hsla(calc(var(--accent-hue) + 39), 13.9%, calc(60.4% + var(--accent-lightness-offset)), 0.16);
-    --cs-pool-b: hsla(calc(var(--accent-hue) + 38), 11.8%, calc(49.8% + var(--accent-lightness-offset)), 0.34);
-    --cs-line: hsla(calc(var(--accent-hue) + 30), 18.5%, calc(74.5% + var(--accent-lightness-offset)), 0.26);
-    --cs-rim: hsla(calc(var(--accent-hue) + 33), 15.6%, calc(66.1% + var(--accent-lightness-offset)), 0.32);
-    --cs-hole: hsla(calc(var(--accent-hue) + 35), 11.8%, calc(56.9% + var(--accent-lightness-offset)), 0.45);
-    --cs-accent: hsla(calc(var(--accent-hue) + 26), 30.4%, calc(95.5% + var(--accent-lightness-offset)), 0.62);
+    --cs-1: hsl(calc(var(--accent-hue) + 27), min(100%, calc(16.4% * var(--accent-saturation-scale, 1))), calc(89.2% + var(--accent-lightness-offset)));
+    --cs-2: hsl(calc(var(--accent-hue) + 24), min(100%, calc(10% * var(--accent-saturation-scale, 1))), calc(80.4% + var(--accent-lightness-offset)));
+    --cs-3: hsl(calc(var(--accent-hue) + 30), min(100%, calc(7.6% * var(--accent-saturation-scale, 1))), calc(69% + var(--accent-lightness-offset)));
+    --cs-4: hsl(calc(var(--accent-hue) + 37), min(100%, calc(5.8% * var(--accent-saturation-scale, 1))), calc(55.9% + var(--accent-lightness-offset)));
+    --cs-pool-a: hsla(calc(var(--accent-hue) + 39), min(100%, calc(13.9% * var(--accent-saturation-scale, 1))), calc(60.4% + var(--accent-lightness-offset)), 0.16);
+    --cs-pool-b: hsla(calc(var(--accent-hue) + 38), min(100%, calc(11.8% * var(--accent-saturation-scale, 1))), calc(49.8% + var(--accent-lightness-offset)), 0.34);
+    --cs-line: hsla(calc(var(--accent-hue) + 30), min(100%, calc(18.5% * var(--accent-saturation-scale, 1))), calc(74.5% + var(--accent-lightness-offset)), 0.26);
+    --cs-rim: hsla(calc(var(--accent-hue) + 33), min(100%, calc(15.6% * var(--accent-saturation-scale, 1))), calc(66.1% + var(--accent-lightness-offset)), 0.32);
+    --cs-hole: hsla(calc(var(--accent-hue) + 35), min(100%, calc(11.8% * var(--accent-saturation-scale, 1))), calc(56.9% + var(--accent-lightness-offset)), 0.45);
+    --cs-accent: hsla(calc(var(--accent-hue) + 26), min(100%, calc(30.4% * var(--accent-saturation-scale, 1))), calc(95.5% + var(--accent-lightness-offset)), 0.62);
 }
 :host(.dark) .cs-bianshan {
-    --cs-1: hsl(calc(var(--accent-hue) + 0), 7.1%, calc(94.5% + var(--accent-lightness-offset)));
-    --cs-2: hsl(calc(var(--accent-hue) + -20), 6.4%, calc(90.8% + var(--accent-lightness-offset)));
-    --cs-3: hsl(calc(var(--accent-hue) + -60), 4.7%, calc(83.1% + var(--accent-lightness-offset)));
-    --cs-4: hsl(calc(var(--accent-hue) + -84), 7.4%, calc(73.3% + var(--accent-lightness-offset)));
-    --cs-pool-a: hsla(calc(var(--accent-hue) + 0), 3.2%, calc(63.1% + var(--accent-lightness-offset)), 0.18);
-    --cs-pool-b: hsla(calc(var(--accent-hue) + -75), 3.2%, calc(48.6% + var(--accent-lightness-offset)), 0.34);
-    --cs-line: hsla(calc(var(--accent-hue) + -75), 4.5%, calc(65.1% + var(--accent-lightness-offset)), 0.22);
-    --cs-rim: hsla(calc(var(--accent-hue) + -75), 4%, calc(61.2% + var(--accent-lightness-offset)), 0.3);
-    --cs-hole: hsla(calc(var(--accent-hue) + -75), 3.5%, calc(55.7% + var(--accent-lightness-offset)), 0.42);
-    --cs-accent: hsla(calc(var(--accent-hue) + 0), 0%, calc(100% + var(--accent-lightness-offset)), 0.6);
-    --cs-accent-2: hsla(calc(var(--accent-hue) + -84), 8.1%, calc(75.7% + var(--accent-lightness-offset)), 0.32);
+    --cs-1: hsl(calc(var(--accent-hue) + 0), min(100%, calc(7.1% * var(--accent-saturation-scale, 1))), calc(94.5% + var(--accent-lightness-offset)));
+    --cs-2: hsl(calc(var(--accent-hue) + -20), min(100%, calc(6.4% * var(--accent-saturation-scale, 1))), calc(90.8% + var(--accent-lightness-offset)));
+    --cs-3: hsl(calc(var(--accent-hue) + -60), min(100%, calc(4.7% * var(--accent-saturation-scale, 1))), calc(83.1% + var(--accent-lightness-offset)));
+    --cs-4: hsl(calc(var(--accent-hue) + -84), min(100%, calc(7.4% * var(--accent-saturation-scale, 1))), calc(73.3% + var(--accent-lightness-offset)));
+    --cs-pool-a: hsla(calc(var(--accent-hue) + 0), min(100%, calc(3.2% * var(--accent-saturation-scale, 1))), calc(63.1% + var(--accent-lightness-offset)), 0.18);
+    --cs-pool-b: hsla(calc(var(--accent-hue) + -75), min(100%, calc(3.2% * var(--accent-saturation-scale, 1))), calc(48.6% + var(--accent-lightness-offset)), 0.34);
+    --cs-line: hsla(calc(var(--accent-hue) + -75), min(100%, calc(4.5% * var(--accent-saturation-scale, 1))), calc(65.1% + var(--accent-lightness-offset)), 0.22);
+    --cs-rim: hsla(calc(var(--accent-hue) + -75), min(100%, calc(4% * var(--accent-saturation-scale, 1))), calc(61.2% + var(--accent-lightness-offset)), 0.3);
+    --cs-hole: hsla(calc(var(--accent-hue) + -75), min(100%, calc(3.5% * var(--accent-saturation-scale, 1))), calc(55.7% + var(--accent-lightness-offset)), 0.42);
+    --cs-accent: hsla(calc(var(--accent-hue) + 0), min(100%, calc(0% * var(--accent-saturation-scale, 1))), calc(100% + var(--accent-lightness-offset)), 0.6);
+    --cs-accent-2: hsla(calc(var(--accent-hue) + -84), min(100%, calc(8.1% * var(--accent-saturation-scale, 1))), calc(75.7% + var(--accent-lightness-offset)), 0.32);
 }
 :host(.dark) .cs-yezi {
-    --cs-1: hsl(calc(var(--accent-hue) + 32), 19%, calc(84.5% + var(--accent-lightness-offset)));
-    --cs-2: hsl(calc(var(--accent-hue) + 29), 17.6%, calc(76.7% + var(--accent-lightness-offset)));
-    --cs-3: hsl(calc(var(--accent-hue) + 30), 14%, calc(66.3% + var(--accent-lightness-offset)));
-    --cs-4: hsl(calc(var(--accent-hue) + 33), 13.5%, calc(55.1% + var(--accent-lightness-offset)));
-    --cs-pool-a: hsla(calc(var(--accent-hue) + 36), 15%, calc(60.8% + var(--accent-lightness-offset)), 0.18);
-    --cs-pool-b: hsla(calc(var(--accent-hue) + 34), 12.7%, calc(49.4% + var(--accent-lightness-offset)), 0.46);
-    --cs-line: hsla(calc(var(--accent-hue) + 34), 20%, calc(75.5% + var(--accent-lightness-offset)), 0.28);
-    --cs-rim: hsla(calc(var(--accent-hue) + 34), 15.2%, calc(67.6% + var(--accent-lightness-offset)), 0.32);
-    --cs-hole: hsla(calc(var(--accent-hue) + 36), 10.2%, calc(52% + var(--accent-lightness-offset)), 0.5);
-    --cs-accent: hsla(calc(var(--accent-hue) + 30), 36.4%, calc(95.7% + var(--accent-lightness-offset)), 0.62);
-    --cs-accent-2: hsla(calc(var(--accent-hue) + 36), 20%, calc(80.4% + var(--accent-lightness-offset)), 0.32);
+    --cs-1: hsl(calc(var(--accent-hue) + 32), min(100%, calc(19% * var(--accent-saturation-scale, 1))), calc(84.5% + var(--accent-lightness-offset)));
+    --cs-2: hsl(calc(var(--accent-hue) + 29), min(100%, calc(17.6% * var(--accent-saturation-scale, 1))), calc(76.7% + var(--accent-lightness-offset)));
+    --cs-3: hsl(calc(var(--accent-hue) + 30), min(100%, calc(14% * var(--accent-saturation-scale, 1))), calc(66.3% + var(--accent-lightness-offset)));
+    --cs-4: hsl(calc(var(--accent-hue) + 33), min(100%, calc(13.5% * var(--accent-saturation-scale, 1))), calc(55.1% + var(--accent-lightness-offset)));
+    --cs-pool-a: hsla(calc(var(--accent-hue) + 36), min(100%, calc(15% * var(--accent-saturation-scale, 1))), calc(60.8% + var(--accent-lightness-offset)), 0.18);
+    --cs-pool-b: hsla(calc(var(--accent-hue) + 34), min(100%, calc(12.7% * var(--accent-saturation-scale, 1))), calc(49.4% + var(--accent-lightness-offset)), 0.46);
+    --cs-line: hsla(calc(var(--accent-hue) + 34), min(100%, calc(20% * var(--accent-saturation-scale, 1))), calc(75.5% + var(--accent-lightness-offset)), 0.28);
+    --cs-rim: hsla(calc(var(--accent-hue) + 34), min(100%, calc(15.2% * var(--accent-saturation-scale, 1))), calc(67.6% + var(--accent-lightness-offset)), 0.32);
+    --cs-hole: hsla(calc(var(--accent-hue) + 36), min(100%, calc(10.2% * var(--accent-saturation-scale, 1))), calc(52% + var(--accent-lightness-offset)), 0.5);
+    --cs-accent: hsla(calc(var(--accent-hue) + 30), min(100%, calc(36.4% * var(--accent-saturation-scale, 1))), calc(95.7% + var(--accent-lightness-offset)), 0.62);
+    --cs-accent-2: hsla(calc(var(--accent-hue) + 36), min(100%, calc(20% * var(--accent-saturation-scale, 1))), calc(80.4% + var(--accent-lightness-offset)), 0.32);
 }
 
 :host(.dark) .cs-liantai {
-    --cs-1: hsl(calc(var(--accent-hue) + -133), 64.3%, calc(94.5% + var(--accent-lightness-offset)));
-    --cs-2: hsl(calc(var(--accent-hue) + -133), 55.1%, calc(90.4% + var(--accent-lightness-offset)));
-    --cs-3: hsl(calc(var(--accent-hue) + -137), 43.2%, calc(82.7% + var(--accent-lightness-offset)));
-    --cs-4: hsl(calc(var(--accent-hue) + -140), 31%, calc(71.6% + var(--accent-lightness-offset)));
-    --cs-pool-a: hsla(calc(var(--accent-hue) + -137), 17.9%, calc(61.8% + var(--accent-lightness-offset)), 0.18);
-    --cs-pool-b: hsla(calc(var(--accent-hue) + -140), 14.4%, calc(51% + var(--accent-lightness-offset)), 0.36);
-    --cs-line: hsla(calc(var(--accent-hue) + -138), 36.6%, calc(72.2% + var(--accent-lightness-offset)), 0.3);
-    --cs-rim: hsla(calc(var(--accent-hue) + -142), 27.8%, calc(64.7% + var(--accent-lightness-offset)), 0.3);
-    --cs-hole: hsla(calc(var(--accent-hue) + -142), 20.5%, calc(52.2% + var(--accent-lightness-offset)), 0.44);
-    --cs-accent: hsla(calc(var(--accent-hue) + -136), 49.4%, calc(69.8% + var(--accent-lightness-offset)), 0.56);
-    --cs-accent-2: hsla(calc(var(--accent-hue) + -137), 52.8%, calc(79.2% + var(--accent-lightness-offset)), 0.34);
+    --cs-1: hsl(calc(120 + -133), min(100%, calc(64.3% * var(--accent-saturation-scale, 1))), calc(94.5% + var(--accent-lightness-offset)));
+    --cs-2: hsl(calc(120 + -133), min(100%, calc(55.1% * var(--accent-saturation-scale, 1))), calc(90.4% + var(--accent-lightness-offset)));
+    --cs-3: hsl(calc(120 + -137), min(100%, calc(43.2% * var(--accent-saturation-scale, 1))), calc(82.7% + var(--accent-lightness-offset)));
+    --cs-4: hsl(calc(120 + -140), min(100%, calc(31% * var(--accent-saturation-scale, 1))), calc(71.6% + var(--accent-lightness-offset)));
+    --cs-pool-a: hsla(calc(120 + -137), min(100%, calc(17.9% * var(--accent-saturation-scale, 1))), calc(61.8% + var(--accent-lightness-offset)), 0.18);
+    --cs-pool-b: hsla(calc(120 + -140), min(100%, calc(14.4% * var(--accent-saturation-scale, 1))), calc(51% + var(--accent-lightness-offset)), 0.36);
+    --cs-line: hsla(calc(120 + -138), min(100%, calc(36.6% * var(--accent-saturation-scale, 1))), calc(72.2% + var(--accent-lightness-offset)), 0.3);
+    --cs-rim: hsla(calc(120 + -142), min(100%, calc(27.8% * var(--accent-saturation-scale, 1))), calc(64.7% + var(--accent-lightness-offset)), 0.3);
+    --cs-hole: hsla(calc(120 + -142), min(100%, calc(20.5% * var(--accent-saturation-scale, 1))), calc(52.2% + var(--accent-lightness-offset)), 0.44);
+    --cs-accent: hsla(calc(120 + -136), min(100%, calc(49.4% * var(--accent-saturation-scale, 1))), calc(69.8% + var(--accent-lightness-offset)), 0.56);
+    --cs-accent-2: hsla(calc(120 + -137), min(100%, calc(52.8% * var(--accent-saturation-scale, 1))), calc(79.2% + var(--accent-lightness-offset)), 0.34);
 }
-/* 折枝梅：文房清供红梅（墨褐老枝斜出 + 顶端主花承香 + 旁生花苞；胭脂红瓣） */
+/* 折枝梅：文房清供红梅（墨褐老枝斜出 + 顶端主花承香 + 旁生花苞；胭脂红瓣）。
+   注意：色相已固定为默认基准下的红调（不跟随色相滑块），否则红梅会随主题变青，失其本色。 */
 .cs-mei {
-    --cs-1: hsl(calc(var(--accent-hue) + -116), 100%, calc(91.6% + var(--accent-lightness-offset)));
-    --cs-2: hsl(calc(var(--accent-hue) + -125), 77.8%, calc(80.6% + var(--accent-lightness-offset)));
-    --cs-3: hsl(calc(var(--accent-hue) + -127), 64%, calc(70.6% + var(--accent-lightness-offset)));
-    --cs-4: hsl(calc(var(--accent-hue) + -129), 49.8%, calc(57.8% + var(--accent-lightness-offset)));
-    --cs-pool-a: hsla(calc(var(--accent-hue) + -129), 36.4%, calc(43.1% + var(--accent-lightness-offset)), 0.14);
-    --cs-pool-b: hsla(calc(var(--accent-hue) + -132), 39.5%, calc(33.7% + var(--accent-lightness-offset)), 0.34);
-    --cs-line: hsla(calc(var(--accent-hue) + -129), 30.4%, calc(45.1% + var(--accent-lightness-offset)), 0.3);
-    --cs-rim: hsla(calc(var(--accent-hue) + -130), 33.3%, calc(41.2% + var(--accent-lightness-offset)), 0.34);
-    --cs-hole: hsla(calc(var(--accent-hue) + -132), 39.5%, calc(33.7% + var(--accent-lightness-offset)), 0.5);
-    --cs-accent: hsla(calc(var(--accent-hue) + -127), 100%, calc(83.3% + var(--accent-lightness-offset)), 0.5);
-    --cs-accent-2: hsla(calc(var(--accent-hue) + -127), 58.6%, calc(71.6% + var(--accent-lightness-offset)), 0.28);
+    --cs-1: hsl(calc(120 + -116), min(100%, calc(100% * var(--accent-saturation-scale, 1))), calc(91.6% + var(--accent-lightness-offset)));
+    --cs-2: hsl(calc(120 + -125), min(100%, calc(77.8% * var(--accent-saturation-scale, 1))), calc(80.6% + var(--accent-lightness-offset)));
+    --cs-3: hsl(calc(120 + -127), min(100%, calc(64% * var(--accent-saturation-scale, 1))), calc(70.6% + var(--accent-lightness-offset)));
+    --cs-4: hsl(calc(120 + -129), min(100%, calc(49.8% * var(--accent-saturation-scale, 1))), calc(57.8% + var(--accent-lightness-offset)));
+    --cs-pool-a: hsla(calc(120 + -129), min(100%, calc(36.4% * var(--accent-saturation-scale, 1))), calc(43.1% + var(--accent-lightness-offset)), 0.14);
+    --cs-pool-b: hsla(calc(120 + -132), min(100%, calc(39.5% * var(--accent-saturation-scale, 1))), calc(33.7% + var(--accent-lightness-offset)), 0.34);
+    --cs-line: hsla(calc(120 + -129), min(100%, calc(30.4% * var(--accent-saturation-scale, 1))), calc(45.1% + var(--accent-lightness-offset)), 0.3);
+    --cs-rim: hsla(calc(120 + -130), min(100%, calc(33.3% * var(--accent-saturation-scale, 1))), calc(41.2% + var(--accent-lightness-offset)), 0.34);
+    --cs-hole: hsla(calc(120 + -132), min(100%, calc(39.5% * var(--accent-saturation-scale, 1))), calc(33.7% + var(--accent-lightness-offset)), 0.5);
+    --cs-accent: hsla(calc(120 + -127), min(100%, calc(100% * var(--accent-saturation-scale, 1))), calc(83.3% + var(--accent-lightness-offset)), 0.5);
+    --cs-accent-2: hsla(calc(120 + -127), min(100%, calc(58.6% * var(--accent-saturation-scale, 1))), calc(71.6% + var(--accent-lightness-offset)), 0.28);
 }
 
 /* 暗色下的折枝梅：花瓣提亮一档，红润不糊 */
 :host(.dark) .cs-mei {
-    --cs-1: hsl(calc(var(--accent-hue) + -125), 60.5%, calc(85.1% + var(--accent-lightness-offset)));
-    --cs-2: hsl(calc(var(--accent-hue) + -127), 53%, calc(74.1% + var(--accent-lightness-offset)));
-    --cs-3: hsl(calc(var(--accent-hue) + -129), 42.7%, calc(65.1% + var(--accent-lightness-offset)));
-    --cs-4: hsl(calc(var(--accent-hue) + -131), 33.9%, calc(54.9% + var(--accent-lightness-offset)));
-    --cs-pool-a: hsla(calc(var(--accent-hue) + -129), 33.3%, calc(44.1% + var(--accent-lightness-offset)), 0.18);
-    --cs-pool-b: hsla(calc(var(--accent-hue) + -132), 37%, calc(36.1% + var(--accent-lightness-offset)), 0.36);
-    --cs-line: hsla(calc(var(--accent-hue) + -129), 28%, calc(49% + var(--accent-lightness-offset)), 0.3);
-    --cs-rim: hsla(calc(var(--accent-hue) + -130), 30.4%, calc(45.1% + var(--accent-lightness-offset)), 0.34);
-    --cs-hole: hsla(calc(var(--accent-hue) + -132), 34.7%, calc(38.4% + var(--accent-lightness-offset)), 0.5);
-    --cs-accent: hsla(calc(var(--accent-hue) + -127), 100%, calc(83.3% + var(--accent-lightness-offset)), 0.5);
-    --cs-accent-2: hsla(calc(var(--accent-hue) + -127), 58.6%, calc(71.6% + var(--accent-lightness-offset)), 0.32);
+    --cs-1: hsl(calc(120 + -125), min(100%, calc(60.5% * var(--accent-saturation-scale, 1))), calc(85.1% + var(--accent-lightness-offset)));
+    --cs-2: hsl(calc(120 + -127), min(100%, calc(53% * var(--accent-saturation-scale, 1))), calc(74.1% + var(--accent-lightness-offset)));
+    --cs-3: hsl(calc(120 + -129), min(100%, calc(42.7% * var(--accent-saturation-scale, 1))), calc(65.1% + var(--accent-lightness-offset)));
+    --cs-4: hsl(calc(120 + -131), min(100%, calc(33.9% * var(--accent-saturation-scale, 1))), calc(54.9% + var(--accent-lightness-offset)));
+    --cs-pool-a: hsla(calc(120 + -129), min(100%, calc(33.3% * var(--accent-saturation-scale, 1))), calc(44.1% + var(--accent-lightness-offset)), 0.18);
+    --cs-pool-b: hsla(calc(120 + -132), min(100%, calc(37% * var(--accent-saturation-scale, 1))), calc(36.1% + var(--accent-lightness-offset)), 0.36);
+    --cs-line: hsla(calc(120 + -129), min(100%, calc(28% * var(--accent-saturation-scale, 1))), calc(49% + var(--accent-lightness-offset)), 0.3);
+    --cs-rim: hsla(calc(120 + -130), min(100%, calc(30.4% * var(--accent-saturation-scale, 1))), calc(45.1% + var(--accent-lightness-offset)), 0.34);
+    --cs-hole: hsla(calc(120 + -132), min(100%, calc(34.7% * var(--accent-saturation-scale, 1))), calc(38.4% + var(--accent-lightness-offset)), 0.5);
+    --cs-accent: hsla(calc(120 + -127), min(100%, calc(100% * var(--accent-saturation-scale, 1))), calc(83.3% + var(--accent-lightness-offset)), 0.5);
+    --cs-accent-2: hsla(calc(120 + -127), min(100%, calc(58.6% * var(--accent-saturation-scale, 1))), calc(71.6% + var(--accent-lightness-offset)), 0.32);
 }
 
 /* === 香插本体：可点击切换（单击切换 / 双击重置）===
@@ -880,8 +883,10 @@
 }
 :host(.dark) .scroll-incense-unburnt {
     /* 用 background-image 而非 background 简写：简写会重置上面为「整支香锚定」
-       设置的 background-size / background-position，导致暗色下颜色分布回退成压缩态。 */
-    background-image: linear-gradient(180deg, rgba(120,150,110,0.85) 0%, rgba(110,140,100,0.9) 30%, rgba(100,130,92,0.85) 60%, rgba(95,122,88,0.9) 100%);
+       设置的 background-size / background-position，导致暗色下颜色分布回退成压缩态。
+       颜色为提亮暖木（与亮色模式同属木色、仅暗色下提亮以便深底可读）；香身是实物，
+       固定物理色、不跟随主题色相——此前误写成绿色（rgba(120,150,110) 绿调）已纠正。 */
+    background-image: linear-gradient(180deg, rgba(186,152,114,0.9) 0%, rgba(170,138,102,0.94) 30%, rgba(158,128,94,0.9) 60%, rgba(150,120,88,0.94) 100%);
 }
 
 /* 通用按钮 */

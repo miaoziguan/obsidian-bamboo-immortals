@@ -1016,13 +1016,14 @@
     padding: 8px 16px;
     border-radius: var(--radius-sm);
     border: 1px solid var(--bamboo-primary, #7d9b6a);
-    background: rgba(125, 155, 106, 0.12);
+    /* 原为写死竹绿 rgba(125,155,106)（= hsl(97,20%,51%)），换主题不发绿；改为随色相的半透明 tint */
+    background: hsla(var(--accent-hue), min(100%, calc(20% * var(--accent-saturation-ui, 1))), calc(51% + var(--accent-lightness-offset, 0%)), 0.12);
     color: var(--text-normal);
     font-size: var(--type-sm);
     cursor: pointer;
     transition: background .15s ease;
 }
-.theme-market-open-btn:hover { background: rgba(125, 155, 106, 0.22); }
+.theme-market-open-btn:hover { background: hsla(var(--accent-hue), min(100%, calc(20% * var(--accent-saturation-ui, 1))), calc(51% + var(--accent-lightness-offset, 0%)), 0.22); }
 
 /* 主题市场面板 */
 .market-loading, .market-empty { padding: 28px 16px; text-align: center; color: var(--text-muted); font-size: var(--type-sm); }
@@ -1249,13 +1250,13 @@
    content-box，否则渐变会填满整个 44px 热区（又退回粗色柱）。 */
 .theme-tune-slider#tuneHue {
     background: linear-gradient(to right,
-        hsl(0, 70%, 50%),
-        hsl(60, 70%, 50%),
-        hsl(120, 70%, 50%),
-        hsl(180, 70%, 50%),
-        hsl(240, 70%, 50%),
-        hsl(300, 70%, 50%),
-        hsl(360, 70%, 50%)
+        hsl(0, min(100%, calc(70% * var(--accent-saturation-ui, 1))), 50%),
+        hsl(60, min(100%, calc(70% * var(--accent-saturation-ui, 1))), 50%),
+        hsl(120, min(100%, calc(70% * var(--accent-saturation-ui, 1))), 50%),
+        hsl(180, min(100%, calc(70% * var(--accent-saturation-ui, 1))), 50%),
+        hsl(240, min(100%, calc(70% * var(--accent-saturation-ui, 1))), 50%),
+        hsl(300, min(100%, calc(70% * var(--accent-saturation-ui, 1))), 50%),
+        hsl(360, min(100%, calc(70% * var(--accent-saturation-ui, 1))), 50%)
     );
     background-clip: content-box;
 }
@@ -1264,13 +1265,13 @@
     height: 4px;
     border-radius: var(--radius-3xs);
     background: linear-gradient(to right,
-        hsl(0, 70%, 50%),
-        hsl(60, 70%, 50%),
-        hsl(120, 70%, 50%),
-        hsl(180, 70%, 50%),
-        hsl(240, 70%, 50%),
-        hsl(300, 70%, 50%),
-        hsl(360, 70%, 50%)
+        hsl(0, min(100%, calc(70% * var(--accent-saturation-ui, 1))), 50%),
+        hsl(60, min(100%, calc(70% * var(--accent-saturation-ui, 1))), 50%),
+        hsl(120, min(100%, calc(70% * var(--accent-saturation-ui, 1))), 50%),
+        hsl(180, min(100%, calc(70% * var(--accent-saturation-ui, 1))), 50%),
+        hsl(240, min(100%, calc(70% * var(--accent-saturation-ui, 1))), 50%),
+        hsl(300, min(100%, calc(70% * var(--accent-saturation-ui, 1))), 50%),
+        hsl(360, min(100%, calc(70% * var(--accent-saturation-ui, 1))), 50%)
     );
 }
 
@@ -1404,7 +1405,7 @@
     padding: 8px 16px;
     border: none;
     border-radius: var(--radius-sm);
-    background: var(--bamboo-primary, hsl(var(--accent-hue), 35%, 45%));
+    background: var(--bamboo-primary, hsl(var(--accent-hue), min(100%, calc(35% * var(--accent-saturation-ui, 1))), 45%));
     color: var(--white);
     font-size: var(--type-sm);
     font-weight: 600;
@@ -1469,7 +1470,7 @@
 
 .ai-wizard-dot.active,
 .ai-wizard-dot.done {
-    background: var(--bamboo-primary, hsl(var(--accent-hue), 35%, 45%));
+    background: var(--bamboo-primary, hsl(var(--accent-hue), min(100%, calc(35% * var(--accent-saturation-ui, 1))), 45%));
 }
 
 .ai-wizard-dot.active {
@@ -1487,7 +1488,7 @@
 /* 步骤行着色：通过 data-step 控制 */
 .ai-wizard-steps[data-step="2"] .ai-wizard-line:first-of-type,
 .ai-wizard-steps[data-step="3"] .ai-wizard-line {
-    background: var(--bamboo-primary, hsl(var(--accent-hue), 35%, 45%));
+    background: var(--bamboo-primary, hsl(var(--accent-hue), min(100%, calc(35% * var(--accent-saturation-ui, 1))), 45%));
 }
 
 .ai-wizard-body {
@@ -1520,13 +1521,13 @@
 .ai-wizard-input:focus,
 .ai-wizard-textarea:focus {
     outline: none;
-    border-color: var(--bamboo-primary, hsl(var(--accent-hue), 35%, 45%));
+    border-color: var(--bamboo-primary, hsl(var(--accent-hue), min(100%, calc(35% * var(--accent-saturation-ui, 1))), 45%));
 }
 
 .ai-wizard-input:focus-visible,
 .ai-wizard-textarea:focus-visible {
     outline: none;
-    border-color: var(--bamboo-primary, hsl(var(--accent-hue), 35%, 45%));
+    border-color: var(--bamboo-primary, hsl(var(--accent-hue), min(100%, calc(35% * var(--accent-saturation-ui, 1))), 45%));
     box-shadow: var(--focus-ring);
 }
 
@@ -1582,8 +1583,8 @@
 
 .ai-wizard-opt.active {
     background: rgba(var(--primary-rgb), 0.1);
-    border-color: var(--bamboo-primary, hsl(var(--accent-hue), 35%, 45%));
-    color: var(--bamboo-primary, hsl(var(--accent-hue), 35%, 45%));
+    border-color: var(--bamboo-primary, hsl(var(--accent-hue), min(100%, calc(35% * var(--accent-saturation-ui, 1))), 45%));
+    color: var(--bamboo-primary, hsl(var(--accent-hue), min(100%, calc(35% * var(--accent-saturation-ui, 1))), 45%));
     font-weight: 600;
 }
 
@@ -1643,7 +1644,7 @@
 .ai-wizard-adv-body .ai-wizard-tag.active {
     background: none;
     border: none;
-    color: var(--bamboo-primary, hsl(var(--accent-hue), 35%, 45%));
+    color: var(--bamboo-primary, hsl(var(--accent-hue), min(100%, calc(35% * var(--accent-saturation-ui, 1))), 45%));
     font-weight: 600;
 }
 
@@ -1677,7 +1678,7 @@
 .ai-wizard-adv-body .ai-wizard-opt.active {
     background: none;
     border: none;
-    color: var(--bamboo-primary, hsl(var(--accent-hue), 35%, 45%));
+    color: var(--bamboo-primary, hsl(var(--accent-hue), min(100%, calc(35% * var(--accent-saturation-ui, 1))), 45%));
     font-weight: 600;
 }
 
@@ -1728,8 +1729,8 @@
 
 .ai-wizard-tag.active {
     background: rgba(var(--primary-rgb), 0.12);
-    border-color: var(--bamboo-primary, hsl(var(--accent-hue), 35%, 45%));
-    color: var(--bamboo-primary, hsl(var(--accent-hue), 35%, 45%));
+    border-color: var(--bamboo-primary, hsl(var(--accent-hue), min(100%, calc(35% * var(--accent-saturation-ui, 1))), 45%));
+    color: var(--bamboo-primary, hsl(var(--accent-hue), min(100%, calc(35% * var(--accent-saturation-ui, 1))), 45%));
     font-weight: 600;
 }
 
@@ -1759,7 +1760,7 @@
 }
 
 .ai-wizard-btn.primary {
-    background: var(--bamboo-primary, hsl(var(--accent-hue), 35%, 45%));
+    background: var(--bamboo-primary, hsl(var(--accent-hue), min(100%, calc(35% * var(--accent-saturation-ui, 1))), 45%));
     color: var(--white);
 }
 
@@ -1836,7 +1837,7 @@
     width: 22px;
     height: 22px;
     border-radius: 50%;
-    background: var(--bamboo-primary, hsl(var(--accent-hue), 35%, 45%));
+    background: var(--bamboo-primary, hsl(var(--accent-hue), min(100%, calc(35% * var(--accent-saturation-ui, 1))), 45%));
     color: var(--white);
     font-size: var(--type-xs);
     font-weight: 700;

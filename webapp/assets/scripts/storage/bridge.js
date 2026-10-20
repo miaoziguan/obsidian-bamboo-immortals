@@ -16,9 +16,10 @@ import { setGlobalCssVar } from '../utils/domRef.js';
 // 使寻呼机（使用 --*-rgb 静态通道）跟随主题色相与明度。
 import { applyDerivedRgb } from '../utils/palette.js';
 
-// 画中卷 iframe 缓存最近一次收到的色相/明度，供后续单独的色相或明度变更重算派生 RGB 通道使用。
+// 画中卷 iframe 缓存最近一次收到的色相/明度/饱和度，供后续单独的色相或明度变更重算派生 RGB 通道使用。
 let _pagerHue = null;
 let _pagerLightness = null;
+let _pagerSaturation = null;
 
 export class BridgeStorage {
   constructor() {
@@ -1226,11 +1227,13 @@ window.addEventListener('message', (event) => {
   // 从未被重算，停在默认竹青绿；仅靠 --accent-hue 派生的背景/卡片会变、寻呼机不变。
   const tHue = data.payload && typeof data.payload.hue === 'number' ? data.payload.hue : null;
   const tLight = data.payload && typeof data.payload.lightnessOffset === 'number' ? data.payload.lightnessOffset : null;
-  if (tHue !== null || tLight !== null) {
+  const tSat = data.payload && typeof data.payload.saturation === 'number' ? data.payload.saturation : null;
+  if (tHue !== null || tLight !== null || tSat !== null) {
     if (typeof window.DisplayManager !== 'undefined' && window.DisplayManager._applyHue) {
       // 主视图：经 DisplayManager 应用，顺带刷新由色相派生的一组 RGB 变量与滑块 UI
       if (tHue !== null) window.DisplayManager._applyHue(tHue, true);
       if (tLight !== null) window.DisplayManager._applyLightness(tLight, true);
+      if (tSat !== null) window.DisplayManager._applySaturation(tSat, true);
     } else if (typeof setGlobalCssVar === 'function') {
       if (tHue !== null) {
         setGlobalCssVar('--accent-hue', String(tHue));
@@ -1240,9 +1243,14 @@ window.addEventListener('message', (event) => {
         setGlobalCssVar('--accent-lightness-offset', tLight + '%');
         _pagerLightness = tLight;
       }
+      if (tSat !== null) {
+        // 缩放系数（1 = 原样），与主题侧 min(100%, 原S% × scale) 配套
+        setGlobalCssVar('--accent-saturation-scale', String(tSat / 100));
+        _pagerSaturation = tSat;
+      }
       // 重算 20 个 -rgb 通道（直接传入明度偏移数值，避免 getComputedStyle 读取代理对象抛错），
       // 让寻呼机跟随主题色相与明度
-      if (_pagerHue !== null) applyDerivedRgb(_pagerHue, _pagerLightness);
+      if (_pagerHue !== null) applyDerivedRgb(_pagerHue, _pagerLightness, _pagerSaturation);
     }
   }
 

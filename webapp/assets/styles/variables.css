@@ -56,14 +56,14 @@
     --z-layer-max: 11000;             /* 最顶层（搜索/日期选择）*/
 
     /* === 基础色彩系统（HSL 动态生成）=== */
-    --bamboo-deep: hsl(calc(var(--accent-hue) - 7), 40%, calc(25% + var(--accent-lightness-offset)));
+    --bamboo-deep: hsl(calc(var(--accent-hue) - 7), min(100%, calc(40% * var(--accent-saturation-ui, 1))), calc(25% + var(--accent-lightness-offset)));
     --bamboo-deep-rgb: 45, 90, 39;
-    --bamboo-dark: hsl(calc(var(--accent-hue) - 8), 39%, calc(34% + var(--accent-lightness-offset)));
-    --bm-primary: hsl(var(--accent-hue), 27%, calc(48% + var(--accent-lightness-offset)));
+    --bamboo-dark: hsl(calc(var(--accent-hue) - 8), min(100%, calc(39% * var(--accent-saturation-ui, 1))), calc(34% + var(--accent-lightness-offset)));
+    --bm-primary: hsl(var(--accent-hue), min(100%, calc(27% * var(--accent-saturation-ui, 1))), calc(48% + var(--accent-lightness-offset)));
     --bamboo-primary: var(--bm-primary); /* alias — 新代码请用 --bm-primary */
-    --bamboo-light: hsl(var(--accent-hue), 33%, calc(61% + var(--accent-lightness-offset)));
-    --bamboo-pale: hsl(var(--accent-hue), 35%, calc(75% + var(--accent-lightness-offset)));
-    --bm-primary-light: hsl(var(--accent-hue), 39%, calc(80% + var(--accent-lightness-offset)));
+    --bamboo-light: hsl(var(--accent-hue), min(100%, calc(33% * var(--accent-saturation-ui, 1))), calc(61% + var(--accent-lightness-offset)));
+    --bamboo-pale: hsl(var(--accent-hue), min(100%, calc(35% * var(--accent-saturation-ui, 1))), calc(75% + var(--accent-lightness-offset)));
+    --bm-primary-light: hsl(var(--accent-hue), min(100%, calc(39% * var(--accent-saturation-ui, 1))), calc(80% + var(--accent-lightness-offset)));
     --bamboo-primary-light: var(--bm-primary-light); /* alias — 新代码请用 --bm-primary-light */
     --bm-primary-rgb: 90, 154, 90;
     --primary-rgb: var(--bm-primary-rgb); /* alias — 新代码请用 --bm-primary-rgb */
@@ -166,10 +166,13 @@
     --ink-pale: #707070;
 
     /* === 背景色彩系统 - 重新设计：淡雅意境 === */
-    --bg-gradient-start: hsl(var(--accent-hue), 18%, calc(96% + var(--accent-lightness-offset)));
-    --bg-gradient-mid1: hsl(var(--accent-hue), 21%, calc(94% + var(--accent-lightness-offset)));
-    --bg-gradient-mid2: hsl(var(--accent-hue), 17%, calc(90% + var(--accent-lightness-offset)));
-    --bg-gradient-end: hsl(var(--accent-hue), 20%, calc(95% + var(--accent-lightness-offset)));
+    /* 亮度随「跟随强度」下沉：--accent-saturation-ui=1（默认/手动）时减 0、纸面原样；
+       跟随主题时 >1，纸面按比例染深，主题越艳纸面越显色。此前纸面 L 高达 90–96%，
+       无论饱和度怎么提都还是近白，故「跟随」只剩色相微调——这是"变化不大"的第二层根因。 */
+    --bg-gradient-start: hsl(var(--accent-hue), min(100%, calc(18% * var(--accent-saturation-ui, 1))), calc(96% + var(--accent-lightness-offset) - (var(--accent-saturation-ui, 1) - 1) * 12%));
+    --bg-gradient-mid1: hsl(var(--accent-hue), min(100%, calc(21% * var(--accent-saturation-ui, 1))), calc(94% + var(--accent-lightness-offset) - (var(--accent-saturation-ui, 1) - 1) * 12%));
+    --bg-gradient-mid2: hsl(var(--accent-hue), min(100%, calc(17% * var(--accent-saturation-ui, 1))), calc(90% + var(--accent-lightness-offset) - (var(--accent-saturation-ui, 1) - 1) * 12%));
+    --bg-gradient-end: hsl(var(--accent-hue), min(100%, calc(20% * var(--accent-saturation-ui, 1))), calc(95% + var(--accent-lightness-offset) - (var(--accent-saturation-ui, 1) - 1) * 12%));
     --card-bg: rgba(var(--white-rgb), 0.60);
     --card-glass: rgba(var(--white-rgb), 0.55);
     /* 玻璃拟态 fallback：当 backdrop-filter 不被支持或背景过透时，切回不透明表面色 */
@@ -177,7 +180,7 @@
     /* 浮层/弹层专用底（分类选择、日期范围、排序菜单、导图工具条等压在正文上的面板）：
        统一不透明跟随色——不再使用玻璃拟态，避免 backdrop-filter 兼容与明暗两态的脆弱性。
        亮色取极浅色相实心色，既压住底层正文，又跟随调色。 */
-    --bamboo-popup-bg: hsl(var(--accent-hue), 18%, calc(96% + var(--accent-lightness-offset)));
+    --bamboo-popup-bg: hsl(var(--accent-hue), min(100%, calc(18% * var(--accent-saturation-ui, 1))), calc(96% + var(--accent-lightness-offset)));
 
     /* === 文字语义变量 === */
     --text-primary: var(--ink-dark);
@@ -437,20 +440,20 @@
     --jade-dark-warm-light-rgb: 55, 42, 28;
     
     /* 文字：柔和但清晰，亮度提升以通过 WCAG AA 4.5:1（暗色卡片背景 ~10% L） */
-    --ink-dark: hsl(var(--accent-hue), 18%, calc(91% + var(--accent-lightness-offset)));
-    --ink-medium: hsl(var(--accent-hue), 20%, calc(81% + var(--accent-lightness-offset)));
-    --ink-light: hsl(var(--accent-hue), 17%, calc(70% + var(--accent-lightness-offset)));
-    --ink-pale: hsl(var(--accent-hue), 6%, calc(60% + var(--accent-lightness-offset)));
-    --bamboo-text-muted: hsl(var(--accent-hue), 6%, calc(60% + var(--accent-lightness-offset)));
-    --bamboo-text-secondary: hsl(var(--accent-hue), 20%, calc(81% + var(--accent-lightness-offset)));
+    --ink-dark: hsl(var(--accent-hue), min(100%, calc(18% * var(--accent-saturation-ui, 1))), calc(91% + var(--accent-lightness-offset)));
+    --ink-medium: hsl(var(--accent-hue), min(100%, calc(20% * var(--accent-saturation-ui, 1))), calc(81% + var(--accent-lightness-offset)));
+    --ink-light: hsl(var(--accent-hue), min(100%, calc(17% * var(--accent-saturation-ui, 1))), calc(70% + var(--accent-lightness-offset)));
+    --ink-pale: hsl(var(--accent-hue), min(100%, calc(6% * var(--accent-saturation-ui, 1))), calc(60% + var(--accent-lightness-offset)));
+    --bamboo-text-muted: hsl(var(--accent-hue), min(100%, calc(6% * var(--accent-saturation-ui, 1))), calc(60% + var(--accent-lightness-offset)));
+    --bamboo-text-secondary: hsl(var(--accent-hue), min(100%, calc(20% * var(--accent-saturation-ui, 1))), calc(81% + var(--accent-lightness-offset)));
     
     /* 竹林色调：降低饱和度，增添银灰质感（跟随 --accent-hue） */
-    --bamboo-deep: hsl(calc(var(--accent-hue) + 5), 34%, calc(26% + var(--accent-lightness-offset)));
-    --bamboo-dark: hsl(calc(var(--accent-hue) + 6), 35%, calc(25% + var(--accent-lightness-offset)));
-    --bm-primary: hsl(calc(var(--accent-hue) + 2), 25%, calc(47% + var(--accent-lightness-offset)));
+    --bamboo-deep: hsl(calc(var(--accent-hue) + 5), min(100%, calc(34% * var(--accent-saturation-ui, 1))), calc(26% + var(--accent-lightness-offset)));
+    --bamboo-dark: hsl(calc(var(--accent-hue) + 6), min(100%, calc(35% * var(--accent-saturation-ui, 1))), calc(25% + var(--accent-lightness-offset)));
+    --bm-primary: hsl(calc(var(--accent-hue) + 2), min(100%, calc(25% * var(--accent-saturation-ui, 1))), calc(47% + var(--accent-lightness-offset)));
     --bamboo-primary: var(--bm-primary); /* alias */
-    --bamboo-light: hsl(var(--accent-hue), 39%, calc(65% + var(--accent-lightness-offset)));
-    --bamboo-pale: hsl(var(--accent-hue), 30%, calc(78% + var(--accent-lightness-offset)));
+    --bamboo-light: hsl(var(--accent-hue), min(100%, calc(39% * var(--accent-saturation-ui, 1))), calc(65% + var(--accent-lightness-offset)));
+    --bamboo-pale: hsl(var(--accent-hue), min(100%, calc(30% * var(--accent-saturation-ui, 1))), calc(78% + var(--accent-lightness-offset)));
     --bm-primary-light: rgba(var(--bm-primary-rgb), 0.6);
     --bamboo-primary-light: var(--bm-primary-light); /* alias */
     --bamboo-warning: #ffe082;
@@ -463,16 +466,16 @@
     
     /* 背景层次：深邃午夜绿渐变 —— 明度跨度拉大（7%→16%），中段加一道柔光带，
        让暗色下的整页页面级渐变清晰可辨，而非近乎平涂的深色 */
-    --bg-gradient-start: hsl(calc(var(--accent-hue) + 16), 30%, calc(13% + var(--accent-lightness-offset)));
-    --bg-gradient-mid1: hsl(calc(var(--accent-hue) + 6), 34%, calc(7% + var(--accent-lightness-offset)));
-    --bg-gradient-mid2: hsl(calc(var(--accent-hue) + 28), 38%, calc(16% + var(--accent-lightness-offset)));
-    --bg-gradient-end: hsl(calc(var(--accent-hue) + 2), 30%, calc(9% + var(--accent-lightness-offset)));
+    --bg-gradient-start: hsl(calc(var(--accent-hue) + 16), min(100%, calc(30% * var(--accent-saturation-ui, 1))), calc(13% + var(--accent-lightness-offset)));
+    --bg-gradient-mid1: hsl(calc(var(--accent-hue) + 6), min(100%, calc(34% * var(--accent-saturation-ui, 1))), calc(7% + var(--accent-lightness-offset)));
+    --bg-gradient-mid2: hsl(calc(var(--accent-hue) + 28), min(100%, calc(38% * var(--accent-saturation-ui, 1))), calc(16% + var(--accent-lightness-offset)));
+    --bg-gradient-end: hsl(calc(var(--accent-hue) + 2), min(100%, calc(30% * var(--accent-saturation-ui, 1))), calc(9% + var(--accent-lightness-offset)));
     
     /* 卡片：深邃中透出微光，跟随色相和明度 */
     /* 暗色已全局关闭 backdrop-filter（dark.css :host(.dark) *），原"提高不透明度防模糊伪影"
        的理由已不存在；此处保留一定透明度，让整页页面级渐变能透过卡片显现 */
-    --card-bg: hsla(var(--accent-hue), 18%, calc(10% + var(--accent-lightness-offset)), 0.60);
-    --card-glass: hsla(var(--accent-hue), 18%, calc(10% + var(--accent-lightness-offset)), 0.84);
+    --card-bg: hsla(var(--accent-hue), min(100%, calc(18% * var(--accent-saturation-ui, 1))), calc(10% + var(--accent-lightness-offset)), 0.60);
+    --card-glass: hsla(var(--accent-hue), min(100%, calc(18% * var(--accent-saturation-ui, 1))), calc(10% + var(--accent-lightness-offset)), 0.84);
     /* 玻璃拟态 fallback：当 backdrop-filter 不被支持或背景过透时，切回不透明表面色 */
     --card-bg-fallback: var(--surface-solid);
     /* 暗色已全局关闭 backdrop-filter（dark.css :host(.dark) *），浮层只能靠 alpha 遮底；
@@ -481,12 +484,12 @@
        否则换色相时浮层掉队。这里直接以 --accent-hue 生成实心色 —— 与 --card-glass 同色相/明度
        （18% 饱和、10%+lightness 偏移），仅把 alpha 拉满为 1，既守住上一轮"不透明防幽灵字"，
        又跟随调色。 */
-    --bamboo-popup-bg: hsla(var(--accent-hue), 18%, calc(10% + var(--accent-lightness-offset)), 1);
+    --bamboo-popup-bg: hsla(var(--accent-hue), min(100%, calc(18% * var(--accent-saturation-ui, 1))), calc(10% + var(--accent-lightness-offset)), 1);
 
     /* 文字语义 — 亮度提升至 WCAG AA 4.5:1+ */
-    --text-primary: hsl(var(--accent-hue), 18%, calc(91% + var(--accent-lightness-offset)));
-    --text-secondary: hsl(var(--accent-hue), 15%, calc(74% + var(--accent-lightness-offset)));
-    --text-tertiary: hsl(var(--accent-hue), 11%, calc(66% + var(--accent-lightness-offset)));
+    --text-primary: hsl(var(--accent-hue), min(100%, calc(18% * var(--accent-saturation-ui, 1))), calc(91% + var(--accent-lightness-offset)));
+    --text-secondary: hsl(var(--accent-hue), min(100%, calc(15% * var(--accent-saturation-ui, 1))), calc(74% + var(--accent-lightness-offset)));
+    --text-tertiary: hsl(var(--accent-hue), min(100%, calc(11% * var(--accent-saturation-ui, 1))), calc(66% + var(--accent-lightness-offset)));
     --text-on-accent: var(--white); /* 暗色下强调色仍为深底，白字保持高对比 */
     
     /* 边框：微妙的星光边框 */
@@ -501,8 +504,8 @@
     --shadow-floating: 0 16px 48px rgba(var(--black-rgb), 0.45), 0 8px 16px rgba(var(--black-rgb), 0.3);
     
     /* 渐变：星空微光 */
-    --section-title-gradient: linear-gradient(135deg, hsla(calc(var(--accent-hue) + 11), 33%, calc(26% + var(--accent-lightness-offset)), 0.7) 0%, rgba(var(--primary-rgb), 0.6) 50%, rgba(var(--primary-rgb), 0.5) 100%);
-    --action-bg: linear-gradient(135deg, hsla(calc(var(--accent-hue) + 11), 33%, calc(26% + var(--accent-lightness-offset)), 0.7) 0%, rgba(var(--primary-rgb), 0.6) 100%);
+    --section-title-gradient: linear-gradient(135deg, hsla(calc(var(--accent-hue) + 11), min(100%, calc(33% * var(--accent-saturation-ui, 1))), calc(26% + var(--accent-lightness-offset)), 0.7) 0%, rgba(var(--primary-rgb), 0.6) 50%, rgba(var(--primary-rgb), 0.5) 100%);
+    --action-bg: linear-gradient(135deg, hsla(calc(var(--accent-hue) + 11), min(100%, calc(33% * var(--accent-saturation-ui, 1))), calc(26% + var(--accent-lightness-offset)), 0.7) 0%, rgba(var(--primary-rgb), 0.6) 100%);
     
     /* 按钮 */
     --btn-primary-bg: linear-gradient(135deg, var(--bamboo-dark) 0%, var(--bamboo-primary) 100%);
@@ -517,16 +520,16 @@
     --table-border: rgba(var(--primary-rgb), 0.18);
     
     /* 诊断卡片 */
-    --diagnosis-bg: hsla(calc(var(--accent-hue) + 5), 30%, calc(8% + var(--accent-lightness-offset)), 0.92);
+    --diagnosis-bg: hsla(calc(var(--accent-hue) + 5), min(100%, calc(30% * var(--accent-saturation-ui, 1))), calc(8% + var(--accent-lightness-offset)), 0.92);
     --diagnosis-border: rgba(var(--primary-rgb), 0.2);
-    --diagnosis-text: hsl(var(--accent-hue), 22%, calc(87% + var(--accent-lightness-offset)));
+    --diagnosis-text: hsl(var(--accent-hue), min(100%, calc(22% * var(--accent-saturation-ui, 1))), calc(87% + var(--accent-lightness-offset)));
     --diagnosis-card-good-bg: rgba(var(--primary-rgb), 0.12);
     --diagnosis-card-warn-bg: rgba(180, 140, 60, 0.12);
     
     /* 时间线与进度 */
     --timeline-stat-bg: rgba(var(--primary-rgb), 0.1);
     --progress-bg: rgba(var(--primary-rgb), 0.15);
-    --breath-color: hsla(calc(var(--accent-hue) + 0), 35%, calc(64% + var(--accent-lightness-offset)), 0.4);
+    --breath-color: hsla(calc(var(--accent-hue) + 0), min(100%, calc(35% * var(--accent-saturation-ui, 1))), calc(64% + var(--accent-lightness-offset)), 0.4);
     
     /* KPI 卡片 */
     --kpi-up-bg: linear-gradient(180deg, var(--card-bg) 0%, rgba(180, 60, 50, 0.18) 100%);
@@ -541,8 +544,8 @@
     
     /* 标签 */
     --tag-execute-bg: var(--bamboo-light);
-    --tag-miss-bg: hsl(var(--accent-hue), 12%, calc(26% + var(--accent-lightness-offset)));
-    --tag-text-light: hsl(var(--accent-hue), 15%, calc(89% + var(--accent-lightness-offset)));
+    --tag-miss-bg: hsl(var(--accent-hue), min(100%, calc(12% * var(--accent-saturation-ui, 1))), calc(26% + var(--accent-lightness-offset)));
+    --tag-text-light: hsl(var(--accent-hue), min(100%, calc(15% * var(--accent-saturation-ui, 1))), calc(89% + var(--accent-lightness-offset)));
     
     /* 波浪与毛玻璃 */
     --wave-color: rgba(var(--primary-rgb), 0.5);
@@ -552,14 +555,14 @@
     --glass-card-gradient: linear-gradient(135deg, rgba(var(--white-rgb), 0.12) 0%, rgba(var(--white-rgb), 0.04) 50%, rgba(var(--white-rgb), 0.08) 100%), linear-gradient(45deg, rgba(var(--bamboo-deep-rgb), 0.10) 0%, transparent 60%);
     
     /* 星空点缀色 */
-    --star-glow: hsla(calc(var(--accent-hue) + 0), 36%, calc(78% + var(--accent-lightness-offset)), 0.6);
-    --star-accent: hsl(var(--accent-hue), 38%, calc(75% + var(--accent-lightness-offset)));
+    --star-glow: hsla(calc(var(--accent-hue) + 0), min(100%, calc(36% * var(--accent-saturation-ui, 1))), calc(78% + var(--accent-lightness-offset)), 0.6);
+    --star-accent: hsl(var(--accent-hue), min(100%, calc(38% * var(--accent-saturation-ui, 1))), calc(75% + var(--accent-lightness-offset)));
 
     /* 暗色模式：竹林浅色交互态 */
-    --bamboo-pale-hover: hsl(var(--accent-hue), 28%, calc(88% + var(--accent-lightness-offset)));
+    --bamboo-pale-hover: hsl(var(--accent-hue), min(100%, calc(28% * var(--accent-saturation-ui, 1))), calc(88% + var(--accent-lightness-offset)));
     --bamboo-pale-hover-rgb: 208, 232, 208;
-    --bamboo-pale-active: hsl(var(--accent-hue), 25%, calc(82% + var(--accent-lightness-offset)));
-    --bamboo-pale-highlight: hsl(calc(var(--accent-hue) - 33), 78%, calc(68% + var(--accent-lightness-offset)));
+    --bamboo-pale-active: hsl(var(--accent-hue), min(100%, calc(25% * var(--accent-saturation-ui, 1))), calc(82% + var(--accent-lightness-offset)));
+    --bamboo-pale-highlight: hsl(calc(var(--accent-hue) - 33), min(100%, calc(78% * var(--accent-saturation-ui, 1))), calc(68% + var(--accent-lightness-offset)));
     --bamboo-pale-highlight-rgb: 160, 216, 120;
     
     /* Focus */
@@ -593,7 +596,7 @@
     --gold: #FFD93D;
     --sky-azure: #74C0FC;
     --sky-azure-rgb: 116, 192, 252;
-    --leaf-green: hsl(var(--accent-hue), 23%, calc(65% + var(--accent-lightness-offset)));
+    --leaf-green: hsl(var(--accent-hue), min(100%, calc(23% * var(--accent-saturation-ui, 1))), calc(65% + var(--accent-lightness-offset)));
 
     /* === 健康评分色彩系统（暗色同值） === */
     --health-danger: #EF4444;
@@ -620,8 +623,8 @@
 
     /* 竹林装饰效果 — 暗色模式 */
     /* 暗色流光效果（fab.css glow 动画依赖，缺定义导致 GPU 空跑） */
-    --glow-color-start: hsla(calc(var(--accent-hue) + 0), 45%, calc(60% + var(--accent-lightness-offset)), 0.25);
-    --glow-color-end: hsla(calc(var(--accent-hue) + 0), 35%, calc(75% + var(--accent-lightness-offset)), 0.08);
+    --glow-color-start: hsla(calc(var(--accent-hue) + 0), min(100%, calc(45% * var(--accent-saturation-ui, 1))), calc(60% + var(--accent-lightness-offset)), 0.25);
+    --glow-color-end: hsla(calc(var(--accent-hue) + 0), min(100%, calc(35% * var(--accent-saturation-ui, 1))), calc(75% + var(--accent-lightness-offset)), 0.08);
     --glow-width: 2px;
     --glow-opacity: 0.2;
     --glow-duration: 20s;

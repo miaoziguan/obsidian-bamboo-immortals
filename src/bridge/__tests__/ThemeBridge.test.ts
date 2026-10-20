@@ -54,6 +54,28 @@ describe('ThemeBridge.computeObsidianVars', () => {
     expect(under['--interactive-accent']).toBe('hsl(120, 40%, 15%)');
   });
 
+  it('饱和度=100（默认）保持设计基准：强调色 S 仍为 40', () => {
+    const vars = ThemeBridge.computeObsidianVars(120, 0, false, 100);
+    expect(vars['--interactive-accent']).toBe('hsl(120, 40%, 40%)');
+  });
+
+  it('饱和度缩放作用于强调色（50 → S 由 40 减半为 20；140 → 56）', () => {
+    expect(ThemeBridge.computeObsidianVars(120, 0, false, 50)['--interactive-accent']).toBe('hsl(120, 20%, 40%)');
+    expect(ThemeBridge.computeObsidianVars(120, 0, false, 140)['--interactive-accent']).toBe('hsl(120, 56%, 40%)');
+  });
+
+  it('饱和度同时作用于背景分量（不只强调色）', () => {
+    // 亮色背景基准 S=12 → 50% 时为 6
+    expect(ThemeBridge.computeObsidianVars(120, 0, false, 50)['--background-primary']).toBe('hsl(120, 6%, 94%)');
+  });
+
+  it('饱和度越界被钳制在 [40, 140]（999→140、0→40）', () => {
+    const over = ThemeBridge.computeObsidianVars(120, 0, false, 999);
+    const under = ThemeBridge.computeObsidianVars(120, 0, false, 0);
+    expect(over['--interactive-accent']).toBe('hsl(120, 56%, 40%)');
+    expect(under['--interactive-accent']).toBe('hsl(120, 16%, 40%)');
+  });
+
   it('返回完整的核心色变量键集合', () => {
     const vars = ThemeBridge.computeObsidianVars(120, 0, false);
     expect(Object.keys(vars).sort()).toEqual(

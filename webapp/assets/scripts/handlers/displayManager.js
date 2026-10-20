@@ -1,4 +1,4 @@
-import { byId, $, modalMount, eventInTargets, getCssVarRoot, getGlobalComputedStyle, getHost } from '../utils/domRef.js';
+import { byId, $, modalMount, eventInTargets, getCssVarRoot, getGlobalComputedStyle, getHost, getShadowRoot } from '../utils/domRef.js';
 import { applyDerivedRgb } from '../utils/palette.js';
 /**
  * DisplayManager — 显示设置管理器
@@ -25,14 +25,23 @@ export const DisplayManager = {
     _hueValueLabelEl: null,
     _lightnessSliderEl: null,
     _lightnessValueLabelEl: null,
+    _saturationSliderEl: null,
+    _saturationValueLabelEl: null,
     _currentHue: null,            // 当前生效色相（供广播/明度联动读取，避免每次 input 都 getComputedStyle 强制布局）
     _currentLightness: null,      // 当前生效明度偏移
+    _currentSaturation: null,     // 当前生效饱和度缩放（100 = 设计稿原样）
     _paletteRAF: null,            // 调色广播 rAF 节流句柄
     _huePresetBtns: null,         // 缓存色相预设按钮，避免每次 input 都 querySelectorAll
     _lightnessPresetBtns: null,   // 缓存明度预设按钮
+    _saturationPresetBtns: null,  // 缓存饱和度预设按钮
     _applyRAF: null,              // 拖动时「写变量+同步UI」rAF 合并句柄
     _pendingHue: null,            // 待应用的色相（input 高频期间缓存，rAF 内统一落盘）
     _pendingLightness: null,      // 待应用的明度偏移
+    _pendingSaturation: null,     // 待应用的饱和度缩放
+    _saturationSaveTimer: null,
+    followThemePalette: true,     // 跟随主题动效配色：切主题时把主题标准配色同步到全局调色
+    _followThemeCheckboxEl: null,
+    _followThemeSaveTimer: null,
     _dragging: false,             // 拖动滑块期间为 true：_syncHueUI/_syncLightnessUI 据此跳过回设 slider.value，避免 rAF 把 thumb 弹回
     _saveTimer: null,
     _transitionTimer: null,
@@ -102,6 +111,28 @@ export const DisplayManager = {
         { label: '明亮', value: 8,   title: '清新亮丽' },
     ],
 
+    /* ===== 饱和度调节 =====
+       用「缩放系数」而非偏移 —— 偏移会让高饱和色溢出（86%+20% 被截断成纯色、细节失真），
+       且对低饱和色几乎无效；缩放能让所有颜色等比变浓/变淡，色彩之间的相对关系得以保留。
+       主题侧需配合 min(100%, 原S% × scale) 消费并 clamp。 */
+    SATURATION_MIN: 40,
+    SATURATION_MAX: 140,
+    DEFAULT_SATURATION: 100,   // 100 = 设计稿原饱和度
+
+    /* 「跟随主题动效配色」时 UI 侧饱和度的映射中点：
+       palette.saturation 等于本值时，UI 饱和度 = 设计稿原样（scale 1）；高于它则 UI 更浓
+       （scale 可 >1，突破 UI 自身 18–36% 的小基准），低于则更淡。
+       背景：此前 UI 与场景共用 --accent-saturation-scale（= sat/100 ≤ 1），UI 只能被压、
+       永远浓不起来，于是「跟随」只跟到色相、跟不到艳度，艳色主题配淡彩界面必然不搭。
+       现拆出 --accent-saturation-ui 专供 UI 消费，场景仍用原变量、保持设计稿饱和度。 */
+    UI_SAT_NEUTRAL: 50,
+
+    SATURATION_PRESETS: [
+        { label: '素雅', value: 65,  title: '降饱和，水墨淡雅' },
+        { label: '标准', value: 100, title: '设计稿原饱和度' },
+        { label: '明艳', value: 125, title: '提高饱和，秋色更浓' },
+    ],
+
     /* ===== 初始化 ===== */
     async init() {
         if (this._initialized) return;
@@ -118,6 +149,13 @@ export const DisplayManager = {
 
         // 监听容器尺寸变化（移动端旋转/侧栏缩放时重算 rw-* 断点）
         this._observeContainerResize();
+
+        // 启动时若「跟随主题动效配色」开启，主动对齐当前主题。
+        // 补齐 theme-effects 可能先于本模块初始化的时序；幂等，重复应用无副作用。
+        if (this.followThemePalette && typeof window.ThemeEffects !== 'undefined'
+            && window.ThemeEffects._applyPaletteToGlobal) {
+            window.ThemeEffects._applyPaletteToGlobal(window.ThemeEffects.currentTheme);
+        }
     },
 
     /* ===== 加载并应用设置 ===== */
@@ -185,6 +223,28 @@ export const DisplayManager = {
         } catch (e) {
             console.warn('[DisplayManager] Failed to load lightness setting:', e.message);
             this._applyLightness(this.DEFAULT_LIGHTNESS);
+        }
+
+        try {
+            const savedSaturation = await storageManager.getSetting('displaySaturation');
+            const sat = (savedSaturation !== null && savedSaturation !== undefined) ? Number(savedSaturation) : this.DEFAULT_SATURATION;
+            if (!isNaN(sat) && sat >= this.SATURATION_MIN && sat <= this.SATURATION_MAX) {
+                this._applySaturation(sat, true);
+            } else {
+                this._applySaturation(this.DEFAULT_SATURATION, true);
+            }
+        } catch (e) {
+            console.warn('[DisplayManager] Failed to load saturation setting:', e.message);
+            this._applySaturation(this.DEFAULT_SATURATION, true);
+        }
+
+        try {
+            const savedFollow = await storageManager.getSetting('displayFollowThemePalette');
+            // 缺省开：绝大多数用户希望「选主题即整套配色」
+            this.followThemePalette = (savedFollow === null || savedFollow === undefined) ? true : !!savedFollow;
+        } catch (e) {
+            console.warn('[DisplayManager] Failed to load follow-theme setting:', e.message);
+            this.followThemePalette = true;
         }
 
     },
@@ -465,6 +525,49 @@ export const DisplayManager = {
         }, 500);
     },
 
+    _scheduleSaveSaturation(value) {
+        clearTimeout(this._saturationSaveTimer);
+        this._saturationSaveTimer = setTimeout(async () => {
+            try {
+                await storageManager.putSetting('displaySaturation', value);
+            } catch (e) {
+                console.warn('[DisplayManager] Failed to save saturation setting:', e.message);
+            }
+        }, 500);
+    },
+
+    _scheduleSaveFollowTheme(value) {
+        clearTimeout(this._followThemeSaveTimer);
+        this._followThemeSaveTimer = setTimeout(async () => {
+            try {
+                await storageManager.putSetting('displayFollowThemePalette', !!value);
+            } catch (e) {
+                console.warn('[DisplayManager] Failed to save follow-theme setting:', e.message);
+            }
+        }, 500);
+    },
+
+    /* 跟随主题动效配色开启时，折叠收起下游三个配色控件（色相/明度/饱和度）；关闭则展开 */
+    _applyFollowThemeEnabled() {
+        const collapsed = !!this.followThemePalette;
+        const group = this._panelEl.querySelector('.display-color-group');
+        if (group) {
+            group.classList.toggle('is-collapsed', collapsed);
+            group.setAttribute('aria-hidden', collapsed ? 'true' : 'false');
+        }
+    },
+
+    /* 折叠动画期间逐帧重定位：展开/收起时面板高度在变，若只在切换瞬间算一次 top 会偏位。
+       此处用 rAF 跟着动画把面板以悬浮按钮为锚持续居中，避免“展开后位置跳变/偏出”。 */
+    _repositionDuring(duration = 340) {
+        const start = performance.now();
+        const tick = () => {
+            this._positionPanel();
+            if (performance.now() - start < duration) requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+    },
+
     /* ===== 应用明度 =====
        fromTheme=true 表示值来自主题/广播下发（而非用户拖动滑块），此时不再回写 Obsidian，
        否则会形成「广播 → _applyLightness → _maybeSyncPalette → 再广播」的死循环。
@@ -476,6 +579,85 @@ export const DisplayManager = {
         root.style.setProperty('--accent-lightness-offset', val + '%');
         this._syncLightnessUI(val);
         if (!fromTheme) this._maybeSyncPalette();
+    },
+
+    /* ===== 应用饱和度 =====
+       写入 --accent-saturation-scale：缩放系数（1 = 设计稿原样，0.4–1.4）。
+       主题侧需以 min(100%, 原S% × scale) 消费并 clamp —— 否则高饱和色会被截断成纯色。 */
+    _applySaturation(val, fromTheme = false) {
+        const root = getCssVarRoot();
+        if (!root) return;
+        const n = Number(val);
+        const v = (!isNaN(n)) ? Math.max(this.SATURATION_MIN, Math.min(this.SATURATION_MAX, n)) : this.DEFAULT_SATURATION;
+        this._currentSaturation = v;
+        root.style.setProperty('--accent-saturation-scale', String(v / 100));
+        // UI 侧：手动模式下与场景同系数，行为与改动前完全一致
+        root.style.setProperty('--accent-saturation-ui', String(v / 100));
+        this._syncSaturationUI(v);
+        // 饱和度也影响派生 RGB（阴影/半透明色），拖动期间跳过、松手补齐（与 _applyHue 同策略）
+        if (!this._dragging && this._currentHue !== null) this._applyDerivedRgb(this._currentHue);
+        if (!fromTheme) this._maybeSyncPalette();
+    },
+
+    /* ===== 一次性应用整组调色（「跟随主题动效配色」用）=====
+       避免三次 _applyXxx 各触发一次广播 + 一次派生 RGB 重算（会造成闪烁与多余重绘）。 */
+    applyPaletteBundle(pal, save) {
+        console.log('[跟随主题] applyPaletteBundle 入参:', JSON.stringify(pal));
+        if (!pal) return;
+        const root = getCssVarRoot();
+        if (!root) return;
+        const h = Number(pal.hue);
+        if (isNaN(h)) return;
+        const hue = ((Math.round(h) % 360) + 360) % 360;
+        const loRaw = Number(pal.lightness);
+        const lo = Number.isFinite(loRaw)
+            ? Math.max(this.LIGHTNESS_MIN, Math.min(this.LIGHTNESS_MAX, loRaw)) : 0;
+        const satRaw = Number(pal.saturation);
+        const sat = Number.isFinite(satRaw)
+            ? Math.max(this.SATURATION_MIN, Math.min(this.SATURATION_MAX, satRaw)) : this.DEFAULT_SATURATION;
+
+        this._currentHue = hue;
+        this._currentLightness = lo;
+        this._currentSaturation = sat;
+
+        root.style.setProperty('--accent-hue', String(hue));
+        root.style.setProperty('--accent-lightness-offset', lo + '%');
+        // 场景侧：沿用原系数（保持设计稿饱和度，它是配色的「源」）
+        root.style.setProperty('--accent-saturation-scale', String(sat / 100));
+        // UI 侧：以 UI_SAT_NEUTRAL 为中点映射，可 >1，使界面真正染上主题的艳度
+        root.style.setProperty('--accent-saturation-ui', String(sat / this.UI_SAT_NEUTRAL));
+
+        this._syncHueUI(hue);
+        this._syncLightnessUI(lo);
+        this._syncSaturationUI(sat);
+
+        // 一次派生 RGB、一次广播
+        this._applyDerivedRgb(hue);
+        this._maybeSyncPalette();
+
+        if (save !== false) {
+            this._scheduleSaveHue(hue);
+            this._scheduleSaveLightness(lo);
+            this._scheduleSaveSaturation(sat);
+        }
+        /* [诊断] 变量写入后，读主题内一个 path 的实际计算 fill，确认是否真被吃进去。
+           主题可能挂在 Shadow DOM 里，必须用 shadow 感知查询（document.querySelector 找不到）。 */
+        try {
+            var _root = (typeof getShadowRoot === 'function' && getShadowRoot()) || document;
+            var _paths = _root.querySelectorAll('.fl-scene path');
+            var _cs = getGlobalComputedStyle();
+            // 注意：第一个 path 可能没有 fill 属性（默认黑），会误判 —— 必须找带 fill 的
+            var _p = null;
+            for (var i = 0; i < _paths.length; i++) {
+                if (_paths[i].getAttribute('fill')) { _p = _paths[i]; break; }
+            }
+            var _sec = _root.getElementById ? _root.getElementById('themeEffectSection') : null;
+            console.log('[跟随主题] :root hue =', _cs.getPropertyValue('--accent-hue').trim(),
+                '| section inline hue =', _sec ? JSON.stringify(_sec.style.getPropertyValue('--accent-hue')) : '(no sec)',
+                '| path总数:', _paths.length,
+                '| 带fill的path → fill =', _p ? getComputedStyle(_p).fill : '(无)',
+                '| 该path上 --fl-c1 计算值 =', _p ? JSON.stringify(getComputedStyle(_p).getPropertyValue('--fl-c1')) : '');
+        } catch (e) { console.log('[跟随主题] 探针失败:', e && e.message); }
     },
 
     /* 拖动滑块时把「写变量 + 同步 UI」合并到每帧一次（rAF），
@@ -495,6 +677,11 @@ export const DisplayManager = {
                 const l = this._pendingLightness;
                 this._pendingLightness = null;
                 this._applyLightness(l);
+            }
+            if (this._pendingSaturation !== null && this._pendingSaturation !== undefined) {
+                const s = this._pendingSaturation;
+                this._pendingSaturation = null;
+                this._applySaturation(s);
             }
         });
     },
@@ -528,6 +715,8 @@ export const DisplayManager = {
                 ? this._currentHue : this.DEFAULT_HUE;
             const lightnessOffset = (this._currentLightness !== null && this._currentLightness !== undefined && !isNaN(this._currentLightness))
                 ? this._currentLightness : 0;
+            const saturation = (this._currentSaturation !== null && this._currentSaturation !== undefined && !isNaN(this._currentSaturation))
+                ? this._currentSaturation : this.DEFAULT_SATURATION;
             // 明暗状态：shadow 模式下变量挂在 host 上，优先用 host 判定
             const isDarkRoot = getHost() || document.documentElement;
             const isDark = isDarkRoot.classList.contains('dark');
@@ -535,7 +724,7 @@ export const DisplayManager = {
                 window.parent.postMessage({
                     type: 'theme:syncPalette',
                     id: 'dm_' + Date.now(),
-                    payload: { hue, lightnessOffset, isDark }
+                    payload: { hue, lightnessOffset, saturation, isDark }
                 }, '*');
             } catch (e) {
                 // 跨域静默
@@ -554,6 +743,22 @@ export const DisplayManager = {
         // 复用缓存的预设按钮列表（面板重建时由 _bindPanel 刷新），避免每次 input 都 querySelectorAll
         if (this._lightnessPresetBtns) {
             this._lightnessPresetBtns.forEach(btn => {
+                const pv = Number(btn.dataset.value);
+                btn.classList.toggle('active', pv === val);
+            });
+        }
+    },
+
+    _syncSaturationUI(val) {
+        // 拖动期间（_dragging）不回设 slider.value，避免 rAF 把 thumb 弹回
+        if (this._saturationSliderEl && !this._dragging) {
+            this._saturationSliderEl.value = val;
+        }
+        if (this._saturationValueLabelEl) {
+            this._saturationValueLabelEl.textContent = val + '%';
+        }
+        if (this._saturationPresetBtns) {
+            this._saturationPresetBtns.forEach(btn => {
                 const pv = Number(btn.dataset.value);
                 btn.classList.toggle('active', pv === val);
             });
@@ -600,7 +805,7 @@ export const DisplayManager = {
      * iframe 也复用，修复寻呼机不跟随主题色相/明度）。
      */
     _applyDerivedRgb(hue) {
-        applyDerivedRgb(hue, null);
+        applyDerivedRgb(hue, null, this._currentSaturation);
     },
 
     /**
@@ -922,7 +1127,7 @@ export const DisplayManager = {
         hueLabel.className = 'display-section-label';
         hueLabel.innerHTML = `
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
-            <span>主题色相</span>
+            <span>色相</span>
         `;
         hueSection.appendChild(hueLabel);
 
@@ -936,13 +1141,13 @@ export const DisplayManager = {
         hueSlider.min = this.HUE_MIN;
         hueSlider.max = this.HUE_MAX;
         hueSlider.step = 1;
-        hueSlider.value = this.DEFAULT_HUE;
-        hueSlider.setAttribute('aria-label', '主题色相');
+        hueSlider.value = (this._currentHue !== null && this._currentHue !== undefined) ? this._currentHue : this.DEFAULT_HUE;
+        hueSlider.setAttribute('aria-label', '色相');
         this._hueSliderEl = hueSlider;
 
         const hueValueLabel = document.createElement('span');
         hueValueLabel.className = 'display-value-label';
-        hueValueLabel.textContent = this.DEFAULT_HUE + '\u00B0';
+        hueValueLabel.textContent = ((this._currentHue !== null && this._currentHue !== undefined) ? this._currentHue : this.DEFAULT_HUE) + '\u00B0';
         this._hueValueLabelEl = hueValueLabel;
 
         hueSliderRow.appendChild(hueSlider);
@@ -965,13 +1170,13 @@ export const DisplayManager = {
 
         hueSection.appendChild(huePresetRow);
 
-        // 重置按钮
+        // 重置按钮（放到标签行右侧，省一整行高度）
         const resetBtn = document.createElement('button');
         resetBtn.className = 'display-hue-reset-btn';
         resetBtn.textContent = '恢复默认';
         resetBtn.title = '恢复到默认竹青绿色';
-        resetBtn.setAttribute('aria-label', '恢复默认主题色相');
-        hueSection.appendChild(resetBtn);
+        resetBtn.setAttribute('aria-label', '恢复默认色相');
+        hueLabel.appendChild(resetBtn);
 
         panel.appendChild(hueSection);
 
@@ -996,13 +1201,14 @@ export const DisplayManager = {
         lightnessSlider.min = this.LIGHTNESS_MIN;
         lightnessSlider.max = this.LIGHTNESS_MAX;
         lightnessSlider.step = 1;
-        lightnessSlider.value = this.DEFAULT_LIGHTNESS;
+        lightnessSlider.value = (this._currentLightness !== null && this._currentLightness !== undefined) ? this._currentLightness : this.DEFAULT_LIGHTNESS;
         lightnessSlider.setAttribute('aria-label', '明度');
         this._lightnessSliderEl = lightnessSlider;
 
         const lightnessValueLabel = document.createElement('span');
         lightnessValueLabel.className = 'display-value-label';
-        lightnessValueLabel.textContent = this.DEFAULT_LIGHTNESS >= 0 ? '+' + this.DEFAULT_LIGHTNESS + '%' : this.DEFAULT_LIGHTNESS + '%';
+        const _initLo = (this._currentLightness !== null && this._currentLightness !== undefined) ? this._currentLightness : this.DEFAULT_LIGHTNESS;
+        lightnessValueLabel.textContent = _initLo >= 0 ? '+' + _initLo + '%' : _initLo + '%';
         this._lightnessValueLabelEl = lightnessValueLabel;
 
         lightnessSliderRow.appendChild(lightnessSlider);
@@ -1025,9 +1231,108 @@ export const DisplayManager = {
         lightnessSection.appendChild(lightnessPresetRow);
         panel.appendChild(lightnessSection);
 
+        // ======== 饱和度调节区 ========
+        const saturationSection = document.createElement('div');
+        saturationSection.className = 'display-section';
+
+        const saturationLabel = document.createElement('div');
+        saturationLabel.className = 'display-section-label';
+        saturationLabel.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor" stroke="none"/></svg>
+            <span>饱和度</span>
+        `;
+        saturationSection.appendChild(saturationLabel);
+
+        const saturationSliderRow = document.createElement('div');
+        saturationSliderRow.className = 'display-slider-row';
+
+        const saturationSlider = document.createElement('input');
+        saturationSlider.type = 'range';
+        saturationSlider.className = 'display-slider';
+        saturationSlider.min = this.SATURATION_MIN;
+        saturationSlider.max = this.SATURATION_MAX;
+        saturationSlider.step = 1;
+        saturationSlider.value = (this._currentSaturation !== null && this._currentSaturation !== undefined) ? this._currentSaturation : this.DEFAULT_SATURATION;
+        saturationSlider.setAttribute('aria-label', '饱和度');
+        this._saturationSliderEl = saturationSlider;
+
+        const saturationValueLabel = document.createElement('span');
+        saturationValueLabel.className = 'display-value-label';
+        saturationValueLabel.textContent = ((this._currentSaturation !== null && this._currentSaturation !== undefined) ? this._currentSaturation : this.DEFAULT_SATURATION) + '%';
+        this._saturationValueLabelEl = saturationValueLabel;
+
+        saturationSliderRow.appendChild(saturationSlider);
+        saturationSliderRow.appendChild(saturationValueLabel);
+        saturationSection.appendChild(saturationSliderRow);
+
+        const saturationPresetRow = document.createElement('div');
+        saturationPresetRow.className = 'display-preset-row';
+
+        this.SATURATION_PRESETS.forEach(preset => {
+            const btn = document.createElement('button');
+            btn.className = 'display-saturation-preset-btn';
+            btn.dataset.value = preset.value;
+            btn.title = preset.title;
+            btn.textContent = preset.label;
+            btn.setAttribute('aria-label', preset.title);
+            saturationPresetRow.appendChild(btn);
+        });
+
+        saturationSection.appendChild(saturationPresetRow);
+
+        panel.appendChild(saturationSection);
+
+        // ===== 排版：分组 + 值标签归位 =====
+        // 1) 分两组：布局（宽度/字号/间距）/ 配色（色相/明度/饱和度）
+        const layoutGroupTitle = document.createElement('div');
+        layoutGroupTitle.className = 'display-group-title';
+        layoutGroupTitle.textContent = '布局';
+        panel.insertBefore(layoutGroupTitle, widthSection);
+
+        const colorDivider = document.createElement('div');
+        colorDivider.className = 'display-divider';
+        panel.insertBefore(colorDivider, hueSection);
+        const colorGroupTitle = document.createElement('div');
+        colorGroupTitle.className = 'display-group-title';
+        colorGroupTitle.textContent = '配色';
+        panel.insertBefore(colorGroupTitle, hueSection);
+
+        // 2) 值标签移到各段标题行右侧，滑块独占一整行（三块仍在 panel 下，便于统一查询）
+        panel.querySelectorAll('.display-section').forEach((sec) => {
+            const labelEl = sec.querySelector('.display-section-label');
+            const valueEl = sec.querySelector('.display-value-label');
+            if (labelEl && valueEl) labelEl.appendChild(valueEl);
+        });
+
+        // 3) 配色三项收进可折叠容器：开启时折叠收起，关闭开关才自动展开
+        const colorGroup = document.createElement('div');
+        colorGroup.className = 'display-color-group';
+        const colorInner = document.createElement('div');
+        colorInner.className = 'display-color-inner';
+        colorGroup.appendChild(colorInner);
+        panel.insertBefore(colorGroup, hueSection);   // 先挂到 panel
+        colorInner.appendChild(hueSection);            // appendChild 自动脱离原父级，移入容器
+        colorInner.appendChild(lightnessSection);
+        colorInner.appendChild(saturationSection);
+
+        // 4) 跟随主题动效配色：作为「配色」分组的“源开关”，置于组首（容器之前）
+        const followRow = document.createElement('label');
+        followRow.className = 'display-follow-theme';
+        followRow.title = '开启后切换主题会自动对齐色相 / 明度 / 饱和度；关闭即展开下方三项手动微调';
+        followRow.innerHTML = `
+            <span class="display-follow-theme-title">跟随主题动效配色</span>
+            <input type="checkbox" class="display-follow-theme-input" aria-label="跟随主题动效配色"${this.followThemePalette !== false ? ' checked' : ''}>
+            <span class="display-follow-theme-switch"></span>
+        `;
+        this._followThemeCheckboxEl = followRow.querySelector('.display-follow-theme-input');
+        panel.insertBefore(followRow, colorGroup);
+
         // 挂载到 body
         modalMount().appendChild(panel);
         this._panelEl = panel;
+
+        // 初始应用“跟随主题”对配色控件的置灰（默认开 → 置灰）
+        this._applyFollowThemeEnabled();
     },
 
     /* ===== 绑定事件 ===== */
@@ -1179,6 +1484,53 @@ export const DisplayManager = {
             });
         });
 
+        // 饱和度滑块 input 事件（实时预览）
+        if (this._saturationSliderEl) {
+            this._saturationSliderEl.addEventListener('input', (e) => {
+                document.documentElement.classList.add('recoloring');
+                this._dragging = true;
+                this._pendingSaturation = Number(e.target.value);
+                this._scheduleApply();
+            });
+
+            this._saturationSliderEl.addEventListener('change', (e) => {
+                const val = Number(e.target.value);
+                document.documentElement.classList.remove('recoloring');
+                this._dragging = false;
+                this._currentSaturation = val;
+                // 松手时补齐派生 RGB（拖动期间为省重算被跳过）
+                if (this._currentHue !== null) this._applyDerivedRgb(this._currentHue);
+                this._maybeSyncPalette();
+                this._scheduleSaveSaturation(val);
+            });
+        }
+
+        // 饱和度预设按钮
+        const saturationPresetBtns = this._panelEl.querySelectorAll('.display-saturation-preset-btn');
+        this._saturationPresetBtns = saturationPresetBtns;
+        saturationPresetBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const val = Number(btn.dataset.value);
+                this._applySaturation(val);
+                this._scheduleSaveSaturation(val);
+            });
+        });
+
+        // 跟随主题动效配色开关
+        if (this._followThemeCheckboxEl) {
+            this._followThemeCheckboxEl.addEventListener('change', (e) => {
+                this.followThemePalette = !!e.target.checked;
+                this._scheduleSaveFollowTheme(this.followThemePalette);
+                // 刚开启时立即对齐当前主题（关掉则保持现状，不强行改回任何值）
+                if (this.followThemePalette && typeof window.ThemeEffects !== 'undefined'
+                    && window.ThemeEffects._applyPaletteToGlobal) {
+                    window.ThemeEffects._applyPaletteToGlobal(window.ThemeEffects.currentTheme);
+                }
+                this._applyFollowThemeEnabled();
+                this._repositionDuring();
+            });
+        }
+
         // ESC 关闭
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && this.isOpen()) {
@@ -1208,10 +1560,12 @@ export const DisplayManager = {
         if (!this._panelEl || this.isOpen()) return;
         this._panelEl.hidden = false;
 
-        // 定位：在 FAB 按钮旁边弹出
-        this._positionPanel();
-
+        // 等一帧让布局结算后再定位：初次打开面板刚由 display:none 切回，当帧同步测量高度会失真
+        // （尤其折叠容器 grid 0fr 的最终尺寸、max-height 钳制、web 字体），导致 top 算错、面板偏移。
+        // 下一帧再算 left/top 与浮层定位约定（PopupPositioner.positionOnNextFrame）一致，避免首开偏位。
+        // rAF 在绘制前执行，先定好位再加 .open 淡入，面板不会在 (0,0) 闪一下。
         requestAnimationFrame(() => {
+            this._positionPanel();
             this._panelEl.classList.add('open');
         });
     },
@@ -1235,8 +1589,10 @@ export const DisplayManager = {
 
         const fabRect = fab.getBoundingClientRect();
         const vp = { width: window.innerWidth, height: window.innerHeight };
-        const panelW = 280;
-        const panelH = this._panelEl.scrollHeight || 180;
+        const panelW = 320;
+        // 面板随内容自然高度（关开关后配色三项展开即整体显示），不再限高滚动；
+        // 定位按实际内容高度居中，并夹紧顶/左边界——若内容高于视口，顶部贴顶、底部自然延伸（无滚动条）
+        const panelH = this._panelEl.scrollHeight || 320;
         const gap = 12;
 
         // 优先放在 FAB 左侧

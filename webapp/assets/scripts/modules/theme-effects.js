@@ -22,6 +22,9 @@ export const ThemeEffects = {
             // 设计画布：正方形基准 480×480（1:1）；
             // 场景内所有写死 px（月亮 60px、山体、竹林高度等）都以此尺寸为基准，缩放后完全一致。
             design: { w: 480, h: 480 },
+            // 标准配色（可选）：切到该主题时，若「跟随主题动效配色」开启，会同步到全局显示调色
+            // 饱和度 88：竹林偏水墨素雅，比其他主题淡一档
+            palette: { hue: 120, lightness: 0, saturation: 88 },
             render() {
                 return BambooGarden.render();
             },
@@ -103,6 +106,8 @@ export const ThemeEffects = {
         this._applyThemeVars(themeName);
         this._syncThemeMode();
         this._initThemeModeObserver();
+        // 若「跟随主题动效配色」开启，把主题标准配色同步到全局显示调色（DisplayManager）
+        this._applyPaletteToGlobal(themeName);
     },
 
     /** 渲染并挂载指定主题：清空旧 DOM → 挂新 DOM → 销毁旧主题 → 初始化新主题。
@@ -255,6 +260,37 @@ export const ThemeEffects = {
         }
     },
 
+    /** 把主题的标准配色同步到「全局显示调色」（DisplayManager）。
+     *
+     * 与 _applyThemeVars 的分工：
+     *   · _applyThemeVars 只覆盖 #themeEffectSection（主题动效区），是「每主题独立」的历史机制；
+     *   · 本方法作用于全局（--accent-hue / --accent-lightness-offset / --accent-saturation-scale），
+     *     让整个界面的配色跟随所选主题。
+     *
+     * 回退：主题未声明 palette（旧主题）→ 不做任何改动，保持用户当前调色。
+     * 时序：DisplayManager 可能尚未初始化（启动顺序不定）→ 静默跳过，由其 init 末尾补齐。 */
+    _applyPaletteToGlobal(themeName) {
+        var dm = (typeof window !== 'undefined') ? window.DisplayManager : null;
+        console.log('[跟随主题] 同步请求:', themeName,
+            '| DisplayManager:', !!dm,
+            '| applyPaletteBundle:', dm && typeof dm.applyPaletteBundle,
+            '| followThemePalette:', dm && dm.followThemePalette);
+        if (!dm || typeof dm.applyPaletteBundle !== 'function') return;
+        if (dm.followThemePalette === false) return;
+        var theme = this.themes[themeName || this.currentTheme];
+        var pal = theme && theme.palette;
+        if (!pal || !Number.isFinite(+pal.hue)) return;
+        // per-mode：暗色优先用 palette.dark
+        var mode = this._getCurrentMode();
+        var use = (mode === 'dark' && pal.dark) ? pal.dark : pal;
+        console.log('[跟随主题] 该主题 palette:', JSON.stringify(pal), '| 模式:', mode, '| 采用:', JSON.stringify(use));
+        dm.applyPaletteBundle({
+            hue: +use.hue,
+            lightness: Number.isFinite(+use.lightness) ? +use.lightness : 0,
+            saturation: Number.isFinite(+use.saturation) ? +use.saturation : 100,
+        }, true);
+    },
+
     /** 同步明暗模式到 #themeEffectSection 的 CSS 变量和 data 属性 */
     _syncThemeMode() {
         var section = byId('themeEffectSection');
@@ -264,11 +300,16 @@ export const ThemeEffects = {
         // --theme-lum: 亮80%/暗22%，叠加主题明度偏移。暗色提到22%让色相变化可见
         section.style.setProperty('--theme-lum',
             'calc(' + (isDark ? '22%' : '80%') + ' + var(--accent-lightness-offset, 0%))', 'important');
-        // --theme-sat: 亮35%/暗25%
-        section.style.setProperty('--theme-sat', isDark ? '25%' : '35%', 'important');
+        // --theme-sat: 亮35%/暗25%，并随全局饱和度缩放 —— 否则主题动效区自身的饱和度
+        // （bamboo-garden 等使用 --theme-sat 的地方）不会跟随饱和度滑块
+        section.style.setProperty('--theme-sat',
+            'calc(' + (isDark ? '25%' : '35%') + ' * var(--accent-saturation-scale, 1))', 'important');
 
         // 重新应用当前主题的色相/明度（切换模式后读新模式的设置）
         this._applyThemeVars(this.currentTheme);
+
+        // 明暗切换后，若「跟随主题动效配色」开启，按新模式重新同步全局调色（per-mode）
+        this._applyPaletteToGlobal(this.currentTheme);
 
         // 如果主题面板正打开，刷新滑块值和模式标签
         var panel = $('.panel[active-panel="theme"]');
@@ -506,6 +547,25 @@ export const ThemeEffects = {
             ? { w: +themeObj.design.w, h: +themeObj.design.h }
             : null;
 
+        // 标准配色（可选）：{ hue, lightness?, saturation? } —— 切主题时同步全局调色用
+        var _normPal = function (p) {
+            if (!p || typeof p !== 'object' || !Number.isFinite(+p.hue)) return null;
+            return {
+                hue: +p.hue,
+                lightness: Number.isFinite(+p.lightness) ? +p.lightness : 0,
+                saturation: Number.isFinite(+p.saturation) ? +p.saturation : 100,
+            };
+        };
+        const palette = (themeObj.palette && typeof themeObj.palette === 'object')
+            ? (function () {
+                var base = _normPal(themeObj.palette);
+                if (!base) return null;
+                // per-mode：dark 可选，缺省回退到明色值
+                base.dark = _normPal(themeObj.palette.dark);
+                return base;
+            })()
+            : null;
+
         this.themes[name] = {
             name: themeObj.name || name,
             icon: themeObj.icon || 'palette',
@@ -513,6 +573,7 @@ export const ThemeEffects = {
             author: themeObj.author || '',
             license: themeObj.license || '',
             design,
+            palette,
             render() { return themeObj.render(); },
             init(container) { if (typeof themeObj.init === 'function') themeObj.init(container); },
             destroy() { if (typeof themeObj.destroy === 'function') themeObj.destroy(); }

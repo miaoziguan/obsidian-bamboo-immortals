@@ -2,15 +2,12 @@
 .tw-card {
   position: absolute;
   z-index: 20;
-  width: auto;
-  
-  /* 关键修复：分幕/写作档把卡片排到 left 很大的列时，width:auto 的绝对定位元素走
-     shrink-to-fit，可用宽度 = 包含块宽 − left 会变负 → 退化成 min-content（中文=单字宽）→ 一字一行。
-     原 min/max-width 含 calc(100% - 16px)，而 100% 解析的是包含块(.tw-canvas)宽，分幕时会被算成
-     极小值 → min/max 双双塌成 ~16px → 整卡压成单列。这里钉成「与画布宽无关的定宽」，
-     min-width 作为硬下限保证无论 left 多大都不会塌缩，同时保留内容自适应(280–400)。 */
-  min-width: calc(280px * var(--tw-card-zoom, 1));
-  max-width: calc(400px * var(--tw-card-zoom, 1));
+  /* 固定宽度、高度自适应：便签宽度统一为定值，不再随内容伸缩
+     （避免素笺/夜光等纸样输出时过宽、或忽宽忽窄）。高度不设 → 由内容与 padding 撑开。
+     固定 width 同时消除了「绝对定位 + width:auto」的 shrink-to-fit 塌缩：
+     分幕/写作档 left 很大时 width:auto 会退化成 min-content（中文=单字宽）一字一行，
+     这里钉成与画布宽无关的定宽，无论 left 多大都不会塌缩。 */
+  width: calc(340px * var(--tw-card-zoom, 1));
   
   --tw-card-zoom: 1;
   

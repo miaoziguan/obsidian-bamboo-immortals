@@ -55,7 +55,7 @@ import { UndoStack } from '../../services/undoStack.js';
 
 // B1 单一真源：原内联常量（图标/堆叠/缩放/字级/纸样/级别）收敛到 twConfig.js，本文件改为导入，不再重复定义
 import { ICON_LAYERS, ICON_FONT, ICON_GRID, ICON_PRINT, ICON_X, ICON_FONT_DOWN, ICON_FONT_UP, ICON_ZOOM_OUT, ICON_ZOOM_IN, ICON_PAPER, ICON_EXPORT, ICON_PREVIEW, ICON_MOVE_UP, ICON_MOVE_DOWN, ICON_LV_UP, ICON_LV_DOWN, ICON_ROTATE } from './twConfig.js';
-import { STACK_STEP, STACK_LEVELS, MAX_LEN, NOTE_CAP, WRITE_FLOW_GAP, SAVE_DEBOUNCE, LOD_DENSITY, LOD_DENSITY_EXIT, ZOOM_MIN, ZOOM_MAX, ZOOM_STEP } from './twConfig.js';
+import { STACK_STEP, STACK_LEVELS, MAX_LEN, NOTE_CAP, WRITE_FLOW_GAP, EJECT_SINK, SAVE_DEBOUNCE, LOD_DENSITY, LOD_DENSITY_EXIT, ZOOM_MIN, ZOOM_MAX, ZOOM_STEP } from './twConfig.js';
 import { FONT_SCALES, FONT_SCALE_DEFAULT_IDX, FONT_SCALE_LABELS, CARD_SCALES, CARD_SCALE_LABELS, CARD_SCALE_DEFAULT_IDX } from './twConfig.js';
 import { FONTS, FONT_LABELS, FONT_FEEDBACK, MARKET_FONTS } from './twConfig.js';
 import { PAPERS, PAPER_LABELS, PAPER_FEEDBACK, PAPER_TITLES } from './twConfig.js';
@@ -998,11 +998,14 @@ export const TypewriterFeature = {
       // left/width 都是屏幕像素，rect 已含 scale）。此前用屏幕像素差直接当画布坐标，缩放≠100% 时错位。
       const s = CanvasViewport.getScale(this);
       const cxCanvas = (br.left + br.width / 2 - cr.left) / s;   // 出纸口中心的画布 X
-      const canvasH = cr.height / s;                              // 画布内容高度（rect 高度已含 scale）
-      // 吐纸位叠放：新纸一律落在出纸口正上方（寻呼机中轴、画布中央略偏上），
-      // 只逐张做小幅上错位 —— 像纸一张张叠出来，能看到下面还压着纸。
-      // 刻意不做「互不重叠」的搬移：那样纸就不是从打印机吐出来的了，
-      // 且画布下方紧邻机身（机身 z-index 30 > 便签 20），往下搬会被机身挡住。
+      // 机身顶边的画布 Y —— 这才是「出纸口」的真实位置。
+      // 此前用 (canvasH - ch)/2（画布垂直居中）近似，但机身是画布下方独立的一行 flex 项
+      // （.tw-beeper margin-top:auto 推到底部），画布中央离打字机很远，
+      // 于是纸浮在半空、不像从机器里吐出来的。
+      const outletTopCanvas = (br.top - cr.top) / s;
+      // 吐纸位叠放：纸的下沿贴机身顶边，再沉 EJECT_SINK 探入机身后方被遮（z:30 > 20），
+      // 形成「从出纸口吐出」；只逐张做小幅上错位 —— 像纸一张张叠出来，能看到下面还压着纸。
+      // 刻意不做「互不重叠」的搬移：那样纸就不是从打印机吐出来的了。
       const stackIdx = this._spawnIdx++ % STACK_LEVELS;
       // 【P4】吐纸错位堆叠是「看见下面压着纸」的便签隐喻，文章里没有这个语义 ——
       // 写入档不做错位，新卡从文章流起点（或锚点）干净接续。
@@ -1010,7 +1013,7 @@ export const TypewriterFeature = {
         ? 0
         : ((STACK_LEVELS - 1) / 2 - stackIdx) * STACK_STEP;  // 新纸逐张上叠（内容像素）
       card.style.left = (cxCanvas - cw / 2) + 'px';
-      card.style.top = ((canvasH - ch) / 2 - 24 + stackOffset) + 'px';
+      card.style.top = (outletTopCanvas - ch + EJECT_SINK + stackOffset) + 'px';
       card.style.bottom = 'auto';
     }
     // 连续编辑改走 WritingDoc 原语：新卡即时进入规范模型（x/y 取刚算出的落点、

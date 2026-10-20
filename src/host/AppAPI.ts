@@ -1273,22 +1273,24 @@ export class AppAPI {
 
     // ---- 调色同步（webapp → Obsidian）----
     if (type === 'theme:syncPalette') {
-      const p = payload as { hue: number; lightnessOffset: number; isDark: boolean };
+      const p = payload as { hue: number; lightnessOffset: number; saturation?: number; isDark: boolean };
+      // 饱和度缺省 100（缩放系数，= 设计稿原饱和度）；异常值由下游统一夹紧，此处只做有限性兜底
+      const sat = (typeof p.saturation === 'number' && Number.isFinite(p.saturation)) ? p.saturation : 100;
       // 阅读视图（宿主自有 BambooReaderView）的竹青强调色：始终跟随滑块。
       // 放在开关判断之外——「将调色同步到 Obsidian」只管原生界面那 7 个变量，
       // 插件自有视图跟随主视图调色属内部一致性要求（与下方 broadcastTheme 同理）。
-      ThemeBridge.applyReaderPalette(p.hue, p.lightnessOffset);
+      ThemeBridge.applyReaderPalette(p.hue, p.lightnessOffset, sat);
       if (this.settings.syncPaletteToObsidian) {
-        this.themeBridge.applyPalette(p.hue, p.lightnessOffset, p.isDark);
+        this.themeBridge.applyPalette(p.hue, p.lightnessOffset, p.isDark, sat);
       }
-      // 应用内调色（含明暗与色相）→ 广播给所有已打开视图（含画中卷独立 iframe）。
-      // 色相/明度必须一并下发：画中卷等独立 iframe 视图内没有 DisplayManager，
-      // 只有拿到这两个值才能驱动自身配色（其内部样式全由 --accent-hue /
-      // --accent-lightness-offset 派生）。
+      // 应用内调色（含明暗、色相与饱和度）→ 广播给所有已打开视图（含画中卷独立 iframe）。
+      // 色相/明度/饱和度必须一并下发：画中卷等独立 iframe 视图内没有 DisplayManager，
+      // 只有拿到这些值才能驱动自身配色（其内部样式全由 --accent-hue /
+      // --accent-lightness-offset / --accent-saturation-scale 派生）。
       // 注意：此处不受 syncPaletteToObsidian 开关控制——那个开关管的是
       // 「webapp 调色是否写回 Obsidian 原生界面」，而「所有视图跟随主视图调色」
       // 是插件内部一致性要求，始终生效。
-      ThemeBridge.broadcastTheme(p.isDark, { hue: p.hue, lightnessOffset: p.lightnessOffset });
+      ThemeBridge.broadcastTheme(p.isDark, { hue: p.hue, lightnessOffset: p.lightnessOffset, saturation: sat });
       this.respond(id, { ok: true });
       return;
     }

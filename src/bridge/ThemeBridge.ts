@@ -33,7 +33,7 @@ export class ThemeBridge {
     /** 防抖竞态标记：restoreDefaults 被调用后设为 true，阻止延迟回调覆写（实例级，避免分屏多实例互相干扰 H9） */
     private _suppressed = false;
     /** 最近一次 applyPalette 的调色值，用于 Obsidian 切换明暗时以新模式重算行内变量 */
-    private _lastPalette: { hue: number; lightnessOffset: number; isDark: boolean } | null = null;
+    private _lastPalette: { hue: number; lightnessOffset: number; saturation: number; isDark: boolean } | null = null;
 
   attachIframe(iframe: HTMLIFrameElement): void {
     this.iframe = iframe;
@@ -43,7 +43,7 @@ export class ThemeBridge {
 
   /** 最近一次由 webapp 同步来的应用内调色（色相/明度），供初始推送/重放时补齐，
    *  使画中卷等独立 iframe 首屏即跟随主视图手动调色，而非停在默认竹青绿。 */
-  get currentPalette(): { hue: number; lightnessOffset: number; isDark: boolean } | null {
+  get currentPalette(): { hue: number; lightnessOffset: number; saturation: number; isDark: boolean } | null {
     return this._lastPalette;
   }
 
@@ -324,7 +324,7 @@ export class ThemeBridge {
   pushTheme(
     followObsidianTheme = false,
     forceIsDark?: boolean,
-    palette?: { hue: number; lightnessOffset: number }
+    palette?: { hue: number; lightnessOffset: number; saturation?: number }
   ): void {
     // 目标 iframe 集合 = 已注册集合 ∪ 文档内所有 .bamboo-review-frame 视图。
     // 模块宿主等独立视图即便已 attachIframe 注册，仍可能因注册实例/时机差异
@@ -337,7 +337,7 @@ export class ThemeBridge {
       .forEach((f) => targets.add(f));
     if (targets.size === 0) return;
 
-    type ThemePayload = { isDark: boolean; hue?: number; lightnessOffset?: number; bg?: string; textNormal?: string; textMuted?: string };
+    type ThemePayload = { isDark: boolean; hue?: number; lightnessOffset?: number; saturation?: number; bg?: string; textNormal?: string; textMuted?: string };
 
     // 一次性读取 getComputedStyle，复用同一对象读取全部变量（原实现重复调用 4 次）
     const cs = getComputedStyle(activeDocument.body);
@@ -349,7 +349,8 @@ export class ThemeBridge {
 
     // 签名缓存：主题未变时跳过 rgbToHue / contrastRatio / ensureContrastRgb 等重解析（UI Audit 4.5.3）
     // 调色值必须纳入签名：否则用户只改色相/明度时会命中旧缓存，新值根本不会下发。
-    const paletteKey = palette ? `${palette.hue}|${palette.lightnessOffset}` : '';
+    // 饱和度必须纳入签名：否则用户只改饱和度时会命中旧缓存，新值根本不会下发。
+    const paletteKey = palette ? `${palette.hue}|${palette.lightnessOffset}|${palette.saturation ?? ''}` : '';
     const signature = `${isDark}|${followObsidianTheme}|${accent}|${sidebar}|${textNormalRaw}|${textMutedRaw}|${paletteKey}`;
 
     let payload: ThemePayload;
@@ -392,6 +393,7 @@ export class ThemeBridge {
       // 确保手动调色优先于主题反推色相。
       if (palette && Number.isFinite(palette.hue)) payload.hue = palette.hue;
       if (palette && Number.isFinite(palette.lightnessOffset)) payload.lightnessOffset = palette.lightnessOffset;
+      if (palette && Number.isFinite(palette.saturation as number)) payload.saturation = palette.saturation as number;
       this._themeCacheKey = signature;
       this._themeCachePayload = payload;
     }
@@ -437,7 +439,7 @@ export class ThemeBridge {
    * 当悬浮菜单切换夜间模式时，应用主题改变但 Obsidian 主题未必改变（未开启调色同步），
    * 需主动把所有视图的 iframe 统一为同一明暗，确保画中卷等独立视图跟随。
    */
-  static broadcastTheme(isDark: boolean, palette?: { hue: number; lightnessOffset: number }): void {
+  static broadcastTheme(isDark: boolean, palette?: { hue: number; lightnessOffset: number; saturation?: number }): void {
     ThemeBridge.registry.forEach((bridge) => {
       bridge.pushTheme(false, isDark, palette);
     });
@@ -466,13 +468,17 @@ export class ThemeBridge {
    * - webapp 自身的暗色降饱和（--ink-* / --text-* 在 variables.css 暗色段降低 S）
    *   由 CSS 层负责，与本函数（Obsidian 原生变量注入）职责分离。
    */
-  static computeObsidianVars(hue: number, lightnessOffset: number, isDark: boolean): Record<string, string> {
+  static computeObsidianVars(hue: number, lightnessOffset: number, isDark: boolean, saturation = 100): Record<string, string> {
     const h = Math.round(hue);
     const lo = Math.max(-30, Math.min(30, lightnessOffset));
+    // 饱和度 = 缩放系数（100 = 原样）。各分量按系数缩放后必须 clamp 到 100，
+    // 否则高饱和分量会被截断成纯色（与主题侧 min(100%, …) 同策略）。
+    const sat = Math.max(40, Math.min(140, Number.isFinite(saturation) ? saturation : 100)) / 100;
+    const sScale = (s: number) => Math.min(100, Math.round(s * sat));
 
     // 强调色：明度偏移 lo 同步作用于强调色，使 webapp 的「明度」滑块
     // 在 Obsidian 原生界面同样可见（与 webapp 侧 --accent-lightness-offset 方向一致：正值提亮）。
-    const accentS = 40;
+    const accentS = sScale(40);
     const accentL = isDark
       ? Math.max(30, Math.min(80, 50 + lo))
       : Math.max(15, Math.min(70, 40 + lo));
@@ -480,7 +486,7 @@ export class ThemeBridge {
     const accentHover = `hsl(${h}, ${accentS}%, ${Math.min(95, accentL + 5)}%)`;
 
     // 背景色
-    const bgS = isDark ? 8 : 12;
+    const bgS = sScale(isDark ? 8 : 12);
     const bgL = isDark
       ? Math.max(5, 12 + lo * 0.3)
       : Math.min(98, 94 + lo * 0.15);
@@ -491,7 +497,7 @@ export class ThemeBridge {
     // 文字色：与主背景做 WCAG 对比度保护
     // textNormal 满足 AA 4.5:1
     const textNormalH = h;
-    const textNormalS = 6;
+    const textNormalS = sScale(6);
     const textNormalL = isDark ? 88 : 12;
     const textNormal = ThemeBridge.ensureContrast(
       ThemeBridge.hslString(textNormalH, textNormalS, textNormalL),
@@ -501,7 +507,7 @@ export class ThemeBridge {
 
     // textMuted 满足 AA 3:1（大文字/辅助文字最低标准）
     const textMutedH = h;
-    const textMutedS = 4;
+    const textMutedS = sScale(4);
     const textMutedL = isDark ? 55 : 45;
     const textMuted = ThemeBridge.ensureContrast(
       ThemeBridge.hslString(textMutedH, textMutedS, textMutedL),
@@ -530,10 +536,10 @@ export class ThemeBridge {
    * webapp 的色相/明度滑块，故 restoreDefaults / restoreAllDefaults 都不碰它们
    * （否则用户关掉「将调色同步到 Obsidian」时会把阅读视图的跟随一并关掉）。
    */
-  private static readonly READER_VARS = ['--bm-hue', '--bm-lightness-offset'];
+  private static readonly READER_VARS = ['--bm-hue', '--bm-lightness-offset', '--bm-saturation-scale'];
 
   /** 最近一次写入阅读视图的调色，用于跳过重复 DOM 写，并在 clear 时判断是否需要清理 */
-  private static _lastReaderPalette: { hue: number; lightnessOffset: number } | null = null;
+  private static _lastReaderPalette: { hue: number; lightnessOffset: number; saturation: number } | null = null;
 
   /**
    * 把 webapp 调色值写入宿主 body，供阅读视图 CSS 派生竹青强调色。
@@ -547,15 +553,17 @@ export class ThemeBridge {
    * @param hue 色相 0–360
    * @param lightnessOffset 明度偏移百分比（滑块范围 ±15），内部夹紧到 ±30 防御异常值
    */
-  static applyReaderPalette(hue: number, lightnessOffset: number): void {
+  static applyReaderPalette(hue: number, lightnessOffset: number, saturation = 100): void {
     if (!Number.isFinite(hue) || !Number.isFinite(lightnessOffset)) return;
     const lo = Math.max(-30, Math.min(30, lightnessOffset));
+    const sat = Math.round(Math.max(40, Math.min(140, Number.isFinite(saturation) ? saturation : 100)));
     const h = ((Math.round(hue) % 360) + 360) % 360;
     const last = ThemeBridge._lastReaderPalette;
-    if (last && last.hue === h && last.lightnessOffset === lo) return;
-    ThemeBridge._lastReaderPalette = { hue: h, lightnessOffset: lo };
+    if (last && last.hue === h && last.lightnessOffset === lo && last.saturation === sat) return;
+    ThemeBridge._lastReaderPalette = { hue: h, lightnessOffset: lo, saturation: sat };
     activeDocument.body.style.setProperty('--bm-hue', String(h));
     activeDocument.body.style.setProperty('--bm-lightness-offset', lo + '%');
+    activeDocument.body.style.setProperty('--bm-saturation-scale', String(sat / 100));
   }
 
   /** 清除阅读视图调色变量（插件卸载时调用，避免在 Obsidian body 上留残留行内变量） */
@@ -572,15 +580,15 @@ export class ThemeBridge {
    * Leading-edge + trailing 防抖：首次调用立即应用（消除滑块拖拽首帧延迟），
    * 后续高频调用 50ms 合并，避免 DOM 抖动（UI Audit 4.5.3）
    */
-  applyPalette(hue: number, lightnessOffset: number, isDark: boolean): void {
+  applyPalette(hue: number, lightnessOffset: number, isDark: boolean, saturation = 100): void {
     if (this._paletteSyncTimer) window.clearTimeout(this._paletteSyncTimer);
     this._suppressed = false; // 新调色请求到来 → 解除抑制
-    this._lastPalette = { hue, lightnessOffset, isDark }; // 缓存，供 Obsidian 切换明暗时重算
+    this._lastPalette = { hue, lightnessOffset, saturation, isDark }; // 缓存，供 Obsidian 切换明暗时重算
 
     // Leading edge：窗口内首次调用立即应用（消除滑块拖拽首帧延迟）
     if (!this._paletteLeading) {
       this._paletteLeading = true;
-      this._applyPaletteNow(hue, lightnessOffset, isDark);
+      this._applyPaletteNow(hue, lightnessOffset, isDark, saturation);
       // 单次调色（非拖拽）场景下，leading 已写入最新值，trailing 只需复位标记，
       // 无需再写一次相同值（消除冗余 DOM 写）；拖拽中（窗口内再次调用）会刷新
       // 下方定时器，由它写入最后一次变形的值。
@@ -595,7 +603,7 @@ export class ThemeBridge {
     this._paletteSyncTimer = window.setTimeout(() => {
       this._paletteLeading = false;
       this._paletteSyncTimer = null;
-      this._applyPaletteNow(hue, lightnessOffset, isDark);
+      this._applyPaletteNow(hue, lightnessOffset, isDark, saturation);
     }, 50);
   }
 
@@ -607,13 +615,13 @@ export class ThemeBridge {
   reapplyOnThemeChange(isDark: boolean): void {
     if (!this._lastPalette) return;
     this._lastPalette.isDark = isDark;
-    this._applyPaletteNow(this._lastPalette.hue, this._lastPalette.lightnessOffset, isDark);
+    this._applyPaletteNow(this._lastPalette.hue, this._lastPalette.lightnessOffset, isDark, this._lastPalette.saturation);
   }
 
   /** 立即写入调色变量到 Obsidian body（受 _suppressed 抑制）*/
-  private _applyPaletteNow(hue: number, lightnessOffset: number, isDark: boolean): void {
+  private _applyPaletteNow(hue: number, lightnessOffset: number, isDark: boolean, saturation = 100): void {
     if (this._suppressed) return; // restoreDefaults 在防抖窗口内被调用
-    const vars = ThemeBridge.computeObsidianVars(hue, lightnessOffset, isDark);
+    const vars = ThemeBridge.computeObsidianVars(hue, lightnessOffset, isDark, saturation);
     for (const [key, value] of Object.entries(vars)) {
       activeDocument.body.style.setProperty(key, value);
     }

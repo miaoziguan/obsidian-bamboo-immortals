@@ -27,7 +27,7 @@ function hslToRgbChannels(h, s, l) {
  * @param {number|null} [lightnessOffset=null] 明度偏移百分比（画中卷寻呼机需同时跟随明度，
  *        传入数值；调用方（bridge.js）已有该值，直接传入，切勿在此用 getComputedStyle 读取）。
  */
-export function applyDerivedRgb(hue, lightnessOffset = null) {
+export function applyDerivedRgb(hue, lightnessOffset = null, saturation = null) {
   const root = getCssVarRoot();
   if (!root) return;
 
@@ -41,6 +41,11 @@ export function applyDerivedRgb(hue, lightnessOffset = null) {
     : 0;
   // 把明度偏移叠到基础明度上，并夹紧到 [0,100]（hsl 超出范围会被浏览器裁剪，但
   // 这里提前夹紧可避免 JS 端 f() 在 l>1 时出现负系数而算出离谱的通道值）。
+  // 饱和度缩放（与 CSS 层 min(100%, 原S% × scale) 同策略；缺省 1 = 原样）
+  const satScale = (typeof saturation === 'number' && !isNaN(saturation))
+    ? Math.max(0.4, Math.min(1.4, saturation / 100))
+    : 1;
+  const S = (s) => Math.min(100, Math.round(s * satScale));
   const lift = (base) => Math.max(0, Math.min(100, base + offset));
 
   const darkHost = getHost();
@@ -51,42 +56,42 @@ export function applyDerivedRgb(hue, lightnessOffset = null) {
   const set = (name, value) => root.style.setProperty(name, value);
 
   // 竹青绿主色 hsl(hue, 27%, 48%) → 暗色 hsl(hue, 27%, 58%) #5A9A5A → #82C382
-  set('--primary-rgb', hslToRgbChannels(hue, 27, lift(48 + darkLift)));
+  set('--primary-rgb', hslToRgbChannels(hue, S(27), lift(48 + darkLift)));
 
   // 竹青深色 hsl(hue-7, 40%, 25%) → 暗色 hsl(hue-7, 40%, 28%) #2D5A27 → #2D5A35
-  const deepRgb = hslToRgbChannels(hue - 7, 40, lift(25 + (isDark ? 3 : 0)));
+  const deepRgb = hslToRgbChannels(hue - 7, S(40), lift(25 + (isDark ? 3 : 0)));
   set('--deep-rgb', deepRgb);
   set('--bamboo-deep-rgb', deepRgb); // 票面文案 RGB 变量
 
   // 竹青浅色 hsl(hue, 35%, 75%) → 暗色 hsl(hue, 35%, 80%) #A8D5A8 → #BCE2BC
-  set('--pale-rgb', hslToRgbChannels(hue, 35, lift(75 + (isDark ? 5 : 0))));
+  set('--pale-rgb', hslToRgbChannels(hue, S(35), lift(75 + (isDark ? 5 : 0))));
 
   // 票根背景 hsl(hue, 36%, 68%) → 暗色 hsl(hue, 36%, 78%) #94C694 → #B4E2B4
-  set('--ticket-stub-bg-rgb', hslToRgbChannels(hue, 36, lift(68 + darkLift)));
+  set('--ticket-stub-bg-rgb', hslToRgbChannels(hue, S(36), lift(68 + darkLift)));
 
   // 主色变体 hsl(hue, 28%, 55%) → 暗色 hsl(hue, 28%, 65%) #6BAE6B → #8CC58C
-  set('--primary-alt-rgb', hslToRgbChannels(hue, 28, lift(55 + darkLift)));
+  set('--primary-alt-rgb', hslToRgbChannels(hue, S(28), lift(55 + darkLift)));
 
   // 浅绿 hsl(hue, 27%, 83%) → 暗色 hsl(hue, 27%, 88%) #C8E0C8 → #D9EDD9
-  set('--green-pale-rgb', hslToRgbChannels(hue, 27, lift(83 + (isDark ? 5 : 0))));
+  set('--green-pale-rgb', hslToRgbChannels(hue, S(27), lift(83 + (isDark ? 5 : 0))));
 
   // 亮绿 hsl(hue, 47%, 70%) → 暗色 hsl(hue, 47%, 78%) #8FD88F → #B0E7B0
-  set('--green-bright-rgb', hslToRgbChannels(hue, 47, lift(70 + (isDark ? 8 : 0))));
+  set('--green-bright-rgb', hslToRgbChannels(hue, S(47), lift(70 + (isDark ? 8 : 0))));
 
   // 次绿 hsl(hue-16, 44%, 75%) → 暗色 hsl(hue-16, 44%, 82%)（hue 偏移较大，保留偏移）
-  set('--green-alt-rgb', hslToRgbChannels(hue - 16, 44, lift(75 + (isDark ? 7 : 0))));
+  set('--green-alt-rgb', hslToRgbChannels(hue - 16, S(44), lift(75 + (isDark ? 7 : 0))));
 
   // 极亮绿 hsl(hue, 72%, 79%) → 暗色 hsl(hue, 72%, 85%) #C8FF96 → #D6FFB5
-  set('--green-very-bright-rgb', hslToRgbChannels(hue, 72, lift(79 + (isDark ? 6 : 0))));
+  set('--green-very-bright-rgb', hslToRgbChannels(hue, S(72), lift(79 + (isDark ? 6 : 0))));
 
   // 暗色模式表面色（卡片、面板背景等）
-  set('--surface-dark-rgb', hslToRgbChannels(hue, 18, lift(10)));
-  set('--surface-dark-rgb-mid', hslToRgbChannels(hue, 18, lift(13)));
-  set('--surface-dark-rgb-end', hslToRgbChannels(hue, 18, lift(16)));
-  set('--surface-deep-rgb', hslToRgbChannels(hue, 14, lift(8)));
-  set('--surface-deep-alt-rgb', hslToRgbChannels(hue, 17, lift(10)));
+  set('--surface-dark-rgb', hslToRgbChannels(hue, S(18), lift(10)));
+  set('--surface-dark-rgb-mid', hslToRgbChannels(hue, S(18), lift(13)));
+  set('--surface-dark-rgb-end', hslToRgbChannels(hue, S(18), lift(16)));
+  set('--surface-deep-rgb', hslToRgbChannels(hue, S(14), lift(8)));
+  set('--surface-deep-alt-rgb', hslToRgbChannels(hue, S(17), lift(10)));
 
   // 暗色模式淡绿基底（表面色）
-  set('--pale-green-rgb-dark', hslToRgbChannels(hue, 18, lift(10)));
-  set('--pale-green-alt-rgb-dark', hslToRgbChannels(hue, 18, lift(13)));
+  set('--pale-green-rgb-dark', hslToRgbChannels(hue, S(18), lift(10)));
+  set('--pale-green-alt-rgb-dark', hslToRgbChannels(hue, S(18), lift(13)));
 }

@@ -269,20 +269,20 @@
    竹身/竹帽为青竹材质（色相约 +30 跟随主体），火苗为暖橙（色相约 -95/-75 跟随主体）。
    注意：SVG 呈现属性不解析 var()，故 fill/stroke 与渐变 stop-color 一律由 CSS 施加。 */
 .scroll-firebrand {
-  --fb-bamboo-1: hsl(calc(var(--accent-hue) + 35), 14%, calc(63% + var(--accent-lightness-offset)));
-  --fb-bamboo-2: hsl(calc(var(--accent-hue) + 32), 21%, calc(72% + var(--accent-lightness-offset)));
-  --fb-bamboo-3: hsl(calc(var(--accent-hue) + 33), 18%, calc(57% + var(--accent-lightness-offset)));
-  --fb-bamboo-stroke: hsl(calc(var(--accent-hue) + 35), 19%, calc(46% + var(--accent-lightness-offset)));
-  --fb-bamboo-top: hsl(calc(var(--accent-hue) + 32), 18%, calc(62% + var(--accent-lightness-offset)));
-  --fb-cap-1: hsl(calc(var(--accent-hue) + 32), 18%, calc(60% + var(--accent-lightness-offset)));
-  --fb-cap-2: hsl(calc(var(--accent-hue) + 32), 20%, calc(67% + var(--accent-lightness-offset)));
-  --fb-cap-3: hsl(calc(var(--accent-hue) + 30), 18%, calc(51% + var(--accent-lightness-offset)));
-  --fb-cap-edge: hsl(calc(var(--accent-hue) + 30), 16%, calc(54% + var(--accent-lightness-offset)));
-  --fb-cap-knob: hsl(calc(var(--accent-hue) + 32), 18%, calc(62% + var(--accent-lightness-offset)));
-  --fb-cap-knob-stroke: hsl(calc(var(--accent-hue) + 38), 21%, calc(37% + var(--accent-lightness-offset)));
-  --fb-flame-outer: hsl(calc(var(--accent-hue) + -95), 100%, calc(62% + var(--accent-lightness-offset)));
-  --fb-flame-inner: hsl(calc(var(--accent-hue) + -75), 100%, calc(70% + var(--accent-lightness-offset)));
-  --fb-spark: hsl(calc(var(--accent-hue) + -84), 100%, calc(75% + var(--accent-lightness-offset)));
+  --fb-bamboo-1: hsl(calc(var(--accent-hue) + 35), min(100%, calc(14% * var(--accent-saturation-ui, 1))), calc(63% + var(--accent-lightness-offset)));
+  --fb-bamboo-2: hsl(calc(var(--accent-hue) + 32), min(100%, calc(21% * var(--accent-saturation-ui, 1))), calc(72% + var(--accent-lightness-offset)));
+  --fb-bamboo-3: hsl(calc(var(--accent-hue) + 33), min(100%, calc(18% * var(--accent-saturation-ui, 1))), calc(57% + var(--accent-lightness-offset)));
+  --fb-bamboo-stroke: hsl(calc(var(--accent-hue) + 35), min(100%, calc(19% * var(--accent-saturation-ui, 1))), calc(46% + var(--accent-lightness-offset)));
+  --fb-bamboo-top: hsl(calc(var(--accent-hue) + 32), min(100%, calc(18% * var(--accent-saturation-ui, 1))), calc(62% + var(--accent-lightness-offset)));
+  --fb-cap-1: hsl(calc(var(--accent-hue) + 32), min(100%, calc(18% * var(--accent-saturation-ui, 1))), calc(60% + var(--accent-lightness-offset)));
+  --fb-cap-2: hsl(calc(var(--accent-hue) + 32), min(100%, calc(20% * var(--accent-saturation-ui, 1))), calc(67% + var(--accent-lightness-offset)));
+  --fb-cap-3: hsl(calc(var(--accent-hue) + 30), min(100%, calc(18% * var(--accent-saturation-ui, 1))), calc(51% + var(--accent-lightness-offset)));
+  --fb-cap-edge: hsl(calc(var(--accent-hue) + 30), min(100%, calc(16% * var(--accent-saturation-ui, 1))), calc(54% + var(--accent-lightness-offset)));
+  --fb-cap-knob: hsl(calc(var(--accent-hue) + 32), min(100%, calc(18% * var(--accent-saturation-ui, 1))), calc(62% + var(--accent-lightness-offset)));
+  --fb-cap-knob-stroke: hsl(calc(var(--accent-hue) + 38), min(100%, calc(21% * var(--accent-saturation-ui, 1))), calc(37% + var(--accent-lightness-offset)));
+  --fb-flame-outer: hsl(calc(var(--accent-hue) + -95), min(100%, calc(100% * var(--accent-saturation-ui, 1))), calc(62% + var(--accent-lightness-offset)));
+  --fb-flame-inner: hsl(calc(var(--accent-hue) + -75), min(100%, calc(100% * var(--accent-saturation-ui, 1))), calc(70% + var(--accent-lightness-offset)));
+  --fb-spark: hsl(calc(var(--accent-hue) + -84), min(100%, calc(100% * var(--accent-saturation-ui, 1))), calc(75% + var(--accent-lightness-offset)));
 }
 .scroll-firebrand .fb-body { stroke: var(--fb-bamboo-stroke); }
 .scroll-firebrand .fb-stroke { stroke: var(--fb-bamboo-stroke); }

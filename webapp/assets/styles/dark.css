@@ -1548,7 +1548,7 @@
 :host(.dark) .goal-row-remaining { color: var(--bamboo-light); }
 
 :host(.dark) .goal-item-list:not(.collapsed) {
-    background: hsla(var(--accent-hue), 18%, calc(15% + var(--accent-lightness-offset)), 0.4);
+    background: hsla(var(--accent-hue), min(100%, calc(18% * var(--accent-saturation-ui, 1))), calc(15% + var(--accent-lightness-offset)), 0.4);
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
     border-radius: 0 0 var(--radius-xl) var(--radius-xl);

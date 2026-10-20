@@ -226,35 +226,36 @@ const ScrollManager = {
               <!-- 火折子：竹制吹筒 + 可拔竹帽，拔帽方显火绒，拖到香头点燃 -->
               <div class="scroll-firebrand" data-action="scroll-firebrand" aria-label="火折子">
                 <svg viewBox="0 0 48 96" fill="none">
-                  <!-- 竹身（吹筒） -->
-                  <rect x="14" y="34" width="20" height="56" rx="3" fill="url(#fbBamboo)" stroke="#5e8b78" stroke-width="1.2"/>
-                  <rect x="16" y="36" width="5" height="52" rx="2" fill="#eef4f0" opacity="0.3"/>
+                  <!-- 竹身（吹筒）：颜色由 incense.css 的 .scroll-firebrand .fb-* 规则驱动（--fb-* 主题变量，跟随色相）。
+                       原 SVG 写死绿/橙，且那套 CSS 因缺 class 而从未生效——现挂上 fb-* 类即自动主题化。 -->
+                  <rect x="14" y="34" width="20" height="56" rx="3" class="fb-body" fill="url(#fbBamboo)" stroke-width="1.2"/>
+                  <rect x="16" y="36" width="5" height="52" rx="2" style="fill:var(--fb-bamboo-1)" opacity="0.3"/>
                   <!-- 竹节横纹 -->
-                  <path d="M14 52 Q24 49 34 52" stroke="#5e8b78" stroke-width="0.8" fill="none" opacity="0.6"/>
-                  <path d="M14 70 Q24 67 34 70" stroke="#5e8b78" stroke-width="0.8" fill="none" opacity="0.6"/>
-                  <path d="M14 86 Q24 84 34 86" stroke="#5e8b78" stroke-width="0.8" fill="none" opacity="0.6"/>
-                  <ellipse cx="24" cy="34" rx="10" ry="3" fill="#7fa593"/>
+                  <path d="M14 52 Q24 49 34 52" class="fb-stroke" stroke-width="0.8" fill="none" opacity="0.6"/>
+                  <path d="M14 70 Q24 67 34 70" class="fb-stroke" stroke-width="0.8" fill="none" opacity="0.6"/>
+                  <path d="M14 86 Q24 84 34 86" class="fb-stroke" stroke-width="0.8" fill="none" opacity="0.6"/>
+                  <ellipse cx="24" cy="34" rx="10" ry="3" class="fb-top"/>
                   <ellipse cx="24" cy="34" rx="10" ry="3" fill="url(#fbHi)"/>
                   <!-- 火绒（帽下，默认隐藏，拔帽方显）。
                        火苗跳动与火星上飘改用 CSS 动画并默认 paused：原 SMIL 常驻播放，
                        未拔帽（火绒不可见）时仍在持续消耗 CPU。见 base.css .flame-* 规则。 -->
                   <g class="flame">
-                    <path class="flame-outer" d="M24 34 Q19 23 24 11 Q29 23 24 34" fill="#ff8c42" opacity="0.92"/>
-                    <path class="flame-inner" d="M24 34 Q22 27 24 18 Q26 27 24 34" fill="#ffd166" opacity="0.85"/>
-                    <circle class="flame-spark spark-a" cx="28" cy="22" r="1.2" fill="#ffcc80" opacity="0.8"/>
-                    <circle class="flame-spark spark-b" cx="20" cy="24" r="0.8" fill="#ffcc80" opacity="0.7"/>
+                    <path class="flame-outer" d="M24 34 Q19 23 24 11 Q29 23 24 34" opacity="0.92"/>
+                    <path class="flame-inner" d="M24 34 Q22 27 24 18 Q26 27 24 34" opacity="0.85"/>
+                    <circle class="flame-spark spark-a" cx="28" cy="22" r="1.2" opacity="0.8"/>
+                    <circle class="flame-spark spark-b" cx="20" cy="24" r="0.8" opacity="0.7"/>
                   </g>
                   <!-- 可拔竹帽：圆润钟形竹笠 + 顶钮 + 微外扩帽檐 -->
                   <g class="scroll-firebrand-cap">
-                    <path d="M11 30 Q11 19 24 17 Q37 19 37 30 Q31 33 24 33 Q17 33 11 30 Z" fill="url(#fbCap)" stroke="#5e8b78" stroke-width="1.2"/>
-                    <path d="M11 29 Q24 26 37 29" stroke="#4a7263" stroke-width="0.8" fill="none" opacity="0.55"/>
-                    <ellipse cx="24" cy="33" rx="13" ry="2.6" fill="#6f9384" opacity="0.55"/>
-                    <path d="M24 17 Q21 11 24 8 Q27 11 24 17 Z" fill="#7fa593" stroke="#4a7263" stroke-width="0.9"/>
-                    <ellipse cx="24" cy="8" rx="3" ry="1.6" fill="#90b3a3"/>
+                    <path d="M11 30 Q11 19 24 17 Q37 19 37 30 Q31 33 24 33 Q17 33 11 30 Z" class="fb-cap-body" fill="url(#fbCap)" stroke-width="1.2"/>
+                    <path d="M11 29 Q24 26 37 29" class="fb-cap-stroke" stroke-width="0.8" fill="none" opacity="0.55"/>
+                    <ellipse cx="24" cy="33" rx="13" ry="2.6" class="fb-cap-edge" opacity="0.55"/>
+                    <path d="M24 17 Q21 11 24 8 Q27 11 24 17 Z" class="fb-cap-knob" stroke-width="0.9"/>
+                    <ellipse cx="24" cy="8" rx="3" ry="1.6" style="fill:var(--fb-cap-2)"/>
                   </g>
                   <defs>
-                    <linearGradient id="fbBamboo" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#8fb3a4"/><stop offset="45%" stop-color="#aac8ba"/><stop offset="100%" stop-color="#7da593"/></linearGradient>
-                    <linearGradient id="fbCap" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#7fa593"/><stop offset="50%" stop-color="#9bbfae"/><stop offset="100%" stop-color="#6f9384"/></linearGradient>
+                    <linearGradient id="fbBamboo" x1="0" y1="0" x2="1" y2="0"><stop offset="0%"/><stop offset="45%"/><stop offset="100%"/></linearGradient>
+                    <linearGradient id="fbCap" x1="0" y1="0" x2="1" y2="0"><stop offset="0%"/><stop offset="50%"/><stop offset="100%"/></linearGradient>
                     <linearGradient id="fbHi" x1="0.2" y1="0" x2="0.8" y2="1"><stop offset="0%" stop-color="#ffffff" stop-opacity="0.4"/><stop offset="100%" stop-color="#ffffff" stop-opacity="0"/></linearGradient>
                   </defs>
                 </svg>

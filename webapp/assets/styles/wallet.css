@@ -651,15 +651,15 @@
 }
 
 :host(.dark) .shop-balance-metric--card .shop-metric-label {
-    color: hsl(var(--accent-hue), 10%, 66%);
+    color: hsl(var(--accent-hue), min(100%, calc(10% * var(--accent-saturation-ui, 1))), 66%);
 }
 
 :host(.dark) .shop-balance-metric--card .shop-metric-value.is-income-today {
-    color: hsl(var(--accent-hue), 42%, 65%);
+    color: hsl(var(--accent-hue), min(100%, calc(42% * var(--accent-saturation-ui, 1))), 65%);
 }
 
 :host(.dark) .shop-balance-metric--card .shop-metric-value.is-income-total {
-    color: hsl(var(--accent-hue), 35%, 78%);
+    color: hsl(var(--accent-hue), min(100%, calc(35% * var(--accent-saturation-ui, 1))), 78%);
 }
 
 :host(.dark) .shop-item-card {
@@ -703,35 +703,35 @@
 
 /* 商品标题 / 价格 / 价格表 — 暗色下 --bamboo-deep 太暗（~26% lightness），看不清 */
 :host(.dark) .fab-panel-section-title {
-    color: hsl(var(--accent-hue), 30%, 72%);
+    color: hsl(var(--accent-hue), min(100%, calc(30% * var(--accent-saturation-ui, 1))), 72%);
     border-bottom-color: rgba(var(--primary-rgb), 0.15);
 }
 
 :host(.dark) .shop-item-name,
 :host(.dark) .shop-price-row-text {
-    color: hsl(var(--accent-hue), 15%, 88%);
+    color: hsl(var(--accent-hue), min(100%, calc(15% * var(--accent-saturation-ui, 1))), 88%);
 }
 
 :host(.dark) .shop-item-price {
-    color: hsl(var(--accent-hue), 35%, 65%);
+    color: hsl(var(--accent-hue), min(100%, calc(35% * var(--accent-saturation-ui, 1))), 65%);
 }
 
 :host(.dark) .shop-price-row-value {
-    color: hsl(var(--accent-hue), 36%, 68%);
+    color: hsl(var(--accent-hue), min(100%, calc(36% * var(--accent-saturation-ui, 1))), 68%);
 }
 
 /* 排序按钮 / 标签 — 提亮绿色 */
 :host(.dark) .shop-sort-label {
-    color: hsl(var(--accent-hue), 38%, 62%);
+    color: hsl(var(--accent-hue), min(100%, calc(38% * var(--accent-saturation-ui, 1))), 62%);
 }
 
 :host(.dark) .shop-sort-option.is-active,
 :host(.dark) .shop-sort-option:hover {
-    color: hsl(var(--accent-hue), 38%, 62%);
+    color: hsl(var(--accent-hue), min(100%, calc(38% * var(--accent-saturation-ui, 1))), 62%);
 }
 
 /* 商品状态标签 */
 :host(.dark) .shop-item-status.is-purchased,
 :host(.dark) .shop-item-status.is-available {
-    color: hsl(var(--accent-hue), 35%, 62%);
+    color: hsl(var(--accent-hue), min(100%, calc(35% * var(--accent-saturation-ui, 1))), 62%);
 }

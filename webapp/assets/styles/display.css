@@ -2,18 +2,19 @@
 .display-panel {
     position: fixed;
     z-index: calc(var(--z-layer-tooltip) - 1);
-    /* Responsive width: keep 280px design width but never exceed viewport minus safe margins */
-    width: min(280px, 100% - 2rem);
+    /* 320px：5 个预设（嫩绿/竹青/松花/碧色/青碧）也能排得开；窄屏自适应 */
+    width: min(320px, 100% - 1.5rem);
+    /* 面板随内容自然撑高：关掉“跟随主题动效配色”后配色三项展开，整体完整显示，不做限高/滚动 */
     background: var(--card-glass);
     backdrop-filter: blur(var(--glass-blur));
     -webkit-backdrop-filter: blur(var(--glass-blur));
     border: 1px solid var(--border-light);
     border-radius: var(--radius-xl);
     box-shadow: var(--shadow-floating);
-    padding: var(--space-4);
+    padding: var(--space-3);
     /* 面板内按钮的统一紧凑高度：44px 触摸令牌在桌面上偏占空间，
        32px 与 iOS 分段控件同高；宽度仍由 flex 撑开，热区照旧宽裕。
-       （滑块保留 44px 热区，见 .display-slider） */
+       （滑块保留较宽热区，见 .display-slider） */
     --bamboo-ctl-h: 32px;
     opacity: 0;
     transform: scale(0.95) translateY(4px);
@@ -32,16 +33,16 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: var(--space-3);
-    padding-bottom: var(--space-2);
+    margin-bottom: 2px;
+    padding-bottom: 8px;
     border-bottom: 1px solid var(--border-light);
 }
 
 .display-panel-title {
-    font-size: var(--type-sm);
+    font-size: 13px;
     font-weight: 700;
     color: var(--text-primary);
-    letter-spacing: 0.04em;
+    letter-spacing: 0.02em;
 }
 
 .display-panel-close {
@@ -66,25 +67,74 @@
     color: var(--text-primary);
 }
 
-/* 段落标题 */
+/* ===== 分组标题（布局 / 配色） ===== */
+.display-group-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 12px 0 6px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+}
+
+.display-group-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border-light);
+}
+
+.display-group-title:first-of-type {
+    margin-top: 8px;
+}
+
+.display-divider {
+    height: 1px;
+    background: var(--border-light);
+    margin: 12px 0 0;
+}
+
+/* 段落 */
 .display-section {
-    margin-bottom: var(--space-2);
+    margin-bottom: 10px;
 }
 
 .display-section:last-child {
     margin-bottom: 0;
 }
 
+/* 跟随主题动效配色开启时，下游三个配色控件折叠收起；关闭开关即自动展开 */
+.display-color-group {
+    display: grid;
+    grid-template-rows: 1fr;
+    opacity: 1;
+    transition: grid-template-rows 0.26s ease, opacity 0.26s ease;
+}
+
+.display-color-group.is-collapsed {
+    grid-template-rows: 0fr;
+    opacity: 0;
+}
+
+.display-color-group > .display-color-inner {
+    overflow: hidden;
+    min-height: 0;
+}
+
+/* 段落标题行：图标 + 名称 + 右侧值徽标 */
 .display-section-label {
     display: flex;
     align-items: center;
     gap: 6px;
-    font-size: var(--type-xs);
+    min-height: 20px;
+    font-size: 12px;
     font-weight: 600;
     color: var(--text-secondary);
-    margin-bottom: var(--space-2);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
+    margin-bottom: 6px;
+    letter-spacing: 0.01em;
 }
 
 .display-section-label svg {
@@ -92,22 +142,33 @@
     opacity: 0.7;
 }
 
-/* 滑块行 */
+/* 滑块行（值已移到标题行，滑块独占整行） */
 .display-slider-row {
     display: flex;
     align-items: center;
-    gap: var(--space-2);
-    margin-bottom: var(--space-3);
+    gap: 6px;
+    margin-bottom: 8px;
 }
 
+/* 值徽标：右上角、等宽数字、淡色底 */
 .display-value-label {
-    font-size: var(--type-xs);
-    font-weight: 600;
+    margin-left: auto;
+    font-size: 11px;
+    font-weight: 700;
     color: var(--bamboo-primary);
-    min-width: 42px;
-    text-align: right;
+    min-width: 46px;
+    text-align: center;
+    padding: 2px 8px;
+    border-radius: var(--radius-3xs);
+    background: color-mix(in srgb, var(--bamboo-primary) 13%, transparent);
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
+    line-height: 1.4;
+}
+
+/* 色相行：恢复默认在左、值徽标在右，两者靠右排 */
+.display-hue-reset-btn ~ .display-value-label {
+    margin-left: 0;
 }
 
 /* 自定义滑块 */
@@ -115,8 +176,8 @@
     flex: 1;
     -webkit-appearance: none;
     appearance: none;
-    height: var(--touch-target);
-    padding: calc((var(--touch-target) - 4px) / 2) 0;
+    height: 30px;
+    padding: 13px 0;
     box-sizing: border-box;
     border-radius: var(--radius-3xs);
     background: var(--border-light);
@@ -173,70 +234,92 @@
     background: var(--border-light);
 }
 
-/* 预设按钮行 */
+/* ===== 预设：分段控件（segmented track） =====
+   原先是一排独立描边按钮，视觉上像"控件墙"。改为一条浅底轨道 + 透明分段，
+   选中项用主色实心 pill 浮起 —— 更接近 iOS / Material 的分段控件。 */
 .display-preset-row {
     display: flex;
-    gap: 6px;
+    gap: 2px;
+    padding: 3px;
+    background: var(--btn-secondary-bg);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm);
 }
 
 .display-preset-btn,
 .display-font-preset-btn,
-.display-gap-preset-btn {
+.display-gap-preset-btn,
+.display-hue-preset-btn,
+.display-lightness-preset-btn,
+.display-saturation-preset-btn {
     flex: 1;
-    height: auto;
+    min-width: 0;
+    min-height: 26px;
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 1px solid var(--border-light);
-    background: var(--btn-secondary-bg);
+    border: none;
+    background: transparent;
     color: var(--text-secondary);
-    border-radius: var(--radius-xs);
-    font-size: var(--type-xs);
+    border-radius: calc(var(--radius-sm) - 3px);
+    font-size: 11px;
     font-weight: 600;
     cursor: pointer;
-    transition: transform, opacity, box-shadow, border-color, background-color var(--transition-fast);
-    min-height: var(--bamboo-ctl-h);
-    min-width: var(--touch-target);
-    padding: 0;
+    padding: 0 4px;
+    white-space: nowrap;
+    transition: background-color var(--transition-fast), color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 .display-preset-btn:hover,
 .display-font-preset-btn:hover,
-.display-gap-preset-btn:hover {
+.display-gap-preset-btn:hover,
+.display-hue-preset-btn:hover,
+.display-lightness-preset-btn:hover,
+.display-saturation-preset-btn:hover {
     background: var(--btn-secondary-hover);
     color: var(--text-primary);
-    border-color: var(--bamboo-primary);
 }
 
 .display-preset-btn.active,
 .display-font-preset-btn.active,
-.display-gap-preset-btn.active {
+.display-gap-preset-btn.active,
+.display-hue-preset-btn.active,
+.display-lightness-preset-btn.active,
+.display-saturation-preset-btn.active {
     background: var(--bamboo-primary);
     color: var(--white);
-    border-color: var(--bamboo-primary);
     box-shadow: var(--bamboo-glow-xs);
 }
 
+.display-preset-btn.active:hover,
+.display-font-preset-btn.active:hover,
+.display-gap-preset-btn.active:hover,
+.display-hue-preset-btn.active:hover,
+.display-lightness-preset-btn.active:hover,
+.display-saturation-preset-btn.active:hover {
+    background: var(--bamboo-primary);
+    color: var(--white);
+}
+
 /* ===== 色相滑块 =====
-   纳入统一滑块规范（同 .display-slider）：44px 热区 + content-box 裁出的 4px 轨道，
-   仅把轨道内容换成本组件的七彩渐变以保留其身份。原先为 6px 轨道 / 22px thumb / 3px 白环，
-   与其它滑块不一致，已对齐为 4px / 18px / 2px。 */
+   纳入统一滑块规范（同 .display-slider）：4px 轨道 + content-box 裁切，
+   仅把轨道内容换成本组件的七彩渐变以保留其身份。 */
 .display-hue-slider {
     flex: 1;
     -webkit-appearance: none;
     appearance: none;
-    height: var(--touch-target);
-    padding: calc((var(--touch-target) - 4px) / 2) 0;
+    height: 30px;
+    padding: 13px 0;
     box-sizing: border-box;
     border-radius: var(--radius-3xs);
     background: linear-gradient(to right,
-        hsl(0, 70%, 50%),
-        hsl(60, 70%, 50%),
-        hsl(120, 70%, 50%),
-        hsl(180, 70%, 50%),
-        hsl(240, 70%, 50%),
-        hsl(300, 70%, 50%),
-        hsl(360, 70%, 50%)
+        hsl(0, min(100%, calc(70% * var(--accent-saturation-ui, 1))), 50%),
+        hsl(60, min(100%, calc(70% * var(--accent-saturation-ui, 1))), 50%),
+        hsl(120, min(100%, calc(70% * var(--accent-saturation-ui, 1))), 50%),
+        hsl(180, min(100%, calc(70% * var(--accent-saturation-ui, 1))), 50%),
+        hsl(240, min(100%, calc(70% * var(--accent-saturation-ui, 1))), 50%),
+        hsl(300, min(100%, calc(70% * var(--accent-saturation-ui, 1))), 50%),
+        hsl(360, min(100%, calc(70% * var(--accent-saturation-ui, 1))), 50%)
     );
     background-clip: content-box;
     cursor: pointer;
@@ -289,77 +372,37 @@
     height: 4px;
     border-radius: var(--radius-3xs);
     background: linear-gradient(to right,
-        hsl(0, 70%, 50%),
-        hsl(60, 70%, 50%),
-        hsl(120, 70%, 50%),
-        hsl(180, 70%, 50%),
-        hsl(240, 70%, 50%),
-        hsl(300, 70%, 50%),
-        hsl(360, 70%, 50%)
+        hsl(0, min(100%, calc(70% * var(--accent-saturation-ui, 1))), 50%),
+        hsl(60, min(100%, calc(70% * var(--accent-saturation-ui, 1))), 50%),
+        hsl(120, min(100%, calc(70% * var(--accent-saturation-ui, 1))), 50%),
+        hsl(180, min(100%, calc(70% * var(--accent-saturation-ui, 1))), 50%),
+        hsl(240, min(100%, calc(70% * var(--accent-saturation-ui, 1))), 50%),
+        hsl(300, min(100%, calc(70% * var(--accent-saturation-ui, 1))), 50%),
+        hsl(360, min(100%, calc(70% * var(--accent-saturation-ui, 1))), 50%)
     );
 }
 
-/* 色相/明度预设按钮 */
-.display-hue-preset-btn,
-.display-lightness-preset-btn {
-    flex: 1;
-    height: auto;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 1px solid var(--border-light);
-    background: var(--btn-secondary-bg);
-    color: var(--text-secondary);
-    border-radius: var(--radius-xs);
-    font-size: var(--type-xs);
-    font-weight: 600;
-    cursor: pointer;
-    transition: transform, opacity, box-shadow, border-color, background-color var(--transition-fast);
-    min-height: var(--bamboo-ctl-h);
-    min-width: var(--touch-target);
-    padding: 0;
-}
-
-.display-hue-preset-btn:hover,
-.display-lightness-preset-btn:hover {
-    background: var(--btn-secondary-hover);
-    color: var(--text-primary);
-    border-color: var(--bamboo-primary);
-}
-
-.display-hue-preset-btn.active,
-.display-lightness-preset-btn.active {
-    background: var(--bamboo-primary);
-    color: var(--white);
-    border-color: var(--bamboo-primary);
-    box-shadow: var(--bamboo-glow-xs);
-}
-
-/* 恢复默认按钮 */
+/* 恢复默认按钮：位于色相标题行、值徽标左侧 */
 .display-hue-reset-btn {
-    width: 100%;
+    width: auto;
     height: auto;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 1px dashed var(--border-light);
+    margin-left: auto;
+    padding: 0;
+    border: none;
     background: transparent;
     color: var(--text-tertiary);
-    border-radius: var(--radius-xs);
-    font-size: var(--type-xs);
-    font-weight: 600;
+    font-size: 11px;
+    font-weight: 500;
     cursor: pointer;
-    transition: transform, opacity, box-shadow, border-color, background-color var(--transition-fast);
-    margin-top: var(--space-2);
-    min-height: var(--bamboo-ctl-h);
-    min-width: var(--touch-target);
-    padding: 0;
+    line-height: 1.4;
+    min-height: 0;
+    min-width: 0;
 }
 
 .display-hue-reset-btn:hover {
-    background: var(--btn-secondary-bg);
+    background: transparent;
     color: var(--bamboo-primary);
-    border-color: var(--bamboo-primary);
+    text-decoration: underline;
 }
 
 /* ===== 暗色模式适配 ===== */
@@ -367,13 +410,9 @@
     border-color: var(--bamboo-border);
 }
 
-/* 滑块：五个滑块（内容宽度 / 字号 / 间距 / 色相 / 明度）统一沿用亮色的「白色实心环」。
-   原先此处把白环换成半透明主色环（0.3 与 0.35 两套值）——半透明在深底上会让 thumb
-   边界发虚；而暗色模式恰恰需要更高对比度（variables.css 暗色文字即为「亮度提升至
-   WCAG AA 4.5:1+」）。故删除 border-color 覆盖，明暗统一为白环。
-   仅阴影按背景重取：亮色的黑影在深底上完全不可见，会丢失「可拖拽」的浮起感；
-   改用弱一档的竹林绿辉光 --bamboo-glow-xs（hover 仍是 --bamboo-glow-sm），
-   使常态比 hover 弱一档，保住 hover 的层次反馈。 */
+/* 滑块：统一沿用亮色的「白色实心环」。
+   暗色下不换半透明主色环（会让 thumb 边界发虚）；仅把阴影换成弱一档的
+   竹林绿辉光，保住 hover 的层次反馈。 */
 :host(.dark) .display-slider::-webkit-slider-thumb {
     box-shadow: var(--bamboo-glow-xs);
 }
@@ -392,8 +431,81 @@
 
 /* ===== 响应式 ===== */
 @media (max-width: 480px) {
-    .display-panel {
-        /* Same min() formula; at 375px this gives 1rem margin on each side */
-        width: min(280px, 100% - 2rem);
+    /* 紧凑压缩后，移动端恢复 44px 触摸目标 */
+    .display-slider,
+    .display-hue-slider {
+        height: var(--touch-target);
+        padding: calc((var(--touch-target) - 4px) / 2) 0;
     }
+
+    .display-panel {
+        width: min(320px, 100% - 1.5rem);
+    }
+}
+
+/* ===== 跟随主题动效配色（自定义 pill 开关，与面板风格一致） ===== */
+.display-follow-theme-section {
+    padding-top: 2px;
+}
+
+.display-follow-theme {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin: 0 0 10px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.display-follow-theme-title {
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--text-secondary);
+}
+
+/* 隐藏原生 checkbox（保留键盘可达性），改用 CSS 绘制的 pill 开关 */
+.display-follow-theme-input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.display-follow-theme-switch {
+    position: relative;
+    flex: 0 0 auto;
+    width: 38px;
+    height: 22px;
+    border-radius: 11px;
+    background: var(--btn-secondary-bg, rgba(0, 0, 0, 0.10));
+    transition: background 0.2s ease;
+}
+
+.display-follow-theme-switch::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+    transition: transform 0.2s ease;
+}
+
+.display-follow-theme-input:checked ~ .display-follow-theme-switch {
+    background: var(--bamboo-primary);
+}
+
+.display-follow-theme-input:checked ~ .display-follow-theme-switch::after {
+    transform: translateX(16px);
+}
+
+/* 键盘可达：聚焦时给开关一圈焦点环（原生 checkbox 已隐藏） */
+.display-follow-theme-input:focus-visible ~ .display-follow-theme-switch {
+    outline: 2px solid var(--bamboo-primary);
+    outline-offset: 2px;
 }

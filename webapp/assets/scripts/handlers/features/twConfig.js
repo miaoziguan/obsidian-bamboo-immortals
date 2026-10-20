@@ -46,6 +46,9 @@ export const DRAFT_MAX_LEN = 20000; // 写作档输入框「草稿箱」上限�
 // 不设限即彻底消除它。上限机制本身保留可配置：改回一个有限数字即可恢复（见 enforceCap）。
 export const NOTE_CAP = Infinity;
 export const WRITE_FLOW_GAP = 24; // 写作档「文章流」卡片间距
+export const EJECT_SINK = 12;     // 便签档吐纸：纸的下沿沉到机身(.tw-beeper)顶边之下多少 px。
+                                  // 画布 overflow:visible，纸可探入机身区；机身 z:30 > 便签 20，
+                                  // 这段被机身盖住 —— 正是「从出纸口吐出」的视觉来源。
 export const SAVE_DEBOUNCE = 350; // 写盘防抖(ms)，合并拖拽/删除等连续操作
 
 // LOD 分级渲染阈值（带滞回，见 LOD_DENSITY_EXIT）
@@ -151,6 +154,7 @@ if (typeof globalThis !== 'undefined') {
   globalThis.DRAFT_MAX_LEN = DRAFT_MAX_LEN;
   globalThis.NOTE_CAP = NOTE_CAP;
   globalThis.WRITE_FLOW_GAP = WRITE_FLOW_GAP;
+  globalThis.EJECT_SINK = EJECT_SINK;
   globalThis.SAVE_DEBOUNCE = SAVE_DEBOUNCE;
   globalThis.LOD_DENSITY = LOD_DENSITY;
   globalThis.LOD_DENSITY_EXIT = LOD_DENSITY_EXIT;

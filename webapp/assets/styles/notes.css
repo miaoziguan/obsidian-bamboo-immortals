@@ -53,12 +53,16 @@
   
   --tw-card-rot: 0deg;
   --tw-card-scale: 1;
-  transform: rotate(var(--tw-card-rot)) scale(var(--tw-card-scale));
+  /* 拖拽位移走 translate 变量（合成层，不触发布局）；松手时一次性提交为 left/top 并清空变量。
+     translate 必须放在最前：在父坐标系里平移，不受自身 rotate/scale 影响。 */
+  transform: translate(var(--tw-drag-x, 0px), var(--tw-drag-y, 0px)) rotate(var(--tw-card-rot)) scale(var(--tw-card-scale));
   transition: transform .15s;
   
   --tw-rule-rgb: 26, 26, 26;
 }
-.tw-card:hover { --tw-card-scale: 1.01; }
+/* hover 不再放大：scale(1.01) 会强制重栅格化卡片本身 + 其大范围模糊 box-shadow（每帧重绘），
+   对大卡成本显著；悬停的视觉反馈改由工具条/边框承担，避免逐卡重绘阴影。 */
+.tw-card:hover { --tw-card-scale: 1; }
 
 .tw-card.dragging { cursor: grabbing; --tw-card-scale: 1; transition: none; }
 

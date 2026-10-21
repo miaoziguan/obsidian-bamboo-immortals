@@ -164,9 +164,20 @@ export class LinkLayer {
     // 【P8 视口剔除】连线端点优先从宿主几何缓存取（卡片被剔时 DOM 已卸载，但仍能精确画连线）；
     // 未注入 getGeom 时（思维子弹等不剔除的场景）回退到「按 id 查 DOM 元素」的旧逻辑，行为不变。
     if (typeof this.opts.getGeom === 'function') {
+      // 【性能】同帧几何去重：同一节点常被多条连线共享，旧实现每条线两端各取一次 →
+      // L 条线 = 2L 次 getGeom；而每次 getGeom 内还要取 canvas rect + 视口 scale
+      // + card.getBoundingClientRect() + 2×offsetWidth/Height。拖拽时每帧都跑一遍，
+      // 是「一拖就掉帧、卡越多越明显」的主要来源之一。按 id 记忆化后降到「不同节点数」次。
+      const memo = new Map();
+      const geomOf = (id) => {
+        if (memo.has(id)) return memo.get(id);
+        const g = this.opts.getGeom(id);
+        memo.set(id, g);
+        return g;
+      };
       this.getLinks().forEach((l) => {
-        const ga = this.opts.getGeom(l.from);
-        const gb = this.opts.getGeom(l.to);
+        const ga = geomOf(l.from);
+        const gb = geomOf(l.to);
         if (ga && gb) items.push({ l, ga, gb });
       });
     } else {

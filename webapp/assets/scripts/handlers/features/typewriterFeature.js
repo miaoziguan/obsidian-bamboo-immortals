@@ -1671,16 +1671,36 @@ export const TypewriterFeature = {
     if (!this._canvas.isConnected) { this._selBarRAF = 0; return; }
     const cr = this._canvas.getBoundingClientRect();
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    this._selected.forEach((c) => {
-      const r = c.getBoundingClientRect();
-      if (r.left < minX) minX = r.left;
-      if (r.top < minY) minY = r.top;
-      if (r.right > maxX) maxX = r.right;
-      if (r.bottom > maxY) maxY = r.bottom;
-    });
-    const cx = (minX + maxX) / 2 - cr.left;            // canvas 局部坐标（其 rect 已含平移）
-    let topY = minY - cr.top - bar.offsetHeight - 10;  // 浮在选框上方
-    if (topY < 2) topY = maxY - cr.top + 10;           // 贴顶则翻到下方，避免被裁
+    // 【性能】优先从几何缓存取（canvas 局部坐标），避免对「每张选中的卡」做 getBoundingClientRect
+    // （每帧 N 次读取 + 至少一次强制布局）。仅当画布未缩放（scale≈1）时走缓存；缺缓存 / 画布缩放时
+    // 回退到原逻辑（行为完全不变）。
+    const s = (typeof CanvasViewport !== 'undefined' && CanvasViewport.getScale)
+      ? (CanvasViewport.getScale(this) || 1) : 1;
+    let allGeo = !!this._geo && Math.abs(s - 1) < 0.01;
+    if (allGeo) {
+      this._selected.forEach((c) => {
+        const id = c.dataset && c.dataset.id;
+        const g = id ? this._geo.get(id) : null;
+        if (!g) { allGeo = false; return; }
+        if (g.x < minX) minX = g.x;
+        if (g.y < minY) minY = g.y;
+        if ((g.x + g.w) > maxX) maxX = g.x + g.w;
+        if ((g.y + g.h) > maxY) maxY = g.y + g.h;
+      });
+    }
+    if (!allGeo) {
+      minX = Infinity; minY = Infinity; maxX = -Infinity; maxY = -Infinity;
+      this._selected.forEach((c) => {
+        const r = c.getBoundingClientRect();
+        if (r.left - cr.left < minX) minX = r.left - cr.left;
+        if (r.top - cr.top < minY) minY = r.top - cr.top;
+        if (r.right - cr.left > maxX) maxX = r.right - cr.left;
+        if (r.bottom - cr.top > maxY) maxY = r.bottom - cr.top;
+      });
+    }
+    const cx = (minX + maxX) / 2;                     // canvas 局部坐标
+    let topY = minY - bar.offsetHeight - 10;           // 浮在选框上方
+    if (topY < 2) topY = maxY + 10;                   // 贴顶则翻到下方，避免被裁
     bar.style.left = cx + 'px';
     bar.style.top = topY + 'px';
     if (once) return;

@@ -31,7 +31,6 @@
 :host(.dark) .mountain-1,
 :host(.dark) .mountain-2,
 :host(.dark) .mountain-3,
-:host(.dark) .river-surface,
 :host(.dark) .boat-container,
 :host(.dark) .moon {
     animation: none;
@@ -41,7 +40,6 @@
 :host(.dark) .mountain-1,
 :host(.dark) .mountain-2,
 :host(.dark) .mountain-3,
-:host(.dark) .river-surface,
 :host(.dark) .boat {
     filter: none;
     box-shadow: none;

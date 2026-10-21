@@ -70,7 +70,6 @@ export const BambooGarden = {
                     <div class="mountain-layer mountain-1"></div>
                     <div class="mountain-mist"></div>
                 </div>
-                <div class="river-surface"></div>
                 <div class="boat-container">
                     <div class="boat"></div>
                 </div>
@@ -502,16 +501,19 @@ export const BambooGarden = {
         const scale = 0.55 + Math.random() * 0.65;
         const animationIndex = Math.floor(Math.random() * 4);
 
-        // 先移除动画，再强制 reflow，最后重新设置参数并激活（CSS 动画重启技巧）
-        leaf.style.animationName = 'none';
+        // 重启叶片动画，但不做强制同步布局。
+        // 回收时（见下方 setTimeout）已把 animationName 置为 none，所以这里的赋值本身就是
+        // 「新建动画、从 0 开始」；再用 Web Animations 把 currentTime 归零作为保险。
+        // 旧写法 `void leaf.offsetWidth` 会在每次生成时强制同步重排（约 1.3 次/秒）—— 已移除。
         leaf.style.left = startX + '%';
         leaf.style.animationDuration = duration + 's';
         leaf.style.animationDelay = delay + 's';
         leaf.style.transform = `scale(${scale})`;
-        // 强制同步 reflow，确保上面的 animation:none 已生效，动画可从头重播
-        void leaf.offsetWidth;
-        leaf.style.animationName = `leafDrift${animationIndex}`;
         leaf.style.display = '';
+        leaf.style.animationName = `leafDrift${animationIndex}`;
+        if (typeof leaf.getAnimations === 'function') {
+            leaf.getAnimations().forEach((a) => { try { a.currentTime = 0; a.play(); } catch (e) { /* 忽略 */ } });
+        }
 
         // 本次飘落结束后回收复用（保留原有时间节奏，动画为 infinite，不能依赖 animationend）
         const self = this;

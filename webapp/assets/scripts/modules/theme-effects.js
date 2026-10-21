@@ -7,6 +7,15 @@ export const ThemeEffects = {
      *  旧格式（兼容）：{ hue, lightness } → 迁移为 light 的值，dark 初始跟随 light
      */
     _themeSettings: {},
+    /** 智能动效：默认开启。挂载后采样约 1.5s 帧时间，掉帧就从 full 自动降到 lite。
+     *  · _autoMotion=false：用户关掉自动化 → 固定 full；
+     *  · 系统 prefers-reduced-motion → 固定 static；
+     *  · _motionLevel 为运行时档位 full|lite|static，落到 .theme-card 的 data-motion，
+     *    并下发 --fl-blur-scale 让主题按档缩放模糊半径（1 / .5 / 0）。 */
+    _autoMotion: true,
+    _motionLevel: 'full',
+    _autoTuned: false,
+    _motionNotified: false,
 
     /** 外部主题清单（仅登记名字 + meta，代码未加载）。key=主题名，value={name,icon,description,loaded} */
     availableExternal: {},
@@ -103,6 +112,12 @@ export const ThemeEffects = {
             theme.init(container);
         }
         this._setupCanvasScaler();
+        this._setupPauseWhenHidden();
+        // 动效强度：系统要求减少动效 → 直接「静止」；否则从「完整」起步，再交给帧率自适应
+        this._motionLevel = this._prefersReduced() ? 'static' : 'full';
+        this._autoTuned = false;
+        this._applyMotionLevel();
+        if (this._autoMotion) this._autoTune();
         this._applyThemeVars(themeName);
         this._syncThemeMode();
         this._initThemeModeObserver();
@@ -130,28 +145,97 @@ export const ThemeEffects = {
     },
 
     /** 设计画布缩放：把固定尺寸的 .theme-canvas 等比缩放到视觉盒宽度。
-     *  主题只需声明 design 并按该尺寸绘制，无需自己处理任何尺寸变化。 */
+     *  主题只需声明 design 并按该尺寸绘制，无需自己处理任何尺寸变化。
+     *
+     *  【性能】这句 scale 会改变整幅 SVG 的栅格尺寸：主题里带 filter:blur() 的静态层
+     *  （枫林晚照有 8 处，最大 8px、覆盖整画布）每次都要被迫整体重栅格 —— 3× 场景一次
+     *  就是上百 MB 离屏表面 + 大高斯。所以这里做三件事消掉"启动期重栅格风暴"：
+     *    ① rAF 合帧：同帧内多次 ResizeObserver 回调只算一次；
+     *    ② 阈值去抖：相对变化 < 0.5% 直接跳过（亚像素抖动不该触发重栅格）；
+     *    ③ 首帧不再"同步 apply + 再 rAF 补算"（那本身就是两次重栅格），改为单次 rAF；
+     *       若 clientWidth 仍为 0（布局未稳），再等一帧，且只重试一次。 */
     _setupCanvasScaler() {
         var section = byId('themeEffectSection');
         var visual = section && section.querySelector('.theme-visual');
         if (this._scalerRO) { this._scalerRO.disconnect(); this._scalerRO = null; }
+        if (this._scalerPending) {
+            if (typeof cancelAnimationFrame === 'function') cancelAnimationFrame(this._scalerPending);
+            this._scalerPending = 0;
+        }
         if (!visual) return;
         var canvas = visual.querySelector('.theme-canvas');
         if (!canvas) return; // 主题未声明设计画布 → 不缩放（由主题自行适配）
         var designW = parseFloat(canvas.getAttribute('data-design-w'));
         if (!designW) return;
-        var apply = function () {
+
+        var lastScale = 0;
+        var applyNow = function () {
             var w = visual.clientWidth;
-            if (!w) return;
-            canvas.style.transform = 'scale(' + (w / designW).toFixed(5) + ')';
+            if (!w) return false;                                  // 布局未稳定
+            var s = w / designW;
+            if (lastScale && Math.abs(s - lastScale) / lastScale < 0.005) return true;  // 阈值去抖
+            lastScale = s;
+            canvas.style.transform = 'scale(' + s.toFixed(5) + ')';
+            return true;
         };
-        apply();
+        var self = this;
+        var schedule = function () {
+            if (self._scalerPending) return;                       // 已排队：合帧
+            self._scalerPending = requestAnimationFrame(function () {
+                self._scalerPending = 0;
+                if (!applyNow()) {
+                    self._scalerPending = requestAnimationFrame(function () {   // 仅再试一次
+                        self._scalerPending = 0;
+                        applyNow();
+                    });
+                }
+            });
+        };
+        schedule();
         if (typeof ResizeObserver !== 'undefined') {
-            this._scalerRO = new ResizeObserver(apply);
+            this._scalerRO = new ResizeObserver(schedule);
             this._scalerRO.observe(visual);
         }
-        // 首帧布局可能尚未稳定（clientWidth=0）→ 下一帧再兜底计算一次
-        if (typeof requestAnimationFrame === 'function') requestAnimationFrame(apply);
+    },
+
+    /** 不可见即暂停主题动画。
+     *  主题里 8 个 animation 都是 infinite（7 片叶子 24s 循环 + 车/光柱/光晕），
+     *  CSS 动画不受 rAF 节流：窗口最小化、切到别的窗口、或本区域滚出视口后仍在跑，
+     *  主窗 + 画中卷同时开着还会翻倍。这里用 visibilitychange + IntersectionObserver
+     *  切换 .theme-card.is-paused，由一条 CSS 把 animation-play-state 置 paused。 */
+    _setupPauseWhenHidden() {
+        this._teardownPauseWhenHidden();
+        var section = byId('themeEffectSection');
+        if (!section) return;
+        var card = section.querySelector('.theme-card') || section;
+        var self = this;
+        this._pauseCard = card;
+        var sync = function () {
+            var hidden = (typeof document !== 'undefined' && document.hidden) || self._outOfView === true;
+            card.classList.toggle('is-paused', !!hidden);
+        };
+        this._onVisibility = sync;
+        if (typeof document !== 'undefined') document.addEventListener('visibilitychange', sync);
+        if (typeof IntersectionObserver !== 'undefined') {
+            this._pauseIO = new IntersectionObserver(function (entries) {
+                var e = entries && entries[0];
+                self._outOfView = !(e && e.isIntersecting);
+                sync();
+            }, { threshold: 0 });
+            this._pauseIO.observe(card);
+        }
+        sync();
+    },
+
+    /** 摘掉 _setupPauseWhenHidden 挂的监听/观察器（切主题、销毁时必须调，避免叠加泄漏） */
+    _teardownPauseWhenHidden() {
+        if (this._onVisibility && typeof document !== 'undefined') {
+            document.removeEventListener('visibilitychange', this._onVisibility);
+        }
+        this._onVisibility = null;
+        if (this._pauseIO) { this._pauseIO.disconnect(); this._pauseIO = null; }
+        if (this._pauseCard) { this._pauseCard.classList.remove('is-paused'); this._pauseCard = null; }
+        this._outOfView = false;
     },
 
     switchTheme(themeName) {
@@ -418,6 +502,7 @@ export const ThemeEffects = {
                     }
                 }
                 this._themeSettings = migrated;
+                this._autoMotion = migrated.__autoMotion === undefined ? true : !!migrated.__autoMotion;
             }
         } catch (e) {
             console.warn('[ThemeEffects] 加载主题设置失败:', e);
@@ -431,6 +516,76 @@ export const ThemeEffects = {
         } catch (e) {
             console.warn('[ThemeEffects] 保存主题设置失败:', e);
         }
+    },
+
+    /** 档位中文名（面板状态展示用） */
+    _motionLabel() {
+        return this._motionLevel === 'static' ? '静止' : (this._motionLevel === 'lite' ? '轻柔' : '完整');
+    },
+
+    /** 系统是否要求减少动效 */
+    _prefersReduced() {
+        try { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); }
+        catch (e) { return false; }
+    },
+
+    /** 开关「智能动效」并持久化；打开时立即重新评估一次 */
+    setAutoMotion(on) {
+        this._autoMotion = !!on;
+        this._themeSettings.__autoMotion = this._autoMotion;
+        this._saveSettings();
+        this._motionLevel = this._prefersReduced() ? 'static' : 'full';
+        this._autoTuned = false;
+        this._applyMotionLevel();
+        if (this._autoMotion) this._autoTune();
+        this._refreshMotionStatus();
+    },
+
+    /** 把档位落到 .theme-card：data-motion（主题据此决定停哪些动画）+ --fl-blur-scale（缩放模糊） */
+    _applyMotionLevel() {
+        var section = byId('themeEffectSection');
+        if (!section) return;
+        var card = section.querySelector('.theme-card');
+        if (!card) return;
+        var lvl = this._motionLevel;
+        card.setAttribute('data-motion', lvl);
+        card.style.setProperty('--fl-blur-scale', lvl === 'static' ? '0' : (lvl === 'lite' ? '0.5' : '1'));
+    },
+
+    /** 面板里的「当前：完整/轻柔/静止」文字 */
+    _refreshMotionStatus() {
+        var el = byId('motionStatus');
+        if (el) el.textContent = '当前：' + this._motionLabel();
+    },
+
+    /** 采样约 1.5s 帧时间；p90 > 24ms（≈ 低于 40fps）且仍在 full → 自动降为 lite，并提示一次。
+     *  只降不升：避免在临界点反复升降造成观感抖动；下次打开视图会重新评估。 */
+    _autoTune() {
+        if (!this._autoMotion || this._motionLevel !== 'full' || this._autoTuned) return;
+        if (typeof requestAnimationFrame !== 'function') return;
+        if (typeof document !== 'undefined' && document.hidden) return;
+        var self = this;
+        var frames = [];
+        var last = performance.now();
+        var start = last;
+        var step = function (t) {
+            frames.push(t - last);
+            last = t;
+            if (t - start < 1500) { requestAnimationFrame(step); return; }
+            self._autoTuned = true;
+            var arr = frames.slice(3).sort(function (a, b) { return a - b; });
+            var p90 = arr.length ? arr[Math.floor((arr.length - 1) * 0.9)] : 0;
+            if (p90 > 24 && self._autoMotion && self._motionLevel === 'full') {
+                self._motionLevel = 'lite';
+                self._applyMotionLevel();
+                self._refreshMotionStatus();
+                if (!self._motionNotified) {
+                    self._motionNotified = true;
+                    if (typeof Toast !== 'undefined') Toast.showToast('检测到掉帧，已自动切到「轻柔动效」', 'info');
+                }
+            }
+        };
+        requestAnimationFrame(step);
     },
 
     getThemeList() {
@@ -705,6 +860,11 @@ export const ThemeEffects = {
             this._scalerRO.disconnect();
             this._scalerRO = null;
         }
+        if (this._scalerPending) {
+            if (typeof cancelAnimationFrame === 'function') cancelAnimationFrame(this._scalerPending);
+            this._scalerPending = 0;
+        }
+        this._teardownPauseWhenHidden();
         this._intervals.forEach(id => clearInterval(id));
         this._intervals = [];
     },
@@ -756,6 +916,15 @@ export const ThemeEffects = {
                     '<input type="range" class="theme-tune-slider" id="tuneLight" min="-30" max="30" value="' + (cur.lightness !== null ? cur.lightness : '0') + '" data-key="lightness">',
                     '<span class="theme-tune-val" id="tuneLightVal">' + (cur.lightness !== null ? (cur.lightness > 0 ? '+' : '') + cur.lightness + '%' : '自动') + '</span>',
                     '<button class="theme-tune-reset" id="tuneLightReset" style="display:' + (cur.lightness !== null ? '' : 'none') + '">复位</button>',
+                '</div>',
+                '<div class="theme-tune-row theme-tune-row-perf">',
+                    '<label class="theme-tune-name">智能动效</label>',
+                    // 复用全局胶囊开关组件（modal-settings.css 的 .toggle-switch），与设置页同一套设计语言
+                    '<label class="toggle-switch" title="掉帧时自动降为「轻柔」；关闭则始终保持完整动效">',
+                        '<input type="checkbox" id="motionToggle"' + (this._autoMotion ? ' checked' : '') + '>',
+                        '<span class="toggle-slider"></span>',
+                    '</label>',
+                    '<span class="theme-tune-val" id="motionStatus">当前：' + this._motionLabel() + '</span>',
                 '</div>',
             '</div>',
 
@@ -850,6 +1019,14 @@ export const ThemeEffects = {
 
         setupSlider('#tuneHue', '#tuneHueReset', '#tuneHueVal', 'hue');
         setupSlider('#tuneLight', '#tuneLightReset', '#tuneLightVal', 'lightness');
+
+        // ===== 智能动效开关（胶囊开关：checkbox 的 change 事件）=====
+        var motionBox = panel.querySelector('#motionToggle');
+        if (motionBox) {
+            motionBox.addEventListener('change', function() {
+                el.setAutoMotion(!!motionBox.checked);
+            });
+        }
 
         // 重置全部（亮暗两套都重置）
         var resetAllBtn2 = panel.querySelector('#tuneResetAllBtn');

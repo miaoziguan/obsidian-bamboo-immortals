@@ -17,7 +17,7 @@
  * 属 B 类，等真要加第四档时再抽，避免无真实需求校准的过度抽象。
  */
 import { ICON_LAYERS, ICON_FONT, ICON_EXPORT, ICON_GRID, ICON_PREVIEW, ICON_LINK_ROUTE } from './twConfig.js';
-import { MAX_LEN, DRAFT_MAX_LEN } from './twConfig.js';
+import { MAX_LEN, DRAFT_MAX_LEN, WRITE_NO_CULL_MAX } from './twConfig.js';
 
 /** 旋钮拨齿顺序 */
 export const MODE_ORDER = ['notes', 'write', 'mindmap'];
@@ -32,6 +32,8 @@ export const MODE_POLICY = {
     ownsStickers: true,                  // 贴纸 / 素材市场属于便签档（P1 装饰层归属）
     usesCardInteractions: true,          // 卡片画布手势（平移 / 滚轮 / 空格抓手 / 框选）接管
     linksDefineOrder: false,             // 连线是否参与「文章顺序」推导
+    manualCardSize: true,                 // 卡片尺寸可手动调（拖角缩放手柄）
+    culling: { noCullMax: 0 },            // 0 = 不豁免：一律按视口剔除
     knobTitle: '拨动齿轮：便签画布 / MD可视化写作 / 思维子弹',
     msg: '已回到便签画布', msgMs: 1900,
     buttons: {
@@ -54,6 +56,8 @@ export const MODE_POLICY = {
     ownsStickers: false,
     usesCardInteractions: true,
     linksDefineOrder: true,              // 连线是文章顺序的输入之一
+    manualCardSize: false,                // 写作档卡片尺寸由内容决定，不给拖角缩放手柄
+    culling: { noCullMax: WRITE_NO_CULL_MAX },  // 小文档常驻挂载，避免剔除反复重建 → 闪烁
     knobTitle: 'MD可视化写作：给每张卡定级别，最后连成一篇 Markdown',
     msg: 'MD可视化写作：用卡片上的级别钮定 H1–H6 / 正文 / 引用', msgMs: 1900,
     buttons: {
@@ -73,6 +77,8 @@ export const MODE_POLICY = {
     // 导图有自己的文档、历史与手势：卡片画布的交互（双击归位 / 撤销 / 排版 / 手势）一律让位
     usesCardInteractions: false,
     linksDefineOrder: false,
+    manualCardSize: false,
+    culling: { noCullMax: 0 },
     knobTitle: '思维子弹：打字后回车新建节点',
     msg: '思维子弹模式：打字后回车新建节点', msgMs: 1800,
     buttons: {
@@ -108,6 +114,17 @@ export const ModePolicy = {
   usesCardInteractions(mode) { return ModePolicy.of(mode).usesCardInteractions === true; },
   /** 连线是否参与「文章顺序」推导：目前只有写作档（原「_mode === 'write'」×3） */
   linksDefineOrder(mode) { return ModePolicy.of(mode).linksDefineOrder === true; },
+  /** 卡片是否提供手动尺寸调节（拖角缩放手柄）：写作档尺寸由内容决定（原「_mode === \'write\'」） */
+  manualCardSize(mode) { return ModePolicy.of(mode).manualCardSize === true; },
+  /**
+   * 视口剔除豁免：卡数不超过 noCullMax 时常驻挂载、不剔除。
+   * 仅写作档开启 —— 文章是线性文档、规模有限，而剔除会随「新建卡自动归位」/画布平移
+   * 不断销毁重建卡片 DOM，是可视化写作闪烁的根因（原「_mode === \'write\' && <= WRITE_NO_CULL_MAX」）。
+   */
+  skipCull(mode, noteCount) {
+    const c = ModePolicy.of(mode).culling;
+    return !!(c && c.noCullMax > 0 && (Number(noteCount) || 0) <= c.noCullMax);
+  },
 };
 
 // 测试 harness（loadModule 剥离 import）兼容：挂到 globalThis。

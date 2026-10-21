@@ -20,7 +20,7 @@
  */
 import { GeoCache } from './GeoCache.js';
 import { SpatialIndex } from './SpatialIndex.js';
-import { WRITE_NO_CULL_MAX } from '../handlers/features/twConfig.js';
+import { ModePolicy } from '../handlers/features/modePolicy.js';
 
 export const ViewportCuller = {
   /** 连线层取端点的几何源：挂载卡读活 DOM（与旧行为一致），离屏卡读几何缓存（最后测量值）。 */
@@ -262,8 +262,7 @@ export const ViewportCuller = {
     // 已在导图侧以「DOM 回收池复用 + 批量测量」根治（mindmapFeature._mountNode 入池、_cullView 走 _batchMeasure）。
     // 若便签/写作画布日后也出现可感知抖动，可按同一套手法给 mountCard/unmountCard 上回收池，
     // 届时写作档是否下调 WRITE_NO_CULL_MAX 再据实测决定，勿凭推断放宽。
-    if (state.mode === 'write'
-      && (state.notes ? state.notes.length : 0) <= WRITE_NO_CULL_MAX) return;
+    if (ModePolicy.skipCull(state.mode, state.notes ? state.notes.length : 0)) return;
     if (ctrl._cullRaf) return;
     ctrl._cullRaf = requestAnimationFrame(() => {
       ctrl._cullRaf = 0;
@@ -324,7 +323,7 @@ export const ViewportCuller = {
     if (changed) {
       if (ctrl._linkLayer) ctrl._linkLayer.clearControls();
       ctrl._scheduleRenderLinks();
-      if (state.mode === 'write') ctrl._refreshWriteOrder();
+      if (ModePolicy.linksDefineOrder(state.mode)) ctrl._refreshWriteOrder();
     }
     ctrl._applyLod();
     ctrl._perfEnd('cull', _t0);

@@ -20,6 +20,7 @@ import { WritingDoc } from './writingDoc.js';
 import { ViewportCuller } from '../../services/ViewportCuller.js';
 import { CanvasViewport } from '../../services/CanvasViewport.js';
 import { FONTS, PAPERS, MARKET_PAPERS, MARKET_FONTS, registerMarketPaper, unregisterMarketPaper, registerMarketFont, unregisterMarketFont } from './twConfig.js';
+import { ModePolicy } from './modePolicy.js';
 // 贴纸按「便签组」独立持久化：需取当前组 id 作为存储 key
 import { TypewriterStore } from '../../services/TypewriterStore.js';
 // 素材 SVG 注入前的实例隔离（id 前缀 + <style> 作用域沙箱）
@@ -1197,11 +1198,11 @@ export const MaterialMarket = {
     const ctrl = this._ctrl;
     if (!ctrl || !ctrl._canvas) return;
     const layer = ctrl._canvas.querySelector('.tw-deco-layer[data-mode="notes"]');
-    if (layer) layer.hidden = mode !== 'notes';
+    if (layer) layer.hidden = !ModePolicy.ownsStickers(mode);
     // 依附贴纸住在卡片内部（不在装饰层里），装饰层隐藏管不到它们 —— 一并按档位显隐，
     // 否则切到写作档时「属于便签档的装饰」会漏到文章段落上。
     ctrl._canvas.querySelectorAll('.bm-sticker[data-attached="1"]').forEach((el) => {
-      el.style.display = mode === 'notes' ? '' : 'none';
+      el.style.display = ModePolicy.ownsStickers(mode) ? '' : 'none';
     });
   },
 

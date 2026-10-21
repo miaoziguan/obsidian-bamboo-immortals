@@ -624,7 +624,7 @@ export const CardInteractions = {
     const { state, ctrl } = ctx;
     // 写作档（MD可视化写作）：卡片尺寸由内容决定，不提供拖角缩放手柄——
     // 单卡缩放是便签维度，文章里没有这语义（与纸样 / 旋转在写作档被隐藏 / 归零同理）。
-    if (ctrl._mode === 'write') return;
+    if (!ModePolicy.manualCardSize(ctrl._mode)) return;
     const handle = document.createElement('div');
     handle.className = 'tw-card-resize';
     handle.setAttribute('role', 'slider');

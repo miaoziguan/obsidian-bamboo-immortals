@@ -1032,6 +1032,14 @@
   border: 0;
   box-shadow: none;          /* 方形阴影不能留在圆角卡后面 → 一并下移到 main */
   aspect-ratio: auto;        /* 随内容长高，不套便签定版纸样的 600/300 固定比例 */
+  /* 【写作档必须自适应宽度】3.28.21 的「便签定宽」(width:340px) 是便签档语义，
+     但它是打在全局 .tw-card 上的 → 写作档也被拉成等宽长条：H1 标题 / 短引用 / 单句段落
+     全变成同一宽度，宽出来的部分压到相邻卡上相互重叠，不再像一张张卡片。
+     写作档按旧行为恢复「随内容自适应」，并用 min/max 兜住绝对定位的 shrink-to-fit 塌缩
+     （min-width 有下限，左侧 left 再大也不会退化成单字宽）。 */
+  width: auto;
+  min-width: calc(280px * var(--tw-card-zoom, 1));
+  max-width: calc(400px * var(--tw-card-zoom, 1));
 }
 .tw-canvas.tw-mode-write .tw-card-main {
   background: var(--surface-solid);      /* 主题自适应纯色（亮色纯白 / 暗色深表面） */

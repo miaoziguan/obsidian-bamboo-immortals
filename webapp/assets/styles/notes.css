@@ -1036,13 +1036,14 @@
   border: 0;
   box-shadow: none;          /* 方形阴影不能留在圆角卡后面 → 一并下移到 main */
   aspect-ratio: auto;        /* 随内容长高，不套便签定版纸样的 600/300 固定比例 */
-  /* 【写作档必须自适应宽度】3.28.21 的「便签定宽」(width:340px) 是便签档语义，
-     但它是打在全局 .tw-card 上的 → 写作档也被拉成等宽长条：H1 标题 / 短引用 / 单句段落
-     全变成同一宽度，宽出来的部分压到相邻卡上相互重叠，不再像一张张卡片。
-     写作档按旧行为恢复「随内容自适应」，并用 min/max 兜住绝对定位的 shrink-to-fit 塌缩
-     （min-width 有下限，左侧 left 再大也不会退化成单字宽）。 */
-  width: auto;
-  min-width: calc(280px * var(--tw-card-zoom, 1));
+  /* 【写作档必须给宽度封顶】3.28.21 的「便签定宽」把基础 .tw-card 的
+     `width:auto; min-width:280px; max-width:400px` 改成 `width:calc(340px…)`
+     时，一并删掉了 min-width 与 max-width。
+     写作档另有自己的「贴合内容」规则（见下方「卡片宽度贴合内容」段）：
+     width:max-content + min-width:min(88px…)。它排在后面，会压过此处的 width，
+     所以这里再写 width / min-width 都是死声明 —— 真正缺的是 max-width：
+     没有上限时，max-content 会让卡片按「最长一行」无限撑宽并相互压叠。
+     此处只补回上限；便签档的定宽不受影响。 */
   max-width: calc(400px * var(--tw-card-zoom, 1));
 }
 .tw-canvas.tw-mode-write .tw-card-main {

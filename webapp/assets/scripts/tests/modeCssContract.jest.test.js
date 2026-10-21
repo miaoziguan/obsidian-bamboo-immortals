@@ -115,14 +115,29 @@ describe('两档不得互相外溢', () => {
   });
 
   test('便签档卡片保持定宽（回归锁：写作档不得把它顶掉）', () => {
-    // 当前便签定宽写在基类 .tw-card 上；作用域整改后会迁到 .tw-canvas.tw-mode-notes。
+    // 便签定宽已从基类 .tw-card 迁到便签档作用域（:where(...) 形式）。
     // 无论落在哪一处，便签档的宽度必须是「定值」而非 auto。
     const base = rulesMatching('.tw-card');
     expect(base.length).toBeGreaterThan(0);
-    const scoped = rulesMatching('.tw-canvas.tw-mode-notes .tw-card');
+    const scoped = rulesMatching('.tw-canvas.tw-mode-notes .tw-card')
+      .concat(rulesMatching(':where(.tw-canvas.tw-mode-notes) .tw-card'));
     const bodies = [...base, ...scoped].map((r) => r.body);
     const widths = bodies.map((b) => decl(b, 'width')).filter(Boolean);
     expect(widths.length).toBeGreaterThan(0);
     expect(widths.some((w) => w.startsWith('calc(340px'))).toBe(true);
+  });
+
+  test('便签档作用域不得抬高特异度（否则压过市场纸样的覆盖）', () => {
+    // 事故：width / box-shadow 从 .tw-card(0,1,0) 搬进 .tw-canvas.tw-mode-notes .tw-card(0,3,0)
+    // 后，特异度被抬高 → 市场纸样用 .tw-card[data-paper="X"](0,2,0) 覆盖「不要投影 / 自适应宽度」
+    // 的能力被压掉 → 透明切割式纸样多出一圈矩形投影（看起来像「多余的透明背景」）。
+    // 故：模式部分必须用 :where() 归零，使本条与旧基类同为 (0,1,0)。
+    const raised = RULES.filter((r) =>
+      r.sel.split(',').some((s) => s.trim() === '.tw-canvas.tw-mode-notes .tw-card')
+    );
+    expect(raised.map((r) => r.sel)).toEqual([]);
+
+    const zeroed = RULES.filter((r) => r.sel.includes(':where(.tw-canvas.tw-mode-notes)'));
+    expect(zeroed.length).toBeGreaterThan(0);
   });
 });

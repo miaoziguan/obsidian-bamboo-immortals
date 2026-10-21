@@ -67,7 +67,7 @@ function makeCtrl(startMode = 'notes') {
     _exitAllEdits: jest.fn(() => calls.push('exitAllEdits')),
     _clearSelection: jest.fn(() => calls.push('clearSelection')),
     _detachStickers: jest.fn(async () => calls.push('detachStickers')),
-    _refreshWriteMode: jest.fn(() => calls.push('refreshWriteMode')),
+    _refreshModeScope: jest.fn(() => calls.push('refreshModeScope')),
     _applyModeChrome: jest.fn(() => calls.push('applyModeChrome')),
     _buildCards: jest.fn(() => calls.push('buildCards')),
     _loadDoc: jest.fn(async () => calls.push('loadDoc')),
@@ -160,7 +160,7 @@ describe('setMode 主流程顺序（卡片档）', () => {
       'persistDoc',        // ① 先把离开的档写回它自己的文档
       'exitAllEdits', 'clearSelection',
       'detachStickers',    // ② 档位所有权：离开便签档立即摘贴纸
-      'refreshWriteMode',  // ③ 外观先于载入生效
+      'refreshModeScope',  // ③ 外观先于载入生效
       'applyModeChrome',   // ④ chrome 先行（空窗期不露上一档外壳）
       'buildCards',        // ⑤ 同步清场：露空画布而非上一份文档
       'loadDoc',           // ⑥ 载入新档文档

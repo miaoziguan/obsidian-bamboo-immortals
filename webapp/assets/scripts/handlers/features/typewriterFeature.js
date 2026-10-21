@@ -315,6 +315,9 @@ export const TypewriterFeature = {
     // 导图层与便签画布互斥显示：同挂在 wrap 下、同为 flex:1，机身仍是底部那一项
     MindmapFeature.mount({ state: this._state, ctrl: this }, wrap);
     this._applyModeChrome();   // 首次挂载即把面板语义对齐（默认便签模式）
+    // 档位作用域 class 必须在首帧就位：后续把便签/写作各自的样式迁进
+    // tw-mode-notes / tw-mode-write 作用域后，首屏才不会丢样式（切档时由 setMode 负责）。
+    this._refreshModeScope();
     this._observeScale();
     // 视口剔除（P8）：画布尺寸变化即重算挂载（离屏卡卸载、进屏卡重建）
     if (typeof ResizeObserver !== 'undefined' && this._canvas) {
@@ -1854,7 +1857,7 @@ export const TypewriterFeature = {
   /** 写作档的专属外观开关：画布上挂一个类，切档时无需重建任何卡片 DOM。
    *  这个类同时管两件事：① 显示结构级别钮；② 启用写作档自己的国际化卡片体系
    *  （压过便签的纸样样式，见 notes.css 的 .tw-mode-write 段落）。 */
-    _refreshWriteMode() { return ModeController.refreshWriteMode({ state: this._state, ctrl: this }); },
+    _refreshModeScope() { return ModeController.refreshModeScope({ state: this._state, ctrl: this }); },
 
   /** 字级档位上限：定版纸样（书燕）的文本区是按百分比预留的、纸面高度固定，
       字放太大撑出留白区会破坏版式，故封顶「很大 140%」（文本区已加 overflow 兜底）；

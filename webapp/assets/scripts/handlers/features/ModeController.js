@@ -68,7 +68,7 @@ export const ModeController = {
       ctrl._canvas.hidden = ctrl._mode === 'mindmap';
       // 写作档外观必须**先于**载入卡片生效：_loadDoc 会量卡片尺寸并做「带入视野」校正，
       // 若此刻还挂着便签的纸样样式，量到的是纸样尺寸（连 aspect-ratio 都不同），位置会算歪。
-      ctrl._refreshWriteMode();
+      ctrl._refreshModeScope();
 
       if (knob) {
         const kP = ModePolicy.of(mode);
@@ -682,12 +682,23 @@ export const ModeController = {
     }
   
   },
-  // (was _refreshWriteMode)
-  refreshWriteMode(ctx) {
+  /**
+   * 给画布打上「档位作用域」class：tw-mode-notes / tw-mode-write / tw-mode-mindmap（三选一）。
+   *
+   * 目的：让三档各自拥有独立的外观作用域，CSS 才能按档位隔离 —— 否则「便签档的默认值」
+   * 天然会成为「写作档的默认值」（3.28.21 的便签定宽删掉 max-width，导致写作档
+   * max-content 失去上限、卡片无限撑宽压叠，即此类事故）。
+   *
+   * 【时机】必须在**首次挂载**与**切档**两处都执行。只做切档的话，首屏（默认便签档）
+   * 拿不到自己的作用域，一旦把便签样式迁进 tw-mode-notes 就会首屏丢样式。
+   */
+  refreshModeScope(ctx) {
     const { state, ctrl } = ctx;
     if (!ctrl._canvas) return;
-    ctrl._canvas.classList.toggle('tw-mode-write', ctrl._mode === 'write');
-  
+    const m = ctrl._mode;
+    ctrl._canvas.classList.toggle('tw-mode-notes', m === 'notes');
+    ctrl._canvas.classList.toggle('tw-mode-write', m === 'write');
+    ctrl._canvas.classList.toggle('tw-mode-mindmap', m === 'mindmap');
   },
   // (was _openPreviewModal)
   openPreviewModal(ctx) {

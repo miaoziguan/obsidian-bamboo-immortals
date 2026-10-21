@@ -667,6 +667,9 @@ export const MaterialMarket = {
     (this._ensureDecoLayer(ctrl) || ctrl._canvas).appendChild(el);
     rec.el = el;
     this._canvasStickers.push(rec);
+    // 落下即「自由贴纸」：不自动挂到便签。依附会改变坐标系（画布绝对 → 便签相对），
+    // 属结构性变化，必须由用户显式发起（多选条的「挂到便签」），不能偷偷发生 —— 否则
+    // 既误触，又让人没法放一张「压在便签上但仍自由」的贴纸。
     await this._saveStickers();
   },
 
@@ -680,15 +683,184 @@ export const MaterialMarket = {
     return (w > 0 && h > 0) ? (w / h) : 0;
   },
 
+  // ===== 贴纸依附便签（parentId）：贴纸成为卡片子元素，随之移动 / 旋转 / 缩放 =====
+  // 坐标语义：依附态存「相对便签」的量 —— rx/rw 为卡片宽度的百分比，ry/rh 为 em（= 卡片字号）。
+  // 选 em 而非 % 做垂直量：便签大多是 height:auto（随正文变高），用 top:% 会随打字漂移；
+  // em 只跟卡片字号走，而字号含 --tw-card-zoom，故缩放自动跟随且不漂移。
+
+  /** 按便签 id 取画布上的卡片元素（依附的挂载目标） */
+  _cardElById(ctrl, id) {
+    if (!ctrl || !ctrl._canvas || !id) return null;
+    try { return ctrl._canvas.querySelector('.tw-card[data-id="' + id + '"]') || null; }
+    catch (_) { return null; }
+  },
+
+  /** 卡片未旋转时的布局尺寸与字号（em 基准）—— 依附坐标的换算基准 */
+  _cardMetrics(card) {
+    const w = card.offsetWidth || 340;
+    const h = card.offsetHeight || w;
+    let fs = parseFloat(getComputedStyle(card).fontSize);
+    if (!fs || !isFinite(fs)) fs = 16;
+    let rot = parseFloat(card.style.getPropertyValue('--tw-card-rot'));
+    if (!isFinite(rot)) rot = 0;
+    return { w, h, fs, rot };
+  },
+
+  /** 贴纸在屏幕上的总旋转角（自身 rot + 宿主便签 rot）；菜单反向旋转它即可保持文字朝上 */
+  _stickerTotalRot(rec) {
+    let a = Number(rec && rec.rot) || 0;
+    if (rec && rec.parentId) {
+      const card = this._cardElById(this._ctrl, rec.parentId);
+      if (card) a += this._cardMetrics(card).rot;
+    }
+    return a;
+  },
+
+  /** 依附：把自由贴纸挂到便签下（画布绝对 px → 相对 %宽 / em 高），DOM 移入卡片 */
+  _attachSticker(rec, card) {
+    if (!rec || !card) return false;
+    const m = this._cardMetrics(card);
+    const cx = (parseFloat(card.style.left) || 0) + m.w / 2;
+    const cy = (parseFloat(card.style.top) || 0) + m.h / 2;
+    const sx = Number(rec.x) || 0, sy = Number(rec.y) || 0;
+    const sw = Number(rec.w) || 120, sh = Number(rec.h) || 120;
+    const th = -m.rot * Math.PI / 180;               // 屏幕系 → 卡片本地系：反向旋转
+    const cos = Math.cos(th), sin = Math.sin(th);
+    const ox = sx + sw / 2 - cx, oy = sy + sh / 2 - cy;
+    const lx = ox * cos - oy * sin, ly = ox * sin + oy * cos;
+    rec.parentId = card.dataset.id || null;
+    rec.rx = ((lx + m.w / 2 - sw / 2) / m.w) * 100;
+    rec.ry = (ly + m.h / 2 - sh / 2) / m.fs;
+    rec.rw = (sw / m.w) * 100;
+    rec.rh = sh / m.fs;
+    if (rec.el) {
+      card.appendChild(rec.el);
+      rec.el.style.removeProperty('--tw-drag-x');   // 清掉自由态遗留的拖拽位移，依附态不再读取它
+      rec.el.style.removeProperty('--tw-drag-y');
+    }
+    this._applyStickerBox(rec);
+    this._saveStickers();
+    return true;
+  },
+
+  /** 解除依附：相对坐标 → 画布绝对 px，DOM 移回装饰层 */
+  _detachSticker(rec) {
+    if (!rec) return false;
+    const ctrl = this._ctrl;
+    const card = rec.parentId ? this._cardElById(ctrl, rec.parentId) : null;
+    if (card) {
+      const m = this._cardMetrics(card);
+      const th = m.rot * Math.PI / 180;              // 卡片本地系 → 屏幕系：正向旋转
+      const cos = Math.cos(th), sin = Math.sin(th);
+      const sw = (Number(rec.rw) || 35) / 100 * m.w;
+      const sh = (Number(rec.rh) || (sw / m.fs)) * m.fs;
+      const lx = (Number(rec.rx) || 0) / 100 * m.w + sw / 2 - m.w / 2;
+      const ly = (Number(rec.ry) || 0) * m.fs + sh / 2 - m.h / 2;
+      const ox = lx * cos - ly * sin, oy = lx * sin + ly * cos;
+      rec.x = (parseFloat(card.style.left) || 0) + m.w / 2 + ox - sw / 2;
+      rec.y = (parseFloat(card.style.top) || 0) + m.h / 2 + oy - sh / 2;
+      rec.w = Math.round(sw); rec.h = Math.round(sh);
+    }
+    rec.parentId = null;
+    if (rec.el) { const layer = this._ensureDecoLayer(ctrl); (layer || (ctrl && ctrl._canvas)).appendChild(rec.el); }
+    this._applyStickerBox(rec);
+    this._saveStickers();
+    return true;
+  },
+
+  /** 按依附 / 自由态写出贴纸的定位与尺寸样式（唯一出口，避免两处漂移） */
+  _applyStickerBox(rec) {
+    const el = rec && rec.el;
+    if (!el) return;
+    const ctrl = this._ctrl;
+    const card = rec.parentId ? this._cardElById(ctrl, rec.parentId) : null;
+    if (card) {
+      el.dataset.attached = '1';
+      el.style.left = (Number(rec.rx) || 0) + '%';
+      el.style.top = (Number(rec.ry) || 0) + 'em';
+      el.style.width = (Number(rec.rw) || 35) + '%';
+      const aspect = this._stickerAspect(this._installed && this._installed[rec.material]);
+      if (aspect) { el.style.aspectRatio = String(aspect); el.style.height = 'auto'; }
+      else { el.style.height = (Number(rec.rh) || 35) + 'em'; }
+      // 卡内层叠：纸面是 .tw-card-main::after（z-index:0）→ 负 z 即「半藏在便签后面」
+      el.style.zIndex = rec.behind ? '-1' : '1';
+      el.classList.toggle('bm-sticker-behind', !!rec.behind);
+    } else {
+      el.dataset.attached = '0';
+      el.style.left = (Number(rec.x) || 0) + 'px';
+      el.style.top = (Number(rec.y) || 0) + 'px';
+      el.style.width = (Number(rec.w) || 120) + 'px';
+      el.style.height = (Number(rec.h) || 120) + 'px';
+      el.style.aspectRatio = '';
+      el.style.zIndex = String(rec.z || (ctrl ? ++ctrl._zTop : 1));
+      rec.z = Number(el.style.zIndex);
+      el.classList.remove('bm-sticker-behind');
+    }
+    // 「半藏 / 从便签取下」已收进 ⋯ 菜单，其显隐在开菜单时按依附态判定，这里无需再管控件。
+    // 自由态：贴纸在装饰层（非卡片子级），需自带画布拖拽位移（与卡片同套 _startGroupDrag）。
+    // 依附态：贴纸已是卡片子元素，父级 transform 已含画布拖拽位移；子级若再加 translate 会「二次位移」
+    //         —— 拖动卡片时贴纸相对卡片漂移，松手后 --tw-drag-x/y 清零才归位。故依附态仅保留自身 rotate。
+    el.style.transform = rec.parentId
+      ? 'rotate(' + (Number(rec.rot) || 0) + 'deg)'
+      : 'translate(var(--tw-drag-x, 0px), var(--tw-drag-y, 0px)) rotate(' + (Number(rec.rot) || 0) + 'deg)';
+  },
+
+  /** 便签被删除时连带删除挂在它下面的贴纸（依附关系随宿主消失） */
+  removeAttachedStickers(cardId) {
+    if (!cardId) return 0;
+    const gone = this._canvasStickers.filter((s) => s.parentId === cardId);
+    gone.forEach((s) => { if (s.el && s.el.parentNode) s.el.parentNode.removeChild(s.el); });
+    if (gone.length) {
+      this._canvasStickers = this._canvasStickers.filter((s) => s.parentId !== cardId);
+      this._saveStickers();
+    }
+    return gone.length;
+  },
+
+  /** 依附态拖拽：屏幕位移 → 卡片本地位移（抵消画布缩放与卡片旋转），再归一成 % / em */
+  _startAttachedDrag(ctrl, el, rec, e) {
+    const card = this._cardElById(ctrl, rec.parentId);
+    if (!card) return;
+    const m0 = this._cardMetrics(card);
+    const rx0 = Number(rec.rx) || 0, ry0 = Number(rec.ry) || 0, rw0 = Number(rec.rw) || 35;
+    let sx = e.clientX, sy = e.clientY, raf = 0, moved = false;
+    let nrx = rx0, nry = ry0;
+    const apply = () => {
+      raf = 0;
+      rec.rx = nrx; rec.ry = nry;
+      el.style.left = nrx + '%'; el.style.top = nry + 'em';
+    };
+    const onMove = (ev) => {
+      const s = (typeof CanvasViewport !== 'undefined' && CanvasViewport.getScale) ? CanvasViewport.getScale(ctrl) : 1;
+      const th = -m0.rot * Math.PI / 180;
+      const cos = Math.cos(th), sin = Math.sin(th);
+      const dx = (ev.clientX - sx) / (s || 1), dy = (ev.clientY - sy) / (s || 1);
+      if (Math.abs(ev.clientX - sx) > 3 || Math.abs(ev.clientY - sy) > 3) moved = true;
+      const lx = dx * cos - dy * sin, ly = dx * sin + dy * cos;
+      nrx = rx0 + (lx / m0.w) * 100;
+      nry = ry0 + ly / m0.fs;
+      if (!raf) raf = requestAnimationFrame(apply);
+    };
+    const onUp = () => {
+      if (raf) { cancelAnimationFrame(raf); raf = 0; }
+      apply();
+      el.classList.remove('dragging');
+      if (moved) this._saveStickers();
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerup', onUp);
+    };
+    el.classList.add('dragging');
+    document.addEventListener('pointermove', onMove);
+    document.addEventListener('pointerup', onUp);
+    return rw0;
+  },
+
   /** 按一条贴纸记录构建 DOM（含删除钮 + 拖拽） */
   _buildStickerEl(ctrl, material, rec) {
     const el = document.createElement('div');
     el.className = 'bm-sticker';
     el.dataset.stickerId = rec.id;
-    el.style.left = rec.x + 'px';
-    el.style.top = rec.y + 'px';
-    el.style.zIndex = String(rec.z || (++ctrl._zTop));
-    rec.z = Number(el.style.zIndex);
+    rec.el = el;                       // _applyStickerBox 依此写样式
     // 尺寸 / 旋转：与位置同属可持久化属性，重建时一并还原。
     // 元素比例必须等于素材 viewBox 比例：一旦偏离，SVG 会按 preserveAspectRatio=meet 居中留白，
     // 四角的操作手柄就会离图形很远。素材更新 viewBox 后，历史贴纸在此自动贴合新比例。
@@ -697,35 +869,101 @@ export const MaterialMarket = {
       const w0 = Number(rec.w) || 120, h0 = Number(rec.h) || 120;
       if (h0 > 0 && Math.abs(w0 / h0 - aspect) > 0.01) { rec.w = w0; rec.h = Math.round(w0 / aspect); }
     }
-    el.style.width = (rec.w || 120) + 'px';
-    el.style.height = (rec.h || 120) + 'px';
-    el.style.transform = 'rotate(' + (rec.rot || 0) + 'deg)';
+    // —— 控件布局（重构）——
+    // 旧版悬停会同时亮 6 个圆钮（旋转/缩放/翻转/半藏/取下/删除）围成一圈：又挤、符号又难认、
+    // 且「删除」紧挨着高频的缩放/旋转，误点率很高。
+    // 新版：悬停只留 3 个入口 —— 左上 ↻ 旋转、右下 ⇲ 缩放（这两组是肌肉记忆，保留），
+    // 右上 ⋯ 收纳其余。点 ⋯ 弹出「带文字标签」的菜单：低频操作不再靠猜符号，
+    // 破坏性的「删除」单独分隔并置末（危险色）。菜单用 fixed + 视口坐标定位，
+    // 贴纸自身旋转/缩放、乃至宿主便签的旋转，都不会让菜单歪掉或错位。
     el.innerHTML = '<div class="bm-sticker-content">' + (material.render ? SvgIsolate.isolate(material.render(), rec.id + '-') : '') + '</div>' +
       '<button type="button" class="bm-sticker-rotate" aria-label="旋转贴纸" title="拖动旋转 · Shift 吸附 15° · 双击归零">↻</button>' +
       '<button type="button" class="bm-sticker-resize" aria-label="缩放贴纸" title="拖动缩放 · Shift 等比 · 双击还原">⇲</button>' +
-      '<button type="button" class="bm-sticker-flip" aria-label="翻转贴纸" title="水平翻转（镜像）· Shift 垂直翻转">↔</button>' +
-      '<button type="button" class="bm-sticker-del" aria-label="删除贴纸" title="删除贴纸">×</button>';
-    const del = el.querySelector('.bm-sticker-del');
-    if (del) {
-      del.addEventListener('click', (e) => {
+      '<button type="button" class="bm-sticker-more" aria-label="更多操作" title="更多操作">⋯</button>' +
+      '<div class="bm-sticker-menu" role="menu" hidden>' +
+      '  <button type="button" class="bm-sticker-mi" data-act="flipx" role="menuitem">水平翻转</button>' +
+      '  <button type="button" class="bm-sticker-mi" data-act="flipy" role="menuitem">垂直翻转</button>' +
+      '  <button type="button" class="bm-sticker-mi" data-act="behind" role="menuitem">半藏到便签后</button>' +
+      '  <button type="button" class="bm-sticker-mi" data-act="detach" role="menuitem">从便签取下</button>' +
+      '  <div class="bm-sticker-menu-sep" aria-hidden="true"></div>' +
+      '  <button type="button" class="bm-sticker-mi bm-sticker-mi-del" data-act="del" role="menuitem">删除贴纸</button>' +
+      '</div>';
+    // innerHTML 之后再写定位/尺寸/层叠（依附态据此切换层叠与「半藏」标识）
+    this._applyStickerBox(rec);
+    const menu = el.querySelector('.bm-sticker-menu');
+    const moreBtn = el.querySelector('.bm-sticker-more');
+    if (menu && moreBtn) {
+      // 注意：本 webapp 跑在 shadow root 内。挂在 document 上的监听器拿到的 ev.target 会被
+      // 重定向成 shadow 宿主（而非菜单项），用 el.contains(ev.target) 判断必然为 false →
+      // 一按下菜单项就被当成"点外部"关闭菜单（display:none），后续 click 无处可落 = 点不动。
+      // 故必须用 composedPath() 穿透 shadow 边界判断（与 ModeController 的 _docDocHandler 同法）。
+      const onDocDown = (ev) => {
+        if (menu.hidden) return;
+        const path = (typeof ev.composedPath === 'function') ? ev.composedPath() : [];
+        if (path.indexOf(menu) >= 0 || path.indexOf(el) >= 0) return;   // 点在菜单/贴纸内部 → 不关
+        closeMenu();
+      };
+      const onMenuKey = (ev) => { if (ev.key === 'Escape') closeMenu(); };
+      const closeMenu = () => {
+        menu.hidden = true;
+        document.removeEventListener('pointerdown', onDocDown, true);
+        document.removeEventListener('keydown', onMenuKey, true);
+      };
+      const openMenu = () => {
+        // 上下文显隐：半藏 / 取下只在「挂到便签」后才有意义
+        menu.querySelectorAll('[data-act]').forEach((b) => {
+          if (b.dataset.act === 'behind' || b.dataset.act === 'detach') b.style.display = rec.parentId ? '' : 'none';
+        });
+        const behBtn = menu.querySelector('[data-act="behind"]');
+        if (behBtn) behBtn.textContent = rec.behind ? '浮回便签之上' : '半藏到便签后';
+        // 菜单是贴纸的子元素、绝对定位于 ⋯ 钮下方（right:0 锚在右上角），并反向旋转抵消
+        // 「贴纸自身旋转 + 宿主便签旋转」，保证文字始终是正的。
+        // 不用 fixed：.bm-sticker 自带 transform，变换后的祖先即 fixed 的包含块，fixed 会失效。
+        menu.style.transform = 'rotate(' + (-this._stickerTotalRot(rec)) + 'deg)';
+        menu.hidden = false;
+        document.addEventListener('pointerdown', onDocDown, true);
+        document.addEventListener('keydown', onMenuKey, true);
+      };
+      moreBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        el.remove();
-        this._canvasStickers = this._canvasStickers.filter((s) => s !== rec);
-        this._saveStickers();
-        if (typeof Toast !== 'undefined') Toast.showToast('贴纸已删除', 'success');
+        if (menu.hidden) openMenu(); else closeMenu();
       });
-    }
-    // 翻转：仅作用于内容层（.bm-sticker-content），不波及元素级旋转与四角手柄
-    const flip = el.querySelector('.bm-sticker-flip');
-    if (flip) {
-      flip.addEventListener('click', (e) => {
+      menu.addEventListener('pointerdown', (e) => e.stopPropagation());   // 条内点击不触发拖拽/取消选择
+      // click 与 pointerup 双通道：画布手势在某些路径下会吞掉 click（指针捕获 / preventDefault），
+      // 用 pointerup 兜底；350ms 去重，保证一次点击只执行一次。
+      let lastPick = 0;
+      const onPick = (e) => {
+        const b = e.target.closest('[data-act]');
+        if (!b) return;
         e.stopPropagation();
-        if (e.shiftKey) rec.flipY = !rec.flipY;
-        else rec.flipX = !rec.flipX;
-        this._applyFlip(el, rec);
-        this._saveStickers();
-        if (typeof Toast !== 'undefined') Toast.showToast('已翻转', 'success');
-      });
+        const now = Date.now();
+        if (now - lastPick < 350) return;
+        lastPick = now;
+        const act = b.dataset.act;
+        if (act === 'flipx' || act === 'flipy') {
+          if (act === 'flipx') rec.flipX = !rec.flipX; else rec.flipY = !rec.flipY;
+          this._applyFlip(el, rec);
+          this._saveStickers();
+        } else if (act === 'behind') {
+          if (!rec.parentId) { if (typeof Toast !== 'undefined') Toast.showToast('贴纸没挂到便签上，无法半藏', 'info'); return; }
+          rec.behind = !rec.behind;
+          this._applyStickerBox(rec);
+          this._saveStickers();
+          if (typeof Toast !== 'undefined') Toast.showToast(rec.behind ? '已半藏到便签后面' : '已浮回便签之上', 'success');
+        } else if (act === 'detach') {
+          if (!rec.parentId) { if (typeof Toast !== 'undefined') Toast.showToast('贴纸没挂在便签上', 'info'); return; }
+          this._detachSticker(rec);
+          if (typeof Toast !== 'undefined') Toast.showToast('已从便签取下', 'success');
+        } else if (act === 'del') {
+          el.remove();
+          this._canvasStickers = this._canvasStickers.filter((s) => s !== rec);
+          this._saveStickers();
+          if (typeof Toast !== 'undefined') Toast.showToast('贴纸已删除', 'success');
+        }
+        closeMenu();
+      };
+      menu.addEventListener('click', onPick);
+      menu.addEventListener('pointerup', onPick);
     }
     this._applyFlip(el, rec);
     this._makeStickerDraggable(ctrl, el, rec);
@@ -755,6 +993,9 @@ export const MaterialMarket = {
       // 与便签卡同套语义 —— 选中集（_selected）可同时含卡片与贴纸，拖动/删除一视同仁。
       if (e.shiftKey) { if (ctrl) ctrl._toggleSelect(el); return; }
       if (!ctrl || !ctrl._selected || !ctrl._selected.has(el)) { if (ctrl) ctrl._selectOnly(el); }
+      // 【依附态】坐标为「相对便签」的 % / em，不能走画布级整体拖拽（它会按 px 改写 left/top）。
+      // 此处改为在便签内微调：屏幕位移先抵消画布缩放、再反向旋转到卡片本地系，最后归一成 % / em。
+      if (rec.parentId) { this._startAttachedDrag(ctrl, el, rec, e); return; }
       if (ctrl) ctrl._startGroupDrag(e, el);   // 委托统一整体拖动（含本贴纸 + 其余选中项）
     });
   },
@@ -818,8 +1059,17 @@ export const MaterialMarket = {
     let resizing = false, sx = 0, sy = 0, sw = 0, sh = 0, w = 0, h = 0, raf = 0;
     const apply = () => {
       raf = 0;
-      rec.w = Math.round(w); rec.h = Math.round(h);
-      el.style.width = rec.w + 'px'; el.style.height = rec.h + 'px';
+      if (rec.parentId) {
+        // 依附态：宽度以「卡宽百分比」存储（高度由 aspect-ratio 推导），随便签缩放
+        const card = this._cardElById(ctrl, rec.parentId);
+        const cw = card ? (card.offsetWidth || 340) : 340;
+        rec.rw = Math.max(2, (w / cw) * 100);
+        rec.w = Math.round(w); rec.h = Math.round(h);   // 保留一份 px 便于解绑时换算
+        this._applyStickerBox(rec);
+      } else {
+        rec.w = Math.round(w); rec.h = Math.round(h);
+        el.style.width = rec.w + 'px'; el.style.height = rec.h + 'px';
+      }
     };
     const onMove = (e) => {
       if (!resizing) return;
@@ -856,9 +1106,18 @@ export const MaterialMarket = {
       e.preventDefault(); e.stopPropagation();
       // 双击还原：保持当前宽高比，短边回到 120（而非强制正方形破坏比例）
       const ratio = (Number(rec.w) || 120) / (Number(rec.h) || 120);
-      if (ratio >= 1) { rec.h = 120; rec.w = Math.round(120 * ratio); }
-      else { rec.w = 120; rec.h = Math.round(120 / ratio); }
-      el.style.width = rec.w + 'px'; el.style.height = rec.h + 'px';
+      if (rec.parentId) {
+        const card = this._cardElById(ctrl, rec.parentId);
+        const cw = card ? (card.offsetWidth || 340) : 340;
+        rec.w = 120; rec.h = Math.round(120 / (ratio || 1));
+        rec.rw = Math.max(2, (rec.w / cw) * 100);
+        rec.rh = rec.h / ((card ? (parseFloat(getComputedStyle(card).fontSize) || 16) : 16));
+        this._applyStickerBox(rec);
+      } else {
+        if (ratio >= 1) { rec.h = 120; rec.w = Math.round(120 * ratio); }
+        else { rec.w = 120; rec.h = Math.round(120 / ratio); }
+        el.style.width = rec.w + 'px'; el.style.height = rec.h + 'px';
+      }
       this._saveStickers();
     });
   },
@@ -876,11 +1135,15 @@ export const MaterialMarket = {
     try {
       const mgr = (typeof window !== 'undefined' && window.storageManager) || null;
       if (!mgr || typeof mgr.putSetting !== 'function') return;
+      const r3 = (v) => Math.round((Number(v) || 0) * 1000) / 1000;   // 相对量保留 3 位小数
       const arr = this._canvasStickers.map((s) => ({
         id: s.id, material: s.material,
-        x: Math.round(s.x), y: Math.round(s.y), z: s.z || 0,
+        x: Math.round(Number(s.x) || 0), y: Math.round(Number(s.y) || 0), z: s.z || 0,
         w: Math.round(s.w || 120), h: Math.round(s.h || 120), rot: Math.round(s.rot || 0),
         fx: s.flipX ? 1 : 0, fy: s.flipY ? 1 : 0,
+        // 依附态：宿主便签 id + 相对坐标（rx/rw 为卡宽百分比，ry/rh 为 em）+ 半藏开关
+        pid: s.parentId || null, rx: r3(s.rx), ry: r3(s.ry), rw: r3(s.rw), rh: r3(s.rh),
+        bh: s.behind ? 1 : 0,
       }));
       await mgr.putSetting(await this._stickerKey(), arr);
     } catch (e) {
@@ -935,6 +1198,11 @@ export const MaterialMarket = {
     if (!ctrl || !ctrl._canvas) return;
     const layer = ctrl._canvas.querySelector('.tw-deco-layer[data-mode="notes"]');
     if (layer) layer.hidden = mode !== 'notes';
+    // 依附贴纸住在卡片内部（不在装饰层里），装饰层隐藏管不到它们 —— 一并按档位显隐，
+    // 否则切到写作档时「属于便签档的装饰」会漏到文章段落上。
+    ctrl._canvas.querySelectorAll('.bm-sticker[data-attached="1"]').forEach((el) => {
+      el.style.display = mode === 'notes' ? '' : 'none';
+    });
   },
 
   /** 恢复当前便签组的贴纸（须在已安装素材恢复之后，否则拿不到 render）。
@@ -960,9 +1228,22 @@ export const MaterialMarket = {
         // z 传 0 = 重建时统一置顶（由 _buildStickerEl 取 ++_zTop）。
         // 不能沿用落盘的旧 z：切档会重建卡片并让 _zTop 继续递增（实测 14 → 20），
         // 沿用旧值会让贴纸被新卡片压在下面 —— 即「切走再切回贴纸不见了，重启才回来」。
-        const rec = { id: s.id, material: s.material, x: Number(s.x) || 0, y: Number(s.y) || 0, z: 0, w: Number(s.w) || 120, h: Number(s.h) || 120, rot: Number(s.rot) || 0, flipX: !!s.fx, flipY: !!s.fy, el: null };
+        const rec = {
+          id: s.id, material: s.material,
+          x: Number(s.x) || 0, y: Number(s.y) || 0, z: 0,
+          w: Number(s.w) || 120, h: Number(s.h) || 120, rot: Number(s.rot) || 0,
+          flipX: !!s.fx, flipY: !!s.fy,
+          parentId: s.pid || null,
+          rx: Number(s.rx), ry: Number(s.ry), rw: Number(s.rw), rh: Number(s.rh),
+          behind: !!s.bh,
+          el: null,
+        };
+        // 宿主便签已不在（被删 / 未渲染）→ 视为孤儿，退回自由态，避免挂在空气上
+        const hostCard = rec.parentId ? this._cardElById(ctrl, rec.parentId) : null;
+        if (rec.parentId && !hostCard) rec.parentId = null;
         const el = this._buildStickerEl(ctrl, material, rec);
-        (this._ensureDecoLayer(ctrl) || ctrl._canvas).appendChild(el);
+        if (hostCard && rec.parentId) hostCard.appendChild(el);   // 依附：进卡片，随之移动/旋转/缩放
+        else (this._ensureDecoLayer(ctrl) || ctrl._canvas).appendChild(el);
         rec.el = el;
         this._canvasStickers.push(rec);
       }

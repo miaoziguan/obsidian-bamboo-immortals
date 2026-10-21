@@ -92,6 +92,9 @@ export const TypewriterFeature = {
     this._msgTimer = null;
     this._saveTimer = null;            // 写盘防抖计时器
     this._restored = false;            // 防重复加载：mount 一次只读盘一次
+    this._restoring = false;           // 恢复进行中：期间禁止产出（restore 会用磁盘数据覆盖 _notes）
+    this._pendingPrint = false;        // 恢复期间按过回车 → 恢复完成后补打一次
+    this._lastCaseFontPx = null;       // 上一次写回机身的字号（RO 里做变化判定，避免回写自身触发循环）
     this._fitDone = false;             // 恢复后「把便签带进视野」自检（每次 mount 重置）
     this._fitRo = null;                // 画布尚未布局时延迟自检的一次性 ResizeObserver
     this._ro = null;                   // 联动缩放 ResizeObserver（_observeScale 创建，unmount/resetState 断开）
@@ -148,8 +151,12 @@ export const TypewriterFeature = {
     if (typeof PrivacyMode !== 'undefined') PrivacyMode.markText();
     // 对齐原版：打开即聚焦输入框，便于直接键入
     if (this._input) this._input.focus();
-    // 异步加载已保存便签并重建（直接显示全文，不重放动画）
-    await this._restore();
+    // 异步加载已保存便签并重建（直接显示全文，不重放动画）。
+    // 恢复期间禁止产出：restore 末尾会 ctrl._notes = 磁盘数据 并全量重建 DOM，
+    // 期间新打的卡会被静默覆盖丢掉（「打开立刻打字，纸条凭空消失」）。
+    this._restoring = true;
+    try { await this._restore(); } finally { this._restoring = false; }
+    this._flushPendingPrint();   // 恢复期按过回车 → 现在补打（文本仍在输入框，不会丢）
     this._bindFlushGuards();   // 落盘兜底：页面隐藏/卸载前 flush 防抖窗口内未落盘的编辑
   },
 
@@ -483,7 +490,14 @@ export const TypewriterFeature = {
       const scale = Math.min(MAX, Math.max(MIN, w / DESIGN));
       const caseFontPx = BASE * scale;
       const btnPx = BTN_BASE * scale;
-      this._case.style.fontSize = caseFontPx.toFixed(2) + 'px';
+      // 只在字号真正变化时写回：RO 观察的正是 this._case，回调里写它的 fontSize
+      // 会触发新一轮尺寸计算（RO 循环风险），且后续 _invalidateGeoAll 会重测全部卡片。
+      const fontPx = caseFontPx.toFixed(2);
+      const fontChanged = this._lastCaseFontPx !== fontPx;
+      if (fontChanged) {
+        this._lastCaseFontPx = fontPx;
+        this._case.style.fontSize = fontPx + 'px';
+      }
       // 把缩放比写进 --tw-scale，供其余 em 尺寸跟随（本环境不支持 cqi）。
       // 同时写到包裹层 this._el：卡片画布 .tw-canvas 是 .tw-case 的兄弟节点，
       // 不继承 case 上的变量，必须让根层也持有 --tw-scale，卡片字号才能跟随机身缩放。
@@ -492,7 +506,7 @@ export const TypewriterFeature = {
       // 窄栏正方形构图：量得机身宽度 ≤400px 时切换（本环境不支持 @container，用 class 触发）
       this._case.classList.toggle('tw-square', w <= 400);
       // 根字号一变，所有卡片的 em 尺寸同步变 → 全部几何一次性失效（合帧后统一重测）
-      this._invalidateGeoAll();
+      if (fontChanged) this._invalidateGeoAll();
       // 直接给按钮写像素尺寸/字号（inline 优先级最高），彻底绕开 <button> 不继承字号、
       // 以及 calc(var()) 在本环境可能的兼容问题——按钮独立字号，保证球体有足够尺寸呈现光影
       const rbtns = Array.from(this._case.querySelectorAll('.tw-rbtn'));
@@ -656,6 +670,10 @@ export const TypewriterFeature = {
     // Shift+Enter 保留换行，便于在便签里写多行；空输入由 _commitInput 各自提示。
     input.addEventListener('keydown', (e) => {
       if (e.key !== 'Enter') return;
+      // 输入法组字中按回车是「确认候选词」，不是「打印」。
+      // 不加这道守卫时：中文选词一按回车就打印半截卡片，还吞掉候选确认。
+      // isComposing 为现代浏览器标准；keyCode 229 兜部分老环境/Safari 组字态。
+      if (e.isComposing || e.keyCode === 229) return;
       if (e.shiftKey) return;
       e.preventDefault();
       doPrint();
@@ -874,6 +892,10 @@ export const TypewriterFeature = {
   _commitInput() {
     const input = this._input;
     if (!input) return;
+    // 【恢复期挂起】mount 里 focus() 早于 await _restore()，用户「打开即打字」时
+    // restore 末尾会把 ctrl._notes 覆盖成磁盘数据并全量重建 DOM —— 期间打出的卡凭空消失。
+    // 这里先挂起（不清空输入框），恢复完成后由 _flushPendingPrint() 补打一次。
+    if (this._restoring) { this._pendingPrint = true; return; }
     const text = input.value.trim();
     if (this._mode === 'mindmap') {
       if (!text) { this._showScreenMsg('先输入文字，再新建节点', 1200); return; }
@@ -896,6 +918,15 @@ export const TypewriterFeature = {
     }
   },
 
+  /** 补打「恢复期间被挂起」的打印。
+   *  恢复结束（_restoring=false）后调用：此时 _notes 已是磁盘数据的规范模型，
+   *  再走一次 _commitInput 就不会被覆盖；输入框文本当时没被清空，故不会丢字。 */
+  _flushPendingPrint() {
+    if (!this._pendingPrint) return;
+    this._pendingPrint = false;
+    try { this._commitInput(); } catch (e) { console.warn('[Typewriter] 补打挂起的输入失败：', e); }
+  },
+
   /** 长文导入：把 splitDraft 切好的块序列一次性铺成文章（一步撤销、一次重排）。
    *  每块已各自定级（标题/列表/引用/正文），顺序即文章顺序；落点由 _spawn 接在文章流末尾。 */
   _importDraft(chunks) {
@@ -908,7 +939,8 @@ export const TypewriterFeature = {
     });
     const ids = [];
     chunks.forEach((c) => {
-      const card = this._spawn(c.text, c.level, { skipEnsureVisible: true });
+      // skipWriteOrder：末尾 reflowWriteOrder 会统一刷一次，避免逐块全量刷新（O(K×N)）
+      const card = this._spawn(c.text, c.level, { skipEnsureVisible: true, skipWriteOrder: true });
       if (card && card.dataset && card.dataset.id) ids.push(card.dataset.id);
     });
     // 默认进入「连线状态」：导入块按顺序连成链（含与上文的衔接），文章顺序即连线顺序。
@@ -1071,7 +1103,10 @@ export const TypewriterFeature = {
     this._input.focus();
 
     this._measureCard(card);            // 文本已落定：量一次几何进缓存，连线/剔除都读它
-    this._refreshWriteOrder();          // 新卡入画布：刷新写作档顺序徽标
+    // 新卡入画布：刷新写作档顺序徽标。
+    // 批量导入时跳过：_importDraft 末尾会统一 reflowWriteOrder 一次，
+    // 逐卡刷新会退化成 O(K×N)（K 块 × N 卡全量排序 + querySelector）。
+    if (!opts || !opts.skipWriteOrder) this._refreshWriteOrder();
 
     // 超出上限删最早（DOM 顺序即时间序），并在落盘时同步
     this._enforceCap();
@@ -1316,6 +1351,9 @@ export const TypewriterFeature = {
    *  数 DOM 卡 —— 后者在视口剔除开启后只统计在屏卡，会导致上限失效/误删（见 _enforceCap）。 */
   _removeNoteById(id) {
     if (!id) return;
+    // 级联：依附在这张便签上的贴纸随之删除（贴纸是「属于该便签」的装饰，宿主没了装饰也不该留）
+    const mm = this._materialMarket || null;
+    if (mm && typeof mm.removeAttachedStickers === 'function') mm.removeAttachedStickers(id);
     this._removeLinksOf(id);   // 级联删掉与它相连的连线（DOM 层），避免悬空线
     // 连续编辑改走 WritingDoc 原语：从规范模型删卡 + 连带删相关连线
     const r = WritingDoc.removeNote(this._notes, this._links, id);
@@ -1446,6 +1484,49 @@ export const TypewriterFeature = {
     _deleteSelected() { const r = CardInteractions.deleteSelected({ state: this._state, ctrl: this }); this._updateSelBar(); return r; },
 
   /**
+   * 「挂到便签」：把选中的贴纸挂到当前选中的唯一便签上。
+   * 仅允许恰好 1 张便签 —— 多张时「该挂给谁」有歧义，宁可不给入口也不要做错挂（与 _updateSelBar 同口径）。
+   * 挂上后贴纸随之移动/旋转/缩放；它自身位置仍可在便签上单独拖动微调（_startAttachedDrag）。
+   */
+  _attachSelected() {
+    const mm = this._materialMarket || null;
+    if (!mm) return 0;
+    const sel = (this._selected && this._selected.size) ? Array.from(this._selected) : [];
+    const isSticker = (c) => c.classList && c.classList.contains('bm-sticker');
+    const cards = sel.filter((c) => !isSticker(c));
+    const stickers = sel.filter(isSticker);
+    if (cards.length !== 1 || !stickers.length) return 0;
+    const card = cards[0];
+    const cid = card.dataset.id || null;
+    let n = 0;
+    stickers.forEach((el) => {
+      const rec = mm.recForEl(el);
+      if (!rec || rec.parentId === cid) return;
+      if (mm._attachSticker(rec, card)) n++;
+    });
+    if (n && typeof Toast !== 'undefined') Toast.showToast('已挂到便签（随之移动/旋转/缩放）', 'success');
+    this._updateSelBar();
+    return n;
+  },
+
+  /** 「从便签取下」：把选中的已挂靠贴纸全部取下，回到画布自由移动 */
+  _detachSelected() {
+    const mm = this._materialMarket || null;
+    if (!mm) return 0;
+    const sel = (this._selected && this._selected.size) ? Array.from(this._selected) : [];
+    const stickers = sel.filter((c) => c.classList && c.classList.contains('bm-sticker'));
+    let n = 0;
+    stickers.forEach((el) => {
+      const rec = mm.recForEl(el);
+      if (!rec || !rec.parentId) return;
+      if (mm._detachSticker(rec)) n++;
+    });
+    if (n && typeof Toast !== 'undefined') Toast.showToast('已从便签取下', 'success');
+    this._updateSelBar();
+    return n;
+  },
+
+  /**
    * 多选浮动操作条：选中 ≥2 张时浮在选框上方，提供「合并 N 张 / 删除」批量入口。
    * 动机：合并是针对整个选中集的批量操作，却原本挂在单卡 hover 才显形的工具条里，
    * 导致多选后要追着某张卡的悬浮条、鼠标一离就缩。改为此常驻浮动条，rAF 跟随选区/平移/缩放。
@@ -1461,13 +1542,19 @@ export const TypewriterFeature = {
     bar.setAttribute('role', 'toolbar');
     bar.setAttribute('aria-label', '多选操作');
     bar.innerHTML =
+      '<button type="button" class="tw-sel-attach" aria-label="把选中的贴纸挂到这张便签上" title="挂到便签：贴纸跟随这张便签移动/旋转/缩放，挂上后仍可拖动它在便签上的位置">挂到便签</button>' +
+      '<button type="button" class="tw-sel-detach" aria-label="把选中的贴纸从便签取下" title="从便签取下：贴纸回到画布，可自由移动">从便签取下</button>' +
       '<button type="button" class="tw-sel-merge" aria-label="合并选中卡片"></button>' +
       '<button type="button" class="tw-sel-del" aria-label="删除选中卡片">删除</button>';
     const mergeBtn = bar.querySelector('.tw-sel-merge');
     const delBtn = bar.querySelector('.tw-sel-del');
+    const attachBtn = bar.querySelector('.tw-sel-attach');
+    const detachBtn = bar.querySelector('.tw-sel-detach');
     // 鼠标点击后交还焦点：否则按钮持焦，之后按空格会再次触发（重合并 / 重删除选中）
     mergeBtn.addEventListener('click', (e) => { e.stopPropagation(); this._mergeSelected(); if (e.detail > 0) mergeBtn.blur(); });
     delBtn.addEventListener('click', (e) => { e.stopPropagation(); this._deleteSelected(); if (e.detail > 0) delBtn.blur(); });
+    attachBtn.addEventListener('click', (e) => { e.stopPropagation(); this._attachSelected(); if (e.detail > 0) attachBtn.blur(); });
+    detachBtn.addEventListener('click', (e) => { e.stopPropagation(); this._detachSelected(); if (e.detail > 0) detachBtn.blur(); });
     bar.addEventListener('pointerdown', (e) => e.stopPropagation());   // 条内操作不触发画布平移/取消选择
     this._canvas.appendChild(bar);
     this._selBarEl = bar;
@@ -1480,14 +1567,35 @@ export const TypewriterFeature = {
     if (!bar) return;
     const sel = (this._selected && this._selected.size) ? Array.from(this._selected) : [];
     const n = sel.length;
-    // 合并只针对便签卡（贴纸无合并语义）；统一选区内卡片数 <2 时不提供合并（隐藏按钮）
-    // 卡片 = 非贴纸（bm-sticker 是贴纸确切标识），与 _mergeSelected 同口径
-    const cardCount = sel.filter((c) => !(c.classList && c.classList.contains('bm-sticker'))).length;
+    const isSticker = (c) => c.classList && c.classList.contains('bm-sticker');
+    const cards = sel.filter((c) => !isSticker(c));
+    const stickers = sel.filter(isSticker);
+    const cardCount = cards.length;
+    const mm = this._materialMarket || null;
     const mergeBtn = bar.querySelector('.tw-sel-merge');
+    const attachBtn = bar.querySelector('.tw-sel-attach');
+    const detachBtn = bar.querySelector('.tw-sel-detach');
     if (n >= 2) {
       if (mergeBtn) {
         if (cardCount >= 2) { mergeBtn.style.display = ''; mergeBtn.textContent = '合并 ' + cardCount + ' 张'; }
         else { mergeBtn.style.display = 'none'; }
+      }
+      // 「挂到便签」：仅当恰好 1 张便签 + ≥1 张尚未挂到它上面的贴纸。
+      // 刻意从严 —— 多张便签时「该挂给谁」有歧义，宁可不给这个入口，也不要做错挂。
+      if (attachBtn) {
+        const card = cardCount === 1 ? cards[0] : null;
+        const cid = card ? (card.dataset.id || null) : null;
+        const cand = card
+          ? stickers.filter((el) => { const r = mm ? mm.recForEl(el) : null; return r && r.parentId !== cid; })
+          : [];
+        if (cand.length) { attachBtn.style.display = ''; attachBtn.textContent = '挂到便签 · ' + cand.length; }
+        else { attachBtn.style.display = 'none'; }
+      }
+      // 「从便签取下」：选中集里已有挂在便签下的贴纸
+      if (detachBtn) {
+        const attached = stickers.filter((el) => { const r = mm ? mm.recForEl(el) : null; return r && r.parentId; });
+        if (attached.length) { detachBtn.style.display = ''; detachBtn.textContent = '从便签取下 · ' + attached.length; }
+        else { detachBtn.style.display = 'none'; }
       }
       bar.classList.add('is-on');
       // 开一个「收尾窗口」：选择/合并/删除等边沿事件之后可能还有布局 settling
@@ -1496,6 +1604,8 @@ export const TypewriterFeature = {
       this._selBarGestureOn();
       this._scheduleSelBarTick();
     } else {
+      if (attachBtn) attachBtn.style.display = 'none';
+      if (detachBtn) detachBtn.style.display = 'none';
       bar.classList.remove('is-on');
       this._cancelSelBarTick();
       this._selBarGestureOff();

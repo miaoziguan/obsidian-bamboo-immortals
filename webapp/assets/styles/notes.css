@@ -1616,6 +1616,13 @@
   color: rgb(var(--primary-rgb, 80, 120, 90));
 }
 .tw-sel-bar .tw-sel-merge:hover { background: rgba(var(--primary-rgb, 80, 120, 90), 0.24); }
+/* 「挂到便签」与「合并」同为主动作，共用主色淡底；「从便签取下」用普通按钮态 */
+.tw-sel-bar .tw-sel-attach {
+  font-weight: 600;
+  background: rgba(var(--primary-rgb, 80, 120, 90), 0.14);
+  color: rgb(var(--primary-rgb, 80, 120, 90));
+}
+.tw-sel-bar .tw-sel-attach:hover { background: rgba(var(--primary-rgb, 80, 120, 90), 0.24); }
 .tw-sel-bar .tw-sel-del:hover {
   color: rgb(var(--danger-rgb, 178, 78, 58));
   background: rgba(var(--danger-rgb, 178, 78, 58), 0.12);
@@ -1630,6 +1637,8 @@
 :host(.dark) .tw-sel-bar button { color: #cdc8bb; }
 :host(.dark) .tw-sel-merge { background: rgba(206, 220, 190, 0.16); color: #d8e3c6; }
 :host(.dark) .tw-sel-merge:hover { background: rgba(206, 220, 190, 0.28); }
+::host(.dark) .tw-sel-attach { background: rgba(206, 220, 190, 0.16); color: #d8e3c6; }
+::host(.dark) .tw-sel-attach:hover { background: rgba(206, 220, 190, 0.28); }
 :host(.dark) .tw-sel-del:hover { color: #e09a86; background: rgba(214, 120, 96, 0.16); }
 
 
@@ -1864,7 +1873,7 @@
 :host(.dark) .bm-sticker {
   filter: drop-shadow(0 4px 16px rgba(var(--black-rgb), 0.30)) drop-shadow(0 2px 4px rgba(var(--black-rgb), 0.20));
 }
-.bm-sticker svg, .bm-sticker > div, .bm-sticker-content, .bm-sticker-content > div { width: 100%; height: 100%; display: block; }
+.bm-sticker svg, .bm-sticker > div:not(.bm-sticker-menu), .bm-sticker-content, .bm-sticker-content > div { width: 100%; height: 100%; display: block; }
 /* 贴纸删除钮：默认隐藏，悬停贴纸时显现（贴纸会持久化，必须能删） */
 .bm-sticker-del {
   position: absolute; top: -8px; right: -8px; width: 22px; height: 22px;
@@ -1887,6 +1896,43 @@
 .bm-sticker-resize { bottom: -8px; right: -8px; cursor: nwse-resize; }
 .bm-sticker:hover .bm-sticker-rotate, .bm-sticker:hover .bm-sticker-resize { opacity: 1; }
 .bm-sticker-rotate:hover, .bm-sticker-resize:hover { background: rgba(60,140,200,.9); }
+/* 「⋯ 更多」：与 ↻ / ⇲ 同规格的第三枚手柄，占右上角。
+   悬停只露这 3 枚，其余操作全部收进菜单 —— 取代旧版 6 钮围成一圈的拥挤布局。 */
+.bm-sticker-more {
+  position: absolute; top: -8px; right: -8px; width: 22px; height: 22px; padding: 0;
+  border-radius: 50%; border: 1px solid rgba(255,255,255,.28);
+  background: rgba(0,0,0,.55); color: #fff; font-size: 15px; font-weight: 700; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; opacity: 0; transition: opacity .15s ease; z-index: 3;
+}
+.bm-sticker:hover .bm-sticker-more { opacity: 1; }
+.bm-sticker-more:hover { background: rgba(60,140,200,.9); }
+
+/* 「⋯」菜单：贴纸的子元素，锚在右上角向下展开；JS 反向旋转抵消贴纸/便签旋转，文字恒为正。
+   用文字标签而非符号 —— 低频操作不该靠用户猜图标。 */
+.bm-sticker-menu {
+  position: absolute; top: 30px; right: -6px; transform-origin: top right;
+  z-index: 5; width: auto; height: auto; min-width: 128px; padding: 5px;
+  display: flex; flex-direction: column; gap: 1px;
+  border-radius: 10px; border: 1px solid rgba(255,255,255,.10);
+  background: rgba(28,28,30,.92);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  box-shadow: 0 10px 30px rgba(0,0,0,.28), 0 2px 8px rgba(0,0,0,.18);
+  font: 13px/1.45 -apple-system, "SF Pro Text", "PingFang SC", "Microsoft YaHei", sans-serif;
+  color: #f2f2f4;
+}
+.bm-sticker-menu[hidden] { display: none; }
+.bm-sticker-mi {
+  appearance: none; -webkit-appearance: none; border: none; background: transparent;
+  display: flex; align-items: center; width: 100%; padding: 8px 10px;
+  border-radius: 6px; cursor: pointer; text-align: left; white-space: nowrap;
+  font: inherit; color: inherit; transition: background .12s ease;
+}
+.bm-sticker-mi:hover { background: rgba(255,255,255,.10); }
+.bm-sticker-menu-sep { height: 1px; margin: 4px 6px; background: rgba(255,255,255,.12); }
+/* 破坏性操作：危险色 + 独立分隔线，与高频操作彻底分开，降低误点 */
+.bm-sticker-mi-del { color: #ff8f7a; }
+.bm-sticker-mi-del:hover { background: rgba(255,90,70,.16); color: #ffb0a0; }
 /* 翻转（左下）手柄：切换水平/垂直镜像，仅作用于内容层，不波及旋转与四角手柄 */
 .bm-sticker-flip {
   position: absolute; bottom: -8px; left: -8px; padding: 0;

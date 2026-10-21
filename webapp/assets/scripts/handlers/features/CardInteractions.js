@@ -74,16 +74,21 @@ export const CardInteractions = {
     if (primaryEl.dataset.zLifted === '1') primaryEl._zPrev = primaryEl.style.zIndex;
     const apply = () => {
       raf = 0;
+      // 【性能】拖拽期只写 translate 变量：transform 走合成，不触发布局；
+      // left/top 留到松手时一次性提交（见 onUp）。
       dragSet.forEach((d) => {
-        d.el.style.left = (d.lx + dx) + 'px';
-        d.el.style.top = (d.ly + dy) + 'px';
+        d.el.style.setProperty('--tw-drag-x', dx + 'px');
+        d.el.style.setProperty('--tw-drag-y', dy + 'px');
       });
       // 同一帧内同步重画连线：与卡片位移同帧完成，消除「卡片先动、连线冻住/慢一帧、松手才追」的滞后感
       if (ctrl._linkLayer && typeof ctrl._linkLayer.render === 'function') ctrl._linkLayer.render();
     };
     const onMove = (ev) => {
       if (!dragging) return;
-      if (Math.abs(ev.clientX - startX) > 4 || Math.abs(ev.clientY - startY) > 4) moved = true;
+      if (!moved && (Math.abs(ev.clientX - startX) > 4 || Math.abs(ev.clientY - startY) > 4)) {
+        moved = true;
+        if (ctrl._undoStack) ctrl._undoStack.push();   // 变更前留档：拖动位置可撤销（Cmd+Z 不再回退更早快照）
+      }
       // 无限画布：坐标相对 .tw-canvas（含其 transform 平移），不 clamp。
       // 画布带缩放后「屏幕位移 ≠ 局部位移」：必须除以缩放比，否则放大后拖不动、缩小后拖过头。
       const s = CanvasViewport.getScale(ctrl);
@@ -91,18 +96,29 @@ export const CardInteractions = {
       dy = (ev.clientY - startY) / s;
       if (!raf) raf = requestAnimationFrame(apply);
     };
-    const onUp = () => {
+    // 系统取消指针（触控板手势接管 / 失焦 / 来电）时也必须走同一收尾路径：
+    // 否则 _draggingSet 永不复位 → 卡片永久钉屏（剔除不再卸载）、document 监听残留。
+    const onUp = (ev) => {
+      const cancelled = !!(ev && ev.type === 'pointercancel');
       dragging = false;
       if (raf) { cancelAnimationFrame(raf); raf = 0; }
       if (moved && dragSet) {
         let stickerMoved = false;
         dragSet.forEach((d) => {
+          // 拖拽期位移在 --tw-drag-* 上，这里一次性提交为 left/top 并清空变量
+          // （顺序不可反：先写 left/top 再清变量，避免视觉闪回。
+          const nx = d.lx + dx;
+          const ny = d.ly + dy;
+          d.el.style.left = nx + 'px';
+          d.el.style.top = ny + 'px';
+          d.el.style.removeProperty('--tw-drag-x');
+          d.el.style.removeProperty('--tw-drag-y');
           if (d.el.classList && d.el.classList.contains('bm-sticker')) {
             const rec = mm && mm.recForEl(d.el);
-            if (rec) { rec.x = parseFloat(d.el.style.left) || 0; rec.y = parseFloat(d.el.style.top) || 0; stickerMoved = true; }
+            if (rec) { rec.x = nx; rec.y = ny; stickerMoved = true; }
           } else {
             const id = d.el.dataset && d.el.dataset.id;
-            if (id) ctrl._notes = WritingDoc.setPos(ctrl._notes, id, parseFloat(d.el.style.left) || 0, parseFloat(d.el.style.top) || 0);
+            if (id) ctrl._notes = WritingDoc.setPos(ctrl._notes, id, nx, ny);
           }
         });
         // 卡片拖完重测几何 → 刷新 geo + 空间索引（修复剔除 / 连线端点陈旧）；贴纸不在剔除系统内，跳过
@@ -114,15 +130,29 @@ export const CardInteractions = {
       primaryEl.style.willChange = '';
       document.removeEventListener('pointermove', onMove);
       document.removeEventListener('pointerup', onUp);
+      document.removeEventListener('pointercancel', onUp);
       if (moved) ctrl._scheduleSave();
-      else if (primaryEl.classList.contains('tw-card')) ctrl._pinOnly(primaryEl);   // 轻点：钉住工具条（触屏无 hover 入口）；贴纸无此概念
+      else if (!cancelled && primaryEl.classList.contains('tw-card')) ctrl._pinOnly(primaryEl);   // 轻点：钉住工具条（触屏无 hover 入口）；指针被取消时不钉
       ctrl._draggingSet = null;     // 拖拽结束：解除钉屏
       ctrl._scheduleCull();         // 重算挂载：被拖出视野的卡卸载
+      // 兜底清空位移变量（无论是否真的移动过），避免残留 translate 造成「视觉位置 ≠ 模型 left/top」
+      if (dragSet) {
+        dragSet.forEach((d) => {
+          if (d.el && d.el.style) {
+            d.el.style.removeProperty('--tw-drag-x');
+            d.el.style.removeProperty('--tw-drag-y');
+          }
+        });
+      } else if (primaryEl && primaryEl.style) {
+        primaryEl.style.removeProperty('--tw-drag-x');
+        primaryEl.style.removeProperty('--tw-drag-y');
+      }
       dragSet = null;
     };
     e.preventDefault();
     document.addEventListener('pointermove', onMove);
     document.addEventListener('pointerup', onUp);
+    document.addEventListener('pointercancel', onUp);
   },
 
   // (was _makeCanvasDraggable)
@@ -271,8 +301,9 @@ export const CardInteractions = {
   removeCard(ctx, card) {
     const { state, ctrl } = ctx;
     if (!card) return;
+    if (ctrl._undoStack) ctrl._undoStack.push();   // 单卡删除同样可撤销（与批量删除一致）
     ctrl._removeNoteById(card.dataset.id);
-  
+    if (ctrl._updateSelBar) ctrl._updateSelBar();   // 删后刷新浮动条计数，避免残留「合并 N 张」
   },
   // (was _deleteSelected)
   deleteSelected(ctx) {
@@ -370,9 +401,12 @@ export const CardInteractions = {
       scheduleRefresh();
       if (edgeDir() && !rafId) rafId = requestAnimationFrame(tick);
     };
+    // 指针被系统取消 → 中止本次框选（不把半途矩形当成选中结果），并走统一收尾
+    const onCancel = () => { ctrl._marqueeCancelled = true; up(); };
     const up = () => {
       document.removeEventListener('pointermove', move);
       document.removeEventListener('pointerup', up);
+      document.removeEventListener('pointercancel', onCancel);
       if (rafId) cancelAnimationFrame(rafId);
       if (refreshRaf) { cancelAnimationFrame(refreshRaf); refreshRaf = 0; }
       refresh();   // 松手前同步刷一次，保证 _marqueeRect 反映最新指针位置（_selectInRect 依赖它）
@@ -385,6 +419,7 @@ export const CardInteractions = {
     };
     document.addEventListener('pointermove', move);
     document.addEventListener('pointerup', up);
+    document.addEventListener('pointercancel', onCancel);
     refresh();
   },
   /** 取消进行中的框选（双指捏合接管时用） */
@@ -423,14 +458,24 @@ export const CardInteractions = {
     if (!additive) ctrl._clearSelection();   // Shift 追加框选：保留已有选中
     if (!ctrl._mountedCards) return;
     const noteIdx = ctrl._noteIndex ? ctrl._noteIndex() : null;
-    hits.forEach((id) => {
-      let card = ctrl._mountedCards.get(id);
-      if (!card && noteIdx) {
+    // 【性能·两趟】第一趟：把离屏候选批量挂载（defer 测量）。
+    // 旧实现是「挂一张 → 立刻读 offsetWidth 判相交」→ 每张离屏卡一次同步重排（N 次）。
+    let deferredAny = false;
+    if (noteIdx) {
+      hits.forEach((id) => {
+        if (ctrl._mountedCards.get(id)) return;
         const note = noteIdx.get(id);
         if (!note) return;
-        card = ctrl._mountCard ? ctrl._mountCard(note) : null;   // 离屏卡按需挂载，使其可被选中
-        if (!card) return;
-      }
+        const mounted = ctrl._mountCard ? ctrl._mountCard(note, { defer: true }) : null;
+        if (mounted) deferredAny = true;
+      });
+    }
+    // 集中量一次：所有新挂载卡在同一批里写入 _geo（只付一次 reflow）
+    if (deferredAny && typeof ctrl._flushMountMeasure === 'function') ctrl._flushMountMeasure();
+
+    // 第二趟：只用 _geo 判相交（零 DOM 读取）；仅当缓存缺失时才回退读 style/offset
+    hits.forEach((id) => {
+      const card = ctrl._mountedCards.get(id);
       if (!card) return;
       const g = ctrl._geo ? ctrl._geo.get(id) : null;
       const lx = g ? g.x : (parseFloat(card.style.left) || 0);
@@ -619,6 +664,7 @@ export const CardInteractions = {
       card.classList.remove('is-resizing');
       document.removeEventListener('pointermove', onMove);
       document.removeEventListener('pointerup', onUp);
+      document.removeEventListener('pointercancel', onUp);
       ctrl._measureCard(card); // 缩放手势结束重测几何→刷新 geo+空间索引
       ctrl._scheduleSave(); // 落盘新尺寸
     };
@@ -639,6 +685,7 @@ export const CardInteractions = {
       card.style.zIndex = String(++ctrl._zTop);
       document.addEventListener('pointermove', onMove);
       document.addEventListener('pointerup', onUp);
+      document.addEventListener('pointercancel', onUp);   // 系统取消指针时同样收尾，避免监听残留
     });
 
     handle.addEventListener('dblclick', (e) => {
@@ -705,6 +752,7 @@ export const CardInteractions = {
       card.classList.remove('is-rotating');
       document.removeEventListener('pointermove', onMove);
       document.removeEventListener('pointerup', onUp);
+      document.removeEventListener('pointercancel', onUp);
       ctrl._scheduleSave();   // 落盘新角度
     };
     handle.addEventListener('pointerdown', (e) => {
@@ -720,6 +768,7 @@ export const CardInteractions = {
       card.style.zIndex = String(++ctrl._zTop);
       document.addEventListener('pointermove', onMove);
       document.addEventListener('pointerup', onUp);
+      document.addEventListener('pointercancel', onUp);   // 系统取消指针时同样收尾，避免监听残留
     });
     // 双击握柄归零（stopPropagation 避免冒泡到卡片/画布触发编辑或 fit-all）
     handle.addEventListener('dblclick', (e) => {

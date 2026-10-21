@@ -43,6 +43,21 @@ export const CanvasGestures = {
       // 浮层/控件内的滚轮交给其自身（可滚动只读框等），不驱动画布平移/缩放
       const t = e.target;
       if (t && typeof t.closest === 'function' && t.closest(WHEEL_EXEMPT_SEL)) return;
+      // 滚动链：指针落在「可滚动祖先」里、且该方向还能继续滚 → 交给它自己滚，
+      // 不抢画布平移。典型场景：纸样卡片 / 写作档的 .tw-card-text 是 overflow:auto 的长文区，
+      // 原先滚轮一律被画布劫持，长文根本滚不动。
+      {
+        let n = t;
+        while (n && n !== host && n.nodeType === 1) {
+          const max = n.scrollHeight - n.clientHeight;
+          if (max > 1) {
+            const atTop = n.scrollTop <= 1;
+            const atBottom = n.scrollTop >= max - 1;
+            if ((e.deltaY < 0 && !atTop) || (e.deltaY > 0 && !atBottom)) return;
+          }
+          n = n.parentElement;
+        }
+      }
       e.preventDefault();
       if (e.metaKey || e.ctrlKey) a.zoomAt(e.clientX, e.clientY, CanvasViewport.wheelFactor(e.deltaY));
       else if (e.shiftKey)        a.panBy(-e.deltaY, 0);

@@ -96,7 +96,11 @@
   border: 1px solid #c9a24a;
   background: rgba(201,162,74,0.12);
   pointer-events: none;
-  z-index: 4000;
+  /* 必须在所有便签之上：卡片 hover/focus 时会被抬到 z-index 5000（见 CardViewManager.bindTools.lift），
+     钉住（is-pinned）的卡片更是常驻 5000 不回落 —— 原先 4000 会被它们盖住，
+     导致选框跑到便签下方、看不清框选范围。9500 高于 5000，且本层 pointer-events:none 纯视觉，
+     压过工具条(9000)也无副作用。 */
+  z-index: 9500;
 }
 /* 框选实时数量（贴着选框右下角，随画布平移实时更新，让你知道框到了多少张） */
 .tw-marquee-count {

@@ -129,7 +129,8 @@ export const PersistenceCoordinator = {
   restoreSnapshot(ctx, s) {
     const { state, ctrl } = ctx;
     if (!s || !ctrl._canvas) return;
-    Array.from(ctrl._canvas.querySelectorAll('.tw-card')).forEach((c) => c.remove());
+    // 【P3-3】不再此处先全量移除 .tw-card：_buildCards(:138) 内部会再清一遍 mountedCards/geo 并移除 .tw-card，
+    // 原写法等于对每张卡做两次 remove() + 两次强制重排（撤销/重做每步都付一次多余 O(N) 开销）。
     ctrl._clearSelection();
     ctrl._links = (s.links || []).map((l) => Object.assign({}, l));
     ctrl._canvasOffset = Object.assign({}, s.offset || { x: 0, y: 0 });

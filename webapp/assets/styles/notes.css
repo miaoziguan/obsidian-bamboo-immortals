@@ -71,11 +71,15 @@
      （避免素笺/夜光等纸样输出时过宽、或忽宽忽窄）。
      定宽同时消除了「绝对定位 + width:auto」的 shrink-to-fit 塌缩。 */
   width: calc(340px * var(--tw-card-zoom, 1));
-  /* 纸片投影：便签纸浮在板上。写作档不要投影（见 .tw-mode-write）。 */
+  /* 纸片投影：便签纸「贴」在板上，而不是浮在空中。
+     原为 0 20px 40px -8px / 0.18 —— 20px 偏移 + 40px 模糊，卡片像是飘在画布上方。
+     现改为接触式两层：主层只做 4px 位移 / 10px 模糊（贴地），
+     次层 1px / 3px 只压住边缘缝隙；两者不透明度同步下调，颜色不再压重。
+     写作档不要投影（见 .tw-mode-write）。 */
   box-shadow:
-    0 20px 40px -8px rgba(var(--deep-rgb), 0.18),
-    0 6px 14px -4px rgba(var(--deep-rgb), 0.12),
-    inset 0 1px 0 rgba(var(--white-rgb), 0.5);
+    0 4px 10px -2px rgba(var(--deep-rgb), 0.12),
+    0 1px 3px -1px rgba(var(--deep-rgb), 0.09),
+    inset 0 1px 0 rgba(var(--white-rgb), 0.45);
 }
 /* hover 不再放大：scale(1.01) 会强制重栅格化卡片本身 + 其大范围模糊 box-shadow（每帧重绘），
    对大卡成本显著；悬停的视觉反馈改由工具条/边框承担，避免逐卡重绘阴影。 */

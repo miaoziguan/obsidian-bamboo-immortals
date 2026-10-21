@@ -2,13 +2,10 @@
 .tw-card {
   position: absolute;
   z-index: 20;
-  /* 固定宽度、高度自适应：便签宽度统一为定值，不再随内容伸缩
-     （避免素笺/夜光等纸样输出时过宽、或忽宽忽窄）。高度不设 → 由内容与 padding 撑开。
-     固定 width 同时消除了「绝对定位 + width:auto」的 shrink-to-fit 塌缩：
-     分幕/写作档 left 很大时 width:auto 会退化成 min-content（中文=单字宽）一字一行，
-     这里钉成与画布宽无关的定宽，无论 left 多大都不会塌缩。 */
-  width: calc(340px * var(--tw-card-zoom, 1));
-  
+  /* 高度不设 → 由内容与 padding 撑开。
+     宽度**不在此处声明**：便签是定宽、写作档是贴合内容，两者语义不同。
+     若写在基类上，它就会成为写作档的默认值（3.28.21 定宽事故即由此而来）。
+     现按档位作用域各自声明，见下方 .tw-canvas.tw-mode-notes / .tw-mode-write。 */
   --tw-card-zoom: 1;
   
   --tw-text-zoom: 1;
@@ -46,11 +43,8 @@
   background: transparent;
   cursor: grab;
   user-select: none;
-  box-shadow:
-    0 20px 40px -8px rgba(var(--deep-rgb), 0.18),
-    0 6px 14px -4px rgba(var(--deep-rgb), 0.12),
-    inset 0 1px 0 rgba(var(--white-rgb), 0.5);
-  
+  /* 投影不在此处声明：它是「便签纸浮在板上」的隐喻，属便签档语义；
+     写作档的卡是「文章的块」，刻意不要投影。见 .tw-canvas.tw-mode-notes。 */
   --tw-card-rot: 0deg;
   --tw-card-scale: 1;
   /* 拖拽位移走 translate 变量（合成层，不触发布局）；松手时一次性提交为 left/top 并清空变量。
@@ -59,6 +53,23 @@
   transition: transform .15s;
   
   --tw-rule-rgb: 26, 26, 26;
+}
+
+/* ===== 便签档作用域（tw-mode-notes）=====
+   只写便签档专属的呈现。此前这些写在基类 .tw-card 上，会顺带成为写作档的默认值
+   （3.28.21「便签定宽」即因此外溢：删掉 max-width 后写作档的 max-content 失去上限，
+   卡片按「最长一行」无限撑宽并相互压叠）。
+   现在三档各有作用域 class，各自声明自己的值，互不外溢。 */
+.tw-canvas.tw-mode-notes .tw-card {
+  /* 固定宽度、高度自适应：便签宽度统一为定值，不再随内容伸缩
+     （避免素笺/夜光等纸样输出时过宽、或忽宽忽窄）。
+     定宽同时消除了「绝对定位 + width:auto」的 shrink-to-fit 塌缩。 */
+  width: calc(340px * var(--tw-card-zoom, 1));
+  /* 纸片投影：便签纸浮在板上。写作档不要投影（见 .tw-mode-write）。 */
+  box-shadow:
+    0 20px 40px -8px rgba(var(--deep-rgb), 0.18),
+    0 6px 14px -4px rgba(var(--deep-rgb), 0.12),
+    inset 0 1px 0 rgba(var(--white-rgb), 0.5);
 }
 /* hover 不再放大：scale(1.01) 会强制重栅格化卡片本身 + 其大范围模糊 box-shadow（每帧重绘），
    对大卡成本显著；悬停的视觉反馈改由工具条/边框承担，避免逐卡重绘阴影。 */

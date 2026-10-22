@@ -61,9 +61,10 @@ export const ModeController = {
       ctrl._clearSelection();
 
       ctrl._mode = mode;
-      // 【档位所有权】贴纸是便签档专属装饰：离开便签档立即摘除（写作档与导图档都不该看到）。
-      // 不能依赖 _buildCards([]) 顺带清场 —— 它只清 .tw-card，贴纸会滞留在共享画布上。
-      if (!ModePolicy.ownsStickers(mode) && typeof ctrl._detachStickers === 'function') await ctrl._detachStickers();
+      // 【档位所有权】贴纸是便签档专属装饰：离开便签档时整层隐藏（_applyModeChrome 里的 _syncDecoLayer）。
+      // 【性能·B】不销毁、只「停放」：自由贴纸留在装饰层里隐藏即可，切回便签档时免去全量重建；
+      //   依附在卡片里的贴纸会随卡片被清掉，故此时仍走 detach（清空后切回再重建）。
+      if (!ModePolicy.ownsStickers(mode) && typeof ctrl._parkStickers === 'function') await ctrl._parkStickers();
       // 导图自绘层；便签/写作共用同一张卡片画布作为渲染介质，但数据各存各的
       ctrl._canvas.hidden = ctrl._mode === 'mindmap';
       // 写作档外观必须**先于**载入卡片生效：_loadDoc 会量卡片尺寸并做「带入视野」校正，
@@ -103,7 +104,12 @@ export const ModeController = {
           // 直接摘掉这两个 SVG 即可：LinkLayer.ensureLayer/ensureControlLayer 的复用判据含
           // isConnected && parentNode===container，下次 render 会自动重建；render 的结构复用
           // 判据含 path.parentNode===svg 也会随之重建，不会留悬空引用。纯 DOM 操作，不碰模型。
-          Array.from(ctrl._canvas.querySelectorAll('svg')).forEach((s) => s.remove());
+          // ⚠️ 只摘「画布直接子级」的 SVG（连线层 tw-links / 控件层 tw-links-ctl）。
+          //    不能 querySelectorAll('svg') —— 贴纸内容 `.bm-sticker-content > svg` 也在画布内，
+          //    一并删除会让贴纸变空白（这正是历史上「切回便签档必须重建贴纸」的原因）。
+          Array.from(ctrl._canvas.children)
+            .filter((el) => el.tagName && el.tagName.toLowerCase() === 'svg')
+            .forEach((s) => s.remove());
         }
         await ctrl._loadDoc(mode);
         if (ctrl._undoStack) ctrl._undoStack.reset();

@@ -1175,6 +1175,37 @@ export const MaterialMarket = {
       ctrl._canvas.querySelectorAll('.bm-sticker').forEach((el) => el.remove());
     }
     this._canvasStickers = [];
+    this._mountedStickerKey = null;   // 记录失效：下次恢复必须重建
+  },
+
+  /** 【性能·B】跳过重建时，卡片已用新的 ++_zTop 重建 → 把仍在位的自由贴纸重新置顶，
+   *  否则沿用旧 z 会被新卡片盖住（历史坑：「切走再切回贴纸不见了」）。
+   *  依附贴纸在卡片内部，层叠由卡片决定，无需处理。 */
+  _bringStickersToFront(ctrl) {
+    if (!ctrl) return;
+    this._canvasStickers.forEach((s) => {
+      if (!s || !s.el || s.parentId) return;
+      ctrl._zTop = (Number(ctrl._zTop) || 0) + 1;
+      const z = ctrl._zTop;
+      s.el.style.zIndex = String(z);
+      s.z = z;
+    });
+  },
+
+  /** 【性能·B】贴纸 DOM 是否仍在位（切档只隐藏、未销毁时可跳过重建）。
+   *  依附贴纸活在卡片里，卡片被 _buildCards 清过 → 必然断开，返回 false → 走重建。 */
+  _stickerDomIntact() {
+    const ctrl = this._ctrl;
+    if (!ctrl || !ctrl._canvas) return false;
+    if (!this._canvasStickers.length) return false;
+    return this._canvasStickers.every((s) => s && s.el && s.el.isConnected);
+  },
+
+  /** 【性能·B】离开便签档：不销毁自由贴纸（留在装饰层，由 syncDecoLayer 隐藏），
+   *  依附贴纸在卡片里、会随卡片被清掉，故只要存在依附贴纸就照旧清空（切回时重建）。 */
+  async parkStickers() {
+    if (this._canvasStickers && this._canvasStickers.length) await this._saveStickers();
+    if (this._canvasStickers.some((s) => s && s.parentId)) this._clearStickerDom();
   },
 
   /** 按 DOM 元素反查贴纸记录（卡片侧统一拖动时定位 rec） */
@@ -1229,18 +1260,27 @@ export const MaterialMarket = {
    *  【档位所有权】贴纸是「便签档专属装饰」，非便签档一律不挂载（只清场）。
    *  判定要卡在每个 await 之后复检：启动恢复与切档是并发的，档位可能在等待期间被改写，
    *  只在函数入口判一次仍会把贴纸挂进已经切走的档位（写作档画布）。 */
-  async _restoreStickers() {
+  async _restoreStickers(force) {
     try {
       const ctrl = this._ctrl;
       // 闸门①：进来时已不是便签档 → 清场返回（覆盖「贴纸恢复晚于档位恢复」的启动竞态）
       if (!ctrl || ctrl._mode !== 'notes') { this._clearStickerDom(); return; }
-      this._clearStickerDom();
       const mgr = (typeof window !== 'undefined' && window.storageManager) || null;
-      if (!mgr || typeof mgr.getSetting !== 'function') return;
-      const arr = await mgr.getSetting(await this._stickerKey());
-      if (!Array.isArray(arr) || !arr.length) return;
-      // 闸门②：上面两个 await 期间可能已切到写作 / 导图档 —— 此刻挂载就会漏进别的档位
-      if (ctrl._mode !== 'notes') return;
+      if (!mgr || typeof mgr.getSetting !== 'function') { this._clearStickerDom(); return; }
+      const key = await this._stickerKey();
+      // 闸门②：上面 await 期间可能已切到写作 / 导图档 —— 此刻挂载就会漏进别的档位
+      if (ctrl._mode !== 'notes') { this._clearStickerDom(); return; }
+      // 【性能·B】同一便签组、且贴纸 DOM 仍在（离开便签档只是隐藏、未销毁）→ 跳过全量重建。
+      //   仅 force / 切到别的组 / DOM 已断（如依附贴纸随卡片被清）时才真正重建。
+      if (!force && key && this._mountedStickerKey === key && this._stickerDomIntact()) {
+        this._bringStickersToFront(ctrl);   // 卡片刚用新的 z 重建，贴纸需重新置顶
+        this.syncDecoLayer(ctrl._mode);     // 确保整层可见
+        return;
+      }
+      this._clearStickerDom();
+      const arr = await mgr.getSetting(key);
+      if (!Array.isArray(arr) || !arr.length) { this._mountedStickerKey = key; return; }
+      if (ctrl._mode !== 'notes') { this._clearStickerDom(); return; }
       if (!ctrl._canvas) return;
       for (const s of arr) {
         const material = this._installed[s.material];
@@ -1267,6 +1307,7 @@ export const MaterialMarket = {
         rec.el = el;
         this._canvasStickers.push(rec);
       }
+      this._mountedStickerKey = key;   // 记录已挂载的组，供下次同组切回时跳过重建
       // 注：重建时每条贴纸 z=0，由 _buildStickerEl 走 ++_zTop 统一置顶（高于重建后的卡片），
       // 故切档 / 重载后贴纸始终浮于卡片之上，无需再按 front/back 重排。
     } catch (e) {

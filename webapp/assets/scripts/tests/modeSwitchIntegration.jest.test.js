@@ -66,7 +66,7 @@ function makeCtrl(startMode = 'notes') {
     _persistDoc: jest.fn(async () => calls.push('persistDoc')),
     _exitAllEdits: jest.fn(() => calls.push('exitAllEdits')),
     _clearSelection: jest.fn(() => calls.push('clearSelection')),
-    _detachStickers: jest.fn(async () => calls.push('detachStickers')),
+    _parkStickers: jest.fn(async () => calls.push('parkStickers')),
     _refreshModeScope: jest.fn(() => calls.push('refreshModeScope')),
     _applyModeChrome: jest.fn(() => calls.push('applyModeChrome')),
     _buildCards: jest.fn(() => calls.push('buildCards')),
@@ -159,7 +159,7 @@ describe('setMode 主流程顺序（卡片档）', () => {
       'audio', 'gearSound',
       'persistDoc',        // ① 先把离开的档写回它自己的文档
       'exitAllEdits', 'clearSelection',
-      'detachStickers',    // ② 档位所有权：离开便签档立即摘贴纸
+      'parkStickers',      // ② 档位所有权：离开便签档「停放」贴纸（仅隐藏，不销毁；切回免重建）
       'refreshModeScope',  // ③ 外观先于载入生效
       'applyModeChrome',   // ④ chrome 先行（空窗期不露上一档外壳）
       'buildCards',        // ⑤ 同步清场：露空画布而非上一份文档
@@ -172,10 +172,10 @@ describe('setMode 主流程顺序（卡片档）', () => {
     expect(ctrl._canvas.hidden).toBe(false);
   });
 
-  test('离开便签档要摘贴纸（档位所有权）', async () => {
+  test('离开便签档要「停放」贴纸（档位所有权：只隐藏不销毁，切回免重建）', async () => {
     const ctrl = makeCtrl('notes');
     await ModeController.setMode({ state: {}, ctrl }, 'write');
-    expect(ctrl._detachStickers).toHaveBeenCalledTimes(1);
+    expect(ctrl._parkStickers).toHaveBeenCalledTimes(1);
   });
 
   test('切回便签档要重建贴纸', async () => {

@@ -335,6 +335,8 @@ export const TypewriterFeature = {
    *  ModeController 按本文件约定只认 ctrl._xxx 委托壳 —— 不直接探测全局 MaterialMarket：
    *  在模块作用域里那个 typeof 探测取不到值，旧写法会让「切回便签档重建贴纸」静默失效。 */
   _detachStickers() { return MaterialMarket.detachStickers(); },
+  /** 【性能·B】离开便签档时的「停放」：自由贴纸保留在装饰层（仅隐藏），依附贴纸随卡片清除 */
+  _parkStickers() { return MaterialMarket.parkStickers(); },
   _reloadStickers() { return MaterialMarket.reloadStickers(); },
   /** 装饰层（贴纸）跟随档位显隐：贴纸属于便签档，其余档位整层隐藏 */
   _syncDecoLayer() { MaterialMarket.syncDecoLayer(this._mode); },

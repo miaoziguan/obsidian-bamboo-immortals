@@ -366,16 +366,18 @@
 .tw-card-text::-webkit-scrollbar-track {
   background: transparent !important;
 }
+/* 默认 thumb 透明：静止时不显示滚动条（仍保留 3px 占位，避免 hover 时布局跳动） */
 .tw-card-text::-webkit-scrollbar-thumb {
-  background: rgba(var(--bamboo-deep-rgb), 0.16) !important;
+  background: transparent !important;
   border-radius: 3px !important;
 }
-.tw-card-text::-webkit-scrollbar-thumb:hover {
-  background: rgba(var(--bamboo-deep-rgb), 0.28) !important;
+/* 悬停便签时才浮出滚动条 thumb（主题色半透明） */
+.tw-card:hover .tw-card-text::-webkit-scrollbar-thumb {
+  background: rgba(var(--bamboo-deep-rgb), 0.3) !important;
 }
-:host(.dark) .tw-card-text::-webkit-scrollbar-thumb,
-.theme-dark .tw-card-text::-webkit-scrollbar-thumb {
-  background: rgba(var(--green-very-bright-rgb), 0.16) !important;
+:host(.dark) .tw-card:hover .tw-card-text::-webkit-scrollbar-thumb,
+.theme-dark .tw-card:hover .tw-card-text::-webkit-scrollbar-thumb {
+  background: rgba(var(--green-very-bright-rgb), 0.3) !important;
 }
 
 .tw-card[data-font="classic"] .tw-card-text { font-family: var(--tw-font-classic); }

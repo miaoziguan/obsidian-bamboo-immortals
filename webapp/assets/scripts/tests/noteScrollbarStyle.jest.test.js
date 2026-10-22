@@ -39,19 +39,22 @@ describe('便签正文滚动条样式契约', () => {
     expect(colorVals).toEqual([]);
   });
 
-  test('::-webkit-scrollbar 细轨道 3px（!important 覆盖纸样），thumb 有主题色底 + 圆角', () => {
+  test('::-webkit-scrollbar 细轨道 3px + thumb 圆角', () => {
     const w = rulesMatching('.tw-card-text::-webkit-scrollbar').map((r) => decl(r.body, 'width')).filter(Boolean);
     expect(w.some((v) => v.startsWith('3px'))).toBe(true);
-
-    const thumbs = rulesMatching('.tw-card-text::-webkit-scrollbar-thumb');
-    const bg = thumbs.map((r) => decl(r.body, 'background')).filter(Boolean);
-    expect(bg.some((b) => b.includes('bamboo-deep-rgb'))).toBe(true);
-    const radius = thumbs.map((r) => decl(r.body, 'border-radius')).filter(Boolean);
+    const radius = rulesMatching('.tw-card-text::-webkit-scrollbar-thumb').map((r) => decl(r.body, 'border-radius')).filter(Boolean);
     expect(radius.length).toBeGreaterThan(0);
   });
 
-  test('暗色下 thumb 换亮绿（:host(.dark)）', () => {
-    const bg = rulesMatching(':host(.dark) .tw-card-text::-webkit-scrollbar-thumb')
+  test('thumb 静止透明、悬停便签才显示主题色（hover-only）', () => {
+    const base = rulesMatching('.tw-card-text::-webkit-scrollbar-thumb').map((r) => decl(r.body, 'background')).filter(Boolean);
+    expect(base.some((b) => b.startsWith('transparent'))).toBe(true);
+    const hover = rulesMatching('.tw-card:hover .tw-card-text::-webkit-scrollbar-thumb').map((r) => decl(r.body, 'background')).filter(Boolean);
+    expect(hover.some((b) => b.includes('bamboo-deep-rgb'))).toBe(true);
+  });
+
+  test('暗色下悬停 thumb 换亮绿', () => {
+    const bg = rulesMatching(':host(.dark) .tw-card:hover .tw-card-text::-webkit-scrollbar-thumb')
       .map((r) => decl(r.body, 'background')).filter(Boolean);
     expect(bg.some((b) => b.includes('green-very-bright-rgb'))).toBe(true);
   });

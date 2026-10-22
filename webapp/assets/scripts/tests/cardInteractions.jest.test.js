@@ -1,0 +1,126 @@
+const { loadModule } = require('./__helpers__/testUtils.js');
+
+// CardInteractions 从 domRef / WritingDoc / CanvasViewport / ModePolicy import，
+// 被 loadModule 剥离后需由全局补回。
+const setPos = jest.fn(() => 'notes-after');
+const { CardInteractions } = loadModule('handlers/features/CardInteractions.js', ['CardInteractions'], {
+  byId: (id) => document.getElementById(id),
+  WritingDoc: { setPos, setOrder: jest.fn(), orderIds: jest.fn(() => []) },
+  CanvasViewport: { getScale: () => 1 },
+  ModePolicy: { manualCardSize: (m) => m === 'notes', linksDefineOrder: () => false },
+});
+
+let savedRAF = null;
+let savedCAF = null;
+beforeEach(() => {
+  savedRAF = global.requestAnimationFrame;
+  savedCAF = global.cancelAnimationFrame;
+  global.requestAnimationFrame = (cb) => { cb(0); return 0; };
+  global.cancelAnimationFrame = () => {};
+});
+afterEach(() => {
+  if (savedRAF !== null) global.requestAnimationFrame = savedRAF;
+  if (savedCAF !== null) global.cancelAnimationFrame = savedCAF;
+});
+
+describe('P3-#1 单卡删除：可撤销 + 刷新浮动条计数', () => {
+  test('_removeNoteById 被调用，且先留撤销快照、后刷新计数', () => {
+    const undoStack = { push: jest.fn() };
+    const ctrl = { _undoStack: undoStack, _removeNoteById: jest.fn(), _updateSelBar: jest.fn() };
+    const card = document.createElement('div');
+    card.dataset.id = 'n1';
+    CardInteractions.removeCard({ state: {}, ctrl }, card);
+    expect(undoStack.push).toHaveBeenCalledTimes(1);          // 删除可撤销
+    expect(ctrl._removeNoteById).toHaveBeenCalledWith('n1');   // 真正删卡
+    expect(ctrl._updateSelBar).toHaveBeenCalledTimes(1);       // 删后刷新浮动条
+  });
+});
+
+describe('第4步 / P3 缩放门控：写作档不提供拖角缩放手柄', () => {
+  test('便签档(_mode=notes) → 创建 .tw-card-resize 手柄', () => {
+    const card = document.createElement('div');
+    CardInteractions.makeResizable({ state: {}, ctrl: { _mode: 'notes' } }, card);
+    expect(card.querySelector('.tw-card-resize')).not.toBeNull();
+  });
+
+  test('写作档(_mode=write) → 不创建手柄（尺寸由内容决定）', () => {
+    const card = document.createElement('div');
+    CardInteractions.makeResizable({ state: {}, ctrl: { _mode: 'write' } }, card);
+    expect(card.querySelector('.tw-card-resize')).toBeNull();
+  });
+});
+
+describe('P2-#9 / P3-#2 拖拽：transform 提交 + 越阈入撤销栈', () => {
+  function makeCtrl(card) {
+    return {
+      _undoStack: { push: jest.fn() },
+      _notes: 'notes-before',
+      _zTop: 0,
+      _selected: new Set([card]),
+      _materialMarket: null,
+      _linkLayer: null,
+      _scheduleRenderLinks: jest.fn(),
+      _measureCard: jest.fn(),
+      _scheduleSave: jest.fn(),
+      _scheduleCull: jest.fn(),
+      _pinOnly: jest.fn(),
+    };
+  }
+
+  test('拖动：越阈 push 快照；拖拽中写 --tw-drag-*；松手提交 left/top 并清变量', () => {
+    const card = document.createElement('div');
+    card.className = 'tw-card';
+    card.dataset.id = 'n1';
+    card.style.left = '10px';
+    card.style.top = '20px';
+    const ctrl = makeCtrl(card);
+    const e = { clientX: 100, clientY: 100, target: card, shiftKey: false, preventDefault: jest.fn() };
+
+    CardInteractions.startGroupDrag({ state: {}, ctrl }, e, card);
+
+    // 模拟一次明显位移（> 4px，scale=1 → 局部位移 = 100px）
+    const move = new Event('pointermove');
+    move.clientX = 200; move.clientY = 100;
+    document.dispatchEvent(move);
+
+    // 拖拽中：先留档（越阈一次）→ 撤销栈 +1
+    expect(ctrl._undoStack.push).toHaveBeenCalledTimes(1);
+    // 拖拽中：位置走 translate 变量（合成层，不落 left/top）
+    expect(card.style.getPropertyValue('--tw-drag-x')).toBe('100px');
+    expect(card.style.getPropertyValue('--tw-drag-y')).toBe('0px');
+    expect(card.style.left).toBe('10px');   // 松手前 left 未变
+
+    // 松手：一次性提交为 left/top 并清变量
+    const up = new Event('pointerup');
+    document.dispatchEvent(up);
+    expect(card.style.left).toBe('110px');   // 10 + 100
+    expect(card.style.top).toBe('20px');     // 20 + 0
+    expect(card.style.getPropertyValue('--tw-drag-x')).toBe('');   // 变量已清
+    expect(setPos).toHaveBeenCalledWith('notes-before', 'n1', 110, 20);
+    expect(ctrl._scheduleSave).toHaveBeenCalledTimes(1);
+    expect(ctrl._draggingSet).toBeNull();   // 解除钉屏
+  });
+
+  test('轻点（未越阈）：不提交位移、不入撤销栈、走钉住路径', () => {
+    const card = document.createElement('div');
+    card.className = 'tw-card';
+    card.dataset.id = 'n2';
+    card.style.left = '10px';
+    card.style.top = '20px';
+    const ctrl = makeCtrl(card);
+    const e = { clientX: 100, clientY: 100, target: card, shiftKey: false, preventDefault: jest.fn() };
+
+    CardInteractions.startGroupDrag({ state: {}, ctrl }, e, card);
+    // 仅 1px 位移，不过阈
+    const move = new Event('pointermove');
+    move.clientX = 101; move.clientY = 100;
+    document.dispatchEvent(move);
+    const up = new Event('pointerup');
+    document.dispatchEvent(up);
+
+    expect(ctrl._undoStack.push).not.toHaveBeenCalled();
+    expect(card.style.left).toBe('10px');   // 未提交
+    expect(card.style.getPropertyValue('--tw-drag-x')).toBe('');
+    expect(ctrl._draggingSet).toBeNull();
+  });
+});

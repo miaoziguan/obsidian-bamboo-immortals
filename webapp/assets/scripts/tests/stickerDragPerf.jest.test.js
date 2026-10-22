@@ -34,9 +34,12 @@ function decl(body, prop) {
 }
 
 describe('贴纸拖动性能契约', () => {
-  test('静止态 .bm-sticker 仍带 drop-shadow 投影（保住纸片质感）', () => {
+  test('静止态投影为单层 drop-shadow，且可被素材用变量关闭', () => {
     const filters = rulesMatching('.bm-sticker').map((r) => decl(r.body, 'filter')).filter(Boolean);
-    expect(filters.some((f) => f.includes('drop-shadow'))).toBe(true);
+    const f = filters.join(' ');
+    expect(f).toContain('drop-shadow');
+    expect(f).toContain('var(--bm-sticker-shadow');            // 素材可声明 shadow:'none' 关闭
+    expect((f.match(/drop-shadow\(/g) || []).length).toBeLessThanOrEqual(1);  // 单层（原为两层）
   });
 
   test('拖动态 .bm-sticker.dragging 关闭 filter（消除每帧 drop-shadow 重栅格化）', () => {

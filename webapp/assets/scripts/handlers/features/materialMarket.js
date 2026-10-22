@@ -866,6 +866,7 @@ export const MaterialMarket = {
     const el = document.createElement('div');
     el.className = 'bm-sticker';
     el.dataset.stickerId = rec.id;
+    this._applyStickerShadow(el, material);   // 素材可声明 shadow:'none' 关闭默认投影
     rec.el = el;                       // _applyStickerBox 依此写样式
     // 尺寸 / 旋转：与位置同属可持久化属性，重建时一并还原。
     // 元素比例必须等于素材 viewBox 比例：一旦偏离，SVG 会按 preserveAspectRatio=meet 居中留白，
@@ -983,6 +984,15 @@ export const MaterialMarket = {
   // 素材 SVG 的实例隔离（id 前缀 + <style> 作用域沙箱）已统一收敛到 utils/svgIsolate.js：
   // SvgIsolate.isolate() 一次解决「url(#id) 跨实例串用」与「内嵌 <style> 全局串色」两类污染，
   // 使任意第三方矢量素材天然自包含。此处不再内联实现，避免两处逻辑漂移。
+
+  /** 贴纸默认投影由 CSS 提供（filter:drop-shadow，跟随画面轮廓）。
+   *  素材若自带阴影，可声明 shadow:'none' → 把 --bm-sticker-shadow 置 none 关掉默认投影，
+   *  避免自己的阴影与默认投影叠成两层。未声明时什么都不做（默认投影即兜底，忘记也不会出错）。 */
+  _applyStickerShadow(el, material) {
+    if (!el || !el.style) return;
+    const opt = material && material.shadow;
+    if (opt === 'none' || opt === false) el.style.setProperty('--bm-sticker-shadow', 'none');
+  },
 
   /** 翻转仅作用于内容层，不影响 .bm-sticker 元素上的旋转与四角手柄 */
   _applyFlip(el, rec) {

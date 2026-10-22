@@ -102,6 +102,23 @@ describe('B · 同组切回跳过重建', () => {
   });
 });
 
+describe('素材级投影开关（shadow:none 时关掉默认投影）', () => {
+  test('声明 none / false → 写入 --bm-sticker-shadow:none；未声明 → 不动', () => {
+    const mm = Object.create(MaterialMarket);
+    const a = document.createElement('div');
+    mm._applyStickerShadow(a, { shadow: 'none' });
+    expect(a.style.getPropertyValue('--bm-sticker-shadow')).toBe('none');
+
+    const b = document.createElement('div');
+    mm._applyStickerShadow(b, { shadow: false });
+    expect(b.style.getPropertyValue('--bm-sticker-shadow')).toBe('none');
+
+    const c = document.createElement('div');
+    mm._applyStickerShadow(c, {});
+    expect(c.style.getPropertyValue('--bm-sticker-shadow')).toBe('');   // 保持默认投影
+  });
+});
+
 describe('B · 跳过重建时贴纸重新置顶（否则会被重建卡片盖住）', () => {
   test('自由贴纸拿到递增 z；依附贴纸不动；_zTop 同步推进', () => {
     const a = connectedEl();

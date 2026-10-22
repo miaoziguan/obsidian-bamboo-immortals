@@ -350,6 +350,36 @@
   flex-grow: 1;
 }
 
+/* 便签正文滚动条：与画中卷 .tw-input / 模态框 .modal-body 一致的「细圆角 + 主题色半透明」设计。
+   背景：素笺/红笺/若水/腾云/举火/映月等纸样给 .tw-card-text 设了 overflow:auto，但此前没有任何
+   滚动条样式；亮色下（无全局滚动条规则，仅有 :host(.dark) 的暗色全局）会回退浏览器默认灰条，
+   与新设计不一致。此处对齐 .tw-input 的规格（6px、圆角、暗色换亮绿）。 */
+.tw-card-text {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(var(--bamboo-deep-rgb), 0.25) transparent;
+}
+.tw-card-text::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.tw-card-text::-webkit-scrollbar-track {
+  background: transparent;
+}
+.tw-card-text::-webkit-scrollbar-thumb {
+  background: rgba(var(--bamboo-deep-rgb), 0.25);
+  border-radius: var(--radius-3);
+}
+.tw-card-text::-webkit-scrollbar-thumb:hover {
+  background: rgba(var(--bamboo-deep-rgb), 0.4);
+}
+:host(.dark) .tw-card-text {
+  scrollbar-color: rgba(var(--green-very-bright-rgb), 0.25) transparent;
+}
+.theme-dark .tw-card-text::-webkit-scrollbar-thumb,
+:host(.dark) .tw-card-text::-webkit-scrollbar-thumb {
+  background: rgba(var(--green-very-bright-rgb), 0.25);
+}
+
 .tw-card[data-font="classic"] .tw-card-text { font-family: var(--tw-font-classic); }
 .tw-card[data-font="modern"]  .tw-card-text { font-family: var(--tw-font-modern); letter-spacing: 0.03em; }
 .tw-card[data-font="kai"]     .tw-card-text { font-family: var(--tw-font-kai); letter-spacing: 0.02em; }

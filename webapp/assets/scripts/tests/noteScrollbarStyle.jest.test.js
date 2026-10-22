@@ -34,9 +34,9 @@ describe('便签正文滚动条样式契约', () => {
     expect(vals).toContain('thin');
   });
 
-  test('::-webkit-scrollbar 细轨道 6px，thumb 有主题色底 + 圆角', () => {
+  test('::-webkit-scrollbar 细轨道 3px，thumb 有主题色底 + 圆角', () => {
     const w = rulesMatching('.tw-card-text::-webkit-scrollbar').map((r) => decl(r.body, 'width')).filter(Boolean);
-    expect(w).toContain('6px');
+    expect(w).toContain('3px');
 
     const thumbs = rulesMatching('.tw-card-text::-webkit-scrollbar-thumb');
     const bg = thumbs.map((r) => decl(r.body, 'background')).filter(Boolean);

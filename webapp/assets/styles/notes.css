@@ -356,28 +356,28 @@
    与新设计不一致。此处对齐 .tw-input 的规格（6px、圆角、暗色换亮绿）。 */
 .tw-card-text {
   scrollbar-width: thin;
-  scrollbar-color: rgba(var(--bamboo-deep-rgb), 0.25) transparent;
+  scrollbar-color: rgba(var(--bamboo-deep-rgb), 0.2) transparent;
 }
 .tw-card-text::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 3px;
+  height: 3px;
 }
 .tw-card-text::-webkit-scrollbar-track {
   background: transparent;
 }
 .tw-card-text::-webkit-scrollbar-thumb {
-  background: rgba(var(--bamboo-deep-rgb), 0.25);
+  background: rgba(var(--bamboo-deep-rgb), 0.2);
   border-radius: var(--radius-3);
 }
 .tw-card-text::-webkit-scrollbar-thumb:hover {
-  background: rgba(var(--bamboo-deep-rgb), 0.4);
+  background: rgba(var(--bamboo-deep-rgb), 0.32);
 }
 :host(.dark) .tw-card-text {
-  scrollbar-color: rgba(var(--green-very-bright-rgb), 0.25) transparent;
+  scrollbar-color: rgba(var(--green-very-bright-rgb), 0.2) transparent;
 }
 .theme-dark .tw-card-text::-webkit-scrollbar-thumb,
 :host(.dark) .tw-card-text::-webkit-scrollbar-thumb {
-  background: rgba(var(--green-very-bright-rgb), 0.25);
+  background: rgba(var(--green-very-bright-rgb), 0.2);
 }
 
 .tw-card[data-font="classic"] .tw-card-text { font-family: var(--tw-font-classic); }

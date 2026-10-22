@@ -40,22 +40,28 @@ describe('便签正文滚动条样式契约', () => {
   });
 
   test('::-webkit-scrollbar 细轨道 3px + thumb 圆角', () => {
-    const w = rulesMatching('.tw-card-text::-webkit-scrollbar').map((r) => decl(r.body, 'width')).filter(Boolean);
+    const w = rulesMatching('.tw-card[data-id][data-paper] .tw-card-text::-webkit-scrollbar').map((r) => decl(r.body, 'width')).filter(Boolean);
     expect(w.some((v) => v.startsWith('3px'))).toBe(true);
-    const radius = rulesMatching('.tw-card-text::-webkit-scrollbar-thumb').map((r) => decl(r.body, 'border-radius')).filter(Boolean);
+    const radius = rulesMatching('.tw-card[data-id][data-paper] .tw-card-text::-webkit-scrollbar-thumb').map((r) => decl(r.body, 'border-radius')).filter(Boolean);
     expect(radius.length).toBeGreaterThan(0);
   });
 
   test('thumb 静止透明、悬停便签才显示主题色（hover-only）', () => {
-    const base = rulesMatching('.tw-card-text::-webkit-scrollbar-thumb').map((r) => decl(r.body, 'background')).filter(Boolean);
+    const base = rulesMatching('.tw-card[data-id][data-paper] .tw-card-text::-webkit-scrollbar-thumb').map((r) => decl(r.body, 'background')).filter(Boolean);
     expect(base.some((b) => b.startsWith('transparent'))).toBe(true);
-    const hover = rulesMatching('.tw-card:hover .tw-card-text::-webkit-scrollbar-thumb').map((r) => decl(r.body, 'background')).filter(Boolean);
+    const hover = rulesMatching('.tw-card[data-id][data-paper]:hover .tw-card-text::-webkit-scrollbar-thumb').map((r) => decl(r.body, 'background')).filter(Boolean);
     expect(hover.some((b) => b.includes('bamboo-deep-rgb'))).toBe(true);
   });
 
   test('暗色下悬停 thumb 换亮绿', () => {
-    const bg = rulesMatching(':host(.dark) .tw-card:hover .tw-card-text::-webkit-scrollbar-thumb')
+    const bg = rulesMatching(':host(.dark) .tw-card[data-id][data-paper]:hover .tw-card-text::-webkit-scrollbar-thumb')
       .map((r) => decl(r.body, 'background')).filter(Boolean);
     expect(bg.some((b) => b.includes('green-very-bright-rgb'))).toBe(true);
+  });
+
+  test('便签滚动条规则不得使用 !important（Obsidian 审核不友好，改用高特异性选择器）', () => {
+    const ours = RULES.filter((r) => r.sel.includes('.tw-card-text::-webkit-scrollbar'));
+    expect(ours.length).toBeGreaterThan(0);
+    expect(ours.some((r) => /!\s*important/i.test(r.body))).toBe(false);
   });
 });

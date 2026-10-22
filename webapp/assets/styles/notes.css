@@ -359,25 +359,31 @@
    （表现即「改了没变化」，还会把市场纸样自带的 3px 隐藏式滚动条顶成平台默认粗灰条）。
    市场纸样用 .tw-card[data-paper="X"] .tw-card-text::-webkit-scrollbar（特异度 0,3,1）自带样式，
    故这里用 !important 统一覆盖，保证所有纸样的便签滚动条一致。 */
-.tw-card-text::-webkit-scrollbar {
-  width: 3px !important;
-  height: 3px !important;
+/* 便签正文滚动条：细（3px）+ 主题色半透明 + 圆角，悬停才显示、暗色换亮绿。
+   注意：① 不要用 scrollbar-width/scrollbar-color（会让 Chromium 忽略 ::-webkit-scrollbar）；
+   ② 不要用 !important（会挡住主题/用户的覆盖，Obsidian 插件审核不友好）。
+   市场纸样自带 .tw-card[data-paper=X] .tw-card-text::-webkit-scrollbar（特异度 0,3,1；
+   hover 时 0,4,1），故这里用 .tw-card[data-id][data-paper]… 把特异度提到 0,4,1 / 0,5,1，
+   在不加 !important 的前提下稳定覆盖纸样、统一所有便签的滚动条。 */
+.tw-card[data-id][data-paper] .tw-card-text::-webkit-scrollbar {
+  width: 3px;
+  height: 3px;
 }
-.tw-card-text::-webkit-scrollbar-track {
-  background: transparent !important;
+.tw-card[data-id][data-paper] .tw-card-text::-webkit-scrollbar-track {
+  background: transparent;
 }
 /* 默认 thumb 透明：静止时不显示滚动条（仍保留 3px 占位，避免 hover 时布局跳动） */
-.tw-card-text::-webkit-scrollbar-thumb {
-  background: transparent !important;
-  border-radius: 3px !important;
+.tw-card[data-id][data-paper] .tw-card-text::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 3px;
 }
 /* 悬停便签时才浮出滚动条 thumb（主题色半透明） */
-.tw-card:hover .tw-card-text::-webkit-scrollbar-thumb {
-  background: rgba(var(--bamboo-deep-rgb), 0.3) !important;
+.tw-card[data-id][data-paper]:hover .tw-card-text::-webkit-scrollbar-thumb {
+  background: rgba(var(--bamboo-deep-rgb), 0.3);
 }
-:host(.dark) .tw-card:hover .tw-card-text::-webkit-scrollbar-thumb,
-.theme-dark .tw-card:hover .tw-card-text::-webkit-scrollbar-thumb {
-  background: rgba(var(--green-very-bright-rgb), 0.3) !important;
+:host(.dark) .tw-card[data-id][data-paper]:hover .tw-card-text::-webkit-scrollbar-thumb,
+.theme-dark .tw-card[data-id][data-paper]:hover .tw-card-text::-webkit-scrollbar-thumb {
+  background: rgba(var(--green-very-bright-rgb), 0.3);
 }
 
 .tw-card[data-font="classic"] .tw-card-text { font-family: var(--tw-font-classic); }

@@ -80,6 +80,12 @@
    CSS 动画不受 rAF 节流 —— 窗口最小化、切到后台、或本区域滚出视口后仍在跑；
    主窗 + 画中卷同时开着还会翻倍占用 GPU。.theme-card.is-paused 由 ThemeEffects 依
    visibilitychange + IntersectionObserver 切换。 */
+/* 【为何这里必须用 !important】—— 这是 CSS 规范里 !important 的正当用途，非偷懒：
+   1) 主题 CSS 是运行时注入的（注入时机晚于本样式表），同特异度时「后定义者胜出」；
+   2) 主题普遍使用 animation 简写，而简写会把 animation-play-state 重置回 running；
+   3) 主题选择器可能带 id 或内联样式，无法用固定特异度稳定压住。
+   因此要真正停住动画（省电/省 GPU），只能用 !important。
+   下面的 filter:none 同理：它要覆盖的是元素上的【内联 style】，非 !important 无法覆盖内联样式。 */
 .theme-card.is-paused *,
 .theme-card.is-paused *::before,
 .theme-card.is-paused *::after {

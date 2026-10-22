@@ -331,21 +331,22 @@ export const ThemeEffects = {
         }
         var mode = this._getCurrentMode();
         var s = this._getModeSetting(themeName, mode);
-        // 使用 important 优先级，确保覆盖 Obsidian 全局 :root 上可能的 !important
+        // 不用 important 优先级（Obsidian 插件审核不友好）：内联声明本就胜过「继承来的值」与
+        // 样式表中的普通声明；且全项目没有任何 CSS 用 !important 争这些变量，普通内联已足够。
         if (s && s.hue !== null) {
-            section.style.setProperty('--accent-hue', s.hue, 'important');
+            section.style.setProperty('--accent-hue', s.hue);
         } else {
             section.style.removeProperty('--accent-hue');
         }
         if (s && s.lightness !== null) {
-            section.style.setProperty('--accent-lightness-offset', s.lightness + '%', 'important');
+            section.style.setProperty('--accent-lightness-offset', s.lightness + '%');
         } else {
             section.style.removeProperty('--accent-lightness-offset');
         }
         // 饱和度：以缩放系数覆盖 #themeEffectSection 的 --accent-saturation-scale（1 = 原样）。
         // 主题作者按 docs 用 --theme-sat（= 基础% × --accent-saturation-scale），故在此区间即可整体缩放主题饱和度。
         if (s && s.saturation !== null && s.saturation !== undefined) {
-            section.style.setProperty('--accent-saturation-scale', String(s.saturation / 100), 'important');
+            section.style.setProperty('--accent-saturation-scale', String(s.saturation / 100));
         } else {
             section.style.removeProperty('--accent-saturation-scale');
         }
@@ -389,12 +390,13 @@ export const ThemeEffects = {
         var isDark = document.documentElement.classList.contains('dark');
         section.setAttribute('data-theme-mode', isDark ? 'dark' : 'light');
         // --theme-lum: 亮80%/暗22%，叠加主题明度偏移。暗色提到22%让色相变化可见
+        // 同样不用 important（理由见 _applyThemeVars）：内联普通声明已能覆盖继承值与样式表普通声明。
         section.style.setProperty('--theme-lum',
-            'calc(' + (isDark ? '22%' : '80%') + ' + var(--accent-lightness-offset, 0%))', 'important');
+            'calc(' + (isDark ? '22%' : '80%') + ' + var(--accent-lightness-offset, 0%))');
         // --theme-sat: 亮35%/暗25%，并随全局饱和度缩放 —— 否则主题动效区自身的饱和度
         // （bamboo-garden 等使用 --theme-sat 的地方）不会跟随饱和度滑块
         section.style.setProperty('--theme-sat',
-            'calc(' + (isDark ? '25%' : '35%') + ' * var(--accent-saturation-scale, 1))', 'important');
+            'calc(' + (isDark ? '25%' : '35%') + ' * var(--accent-saturation-scale, 1))');
 
         // 重新应用当前主题的色相/明度（切换模式后读新模式的设置）
         this._applyThemeVars(this.currentTheme);

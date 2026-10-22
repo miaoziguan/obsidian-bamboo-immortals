@@ -1907,6 +1907,14 @@
 :host(.dark) .bm-sticker {
   filter: drop-shadow(0 4px 16px rgba(var(--black-rgb), 0.30)) drop-shadow(0 2px 4px rgba(var(--black-rgb), 0.20));
 }
+/* 【拖动性能】filter 与 transform 同在一个元素上时，拖动每帧改 transform 会迫使浏览器
+   重新栅格化两层 drop-shadow 模糊（模糊按元素绘制区域的 alpha 计算）。内容复杂的贴纸
+   （如「太阳精华」「月亮精华」，SVG 细节多）每帧开销会超过帧预算 → 掉帧、不跟手。
+   尺寸不是主因（更大的简单贴纸不卡），内容复杂度 × filter 重栅格化 才是。
+   .dragging 由 CardInteractions.startGroupDrag 在按下时加、松手时移除：
+   拖动期临时去掉投影换流畅，静止态外观不变。 */
+.bm-sticker.dragging { filter: none; }
+:host(.dark) .bm-sticker.dragging { filter: none; }
 .bm-sticker svg, .bm-sticker > div:not(.bm-sticker-menu), .bm-sticker-content, .bm-sticker-content > div { width: 100%; height: 100%; display: block; }
 /* 贴纸删除钮：默认隐藏，悬停贴纸时显现（贴纸会持久化，必须能删） */
 .bm-sticker-del {

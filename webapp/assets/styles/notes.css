@@ -1939,6 +1939,10 @@
 .bm-sticker {
   position: absolute; width: 120px; height: 120px; cursor: move; user-select: none;
   filter: drop-shadow(0 4px 16px rgba(var(--deep-rgb), 0.08)) drop-shadow(0 2px 4px rgba(var(--deep-rgb), 0.04));
+  /* 【离屏跳过渲染】贴纸不参与视口剔除，数量多时屏外仍有绘制成本。
+     content-visibility:auto 让屏外贴纸跳过渲染；containment 只在「被跳过」时施加
+     （被跳过时会裁剪 4 角手柄，但那时本来就在屏外看不见），回到屏内立即恢复正常渲染。 */
+  content-visibility: auto;
 }
 :host(.dark) .bm-sticker {
   filter: drop-shadow(0 4px 16px rgba(var(--black-rgb), 0.30)) drop-shadow(0 2px 4px rgba(var(--black-rgb), 0.20));

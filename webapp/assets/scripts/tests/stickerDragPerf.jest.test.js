@@ -48,4 +48,9 @@ describe('贴纸拖动性能契约', () => {
     const eff = rulesMatching(':host(.dark) .bm-sticker.dragging').map((r) => decl(r.body, 'filter'));
     expect(eff).toContain('none');
   });
+
+  test('贴纸离屏跳过渲染（content-visibility: auto）', () => {
+    const vals = rulesMatching('.bm-sticker').map((r) => decl(r.body, 'content-visibility')).filter(Boolean);
+    expect(vals).toContain('auto');
+  });
 });

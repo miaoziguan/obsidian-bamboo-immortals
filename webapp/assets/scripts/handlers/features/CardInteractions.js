@@ -69,6 +69,13 @@ export const CardInteractions = {
     ctrl._draggingSet = new Set(dragSet.map((d) => d.el.dataset && d.el.dataset.id).filter(Boolean));
     primaryEl.classList.add('dragging');
     primaryEl.style.willChange = 'transform';   // 仅拖拽期间临时提升，松手即撤
+    // 多选整体拖动：非主元素同样每帧改 transform，需一并提升合成层并挂 .dragging
+    // （贴纸的 .dragging 会把 drop-shadow 置 none，否则内容复杂的贴纸会掉帧）。
+    dragSet.forEach((d) => {
+      if (d.el === primaryEl) return;
+      d.el.classList.add('dragging');
+      d.el.style.willChange = 'transform';
+    });
     primaryEl.style.zIndex = String(++ctrl._zTop);
     // 拖拽置顶后同步层叠快照，避免 mouseleave 时把元素回落回旧层级
     if (primaryEl.dataset.zLifted === '1') primaryEl._zPrev = primaryEl.style.zIndex;
@@ -128,6 +135,11 @@ export const CardInteractions = {
       }
       primaryEl.classList.remove('dragging');
       primaryEl.style.willChange = '';
+      if (dragSet) dragSet.forEach((d) => {
+        if (d.el === primaryEl) return;
+        d.el.classList.remove('dragging');
+        d.el.style.willChange = '';
+      });
       document.removeEventListener('pointermove', onMove);
       document.removeEventListener('pointerup', onUp);
       document.removeEventListener('pointercancel', onUp);

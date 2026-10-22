@@ -1029,6 +1029,8 @@ export const MaterialMarket = {
       if (raf) { cancelAnimationFrame(raf); raf = 0; }
       apply();                    // 补写最后一帧，避免丢掉末尾增量
       this._saveStickers();
+      el.classList.remove('dragging');      // 旋转结束：恢复 drop-shadow
+      el.style.willChange = '';
       document.removeEventListener('pointermove', onMove);
       document.removeEventListener('pointerup', onUp);
     };
@@ -1036,6 +1038,10 @@ export const MaterialMarket = {
       e.preventDefault();
       e.stopPropagation();        // 不冒泡：否则会触发贴纸拖拽 / 画布框选
       rotating = true;
+      // 旋转期同样关闭 drop-shadow 并提升合成层：否则每帧改 transform 都要重新栅格化
+      // 贴纸的 drop-shadow（内容复杂的贴纸会掉帧），复用 .dragging 的 filter:none。
+      el.classList.add('dragging');
+      el.style.willChange = 'transform';
       const r = el.getBoundingClientRect();
       cx0 = r.left + r.width / 2;
       cy0 = r.top + r.height / 2;
@@ -1088,6 +1094,7 @@ export const MaterialMarket = {
       if (raf) { cancelAnimationFrame(raf); raf = 0; }
       apply();
       this._saveStickers();
+      el.classList.remove('dragging');      // 缩放结束：恢复 drop-shadow
       document.removeEventListener('pointermove', onMove);
       document.removeEventListener('pointerup', onUp);
     };
@@ -1095,6 +1102,8 @@ export const MaterialMarket = {
       e.preventDefault();
       e.stopPropagation();
       resizing = true;
+      // 缩放期关闭 drop-shadow：尺寸每帧变化同样会重栅格化 filter，内容复杂的贴纸会掉帧。
+      el.classList.add('dragging');
       sx = e.clientX; sy = e.clientY;
       sw = Number(rec.w) || el.offsetWidth || 120;
       sh = Number(rec.h) || el.offsetHeight || 120;

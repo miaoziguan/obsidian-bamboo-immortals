@@ -123,4 +123,37 @@ describe('P2-#9 / P3-#2 拖拽：transform 提交 + 越阈入撤销栈', () => {
     expect(card.style.getPropertyValue('--tw-drag-x')).toBe('');
     expect(ctrl._draggingSet).toBeNull();
   });
+
+  test('多选整体拖动：非主元素同样挂 .dragging（清贴纸投影）/ 写位移 / 松手清除', () => {
+    const c1 = document.createElement('div');
+    c1.className = 'bm-sticker';
+    c1.dataset.id = 's1';
+    c1.style.left = '10px'; c1.style.top = '20px';
+    const c2 = document.createElement('div');
+    c2.className = 'bm-sticker';
+    c2.dataset.id = 's2';
+    c2.style.left = '50px'; c2.style.top = '60px';
+    const ctrl = makeCtrl(c1);
+    ctrl._selected = new Set([c1, c2]);   // 两张贴纸一起选中
+    const e = { clientX: 100, clientY: 100, target: c1, shiftKey: false, preventDefault: jest.fn() };
+
+    CardInteractions.startGroupDrag({ state: {}, ctrl }, e, c1);
+    // 按下即整个拖动集合都挂 .dragging（否则非主贴纸的 drop-shadow 会每帧重栅格化）
+    expect(c1.classList.contains('dragging')).toBe(true);
+    expect(c2.classList.contains('dragging')).toBe(true);
+
+    const move = new Event('pointermove');
+    move.clientX = 200; move.clientY = 100;
+    document.dispatchEvent(move);
+    // 非主贴纸也拿到同一批位移
+    expect(c2.style.getPropertyValue('--tw-drag-x')).toBe('100px');
+
+    const up = new Event('pointerup');
+    document.dispatchEvent(up);
+    expect(c1.classList.contains('dragging')).toBe(false);
+    expect(c2.classList.contains('dragging')).toBe(false);
+    expect(c1.style.willChange).toBe('');
+    expect(c2.style.willChange).toBe('');
+    expect(c2.style.left).toBe('150px');   // 50 + 100
+  });
 });

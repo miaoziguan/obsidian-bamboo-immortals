@@ -270,3 +270,30 @@ describe('字号自适应的挂钩点（粘贴 / 退出编辑）不被误删', (
     expect(text.hasAttribute('contenteditable')).toBe(false);
   });
 });
+
+describe('框选边缘自动平移：步长随深度渐变（防「画布跳走」）', () => {
+  const vp = { left: 0, top: 0, width: 1000, height: 800 };
+
+  test('不在边缘区 → null（完全不平移）', () => {
+    expect(CardInteractions.marqueeEdgeStep(500, 400, vp, 48, 14)).toBeNull();
+  });
+
+  test('刚跨入边缘区 → 最小步长 1（不再"瞬间全速"）', () => {
+    // 右侧：lx=953，距右边缘 47px（边缘区 48）
+    expect(CardInteractions.marqueeEdgeStep(953, 400, vp, 48, 14)).toEqual({ dx: -1, dy: 0, step: 1 });
+  });
+
+  test('贴到边缘 → 步长达到上限', () => {
+    const s = CardInteractions.marqueeEdgeStep(1000, 400, vp, 48, 14);
+    expect(s.dx).toBe(-1);
+    expect(s.step).toBe(14);
+  });
+
+  test('越靠边越快（单调不减，且不超过上限）', () => {
+    const near = CardInteractions.marqueeEdgeStep(960, 400, vp, 48, 14).step;
+    const nearer = CardInteractions.marqueeEdgeStep(990, 400, vp, 48, 14).step;
+    expect(near).toBeGreaterThanOrEqual(1);
+    expect(nearer).toBeGreaterThanOrEqual(near);
+    expect(nearer).toBeLessThanOrEqual(14);
+  });
+});

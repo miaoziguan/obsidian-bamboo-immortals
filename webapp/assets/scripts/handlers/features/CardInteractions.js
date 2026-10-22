@@ -348,6 +348,22 @@ export const CardInteractions = {
     if (ly < edge) dy = 1; else if (ly > vp.height - edge) dy = -1;
     return (dx || dy) ? { dx, dy } : null;
   },
+  /** 边缘自动平移的「方向 + 步长」：步长随「深入边缘区的程度」渐变。
+   *  刚跨入边缘区约 1px/帧，贴到边缘才到 max —— 避免 0→全速 的阶跃
+   *  （阶跃会让画布看起来"跳/被甩走"，是框选时画布乱动的直接原因）。 */
+  marqueeEdgeStep(clientX, clientY, vp, edge, max) {
+    const d = CardInteractions.marqueeEdgeDir(clientX, clientY, vp, edge);
+    if (!d) return null;
+    const lx = clientX - vp.left;
+    const ly = clientY - vp.top;
+    const depth = (v, dir, size) => {
+      if (!dir) return 0;
+      const gap = dir > 0 ? v : (size - v);        // 距所选侧边缘的距离
+      return Math.min(1, Math.max(0, (edge - gap) / edge));
+    };
+    const k = Math.max(depth(lx, d.dx, vp.width), depth(ly, d.dy, vp.height));
+    return { dx: d.dx, dy: d.dy, step: Math.max(1, Math.round((Number(max) || 0) * k)) };
+  },
   // (was _startMarquee)  additive=true 表示 Shift 追加框选（不清空已有选中）
   startMarquee(ctx, e, additive) {
     const { state, ctrl } = ctx;
@@ -375,7 +391,7 @@ export const CardInteractions = {
     let refreshRaf = 0;    // 框选矩形刷新（rAF 合帧，与拖拽/缩放/选区条一致）
 
     const EDGE = 48;   // 距视口边缘多近开始自动平移
-    const MAX = 26;    // 每帧最大平移像素
+    const MAX = 14;    // 每帧最大平移像素（原 26：60fps 下约 1560px/s，且进入边缘区瞬间就全速 → 画布像被甩走）
 
     // 用当前屏幕坐标刷新框选矩形：画布随平移移动后，内容坐标会自然外扩 → 框得够画布外
     const refresh = () => {
@@ -394,25 +410,27 @@ export const CardInteractions = {
     // 与 group-drag/resize/选区条同模式，消除框选逐事件的 read-after-write 强制回流。
     const scheduleRefresh = () => { if (refreshRaf) return; refreshRaf = requestAnimationFrame(() => { refreshRaf = 0; refresh(); }); };
 
-    // 指针是否贴「视口」边缘 → 自动平移方向（在左/上缘往对应方向平移露出那侧内容）
-    const edgeDir = () => CardInteractions.marqueeEdgeDir(lastX, lastY, vpRect, EDGE);
+    // 指针是否贴「视口」边缘 → 自动平移方向 + 随深度渐变的步长（在左/上缘往对应方向平移露出那侧内容）
+    const edgeStep = () => CardInteractions.marqueeEdgeStep(lastX, lastY, vpRect, EDGE, MAX);
 
     // 贴边时持续平移（Figma 式）：画布滚动、矩形内容坐标外扩，松手即选中画布外那片
     const tick = () => {
       rafId = 0;
-      const d = edgeDir();
-      if (d) {
-        const off = (state && state.canvasOffset) || { x: 0, y: 0 };
-        ctrl._setCanvasOffset(off.x + d.dx * MAX, off.y + d.dy * MAX);
+      const s = edgeStep();
+      if (s) {
+        // 用「实际生效的偏移」getOffset（与 apply 写 transform 同源）：canvasOffset 初值为 null，
+        // 若用 state.canvasOffset || {0,0} 兜底，第一帧会把画布直接搬到 (step,step) 附近 → 跳变。
+        const off = CanvasViewport.getOffset(ctrl);
+        ctrl._setCanvasOffset(off.x + s.dx * s.step, off.y + s.dy * s.step);
         refresh();
       }
-      if (d) rafId = requestAnimationFrame(tick);
+      if (s) rafId = requestAnimationFrame(tick);
     };
 
     const move = (ev) => {
       lastX = ev.clientX; lastY = ev.clientY;
       scheduleRefresh();
-      if (edgeDir() && !rafId) rafId = requestAnimationFrame(tick);
+      if (edgeStep() && !rafId) rafId = requestAnimationFrame(tick);
     };
     // 指针被系统取消 → 中止本次框选（不把半途矩形当成选中结果），并走统一收尾
     const onCancel = () => { ctrl._marqueeCancelled = true; up(); };

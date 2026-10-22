@@ -342,6 +342,13 @@ export const ThemeEffects = {
         } else {
             section.style.removeProperty('--accent-lightness-offset');
         }
+        // 饱和度：以缩放系数覆盖 #themeEffectSection 的 --accent-saturation-scale（1 = 原样）。
+        // 主题作者按 docs 用 --theme-sat（= 基础% × --accent-saturation-scale），故在此区间即可整体缩放主题饱和度。
+        if (s && s.saturation !== null && s.saturation !== undefined) {
+            section.style.setProperty('--accent-saturation-scale', String(s.saturation / 100), 'important');
+        } else {
+            section.style.removeProperty('--accent-saturation-scale');
+        }
     },
 
     /** 把主题的标准配色同步到「全局显示调色」（DisplayManager）。
@@ -415,6 +422,12 @@ export const ThemeEffects = {
             var lr = panel.querySelector('#tuneLightReset');
             if (hr) hr.style.display = cur.hue !== null ? '' : 'none';
             if (lr) lr.style.display = cur.lightness !== null ? '' : 'none';
+            var satSlider = panel.querySelector('#tuneSat');
+            var sv = panel.querySelector('#tuneSatVal');
+            if (satSlider) satSlider.value = cur.saturation !== null ? cur.saturation : 100;
+            if (sv) sv.textContent = cur.saturation !== null ? cur.saturation + '%' : '自动';
+            var sr = panel.querySelector('#tuneSatReset');
+            if (sr) sr.style.display = cur.saturation !== null ? '' : 'none';
         }
 
         // 统一通知当前主题刷新（合并 observer：明暗切换只需这一个观察者驱动）
@@ -455,22 +468,33 @@ export const ThemeEffects = {
     /** 读取某主题某模式下的设置，带 fallback */
     _getModeSetting(themeName, mode) {
         var s = this._themeSettings[themeName];
-        if (!s) return { hue: null, lightness: null };
+        if (!s) return { hue: null, lightness: null, saturation: null };
         // 新格式
-        if (s.light && s.dark) return { hue: s[mode].hue, lightness: s[mode].lightness };
+        if (s.light && s.dark) {
+            var cur = s[mode] || {};
+            return {
+                hue: cur.hue !== undefined ? cur.hue : null,
+                lightness: cur.lightness !== undefined ? cur.lightness : null,
+                saturation: cur.saturation !== undefined ? cur.saturation : null
+            };
+        }
         // 旧格式兼容
-        return { hue: s.hue !== undefined ? s.hue : null, lightness: s.lightness !== undefined ? s.lightness : null };
+        return {
+            hue: s.hue !== undefined ? s.hue : null,
+            lightness: s.lightness !== undefined ? s.lightness : null,
+            saturation: s.saturation !== undefined ? s.saturation : null
+        };
     },
 
     /** 设置当前主题当前模式的独立色相/明度，null 表示跟随全局 */
     _setThemeSetting(themeName, key, val) {
         var mode = this._getCurrentMode();
         if (!this._themeSettings[themeName]) {
-            this._themeSettings[themeName] = { light: { hue: null, lightness: null }, dark: { hue: null, lightness: null } };
+            this._themeSettings[themeName] = { light: { hue: null, lightness: null, saturation: null }, dark: { hue: null, lightness: null, saturation: null } };
         }
         // 兼容旧格式
         if (!this._themeSettings[themeName].light) {
-            this._themeSettings[themeName] = { light: { hue: null, lightness: null }, dark: { hue: null, lightness: null } };
+            this._themeSettings[themeName] = { light: { hue: null, lightness: null, saturation: null }, dark: { hue: null, lightness: null, saturation: null } };
         }
         this._themeSettings[themeName][mode][key] = val;
         if (this.currentTheme === themeName) {
@@ -494,8 +518,8 @@ export const ThemeEffects = {
                     if (val && typeof val === 'object' && !val.light && !val.dark && ('hue' in val || 'lightness' in val)) {
                         // 旧格式
                         migrated[themeName] = {
-                            light: { hue: val.hue !== undefined ? val.hue : null, lightness: val.lightness !== undefined ? val.lightness : null },
-                            dark: { hue: val.hue !== undefined ? val.hue : null, lightness: val.lightness !== undefined ? val.lightness : null }
+                            light: { hue: val.hue !== undefined ? val.hue : null, lightness: val.lightness !== undefined ? val.lightness : null, saturation: null },
+                            dark: { hue: val.hue !== undefined ? val.hue : null, lightness: val.lightness !== undefined ? val.lightness : null, saturation: null }
                         };
                     } else {
                         migrated[themeName] = val;
@@ -889,7 +913,7 @@ export const ThemeEffects = {
         var mode = this._getCurrentMode();
         var modeLabel = mode === 'dark' ? '暗色' : '亮色';
         var cur = this._getModeSetting(current, mode);
-        var hasTune = cur.hue !== null || cur.lightness !== null;
+        var hasTune = cur.hue !== null || cur.lightness !== null || cur.saturation !== null;
 
         var content = [
             '<div class="theme-panel-market-entry">',
@@ -916,6 +940,12 @@ export const ThemeEffects = {
                     '<input type="range" class="theme-tune-slider" id="tuneLight" min="-30" max="30" value="' + (cur.lightness !== null ? cur.lightness : '0') + '" data-key="lightness">',
                     '<span class="theme-tune-val" id="tuneLightVal">' + (cur.lightness !== null ? (cur.lightness > 0 ? '+' : '') + cur.lightness + '%' : '自动') + '</span>',
                     '<button class="theme-tune-reset" id="tuneLightReset" style="display:' + (cur.lightness !== null ? '' : 'none') + '">复位</button>',
+                '</div>',
+                '<div class="theme-tune-row">',
+                    '<label class="theme-tune-name">饱和度</label>',
+                    '<input type="range" class="theme-tune-slider" id="tuneSat" min="0" max="200" value="' + (cur.saturation !== null ? cur.saturation : 100) + '" data-key="saturation">',
+                    '<span class="theme-tune-val" id="tuneSatVal">' + (cur.saturation !== null ? cur.saturation + '%' : '自动') + '</span>',
+                    '<button class="theme-tune-reset" id="tuneSatReset" style="display:' + (cur.saturation !== null ? '' : 'none') + '">复位</button>',
                 '</div>',
                 '<div class="theme-tune-row theme-tune-row-perf">',
                     '<label class="theme-tune-name">智能动效</label>',
@@ -992,6 +1022,7 @@ export const ThemeEffects = {
                 el._setThemeSetting(current, key, v);
                 if (valEl) {
                     if (key === 'hue') valEl.textContent = v + '°';
+                    else if (key === 'saturation') valEl.textContent = v + '%';
                     else valEl.textContent = (v > 0 ? '+' : '') + v + '%';
                 }
                 if (resetBtn) resetBtn.style.display = '';
@@ -1004,12 +1035,12 @@ export const ThemeEffects = {
             if (resetBtn) {
                 resetBtn.addEventListener('click', function() {
                     el._setThemeSetting(current, key, null);
-                    slider.value = key === 'lightness' ? '0' : '';
+                    slider.value = key === 'hue' ? '' : (key === 'lightness' ? '0' : '100');
                     if (valEl) valEl.textContent = '自动';
                     resetBtn.style.display = 'none';
                     // 检查当前模式是否全部重置，隐藏"跟随全局"按钮
                     var curMode = el._getModeSetting(current, el._getCurrentMode());
-                    if (curMode.hue === null && curMode.lightness === null) {
+                    if (curMode.hue === null && curMode.lightness === null && curMode.saturation === null) {
                         var resetAllEl = panel.querySelector('#tuneResetAll');
                         if (resetAllEl) resetAllEl.style.display = 'none';
                     }
@@ -1019,6 +1050,7 @@ export const ThemeEffects = {
 
         setupSlider('#tuneHue', '#tuneHueReset', '#tuneHueVal', 'hue');
         setupSlider('#tuneLight', '#tuneLightReset', '#tuneLightVal', 'lightness');
+        setupSlider('#tuneSat', '#tuneSatReset', '#tuneSatVal', 'saturation');
 
         // ===== 智能动效开关（胶囊开关：checkbox 的 change 事件）=====
         var motionBox = panel.querySelector('#motionToggle');
@@ -1029,13 +1061,13 @@ export const ThemeEffects = {
         }
 
         // 重置全部（亮暗两套都重置）
-        var resetAllBtn2 = panel.querySelector('#tuneResetAllBtn');
+        var resetAllBtn2 = panel.querySelector('#tuneResetAll');
         if (resetAllBtn2) {
             resetAllBtn2.addEventListener('click', function() {
                 var s = el._themeSettings[current];
                 if (s) {
-                    if (s.light) { s.light.hue = null; s.light.lightness = null; }
-                    if (s.dark) { s.dark.hue = null; s.dark.lightness = null; }
+                    if (s.light) { s.light.hue = null; s.light.lightness = null; s.light.saturation = null; }
+                    if (s.dark) { s.dark.hue = null; s.dark.lightness = null; s.dark.saturation = null; }
                 }
                 el._applyThemeVars(current);
                 el._saveSettings();
@@ -1051,6 +1083,12 @@ export const ThemeEffects = {
                 var lr = panel.querySelector('#tuneLightReset');
                 if (hr) hr.style.display = 'none';
                 if (lr) lr.style.display = 'none';
+                var satSlider2 = panel.querySelector('#tuneSat');
+                if (satSlider2) satSlider2.value = '100';
+                var sv2 = panel.querySelector('#tuneSatVal');
+                if (sv2) sv2.textContent = '自动';
+                var sr2 = panel.querySelector('#tuneSatReset');
+                if (sr2) sr2.style.display = 'none';
                 resetAllBtn2.style.display = 'none';
             });
         }

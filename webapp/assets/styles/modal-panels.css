@@ -1284,6 +1284,25 @@
     );
 }
 
+/* 饱和度滑块（#tuneSat）：轨道从「灰」到「当前色相的饱和色」，直观表达饱和度维度。
+   同样用 background-clip: content-box，避免渐变填满 44px 触控热区。 */
+.theme-tune-slider#tuneSat {
+    background: linear-gradient(to right,
+        hsl(var(--accent-hue, 120), 0%, 55%),
+        hsl(var(--accent-hue, 120), 85%, 50%)
+    );
+    background-clip: content-box;
+}
+
+.theme-tune-slider#tuneSat::-moz-range-track {
+    height: 4px;
+    border-radius: var(--radius-3xs);
+    background: linear-gradient(to right,
+        hsl(var(--accent-hue, 120), 0%, 55%),
+        hsl(var(--accent-hue, 120), 85%, 50%)
+    );
+}
+
 .theme-tune-reset {
     flex-shrink: 0;
     font-size: var(--type-2xs);

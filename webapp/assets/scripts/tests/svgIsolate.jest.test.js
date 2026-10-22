@@ -20,6 +20,54 @@ describe('SvgIsolate', () => {
         expect(out).not.toContain('url(#a)');
     });
 
+    test('isolateIds: 覆盖 url 引号三种写法 + href / xlink:href', () => {
+        const html = '<svg>'
+            + '<defs><linearGradient id="g"><stop/></linearGradient><clipPath id="c"/></defs>'
+            + '<rect fill="url(#g)"/><rect fill="url(\'#g\')"/><rect fill="url(\"#g\")"/>'
+            + '<g clip-path="url(#c)"><use href="#g"/><use xlink:href="#c"/></g>'
+            + '</svg>';
+        const out = S.isolateIds(html, 'p-');
+        expect(out).toContain('id="p-g"');
+        expect(out).toContain('id="p-c"');
+        expect(out).toContain('url(#p-g)');
+        expect(out).toContain("url('#p-g')");
+        expect(out).toContain('url("#p-g")');
+        expect(out).toContain('href="#p-g"');
+        expect(out).toContain('xlink:href="#p-c"');
+        // 原文里不应再残留未加前缀的引用
+        expect(out).not.toMatch(/url\(\s*['"]?#g/);
+        expect(out).not.toMatch(/href=(["'])#g\1/);
+    });
+
+    test('isolateIds: 不存在的 id 引用保持原样（与旧实现一致）', () => {
+        const html = '<svg><g clip-path="url(#nope)"><use href="#nope"/></g><path id="real"/></svg>';
+        const out = S.isolateIds(html, 'p-');
+        expect(out).toContain('url(#nope)');
+        expect(out).toContain('href="#nope"');
+        expect(out).toContain('id="p-real"');
+    });
+
+    test('isolateIds: 大量 id 也只需常数趟扫描（正确性 + 规模）', () => {
+        const N = 300;
+        let html = '<svg>';
+        for (let i = 0; i < N; i++) html += '<path id="i' + i + '"/>';
+        for (let i = 0; i < N; i++) html += '<use href="#i' + i + '"/>';
+        html += '</svg>';
+        const out = S.isolateIds(html, 'z-');
+        expect((out.match(/id="z-i/g) || []).length).toBe(N);
+        expect((out.match(/href="#z-i/g) || []).length).toBe(N);
+        expect(out).not.toContain('href="#i0"');
+    });
+
+    test('isolateIds: 不同前缀产出不同结果（实例隔离）', () => {
+        const html = '<svg><path id="a"/><use href="#a"/></svg>';
+        const a = S.isolateIds(html, 'x-');
+        const b = S.isolateIds(html, 'y-');
+        expect(a).not.toBe(b);
+        expect(a).toContain('id="x-a"');
+        expect(b).toContain('id="y-a"');
+    });
+
     test('scopeCss: 给 svg 加作用域类并把选择器前缀化', () => {
         const html = '<svg viewBox="0 0 10 10"><style>.a{fill:#111}</style><path class="a"/></svg>';
         const out = S.scopeCss(html, 'm0-');

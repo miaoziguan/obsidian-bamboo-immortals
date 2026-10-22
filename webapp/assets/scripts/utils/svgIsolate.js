@@ -41,21 +41,31 @@ export const SvgIsolate = {
    */
   isolateIds(html, prefix) {
     if (!html) return html;
-    const ids = [];
+    const p = String(prefix == null ? '' : prefix);
+    // 先收集文档内「真实存在」的 id：只给存在的引用加前缀（与旧实现语义一致），
+    // 避免把 url(#不存在的id) 也改掉。
+    const ids = new Set();
+    const reScan = /\bid="([^"]+)"/g;
     let m;
-    const reId = /id="([^"]+)"/g;
-    while ((m = reId.exec(html))) ids.push(m[1]);
-    let out = html;
-    ids.forEach((id) => {
-      const ref = '#' + id;
-      out = out.split('url(' + ref + ')').join('url(#' + prefix + id + ')');
-      out = out.split("url('" + ref + "')").join("url('#" + prefix + id + "')");
-      out = out.split('url("' + ref + '")').join('url("#' + prefix + id + '")');
-      out = out.split('href="' + ref + '"').join('href="#' + prefix + id + '"');
-      out = out.split("href='" + ref + "'").join("href='#" + prefix + id + "'");
-      out = out.split('xlink:href="' + ref + '"').join('xlink:href="#' + prefix + id + '"');
+    while ((m = reScan.exec(html))) ids.add(m[1]);
+    if (!ids.size) return html;
+
+    // 【性能】旧实现是「每个 id 各做 6 轮全串 split/join」——大素材上接近 O(ids × size)，
+    // 实测东方.js（176 个 id / 94KB）约 150MB 字符串处理。改为**常数趟**扫描：
+    // 下面三步各只扫一遍，与 id 数量无关（同一素材降到 ~0.3MB）。
+    // 1) url(#x) / url('#x') / url("#x")
+    let out = html.replace(/\burl\(\s*(['"]?)#([^'")\s]+)\1\s*\)/g, (mm, quote, id) => {
+      if (!ids.has(id)) return mm;
+      const q = quote || '';
+      return 'url(' + q + '#' + p + id + q + ')';
     });
-    return out.replace(/id="([^"]+)"/g, (mm, id) => 'id="' + prefix + id + '"');
+    // 2) href="#x" / href='#x' / xlink:href="#x"
+    out = out.replace(/\b(xlink:)?href=(["'])#([^"']+)\2/g, (mm, xlink, quote, id) => {
+      if (!ids.has(id)) return mm;
+      return (xlink || '') + 'href=' + quote + '#' + p + id + quote;
+    });
+    // 3) id 属性本身
+    return out.replace(/\bid="([^"]+)"/g, (mm, id) => 'id="' + p + id + '"');
   },
 
   /**

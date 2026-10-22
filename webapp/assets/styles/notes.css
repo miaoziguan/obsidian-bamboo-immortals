@@ -344,10 +344,13 @@
   font-weight: 500;
   color: var(--ink-dark);
   white-space: pre-wrap;
-  
+
   line-break: strict;
   overflow-wrap: break-word;
   flex-grow: 1;
+  /* 两端对齐：便签正文统一左对齐会产生参差右缘。justify 让每个折行行两端对齐，
+     最后一行（及强制换行前的行）保持自然，符合常规排版。汉字间会自动分配间距。 */
+  text-align: justify;
 }
 
 /* 便签正文滚动条：细（3px）+ 主题色半透明 + 圆角，暗色换亮绿。

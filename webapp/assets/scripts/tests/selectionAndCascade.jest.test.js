@@ -50,11 +50,15 @@ describe('依附贴纸层叠（_applyStickerBox）：浮在纸纹之上、半藏
   }
 
   test('正常依附贴纸 z-index=30（高于夜光纸 ::after 的 20 / 正文 10，低于卡片手柄）', () => {
-    expect(boxFor(false).style.zIndex).toBe('30');
+    const el = boxFor(false);
+    expect(el.style.zIndex).toBe('30');
+    expect(el.classList.contains('bm-sticker-behind')).toBe(false);
   });
 
-  test('behind 贴纸 z-index=-1（半藏在纸后）', () => {
-    expect(boxFor(true).style.zIndex).toBe('-1');
+  test('behind 贴纸 z-index=-1（半藏在纸后）+ 打上 bm-sticker-behind 标识', () => {
+    const el = boxFor(true);
+    expect(el.style.zIndex).toBe('-1');
+    expect(el.classList.contains('bm-sticker-behind')).toBe(true);
   });
 });
 

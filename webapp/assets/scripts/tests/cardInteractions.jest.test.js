@@ -157,3 +157,30 @@ describe('P2-#9 / P3-#2 拖拽：transform 提交 + 越阈入撤销栈', () => {
     expect(c2.style.left).toBe('150px');   // 50 + 100
   });
 });
+
+describe('选中态 .selected 类（贴纸金色描边 A 的触发点）', () => {
+  function mkCtrl(initial) {
+    return { _selected: new Set(initial || []), _blurInput: jest.fn(), _updateSelBar: jest.fn() };
+  }
+
+  test('selectOnly：选中新贴纸加 .selected，旧选中移除', () => {
+    const a = document.createElement('div'); a.className = 'bm-sticker'; a.classList.add('selected');
+    const b = document.createElement('div'); b.className = 'bm-sticker';
+    const ctrl = mkCtrl([a]);
+    CardInteractions.selectOnly({ state: {}, ctrl }, b);
+    expect(a.classList.contains('selected')).toBe(false);
+    expect(b.classList.contains('selected')).toBe(true);
+    expect(ctrl._selected.has(b)).toBe(true);
+    expect(ctrl._selected.has(a)).toBe(false);
+    expect(ctrl._updateSelBar).toHaveBeenCalled();
+  });
+
+  test('toggleSelect：再次点同一贴纸 → 取消选中，.selected 移除', () => {
+    const a = document.createElement('div'); a.className = 'bm-sticker';
+    const ctrl = mkCtrl();
+    CardInteractions.toggleSelect({ state: {}, ctrl }, a);
+    expect(a.classList.contains('selected')).toBe(true);
+    CardInteractions.toggleSelect({ state: {}, ctrl }, a);
+    expect(a.classList.contains('selected')).toBe(false);
+  });
+});

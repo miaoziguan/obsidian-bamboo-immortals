@@ -350,34 +350,29 @@
   flex-grow: 1;
 }
 
-/* 便签正文滚动条：与画中卷 .tw-input / 模态框 .modal-body 一致的「细圆角 + 主题色半透明」设计。
-   背景：素笺/红笺/若水/腾云/举火/映月等纸样给 .tw-card-text 设了 overflow:auto，但此前没有任何
-   滚动条样式；亮色下（无全局滚动条规则，仅有 :host(.dark) 的暗色全局）会回退浏览器默认灰条，
-   与新设计不一致。此处对齐 .tw-input 的规格（6px、圆角、暗色换亮绿）。 */
-.tw-card-text {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(var(--bamboo-deep-rgb), 0.2) transparent;
-}
+/* 便签正文滚动条：细（3px）+ 主题色半透明 + 圆角，暗色换亮绿。
+   【关键·勿加 scrollbar-width / scrollbar-color】现代 Chromium 一旦看到这两个「标准滚动条」属性，
+   就会改用平台标准滚动条并【忽略 ::-webkit-scrollbar】——此处 px 宽度/透明度会全部失效
+   （表现即「改了没变化」，还会把市场纸样自带的 3px 隐藏式滚动条顶成平台默认粗灰条）。
+   市场纸样用 .tw-card[data-paper="X"] .tw-card-text::-webkit-scrollbar（特异度 0,3,1）自带样式，
+   故这里用 !important 统一覆盖，保证所有纸样的便签滚动条一致。 */
 .tw-card-text::-webkit-scrollbar {
-  width: 3px;
-  height: 3px;
+  width: 3px !important;
+  height: 3px !important;
 }
 .tw-card-text::-webkit-scrollbar-track {
-  background: transparent;
+  background: transparent !important;
 }
 .tw-card-text::-webkit-scrollbar-thumb {
-  background: rgba(var(--bamboo-deep-rgb), 0.2);
-  border-radius: var(--radius-3);
+  background: rgba(var(--bamboo-deep-rgb), 0.16) !important;
+  border-radius: 3px !important;
 }
 .tw-card-text::-webkit-scrollbar-thumb:hover {
-  background: rgba(var(--bamboo-deep-rgb), 0.32);
+  background: rgba(var(--bamboo-deep-rgb), 0.28) !important;
 }
-:host(.dark) .tw-card-text {
-  scrollbar-color: rgba(var(--green-very-bright-rgb), 0.2) transparent;
-}
-.theme-dark .tw-card-text::-webkit-scrollbar-thumb,
-:host(.dark) .tw-card-text::-webkit-scrollbar-thumb {
-  background: rgba(var(--green-very-bright-rgb), 0.2);
+:host(.dark) .tw-card-text::-webkit-scrollbar-thumb,
+.theme-dark .tw-card-text::-webkit-scrollbar-thumb {
+  background: rgba(var(--green-very-bright-rgb), 0.16) !important;
 }
 
 .tw-card[data-font="classic"] .tw-card-text { font-family: var(--tw-font-classic); }

@@ -29,14 +29,19 @@ function decl(body, prop) {
 }
 
 describe('便签正文滚动条样式契约', () => {
-  test('.tw-card-text 使用细滚动条（scrollbar-width: thin）', () => {
-    const vals = rulesMatching('.tw-card-text').map((r) => decl(r.body, 'scrollbar-width')).filter(Boolean);
-    expect(vals).toContain('thin');
+  test('不得设置 scrollbar-width / scrollbar-color（否则 Chromium 忽略 ::-webkit-scrollbar）', () => {
+    // 回归锁：现代 Chromium 一旦看到这两个「标准滚动条」属性，就改用标准滚动条并忽略
+    // ::-webkit-scrollbar —— 导致宽度/透明度改动全部失效（即「改了没变化」），
+    // 还会把市场纸样自带的 3px 隐藏式滚动条顶成平台默认粗灰条。
+    const widthVals = rulesMatching('.tw-card-text').map((r) => decl(r.body, 'scrollbar-width')).filter(Boolean);
+    const colorVals = rulesMatching('.tw-card-text').map((r) => decl(r.body, 'scrollbar-color')).filter(Boolean);
+    expect(widthVals).toEqual([]);
+    expect(colorVals).toEqual([]);
   });
 
-  test('::-webkit-scrollbar 细轨道 3px，thumb 有主题色底 + 圆角', () => {
+  test('::-webkit-scrollbar 细轨道 3px（!important 覆盖纸样），thumb 有主题色底 + 圆角', () => {
     const w = rulesMatching('.tw-card-text::-webkit-scrollbar').map((r) => decl(r.body, 'width')).filter(Boolean);
-    expect(w).toContain('3px');
+    expect(w.some((v) => v.startsWith('3px'))).toBe(true);
 
     const thumbs = rulesMatching('.tw-card-text::-webkit-scrollbar-thumb');
     const bg = thumbs.map((r) => decl(r.body, 'background')).filter(Boolean);

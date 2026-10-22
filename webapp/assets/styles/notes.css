@@ -1939,10 +1939,6 @@
 .bm-sticker {
   position: absolute; width: 120px; height: 120px; cursor: move; user-select: none;
   filter: drop-shadow(0 4px 16px rgba(var(--deep-rgb), 0.08)) drop-shadow(0 2px 4px rgba(var(--deep-rgb), 0.04));
-  /* 【离屏跳过渲染】贴纸不参与视口剔除，数量多时屏外仍有绘制成本。
-     content-visibility:auto 让屏外贴纸跳过渲染；containment 只在「被跳过」时施加
-     （被跳过时会裁剪 4 角手柄，但那时本来就在屏外看不见），回到屏内立即恢复正常渲染。 */
-  content-visibility: auto;
 }
 :host(.dark) .bm-sticker {
   filter: drop-shadow(0 4px 16px rgba(var(--black-rgb), 0.30)) drop-shadow(0 2px 4px rgba(var(--black-rgb), 0.20));
@@ -1963,6 +1959,13 @@
   outline-offset: 2px;
 }
 .bm-sticker svg, .bm-sticker > div:not(.bm-sticker-menu), .bm-sticker-content, .bm-sticker-content > div { width: 100%; height: 100%; display: block; }
+/* 【离屏跳过渲染】放在「内容层」而非 .bm-sticker：
+   content-visibility 会**始终**施加 paint containment（裁剪溢出），若加在外层，
+   会把位于 -8px 外侧的 4 角手柄（↻ / ⇲ / ⋯）裁掉。内容层只装 SVG，裁剪无影响；
+   屏外时跳过渲染的正是耗性能的那棵 SVG 子树，手柄是它的兄弟、不受牵连。 */
+.bm-sticker-content {
+  content-visibility: auto;
+}
 /* 贴纸删除钮：默认隐藏，悬停贴纸时显现（贴纸会持久化，必须能删） */
 .bm-sticker-del {
   position: absolute; top: -8px; right: -8px; width: 22px; height: 22px;

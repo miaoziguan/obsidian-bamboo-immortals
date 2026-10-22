@@ -49,8 +49,12 @@ describe('贴纸拖动性能契约', () => {
     expect(eff).toContain('none');
   });
 
-  test('贴纸离屏跳过渲染（content-visibility: auto）', () => {
-    const vals = rulesMatching('.bm-sticker').map((r) => decl(r.body, 'content-visibility')).filter(Boolean);
-    expect(vals).toContain('auto');
+  test('离屏跳过渲染放在内容层（放外层会裁掉 4 角手柄）', () => {
+    const inner = rulesMatching('.bm-sticker-content').map((r) => decl(r.body, 'content-visibility')).filter(Boolean);
+    expect(inner).toContain('auto');
+    // 回归锁：.bm-sticker 外层绝不能有 content-visibility —— 它施加的 paint containment
+    // 会把位于 -8px 外侧的旋转/缩放/更多手柄裁掉。
+    const outer = rulesMatching('.bm-sticker').map((r) => decl(r.body, 'content-visibility')).filter(Boolean);
+    expect(outer).toEqual([]);
   });
 });

@@ -9,6 +9,9 @@ const { loadModule } = require('./__helpers__/testUtils');
 // 需注入全局供其解析（否则抛 ReferenceError: WritingDoc is not defined）。
 const { WritingDoc } = loadModule('handlers/features/writingDoc.js', ['WritingDoc']);
 global.WritingDoc = WritingDoc;
+// exitEdit / ViewportCuller 现在都会调 fitCardText（定框纸样字号自适应）；
+// loadModule 剥掉 import 后需从全局解析，这里补一个桩。
+global.fitCardText = () => 1;
 // GeoCache 被 loadModule 剥离了 import，feature 体内 new GeoCache() 需从全局解析（与 SpatialIndex 同处理）
 const { GeoCache } = loadModule('services/GeoCache.js', ['GeoCache']);
 global.GeoCache = GeoCache;

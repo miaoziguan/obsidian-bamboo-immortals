@@ -809,6 +809,24 @@ export const CardInteractions = {
     Array.from(ctrl._canvas.querySelectorAll('.tw-card.editing')).forEach((c) => ctrl._exitEdit(c));
   
   },
+  /** 编辑输入的统一处理。
+   *  【根因修复·字号自适应不及时】输入法组字中（isComposing）原先是「直接 return」，
+   *  把 fitCardText 也一并跳过了 —— 中文打字全程都处在组字中，于是整个组字过程字号不缩、
+   *  组字结束才跳一下，体感就是「不够及时」。现改为：组字中只跳过【截断 + 写模型】，
+   *  字号自适应照常执行（它只读布局、不改模型，不会打断组字）。 */
+  _handleEditInput(ctrl, card, e) {
+    const text = card.querySelector('.tw-card-text');
+    if (!text) return;
+    const composing = !!(e && e.isComposing);
+    if (!composing) {
+      // innerText 是强制同步布局读：常规（未超限）只读一次；仅当超限才走截断+选区间恢复（罕见）
+      let full = text.innerText;
+      if (full.length > MAX_LEN) { ctrl._enforceEditLimit(text); full = text.innerText; }
+      ctrl._notes = WritingDoc.setText(ctrl._notes, card.dataset.id, full);  // 连续编辑改走 WritingDoc 原语
+    }
+    ctrl._scheduleSave();
+    fitCardText(card);   // 定框纸样：边打边把字号调进框里（组字期间也生效）
+  },
   // (was _enterEdit)
   enterEdit(ctx, card) {
     const { state, ctrl } = ctx;
@@ -830,15 +848,7 @@ export const CardInteractions = {
     // 【根因修复】事件回调必须用闭包绑定 this：浏览器触发 addEventListener 时 this 会指向
     // text 元素而非 feature 实例，否则 _exitEdit/_scheduleSave 变成 undefined ——
     // 表现为 Escape 退出失效、输入不自动落盘。处理器存到 card._editHandlers 以便对称移除。
-    const onInput = (e) => {
-      if (e && e.isComposing) { ctrl._scheduleSave(); return; }  // 输入法组字中：先不截断
-      // innerText 是强制同步布局读：常规（未超限）只读一次；仅当超限才走截断+选区间恢复（罕见，容忍二次读）
-      let full = text.innerText;
-      if (full.length > MAX_LEN) { ctrl._enforceEditLimit(text); full = text.innerText; }
-      ctrl._notes = WritingDoc.setText(ctrl._notes, card.dataset.id, full);  // 连续编辑改走 WritingDoc 原语
-      ctrl._scheduleSave();
-      fitCardText(card);   // 定框纸样：边打边把字号调进框里，避免越打越出滚动条
-    };
+    const onInput = (e) => this._handleEditInput(ctrl, card, e);
     const onKey = (e) => {
       if (e.key === 'Escape') {
         e.preventDefault();
@@ -855,6 +865,7 @@ export const CardInteractions = {
       }
       const allowed = t.length > room ? t.slice(0, room) : t;
       document.execCommand('insertText', false, allowed); // 只粘纯文本，不把网页样式带进便签
+      fitCardText(card);   // 兜底：个别环境下 execCommand 不一定派发 input，粘贴后立即自适应一次
     };
     card._editHandlers = { onInput, onKey, onPaste };
     text.addEventListener('input', onInput);
@@ -892,7 +903,8 @@ export const CardInteractions = {
       if (typeof PrivacyMode !== 'undefined') PrivacyMode.markText();
     }
     ctrl._invalidateGeo(card.dataset.id);   // 编辑可能改变了卡片高度 → 几何失效
-  
+    fitCardText(card);                      // 退出编辑再自适应一次：兜住最后一次输入/组字收尾的布局变化
+
   },
   // (was _pinOnly)
   pinOnly(ctx, card) {

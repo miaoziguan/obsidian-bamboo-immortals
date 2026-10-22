@@ -3,11 +3,15 @@ const { loadModule } = require('./__helpers__/testUtils.js');
 // CardInteractions 从 domRef / WritingDoc / CanvasViewport / ModePolicy import，
 // 被 loadModule 剥离后需由全局补回。
 const setPos = jest.fn(() => 'notes-after');
+const setText = jest.fn(() => []);
+const fitCardText = jest.fn();
 const { CardInteractions } = loadModule('handlers/features/CardInteractions.js', ['CardInteractions'], {
   byId: (id) => document.getElementById(id),
-  WritingDoc: { setPos, setOrder: jest.fn(), orderIds: jest.fn(() => []) },
+  WritingDoc: { setPos, setText, setOrder: jest.fn(), orderIds: jest.fn(() => []) },
   CanvasViewport: { getScale: () => 1 },
   ModePolicy: { manualCardSize: (m) => m === 'notes', linksDefineOrder: () => false },
+  fitCardText,
+  MAX_LEN: 1000,
 });
 
 let savedRAF = null;
@@ -182,5 +186,40 @@ describe('选中态 .selected 类（贴纸金色描边 A 的触发点）', () =>
     expect(a.classList.contains('selected')).toBe(true);
     CardInteractions.toggleSelect({ state: {}, ctrl }, a);
     expect(a.classList.contains('selected')).toBe(false);
+  });
+});
+
+describe('编辑输入 · 组字期间也要字号自适应（「不够及时」的根因）', () => {
+  function mkCard() {
+    const card = document.createElement('div');
+    card.dataset.id = 'n1';
+    const text = document.createElement('div');
+    text.className = 'tw-card-text';
+    text.textContent = '你好';
+    text.innerText = '你好';   // jsdom 未实现 innerText，这里补一个可读值供被测代码使用
+    card.appendChild(text);
+    return card;
+  }
+  function mkCtrl() {
+    return { _notes: [], _scheduleSave: jest.fn(), _enforceEditLimit: jest.fn() };
+  }
+
+  test('isComposing=true（中文组字中）→ 不截断/不写模型，但 fitCardText 仍执行', () => {
+    setText.mockClear();
+    fitCardText.mockClear();
+    const c = mkCtrl();
+    CardInteractions._handleEditInput(c, mkCard(), { isComposing: true });
+    expect(fitCardText).toHaveBeenCalledTimes(1);
+    expect(setText).not.toHaveBeenCalled();
+    expect(c._scheduleSave).toHaveBeenCalled();
+  });
+
+  test('isComposing=false → 写模型 + fitCardText', () => {
+    setText.mockClear();
+    fitCardText.mockClear();
+    const c = mkCtrl();
+    CardInteractions._handleEditInput(c, mkCard(), { isComposing: false });
+    expect(setText).toHaveBeenCalled();
+    expect(fitCardText).toHaveBeenCalledTimes(1);
   });
 });

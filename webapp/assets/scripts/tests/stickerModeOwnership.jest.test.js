@@ -15,6 +15,10 @@ const StoreMock = {
 loadModule('handlers/features/twConfig.js', []);   // 副作用：共享常量挂 globalThis
 global.CanvasViewport = { scaleOf: () => 1 };
 global.SvgIsolate = { isolate: (s) => s };
+// materialMarket 现走带缓存的隔离（stickerIsolateCache），loadModule 会剥离其 import：
+const _sic = loadModule('utils/stickerIsolateCache.js', ['isolateStickerHtml', 'evictStickerIsolate']);
+global.isolateStickerHtml = _sic.isolateStickerHtml;
+global.evictStickerIsolate = _sic.evictStickerIsolate;
 global.LinkLayer = class { constructor() {} clear() {} render() {} };
 global.MindmapFeature = { mount: jest.fn() };
 const { MaterialMarket } = loadModule('handlers/features/materialMarket.js', ['MaterialMarket']);

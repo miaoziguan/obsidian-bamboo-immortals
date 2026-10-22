@@ -33,6 +33,10 @@ _b1mod('utils/domRef.js', 'isFromTextEntry');
 // materialMarket 依赖
 global.CanvasViewport = { scaleOf: () => 1 };
 global.SvgIsolate = { isolate: (s) => s };
+// materialMarket 现走带缓存的隔离（stickerIsolateCache），loadModule 会剥离其 import：
+const _sic2 = loadModule('utils/stickerIsolateCache.js', ['isolateStickerHtml', 'evictStickerIsolate']);
+global.isolateStickerHtml = _sic2.isolateStickerHtml;
+global.evictStickerIsolate = _sic2.evictStickerIsolate;
 global.LinkLayer = class { constructor() {} clear() {} render() {} };
 global.MindmapFeature = { mount: jest.fn() };
 const { MaterialMarket } = loadModule('handlers/features/materialMarket.js', ['MaterialMarket']);

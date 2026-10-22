@@ -25,6 +25,8 @@ import { ModePolicy } from './modePolicy.js';
 import { TypewriterStore } from '../../services/TypewriterStore.js';
 // 素材 SVG 注入前的实例隔离（id 前缀 + <style> 作用域沙箱）
 import { SvgIsolate } from '../../utils/svgIsolate.js';
+// 贴纸隔离结果缓存：切档/切组重建同一张贴纸时直接命中，避免重复的逐 id 全串替换
+import { isolateStickerHtml, evictStickerIsolate } from '../../utils/stickerIsolateCache.js';
 // 素材 minAppVersion 门控：宿主版本低于素材要求时明确拒绝装载（而不是渲染到一半崩坏）
 import { meetsMinVersion } from '../../utils/semver.js';
 // 动态 <style>/查询须走 shadow 抽象层：画中卷运行在 Shadow DOM 内，市场纸纹 css 若插到 document.head 将穿透不进 shadow 内的 .tw-card
@@ -880,7 +882,7 @@ export const MaterialMarket = {
     // 右上 ⋯ 收纳其余。点 ⋯ 弹出「带文字标签」的菜单：低频操作不再靠猜符号，
     // 破坏性的「删除」单独分隔并置末（危险色）。菜单用 fixed + 视口坐标定位，
     // 贴纸自身旋转/缩放、乃至宿主便签的旋转，都不会让菜单歪掉或错位。
-    el.innerHTML = '<div class="bm-sticker-content">' + (material.render ? SvgIsolate.isolate(material.render(), rec.id + '-') : '') + '</div>' +
+    el.innerHTML = '<div class="bm-sticker-content">' + isolateStickerHtml(material, rec.id) + '</div>' +
       '<button type="button" class="bm-sticker-rotate" aria-label="旋转贴纸" title="拖动旋转 · Shift 吸附 15° · 双击归零">↻</button>' +
       '<button type="button" class="bm-sticker-resize" aria-label="缩放贴纸" title="拖动缩放 · Shift 等比 · 双击还原">⇲</button>' +
       '<button type="button" class="bm-sticker-more" aria-label="更多操作" title="更多操作">⋯</button>' +
@@ -961,6 +963,8 @@ export const MaterialMarket = {
         } else if (act === 'del') {
           el.remove();
           this._canvasStickers = this._canvasStickers.filter((s) => s !== rec);
+          const dmat = rec.material ? this._installed[rec.material] : null;
+          if (dmat) evictStickerIsolate(dmat, rec.id);
           this._saveStickers();
           if (typeof Toast !== 'undefined') Toast.showToast('贴纸已删除', 'success');
         }
@@ -1183,6 +1187,9 @@ export const MaterialMarket = {
     const i = this._canvasStickers.indexOf(rec);
     if (i >= 0) this._canvasStickers.splice(i, 1);
     if (el && el.parentNode) el.parentNode.removeChild(el);
+    // 删除即清缓存（recId 不复用，留着只是占内存）
+    const mat = rec.material ? this._installed[rec.material] : null;
+    if (mat) evictStickerIsolate(mat, rec.id);
     this._saveStickers();
     return true;
   },

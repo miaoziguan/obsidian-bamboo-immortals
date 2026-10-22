@@ -827,6 +827,20 @@ export const CardInteractions = {
     ctrl._scheduleSave();
     fitCardText(card);   // 定框纸样：边打边把字号调进框里（组字期间也生效）
   },
+  /** 粘贴：只粘纯文本；粘贴后立即做一次字号自适应（个别环境下 execCommand 不派发 input）。 */
+  _handleEditPaste(ctrl, card, e) {
+    e.preventDefault();
+    const text = card.querySelector('.tw-card-text');
+    const t = (e.clipboardData || window.clipboardData).getData('text/plain');
+    const room = MAX_LEN - ((text && text.innerText ? text.innerText.length : 0) || 0);
+    if (room <= 0) {
+      if (typeof Toast !== 'undefined') Toast.showToast('便签最多 ' + MAX_LEN + ' 字', 'info');
+      return;
+    }
+    const allowed = t.length > room ? t.slice(0, room) : t;
+    document.execCommand('insertText', false, allowed); // 只粘纯文本，不把网页样式带进便签
+    fitCardText(card);   // 兜底：粘贴后立即自适应一次
+  },
   // (was _enterEdit)
   enterEdit(ctx, card) {
     const { state, ctrl } = ctx;
@@ -855,18 +869,7 @@ export const CardInteractions = {
         ctrl._exitEdit(card); // Enter 不拦截：contenteditable 内回车即多行便签
       }
     };
-    const onPaste = (e) => {
-      e.preventDefault();
-      const t = (e.clipboardData || window.clipboardData).getData('text/plain');
-      const room = MAX_LEN - (text.innerText.length || 0);
-      if (room <= 0) {
-        if (typeof Toast !== 'undefined') Toast.showToast(`便签最多 ${MAX_LEN} 字`, 'info');
-        return;
-      }
-      const allowed = t.length > room ? t.slice(0, room) : t;
-      document.execCommand('insertText', false, allowed); // 只粘纯文本，不把网页样式带进便签
-      fitCardText(card);   // 兜底：个别环境下 execCommand 不一定派发 input，粘贴后立即自适应一次
-    };
+    const onPaste = (e) => this._handleEditPaste(ctrl, card, e);
     card._editHandlers = { onInput, onKey, onPaste };
     text.addEventListener('input', onInput);
     text.addEventListener('keydown', onKey);

@@ -223,3 +223,50 @@ describe('编辑输入 · 组字期间也要字号自适应（「不够及时」
     expect(fitCardText).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('字号自适应的挂钩点（粘贴 / 退出编辑）不被误删', () => {
+  function mkCard2() {
+    const card = document.createElement('div');
+    card.dataset.id = 'n1';
+    const text = document.createElement('div');
+    text.className = 'tw-card-text';
+    text.textContent = '你好';
+    text.innerText = '你好';
+    card.appendChild(text);
+    return card;
+  }
+
+  test('粘贴后立即自适应（兜底 execCommand 不派发 input 的环境）', () => {
+    fitCardText.mockClear();
+    const oldExec = document.execCommand;
+    const exec = jest.fn();
+    document.execCommand = exec;
+    try {
+      CardInteractions._handleEditPaste({}, mkCard2(), {
+        preventDefault: jest.fn(),
+        clipboardData: { getData: () => '粘贴内容' },
+      });
+    } finally {
+      document.execCommand = oldExec;
+    }
+    expect(exec).toHaveBeenCalled();
+    expect(fitCardText).toHaveBeenCalledTimes(1);
+  });
+
+  test('退出编辑后自适应一次（兜住最后一次输入 / 组字收尾的布局变化）', () => {
+    fitCardText.mockClear();
+    setText.mockClear();
+    const card = mkCard2();
+    card.classList.add('editing');
+    const text = card.querySelector('.tw-card-text');
+    text.setAttribute('contenteditable', 'true');
+    card._editHandlers = { onInput() {}, onKey() {}, onPaste() {} };
+    const ctrl = { _notes: [], _editingId: 'n1', _scheduleSave: jest.fn(), _invalidateGeo: jest.fn() };
+
+    CardInteractions.exitEdit({ state: {}, ctrl }, card);
+
+    expect(fitCardText).toHaveBeenCalledTimes(1);
+    expect(card.classList.contains('editing')).toBe(false);
+    expect(text.hasAttribute('contenteditable')).toBe(false);
+  });
+});

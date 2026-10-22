@@ -5,6 +5,10 @@
 // 用作「DOM 卡节点池化值不值得做」的判据 —— 用数据代替印象。
 // 【只断言算法量】次数/比例是确定性的、CI 安全；绝对耗时随机器波动，只打印不断言。
 const { loadModule } = require('./__helpers__/testUtils');
+// ViewportCuller / CardViewManager 现在会调用 fitCardText（定框纸样的字号自适应）。
+// loadModule 会剥离 import，按项目约定这里把它挂到 globalThis 供模块运行时取用。
+globalThis.fitCardText = loadModule('utils/cardTextFit.js', ['fitCardText']).fitCardText;
+
 
 global.MindmapFeature = { isActive: () => false, stats: () => ({ count: 0, depth: 0 }) };
 

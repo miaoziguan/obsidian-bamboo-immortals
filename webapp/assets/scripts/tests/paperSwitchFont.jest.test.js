@@ -7,6 +7,10 @@
 // 静默把该卡字号写坏一次。修复改为读 card.dataset.fontScale 经 _fontIdxOf 派生索引（自带 isFinite 兜底）。
 // 本用例复现「缺 fontIdx」现场，断言切纸样后 fontScale 仍由真实字号派生、不被写回默认档。
 const { loadModule } = require('./__helpers__/testUtils');
+// ViewportCuller / CardViewManager 现在会调用 fitCardText（定框纸样的字号自适应）。
+// loadModule 会剥离 import，按项目约定这里把它挂到 globalThis 供模块运行时取用。
+globalThis.fitCardText = loadModule('utils/cardTextFit.js', ['fitCardText']).fitCardText;
+
 
 global.MindmapFeature = { isActive: () => false, stats: () => ({ count: 0, depth: 0 }) };
 const { WritingDoc } = loadModule('handlers/features/writingDoc.js', ['WritingDoc']);

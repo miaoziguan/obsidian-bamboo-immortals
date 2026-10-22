@@ -21,6 +21,7 @@
 import { GeoCache } from './GeoCache.js';
 import { SpatialIndex } from './SpatialIndex.js';
 import { ModePolicy } from '../handlers/features/modePolicy.js';
+import { fitCardText } from '../utils/cardTextFit.js';
 
 export const ViewportCuller = {
   /** 连线层取端点的几何源：挂载卡读活 DOM（与旧行为一致），离屏卡读几何缓存（最后测量值）。 */
@@ -124,6 +125,8 @@ export const ViewportCuller = {
       state._pendingMeasure.push(card);
     } else {
       ctrl._measureCard(card);
+      // 定框纸样（美术不可动）：正文放不下时缩字号，尽量不出现滚动条
+      fitCardText(card);
     }
     ctrl._perfEnd('mount', _t0);
     return card;
@@ -135,7 +138,10 @@ export const ViewportCuller = {
     if (!state._pendingMeasure || state._pendingMeasure.length === 0) return;
     const cards = state._pendingMeasure;
     state._pendingMeasure = [];
-    for (const card of cards) ctrl._measureCard(card);
+    for (const card of cards) {
+      ctrl._measureCard(card);
+      fitCardText(card);   // 与即时挂载同一套：量完就顺带做字号自适应
+    }
   },
 
   /** 量一张卡进几何缓存（坐标取 style.left/top；尺寸取 offset*，一次 reflow 摊销）。 */

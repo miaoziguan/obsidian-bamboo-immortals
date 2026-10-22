@@ -15,6 +15,7 @@ import { LinkLayer } from '../../services/LinkLayer.js';
 import { WritingDoc } from './writingDoc.js';
 import { UndoStack } from '../../services/undoStack.js';
 import { isFromTextEntry } from '../../utils/domRef.js';
+import { fitCardText } from '../../utils/cardTextFit.js';
 import { CanvasViewport } from '../../services/CanvasViewport.js';
 import { CanvasGestures } from '../../services/CanvasGestures.js';
 import { CanvasKeys } from '../../services/CanvasKeys.js';
@@ -836,6 +837,7 @@ export const CardInteractions = {
       if (full.length > MAX_LEN) { ctrl._enforceEditLimit(text); full = text.innerText; }
       ctrl._notes = WritingDoc.setText(ctrl._notes, card.dataset.id, full);  // 连续编辑改走 WritingDoc 原语
       ctrl._scheduleSave();
+      fitCardText(card);   // 定框纸样：边打边把字号调进框里，避免越打越出滚动条
     };
     const onKey = (e) => {
       if (e.key === 'Escape') {

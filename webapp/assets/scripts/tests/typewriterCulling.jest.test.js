@@ -5,6 +5,10 @@
 // 不能读活 DOM——离屏卡已被剔除（c.el 为 null / 不在 querySelectorAll 结果里），
 // 读 DOM 会崩或只作用于可见卡。本文件把这些回归锁死。
 const { loadModule } = require('./__helpers__/testUtils');
+// ViewportCuller / CardViewManager 现在会调用 fitCardText（定框纸样的字号自适应）。
+// loadModule 会剥离 import，按项目约定这里把它挂到 globalThis 供模块运行时取用。
+globalThis.fitCardText = loadModule('utils/cardTextFit.js', ['fitCardText']).fitCardText;
+
 
 // MindmapFeature 在测试环境未加载：_refreshScreenMeta 顶部会读 MindmapFeature.isActive，先桩掉
 global.MindmapFeature = { isActive: () => false, stats: () => ({ count: 0, depth: 0 }) };

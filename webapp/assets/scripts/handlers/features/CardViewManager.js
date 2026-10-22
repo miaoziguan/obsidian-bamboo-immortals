@@ -16,6 +16,7 @@ import { LinkLayer } from '../../services/LinkLayer.js';
 import { WritingDoc } from './writingDoc.js';
 import { UndoStack } from '../../services/undoStack.js';
 import { isFromTextEntry } from '../../utils/domRef.js';
+import { fitCardText } from '../../utils/cardTextFit.js';
 import { FLOWING_PAPER_SET, FONT_MAX_IDX_FIXED } from './twConfig.js';
 
 export const CardViewManager = {
@@ -166,6 +167,7 @@ export const CardViewManager = {
     // 连续编辑改走 WritingDoc 原语：缩放即改规范模型（与落盘/撤销/导出同源）
     ctrl._notes = WritingDoc.setZoom(ctrl._notes, card.dataset.id, ctrl._clampZoom(card.dataset.zoom));
     ctrl._invalidateGeo(card.dataset.id);   // 缩放改了卡片尺寸 → 几何失效（滚轮/双击复位/档位钮都走这里）
+    fitCardText(card);   // 卡片整体缩放后框与字号都变了 → 重算自适应比例
     return z;
   
   },
@@ -516,6 +518,7 @@ export const CardViewManager = {
     ctrl._refreshTip();
     ctrl._notes = WritingDoc.setFontScale(ctrl._notes, card.dataset.id, card.dataset.fontScale);
     ctrl._invalidateGeo(card.dataset.id);   // 字级改了文字尺寸 → 卡片高度随之变，几何失效
+    fitCardText(card);   // 字级是「用户意图」，自适应在其之上再微调（先清回基准再量，不会叠加）
     return i;
   
   },

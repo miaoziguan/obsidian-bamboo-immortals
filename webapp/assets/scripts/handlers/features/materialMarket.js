@@ -783,8 +783,11 @@ export const MaterialMarket = {
       const aspect = this._stickerAspect(this._installed && this._installed[rec.material]);
       if (aspect) { el.style.aspectRatio = String(aspect); el.style.height = 'auto'; }
       else { el.style.height = (Number(rec.rh) || 35) + 'em'; }
-      // 卡内层叠：纸面是 .tw-card-main::after（z-index:0）→ 负 z 即「半藏在便签后面」
-      el.style.zIndex = rec.behind ? '-1' : '1';
+      // 卡内层叠：正文/标题在 10，夜光纸纹理 .tw-card-main::after 在 20。
+      // 正常依附贴纸须「浮在纸面纹理之上」（30），否则夜光纸上贴纸会被纹理盖住、发暗；
+      // 但仍低于卡片自身手柄（.tw-card-resize 40 / .tw-card-tools 60），便于随时抓取。
+      // rec.behind 则半藏到纸后（-1）。
+      el.style.zIndex = rec.behind ? '-1' : '30';
       el.classList.toggle('bm-sticker-behind', !!rec.behind);
     } else {
       el.dataset.attached = '0';

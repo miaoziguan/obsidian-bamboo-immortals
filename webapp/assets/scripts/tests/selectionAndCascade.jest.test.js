@@ -38,6 +38,26 @@ describe('贴纸级联删除（MaterialMarket.removeAttachedStickers）', () => 
   });
 });
 
+describe('依附贴纸层叠（_applyStickerBox）：浮在纸纹之上、半藏仍在纸后', () => {
+  // _applyStickerBox 只用到 this._ctrl / _cardElById / _stickerAspect / _installed，
+  // 用一个假 this 调用，避免改动 MaterialMarket 单例。
+  function boxFor(behind) {
+    const el = document.createElement('div');
+    const rec = { el, parentId: 'c1', behind, rx: 0, ry: 0, rw: 35, rh: 35, material: 'm' };
+    const fakeThis = { _ctrl: {}, _cardElById: () => ({}), _stickerAspect: () => null, _installed: {} };
+    MaterialMarket._applyStickerBox.call(fakeThis, rec);
+    return el;
+  }
+
+  test('正常依附贴纸 z-index=30（高于夜光纸 ::after 的 20 / 正文 10，低于卡片手柄）', () => {
+    expect(boxFor(false).style.zIndex).toBe('30');
+  });
+
+  test('behind 贴纸 z-index=-1（半藏在纸后）', () => {
+    expect(boxFor(true).style.zIndex).toBe('-1');
+  });
+});
+
 describe('P2-#11 浮动条包围盒走几何缓存（Typewriter._tickSelBar）', () => {
   let bar;
   let canvas;

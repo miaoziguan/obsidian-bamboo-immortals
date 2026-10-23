@@ -981,7 +981,11 @@ export const MindmapFeature = {
         this._scheduleSave();
         this._updateToolbar();
       },
-      onPinchWillStart: () => { if (typeof this._cancelMarquee === 'function') this._cancelMarquee(); },
+      // 【对齐 Excalidraw】第二指落下：取消进行中的节点拖拽，让位给捏合（避免拖节点与缩放打架）；框选一并取消
+      onPinchWillStart: () => {
+        if (typeof this._cancelMarquee === 'function') this._cancelMarquee();
+        if (typeof this._nodeDragCancel === 'function') this._nodeDragCancel();
+      },
       onEmptyPointerDown: (e) => this._onEmptyPointerDown(e),
     });
 
@@ -1071,6 +1075,12 @@ export const MindmapFeature = {
     this._dragSet = dragSet;   // 拖拽中的节点 pin，避免被剔除卸载
     this._select(id);   // 单选高亮（不清除 _selSet，多选框仍保留）
     const x0 = e.clientX, y0 = e.clientY;
+    const dragPointerId = e.pointerId;   // 【对齐 Excalidraw】只认起始这一根手指；第二指落下交给捏合，不驱动节点拖拽
+    // setPointerCapture 锁定起始指针：确保拖拽只跟自己的手指、且移出元素/iframe 也不丢事件（Excalidraw 同款）
+    const captureEl = this._canvas || nodeEl;   // 画布本身不会被设 pointerEvents:none，作为捕获目标最稳
+    if (captureEl && captureEl.setPointerCapture && dragPointerId != null) {
+      try { captureEl.setPointerCapture(dragPointerId); } catch (_) {}
+    }
     // 记录每个被拖节点的初始坐标
     const starts = new Map();
     if (dragSet) {
@@ -1112,6 +1122,7 @@ export const MindmapFeature = {
       if (lastEv) updateDropHint(lastEv);
     };
     const move = (ev) => {
+      if (ev.pointerId !== dragPointerId) return;   // 第二指（捏合）的事件不驱动节点拖拽，避免拖节点与缩放打架
       // 缩放后「屏幕位移 ≠ 画布位移」：必须除以缩放比，否则放大后拖不动、缩小后拖过头
       const s = CanvasViewport.scaleOf(this._view);
       const dx = (ev.clientX - x0) / s, dy = (ev.clientY - y0) / s;
@@ -1121,16 +1132,22 @@ export const MindmapFeature = {
       lastEv = ev;
       if (!raf) raf = requestAnimationFrame(flush);
     };
-    const up = (ev) => {
-      this._dragSet = null;
+    const up = (ev) => finishDrag(ev, true);
+    // 收尾（松手）：清理监听、提交位置、还原状态；commit=true 时执行「拖放连线」副作用
+    const finishDrag = (ev, commit) => {
       document.removeEventListener('pointermove', move);
       document.removeEventListener('pointerup', up);
+      document.removeEventListener('pointercancel', up);
+      this._dragSet = null;
       if (raf) { cancelAnimationFrame(raf); raf = 0; }   // 丢弃未执行的重绘
-      if (moved) flush();   // 补一次最终「写位置 + 画连线」（用最新 curDx/curDy），保证后续 elementFromPoint/setPos 读到终态
+      if (commit && moved) flush();   // 补一次最终「写位置 + 画连线」（用最新 curDx/curDy），保证后续 elementFromPoint/setPos 读到终态
       if (dropTargetEl) { dropTargetEl.classList.remove('is-drop-target'); dropTargetEl = null; }
       if (!dragSet) nodeEl.style.pointerEvents = '';
+      if (captureEl && captureEl.releasePointerCapture && dragPointerId != null && captureEl.hasPointerCapture && captureEl.hasPointerCapture(dragPointerId)) {
+        try { captureEl.releasePointerCapture(dragPointerId); } catch (_) {}
+      }
       // 拖放连线：单颗拖动且松手落在另一颗子弹上 → 连线并弹回原位
-      if (!dragSet && moved) {
+      if (commit && !dragSet && moved) {
         const under = this._elementFromPoint(ev.clientX, ev.clientY);
         const tgt = under && under.closest('.tw-mm-node');
         const tid = tgt && tgt.dataset.id;
@@ -1147,6 +1164,7 @@ export const MindmapFeature = {
           this.renderNodes([id]);
           this._updateToolbar();
           this._msg(added ? '已连线' : '已相连');
+          this._nodeDragCancel = null;
           return;
         }
       }
@@ -1161,9 +1179,27 @@ export const MindmapFeature = {
       });
       if (moved) { this._scheduleSave(); this.renderNodes(Array.from(starts.keys())); }
       this._updateToolbar();   // 无论是否拖动都刷新：纯点击选中也要显示工具条（否则 moved=false 时工具条被拖拽前收起后再不出现）
+      this._nodeDragCancel = null;
+    };
+    // 取消进行中的拖拽（双指捏合开始时由 onPinchWillStart 调用）：清理监听、交还控制权给捏合，不执行拖放连线副作用
+    const cancel = () => {
+      document.removeEventListener('pointermove', move);
+      document.removeEventListener('pointerup', up);
+      document.removeEventListener('pointercancel', up);
+      this._dragSet = null;
+      if (raf) { cancelAnimationFrame(raf); raf = 0; }
+      if (moved) flush();   // 提交当前拖到的位置（不回弹），让位给捏合后节点停在原地
+      if (dropTargetEl) { dropTargetEl.classList.remove('is-drop-target'); dropTargetEl = null; }
+      if (!dragSet) nodeEl.style.pointerEvents = '';
+      if (captureEl && captureEl.releasePointerCapture && dragPointerId != null && captureEl.hasPointerCapture && captureEl.hasPointerCapture(dragPointerId)) {
+        try { captureEl.releasePointerCapture(dragPointerId); } catch (_) {}
+      }
+      this._nodeDragCancel = null;
     };
     document.addEventListener('pointermove', move);
     document.addEventListener('pointerup', up);
+    document.addEventListener('pointercancel', up);
+    this._nodeDragCancel = cancel;   // 供 onPinchWillStart 取消进行中的拖拽（对齐 Excalidraw：第二指落下 → 节点拖拽让位给捏合）
   },
 
 

@@ -283,40 +283,16 @@ export class LinkLayer {
     const b = it.gb;
     const ca = { x: a.cx, y: a.cy };
     const cb = { x: b.cx, y: b.cy };
+    const A = this.anchorOn(a, cb);
+    const B = this.anchorOn(b, ca);
     // 结构模式（presentation.structure）：整层统一按结构的边型/箭头渲染，忽略单条 route/arrow；
     // 自由模式：沿用每条线自己的 route/arrow（缺省实心直线 + 箭头）。
     const pres = (this.opts.getPresentation && this.opts.getPresentation()) || null;
     const structured = !!(pres && pres.structure);
-    let A, B, orient = null;
-    if (structured) {
-      // 【结构锚点】按结构方向固定取边：同一父节点的所有子线从同一点出发、汇入同一条 bus，
-      // 视觉上才像「主干分叉」。不能用 anchorOn（面向对方）——那会按每个子的方位挑不同的边，
-      // 近处走上下、远处走左右，肘形就会拐成台阶状。
-      const hwA = a.hw || 0, hhA = a.hh || 0, hwB = b.hw || 0, hhB = b.hh || 0;
-      const st = pres.structure;
-      if (st === 'org' || st === 'tree') {
-        A = { p: { x: a.cx, y: a.cy + hhA }, u: { x: 0, y: 1 } };    // 父：底边
-        B = { p: { x: b.cx, y: b.cy - hhB }, u: { x: 0, y: -1 } };   // 子：顶边
-        orient = 'v';
-      } else if (st === 'logic') {
-        A = { p: { x: a.cx + hwA, y: a.cy }, u: { x: 1, y: 0 } };    // 父：右边
-        B = { p: { x: b.cx - hwB, y: b.cy }, u: { x: -1, y: 0 } };   // 子：左边
-        orient = 'h';
-      } else {
-        // mindmap：父朝子的一侧 → 子朝父的一侧（左右为主）
-        const right = b.cx >= a.cx;
-        A = { p: { x: a.cx + (right ? hwA : -hwA), y: a.cy }, u: { x: right ? 1 : -1, y: 0 } };
-        B = { p: { x: b.cx - (right ? hwB : -hwB), y: b.cy }, u: { x: right ? -1 : 1, y: 0 } };
-        orient = 'h';
-      }
-    } else {
-      A = this.anchorOn(a, cb);
-      B = this.anchorOn(b, ca);
-    }
     const mode = structured
       ? (pres.edge || 'elbow')
       : ((l.route === 'bezier') ? 'bezier' : 'straight');   // 自由模式缺省实心直线
-    const { d, tip } = this.routePath(A.p, A.u, B.p, B.u, mode, structured ? 0 : (Number(l.bend) || 0), orient);
+    const { d, tip } = this.routePath(A.p, A.u, B.p, B.u, mode, structured ? 0 : (Number(l.bend) || 0));
     const showArrow = structured ? !!pres.arrow : (l.arrow !== 'none');
     const ah = 8, aw = 7;   // 三角高 / 半宽
     const apx = -tip.y, apy = tip.x;                          // 垂直于入线方向
@@ -382,15 +358,14 @@ export class LinkLayer {
 
   /** 生成路径。mode: bezier | straight；bend: 沿法线的额外弯曲量(px，拖中点手柄改，随线存盘)
    *  @returns {{d:string, tip:{x:number,y:number}}} 路径与末端切线单位向量（供箭头定向） */
-  routePath(p1, ua, p2, ub, mode, bend, orient) {
+  routePath(p1, ua, p2, ub, mode, bend) {
     const dx = p2.x - p1.x;
     const dy = p2.y - p1.y;
     const dist = Math.hypot(dx, dy) || 1;
     if (mode === 'elbow') {
-      // 肘形（组织图/树形图/逻辑图）：方向由结构指定（orient='v' 先竖后横 / 'h' 先横后竖）；
-      // 未指定时退化为按主轴自动判断。同一父节点的子线共享第一段（同一 bus），自然拼成主干。
-      const vertical = orient === 'v' ? true : (orient === 'h' ? false : Math.abs(dy) >= Math.abs(dx));
-      if (vertical) {
+      // 肘形（组织图/树形图/逻辑图）：主轴决定「先竖后横」还是「先横后竖」。
+      // 同一父节点的多个子节点共享第一段（同一 bus 线），视觉上自然拼成一条主干。
+      if (Math.abs(dy) >= Math.abs(dx)) {
         const my = p1.y + dy / 2;
         return {
           d: `M ${p1.x} ${p1.y} L ${p1.x} ${my} L ${p2.x} ${my} L ${p2.x} ${p2.y}`,

@@ -153,28 +153,6 @@ describe('LinkLayer · 结构模式（elbow / 无箭头 / 隐藏源点）', () =
     expect(layer._svg.querySelector('.tw-link-dot-src').getAttribute('r')).toBe('0');
   });
 
-  test('结构锚点：org 固定父底 / 子顶（不会被"面向对方"带偏）', () => {
-    // 子节点偏右下：若走 anchorOn（面向对方）会选父的右边(160,100)、子的左边(540,160)；
-    // 结构锚点必须仍是父底(100,130) → 子顶(600,130)。
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-    const geom = {
-      a: { cx: 100, cy: 100, hw: 60, hh: 30, rot: 0 },
-      b: { cx: 600, cy: 160, hw: 60, hh: 30, rot: 0 },
-    };
-    const links = [{ from: 'a', to: 'b', route: 'bezier', bend: 0, dash: 'solid' }];
-    const layer = new LinkLayer({
-      container, nodeSelector: '.tw-card', getGeom: (id) => geom[id] || null,
-      getLinks: () => links, setLinks: () => {}, addLink: () => true,
-      removeLink: () => {}, removeLinksOf: () => {}, onChange: () => {},
-      getPresentation: () => ({ structure: 'org', edge: 'elbow', arrow: false }),
-    });
-    layer.render();
-    const d = layer._svg.querySelector('.tw-link').getAttribute('d');
-    expect(d.startsWith('M 100 130')).toBe(true);   // 父底（anchorOn 会是 M 160 100）
-    expect(d).toContain('600 130');                  // 子顶（anchorOn 会是 540 160）
-  });
-
   test('自由模式：弯曲 + 箭头 + 源端圆点（不受结构影响）', () => {
     const layer = mkLayer(null);
     layer.render();

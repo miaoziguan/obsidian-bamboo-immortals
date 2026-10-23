@@ -2093,11 +2093,7 @@ export const MindmapFeature = {
       subNodes = nodes;
       subLinks = tree.treeLinks;
     }
-    // 间距按节点形状：纯文本节点比胶囊小得多，沿用方框间距会显得空旷。
-    const textShape = (structure === 'mindmap' || structure === 'logic');
-    const pos = MindmapLayout.compute(structure, subNodes, subLinks, textShape
-      ? { nodeW: 130, nodeH: 36, hGap: 22, vGap: 34 }
-      : { nodeW: 180, nodeH: 64, hGap: 28, vGap: 46 });
+    const pos = MindmapLayout.compute(structure, subNodes, subLinks);
     if (!pos || !pos.size) return false;
 
     this._mutate(() => {

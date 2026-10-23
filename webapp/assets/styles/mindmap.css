@@ -421,13 +421,3 @@
 .tw-mm.is-structured[data-node-shape="text"] .tw-mm-node.is-multi-sel {
   box-shadow: none;   /* 选中仍靠 outline（金色/主色）识别 */
 }
-
-/* 结构模式：组织图/树形图用方框（圆角矩形，而非胶囊） */
-.tw-mm.is-structured[data-node-shape="box"] .tw-mm-node {
-  border-radius: var(--radius-control);
-}
-/* 结构连线：肘形拐角圆润（miter → round），避免生硬直角 */
-.tw-mm .tw-links path {
-  stroke-linejoin: round;
-  stroke-linecap: round;
-}

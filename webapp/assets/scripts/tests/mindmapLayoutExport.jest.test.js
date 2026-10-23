@@ -222,16 +222,6 @@ describe('MindmapLayout · 结构模式（mindmap / org / logic）', () => {
     expect(new Set([...pos.values()].map((p) => p.x + ',' + p.y)).size).toBe(5);
   });
 
-  test('mindmap 多根：各自双侧排布、纵向堆叠（不再退化成上下树）', () => {
-    const nodes = [{ id: 'r1' }, { id: 'a1' }, { id: 'r2' }, { id: 'a2' }];
-    const links = [{ from: 'r1', to: 'a1' }, { from: 'r2', to: 'a2' }];
-    const pos = MindmapLayout.compute('mindmap', nodes, links);
-    const r1 = pos.get('r1'), a1 = pos.get('a1'), r2 = pos.get('r2'), a2 = pos.get('a2');
-    expect(a1.x).not.toBe(r1.x);   // 双侧：子与根不同 x（上下树会同 x）
-    expect(a2.x).not.toBe(r2.x);
-    expect(Math.abs(r1.y - r2.y)).toBeGreaterThan(100);   // 两棵树纵向分开，不叠在一起
-  });
-
   test('org：根在上子在下；logic：根在左子在右', () => {
     const nodes = [{ id: 'r' }, { id: 'a' }, { id: 'b' }];
     const links = [{ from: 'r', to: 'a' }, { from: 'r', to: 'b' }];

@@ -401,7 +401,19 @@ export const TypewriterFeature = {
       fit: () => ctrl._fitNotesToView(),
       // 素材市场入口：点击缩放条市场按钮即开/关右侧抽屉（由 CanvasZoomUI 统一分发，避免多 bar 选择器歧义）
       onMarket: () => MaterialMarket.toggle(),
+      // 抓手（对齐 Excalidraw 手工具）：便签/写作档也装了 space-hand，这里给缩放条一个 hand 键；
+      // 开启后单指拖空白/拖卡片都=平移（CanvasGestures 的 panIntent），关闭恢复框选/拖卡。
+      onHand: () => ctrl._toggleHand(),
+      isHandActive: () => !!(ctrl._hand && ctrl._hand.state && ctrl._hand.state.handTool),
     });
+  },
+
+  /** 抓手开关（便签/写作档）：复用 space-hand 的 handTool；同步缩放条高亮。 */
+  _toggleHand() {
+    if (!this._hand || typeof this._hand.toggleHand !== 'function') return;
+    const on = this._hand.toggleHand();
+    if (this._zoomUI && typeof this._zoomUI.sync === 'function') this._zoomUI.sync();
+    this._showScreenMsg(on ? '抓手：单指拖动画布平移' : '已退出抓手（单指拖空白恢复框选）', 1200);
   },
 
   /** 缩放变化后刷新外围圆钮尺寸（圆钮不应随画布一起变大变小） */

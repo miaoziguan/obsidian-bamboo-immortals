@@ -160,6 +160,56 @@ describe('P2-#9 / P3-#2 拖拽：transform 提交 + 越阈入撤销栈', () => {
     expect(c2.style.willChange).toBe('');
     expect(c2.style.left).toBe('150px');   // 50 + 100
   });
+
+  // 【对齐 Excalidraw】卡片拖拽只认起始 pointerId：第二指 move 不驱动、第二指 up 不掐断
+  test('拖拽只认起始 pointerId：第二指 move 不移动、第二指 up 不结束拖拽', () => {
+    const card = document.createElement('div');
+    card.className = 'tw-card';
+    card.dataset.id = 'n3';
+    card.style.left = '10px';
+    card.style.top = '20px';
+    const ctrl = makeCtrl(card);
+    const e = { clientX: 100, clientY: 100, pointerId: 1, target: card, shiftKey: false, preventDefault: jest.fn() };
+    CardInteractions.startGroupDrag({ state: {}, ctrl }, e, card);
+
+    const m2 = new Event('pointermove'); m2.pointerId = 2; m2.clientX = 400; m2.clientY = 400;
+    document.dispatchEvent(m2);
+    expect(card.style.getPropertyValue('--tw-drag-x')).toBe('');   // 第二指不驱动
+
+    const m1 = new Event('pointermove'); m1.pointerId = 1; m1.clientX = 200; m1.clientY = 100;
+    document.dispatchEvent(m1);
+    expect(card.style.getPropertyValue('--tw-drag-x')).toBe('100px');   // 起始指驱动
+
+    const u2 = new Event('pointerup'); u2.pointerId = 2;
+    document.dispatchEvent(u2);
+    expect(card.style.left).toBe('10px');                              // 第二指抬起不提交
+    expect(typeof ctrl._cardGestureCancel).toBe('function');           // 拖拽仍在进行
+
+    const u1 = new Event('pointerup'); u1.pointerId = 1;
+    document.dispatchEvent(u1);
+    expect(card.style.left).toBe('110px');                             // 起始指抬起才提交
+    expect(ctrl._cardGestureCancel).toBeNull();
+  });
+
+  test('_cardGestureCancel：第二指落空白/捏合取消时，提交当前位置并清空句柄', () => {
+    const card = document.createElement('div');
+    card.className = 'tw-card';
+    card.dataset.id = 'n4';
+    card.style.left = '10px';
+    card.style.top = '20px';
+    const ctrl = makeCtrl(card);
+    const e = { clientX: 100, clientY: 100, pointerId: 1, target: card, shiftKey: false, preventDefault: jest.fn() };
+    CardInteractions.startGroupDrag({ state: {}, ctrl }, e, card);
+
+    const m1 = new Event('pointermove'); m1.pointerId = 1; m1.clientX = 200; m1.clientY = 100;
+    document.dispatchEvent(m1);
+    expect(card.style.getPropertyValue('--tw-drag-x')).toBe('100px');
+
+    ctrl._cardGestureCancel();   // 让位给捏合：当前位置定住，不回弹
+    expect(card.style.left).toBe('110px');
+    expect(card.style.getPropertyValue('--tw-drag-x')).toBe('');
+    expect(ctrl._cardGestureCancel).toBeNull();
+  });
 });
 
 describe('选中态 .selected 类（贴纸金色描边 A 的触发点）', () => {

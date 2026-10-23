@@ -89,4 +89,28 @@ describe('思维子弹：抓手工具放在缩放条（对齐 Excalidraw）', ()
     const feature = { _mode: 'mindmap', _el: document.createElement('div') };
     expect(() => tw._runModeAction.call(feature, 'hand')).not.toThrow();
   });
+
+  test('便签/写作档 _toggleHand：翻转 handTool 并同步缩放条 + 提示', () => {
+    const tw = loadModule('handlers/features/typewriterFeature.js', ['TypewriterFeature']).TypewriterFeature;
+    const state = { handTool: false };
+    const zoomUI = { sync: jest.fn() };
+    const feature = {
+      _hand: { state, toggleHand() { state.handTool = !state.handTool; return state.handTool; } },
+      _zoomUI: zoomUI,
+      _showScreenMsg: jest.fn(),
+    };
+    tw._toggleHand.call(feature);
+    expect(state.handTool).toBe(true);
+    expect(zoomUI.sync).toHaveBeenCalled();
+    expect(feature._showScreenMsg).toHaveBeenCalled();
+    tw._toggleHand.call(feature);
+    expect(state.handTool).toBe(false);
+  });
+
+  test('便签/写作档 _toggleHand：无 _hand 时 no-op', () => {
+    const tw = loadModule('handlers/features/typewriterFeature.js', ['TypewriterFeature']).TypewriterFeature;
+    const feature = { _showScreenMsg: jest.fn() };
+    expect(() => tw._toggleHand.call(feature)).not.toThrow();
+    expect(feature._showScreenMsg).not.toHaveBeenCalled();
+  });
 });

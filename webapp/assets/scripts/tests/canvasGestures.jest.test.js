@@ -241,3 +241,81 @@ describe('CanvasGestures 共享手势（C3）', () => {
     host.remove();
   });
 });
+
+describe('抓手/空格态下的平移优先级（对齐 Excalidraw 手工具）', () => {
+  function makeHost() {
+    const host = document.createElement('div');
+    const card = document.createElement('div');
+    card.className = 'tw-card';
+    const resize = document.createElement('div');
+    resize.className = 'tw-card-resize';
+    card.appendChild(resize);
+    host.appendChild(card);
+    document.body.appendChild(host);
+    return { host, card, resize };
+  }
+
+  function setup(host) {
+    const log = [];
+    let view = { x: 0, y: 0, scale: 1 };
+    const hand = CanvasGestures.installSpaceHand(host, { isActive: () => true });
+    const detach = CanvasGestures.attach(host, {
+      isActive: () => true,
+      state: hand.state,
+      getView: () => view,
+      setView: (v) => { view = v; log.push(['setView']); },
+      getScale: () => view.scale,
+      zoomAt: () => {},
+      panBy: () => {},
+      onBeforePan: () => log.push('beforePan'),
+      onPanEnd: () => log.push('panEnd'),
+      onEmptyPointerDown: () => log.push('empty'),
+    });
+    return { log, hand, detach };
+  }
+
+  test('handTool 开启：抓在卡片上 → 平移（不触发框选/清选）', () => {
+    const { host, card } = makeHost();
+    const { log, hand, detach } = setup(host);
+    hand.toggleHand();   // state.handTool = true
+    firePointer(card, 'pointerdown', { pointerId: 1, pointerType: 'touch', button: 0, clientX: 100, clientY: 100 });
+    expect(log).toContain('beforePan');
+    expect(log).not.toContain('empty');
+    log.length = 0;
+    firePointer(window, 'pointermove', { pointerId: 1, clientX: 150, clientY: 120 });
+    expect(log.some((l) => Array.isArray(l) && l[0] === 'setView')).toBe(true);
+    firePointer(window, 'pointerup', { pointerId: 1 });
+    detach(); hand.destroy(); host.remove();
+  });
+
+  test('handTool 开启：抓在真控件（缩放手柄）上 → 仍交还自身，不平移', () => {
+    const { host, resize } = makeHost();
+    const { log, hand, detach } = setup(host);
+    hand.toggleHand();
+    firePointer(resize, 'pointerdown', { pointerId: 1, pointerType: 'touch', button: 0 });
+    expect(log).not.toContain('beforePan');
+    expect(log).not.toContain('empty');
+    detach(); hand.destroy(); host.remove();
+  });
+
+  test('未开抓手：抓在卡片上 → 交还卡片自身（不平移、不框选）', () => {
+    const { host, card } = makeHost();
+    const { log, hand, detach } = setup(host);
+    firePointer(card, 'pointerdown', { pointerId: 1, pointerType: 'touch', button: 0 });
+    expect(log).not.toContain('beforePan');
+    expect(log).not.toContain('empty');
+    detach(); hand.destroy(); host.remove();
+  });
+
+  test('平移中第二指落下 → 平移让位给捏合（不叠加）', () => {
+    const { host } = makeHost();
+    const { log, hand, detach } = setup(host);
+    hand.toggleHand();
+    firePointer(host, 'pointerdown', { pointerId: 1, pointerType: 'touch', button: 0, clientX: 100, clientY: 100 });
+    expect(log).toContain('beforePan');
+    log.length = 0;
+    firePointer(host, 'pointerdown', { pointerId: 2, pointerType: 'touch', button: 0, clientX: 200, clientY: 200 });
+    expect(log).toContain('panEnd');   // 起捏合时平移被结束
+    detach(); hand.destroy(); host.remove();
+  });
+});

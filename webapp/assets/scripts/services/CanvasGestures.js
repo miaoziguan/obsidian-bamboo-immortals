@@ -26,6 +26,17 @@ const CONTROL_SEL = [
   '.tw-mm-search', '.tw-mm-toolbar',
 ].join(',');
 
+// 「真·交互控件」：即便处于抓手/空格/中键的平移意图下，也必须交还自身（点击/输入/拖角/连线锚点/缩放条）。
+// 与 CONTROL_SEL 的差别：移除了 .tw-card / .tw-links —— 它们是「画布内容」，
+// 抓手态下应可被平移抓住（对齐 Excalidraw 手工具：选中手工具后整块画布都能拖）。
+const INTERACTIVE_SEL = [
+  'button', 'input', 'textarea', 'select',
+  '.tw-zoom-bar',
+  '.tw-card-resize', '.tw-card-rotate', '.tw-card-link', '.tw-card-delete',
+  '.tw-links-ctl',
+  '.tw-mm-search', '.tw-mm-toolbar',
+].join(',');
+
 // 浮层/控件上的滚轮：归其自身滚动（整篇预览只读框、素材抽屉、缩放条、模态对话/菜单），
 // 不得被画布平移劫持 —— 与上面的 CONTROL_SEL（指针侧豁免）对称，补齐滚轮侧的同类豁免。
 // 回归点：「整篇预览」弹窗在 wrap 内、其 .tw-preview-body 是 overflow:auto 的可滚只读框；
@@ -112,6 +123,7 @@ export const CanvasGestures = {
     // 松指时还可能同时触发两次 startPan（平移量也被加倍）。
     let pinchActive = false;
     let endPinch = null;      // 当前捏合会话的摘除函数（见 startPinch）
+    let panEnd = null;        // 当前平移会话的摘除函数（见 startPan）；起捏合时用它让位
 
     const isPanIntent = (e) =>
       !!(a.state.spaceDown || a.state.handTool) ||
@@ -119,7 +131,12 @@ export const CanvasGestures = {
 
     const onDown = (e) => {
       if (!a.isActive()) return;
-      if (e.target.closest && e.target.closest(CONTROL_SEL)) return;
+      const panIntent = isPanIntent(e);
+      // 真控件永远交还自身（即便抓手态也不能被平移抢走）
+      if (e.target.closest && e.target.closest(INTERACTIVE_SEL)) return;
+      // 「抓手/空格/中键」优先于画布内容（卡片/连线）：抓在内容上也能平移；
+      // 非平移意图时，画布内容仍交还自身（卡片拖拽 / 节点拖拽 / 连线锚点）。
+      if (e.target.closest && e.target.closest(CONTROL_SEL) && !panIntent) return;
       // 仅放行左键(0)与中键(1)；右键等不参与（保留右键菜单）
       if (e.pointerType === 'mouse' && e.button !== 0 && e.button !== 1) return;
       if (a.onPointerDownAny) a.onPointerDownAny(e);
@@ -132,9 +149,9 @@ export const CanvasGestures = {
         e.stopPropagation();
         return;
       }
-      if (isPanIntent(e)) {                 // 空格/抓手/中键 → 平移（接管，阻止 onEmptyPointerDown 触发框选）
+      if (panIntent) {                      // 空格/抓手/中键 → 平移（接管，阻止 onEmptyPointerDown 触发框选）
         if (a.onBeforePan) a.onBeforePan();
-        startPan({ clientX: e.clientX, clientY: e.clientY });
+        startPan({ clientX: e.clientX, clientY: e.clientY, pointerId: e.pointerId });
         e.preventDefault();
         e.stopPropagation();
         return;
@@ -146,17 +163,24 @@ export const CanvasGestures = {
     const startPan = (first) => {
       const v = a.getView();
       const x0 = first.clientX, y0 = first.clientY, vx0 = v.x, vy0 = v.y;
+      const panPointerId = first.pointerId;
       if (a.onPanStart) a.onPanStart();
       const move = (ev) => {
+        // 只认起始这一根手指；第二指（捏合）的 move 不驱动平移，避免平移与缩放叠加
+        if (panPointerId != null && ev.pointerId !== panPointerId) return;
         a.setView({ x: vx0 + (ev.clientX - x0), y: vy0 + (ev.clientY - y0), scale: a.getScale() });
         if (a.onPanMove) a.onPanMove();
       };
-      const up = () => {
+      const up = (ev) => {
+        // 只认起始指抬起；其他手指的 up 不得提前结束平移
+        if (panPointerId != null && ev && ev.pointerId !== panPointerId) return;
         window.removeEventListener('pointermove', move);
         window.removeEventListener('pointerup', up);
         window.removeEventListener('pointercancel', up);
+        panEnd = null;
         if (a.onPanEnd) a.onPanEnd();
       };
+      panEnd = up;   // 供 startPinch 取消：二指起捏合时平移让位（否则平移 + 缩放同时生效）
       window.addEventListener('pointermove', move);
       window.addEventListener('pointerup', up);
       window.addEventListener('pointercancel', up);
@@ -164,6 +188,7 @@ export const CanvasGestures = {
 
     const startPinch = () => {
       if (pinchActive) return;              // 幂等：绝不叠加第二套 move/up 监听
+      if (panEnd) panEnd();                 // 平移让位给捏合，避免平移 + 缩放叠加
       pinchActive = true;
       if (a.onPinchStart) a.onPinchStart();
       let last = null;

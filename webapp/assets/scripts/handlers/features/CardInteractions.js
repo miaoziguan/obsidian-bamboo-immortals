@@ -58,7 +58,16 @@ export const CardInteractions = {
    */
   startGroupDrag(ctx, e, primaryEl) {
     const ctrl = ctx.ctrl;
+    // 已有进行中的卡片手势（拖拽/缩放/旋转）：先取消，避免两套 document 监听并存
+    // （第二根手指落在另一张卡上会再起一套 startGroupDrag → 两张卡一起跑）。
+    if (typeof ctrl._cardGestureCancel === 'function') ctrl._cardGestureCancel();
     const mm = ctrl._materialMarket || null;
+    // 【对齐 Excalidraw】只认起始这一根手指；第二指的 move/up 不得驱动或掐断本次拖拽。
+    const dragPointerId = e.pointerId;
+    const captureEl = ctrl._canvas || primaryEl;
+    if (captureEl && captureEl.setPointerCapture && dragPointerId != null) {
+      try { captureEl.setPointerCapture(dragPointerId); } catch (_) {}
+    }
     const set = (ctrl._selected && ctrl._selected.size) ? ctrl._selected : new Set([primaryEl]);
     let dragging = true, moved = false, startX = e.clientX, startY = e.clientY, dx = 0, dy = 0, raf = 0;
     let dragSet = Array.from(set).map((el) => ({
@@ -93,6 +102,7 @@ export const CardInteractions = {
     };
     const onMove = (ev) => {
       if (!dragging) return;
+      if (dragPointerId != null && ev.pointerId !== dragPointerId) return;   // 第二指不驱动本次拖拽
       if (!moved && (Math.abs(ev.clientX - startX) > 4 || Math.abs(ev.clientY - startY) > 4)) {
         moved = true;
         if (ctrl._undoStack) ctrl._undoStack.push();   // 变更前留档：拖动位置可撤销（Cmd+Z 不再回退更早快照）
@@ -107,6 +117,8 @@ export const CardInteractions = {
     // 系统取消指针（触控板手势接管 / 失焦 / 来电）时也必须走同一收尾路径：
     // 否则 _draggingSet 永不复位 → 卡片永久钉屏（剔除不再卸载）、document 监听残留。
     const onUp = (ev) => {
+      if (!dragging) return;
+      if (ev && dragPointerId != null && ev.pointerId !== dragPointerId) return;   // 只认起始指抬起；第二指抬起不得掐断拖拽
       const cancelled = !!(ev && ev.type === 'pointercancel');
       dragging = false;
       if (raf) { cancelAnimationFrame(raf); raf = 0; }
@@ -160,9 +172,16 @@ export const CardInteractions = {
         primaryEl.style.removeProperty('--tw-drag-x');
         primaryEl.style.removeProperty('--tw-drag-y');
       }
+      if (captureEl && captureEl.releasePointerCapture && dragPointerId != null && captureEl.hasPointerCapture && captureEl.hasPointerCapture(dragPointerId)) {
+        try { captureEl.releasePointerCapture(dragPointerId); } catch (_) {}
+      }
+      if (ctrl._cardGestureCancel === cancel) ctrl._cardGestureCancel = null;
       dragSet = null;
     };
+    // 供「第二指落下 / 捏合开始」取消：复用收尾路径（提交当前位置、不回弹），让位给捏合
+    const cancel = () => { if (dragging) onUp({ type: 'pointercancel', pointerId: dragPointerId }); };
     e.preventDefault();
+    ctrl._cardGestureCancel = cancel;
     document.addEventListener('pointermove', onMove);
     document.addEventListener('pointerup', onUp);
     document.addEventListener('pointercancel', onUp);
@@ -232,7 +251,11 @@ export const CardInteractions = {
         canvas.style.willChange = '';               // 撤掉合成层提升，避免常驻巨型层拖垮整页合成器
         ctrl._scheduleSave();                       // 持久化画布偏移
       },
-      onPinchWillStart: () => { if (ctrl._cancelMarquee) ctrl._cancelMarquee(); },  // 取消可能已起的框选
+      onPinchWillStart: () => {
+        // 二指起捏合：取消框选 + 取消进行中的卡片拖拽/缩放/旋转，让位给捏合
+        if (typeof ctrl._cardGestureCancel === 'function') ctrl._cardGestureCancel();
+        if (ctrl._cancelMarquee) ctrl._cancelMarquee();
+      },
       onPinchStart: () => {
         ctrl._setLodDragging(true);
         canvas.style.willChange = 'transform';
@@ -243,6 +266,9 @@ export const CardInteractions = {
         ctrl._scheduleSave();
       },
       onEmptyPointerDown: (e) => {
+        // 第二根手指落在空白时若正在拖卡片/缩放/旋转：取消该手势并让位，绝不起框选、绝不吞掉选中。
+        // （卡片在 CONTROL_SEL 内，其触点不进 ptrs；第二指落空白凑不成双指，会走到这里。）
+        if (typeof ctrl._cardGestureCancel === 'function') { ctrl._cardGestureCancel(); return; }
         // Excalidraw 语义：拖空白 = 框选（Shift = 追加）；平移改由 空格/中键/抓手/滚轮/双指 承担
         // 阻止默认：避免拖拽触发原生「文本选择 / 自动滚动」与画布 transform 打架（表现为画面跳动）
         if (e.cancelable !== false && typeof e.preventDefault === 'function') e.preventDefault();
@@ -640,6 +666,7 @@ export const CardInteractions = {
     card.appendChild(handle);
 
     let resizing = false;
+    let resizePointerId = null;
     let startX = 0;
     let startY = 0;
     let baseW = 1;      // zoom=1 时的卡片宽度：拖拽位移统一折算到这个基准上
@@ -658,13 +685,15 @@ export const CardInteractions = {
     };
     const onMove = (e) => {
       if (!resizing) return;
+      if (resizePointerId != null && e.pointerId !== resizePointerId) return;   // 第二指不驱动本次缩放
       // 对角手势：向右下拖 = 放大（横向与纵向位移都计入，手感更自然）
       const delta = (e.clientX - startX) + (e.clientY - startY);
       pendingZoom = ((baseW + delta) / baseW) * startZoom;
       if (!raf) raf = requestAnimationFrame(apply);
     };
-    const onUp = () => {
+    const onUp = (e) => {
       if (!resizing) return;
+      if (e && resizePointerId != null && e.pointerId !== resizePointerId) return;   // 只认起始指抬起
       resizing = false;
       if (raf) { cancelAnimationFrame(raf); raf = 0; }
       ctrl._applyZoom(card, pendingZoom);   // 补写最后一帧，避免丢掉末尾增量
@@ -672,13 +701,26 @@ export const CardInteractions = {
       document.removeEventListener('pointermove', onMove);
       document.removeEventListener('pointerup', onUp);
       document.removeEventListener('pointercancel', onUp);
+      const capEl = ctrl._canvas || card;
+      if (capEl && capEl.releasePointerCapture && resizePointerId != null && capEl.hasPointerCapture && capEl.hasPointerCapture(resizePointerId)) {
+        try { capEl.releasePointerCapture(resizePointerId); } catch (_) {}
+      }
+      if (ctrl._cardGestureCancel === cancel) ctrl._cardGestureCancel = null;
       ctrl._measureCard(card); // 缩放手势结束重测几何→刷新 geo+空间索引
       ctrl._scheduleSave(); // 落盘新尺寸
     };
+    // 供「第二指落下 / 捏合开始」取消：复用收尾路径（在当前位置定住），让位给捏合
+    const cancel = () => { if (resizing) onUp({ type: 'pointercancel', pointerId: resizePointerId }); };
 
     handle.addEventListener('pointerdown', (e) => {
       e.preventDefault();
       e.stopPropagation();
+      if (typeof ctrl._cardGestureCancel === 'function') ctrl._cardGestureCancel();   // 取消其他进行中的手势
+      const captureEl = ctrl._canvas || card;
+      resizePointerId = e.pointerId;
+      if (captureEl && captureEl.setPointerCapture && resizePointerId != null) {
+        try { captureEl.setPointerCapture(resizePointerId); } catch (_) {}
+      }
       resizing = true;
       startX = e.clientX;
       startY = e.clientY;
@@ -690,6 +732,7 @@ export const CardInteractions = {
       baseW = (w || 340);
       card.classList.add('is-resizing');
       card.style.zIndex = String(++ctrl._zTop);
+      ctrl._cardGestureCancel = cancel;   // 供第二指/捏合取消
       document.addEventListener('pointermove', onMove);
       document.addEventListener('pointerup', onUp);
       document.addEventListener('pointercancel', onUp);   // 系统取消指针时同样收尾，避免监听残留
@@ -721,6 +764,7 @@ export const CardInteractions = {
     card.appendChild(handle);
 
     let rotating = false;
+    let rotatePointerId = null;
     let lastAngle = 0;
     // 【性能】旋转是绕卡片中心的，中心在旋转下不变 → pointerdown 时取一次即可复用。
     // 原先每次 move 都 getBoundingClientRect()，且与 _applyRot 的写入交替 → 强制同步重排。
@@ -738,6 +782,7 @@ export const CardInteractions = {
     };
     const onMove = (e) => {
       if (!rotating) return;
+      if (rotatePointerId != null && e.pointerId !== rotatePointerId) return;   // 第二指不驱动本次旋转
       const a = angleOf(cx0, cy0, e.clientX, e.clientY);
       let delta = a - lastAngle;
       // 跨越 ±180° 时 atan2 会跳变，归一化增量避免「猛地多转一圈」
@@ -749,8 +794,9 @@ export const CardInteractions = {
       if (e.shiftKey) pendingDeg = Math.round(pendingDeg / 15) * 15;
       if (!raf) raf = requestAnimationFrame(apply);
     };
-    const onUp = () => {
+    const onUp = (e) => {
       if (!rotating) return;
+      if (e && rotatePointerId != null && e.pointerId !== rotatePointerId) return;   // 只认起始指抬起
       rotating = false;
       if (raf) { cancelAnimationFrame(raf); raf = 0; }
       ctrl._applyRot(card, pendingDeg);   // 补写最后一帧，避免丢掉末尾增量
@@ -760,11 +806,24 @@ export const CardInteractions = {
       document.removeEventListener('pointermove', onMove);
       document.removeEventListener('pointerup', onUp);
       document.removeEventListener('pointercancel', onUp);
+      const capEl = ctrl._canvas || card;
+      if (capEl && capEl.releasePointerCapture && rotatePointerId != null && capEl.hasPointerCapture && capEl.hasPointerCapture(rotatePointerId)) {
+        try { capEl.releasePointerCapture(rotatePointerId); } catch (_) {}
+      }
+      if (ctrl._cardGestureCancel === cancel) ctrl._cardGestureCancel = null;
       ctrl._scheduleSave();   // 落盘新角度
     };
+    // 供「第二指落下 / 捏合开始」取消：复用收尾路径（在当前位置定住），让位给捏合
+    const cancel = () => { if (rotating) onUp({ type: 'pointercancel', pointerId: rotatePointerId }); };
     handle.addEventListener('pointerdown', (e) => {
       e.preventDefault();
       e.stopPropagation();
+      if (typeof ctrl._cardGestureCancel === 'function') ctrl._cardGestureCancel();   // 取消其他进行中的手势
+      const captureEl = ctrl._canvas || card;
+      rotatePointerId = e.pointerId;
+      if (captureEl && captureEl.setPointerCapture && rotatePointerId != null) {
+        try { captureEl.setPointerCapture(rotatePointerId); } catch (_) {}
+      }
       rotating = true;
       const r = card.getBoundingClientRect();
       cx0 = r.left + r.width / 2;
@@ -773,6 +832,7 @@ export const CardInteractions = {
       lastAngle = angleOf(cx0, cy0, e.clientX, e.clientY);
       card.classList.add('is-rotating');
       card.style.zIndex = String(++ctrl._zTop);
+      ctrl._cardGestureCancel = cancel;   // 供第二指/捏合取消
       document.addEventListener('pointermove', onMove);
       document.addEventListener('pointerup', onUp);
       document.addEventListener('pointercancel', onUp);   // 系统取消指针时同样收尾，避免监听残留

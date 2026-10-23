@@ -368,26 +368,28 @@
 /* 有备注的节点右上角出现可点标记（点开/收起备注卡片） */
 .tw-mm-note-mark {
   position: absolute;
-  left: 50%;
-  bottom: -11px;                /* 挂在胶囊下沿外侧：不压边框，也避开右侧连线锚点 */
-  top: auto;
-  width: 20px;
-  height: 14px;
+  top: -7px;
+  right: -7px;                  /* 角标：半挂在胶囊右上角外（不占文字区、不碰右侧连线锚点） */
+  left: auto;
+  bottom: auto;
+  width: 16px;
+  height: 16px;
   padding: 0;
-  border: 0;
-  background: transparent;
+  border: 1px solid var(--border-light);
+  border-radius: 50%;
+  background: var(--card-bg);
+  box-shadow: 0 1px 2px rgba(var(--black-rgb), .14);
   color: var(--text-secondary);
-  opacity: .85;
+  opacity: .95;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transform: translateX(-50%);
-  transition: transform .15s ease, color .15s ease, opacity .15s ease;
-  z-index: 2;
+  z-index: 3;
+  transition: color .15s ease, border-color .15s ease, box-shadow .15s ease;
 }
-.tw-mm-note-mark:hover { color: var(--bamboo-primary); opacity: 1; }
-.tw-mm-note-mark.is-open { transform: translateX(-50%) rotate(180deg); }   /* 展开 → 倒三角变正三角 */
+.tw-mm-note-mark:hover { color: var(--bamboo-primary); border-color: rgba(var(--primary-rgb), .5); }
+.tw-mm-note-mark.is-open { color: var(--bamboo-primary); border-color: var(--bamboo-primary); box-shadow: 0 0 0 2px rgba(var(--primary-rgb), .18); }
 .tw-mm-note-mark[hidden] { display: none; }
 
 .tw-mm-note-pop {

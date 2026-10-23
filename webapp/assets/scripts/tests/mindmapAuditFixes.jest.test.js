@@ -168,7 +168,44 @@ describe('teardown 兜底写回未失焦的笔记', () => {
   });
 });
 
-// ── 4) 删除节点时清掉几何缓存 ──────────────────────────────────────────
+// ── 5) 浮动工具条不再每帧重复查询 / 量尺寸 ─────────────────────────────
+// _updateToolbar 由 _applyView 每帧调用（平移/缩放）。原先每次都 querySelector 一次，
+// 并在 hidden=false 后读 offsetWidth/offsetHeight —— 后者会强制一次同步回流。
+// 工具条内容是固定的（按钮行 + 色盘），尺寸不会随平移变化，故缓存。
+describe('浮动工具条缓存（_updateToolbar 热路径）', () => {
+  test('_initToolbar 缓存「节点笔记」按钮，并把尺寸缓存置空待首次量取', () => {
+    const layer = document.createElement('div');
+    const MM = MindmapFeature;
+    MM._initToolbar(layer);
+    expect(MM._tbNoteBtn).toBeTruthy();
+    expect(MM._tbNoteBtn.dataset.act).toBe('note');
+    expect(MM._tbSize).toBeNull();
+  });
+
+  test('_updateToolbar 复用缓存按钮：不再每次 querySelector', () => {
+    const MM = MindmapFeature;
+    const layer = document.createElement('div');
+    MM._initToolbar(layer);
+    const tb = MM._toolbar;
+    const spy = jest.spyOn(tb, 'querySelector');
+
+    const nodeEl = document.createElement('div');
+    MM._el = document.createElement('div');
+    MM._selId = 'n1';
+    MM._selSet = null;
+    MM._editId = null;
+    MM._els = new Map([['n1', nodeEl]]);
+    MM._nodeById = () => ({ id: 'n1', text: 'a', note: '' });
+
+    MM._updateToolbar();
+    MM._updateToolbar();
+    expect(spy).not.toHaveBeenCalled();
+    expect(MM._tbSize).not.toBeNull();   // 首次已量取并入缓存
+    spy.mockRestore();
+  });
+});
+
+// ── 6) 删除节点时清掉几何缓存 ──────────────────────────────────────────
 function deleteFixture(ids) {
   const geo = new Map();
   ids.forEach((id) => geo.set(id, { cx: 0, cy: 0, hw: 10, hh: 5, rot: 0 }));

@@ -43,17 +43,24 @@ test('胶囊点(style-3) 左侧强调点必须消费 --mm-accent', () => {
 });
 
 test('改色把 --mm-accent 写到节点元素且落到数据；恢复默认则清空（数据路径无误）', () => {
+  // 走真实入口 _setColorForSelection（色盘点击的最终调用）；
+  // 旧的 _setNodeColor 是零调用且绕开 _mutate（不入撤销栈 / 不置脏）的死代码，已删除。
   MindmapFeature._active = true;
   MindmapFeature._nodes = [{ id: 'n1', text: 'a', x: 0, y: 0, color: '' }];
   const el = document.createElement('div');
   el.className = 'tw-mm-node';
   MindmapFeature._els = new Map([['n1', el]]);
+  MindmapFeature._selId = 'n1';
+  MindmapFeature._selSet = null;
+  MindmapFeature._undoStack = null;     // 用真实 _mutate（无撤销栈时只跳过 push）
+  MindmapFeature._scheduleSave = () => {};
+  MindmapFeature._msg = () => {};
 
-  MindmapFeature._setNodeColor('n1', '#e6b450');
+  MindmapFeature._setColorForSelection('#e6b450');
   expect(el.style.getPropertyValue('--mm-accent')).toBe('#e6b450');
   expect(MindmapFeature._nodes[0].color).toBe('#e6b450');
 
-  MindmapFeature._setNodeColor('n1', '');            // 恢复默认色
+  MindmapFeature._setColorForSelection('');            // 恢复默认色
   expect(el.style.getPropertyValue('--mm-accent')).toBe('');
   expect(MindmapFeature._nodes[0].color).toBe('');
 });

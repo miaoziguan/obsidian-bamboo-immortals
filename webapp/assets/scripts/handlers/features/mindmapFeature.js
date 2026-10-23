@@ -74,7 +74,8 @@ export const MindmapFeature = {
   _noteBox: null,          // 备注浮层（DOM）
   _noteInput: null,        // 备注输入框
   _noteForId: null,        // 正在编辑备注的节点 id（null = 浮层关闭）
-  _selLinkIdx: null,
+  _tbNoteBtn: null,        // 工具条「节点笔记」按钮缓存（_updateToolbar 每帧会跑，不再每帧 querySelector）
+  _tbSize: null,           // 工具条尺寸缓存 {h, hw}：尺寸固定，只在首次/重建后量一次（避免每帧强制回流）
   _els: null,               // Map<id, el>
   _nodeGeo: new Map(),      // Map<id, {cx,cy,hw,hh,rot}> 节点几何缓存（离屏卸载后供连线按缓存绘制，剔除核心）
   _visibleIds: null,        // Set<id> 当前可见节点（供 LinkLayer 连线剔除；null=全绘）
@@ -297,6 +298,10 @@ export const MindmapFeature = {
 
     layer.appendChild(tb);
     this._toolbar = tb;
+    // 缓存「节点笔记」按钮并作废尺寸缓存：_updateToolbar 在平移/缩放时每帧都跑，
+    // 这两项避免每帧 querySelector 与 offsetWidth/offsetHeight（后者会强制回流）
+    this._tbNoteBtn = tb.querySelector('button[data-act="note"]');
+    this._tbSize = null;
 
     // 工具条上的交互不冒泡到画布（否则会触发平移 / 误触）
     tb.addEventListener('pointerdown', (e) => e.stopPropagation());
@@ -524,8 +529,6 @@ export const MindmapFeature = {
     // （Esc 的刻意取消语义在 _editKey 中单独保留；_active 已置 false，_commitEdit 末尾的 renderNodes 会早退，不会白重绘。）
     this._commitEdit();
     this._selId = null;
-    this._selLinkIdx = null;
-    this._linkFrom = null;
     this._el.hidden = true;
     this._saveNow();
   },
@@ -1443,7 +1446,6 @@ export const MindmapFeature = {
     // 单选新节点即取消多选；但拖动「已在多选集合内」的节点时保留整组（否则多拖退化成单拖）
     if (!(this._selSet && this._selSet.has(id))) this._clearMultiSel();
     this._selId = id || null;
-    this._selLinkIdx = null;
     this._paintSelection();   // 仅切换受影响节点的高亮（见 _paintSelection 的增量判定）
     this._updateToolbar();    // 选中变化 → 刷新浮动工具条（显隐/定位）
   },
@@ -1735,8 +1737,8 @@ export const MindmapFeature = {
     const hasSel = this._selId || (this._selSet && this._selSet.size);
     if (!hasSel || this._editId) { tb.hidden = true; return; }
     const single = !!this._selId;
-    // 备注只对单颗有意义：多选隐藏；已有备注时按钮高亮
-    const noteBtn = tb.querySelector('button[data-act="note"]');
+    // 备注只对单颗有意义：多选隐藏；已有备注时按钮高亮（按钮在 _initToolbar 缓存）
+    const noteBtn = this._tbNoteBtn;
     if (noteBtn) {
       noteBtn.hidden = !single;
       const n = single ? this._nodeById(this._selId) : null;
@@ -1765,8 +1767,11 @@ export const MindmapFeature = {
       ayBottom = maxY - lr.top;
     }
     tb.hidden = false;   // 先显形才能量到真实尺寸
-    const tbH = tb.offsetHeight || 34;
-    const halfW = tb.offsetWidth / 2 || 60;
+    // 尺寸由固定内容（按钮行 + 色盘）决定，不会随平移/缩放变化：只在首次或工具条重建后量一次，
+    // 否则每帧 offsetWidth/offsetHeight 都会强制一次同步回流（平移手感直接受影响）
+    if (!this._tbSize) this._tbSize = { h: tb.offsetHeight || 34, hw: tb.offsetWidth / 2 || 60 };
+    const tbH = this._tbSize.h;
+    const halfW = this._tbSize.hw;
     const W = this._el.clientWidth || 0;
     // 顶部空间不够（或贴左/右）会被 overflow:hidden 视口裁掉 → 翻到节点下方 + 水平夹紧
     const below = ayTop < tbH + 12;
@@ -1796,16 +1801,6 @@ export const MindmapFeature = {
       this._scheduleSave();
       this._msg(color ? '已改色' : '已恢复默认色');
     });
-  },
-
-  _setNodeColor(id, color) {
-    if (!id) return;
-    this._nodes = MindmapDoc.setColor(this._nodes, id, color || '');
-    const el = this._els.get(id);
-    if (el) {
-      if (color) el.style.setProperty('--mm-accent', color);
-      else el.style.removeProperty('--mm-accent');
-    }
   },
 
   _exitConnectMode() {
@@ -2260,6 +2255,8 @@ export const MindmapFeature = {
     this._nodeBox = null;
     this._empty = null;
     this._toolbar = null;
+    this._tbNoteBtn = null;
+    this._tbSize = null;
     this._searchBox = null;
     this._searchInput = null;
     this._searchCount = null;
@@ -2279,7 +2276,6 @@ export const MindmapFeature = {
     this._noteBox = null;
     this._noteInput = null;
     this._noteForId = null;
-    this._selLinkIdx = null;
     this._editId = null;
     this._editKey = null;
     this._editBlur = null;

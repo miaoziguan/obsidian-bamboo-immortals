@@ -243,12 +243,6 @@
   border-color: color-mix(in srgb, var(--mm-accent, rgb(var(--primary-rgb))) 55%, transparent);
   color: var(--mm-accent, var(--text-secondary));
 }
-.tw-mm-node.is-connect-src {
-  outline: 2px dashed rgb(var(--primary-rgb));
-  outline-offset: 3px;
-  box-shadow: 0 0 0 3px color-mix(in srgb, rgb(var(--primary-rgb)) 22%, transparent);
-}
-
 /* ===== 搜索高亮 ===== */
 .tw-mm-node.is-search-hit { outline: 2px solid rgba(var(--primary-rgb), 0.35); outline-offset: 2px; }
 .tw-mm-node.is-search-cur { outline: 2px solid #c9a24a; outline-offset: 2px; box-shadow: var(--shadow-card); z-index: 22; }

@@ -14,7 +14,7 @@ import { CanvasKeys } from '../../services/CanvasKeys.js';
 import { SpatialIndex } from '../../services/SpatialIndex.js';
 
 // 节点上的「备注」标记：倒三角（展开指示）；展开时旋转 180° 变正三角（见 .is-open）
-const ICON_NOTE_MARK = '<svg viewBox="0 0 12 12" width="10" height="10" aria-hidden="true"><path d="M2.2 4.2h7.6L6 9.2z" fill="currentColor"/></svg>';
+const ICON_NOTE_MARK = '<svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"><path d="M1.6 3.6h8.8L6 9.6z" fill="currentColor"/></svg>';
 
 /**
  * mindmapFeature — 思维子弹（**独立文档**：子弹自由拖动 + 子弹之间自由连线）
@@ -384,8 +384,8 @@ export const MindmapFeature = {
     let left = r.left - lr.left + r.width / 2 - W / 2;
     left = Math.max(8, Math.min(Math.max(8, lw - W - 8), left));
     const h = box.offsetHeight || 140;
-    let top = r.bottom - lr.top + 8;                                          // 默认在节点下方
-    if (lh && top + h > lh - 8) top = Math.max(8, r.top - lr.top - h - 8);    // 下方不够 → 上方
+    let top = r.bottom - lr.top + 14;                                         // 默认在节点下方（给下沿三角留位）
+    if (lh && top + h > lh - 8) top = Math.max(8, r.top - lr.top - h - 12);   // 下方不够 → 上方
     box.style.left = Math.round(left) + 'px';
     box.style.top = Math.round(top) + 'px';
   },

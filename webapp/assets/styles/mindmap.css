@@ -368,23 +368,26 @@
 /* 有备注的节点右上角出现可点标记（点开/收起备注卡片） */
 .tw-mm-note-mark {
   position: absolute;
-  top: 2px;
-  right: 4px;
-  width: 16px;
-  height: 16px;
+  left: 50%;
+  bottom: -11px;                /* 挂在胶囊下沿外侧：不压边框，也避开右侧连线锚点 */
+  top: auto;
+  width: 20px;
+  height: 14px;
   padding: 0;
   border: 0;
   background: transparent;
-  color: var(--bamboo-primary);
-  opacity: .8;
+  color: var(--text-secondary);
+  opacity: .85;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: transform .15s ease, opacity .15s ease;
+  transform: translateX(-50%);
+  transition: transform .15s ease, color .15s ease, opacity .15s ease;
+  z-index: 2;
 }
-.tw-mm-note-mark:hover { opacity: 1; }
-.tw-mm-note-mark.is-open { transform: rotate(180deg); }   /* 展开 → 倒三角变正三角 */
+.tw-mm-note-mark:hover { color: var(--bamboo-primary); opacity: 1; }
+.tw-mm-note-mark.is-open { transform: translateX(-50%) rotate(180deg); }   /* 展开 → 倒三角变正三角 */
 .tw-mm-note-mark[hidden] { display: none; }
 
 .tw-mm-note-pop {

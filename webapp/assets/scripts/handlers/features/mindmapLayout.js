@@ -9,7 +9,7 @@ export const MindmapLayout = {
    * 计算布局。mode ∈ 'tree' | 'horizontal' | 'radial' | 'grid' | 'ring'；
    * 非上述或未知 → 默认树形。返回 Map<id, {x, y}>。
    */
-  compute(mode, nodes, links) {
+  compute(mode, nodes, links, opts) {
     const byId = new Map();
     nodes.forEach((n) => byId.set(n.id, n));
     const childrenOf = new Map();
@@ -23,7 +23,11 @@ export const MindmapLayout = {
     let roots = nodes.filter((n) => (indeg.get(n.id) || 0) === 0).map((n) => n.id);
     if (!roots.length && nodes.length) roots = [nodes[0].id];   // 纯环图兜底取首节点
 
-    const NW = 180, NH = 64, HGAP = 28, VGAP = 46;
+    // 间距可按节点形状覆盖：纯文本节点比胶囊小得多，沿用方框间距会显得空旷。
+    const O = opts || {};
+    const NW = O.nodeW || 180, NH = O.nodeH || 64;
+    const HGAP = (O.hGap == null) ? 28 : O.hGap;
+    const VGAP = (O.vGap == null) ? 46 : O.vGap;
     const placed = new Set();
     const xOf = new Map(), yOf = new Map();
 
@@ -96,43 +100,65 @@ export const MindmapLayout = {
           assign(r, 1, a0, a1);
         });
       }
-    } else if (mode === 'mindmap' && roots.length === 1) {
+    } else if (mode === 'mindmap' && roots.length) {
       // 双侧思维导图：根居中，直属子左右交替，各侧按水平树向外生长。
-      // 只处理单根（结构模式传入的是生成树，天然单根）；多根/无根时退回下方树/水平树。
-      const root = roots[0];
-      placed.add(root);
-      xOf.set(root, 0);
-      yOf.set(root, 0);
-      const kids = (childrenOf.get(root) || []).filter((c) => byId.has(c));
-      const kidsOf = (id) => (childrenOf.get(id) || []).filter((c) => byId.has(c) && !placed.has(c));
-      const leafCount = (id) => {
-        const ch = kidsOf(id);
-        if (!ch.length) return 1;
-        return ch.reduce((s, c) => s + leafCount(c), 0);
-      };
-      const place = (id, depth, dir, cursor) => {
-        if (placed.has(id)) return;
-        placed.add(id);
-        const ch = kidsOf(id);
-        xOf.set(id, depth * (NW + HGAP) * dir);
-        if (!ch.length) {
-          yOf.set(id, cursor.y);
-          cursor.y += NH + VGAP;
-          return;
-        }
-        ch.forEach((c) => place(c, depth + 1, dir, cursor));
-        const ys = ch.map((c) => yOf.get(c)).filter((v) => v != null);
-        yOf.set(id, ys.length ? (ys[0] + ys[ys.length - 1]) / 2 : cursor.y);
-      };
-      const placeSide = (side, dir) => {
-        const total = side.reduce((s, c) => s + leafCount(c), 0);
-        const cursor = { y: -((total - 1) * (NH + VGAP)) / 2 };   // 每侧纵向居中到根
-        side.forEach((c) => place(c, 1, dir, cursor));
-      };
-      const right = [], left = [];
-      kids.forEach((c, i) => (i % 2 === 0 ? right : left).push(c));
-      placeSide(right, 1);
-      placeSide(left, -1);
+      // 多根（互不相连的子图）时：每棵子树各自双侧排布、纵向堆叠并留间距 —— 不再退化成上下树。
+      const GAP_TREES = 120;
+      let yBase = 0;
+      roots.forEach((root) => {
+        if (placed.has(root)) return;
+        // 收集本棵子树（尚未放置的节点）
+        const local = new Set();
+        const collect = (id) => {
+          if (local.has(id)) return;
+          local.add(id);
+          (childrenOf.get(id) || []).forEach((c) => { if (byId.has(c) && !placed.has(c)) collect(c); });
+        };
+        collect(root);
+        const kidsOf = (id) => (childrenOf.get(id) || []).filter((c) => byId.has(c) && local.has(c) && !placed.has(c));
+        const leafCount = (id) => {
+          const ch = kidsOf(id);
+          if (!ch.length) return 1;
+          return ch.reduce((s, c) => s + leafCount(c), 0);
+        };
+        const place = (id, depth, dir, cursor) => {
+          if (placed.has(id)) return;
+          placed.add(id);
+          const ch = kidsOf(id);
+          xOf.set(id, depth * (NW + HGAP) * dir);
+          if (!ch.length) {
+            yOf.set(id, cursor.y);
+            cursor.y += NH + VGAP;
+            return;
+          }
+          ch.forEach((c) => place(c, depth + 1, dir, cursor));
+          const ys = ch.map((c) => yOf.get(c)).filter((v) => v != null);
+          yOf.set(id, ys.length ? (ys[0] + ys[ys.length - 1]) / 2 : cursor.y);
+        };
+        placed.add(root);
+        xOf.set(root, 0);
+        yOf.set(root, 0);
+        const sideKids = (childrenOf.get(root) || []).filter((c) => byId.has(c));
+        const right = [], left = [];
+        sideKids.forEach((c, i) => (i % 2 === 0 ? right : left).push(c));
+        const placeSide = (side, dir) => {
+          const total = side.reduce((s, c) => s + leafCount(c), 0);
+          const cursor = { y: -((total - 1) * (NH + VGAP)) / 2 };   // 每侧纵向居中到根
+          side.forEach((c) => place(c, 1, dir, cursor));
+        };
+        placeSide(right, 1);
+        placeSide(left, -1);
+        // 本棵子树整体平移到 yBase，并推进 yBase
+        let minY = Infinity, maxY = -Infinity;
+        local.forEach((id) => {
+          const y = yOf.get(id);
+          if (y != null) { if (y < minY) minY = y; if (y > maxY) maxY = y; }
+        });
+        if (!isFinite(minY)) { minY = 0; maxY = 0; }
+        const shift = yBase - minY;
+        local.forEach((id) => { const y = yOf.get(id); if (y != null) yOf.set(id, y + shift); });
+        yBase += (maxY - minY) + GAP_TREES;
+      });
     } else {
       const horizontal = (mode === 'horizontal' || mode === 'logic');
       let cursor = 0;

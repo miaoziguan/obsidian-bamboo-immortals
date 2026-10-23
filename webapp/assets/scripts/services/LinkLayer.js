@@ -285,15 +285,8 @@ export class LinkLayer {
     const cb = { x: b.cx, y: b.cy };
     const A = this.anchorOn(a, cb);
     const B = this.anchorOn(b, ca);
-    // 结构模式（presentation.structure）：整层统一按结构的边型/箭头渲染，忽略单条 route/arrow；
-    // 自由模式：沿用每条线自己的 route/arrow（缺省实心直线 + 箭头）。
-    const pres = (this.opts.getPresentation && this.opts.getPresentation()) || null;
-    const structured = !!(pres && pres.structure);
-    const mode = structured
-      ? (pres.edge || 'elbow')
-      : ((l.route === 'bezier') ? 'bezier' : 'straight');   // 自由模式缺省实心直线
-    const { d, tip } = this.routePath(A.p, A.u, B.p, B.u, mode, structured ? 0 : (Number(l.bend) || 0));
-    const showArrow = structured ? !!pres.arrow : (l.arrow !== 'none');
+    const mode = (l.route === 'bezier') ? 'bezier' : 'straight';   // 默认实心直线（缺省 route 也按直线渲染）
+    const { d, tip } = this.routePath(A.p, A.u, B.p, B.u, mode, Number(l.bend) || 0);
     const ah = 8, aw = 7;   // 三角高 / 半宽
     const apx = -tip.y, apy = tip.x;                          // 垂直于入线方向
     const bx = B.p.x - tip.x * ah, by = B.p.y - tip.y * ah;   // 底边中心（朝源侧退 ah）
@@ -302,8 +295,7 @@ export class LinkLayer {
     return {
       d,
       p1: A.p,
-      arrowD: showArrow ? `M ${B.p.x} ${B.p.y} L ${ab1.x} ${ab1.y} L ${ab2.x} ${ab2.y} Z` : '',
-      dot: !structured,   // 结构模式不画源端圆点（像"分支"而非"关系"）
+      arrowD: `M ${B.p.x} ${B.p.y} L ${ab1.x} ${ab1.y} L ${ab2.x} ${ab2.y} Z`,
       dash: l.dash === 'dashed',
       from: l.from,
       to: l.to,
@@ -316,8 +308,7 @@ export class LinkLayer {
     g.path.setAttribute('d', geo.d);
     g.src.setAttribute('cx', geo.p1.x);
     g.src.setAttribute('cy', geo.p1.y);
-    g.src.setAttribute('r', geo.dot === false ? '0' : '3.6');   // 结构模式隐藏源端圆点
-    g.arrow.setAttribute('d', geo.arrowD || '');                // 空串 = 不画箭头
+    g.arrow.setAttribute('d', geo.arrowD);
     g.path.classList.toggle('is-dashed', geo.dash);
   }
 
@@ -362,22 +353,6 @@ export class LinkLayer {
     const dx = p2.x - p1.x;
     const dy = p2.y - p1.y;
     const dist = Math.hypot(dx, dy) || 1;
-    if (mode === 'elbow') {
-      // 肘形（组织图/树形图/逻辑图）：主轴决定「先竖后横」还是「先横后竖」。
-      // 同一父节点的多个子节点共享第一段（同一 bus 线），视觉上自然拼成一条主干。
-      if (Math.abs(dy) >= Math.abs(dx)) {
-        const my = p1.y + dy / 2;
-        return {
-          d: `M ${p1.x} ${p1.y} L ${p1.x} ${my} L ${p2.x} ${my} L ${p2.x} ${p2.y}`,
-          tip: { x: 0, y: dy >= 0 ? 1 : -1 },
-        };
-      }
-      const mx = p1.x + dx / 2;
-      return {
-        d: `M ${p1.x} ${p1.y} L ${mx} ${p1.y} L ${mx} ${p2.y} L ${p2.x} ${p2.y}`,
-        tip: { x: dx >= 0 ? 1 : -1, y: 0 },
-      };
-    }
     if (mode === 'straight') {
       return { d: `M ${p1.x} ${p1.y} L ${p2.x} ${p2.y}`, tip: { x: dx / dist, y: dy / dist } };
     }

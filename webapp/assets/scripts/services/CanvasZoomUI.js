@@ -43,20 +43,15 @@ export const CanvasZoomUI = {
     const handBtn = (typeof adapter.onHand === 'function')
       ? '<button type="button" class="tw-zoom-btn tw-zoom-hand" data-act="hand" title="抓手：拖动画布平移（移动端替代双指捏合）" aria-label="抓手 / 平移画布"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/><path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"/><path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/></svg></button>'
       : '';
-    // 结构入口（仅思维子弹传 onStructure）：点开/收起画布内的横向结构二级条。
-    const structBtn = (typeof adapter.onStructure === 'function')
-      ? '<button type="button" class="tw-zoom-btn tw-zoom-struct" data-act="structure" title="结构：整理为导图 / 逻辑图 / 组织图 / 树形图" aria-label="结构布局"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="5" rx="1"/><rect x="2" y="15" width="6" height="5" rx="1"/><rect x="16" y="15" width="6" height="5" rx="1"/><path d="M12 8v4M5 12h14M5 12v3M19 12v3"/></svg></button>'
-      : '';
     bar.innerHTML = handBtn + `
       <button type="button" class="tw-zoom-btn" data-act="out"  title="缩小" aria-label="缩小">−</button>
       <button type="button" class="tw-zoom-val" data-act="reset" title="点击重置为 100%" aria-label="重置缩放为 100%">100%</button>
       <button type="button" class="tw-zoom-btn" data-act="in"   title="放大" aria-label="放大">+</button>
-      <button type="button" class="tw-zoom-btn" data-act="fit"  title="适应内容" aria-label="适应内容">⤢</button>` + structBtn + marketBtn;
+      <button type="button" class="tw-zoom-btn" data-act="fit"  title="适应内容" aria-label="适应内容">⤢</button>` + marketBtn;
     host.appendChild(bar);
 
     const valEl = bar.querySelector('.tw-zoom-val');
     const handEl = bar.querySelector('.tw-zoom-hand');
-    const structEl = bar.querySelector('.tw-zoom-struct');
     const sync = () => {
       const s = CanvasViewport.scaleOf(adapter.getView());
       const txt = Math.round(s * 100) + '%';
@@ -64,10 +59,6 @@ export const CanvasZoomUI = {
       // 抓手开启态：由 adapter 提供 isHandActive（导图传 handTool 真值），复用同一 sync 刷新
       if (handEl && typeof adapter.isHandActive === 'function') {
         handEl.classList.toggle('active', !!adapter.isHandActive());
-      }
-      // 结构开启态（已应用某个结构时入口高亮）
-      if (structEl && typeof adapter.isStructureActive === 'function') {
-        structEl.classList.toggle('active', !!adapter.isStructureActive());
       }
     };
 
@@ -85,7 +76,6 @@ export const CanvasZoomUI = {
         else if (act === 'fit') adapter.fit();
         else if (act === 'market' && typeof adapter.onMarket === 'function') adapter.onMarket();
         else if (act === 'hand' && typeof adapter.onHand === 'function') adapter.onHand();
-        else if (act === 'structure' && typeof adapter.onStructure === 'function') adapter.onStructure();
       } catch (err) { /* 缩放控件失败不应影响画布 */ }
       sync();
     });

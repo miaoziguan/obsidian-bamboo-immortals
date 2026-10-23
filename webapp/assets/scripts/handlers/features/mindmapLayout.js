@@ -96,45 +96,7 @@ export const MindmapLayout = {
           assign(r, 1, a0, a1);
         });
       }
-    } else if (mode === 'mindmap' && roots.length === 1) {
-      // 双侧思维导图：根居中，直属子左右交替，各侧按水平树向外生长。
-      // 只处理单根（结构模式传入的是生成树，天然单根）；多根/无根时退回下方树/水平树。
-      const root = roots[0];
-      placed.add(root);
-      xOf.set(root, 0);
-      yOf.set(root, 0);
-      const kids = (childrenOf.get(root) || []).filter((c) => byId.has(c));
-      const kidsOf = (id) => (childrenOf.get(id) || []).filter((c) => byId.has(c) && !placed.has(c));
-      const leafCount = (id) => {
-        const ch = kidsOf(id);
-        if (!ch.length) return 1;
-        return ch.reduce((s, c) => s + leafCount(c), 0);
-      };
-      const place = (id, depth, dir, cursor) => {
-        if (placed.has(id)) return;
-        placed.add(id);
-        const ch = kidsOf(id);
-        xOf.set(id, depth * (NW + HGAP) * dir);
-        if (!ch.length) {
-          yOf.set(id, cursor.y);
-          cursor.y += NH + VGAP;
-          return;
-        }
-        ch.forEach((c) => place(c, depth + 1, dir, cursor));
-        const ys = ch.map((c) => yOf.get(c)).filter((v) => v != null);
-        yOf.set(id, ys.length ? (ys[0] + ys[ys.length - 1]) / 2 : cursor.y);
-      };
-      const placeSide = (side, dir) => {
-        const total = side.reduce((s, c) => s + leafCount(c), 0);
-        const cursor = { y: -((total - 1) * (NH + VGAP)) / 2 };   // 每侧纵向居中到根
-        side.forEach((c) => place(c, 1, dir, cursor));
-      };
-      const right = [], left = [];
-      kids.forEach((c, i) => (i % 2 === 0 ? right : left).push(c));
-      placeSide(right, 1);
-      placeSide(left, -1);
     } else {
-      const horizontal = (mode === 'horizontal' || mode === 'logic');
       let cursor = 0;
       const place = (id, depth) => {
         if (placed.has(id)) return;
@@ -147,8 +109,7 @@ export const MindmapLayout = {
           const xs = ch.map((c) => xOf.get(c)).filter((v) => v != null);
           x = xs.length ? (xs[0] + xs[xs.length - 1]) / 2 : cursor;
         }
-        // logic = 左→右（横向树）；tree / org = 上→下（纵向树）
-        if (horizontal) { xOf.set(id, depth * (NW + VGAP)); yOf.set(id, x); }
+        if (mode === 'horizontal') { xOf.set(id, depth * (NW + VGAP)); yOf.set(id, x); }
         else { xOf.set(id, x); yOf.set(id, depth * (NH + VGAP)); }
       };
       roots.forEach((r) => place(r, 0));

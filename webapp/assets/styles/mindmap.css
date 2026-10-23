@@ -456,6 +456,14 @@
   overflow-y: auto;
 }
 .tw-mm-note-input::placeholder { color: var(--text-tertiary); }
+/* 编辑态不画焦点环：卡片本身就是明确的编辑区（还带箭头指向节点），
+   全局 :focus-visible 的 --focus-ring（0 0 0 2px 主色）在这里是多余的「激活框」。
+   提高特异性到 (0,2,0) 压过 base.css 的 :focus-visible 规则。 */
+.tw-mm-note-input:focus,
+.tw-mm-note-input:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
 .tw-mm-note-hint {
   padding: 0 12px 9px;
   font-size: 11px;

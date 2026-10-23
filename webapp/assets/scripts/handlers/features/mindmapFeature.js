@@ -622,6 +622,8 @@ export const MindmapFeature = {
     // 防御：编辑态未 blur 时（现入口都是按钮点击会先触发 blur，此处是兜底）半截编辑必须先写回模型，
     // 否则下面的 _saveNow() 落的是旧文本，而当前组随即被目标组替换 → 静默丢字。与 deactivate() 同款。
     if (this._editId) this._commitEdit();
+    // 笔记卡片：切组后它指向的节点已随旧文档消失，不收起会滞留并冻在旧位置
+    if (this._noteForId) this._closeNoteEditor();
     this._saveNow();
     await TypewriterStore.setMindmapCurrent(id);
     this._groupId = id;
@@ -638,6 +640,8 @@ export const MindmapFeature = {
   async newGroup() {
     // 防御：新组会整体丢弃当前 _nodes，半截编辑必须先落进旧组，否则随 _nodes 一起消失
     if (this._editId) this._commitEdit();
+    // 笔记卡片：新组是空文档，卡片指向的节点不复存在，先收起（内容会写回旧组）
+    if (this._noteForId) this._closeNoteEditor();
     this._saveNow();
     const g = await TypewriterStore.createMindmapGroup('未命名思维导图');
     this._groupId = g.id;
@@ -650,6 +654,8 @@ export const MindmapFeature = {
   async deleteGroup(id) {
     // 防御：同 switchGroup —— 先把半截编辑写回「当前组」再落盘，避免删除动作顺带丢掉未提交文本
     if (this._editId) this._commitEdit();
+    // 笔记卡片：删组后载入的是另一份文档，卡片指向的节点不复存在，先收起
+    if (this._noteForId) this._closeNoteEditor();
     this._saveNow();
     const res = await TypewriterStore.deleteMindmapGroup(id);
     this._groupId = res.current;
@@ -976,7 +982,9 @@ export const MindmapFeature = {
       else { this._paintNode(el, n); this._placeNode(n.id); }
     });
     Array.from(this._els.keys()).forEach((id) => {
-      if (!alive.has(id)) this._unmountNode(id);
+      // 已不在文档里：几何缓存一并清掉。注意 _unmountNode 会写缓存是给「离屏剔除」用的
+      // （那批节点仍在文档中，连线要靠缓存画）；只有真删除的节点才该清，否则只增不减。
+      if (!alive.has(id)) { this._unmountNode(id); this._nodeGeo.delete(id); }
     });
 
     // 2) 空态（含一次性种子入口）
@@ -1486,8 +1494,16 @@ export const MindmapFeature = {
       el.classList.remove('is-editing');
       if (!cancel) {
         const text = (el._text.innerText || '').replace(/\s+$/, '');
-        this._nodes = MindmapDoc.setText(this._nodes, id, text);
-        this._spatialDirty = true;   // 文本变化可能改变节点尺寸 → 索引待重建
+        const prev = this._nodeById(id);
+        const prevText = prev ? prev.text : '';
+        // 文本编辑此前直接改 _nodes、绕开 _mutate（不入撤销栈），于是改完字按 Cmd+Z
+        // 撤到的是更早的快照（常常把刚建好的整颗子弹一起撤掉），而不是只撤这次文本。
+        // 这里纳入撤销栈；且只在文本真变了时才入栈 —— setText 无条件返回新数组，
+        // 不判等会把每次 blur / 切选中都压成一条「什么都没变」的空撤销帧。
+        // （_mutate 内部已置 _spatialDirty：文本变化可能改变节点尺寸 → 索引待重建）
+        if (text !== prevText) {
+          this._mutate(() => { this._nodes = MindmapDoc.setText(this._nodes, id, text); });
+        }
       }
     }
     this._editKey = null;
@@ -1655,6 +1671,7 @@ export const MindmapFeature = {
       this._nodes = nodes;
       this._links = links;
       this._unmountNode(id);          // 只摘掉这一颗，不重画整图
+      this._nodeGeo.delete(id);       // 已从文档移除，几何缓存不再需要（防只增不减）
       this._selId = null;
       this._refreshEmpty();
       this._scheduleSave();
@@ -1684,6 +1701,7 @@ export const MindmapFeature = {
         const r = MindmapDoc.removeNode(nodes, links, id);
         nodes = r.nodes; links = r.links;
         this._unmountNode(id);       // 逐颗摘 DOM
+        this._nodeGeo.delete(id);    // 同上：真删除才清
       });
       this._nodes = nodes;
       this._links = links;
@@ -2190,7 +2208,10 @@ export const MindmapFeature = {
       if (e && e.type === 'visibilitychange' && typeof document !== 'undefined' && document.visibilityState === 'visible') return;
       if (!this._active) return;    // 非导图档：没有本模块的未落盘状态，勿拿旧文档覆盖
       const openEdit = !!this._editId;
-      if (!openEdit && !this._saveTimer) return;   // 无待落盘/未提交内容：不写盘
+      const openNote = !!this._noteForId;
+      if (!openEdit && !openNote && !this._saveTimer) return;   // 无待落盘/未提交内容：不写盘
+      // 笔记卡片静默写回即可（不折叠、不打断输入；与文本编辑不同，后者要以退出编辑态来提交）
+      if (openNote) this._persistNote();
       // 页面真要走了才提交半截编辑；仅切到后台就退出编辑态会打断用户正在进行的输入
       if (openEdit && e && e.type === 'pagehide') this._commitEdit();
       this._saveNow();              // 内部自行清 timer；无 _groupId 时自行 return
@@ -2213,6 +2234,9 @@ export const MindmapFeature = {
     // 便签侧的 visibilitychange/pagehide 兜底对导图直接 return（PersistenceCoordinator.saveNow 里的
     // `ctrl._mode === 'mindmap'` 分支，注释为「导图档直接跳过…数据由 MindmapFeature 自管」），
     // 所以「刚改完就关视图 / 硬关闭」只能由本方法自己兜住，否则最后一次改动会静默丢失。
+    // 笔记卡片同理：它是「失焦才写回」（_persistNote），而移除 DOM 不保证触发 blur，
+    // 硬关闭时已输入未失焦的笔记会静默丢失 —— 这里静默写回，不折叠（DOM 随即被弃）。
+    if (this._noteForId) this._persistNote();
     if (this._editId) this._commitEdit();   // 提交后 _scheduleSave() 会挂起新的 timer，故下面重新取
     const pending = this._saveTimer;
     clearTimeout(this._saveTimer);

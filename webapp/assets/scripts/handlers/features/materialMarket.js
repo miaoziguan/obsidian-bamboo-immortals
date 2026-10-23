@@ -1004,6 +1004,8 @@ export const MaterialMarket = {
   _makeStickerDraggable(ctrl, el, rec) {
     el.addEventListener('pointerdown', (e) => {
       if (e.target.closest('button')) return;   // 旋转/缩放/翻转/删除按钮不触发拖拽
+      // 抓手/空格态：不在贴纸上起拖拽，让事件冒泡给画布平移（对齐 Excalidraw 手工具）
+      if (ctrl && ctrl._hand && ctrl._hand.state && (ctrl._hand.state.handTool || ctrl._hand.state.spaceDown)) return;
       // 关键：不冒泡到画布 —— 贴纸不是 .tw-card，冒泡上去会被判定为「拖空白」而启动框选 / 平移。
       // （同 CanvasZoomUI 缩放条与卡片浮层的既有约定：浮层内交互一律 stopPropagation。）
       e.stopPropagation();

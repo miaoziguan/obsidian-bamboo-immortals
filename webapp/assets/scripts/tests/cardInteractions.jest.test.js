@@ -210,6 +210,17 @@ describe('P2-#9 / P3-#2 拖拽：transform 提交 + 越阈入撤销栈', () => {
     expect(card.style.getPropertyValue('--tw-drag-x')).toBe('');
     expect(ctrl._cardGestureCancel).toBeNull();
   });
+
+  test('makeDraggable：抓手/空格态下不在卡片上起拖拽（让位画布平移）', () => {
+    const card = document.createElement('div');
+    card.className = 'tw-card';
+    card.dataset.id = 'n5';
+    const ctrl = makeCtrl(card);
+    ctrl._hand = { state: { handTool: true } };
+    CardInteractions.makeDraggable({ state: {}, ctrl }, card);
+    card.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    expect(ctrl._cardGestureCancel).toBeUndefined();   // 未起拖拽（让位给画布平移）
+  });
 });
 
 describe('选中态 .selected 类（贴纸金色描边 A 的触发点）', () => {

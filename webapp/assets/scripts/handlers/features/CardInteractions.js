@@ -38,6 +38,10 @@ export const CardInteractions = {
   makeDraggable(ctx, card) {
     const { state, ctrl } = ctx;
     const onDown = (e) => {
+      // 抓手/空格态：不在卡片上起拖拽，让位给画布平移（对齐 Excalidraw 手工具）。
+      // 卡片触点本就不进 CanvasGestures 的 ptrs；若这里不拦，会「卡片拖拽 + 画布平移」同时发生
+      // （卡片 pointerdown 在卡片上先于根节点的 CanvasGestures 触发）。
+      if (ctrl._hand && ctrl._hand.state && (ctrl._hand.state.handTool || ctrl._hand.state.spaceDown)) return;
       if (e.target.closest('button, .tw-card-resize, .tw-card-rotate, .tw-card-link')) return; // 删除/字级/缩放/连线锚点不触发拖拽
       // 编辑态下点在文本区不拖拽（让浏览器处理选字/光标）；点标题或纸边仍可移动便签
       if (card.classList.contains('editing') && e.target.closest('.tw-card-text')) return;

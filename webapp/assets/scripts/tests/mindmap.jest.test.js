@@ -201,3 +201,27 @@ describe('存储层：独立 key + 净化（TypewriterStore）', () => {
     expect(mem[TypewriterStore.KEY_MINDMAP].nodes[0].id).toBe('b');
   });
 });
+
+describe('MindmapDoc.normalizePresentation（结构预设校验）', () => {
+  test('缺失/未知结构 → null（自由模式）', () => {
+    expect(MindmapDoc.normalizePresentation(null)).toBeNull();
+    expect(MindmapDoc.normalizePresentation(undefined)).toBeNull();
+    expect(MindmapDoc.normalizePresentation({ structure: 'xxx' })).toBeNull();
+    expect(MindmapDoc.normalizePresentation({})).toBeNull();
+  });
+
+  test('合法结构：补默认节点形状与箭头', () => {
+    expect(MindmapDoc.normalizePresentation({ structure: 'org' })).toEqual({
+      structure: 'org', nodeShape: 'box', arrow: false, rootId: null,
+    });
+    expect(MindmapDoc.normalizePresentation({ structure: 'mindmap' }).nodeShape).toBe('text');
+    expect(MindmapDoc.normalizePresentation({ structure: 'logic' }).nodeShape).toBe('text');
+    expect(MindmapDoc.normalizePresentation({ structure: 'tree' }).nodeShape).toBe('box');
+  });
+
+  test('显式形状/箭头/根被保留', () => {
+    expect(MindmapDoc.normalizePresentation({ structure: 'logic', nodeShape: 'box', arrow: true, rootId: 'a' })).toEqual({
+      structure: 'logic', nodeShape: 'box', arrow: true, rootId: 'a',
+    });
+  });
+});

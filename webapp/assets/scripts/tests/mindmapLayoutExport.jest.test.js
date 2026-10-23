@@ -206,3 +206,92 @@ describe('MindmapExport.build', () => {
     expect(content).toContain('子弹数: 3');
   });
 });
+
+describe('MindmapLayout · 结构模式（mindmap / org / logic）', () => {
+  test('mindmap：单根双侧分布（左右两侧都有子节点），且点位互不重合', () => {
+    const nodes = [{ id: 'r' }, { id: 'a' }, { id: 'b' }, { id: 'c' }, { id: 'd' }];
+    const links = [
+      { from: 'r', to: 'a' }, { from: 'r', to: 'b' },
+      { from: 'r', to: 'c' }, { from: 'r', to: 'd' },
+    ];
+    const pos = MindmapLayout.compute('mindmap', nodes, links);
+    const r = pos.get('r');
+    const rel = ['a', 'b', 'c', 'd'].map((id) => pos.get(id).x - r.x);
+    expect(rel.some((v) => v > 0)).toBe(true);
+    expect(rel.some((v) => v < 0)).toBe(true);
+    expect(new Set([...pos.values()].map((p) => p.x + ',' + p.y)).size).toBe(5);
+  });
+
+  test('org：根在上子在下；logic：根在左子在右', () => {
+    const nodes = [{ id: 'r' }, { id: 'a' }, { id: 'b' }];
+    const links = [{ from: 'r', to: 'a' }, { from: 'r', to: 'b' }];
+    const org = MindmapLayout.compute('org', nodes, links);
+    expect(org.get('r').y).toBeLessThan(org.get('a').y);
+    expect(org.get('r').y).toBeLessThan(org.get('b').y);
+    const logic = MindmapLayout.compute('logic', nodes, links);
+    expect(logic.get('r').x).toBeLessThan(logic.get('a').x);
+    expect(logic.get('r').x).toBeLessThan(logic.get('b').x);
+  });
+});
+
+describe('MindmapFeature.applyStructure（结构整理 + 恢复自由）', () => {
+  const MMmod = loadModule('handlers/features/mindmapFeature.js', ['MindmapFeature']);
+  const { MindmapDoc } = loadModule('handlers/features/mindmapDoc.js', ['MindmapDoc']);
+  const { MindmapTree } = loadModule('handlers/features/mindmapTree.js', ['MindmapTree']);
+  global.MindmapLayout = MindmapLayout;
+  global.MindmapDoc = MindmapDoc;
+  global.MindmapTree = MindmapTree;
+  const MM = MMmod.MindmapFeature;
+
+  const NODES4 = [
+    { id: 'r', text: '根', x: 0, y: 0 },
+    { id: 'a', text: '甲', x: 0, y: 0 },
+    { id: 'b', text: '乙', x: 0, y: 0 },
+    { id: 'c', text: '丙', x: 0, y: 0 },
+  ];
+  const LINKS4 = [{ from: 'r', to: 'a' }, { from: 'r', to: 'b' }, { from: 'a', to: 'c' }];
+  const reset = (links) => {
+    MM._nodes = NODES4.map((n) => Object.assign({}, n));
+    MM._links = links.slice();
+    MM._selId = null;
+    MM._selSet = new Set();
+    MM._presentation = null;
+    MM.render = jest.fn();
+    MM._centerView = jest.fn();
+    MM._scheduleSave = jest.fn();
+    MM._syncStructureBar = jest.fn();
+    MM._zoomUI = { sync: jest.fn() };
+    MM._mutate = (fn) => fn();
+  };
+
+  test('无连线 → false，不写 presentation', () => {
+    reset([]);
+    expect(MM.applyStructure('org', null)).toBe(false);
+    expect(MM._presentation).toBeNull();
+  });
+
+  test('组织图：写入 presentation（box / 无箭头）并按层上下排布', () => {
+    reset(LINKS4);
+    expect(MM.applyStructure('org', null)).toBe(true);
+    expect(MM._presentation).toMatchObject({ structure: 'org', nodeShape: 'box', arrow: false });
+    const y = new Map(MM._nodes.map((n) => [n.id, n.y]));
+    expect(y.get('r')).toBeLessThan(y.get('a'));
+    expect(y.get('a')).toBeLessThan(y.get('c'));
+  });
+
+  test('逻辑图：根在左、子在右', () => {
+    reset(LINKS4);
+    expect(MM.applyStructure('logic', null)).toBe(true);
+    const x = new Map(MM._nodes.map((n) => [n.id, n.x]));
+    expect(x.get('r')).toBeLessThan(x.get('a'));
+    expect(x.get('a')).toBeLessThan(x.get('c'));
+  });
+
+  test('恢复自由：清空 presentation、回到每条线自己的外观', () => {
+    reset(LINKS4);
+    MM.applyStructure('tree', null);
+    expect(MM._presentation).not.toBeNull();
+    MM._restoreFree();
+    expect(MM._presentation).toBeNull();
+  });
+});

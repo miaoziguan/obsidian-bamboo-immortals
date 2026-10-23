@@ -114,3 +114,34 @@ describe('思维子弹：抓手工具放在缩放条（对齐 Excalidraw）', ()
     expect(feature._showScreenMsg).not.toHaveBeenCalled();
   });
 });
+
+describe('缩放条结构入口（仅思维子弹）', () => {
+  test('传 onStructure：渲染结构键，点击触发', () => {
+    const host = document.createElement('div');
+    const a = fakeZoomAdapter({ onStructure: jest.fn(), isStructureActive: () => false });
+    const ui = CanvasZoomUI.mount(host, a);
+    const btn = ui.el.querySelector('[data-act="structure"]');
+    expect(btn).not.toBeNull();
+    btn.click();
+    expect(a.onStructure).toHaveBeenCalledTimes(1);
+  });
+
+  test('未传 onStructure（便签/写作档）：不渲染结构键', () => {
+    const host = document.createElement('div');
+    const a = fakeZoomAdapter();
+    const ui = CanvasZoomUI.mount(host, a);
+    expect(ui.el.querySelector('[data-act="structure"]')).toBeNull();
+  });
+
+  test('已应用结构时结构键高亮；恢复后取消', () => {
+    const host = document.createElement('div');
+    let on = true;
+    const a = fakeZoomAdapter({ onStructure: jest.fn(), isStructureActive: () => on });
+    const ui = CanvasZoomUI.mount(host, a);
+    const btn = ui.el.querySelector('[data-act="structure"]');
+    expect(btn.classList.contains('active')).toBe(true);
+    on = false;
+    ui.sync();
+    expect(btn.classList.contains('active')).toBe(false);
+  });
+});

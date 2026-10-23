@@ -111,3 +111,54 @@ describe('LinkLayer 视口剔除回归', () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 });
+
+describe('LinkLayer · 结构模式（elbow / 无箭头 / 隐藏源点）', () => {
+  function mkLayer(presentation) {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const geom = {
+      a: { cx: 100, cy: 100, hw: 60, hh: 30, rot: 0 },
+      b: { cx: 100, cy: 300, hw: 60, hh: 30, rot: 0 },
+    };
+    const links = [{ from: 'a', to: 'b', route: 'bezier', bend: 0, dash: 'solid' }];
+    return new LinkLayer({
+      container,
+      nodeSelector: '.tw-card',
+      getGeom: (id) => geom[id] || null,
+      getLinks: () => links,
+      setLinks: () => {},
+      addLink: () => true,
+      removeLink: () => {},
+      removeLinksOf: () => {},
+      onChange: () => {},
+      getPresentation: () => presentation,
+    });
+  }
+
+  test('routePath elbow：纵向为主先竖后横、横向为主先横后竖', () => {
+    const inst = Object.create(LinkLayer.prototype);
+    const v = inst.routePath({ x: 0, y: 0 }, { x: 0, y: 1 }, { x: 100, y: 200 }, { x: 0, y: -1 }, 'elbow', 0);
+    expect((v.d.match(/L/g) || []).length).toBe(3);
+    expect(v.tip).toEqual({ x: 0, y: 1 });
+    const h = inst.routePath({ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 200, y: 60 }, { x: -1, y: 0 }, 'elbow', 0);
+    expect(h.tip).toEqual({ x: 1, y: 0 });
+  });
+
+  test('结构模式：elbow 路径 + 无箭头 + 隐藏源端圆点', () => {
+    const layer = mkLayer({ structure: 'org', edge: 'elbow', arrow: false });
+    layer.render();
+    const d = layer._svg.querySelector('.tw-link').getAttribute('d');
+    expect((d.match(/L/g) || []).length).toBeGreaterThanOrEqual(3);
+    expect(layer._svg.querySelector('.tw-link-arrow-end').getAttribute('d')).toBe('');
+    expect(layer._svg.querySelector('.tw-link-dot-src').getAttribute('r')).toBe('0');
+  });
+
+  test('自由模式：弯曲 + 箭头 + 源端圆点（不受结构影响）', () => {
+    const layer = mkLayer(null);
+    layer.render();
+    const d = layer._svg.querySelector('.tw-link').getAttribute('d');
+    expect(d).toContain('C');   // bezier
+    expect(layer._svg.querySelector('.tw-link-arrow-end').getAttribute('d')).toContain('M');
+    expect(layer._svg.querySelector('.tw-link-dot-src').getAttribute('r')).toBe('3.6');
+  });
+});

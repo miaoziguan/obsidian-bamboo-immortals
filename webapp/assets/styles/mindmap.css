@@ -363,3 +363,61 @@
 .tw-mm.is-hand { cursor: grab; }
 .tw-mm.is-hand.is-panning { cursor: grabbing; }
 .tw-mm.is-hand .tw-mm-canvas { cursor: grab; }
+
+/* ===== 结构视图（思维导图 / 逻辑图 / 组织结构图 / 树形图） ===== */
+/* 缩放条「结构」键展开的横向二级条：锚在缩放条正下方，不占机身、不常驻。 */
+.tw-mm-struct-bar {
+  position: absolute;
+  top: 52px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 45;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  max-width: calc(100% - 24px);
+  padding: 4px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--card-bg);
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-card);
+  backdrop-filter: blur(6px);
+  white-space: nowrap;
+  overflow-x: auto;
+  user-select: none;
+}
+/* hidden 必须显式兜底：上面用了 display:flex（作者样式会盖过 UA 的 [hidden]） */
+.tw-mm-struct-bar[hidden] { display: none; }
+.tw-mm-struct-bar button {
+  min-height: 26px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--type-xs);
+  line-height: 1;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.tw-mm-struct-bar button:hover { background: rgba(var(--primary-rgb), 0.12); color: var(--text-primary); }
+.tw-mm-struct-bar button.is-active {
+  background: rgba(var(--primary-rgb), 0.16);
+  color: var(--bamboo-primary);
+  box-shadow: inset 0 0 0 1px rgba(var(--primary-rgb), 0.35);
+}
+.tw-mm-struct-sep { flex: none; width: 1px; height: 16px; margin: 0 4px; background: var(--border-light); }
+
+/* 结构模式节点形状：导图/逻辑图 = 纯文本（去掉胶囊底）；组织图/树形图 = 方框（沿用默认） */
+.tw-mm.is-structured[data-node-shape="text"] .tw-mm-node {
+  padding-left: 0.2em;
+  padding-right: 0.2em;
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+.tw-mm.is-structured[data-node-shape="text"] .tw-mm-node.is-sel,
+.tw-mm.is-structured[data-node-shape="text"] .tw-mm-node.is-multi-sel {
+  box-shadow: none;   /* 选中仍靠 outline（金色/主色）识别 */
+}

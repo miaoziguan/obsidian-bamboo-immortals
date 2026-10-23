@@ -59,6 +59,23 @@ export const MindmapDoc = {
     return { nodes: out, links: wires };
   },
 
+  /** 结构展示配置校验：未知结构 → null（= 自由模式）；旧文档无此字段 → null（行为完全不变）。 */
+  normalizePresentation(p) {
+    if (!p || typeof p !== 'object') return null;
+    const allowed = ['mindmap', 'logic', 'org', 'tree'];
+    const structure = allowed.indexOf(p.structure) >= 0 ? p.structure : null;
+    if (!structure) return null;
+    // 默认形状：组织图/树形图用方框，导图/逻辑图用纯文本
+    const shapeDefault = (structure === 'org' || structure === 'tree') ? 'box' : 'text';
+    const nodeShape = (p.nodeShape === 'box' || p.nodeShape === 'text') ? p.nodeShape : shapeDefault;
+    return {
+      structure,
+      nodeShape,
+      arrow: p.arrow === true,
+      rootId: typeof p.rootId === 'string' ? p.rootId : null,
+    };
+  },
+
   /** 追加一颗子弹（返回新数组，调用方负责落盘）。color 可选：'' 表示未设（随主题默认） */
   addNode(nodes, text, x, y, color) {
     return nodes.concat([{ id: this.newId(), text: text || '', x: x || 0, y: y || 0, color: color || '' }]);

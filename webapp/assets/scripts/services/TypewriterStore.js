@@ -824,6 +824,8 @@ export const TypewriterStore = {
       // 视口序列化统一走 CanvasViewport.viewToStore：scale 不会再被某一层手写时漏掉（修复 P0-2）
       view: CanvasViewport.viewToStore(doc.view),
       style: (typeof doc.style === 'number') ? doc.style : 0,
+      // 结构视图预设（导图/逻辑图/组织图/树形图）：null = 自由连线。校验在 load 侧统一做。
+      presentation: (doc.presentation && typeof doc.presentation === 'object') ? doc.presentation : null,
     };
     // 主路径：每组独立文件（与写作档同构），不撑大 settings.json、保存只重写该组文件
     // 返回 true 表示确实落到了独立文件；false 表示退化回 settings —— 调用方据此决定是否可安全清理旧 key
@@ -846,13 +848,14 @@ export const TypewriterStore = {
     if (!doc && sm && typeof sm.getSetting === 'function') {
       try { doc = await sm.getSetting('typewriter:mindmap:' + id); } catch (_) { doc = null; }
     }
-    if (!doc) return { nodes: [], links: [], view: null, style: 0, version: this.MINDMAP_VERSION };
+    if (!doc) return { nodes: [], links: [], view: null, style: 0, presentation: null, version: this.MINDMAP_VERSION };
     return {
       nodes: this._sanitizeNodes(doc.nodes),
       links: this._sanitizeLinks(doc.links),
       // 读档反序列化同样走唯一入口：缺失/非法一律回退（scale 缺省 1）
       view: CanvasViewport.viewFromStore(doc.view),
       style: (typeof doc.style === 'number') ? doc.style : 0,
+      presentation: (doc.presentation && typeof doc.presentation === 'object') ? doc.presentation : null,
       version: Number(doc.version) || this.MINDMAP_VERSION,
     };
   },

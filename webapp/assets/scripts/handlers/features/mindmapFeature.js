@@ -1,6 +1,7 @@
 import { TypewriterStore } from '../../services/TypewriterStore.js';
 import { MindmapDoc } from './mindmapDoc.js';
 import { MindmapLayout } from './mindmapLayout.js';
+import { MindmapTree } from './mindmapTree.js';
 import { MindmapExport } from './mindmapExport.js';
 import { LinkLayer } from '../../services/LinkLayer.js';
 // 文本输入来源判定（Shadow DOM 安全）：见 utils/domRef 的 isFromTextEntry 注释
@@ -68,6 +69,9 @@ export const MindmapFeature = {
   _view: null,
   _style: MM_STYLE_AVAILABLE[0],   // 子弹样式索引：导图模式下第一个机身按钮在在售档位内循环切换
   _selId: null,
+  _presentation: null,     // 结构视图预设 { structure, nodeShape, arrow, rootId }；null = 自由连线
+  _structBar: null,        // 横向结构二级条（缩放条结构键展开）
+  _structBarDocHandler: null,
   _selLinkIdx: null,
   _els: null,               // Map<id, el>
   _nodeGeo: new Map(),      // Map<id, {cx,cy,hw,hh,rot}> 节点几何缓存（离屏卸载后供连线按缓存绘制，剔除核心）
@@ -137,6 +141,7 @@ export const MindmapFeature = {
       nodeSelector: '.tw-mm-node',
       getNodeMap: () => this._els,
       getLinks: () => this._links,
+      getPresentation: () => this._presentation,   // 结构模式统一切换边型/箭头（不污染每条线的存档）
       setLinks: (a) => { this._links = a; },
       addLink: (f, t) => {
         const next = MindmapDoc.addLink(this._nodes, this._links, f, t);
@@ -171,6 +176,7 @@ export const MindmapFeature = {
     this._cullRaf = 0;
     this._initToolbar(layer);
     this._initSearch(layer);
+    this._initStructureBar(layer);
     this._initUndo();
     this._bindLayer();
     this._mountZoomUI();
@@ -200,6 +206,9 @@ export const MindmapFeature = {
       // 抓手（对齐 Excalidraw 手工具，移动端替代双指捏合）：复用桌面端已有的 handTool 机制
       onHand: () => mm._toggleHand(),
       isHandActive: () => !!(mm._hand && mm._hand.state && mm._hand.state.handTool),
+      // 结构入口（仅导图）：点开/收起横向二级条；已应用结构时按键高亮
+      onStructure: () => mm._toggleStructureBar(),
+      isStructureActive: () => !!(mm._presentation && mm._presentation.structure),
     });
   },
 
@@ -387,6 +396,7 @@ export const MindmapFeature = {
     const norm = MindmapDoc.normalize(nodes, links);
     this._nodes = norm.nodes;
     this._links = norm.links;
+    this._presentation = MindmapDoc.normalizePresentation(doc.presentation);   // 旧文档无 → null（自由模式）
     // 缩放一并恢复（按文档持久化视口，对齐 Excalidraw）；非法值由 clamp 兜底
     this._view = doc.view
       ? { x: doc.view.x || 0, y: doc.view.y || 0, scale: CanvasViewport.clamp(doc.view.scale == null ? 1 : doc.view.scale) }
@@ -395,6 +405,9 @@ export const MindmapFeature = {
     const rawStyle = (typeof doc.style === 'number') ? doc.style : MM_STYLE_AVAILABLE[0];
     this._style = MM_STYLE_AVAILABLE.indexOf(rawStyle) >= 0 ? rawStyle : MM_STYLE_AVAILABLE[0];
     this._spatialDirty = true;   // 整份文档重载 → 索引待重建
+    // 载入后同步结构态（缩放条结构键高亮 / 二级条勾选）；旧文档 presentation=null 时无副作用
+    if (this._zoomUI && typeof this._zoomUI.sync === 'function') this._zoomUI.sync();
+    if (this._structBar) this._syncStructureBar();
   },
 
   /** 防抖落盘（拖动/编辑时高频触发，只在停手后写一次） */
@@ -434,6 +447,7 @@ export const MindmapFeature = {
     return Promise.resolve(TypewriterStore.saveMindmapGroupDoc(this._groupId, {
       nodes: this._nodes, links: this._links,
       view: hasView ? this._view : null, style: this._style,
+      presentation: this._presentation || null,
     })).catch((e) => {
       console.error('[Mindmap] 子弹落盘失败', e);
       this._showSaveFailed();
@@ -830,6 +844,7 @@ export const MindmapFeature = {
     if (!this._view) this._view = { x: 0, y: 0, scale: 1 };
     this._applyView();
 
+    this._syncPresentationClass();   // 结构态图层样式（节点形状）在重绘前先同步
     this._linkLayer.render();
     this._paintSelection();
     this._updateToolbar();
@@ -1318,6 +1333,13 @@ export const MindmapFeature = {
     // 两边各缩放一次（便签画布虽隐藏，却会偷偷改隐藏画布的视口）。
     e.stopPropagation();
 
+    // 结构二级条打开时，Esc 优先关它（不打断画布选中）
+    if (e.key === 'Escape' && this._structBar && !this._structBar.hidden) {
+      e.preventDefault();
+      this._closeStructureBar();
+      return;
+    }
+
     // ⌘±/0、Shift+1/2、H 等「画布缩放/适应/抓手」键已统一收口到 CanvasKeys（C2）：导图与便签共用同一份逻辑，
     // 命中且导图激活时 stopImmediatePropagation，杜绝双响。以下仅处理导图专属键（搜索/撤销/删除/新建等）。
     // Cmd/Ctrl+F：唤起子弹搜索（与便签模式的查找一致）
@@ -1406,6 +1428,7 @@ export const MindmapFeature = {
       nodes: this._nodes.map((n) => Object.assign({}, n)),
       links: this._links.map((l) => Object.assign({}, l)),
       view: Object.assign({}, this._view || { x: 0, y: 0 }),
+      presentation: this._presentation ? Object.assign({}, this._presentation) : null,
     };
   },
 
@@ -1417,6 +1440,7 @@ export const MindmapFeature = {
     if (this._editId) this._commitEdit(true);
     this._nodes = (s.nodes || []).map((n) => Object.assign({}, n));
     this._links = (s.links || []).map((l) => Object.assign({}, l));
+    this._presentation = MindmapDoc.normalizePresentation(s.presentation);
     this._view = Object.assign({}, s.view || { x: 0, y: 0 });
     this._selId = null;
     if (this._selSet) this._clearMultiSel();
@@ -1911,6 +1935,206 @@ export const MindmapFeature = {
     return label ? (partial ? '选区 ' + label : label) : '';
   },
 
+  // ===== 结构视图（导图/逻辑图/组织图/树形图）：一次性整理 + 视图预设 =====
+  // 内核仍是自由连线：结构只改一次坐标 + 一组渲染样式，不改数据、不约束父子；
+  // 「恢复自由」清掉预设，即回到每条线自己的 route/arrow 与原始外观。
+
+  /** 结构态的图层类（节点形状）同步；自由模式移除，完全回到原样。 */
+  _syncPresentationClass() {
+    const layer = this._el;
+    if (!layer) return;
+    const p = this._presentation;
+    const structured = !!(p && p.structure);
+    layer.classList.toggle('is-structured', structured);
+    if (structured) layer.dataset.nodeShape = p.nodeShape || 'text';
+    else layer.removeAttribute('data-node-shape');
+  },
+
+  /** 横向结构二级条：挂在层根，锚在缩放条正下方。 */
+  _initStructureBar(layer) {
+    const bar = document.createElement('div');
+    bar.className = 'tw-mm-struct-bar';
+    bar.hidden = true;
+    [
+      ['mindmap', '思维导图'],
+      ['logic', '逻辑图'],
+      ['org', '组织结构图'],
+      ['tree', '树形图'],
+    ].forEach(([structure, label]) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.dataset.structure = structure;
+      b.textContent = label;
+      bar.appendChild(b);
+    });
+    const sep = document.createElement('span');
+    sep.className = 'tw-mm-struct-sep';
+    bar.appendChild(sep);
+    [['root', '以此为根'], ['retidy', '重新整理'], ['free', '恢复自由']].forEach(([act, label]) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.dataset.act = act;
+      b.textContent = label;
+      bar.appendChild(b);
+    });
+    layer.appendChild(bar);
+    this._structBar = bar;
+    bar.addEventListener('pointerdown', (e) => e.stopPropagation());
+    bar.addEventListener('click', (e) => {
+      const btn = e.target.closest('button');
+      if (!btn) return;
+      e.stopPropagation();
+      if (btn.dataset.structure) {
+        const ok = this.applyStructure(btn.dataset.structure, this._getLayoutScope());
+        if (!ok) this._msg('结构不足：先连出层次再整理');
+        return;
+      }
+      const act = btn.dataset.act;
+      if (act === 'root') this._setStructureRoot();
+      else if (act === 'retidy') this._retidyStructure();
+      else if (act === 'free') this._restoreFree();
+      if (e.detail > 0) btn.blur();
+    });
+    this._syncStructureBar();
+  },
+
+  _syncStructureBar() {
+    const bar = this._structBar;
+    if (!bar) return;
+    const cur = this._presentation && this._presentation.structure;
+    bar.querySelectorAll('[data-structure]').forEach((b) => {
+      b.classList.toggle('is-active', b.dataset.structure === cur);
+    });
+  },
+
+  _toggleStructureBar() {
+    const bar = this._structBar;
+    if (!bar) return;
+    if (bar.hidden) this._openStructureBar();
+    else this._closeStructureBar();
+  },
+
+  _openStructureBar() {
+    const bar = this._structBar;
+    if (!bar) return;
+    this._syncStructureBar();
+    bar.hidden = false;
+    if (!MindmapLayout.isStructured(this._nodes, this._links)) {
+      this._msg('当前图没有层次，整理会退化为网格/环形');
+    }
+    if (!this._structBarDocHandler) {
+      this._structBarDocHandler = (e) => {
+        if (bar.contains(e.target)) return;
+        if (e.target.closest && e.target.closest('.tw-zoom-struct')) return;   // 点入口按钮自己 toggle
+        this._closeStructureBar();
+      };
+      document.addEventListener('pointerdown', this._structBarDocHandler, true);
+    }
+  },
+
+  _closeStructureBar() {
+    const bar = this._structBar;
+    if (bar) bar.hidden = true;
+    if (this._structBarDocHandler) {
+      document.removeEventListener('pointerdown', this._structBarDocHandler, true);
+      this._structBarDocHandler = null;
+    }
+  },
+
+  /**
+   * 应用结构：按「生成树」排版 + 记录 presentation。
+   * - 有选区：只排选区（单选自动扩到整条子树），质心锚定原位置，不动其余；
+   * - 无选区：排整张图并居中。
+   * 返回 false 表示图里没有任何树边（结构无从谈起）。
+   */
+  applyStructure(structure, scopeIds) {
+    const nodes = this._nodes || [];
+    const links = this._links || [];
+    if (!nodes.length) return false;
+    const allowed = ['mindmap', 'logic', 'org', 'tree'];
+    if (allowed.indexOf(structure) < 0) return false;
+    // 根：优先当前单选节点，其次上次结构的根，最后按入度/出度自动选
+    const rootId = this._selId || (this._presentation && this._presentation.rootId) || null;
+    const tree = MindmapTree.build(nodes, links, rootId);
+    if (!tree.treeLinks.length) return false;
+
+    const scope = (scopeIds && scopeIds.size) ? scopeIds : null;
+    let targetIds = scope;
+    if (scope && scope.size === 1) {
+      const sub = new Set([scope.values().next().value]);
+      const stack = Array.from(sub);
+      while (stack.length) {
+        const cur = stack.pop();
+        (tree.children.get(cur) || []).forEach((c) => { if (!sub.has(c)) { sub.add(c); stack.push(c); } });
+      }
+      targetIds = sub;
+    }
+    const targetSet = targetIds ? new Set(targetIds) : null;
+    const subNodes = targetSet ? nodes.filter((n) => targetSet.has(n.id)) : nodes;
+    const subLinks = targetSet ? tree.treeLinks.filter((l) => targetSet.has(l.from) && targetSet.has(l.to)) : tree.treeLinks;
+    const pos = MindmapLayout.compute(structure, subNodes, subLinks);
+    if (!pos || !pos.size) return false;
+
+    this._mutate(() => {
+      if (targetSet) {
+        // 锚定：选区质心对齐原位置，未选中节点不动
+        let ox = 0, oy = 0, oc = 0;
+        subNodes.forEach((n) => { ox += n.x; oy += n.y; oc++; });
+        const oAvgX = oc ? ox / oc : 0, oAvgY = oc ? oy / oc : 0;
+        let nx = 0, ny = 0;
+        pos.forEach((p) => { nx += p.x; ny += p.y; });
+        const nAvgX = pos.size ? nx / pos.size : 0, nAvgY = pos.size ? ny / pos.size : 0;
+        const dx = Math.round(oAvgX - nAvgX), dy = Math.round(oAvgY - nAvgY);
+        const moved = new Map();
+        pos.forEach((p, k) => moved.set(k, { x: p.x + dx, y: p.y + dy }));
+        this._nodes = nodes.map((n) => {
+          const p = moved.get(n.id);
+          return p ? Object.assign({}, n, { x: p.x, y: p.y }) : n;
+        });
+      } else {
+        this._nodes = nodes.map((n) => {
+          const p = pos.get(n.id);
+          return p ? Object.assign({}, n, { x: p.x, y: p.y }) : n;
+        });
+      }
+      this._presentation = MindmapDoc.normalizePresentation({ structure, rootId: tree.rootId, arrow: false });
+    });
+
+    this.render();
+    if (!targetSet) this._centerView();   // 局部排版不挪动视口
+    this._scheduleSave();
+    if (this._zoomUI && typeof this._zoomUI.sync === 'function') this._zoomUI.sync();
+    this._syncStructureBar();
+    return true;
+  },
+
+  /** 恢复自由连线：清掉结构预设，回到每条线自己的 route/arrow 与原始节点外观。 */
+  _restoreFree() {
+    if (!this._presentation) return;
+    this._presentation = null;
+    this.render();
+    this._scheduleSave();
+    if (this._zoomUI && typeof this._zoomUI.sync === 'function') this._zoomUI.sync();
+    this._syncStructureBar();
+    this._msg('已恢复自由连线');
+  },
+
+  /** 重新整理：沿用当前结构重排（含选区）。 */
+  _retidyStructure() {
+    const st = this._presentation && this._presentation.structure;
+    if (!st) return;
+    const ok = this.applyStructure(st, this._getLayoutScope());
+    if (!ok) this._msg('结构不足，无法整理');
+  },
+
+  /** 以当前单选节点为根重排当前结构。 */
+  _setStructureRoot() {
+    if (!this._selId) { this._msg('先选中一颗子弹作为根'); return; }
+    const st = (this._presentation && this._presentation.structure) || 'tree';
+    const ok = this.applyStructure(st, new Set([this._selId]));
+    if (!ok) this._msg('结构不足，无法整理');
+  },
+
   // ── 说明：一键自动布局已**摘除机身键接线** ──
   // 第三个键改作「切换连线形态」（见 cycleLinkRoute）。原因：布局只吃 links，而自由导图
   // 常常没有层次，跑结构布局必然退化（树状=一行、放射=叠一点），对打字流建出来的图几乎没有价值。
@@ -2051,6 +2275,9 @@ export const MindmapFeature = {
     this._links = [];
     this._view = null;
     this._selId = null;
+    this._presentation = null;
+    if (this._structBarDocHandler) { document.removeEventListener('pointerdown', this._structBarDocHandler, true); this._structBarDocHandler = null; }
+    this._structBar = null;
     this._selLinkIdx = null;
     this._editId = null;
     this._editKey = null;

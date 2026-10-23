@@ -74,19 +74,19 @@
 
 .tw-mm-text.is-placeholder { color: var(--text-tertiary); font-style: italic; }
 
-/* —— 连线锚点：每颗子弹右侧的连线按钮（由共享 LinkLayer 注入，便签连线同一套交互） ——
+/* —— 连线锚点：每颗子弹的连线按钮（由共享 LinkLayer 注入，便签连线同一套交互） ——
    关键修复 A（不挡内容）：本元素带 role="button"，会命中 base-foundation.css 的全局触控目标规则
    :where([role="button"]…){ min-width/min-height: var(--touch-target)=44px }，把钮撑成 44px 见方、
    远大于胶囊且压住文字。这里显式用 min-width/min-height 压回 13px（与 .tw-card-link 同一套路），
-   并整体移到胶囊右侧之外、去掉底色光环，彻底不侵扰子弹内容。
-   关键修复 B（好抓取）：可见圆点很小（13px）且落在胶囊外，胶囊右缘与锚点间若留空隙会形成「死区」——
+   并整体移到胶囊外侧、去掉底色光环，彻底不侵扰子弹内容。
+   关键修复 B（好抓取）：可见圆点很小（13px）且落在胶囊外，胶囊与锚点间若留空隙会形成「死区」——
    鼠标从胶囊移向锚点时短暂离开两者，:hover 失效、锚点消失、抓不住。用透明 ::before 命中扩展区
-   把死区填上并加高竖直命中带；只探入胶囊 2px，不影响拖拽本体。 */
+   把死区填上；只探入胶囊 4px，不影响拖拽本体。
+   位置说明：锚点放在**右上角外侧**，右缘中线留给「备注」倒三角（有备注时才出现）。 */
 .tw-mm-node .tw-link-anchor {
   position: absolute;
-  top: 50%;
-  right: -14px;                 /* 与胶囊只留约 1px 缝，靠 ::before 桥接，不显空隙 */
-  transform: translateY(-50%);
+  top: -7px;
+  right: -7px;                  /* 右上角外侧：右缘中线让给「备注」倒三角 */
   width: 13px;
   height: 13px;
   min-width: 13px;              /* 覆盖全局触控目标 44px，否则钮比子弹还大 */
@@ -106,21 +106,20 @@
   pointer-events: none;
   transition: transform 0.12s ease, background 0.12s ease, border-color 0.12s ease, opacity 0.16s ease;
 }
-/* 透明命中扩展：填补胶囊→锚点的死区 + 加高竖直命中带，小圆点也好抓 */
+/* 透明命中扩展：把锚点扩成 24×24 的热区（角上小圆点也好抓） */
 .tw-mm-node .tw-link-anchor::before {
   content: "";
   position: absolute;
-  left: -3px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 20px;
-  height: 26px;
+  left: -4px;
+  top: -4px;
+  width: 24px;
+  height: 24px;
   background: transparent;
 }
 .tw-mm-node .tw-link-anchor svg { width: 8px; height: 8px; display: block; }
 .tw-mm-node:hover .tw-link-anchor { opacity: 1; pointer-events: auto; }
 .tw-mm-node.is-editing .tw-link-anchor { opacity: 0; pointer-events: none; }   /* 编辑时不需要连线把手 */
-.tw-mm-node .tw-link-anchor:hover { transform: translateY(-50%) scale(1.15); background: rgba(var(--primary-rgb), 0.16); border-color: rgba(var(--primary-rgb), 0.85); }
+.tw-mm-node .tw-link-anchor:hover { transform: scale(1.15); background: rgba(var(--primary-rgb), 0.16); border-color: rgba(var(--primary-rgb), 0.85); }
 
 /* 连线目标高亮：拖拽连接时，悬停的子弹描出候选高亮 */
 .tw-mm-node.is-link-target {
@@ -366,22 +365,19 @@
 
 /* ===== 节点备注：可展开卡片 + 节点标记 ===== */
 /* 有备注的节点右上角出现可点标记（点开/收起备注卡片） */
-/* 有备注时给右侧留出倒三角的位置，文字不会被压 */
-.tw-mm-node.has-note { padding-right: 1.6em; }
-
 .tw-mm-note-mark {
   position: absolute;
-  right: 5px;                   /* 胶囊右端、文字右侧、居中对齐：不压边框、不碰右侧连线锚点 */
+  right: -13px;                 /* 胶囊右缘外侧、垂直居中：物理上不可能压到文字（锚点已挪到右上角） */
   top: 50%;
   left: auto;
   bottom: auto;
-  width: 16px;
+  width: 13px;
   height: 16px;
   padding: 0;
   border: 0;
   background: transparent;
   color: var(--text-secondary);
-  opacity: .85;
+  opacity: .9;
   cursor: pointer;
   display: inline-flex;
   align-items: center;

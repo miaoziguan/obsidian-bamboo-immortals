@@ -285,7 +285,7 @@ export class LinkLayer {
     const cb = { x: b.cx, y: b.cy };
     const A = this.anchorOn(a, cb);
     const B = this.anchorOn(b, ca);
-    const mode = (l.route === 'straight') ? 'straight' : 'bezier';
+    const mode = (l.route === 'bezier') ? 'bezier' : 'straight';   // 默认实心直线（缺省 route 也按直线渲染）
     const { d, tip } = this.routePath(A.p, A.u, B.p, B.u, mode, Number(l.bend) || 0);
     const ah = 8, aw = 7;   // 三角高 / 半宽
     const apx = -tip.y, apy = tip.x;                          // 垂直于入线方向
@@ -509,7 +509,7 @@ export class LinkLayer {
       const lk = this.linkOf(from, to);
       if (!lk) return;
       const order = ['bezier', 'straight'];
-      const cur = (lk.route === 'straight') ? 'straight' : 'bezier';
+      const cur = (lk.route === 'bezier') ? 'bezier' : 'straight';   // 与默认一致：缺省视为直线
       lk.route = order[(order.indexOf(cur) + 1) % order.length];
       this.render();
       this.onChange();

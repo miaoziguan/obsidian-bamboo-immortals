@@ -57,7 +57,7 @@ import { UndoStack } from '../../services/undoStack.js';
 import { ICON_LAYERS, ICON_FONT, ICON_GRID, ICON_PRINT, ICON_X, ICON_FONT_DOWN, ICON_FONT_UP, ICON_ZOOM_OUT, ICON_ZOOM_IN, ICON_PAPER, ICON_EXPORT, ICON_PREVIEW, ICON_MOVE_UP, ICON_MOVE_DOWN, ICON_LV_UP, ICON_LV_DOWN, ICON_ROTATE } from './twConfig.js';
 import { STACK_STEP, STACK_LEVELS, MAX_LEN, NOTE_CAP, WRITE_FLOW_GAP, EJECT_SINK, SAVE_DEBOUNCE, LOD_DENSITY, LOD_DENSITY_EXIT, ZOOM_MIN, ZOOM_MAX, ZOOM_STEP } from './twConfig.js';
 import { FONT_SCALES, FONT_SCALE_DEFAULT_IDX, FONT_SCALE_LABELS, CARD_SCALES, CARD_SCALE_LABELS, CARD_SCALE_DEFAULT_IDX } from './twConfig.js';
-import { FONTS, FONT_LABELS, FONT_FEEDBACK, MARKET_FONTS } from './twConfig.js';
+import { FONTS, FONT_LABELS, FONT_FEEDBACK, MARKET_FONTS, DEFAULT_FONT } from './twConfig.js';
 import { PAPERS, PAPER_LABELS, PAPER_FEEDBACK, PAPER_TITLES } from './twConfig.js';
 import { LEVELS, LEVEL_LABELS, LEVEL_FEEDBACK, LEVEL_GROUPS, LEVEL_LADDER } from './twConfig.js';
 
@@ -79,7 +79,8 @@ export const TypewriterFeature = {
     this._selBarRAF = 0;               // 操作条跟随定位的 rAF 句柄
     this._zTop = 10;
     this._spawnIdx = 0;
-    this._fontIdx = 0;
+    // 默认字体 = 黑体（modern）；新卡从 _fontIdx 取字体，故初始即指向 modern。
+    this._fontIdx = Math.max(0, FONTS.indexOf(DEFAULT_FONT));
     this._paperIdx = 0;
     this._mode = 'notes';              // 红色齿轮旋钮三档权威状态（见 _setMode）
     this._layoutMode = 'flow';         // 写作档排版档位：'flow' 顺流竖排 / 'acts' 分幕（点 #twArrange 轮换）
@@ -238,7 +239,7 @@ export const TypewriterFeature = {
             <div class="tw-screen-top">
               <span id="twScreenTitle">凝墨成笺</span>
               <span class="tw-screen-font">
-                <span id="twMetaNotes">FONT: <b id="twFontLabel">${FONT_LABELS.classic}</b> · <b id="twPaperLabel">${PAPER_LABELS.plain}</b></span>
+                <span id="twMetaNotes">FONT: <b id="twFontLabel">${FONT_LABELS[DEFAULT_FONT]}</b> · <b id="twPaperLabel">${PAPER_LABELS.plain}</b></span>
                 <span id="twMetaWrite" hidden>卡片 <b id="twCardCount">0</b> · 连线 <b id="twLinkCount">0</b></span>
                 <span id="twMetaMindmap" hidden>子弹 <b id="twNodeCount">0</b> · 连线 <b id="twDepthCount">0</b></span>
               </span>
@@ -1080,7 +1081,7 @@ export const TypewriterFeature = {
       text: text || '',
       x: parseFloat(card.style.left) || 0,
       y: parseFloat(card.style.top) || 0,
-      font: card.dataset.font || 'classic',
+      font: card.dataset.font || DEFAULT_FONT,
       paper: card.dataset.paper || 'plain',
       level: card.dataset.level || 'p',
       date: card.dataset.date || '',

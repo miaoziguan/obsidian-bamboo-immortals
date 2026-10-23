@@ -1926,7 +1926,7 @@ export const MindmapFeature = {
     const inScope = (l) => !scope.size || (scope.has(l.from) && scope.has(l.to));
     const targets = links.filter(inScope);
     if (!targets.length) { this._msg('选区内没有连线'); return ''; }
-    const straightCount = targets.filter((l) => l.route === 'straight').length;
+    const straightCount = targets.filter((l) => l.route !== 'bezier').length;   // 缺省 route 视为直线（与新默认一致）
     const next = straightCount > targets.length / 2 ? 'bezier' : 'straight';
     // 会重写（选）全部连线的走向，不可逆 —— 变更留档，与播种 / 布局同一约定
     this._mutate(() => {

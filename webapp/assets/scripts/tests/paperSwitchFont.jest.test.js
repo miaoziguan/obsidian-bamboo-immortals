@@ -98,3 +98,11 @@ describe('bindPaperSwitch 字号不写坏回归', () => {
     expect(note.fontScale).toBe(1.4);
   });
 });
+
+describe('默认字体 = 黑体（modern）', () => {
+  test('DEFAULT_FONT 为 modern 且是合法内置字体（默认输出黑体）', () => {
+    expect(globalThis.DEFAULT_FONT).toBe('modern');
+    expect(globalThis.FONTS).toContain(globalThis.DEFAULT_FONT);
+    expect(globalThis.FONT_LABELS[globalThis.DEFAULT_FONT]).toBe('黑 B');
+  });
+});

@@ -51,7 +51,7 @@ export const MindmapDoc = {
       wires.push({
         from: l.from,
         to: l.to,
-        route: (l.route === 'straight') ? 'straight' : 'bezier',
+        route: (l.route === 'bezier') ? 'bezier' : 'straight',   // 默认「实心直线」：缺省/未知一律 straight
         bend: Number.isFinite(l.bend) ? l.bend : 0,
         dash: l.dash === 'dashed' ? 'dashed' : 'solid',
       });
@@ -101,7 +101,7 @@ export const MindmapDoc = {
     const ids = new Set(nodes.map((n) => n.id));
     if (!ids.has(from) || !ids.has(to)) return null;
     if (links.some((l) => (l.from === from && l.to === to) || (l.from === to && l.to === from))) return null;
-    return links.concat([{ from, to, route: 'bezier', bend: 0, dash: 'solid' }]);
+    return links.concat([{ from, to, route: 'straight', bend: 0, dash: 'solid' }]);   // 新连线默认实心直线
   },
 
   removeLink(links, from, to) {

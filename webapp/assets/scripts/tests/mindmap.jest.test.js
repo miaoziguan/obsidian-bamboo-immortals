@@ -30,8 +30,8 @@ describe('MindmapDoc 纯逻辑（自由模型）', () => {
       ];
       const out = MindmapDoc.normalize(nodes, links);
       expect(out.links).toEqual([
-        { from: 'a', to: 'b', route: 'bezier', bend: 0, dash: 'solid' },
-        { from: 'b', to: 'c', route: 'bezier', bend: 0, dash: 'solid' },
+        { from: 'a', to: 'b', route: 'straight', bend: 0, dash: 'solid' },   // 缺省 → 默认直线
+        { from: 'b', to: 'c', route: 'straight', bend: 0, dash: 'solid' },
       ]);
     });
   });
@@ -61,7 +61,7 @@ describe('MindmapDoc 纯逻辑（自由模型）', () => {
     const nodes = [{ id: 'a' }, { id: 'b' }, { id: 'c' }];
 
     test('addLink：合法才加，返回新数组；自连/重复/悬空返回 null', () => {
-      expect(MindmapDoc.addLink(nodes, [], 'a', 'b')).toEqual([{ from: 'a', to: 'b', route: 'bezier', bend: 0, dash: 'solid' }]);
+      expect(MindmapDoc.addLink(nodes, [], 'a', 'b')).toEqual([{ from: 'a', to: 'b', route: 'straight', bend: 0, dash: 'solid' }]);
       expect(MindmapDoc.addLink(nodes, [], 'a', 'a')).toBeNull();           // 自连
       expect(MindmapDoc.addLink(nodes, [], 'a', 'ghost')).toBeNull();       // 悬空
       const one = MindmapDoc.addLink(nodes, [], 'a', 'b');
@@ -133,7 +133,7 @@ describe('MindmapDoc 纯逻辑（自由模型）', () => {
       expect(nodes).toHaveLength(3);
       expect(links).toHaveLength(2);
       const idByText = new Map(nodes.map((n) => [n.text, n.id]));
-      expect(links).toContainEqual({ from: idByText.get('甲'), to: idByText.get('乙'), route: 'bezier', bend: 0, dash: 'solid' });
+      expect(links).toContainEqual({ from: idByText.get('甲'), to: idByText.get('乙'), route: 'straight', bend: 0, dash: 'solid' });
     });
 
     test('无连线也不报错；空便签 → 空', () => {

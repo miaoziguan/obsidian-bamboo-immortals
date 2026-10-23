@@ -82,6 +82,8 @@ export const CARD_SCALE_LABELS = ['S 小', 'M 标准', 'L 大', 'XL 特大'];
 export const CARD_SCALE_DEFAULT_IDX = 1;
 
 export const FONTS = ["classic", "modern", "kai"];
+// 默认字体：黑体（modern）。便签新卡从 _fontIdx 取字体；渲染/回退缺省也用它。
+export const DEFAULT_FONT = "modern";
 export const FONT_LABELS = { classic: "宋 A", modern: "黑 B", kai: "楷 C" };
 export const FONT_FEEDBACK = { classic: "SERIF 宋体", modern: "SANS 黑体", kai: "KAI 楷体" };
 
@@ -169,6 +171,7 @@ if (typeof globalThis !== 'undefined') {
   globalThis.CARD_SCALE_LABELS = CARD_SCALE_LABELS;
   globalThis.CARD_SCALE_DEFAULT_IDX = CARD_SCALE_DEFAULT_IDX;
   globalThis.FONTS = FONTS;
+  globalThis.DEFAULT_FONT = DEFAULT_FONT;
   globalThis.FONT_LABELS = FONT_LABELS;
   globalThis.FONT_FEEDBACK = FONT_FEEDBACK;
   globalThis.PAPERS = PAPERS;

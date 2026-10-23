@@ -571,7 +571,7 @@ export const MaterialMarket = {
           this._applyMaterialToCard(targetCard, { paper: material.name });
           if (typeof Toast !== 'undefined') Toast.showToast('已套用「' + material.name + '」皮肤', 'success');
         } else {
-          this._spawnCard(material.name, (typeof FONTS !== 'undefined' && FONTS[ctrl._fontIdx]) || 'classic', x, y);
+          this._spawnCard(material.name, (typeof FONTS !== 'undefined' && FONTS[ctrl._fontIdx]) || 'modern', x, y);
         }
       } else if (material.type === 'sticker') {
         this._dropSticker(material, x, y, payload.id);
@@ -588,7 +588,7 @@ export const MaterialMarket = {
           this._applyMaterialToCard(targetCard, { paper: preset.paper, font: preset.font });
           if (typeof Toast !== 'undefined') Toast.showToast('已套用模板「' + material.name + '」', 'success');
         } else {
-          this._spawnCard(preset.paper || 'plain', preset.font || ((typeof FONTS !== 'undefined' && FONTS[ctrl._fontIdx]) || 'classic'), x, y);
+          this._spawnCard(preset.paper || 'plain', preset.font || ((typeof FONTS !== 'undefined' && FONTS[ctrl._fontIdx]) || 'modern'), x, y);
         }
       }
     };
@@ -616,7 +616,7 @@ export const MaterialMarket = {
     const maxSeq = ctrl._notes.reduce((m, n) => (Number.isFinite(n.seq) && n.seq > m ? n.seq : m), -1);
     ctrl._notes = ctrl._notes.concat([{
       id, seq: maxSeq + 1, text: '', x: parseFloat(card.style.left) || 0, y: parseFloat(card.style.top) || 0,
-      font: card.dataset.font || 'classic', paper: paperId, level: 'p', date, zoom: 1, fontScale: 1, rot: 0,
+      font: card.dataset.font || 'modern', paper: paperId, level: 'p', date, zoom: 1, fontScale: 1, rot: 0,
     }]);
     ctrl._mountedCards.set(id, card);
     ViewportCuller.setGeom({ state: ctrl._state, ctrl }, id, { x: parseFloat(card.style.left) || 0, y: parseFloat(card.style.top) || 0, w: cw, h: ch, rot: 0 });

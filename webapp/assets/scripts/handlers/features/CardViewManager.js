@@ -4,7 +4,7 @@
 import { ICON_LAYERS, ICON_FONT, ICON_GRID, ICON_PRINT, ICON_X, ICON_FONT_DOWN, ICON_FONT_UP, ICON_ZOOM_OUT, ICON_ZOOM_IN, ICON_PAPER, ICON_EXPORT, ICON_PREVIEW, ICON_MOVE_UP, ICON_MOVE_DOWN, ICON_LV_UP, ICON_LV_DOWN, ICON_ROTATE, ICON_SPLIT } from './twConfig.js';
 import { STACK_STEP, STACK_LEVELS, TYPE_SPEED, MAX_LEN, NOTE_CAP, WRITE_FLOW_GAP, SAVE_DEBOUNCE, LOD_DENSITY, ZOOM_MIN, ZOOM_MAX, ZOOM_STEP } from './twConfig.js';
 import { FONT_SCALES, FONT_SCALE_DEFAULT_IDX, FONT_SCALE_LABELS, CARD_SCALES, CARD_SCALE_LABELS, CARD_SCALE_DEFAULT_IDX } from './twConfig.js';
-import { FONTS, FONT_LABELS, FONT_FEEDBACK } from './twConfig.js';
+import { FONTS, FONT_LABELS, FONT_FEEDBACK, DEFAULT_FONT } from './twConfig.js';
 import { PAPERS, PAPER_LABELS, PAPER_FEEDBACK, PAPER_TITLES, MARKET_PAPERS } from './twConfig.js';
 import { LEVELS, LEVEL_LABELS, LEVEL_FEEDBACK, LEVEL_GROUPS, LEVEL_LADDER } from './twConfig.js';
 import { TypewriterStore } from '../../services/TypewriterStore.js';
@@ -24,7 +24,7 @@ export const CardViewManager = {
   createCardEl(ctx, note) {
     const { state, ctrl } = ctx;
     const id = note.id || Math.random().toString(36).slice(2, 8).toUpperCase();
-    const font = note.font || 'classic';
+    const font = note.font || DEFAULT_FONT;   // 默认字体：黑体
     const paper = note.paper || 'plain';
     const date = note.date || ctrl._now();
     const level = (LEVELS.indexOf(note.level) >= 0) ? note.level : 'p';   // 旧数据无 level → 正文

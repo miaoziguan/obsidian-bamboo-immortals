@@ -244,6 +244,8 @@ export const CardInteractions = {
       },
       onEmptyPointerDown: (e) => {
         // Excalidraw 语义：拖空白 = 框选（Shift = 追加）；平移改由 空格/中键/抓手/滚轮/双指 承担
+        // 阻止默认：避免拖拽触发原生「文本选择 / 自动滚动」与画布 transform 打架（表现为画面跳动）
+        if (e.cancelable !== false && typeof e.preventDefault === 'function') e.preventDefault();
         if (!e.shiftKey && ctrl._clearSelection) ctrl._clearSelection();
         ctrl._startMarquee(e, e.shiftKey);
       },
@@ -563,10 +565,21 @@ export const CardInteractions = {
     const outX = minX < -off.x / s || maxX > VW - off.x / s;
     const outY = minY < -off.y / s || maxY > VH - off.y / s;
     if (outX || outY) {
-      const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
-      // 平移到选区中心；平移量在 scale 之前生效，故需乘以 s（保留当前缩放比）
-      ctrl._setCanvasOffset(s * (VW / 2 - cx), s * (VH / 2 - cy));
-      if (ctrl._updateSelBar) ctrl._updateSelBar();        // 选区工具条跟随新视口重定位
+      // 【最小平移】只把越界的边拉回视口，不再「居中选区」。
+      // 原实现是 setCanvasOffset(s*(VW/2-cx), s*(VH/2-cy)) 居中 —— 只要选区稍微越界，
+      // 松手瞬间画面就整块跳到选区中心（用户感受为「框选时画布跳动」）。
+      const visMinX = -off.x / s, visMaxX = VW - off.x / s;
+      const visMinY = -off.y / s, visMaxY = VH - off.y / s;
+      let dx = 0, dy = 0;
+      if (minX < visMinX) dx = visMinX - minX;            // 左侧越界 → 内容右移露出
+      else if (maxX > visMaxX) dx = visMaxX - maxX;       // 右侧越界 → 内容左移露出
+      if (minY < visMinY) dy = visMinY - minY;
+      else if (maxY > visMaxY) dy = visMaxY - maxY;
+      if (dx || dy) {
+        // 平移量在 scale 之前生效，故需乘以 s（保留当前缩放比）
+        ctrl._setCanvasOffset(off.x + dx * s, off.y + dy * s);
+        if (ctrl._updateSelBar) ctrl._updateSelBar();      // 选区工具条跟随新视口重定位
+      }
     }
   },
   // (was _bindSelectionKeys)

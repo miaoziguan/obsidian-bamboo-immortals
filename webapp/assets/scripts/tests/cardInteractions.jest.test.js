@@ -8,7 +8,7 @@ const fitCardText = jest.fn();
 const { CardInteractions } = loadModule('handlers/features/CardInteractions.js', ['CardInteractions'], {
   byId: (id) => document.getElementById(id),
   WritingDoc: { setPos, setText, setOrder: jest.fn(), orderIds: jest.fn(() => []) },
-  CanvasViewport: { getScale: () => 1 },
+  CanvasViewport: { getScale: () => 1, getOffset: () => ({ x: 0, y: 0, scale: 1 }) },
   ModePolicy: { manualCardSize: (m) => m === 'notes', linksDefineOrder: () => false },
   fitCardText,
   MAX_LEN: 1000,
@@ -295,5 +295,36 @@ describe('框选边缘自动平移：步长随深度渐变（防「画布跳走�
     expect(near).toBeGreaterThanOrEqual(1);
     expect(nearer).toBeGreaterThanOrEqual(near);
     expect(nearer).toBeLessThanOrEqual(14);
+  });
+});
+
+describe('框选松手后的可见性调整：最小平移（不再居中跳变）', () => {
+  function mkRevealCtx(geo) {
+    const canvas = document.createElement('div');
+    Object.defineProperty(canvas, 'clientWidth', { value: 1000 });
+    Object.defineProperty(canvas, 'clientHeight', { value: 800 });
+    const card = document.createElement('div');
+    card.dataset.id = 'n1';
+    const ctrl = {
+      _selected: new Set([card]),
+      _canvas: canvas,
+      _geo: { get: (id) => (id === 'n1' ? geo : null) },
+      _setCanvasOffset: jest.fn(),
+      _updateSelBar: jest.fn(),
+    };
+    return { state: {}, ctrl };
+  }
+
+  test('选区完全在视口内 → 完全不平移', () => {
+    const ctx = mkRevealCtx({ x: 100, y: 100, w: 200, h: 100 });
+    CardInteractions.revealSelection(ctx);
+    expect(ctx.ctrl._setCanvasOffset).not.toHaveBeenCalled();
+  });
+
+  test('选区超出右边界 → 只把右边界拉回视口（不是居中）', () => {
+    const ctx = mkRevealCtx({ x: 1200, y: 100, w: 340, h: 100 });
+    CardInteractions.revealSelection(ctx);
+    // maxX = 1540 > 1000 → dx = 1000 - 1540 = -540（居中则会得到 -870）
+    expect(ctx.ctrl._setCanvasOffset).toHaveBeenCalledWith(-540, 0);
   });
 });

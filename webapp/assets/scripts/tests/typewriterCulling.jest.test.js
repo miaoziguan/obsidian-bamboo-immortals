@@ -1134,7 +1134,7 @@ describe('框选后自动平移露出选区（视口外选中内容也看得见�
     return c;
   }
 
-  test('选区超出视口 → 平移画布到选区中心（不缩放）', () => {
+  test('选区超出视口 → 最小平移把越界边拉回视口（不居中、不缩放）', () => {
     const geo = new global.GeoCache();
     geo.set('off', { x: 5000, y: 5000, w: 200, h: 100, rot: 0 });   // 视口外
     const sel = new Set();
@@ -1148,8 +1148,9 @@ describe('框选后自动平移露出选区（视口外选中内容也看得见�
     };
     const state = { canvasOffset: { x: 0, y: 0 } };
     global.CardInteractions.revealSelection({ state, ctrl });
-    // 选区中心 = (5100, 5050)；视口中心 = (500, 400) → 期望偏移 = (500-5100, 400-5050)
-    expect(setOffset).toHaveBeenCalledWith(-4600, -4650);
+    // 最小平移：只把越界的两条边拉回视口（不再居中）
+    // 右边界 5200 > 1000 → dx = 1000-5200 = -4200；下边界 5100 > 800 → dy = 800-5100 = -4300
+    expect(setOffset).toHaveBeenCalledWith(-4200, -4300);
   });
 
   test('选区完全在视口内 → 不平移（不打断视线）', () => {

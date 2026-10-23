@@ -367,7 +367,7 @@
 /* 有备注的节点右上角出现可点标记（点开/收起备注卡片） */
 .tw-mm-note-mark {
   position: absolute;
-  right: -13px;                 /* 胶囊右缘外侧、垂直居中：物理上不可能压到文字（锚点已挪到右上角） */
+  right: -22px;                 /* 胶囊右缘外侧、垂直居中：与胶囊留约 9px 间隙，明显不贴内容 */
   top: 50%;
   left: auto;
   bottom: auto;

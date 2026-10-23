@@ -377,7 +377,7 @@
   border: 0;
   background: transparent;
   color: var(--text-secondary);
-  opacity: .9;
+  opacity: .45;                 /* 静止低调：它是节点的外挂把手，不是独立元素 */
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -386,6 +386,24 @@
   z-index: 3;
   transition: transform .15s ease, color .15s ease, opacity .15s ease;
 }
+/* 悬停牵引线：把三角与胶囊右缘连起来，明确「它属于这个节点」；仅 hover 显示，不添常态视觉噪音 */
+.tw-mm-note-mark::before {
+  content: "";
+  position: absolute;
+  right: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 9px;                   /* 与 right:-22px 留出的间隙等宽 */
+  height: 1px;
+  background: var(--border-light);
+  opacity: 0;
+  transition: opacity .15s ease;
+}
+/* 节点自身接管把手：悬停节点 → 三角提亮 + 牵引线浮现；选中 → 常亮 */
+.tw-mm-node:hover .tw-mm-note-mark { opacity: .95; }
+.tw-mm-node:hover .tw-mm-note-mark::before { opacity: 1; }
+.tw-mm-node.is-sel .tw-mm-note-mark,
+.tw-mm-node.is-multi-sel .tw-mm-note-mark { opacity: 1; }
 .tw-mm-note-mark:hover { color: var(--bamboo-primary); opacity: 1; }
 .tw-mm-note-mark.is-open { transform: translateY(-50%) rotate(180deg); color: var(--bamboo-primary); }
 .tw-mm-note-mark[hidden] { display: none; }

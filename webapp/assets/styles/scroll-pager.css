@@ -598,6 +598,10 @@ body:not(.dark) .tw-case-right {
 .tw-rbtn:disabled:hover { color: inherit; }
 .tw-rbtn:disabled:active { transform: none; box-shadow: none; }
 .tw-rbtn:active { transform: translateY(0.13em); box-shadow: 0 0 0 0.07em rgba(var(--deep-rgb), 0.82), 0 0 0 0.11em rgba(var(--deep-rgb), 0.42), 0 0 0.18em rgba(var(--black-rgb), 0.30), inset 0 0.18em 0.4em rgba(var(--deep-rgb), 0.5); }
+/* 抓手按钮默认隐藏（非思维子弹档）：必须在作者样式里显式声明，
+   否则 `.tw-rbtn{display:inline-flex}` 会盖过 UA 的 `[hidden]{display:none}`，
+   导致 hidden 失效、按钮在所有档位都显示。applyModeChrome 对思维子弹档去掉 hidden 后才显示。 */
+.tw-rbtn[hidden] { display: none; }
 /* 抓手（平移）工具开启态：复用现有 .quick-nav-btn.active 同款 token（rgba primary 底 + bamboo-primary 描边），
    与整套设计体系一致，不另搞样式。 */
 .tw-rbtn.active { background: rgba(var(--primary-rgb), 0.15); border-color: var(--bamboo-primary); box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.2); color: var(--bamboo-primary); }

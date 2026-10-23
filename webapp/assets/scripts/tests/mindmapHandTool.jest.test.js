@@ -8,6 +8,7 @@ const { loadModule } = require('./__helpers__/testUtils');
 
 const { MindmapFeature } = loadModule('handlers/features/mindmapFeature.js', ['MindmapFeature']);
 const { ModePolicy } = loadModule('handlers/features/modePolicy.js', ['ModePolicy']);
+const { ModeController } = loadModule('handlers/features/ModeController.js', ['ModeController']);
 
 function mkHandFeature(initialHand) {
   const root = document.createElement('div');
@@ -73,5 +74,31 @@ describe('思维子弹：抓手按钮 / 模式（对齐 Excalidraw）', () => {
     // 思维子弹档：hand 键存在，但本假 this 没有 _toggleHand 方法 → 守卫也不会误调用
     feature._mode = 'mindmap';
     expect(() => tw._runModeAction.call(feature, 'hand')).not.toThrow();
+  });
+
+  test('applyModeChrome：mindmap 显示 #twHand，其余档位隐藏', () => {
+    function mkCtrl(mode) {
+      const root = document.createElement('div');
+      root.innerHTML =
+        '<span id="twScreenTitle"></span>' +
+        '<span id="twMetaNotes"></span><span id="twMetaWrite"></span><span id="twMetaMindmap"></span>' +
+        '<button id="twPaper"></button><button id="twFont"></button><button id="twArrange"></button>' +
+        '<button id="twHand" hidden></button>' +
+        '<button id="twPrint"></button><button id="twDocCorner"></button>';
+      document.body.appendChild(root);
+      return {
+        _el: root, _mode: mode, _input: document.createElement('input'), _draft: {},
+        _ensureDocCorner() {}, _refreshDocBtnLabel() {}, _refreshScreenMeta() {}, _syncDecoLayer() {},
+        _getDocKind() { return ModePolicy.docKind(this._mode); },
+      };
+    }
+    document.body.innerHTML = '';
+    const mm = mkCtrl('mindmap');
+    ModeController.applyModeChrome({ state: {}, ctrl: mm });
+    expect(mm._el.querySelector('#twHand').hidden).toBe(false);   // 思维子弹：显示
+    document.body.innerHTML = '';
+    const nt = mkCtrl('notes');
+    ModeController.applyModeChrome({ state: {}, ctrl: nt });
+    expect(nt._el.querySelector('#twHand').hidden).toBe(true);     // 便签：隐藏
   });
 });

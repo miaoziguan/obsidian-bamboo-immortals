@@ -364,25 +364,32 @@
 .tw-mm.is-hand.is-panning { cursor: grabbing; }
 .tw-mm.is-hand .tw-mm-canvas { cursor: grab; }
 
-/* ===== 节点备注：画布小圆点 + 编辑浮层 ===== */
-.tw-mm-node.has-note::after {
-  content: '';
+/* ===== 节点备注：可展开卡片 + 节点标记 ===== */
+/* 有备注的节点右上角出现可点标记（点开/收起备注卡片） */
+.tw-mm-note-mark {
   position: absolute;
-  top: 4px;
-  right: 6px;
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--bamboo-primary);
-  opacity: .85;
-  pointer-events: none;
+  top: 2px;
+  right: 4px;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--bamboo-primary);
+  opacity: .8;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
+.tw-mm-note-mark:hover { opacity: 1; }
+.tw-mm-note-mark[hidden] { display: none; }
 
 .tw-mm-note-pop {
   position: absolute;
   z-index: 60;
-  width: 260px;
-  padding: 8px;
+  width: 300px;
+  padding: 0;
   box-sizing: border-box;
   border-radius: var(--radius-control);
   background: var(--bamboo-popup-bg);
@@ -390,27 +397,52 @@
   box-shadow: var(--shadow-card);
   pointer-events: auto;
   user-select: text;
+  overflow: hidden;
 }
 .tw-mm-note-pop[hidden] { display: none; }
+.tw-mm-note-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 3px 5px 3px 10px;
+  border-bottom: 1px solid var(--border-light);
+  font-size: var(--type-xs);
+  color: var(--text-secondary);
+}
+.tw-mm-note-close {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.tw-mm-note-close:hover { background: rgba(var(--primary-rgb), .12); color: var(--text-primary); }
 .tw-mm-note-input {
   display: block;
   width: 100%;
   min-height: 78px;
-  max-height: 220px;
-  resize: vertical;
+  max-height: 260px;
+  resize: none;                 /* 自动增高，无需手动拖 */
   box-sizing: border-box;
-  padding: 6px 8px;
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-5);
-  background: var(--card-bg);
+  padding: 8px 10px;
+  border: 0;
+  background: transparent;
   color: var(--text-primary);
   font-size: var(--type-sm);
   line-height: var(--line-height-tight);
   outline: none;
+  overflow-y: auto;
 }
-.tw-mm-note-input:focus { border-color: rgb(var(--primary-rgb)); }
 .tw-mm-note-hint {
-  margin-top: 4px;
+  padding: 0 10px 7px;
   font-size: var(--type-xs);
   color: var(--text-tertiary);
 }

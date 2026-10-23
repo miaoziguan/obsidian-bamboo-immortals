@@ -116,14 +116,41 @@ describe('思维子弹：抓手工具放在缩放条（对齐 Excalidraw）', ()
 });
 
 describe('节点备注：画布标记', () => {
-  test('有备注 → has-note；清空 → 移除', () => {
+  test('有备注 → has-note 且标记显示；清空 → 移除并隐藏标记', () => {
     const el = document.createElement('div');
-    el.innerHTML = '<span class="tw-mm-text"></span>';
+    el.innerHTML = '<span class="tw-mm-text"></span><button class="tw-mm-note-mark" hidden></button>';
     el._text = el.querySelector('.tw-mm-text');
+    el._noteMark = el.querySelector('.tw-mm-note-mark');
     const fake = { _editId: null, NODE_MAX_W: 220 };
     MindmapFeature._paintNode.call(fake, el, { id: 'a', text: 'x', note: '有' });
     expect(el.classList.contains('has-note')).toBe(true);
+    expect(el._noteMark.hidden).toBe(false);
     MindmapFeature._paintNode.call(fake, el, { id: 'a', text: 'x', note: '' });
     expect(el.classList.contains('has-note')).toBe(false);
+    expect(el._noteMark.hidden).toBe(true);
+  });
+});
+
+describe('备注卡片：可展开 / 收起', () => {
+  test('点开 → 卡片显示、自动增高并定位；同一节点再点 → 收起', () => {
+    const close = jest.fn();
+    const mm = {
+      _selId: 'a', _noteForId: null,
+      _noteBox: { hidden: true },
+      _noteInput: { value: '', focus: jest.fn(), setSelectionRange: jest.fn(), scrollHeight: 100 },
+      _els: new Map([['a', {}]]),
+      _nodeById: () => ({ id: 'a', note: '已有备注' }),
+      _autoGrowNote: jest.fn(),
+      _positionNoteCard: jest.fn(),
+      _closeNoteEditor: close,
+    };
+    MindmapFeature._openNoteEditor.call(mm);
+    expect(mm._noteBox.hidden).toBe(false);
+    expect(mm._noteForId).toBe('a');
+    expect(mm._noteInput.value).toBe('已有备注');
+    expect(mm._autoGrowNote).toHaveBeenCalled();
+    expect(mm._positionNoteCard).toHaveBeenCalled();
+    MindmapFeature._openNoteEditor.call(mm);   // 再点：收起
+    expect(close).toHaveBeenCalled();
   });
 });

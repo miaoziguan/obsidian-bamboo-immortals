@@ -13,6 +13,9 @@ import { CanvasGestures } from '../../services/CanvasGestures.js';
 import { CanvasKeys } from '../../services/CanvasKeys.js';
 import { SpatialIndex } from '../../services/SpatialIndex.js';
 
+// 节点上的「备注」标记图标（有备注时才出现，点开可展开卡片）
+const ICON_NOTE_MARK = '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16M4 10h16M4 15h10M4 20h7"/></svg>';
+
 /**
  * mindmapFeature — 思维子弹（**独立文档**：子弹自由拖动 + 子弹之间自由连线）
  *
@@ -317,56 +320,98 @@ export const MindmapFeature = {
     });
   },
 
-  /** 备注浮层（子弹只放短关键词，细节写这里；不显示在画布，导出时作为缩进引用）。 */
+  /** 备注可展开卡片（子弹只放短关键词，细节写这里；不显示在画布，导出时作为缩进引用）。 */
   _initNoteEditor(layer) {
     const box = document.createElement('div');
     box.className = 'tw-mm-note-pop';
     box.hidden = true;
     box.innerHTML = `
+      <div class="tw-mm-note-head">
+        <span>备注</span>
+        <button type="button" class="tw-mm-note-close" aria-label="关闭备注" title="关闭">×</button>
+      </div>
       <textarea class="tw-mm-note-input" placeholder="备注：不显示在画布上，导出 Markdown 时作为缩进引用" spellcheck="false"></textarea>
       <div class="tw-mm-note-hint">Cmd/Ctrl+Enter 保存 · Esc 关闭</div>`;
     layer.appendChild(box);
     this._noteBox = box;
     this._noteInput = box.querySelector('.tw-mm-note-input');
-    // 浮层内交互不冒泡到画布（否则会触发平移 / 取消选中）
+    // 卡片内交互不冒泡到画布（否则会触发平移 / 取消选中）
     box.addEventListener('pointerdown', (e) => e.stopPropagation());
     box.addEventListener('click', (e) => e.stopPropagation());
     box.addEventListener('wheel', (e) => e.stopPropagation(), { passive: true });
+    box.querySelector('.tw-mm-note-close').addEventListener('click', (e) => {
+      e.stopPropagation();
+      this._closeNoteEditor();
+    });
     this._noteInput.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') { e.preventDefault(); this._closeNoteEditor(); }
       else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); this._closeNoteEditor(); }
     });
-    // 失焦即保存（点画布其他处 / 切选中）
-    this._noteInput.addEventListener('blur', () => this._closeNoteEditor());
+    // 输入时自动增高，并保持卡片在视口内
+    this._noteInput.addEventListener('input', () => {
+      this._autoGrowNote();
+      this._positionNoteCard();
+    });
+    // 失焦即保存（点画布其他处 / 切选中）；焦点移到卡片内按钮时不关，交给按钮 click
+    this._noteInput.addEventListener('blur', (e) => {
+      const to = e.relatedTarget;
+      if (to && this._noteBox && this._noteBox.contains(to)) return;
+      this._closeNoteEditor();
+    });
   },
 
-  /** 给当前单选节点打开备注浮层（定位在节点上方，空间不够翻到下方）。 */
+  /** 备注卡片自动增高（随内容，封顶 260px）。 */
+  _autoGrowNote() {
+    const t = this._noteInput;
+    if (!t) return;
+    t.style.height = 'auto';
+    t.style.height = Math.min(Math.max(t.scrollHeight || 0, 78), 260) + 'px';
+  },
+
+  /** 把备注卡片定位到节点下方；下方不够则翻到上方；水平夹紧在画布内。 */
+  _positionNoteCard() {
+    const id = this._noteForId;
+    const box = this._noteBox;
+    if (!id || !box || box.hidden) return;
+    const el = this._els.get(id);
+    if (!el) return;
+    const lr = this._el.getBoundingClientRect();
+    const r = el.getBoundingClientRect();
+    const lw = this._el.clientWidth || 0;
+    const lh = this._el.clientHeight || 0;
+    const W = Math.min(320, Math.max(200, lw - 16));
+    box.style.width = W + 'px';
+    let left = r.left - lr.left + r.width / 2 - W / 2;
+    left = Math.max(8, Math.min(Math.max(8, lw - W - 8), left));
+    const h = box.offsetHeight || 140;
+    let top = r.bottom - lr.top + 8;                                          // 默认在节点下方
+    if (lh && top + h > lh - 8) top = Math.max(8, r.top - lr.top - h - 8);    // 下方不够 → 上方
+    box.style.left = Math.round(left) + 'px';
+    box.style.top = Math.round(top) + 'px';
+  },
+
+  /** 展开/收起备注卡片（再点标记或工具条键 = 收起）。 */
   _openNoteEditor() {
     if (!this._noteBox || !this._selId) return;
+    if (this._noteForId === this._selId && !this._noteBox.hidden) { this._closeNoteEditor(); return; }   // toggle
+    // 切到另一颗节点前，先把上一张卡片的未提交内容写回
+    if (this._noteForId && this._noteForId !== this._selId) this._closeNoteEditor();
     const el = this._els.get(this._selId);
     if (!el) return;
     this._noteForId = this._selId;
     const n = this._nodeById(this._selId);
     this._noteInput.value = (n && n.note) || '';
-    const box = this._noteBox;
-    box.hidden = false;
-    const W = 260;
-    box.style.width = W + 'px';
-    const lr = this._el.getBoundingClientRect();
-    const r = el.getBoundingClientRect();
-    const lw = this._el.clientWidth || 0;
-    let left = r.left - lr.left + r.width / 2 - W / 2;
-    left = Math.max(8, Math.min(Math.max(8, lw - W - 8), left));
-    const h = box.offsetHeight || 130;
-    let top = r.top - lr.top - h - 10;
-    if (top < 8) top = r.bottom - lr.top + 10;   // 顶部不够 → 翻到节点下方
-    box.style.left = Math.round(left) + 'px';
-    box.style.top = Math.round(top) + 'px';
+    this._noteBox.hidden = false;
+    this._autoGrowNote();
+    this._positionNoteCard();
     this._noteInput.focus();
-    try { this._noteInput.select(); } catch (_) { /* 选区失败不影响编辑 */ }
+    try {
+      const len = this._noteInput.value.length;
+      this._noteInput.setSelectionRange(len, len);   // 光标放到末尾（编辑已有备注不覆盖）
+    } catch (_) { /* 选区失败不影响编辑 */ }
   },
 
-  /** 关闭备注浮层：有改动则写回（可撤销），并刷新节点小圆点 / 工具条。
+  /** 收起备注卡片：有改动则写回（可撤销），并刷新节点标记 / 工具条。
    *  discard=true（撤销恢复/卸载）时丢弃未提交内容，避免在撤销栈里再插一笔。 */
   _closeNoteEditor(discard) {
     const box = this._noteBox;
@@ -942,8 +987,8 @@ export const MindmapFeature = {
 
   _applyView() {
     if (!this._canvas || !this._view) return;
-    // 平移/缩放后备注浮层会脱离节点 —— 直接收起（顺带保存当前内容）
-    if (this._noteForId) this._closeNoteEditor();
+    // 平移/缩放时让备注卡片跟随节点（不关闭，避免丢失上下文）
+    if (this._noteForId) this._positionNoteCard();
     // 与便签画布同一约定：translate(平移) scale(缩放)，transform-origin 已在 CSS(.tw-mm-canvas) 定为 0 0
     const s = CanvasViewport.scaleOf(this._view);
     this._canvas.style.transform = `translate(${this._view.x}px, ${this._view.y}px) scale(${s})`;
@@ -974,9 +1019,20 @@ export const MindmapFeature = {
     el.className = 'tw-mm-node';
     el.dataset.id = n.id;
     el.innerHTML = `
-      <span class="tw-mm-text"></span>`;
+      <span class="tw-mm-text"></span>
+      <button type="button" class="tw-mm-note-mark" aria-label="备注" title="备注" hidden>${ICON_NOTE_MARK}</button>`;
     el.title = '拖动=移动；拖右侧连线按钮=连线；双击=编辑';
     el._text = el.querySelector('.tw-mm-text');
+    el._noteMark = el.querySelector('.tw-mm-note-mark');
+    // 标记是按钮：点它不拖动节点，直接展开/收起备注卡片（再点一次收起）
+    el._noteMark.addEventListener('pointerdown', (e) => e.stopPropagation());
+    el._noteMark.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const id = el.dataset.id;
+      if (this._noteForId === id && this._noteBox && !this._noteBox.hidden) { this._closeNoteEditor(); return; }
+      this._select(id);
+      this._openNoteEditor();
+    });
     return el;
   },
 
@@ -990,8 +1046,10 @@ export const MindmapFeature = {
     el.style.maxWidth = this.NODE_MAX_W + 'px';
     if (n.color) el.style.setProperty('--mm-accent', n.color);
     else el.style.removeProperty('--mm-accent');
-    // 有备注的节点在右上角显示一个小圆点（细节不在画布上展开）
-    el.classList.toggle('has-note', !!(n.note && String(n.note).trim()));
+    // 有备注时显示右上角「备注」标记（点它展开/收起备注卡片）
+    const hasNote = !!(n.note && String(n.note).trim());
+    el.classList.toggle('has-note', hasNote);
+    if (el._noteMark) el._noteMark.hidden = !hasNote;
   },
 
   _paintSelection() {

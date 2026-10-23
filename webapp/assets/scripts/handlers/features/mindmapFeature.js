@@ -352,12 +352,11 @@ export const MindmapFeature = {
       this._autoGrowNote();
       this._positionNoteCard();
     });
-    // 失焦即保存（点画布其他处 / 切选中）；焦点移到卡片内按钮时不关，交给按钮 click
+    // 失焦只静默保存，不再自动折叠：用户点画布其他处 / 平移画布后，卡片保持展开。
+    // 手动收起仍走 × / Esc / Cmd(Ctrl)+Enter / 再点三角（_openNoteEditor 的 toggle）。
     this._noteInput.addEventListener('blur', (e) => {
       if (this._noteDragKeep) return;   // 正在拖动这张卡片所属的节点：保持展开，卡片跟手移动
-      const to = e.relatedTarget;
-      if (to && this._noteBox && this._noteBox.contains(to)) return;
-      this._closeNoteEditor();
+      this._persistNote();
     });
   },
 
@@ -438,6 +437,30 @@ export const MindmapFeature = {
     if (markEl && markEl._noteMark) { markEl._noteMark.classList.remove('is-open'); markEl._noteMark.title = '展开备注'; }
     if (discard) return;
     if (!id) return;
+    const n = this._nodeById(id);
+    if (!n) return;                       // 节点已被删除：不写回
+    const prev = n.note || '';
+    if (next === prev) return;
+    this._mutate(() => {
+      this._nodes = MindmapDoc.setNote(this._nodes, id, next);
+      const el = this._els.get(id);
+      const nn = this._nodeById(id);
+      if (el && nn) this._paintNode(el, nn);
+    });
+    this._scheduleSave();
+    this._updateToolbar();
+  },
+
+  /** 静默保存备注内容（不收起卡片）。
+   *  失焦时调用：之前「点画布其他处 / 平移画布」会触发 textarea blur 把卡片自动折叠，
+   *  现在改为只保存、不折叠 —— 卡片保持展开，直到用户手动 × / Esc / 再点三角收起。
+   *  与 _closeNoteEditor 的写回逻辑一致，仅不隐藏卡片。 */
+  _persistNote() {
+    const box = this._noteBox;
+    if (!box || box.hidden) return;
+    const id = this._noteForId;
+    if (!id) return;
+    const next = this._noteInput ? this._noteInput.value : '';
     const n = this._nodeById(id);
     if (!n) return;                       // 节点已被删除：不写回
     const prev = n.note || '';

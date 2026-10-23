@@ -132,13 +132,14 @@ describe('节点备注：画布标记', () => {
 });
 
 describe('备注卡片：可展开 / 收起', () => {
-  test('点开 → 卡片显示、自动增高并定位；同一节点再点 → 收起', () => {
+  test('点开 → 卡片显示、自动增高并定位，标记转「收起」；再点 → 收起', () => {
     const close = jest.fn();
+    const mark = { classList: { add: jest.fn(), remove: jest.fn() }, title: '展开备注' };
     const mm = {
       _selId: 'a', _noteForId: null,
       _noteBox: { hidden: true },
       _noteInput: { value: '', focus: jest.fn(), setSelectionRange: jest.fn(), scrollHeight: 100 },
-      _els: new Map([['a', {}]]),
+      _els: new Map([['a', { _noteMark: mark }]]),
       _nodeById: () => ({ id: 'a', note: '已有备注' }),
       _autoGrowNote: jest.fn(),
       _positionNoteCard: jest.fn(),
@@ -150,7 +151,29 @@ describe('备注卡片：可展开 / 收起', () => {
     expect(mm._noteInput.value).toBe('已有备注');
     expect(mm._autoGrowNote).toHaveBeenCalled();
     expect(mm._positionNoteCard).toHaveBeenCalled();
+    expect(mark.classList.add).toHaveBeenCalledWith('is-open');   // 倒三角 → 正三角
+    expect(mark.title).toBe('收起备注');
     MindmapFeature._openNoteEditor.call(mm);   // 再点：收起
     expect(close).toHaveBeenCalled();
+  });
+
+  test('收起 → 标记恢复为倒三角（移除 is-open）', () => {
+    const mark = { classList: { add: jest.fn(), remove: jest.fn() }, title: '收起备注' };
+    const mm = {
+      _noteBox: { hidden: false },
+      _noteInput: { value: '' },
+      _noteForId: 'a',
+      _els: new Map([['a', { _noteMark: mark }]]),
+      _nodeById: () => ({ id: 'a', note: '' }),
+      _mutate: (fn) => fn(),
+      _nodes: [],
+      _paintNode: jest.fn(),
+      _scheduleSave: jest.fn(),
+      _updateToolbar: jest.fn(),
+    };
+    MindmapFeature._closeNoteEditor.call(mm);
+    expect(mm._noteBox.hidden).toBe(true);
+    expect(mark.classList.remove).toHaveBeenCalledWith('is-open');
+    expect(mark.title).toBe('展开备注');
   });
 });

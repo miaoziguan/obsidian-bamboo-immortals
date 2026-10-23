@@ -381,8 +381,10 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  transition: transform .15s ease, opacity .15s ease;
 }
 .tw-mm-note-mark:hover { opacity: 1; }
+.tw-mm-note-mark.is-open { transform: rotate(180deg); }   /* 展开 → 倒三角变正三角 */
 .tw-mm-note-mark[hidden] { display: none; }
 
 .tw-mm-note-pop {

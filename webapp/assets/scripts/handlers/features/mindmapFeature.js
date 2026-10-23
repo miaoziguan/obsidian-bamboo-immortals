@@ -13,8 +13,8 @@ import { CanvasGestures } from '../../services/CanvasGestures.js';
 import { CanvasKeys } from '../../services/CanvasKeys.js';
 import { SpatialIndex } from '../../services/SpatialIndex.js';
 
-// 节点上的「备注」标记图标（有备注时才出现，点开可展开卡片）
-const ICON_NOTE_MARK = '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16M4 10h16M4 15h10M4 20h7"/></svg>';
+// 节点上的「备注」标记：倒三角（展开指示）；展开时旋转 180° 变正三角（见 .is-open）
+const ICON_NOTE_MARK = '<svg viewBox="0 0 12 12" width="10" height="10" aria-hidden="true"><path d="M2.2 4.2h7.6L6 9.2z" fill="currentColor"/></svg>';
 
 /**
  * mindmapFeature — 思维子弹（**独立文档**：子弹自由拖动 + 子弹之间自由连线）
@@ -402,6 +402,7 @@ export const MindmapFeature = {
     const n = this._nodeById(this._selId);
     this._noteInput.value = (n && n.note) || '';
     this._noteBox.hidden = false;
+    if (el._noteMark) { el._noteMark.classList.add('is-open'); el._noteMark.title = '收起备注'; }
     this._autoGrowNote();
     this._positionNoteCard();
     this._noteInput.focus();
@@ -420,6 +421,8 @@ export const MindmapFeature = {
     const next = this._noteInput ? this._noteInput.value : '';
     box.hidden = true;
     this._noteForId = null;
+    const markEl = id ? this._els.get(id) : null;
+    if (markEl && markEl._noteMark) { markEl._noteMark.classList.remove('is-open'); markEl._noteMark.title = '展开备注'; }
     if (discard) return;
     if (!id) return;
     const n = this._nodeById(id);
@@ -1020,7 +1023,7 @@ export const MindmapFeature = {
     el.dataset.id = n.id;
     el.innerHTML = `
       <span class="tw-mm-text"></span>
-      <button type="button" class="tw-mm-note-mark" aria-label="备注" title="备注" hidden>${ICON_NOTE_MARK}</button>`;
+      <button type="button" class="tw-mm-note-mark" aria-label="展开备注" title="展开备注" hidden>${ICON_NOTE_MARK}</button>`;
     el.title = '拖动=移动；拖右侧连线按钮=连线；双击=编辑';
     el._text = el.querySelector('.tw-mm-text');
     el._noteMark = el.querySelector('.tw-mm-note-mark');

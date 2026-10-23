@@ -258,7 +258,6 @@ export const TypewriterFeature = {
               <button type="button" class="tw-rbtn" id="twPaper" title="切换便签样式" aria-label="切换便签样式">${ICON_LAYERS}</button>
               <button type="button" class="tw-rbtn" id="twFont" title="切换字体" aria-label="切换字体">${ICON_FONT}</button>
               <button type="button" class="tw-rbtn" id="twArrange" title="一键排版：便签排网格 / 写作顺流重排 / 导图自动布局（选中≥2张时只排选中组，否则排全部）" aria-label="一键排版画布">${ICON_GRID}</button>
-              <button type="button" class="tw-rbtn" id="twHand" title="抓手：拖动画布平移（移动端替代双指捏合）" aria-label="抓手 / 平移画布" hidden>${ICON_HAND}</button>
             </div>
             <div class="tw-grill" aria-hidden="true"><i></i><i></i><i></i></div>
             <button type="button" class="tw-print" id="twPrint" title="打印" aria-label="打印">${ICON_PRINT}</button>
@@ -712,9 +711,6 @@ export const TypewriterFeature = {
 
     // 第一个键：便签=切换便签样式；写作=整篇预览；导图=切换子弹样式。分派交给策略表。
     this._bindRbtn('#twPaper', () => this._runModeAction('paper'));
-    // 抓手按钮：仅「有 hand 行为的档位」（目前仅思维子弹）在 applyModeChrome 里显隐；
-    // 这里统一绑定，非对应档位时 _runModeAction 守卫会直接 return（buttons.hand 不存在）。
-    this._bindRbtn('#twHand', () => this._runModeAction('hand'));
 
     // 「整篇预览」弹窗：写作档专用，便签/导图模式不绑定（#twPaper 仍是切纸样/子弹样式）
     const previewModal = this._el.querySelector('#twPreviewModal');

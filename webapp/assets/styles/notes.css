@@ -1752,6 +1752,9 @@
 .tw-zoom-bar button:hover { background: rgba(var(--primary-rgb), 0.12); color: var(--text-primary); }
 .tw-zoom-bar button:active { transform: scale(0.92); }
 .tw-zoom-bar button:focus-visible { outline: 2px solid rgb(var(--primary-rgb)); outline-offset: 1px; }
+/* 抓手（缩放条上的 hand 键）开启态：与 hover 同底 + 细内描边，明示「已开启」而非仅悬停。
+   复用缩放条既有 token，不另搞设计。 */
+.tw-zoom-bar button.active { background: rgba(var(--primary-rgb), 0.12); color: var(--text-primary); box-shadow: inset 0 0 0 1px rgba(var(--primary-rgb), 0.35); }
 .tw-zoom-bar .tw-zoom-val {
   min-width: 38px;
   padding: 0 8px;

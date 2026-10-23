@@ -16,7 +16,7 @@
  * 连线定序 ×3、机身键分派 ×3。单点出现且与机制缠绕的落卡定位 / 打字呈现 / 重排
  * 属 B 类，等真要加第四档时再抽，避免无真实需求校准的过度抽象。
  */
-import { ICON_LAYERS, ICON_FONT, ICON_EXPORT, ICON_GRID, ICON_PREVIEW, ICON_LINK_ROUTE, ICON_HAND } from './twConfig.js';
+import { ICON_LAYERS, ICON_FONT, ICON_EXPORT, ICON_GRID, ICON_PREVIEW, ICON_LINK_ROUTE } from './twConfig.js';
 import { MAX_LEN, DRAFT_MAX_LEN, WRITE_NO_CULL_MAX } from './twConfig.js';
 
 /** 旋钮拨齿顺序 */
@@ -88,9 +88,6 @@ export const MODE_POLICY = {
       // 取代原「一键自动布局」—— 布局只吃 links，自由导图没层次时必然退化，价值有限；
       // 形态切换不依赖结构，任何时候都有确定、可见、可撤销的变化。
       arrange: { title: '一键切换连线形态：曲线 ⇄ 直线（有选区时只切换选区内的连线）', aria: '切换连线形态（曲线 / 直线）', icon: ICON_LINK_ROUTE, action: '_cycleLinkRoute' },
-      // 抓手：开启后单指拖空白=平移画布（对齐 Excalidraw 移动端的「手」工具，替代双指捏合）。
-      // 关闭则恢复单指拖空白=框选。复用桌面端已有的 CanvasGestures 空格/抓手机制（this._hand）。
-      hand: { title: '抓手：拖动画布平移（移动端替代双指捏合；开启后单指拖空白即平移）', aria: '抓手 / 平移画布', icon: ICON_HAND, action: '_toggleHand' },
       print: { title: '新建节点' },
     },
   },

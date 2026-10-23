@@ -197,6 +197,9 @@ export const MindmapFeature = {
         mm._zoomAt(p.x, p.y, 1 / CanvasViewport.scaleOf(mm._view));
       },
       fit: () => mm._fitToView(),
+      // 抓手（对齐 Excalidraw 手工具，移动端替代双指捏合）：复用桌面端已有的 handTool 机制
+      onHand: () => mm._toggleHand(),
+      isHandActive: () => !!(mm._hand && mm._hand.state && mm._hand.state.handTool),
     });
   },
 
@@ -1503,11 +1506,11 @@ export const MindmapFeature = {
   // 复用桌面端已有的 CanvasGestures 空格/抓手机制（this._hand）：handTool 使 isPanIntent 为真，
   // 于是 onDown 走 startPan 而非 onEmptyPointerDown —— 单指拖空白=平移、且不再误触发框选/节点拖拽；
   // 节点本体上拖动也改为平移（Excalidraw 选中手工具时同理）。关闭则恢复单指拖空白=框选。
+  // 入口在画布顶部缩放条（CanvasZoomUI 的 hand 键），不在机身按键排上。
   _toggleHand() {
     if (!this._hand || typeof this._hand.toggleHand !== 'function') return;
     const on = this._hand.toggleHand();   // 切换 state.handTool，host 自动加/去 is-hand 类
-    const btn = this._el && this._el.querySelector('#twHand');
-    if (btn) btn.classList.toggle('active', !!on);   // 复用 .tw-rbtn.active 高亮范式
+    if (this._zoomUI && typeof this._zoomUI.sync === 'function') this._zoomUI.sync();   // 刷新缩放条抓手键高亮
     this._msg(on ? '抓手：单指拖动画布平移' : '已退出抓手（单指拖空白恢复框选）');
   },
 

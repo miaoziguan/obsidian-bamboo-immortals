@@ -1499,6 +1499,18 @@ export const MindmapFeature = {
     });
   },
 
+  // 移动端对齐 Excalidraw：提供「抓手」按钮，开启后单指拖空白=平移画布（替代双指捏合）。
+  // 复用桌面端已有的 CanvasGestures 空格/抓手机制（this._hand）：handTool 使 isPanIntent 为真，
+  // 于是 onDown 走 startPan 而非 onEmptyPointerDown —— 单指拖空白=平移、且不再误触发框选/节点拖拽；
+  // 节点本体上拖动也改为平移（Excalidraw 选中手工具时同理）。关闭则恢复单指拖空白=框选。
+  _toggleHand() {
+    if (!this._hand || typeof this._hand.toggleHand !== 'function') return;
+    const on = this._hand.toggleHand();   // 切换 state.handTool，host 自动加/去 is-hand 类
+    const btn = this._el && this._el.querySelector('#twHand');
+    if (btn) btn.classList.toggle('active', !!on);   // 复用 .tw-rbtn.active 高亮范式
+    this._msg(on ? '抓手：单指拖动画布平移' : '已退出抓手（单指拖空白恢复框选）');
+  },
+
   // ===== 浮动工具条 / 改色 / 连线模式 =====
 
   /** 刷新浮动工具条：无选中或正在编辑 → 隐藏；否则定位于选中节点（或选框）上方居中 */

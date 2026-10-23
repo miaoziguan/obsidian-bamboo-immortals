@@ -30,6 +30,9 @@ export const ICON_LV_UP = `<svg viewBox="0 0 24 24" fill="none" stroke="currentC
 export const ICON_LV_DOWN = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 5 6 6 6-6"/><path d="m6 11 6 6 6-6"/></svg>`;
 export const ICON_ROTATE = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="m21 4-4 1.6L19.5 9"/></svg>`;
 export const ICON_SPLIT = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="4.5" width="15" height="15" rx="2.5"/><path d="M12 7.5v9"/></svg>`;
+// 抓手（平移工具）：与 Lucide「hand」同款描边风格（fill none / currentColor / round），
+// 复用整套图标体系，不另搞设计。stroke-width 用 1.5 与 ICON_GRID/ICON_LINK_ROUTE 等细节图标一致。
+export const ICON_HAND = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/><path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"/><path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/></svg>`;
 
 // 吐纸位叠放：新纸一律落在出纸口正上方，只做小幅纵向错位，像纸一张张叠出来。
 export const STACK_STEP = 24;     // 每张新纸相对上一张的上移错位量(px)
@@ -147,6 +150,7 @@ if (typeof globalThis !== 'undefined') {
   globalThis.ICON_LV_DOWN = ICON_LV_DOWN;
   globalThis.ICON_ROTATE = ICON_ROTATE;
   globalThis.ICON_SPLIT = ICON_SPLIT;
+  globalThis.ICON_HAND = ICON_HAND;
   globalThis.STACK_STEP = STACK_STEP;
   globalThis.STACK_LEVELS = STACK_LEVELS;
   globalThis.TYPE_SPEED = TYPE_SPEED;

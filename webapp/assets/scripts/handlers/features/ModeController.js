@@ -655,6 +655,21 @@ export const ModeController = {
     applyBtn('#twPaper', P.buttons.paper);
     applyBtn('#twFont', P.buttons.font);
     applyBtn('#twArrange', P.buttons.arrange);
+    // 抓手按钮：仅「有 hand 行为的档位」（目前仅思维子弹）显示；其余档位隐藏。
+    // 复用现有 .tw-rbtn.active 范式高亮开启态，并同步 handTool（切档不丢）。
+    const handBtn = root.querySelector('#twHand');
+    if (handBtn) {
+      if (P.buttons.hand && P.buttons.hand.icon) {
+        handBtn.hidden = false;
+        handBtn.title = P.buttons.hand.title;
+        handBtn.setAttribute('aria-label', P.buttons.hand.aria);
+        handBtn.innerHTML = P.buttons.hand.icon;
+        handBtn.classList.toggle('active', !!(ctrl._hand && ctrl._hand.state && ctrl._hand.state.handTool));
+      } else {
+        handBtn.hidden = true;
+        handBtn.classList.remove('active');
+      }
+    }
     // 文档组切换角控件：档位有文档种类才可见，浮于画布右上角（异步刷新组名，不阻塞 Chrome）
     set('#twDocCorner', (el) => {
       const kind = P.docKind;

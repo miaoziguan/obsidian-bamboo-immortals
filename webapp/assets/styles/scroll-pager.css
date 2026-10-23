@@ -598,6 +598,12 @@ body:not(.dark) .tw-case-right {
 .tw-rbtn:disabled:hover { color: inherit; }
 .tw-rbtn:disabled:active { transform: none; box-shadow: none; }
 .tw-rbtn:active { transform: translateY(0.13em); box-shadow: 0 0 0 0.07em rgba(var(--deep-rgb), 0.82), 0 0 0 0.11em rgba(var(--deep-rgb), 0.42), 0 0 0.18em rgba(var(--black-rgb), 0.30), inset 0 0.18em 0.4em rgba(var(--deep-rgb), 0.5); }
+/* 抓手（平移）工具开启态：复用现有 .quick-nav-btn.active 同款 token（rgba primary 底 + bamboo-primary 描边），
+   与整套设计体系一致，不另搞样式。 */
+.tw-rbtn.active { background: rgba(var(--primary-rgb), 0.15); border-color: var(--bamboo-primary); box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.2); color: var(--bamboo-primary); }
+/* 抓手开启：画布层显示 grab 光标（对齐 Excalidraw 手工具），按下变 grabbing */
+.is-hand { cursor: grab; }
+.is-hand:active { cursor: grabbing; }
 
 #twPaper:hover { color: rgb(var(--pale-rgb)); }
 #twFont:hover { color: var(--white); }

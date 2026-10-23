@@ -325,11 +325,10 @@ export const MindmapFeature = {
     const box = document.createElement('div');
     box.className = 'tw-mm-note-pop';
     box.hidden = true;
-    // 不再放「备注」标题与右上角 ×：收起已由节点上的倒三角负责（再点一次即收起），
-    // 卡片自身只保留输入区 + 快捷键提示，更紧凑、少一个重复的关闭入口。
+    // 卡片只保留输入区：标题、×、底部快捷键提示都已去掉（就地编辑、自动保存，
+    // 收起由节点上的倒三角 / Esc / Cmd(Ctrl)+Enter 负责，提示文案没有额外价值）。
     box.innerHTML = `
-      <textarea class="tw-mm-note-input" placeholder="备注：不显示在画布上，导出 Markdown 时作为缩进引用" spellcheck="false"></textarea>
-      <div class="tw-mm-note-hint">Cmd/Ctrl+Enter 保存 · Esc 关闭</div>`;
+      <textarea class="tw-mm-note-input" placeholder="备注：不显示在画布上，导出 Markdown 时作为缩进引用" spellcheck="false"></textarea>`;
     layer.appendChild(box);
     this._noteBox = box;
     this._noteInput = box.querySelector('.tw-mm-note-input');

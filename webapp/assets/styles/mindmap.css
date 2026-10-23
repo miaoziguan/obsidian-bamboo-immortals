@@ -446,7 +446,7 @@
   max-height: 260px;
   resize: none;                 /* 自动增高，无需手动拖 */
   box-sizing: border-box;
-  padding: 12px 12px 10px;
+  padding: 12px;
   border: 0;
   background: transparent;
   color: var(--text-primary);
@@ -463,12 +463,6 @@
 .tw-mm-note-input:focus-visible {
   outline: none;
   box-shadow: none;
-}
-.tw-mm-note-hint {
-  padding: 0 12px 9px;
-  font-size: 11px;
-  color: var(--text-tertiary);
-  opacity: .85;
 }
 /* 工具条备注按钮：该节点已有备注时高亮 */
 .tw-mm-toolbar .tw-mm-tb-btn.is-active { color: var(--bamboo-primary); }

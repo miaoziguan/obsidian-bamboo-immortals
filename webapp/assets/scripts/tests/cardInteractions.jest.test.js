@@ -298,7 +298,7 @@ describe('框选边缘自动平移：步长随深度渐变（防「画布跳走�
   });
 });
 
-describe('框选松手后的可见性调整：最小平移（不再居中跳变）', () => {
+describe('框选松手后不自动平移画布（保持原位，彻底消除松手移动）', () => {
   function mkRevealCtx(geo) {
     const canvas = document.createElement('div');
     Object.defineProperty(canvas, 'clientWidth', { value: 1000 });
@@ -315,16 +315,17 @@ describe('框选松手后的可见性调整：最小平移（不再居中跳变�
     return { state: {}, ctrl };
   }
 
-  test('选区完全在视口内 → 完全不平移', () => {
+  test('选区在视口内 → 完全不平移', () => {
     const ctx = mkRevealCtx({ x: 100, y: 100, w: 200, h: 100 });
     CardInteractions.revealSelection(ctx);
     expect(ctx.ctrl._setCanvasOffset).not.toHaveBeenCalled();
+    expect(ctx.ctrl._updateSelBar).toHaveBeenCalled();   // 仍刷新选区工具条
   });
 
-  test('选区超出右边界 → 只把右边界拉回视口（不是居中）', () => {
+  test('选区超出右边界 → 也完全不平移（不再拉回、不再居中）', () => {
     const ctx = mkRevealCtx({ x: 1200, y: 100, w: 340, h: 100 });
     CardInteractions.revealSelection(ctx);
-    // maxX = 1540 > 1000 → dx = 1000 - 1540 = -540（居中则会得到 -870）
-    expect(ctx.ctrl._setCanvasOffset).toHaveBeenCalledWith(-540, 0);
+    expect(ctx.ctrl._setCanvasOffset).not.toHaveBeenCalled();
+    expect(ctx.ctrl._updateSelBar).toHaveBeenCalled();
   });
 });

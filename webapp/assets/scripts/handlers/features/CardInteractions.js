@@ -538,49 +538,12 @@ export const CardInteractions = {
 
   },
   // (was _revealSelection)
+  // 框选松手后「不」自动平移画布：选择期间画布保持原位，视野外被选中的内容由用户手动平移查看 ——
+  // 彻底消除「松手瞬间整块移动」（此前的居中 / 最小平移都会让画面跳）。仅刷新选区工具条
+  // （计数 / 合并入口随选中集变化），不触碰 canvasOffset。
   revealSelection(ctx) {
-    const { state, ctrl } = ctx;
-    const sel = ctrl._selected;
-    const canvas = ctrl._canvas;
-    if (!sel || !sel.size || !canvas) return;
-    // 可见区换算成画布坐标：布局尺寸 / 缩放比
-    const s = CanvasViewport.getScale(ctrl);
-    const VW = canvas.clientWidth / s, VH = canvas.clientHeight / s;
-    if (VW < 2 || VH < 2) return;
-    const off = CanvasViewport.getOffset(ctrl);
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity, any = false;
-    sel.forEach((card) => {
-      const id = card.dataset && card.dataset.id;
-      const g = ctrl._geo ? ctrl._geo.get(id) : null;
-      const lx = g ? g.x : (parseFloat(card.style.left) || 0);
-      const ly = g ? g.y : (parseFloat(card.style.top) || 0);
-      const w = g ? g.w : (card.offsetWidth || 0);
-      const h = g ? g.h : (card.offsetHeight || 0);
-      minX = Math.min(minX, lx); minY = Math.min(minY, ly);
-      maxX = Math.max(maxX, lx + w); maxY = Math.max(maxY, ly + h);
-      any = true;
-    });
-    if (!any) return;
-    // 选区完全在视口内：不动（避免无谓平移打断视线）
-    const outX = minX < -off.x / s || maxX > VW - off.x / s;
-    const outY = minY < -off.y / s || maxY > VH - off.y / s;
-    if (outX || outY) {
-      // 【最小平移】只把越界的边拉回视口，不再「居中选区」。
-      // 原实现是 setCanvasOffset(s*(VW/2-cx), s*(VH/2-cy)) 居中 —— 只要选区稍微越界，
-      // 松手瞬间画面就整块跳到选区中心（用户感受为「框选时画布跳动」）。
-      const visMinX = -off.x / s, visMaxX = VW - off.x / s;
-      const visMinY = -off.y / s, visMaxY = VH - off.y / s;
-      let dx = 0, dy = 0;
-      if (minX < visMinX) dx = visMinX - minX;            // 左侧越界 → 内容右移露出
-      else if (maxX > visMaxX) dx = visMaxX - maxX;       // 右侧越界 → 内容左移露出
-      if (minY < visMinY) dy = visMinY - minY;
-      else if (maxY > visMaxY) dy = visMaxY - maxY;
-      if (dx || dy) {
-        // 平移量在 scale 之前生效，故需乘以 s（保留当前缩放比）
-        ctrl._setCanvasOffset(off.x + dx * s, off.y + dy * s);
-        if (ctrl._updateSelBar) ctrl._updateSelBar();      // 选区工具条跟随新视口重定位
-      }
-    }
+    const { ctrl } = ctx;
+    if (ctrl._updateSelBar) ctrl._updateSelBar();
   },
   // (was _bindSelectionKeys)
   bindSelectionKeys(ctx) {

@@ -122,6 +122,19 @@ describe('setMode 的 _switching 契约', () => {
     expect(ctrl._mode).toBe('notes');
   });
 
+  test('【顺序】先退出编辑、再落盘（否则半截编辑既不进存档、又被 _loadDoc 覆盖）', async () => {
+    // 根因：文本是「退出编辑时才写进模型」的（CardInteractions.exitEdit 里的 WritingDoc.setText）。
+    // 原先 setMode 先 _persistDoc 后 _exitAllEdits：这次编辑既没进本档存档，随后 _loadDoc 又用
+    // 新档卡片覆盖 _notes → 丢失。与 switchWritingGroup 的正确顺序（先 exit 再 persist）对齐。
+    const ctrl = makeCtrl('notes');
+    await ModeController.setMode({ state: {}, ctrl }, 'write');
+    const iEdit = ctrl.calls.indexOf('exitAllEdits');
+    const iPersist = ctrl.calls.indexOf('persistDoc');
+    expect(iEdit).toBeGreaterThanOrEqual(0);      // 确实退出了编辑
+    expect(iPersist).toBeGreaterThanOrEqual(0);   // 确实落了盘
+    expect(iEdit).toBeLessThan(iPersist);         // 且退出编辑在前
+  });
+
   test('_loadDoc 抛错也必须解锁（finally 保证，否则旋钮永久锁死）', async () => {
     const ctrl = makeCtrl('notes');
     ctrl._loadDoc = jest.fn(async () => { throw new Error('读盘失败'); });
@@ -157,8 +170,10 @@ describe('setMode 主流程顺序（卡片档）', () => {
     await ModeController.setMode({ state: {}, ctrl }, 'write');
     expect(ctrl.calls).toEqual([
       'audio', 'gearSound',
-      'persistDoc',        // ① 先把离开的档写回它自己的文档
-      'exitAllEdits', 'clearSelection',
+      // ① 先退出编辑、再落盘：文本是退出编辑时才写进模型的，顺序颠倒会让半截编辑不进存档
+      //    （原先这里固化的是 persistDoc → exitAllEdits 的错误顺序，已修）
+      'exitAllEdits', 'persistDoc',
+      'clearSelection',
       'parkStickers',      // ② 档位所有权：离开便签档「停放」贴纸（仅隐藏，不销毁；切回免重建）
       'refreshModeScope',  // ③ 外观先于载入生效
       'applyModeChrome',   // ④ chrome 先行（空窗期不露上一档外壳）

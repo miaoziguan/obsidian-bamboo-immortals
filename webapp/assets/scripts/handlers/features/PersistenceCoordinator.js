@@ -465,22 +465,33 @@ export const PersistenceCoordinator = {
     const placed = new Set();
     ordered.forEach((c, i) => {
       if (!c.el) return;   // 离屏（被剔）卡片无 DOM：跳过徽标/可用态，重挂载时 _updateCulling 会再刷
-      let badge = c.el.querySelector('.tw-card-order');
+      const el = c.el;
+      // 【性能】徽标首次查到后挂到卡片上缓存：本函数在剔除/挂载变化时被高频调用，
+      // 每卡一次 querySelector 是纯浪费（DOM 结构不变）。卡片重建 / 徽标被摘时按 parentNode 判定失效重查。
+      let badge = el._orderBadge;
+      if (badge && badge.parentNode !== el) badge = null;
       if (!badge) {
         badge = document.createElement('span');
         badge.className = 'tw-card-order';
-        c.el.appendChild(badge);
+        el.appendChild(badge);
+        el._orderBadge = badge;
       }
       // 【性能】序号未变则不写 DOM：本函数在剔除/挂载时被高频调用（见 ViewportCuller），
       // 无条件全量写 textContent 会造成 O(N) 次 DOM 写 + 随后的强制重排 → 卡片一多就跳动闪烁。
       const txt = String(i + 1);
       if (badge.textContent !== txt) badge.textContent = txt;
-      placed.add(c.el);
+      placed.add(el);
     });
-    // 兜底：清掉不在序列里的（极端时序保护，正常不会进 here）
-    ctrl._canvas.querySelectorAll('.tw-card-order').forEach((b) => {
-      if (!placed.has(b.parentElement)) b.remove();
-    });
+    // 兜底：清掉不在序列里的（极端时序保护，正常不会进 here）。
+    // 改为遍历挂载表 + 缓存引用，不再做整画布 querySelectorAll —— 后者每次调用都要全量匹配 class。
+    if (ctrl._mountedCards) {
+      ctrl._mountedCards.forEach((el) => {
+        if (!el || placed.has(el)) return;
+        const b = el._orderBadge;
+        if (b && b.parentNode === el) b.remove();
+        if (b) el._orderBadge = null;
+      });
+    }
     // 上移/下移的可用态跟着顺序走：首位不能上移、末位不能下移。
     // 放在这里统一刷 —— _refreshWriteOrder 已覆盖增删卡/连线/拖动/切档全部时机。
     ordered.forEach((c, k) => {
@@ -490,23 +501,35 @@ export const PersistenceCoordinator = {
       // 表现为「卡片建多了就开始跳动闪烁」（卡片少时全在屏不崩，多到开始剔除就每帧崩）。
       // 此前 typewriterFeature 有一处调用被 try/catch 包住，是本崩溃的先兆，今从根上修掉。
       if (!c.el) return;   // 离屏（被剔）卡片无 DOM：跳过，与上面循环同一守卫
-      const pos = `（文章顺序，当前第 ${k + 1} 位）`;
-      const up = c.el.querySelector('.tw-card-move-up');
-      const dn = c.el.querySelector('.tw-card-move-down');
+      const el = c.el;
+      // 【性能】上移/下移按钮同样缓存到卡片上（同徽标：按 parentNode 判定失效）
+      let up = el._moveUpBtn;
+      if (up && up.parentNode !== el) up = null;
+      if (!up) { up = el.querySelector('.tw-card-move-up'); el._moveUpBtn = up; }
+      let dn = el._moveDownBtn;
+      if (dn && dn.parentNode !== el) dn = null;
+      if (!dn) { dn = el.querySelector('.tw-card-move-down'); el._moveDownBtn = dn; }
       const wantUp = (k === 0);
       const wantDn = (k === ordered.length - 1);
       // 【完全幂等】只在值真的变了才写。拖动画布会让卡不断进出视口 → 剔除变化 → 本函数被
-      // 逐帧调用；若无条件全量写 disabled/_tipText，等于每帧对 N 张卡做数百次属性写并触发
+      // 高频调用；若无条件全量写 disabled/_tipText，等于每帧对 N 张卡做数百次属性写并触发
       // 样式失效重算，直接表现为拖动画布时的闪烁/卡顿。值未变则零写入。
+      // 另外：位置序号没变时连模板字符串都不拼（_tipIdx 标记）—— 原先每卡每次都无条件拼一次。
       if (up) {
         if (up.disabled !== wantUp) up.disabled = wantUp;
-        const tu = wantUp ? '已在最前' : '上移' + pos;
-        if (up._tipText !== tu) up._tipText = tu;
+        if (up._tipIdx !== k) {
+          up._tipIdx = k;
+          const tu = wantUp ? '已在最前' : `上移（文章顺序，当前第 ${k + 1} 位）`;
+          if (up._tipText !== tu) up._tipText = tu;
+        }
       }
       if (dn) {
         if (dn.disabled !== wantDn) dn.disabled = wantDn;
-        const td = wantDn ? '已在最后' : '下移' + pos;
-        if (dn._tipText !== td) dn._tipText = td;
+        if (dn._tipIdx !== k) {
+          dn._tipIdx = k;
+          const td = wantDn ? '已在最后' : `下移（文章顺序，当前第 ${k + 1} 位）`;
+          if (dn._tipText !== td) dn._tipText = td;
+        }
       }
     });
     ctrl._refreshScreenMeta();   // 右上角「卡片 N · 连线 M」随之刷新

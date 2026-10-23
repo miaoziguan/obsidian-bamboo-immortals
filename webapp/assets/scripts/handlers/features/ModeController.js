@@ -52,12 +52,17 @@ export const ModeController = {
       // 三档键名与 _mode 取值一致；此前误用派生布尔 _mindmap，会让 write 档草稿落进 draft.notes，
       // 切回 write 时 _applyModeChrome 按 draft.write 恢复 → 半截输入丢失。
       if (ctrl._input) ctrl._draft[ctrl._mode] = ctrl._input.value;
+      // 【顺序】必须「先退出编辑、再落盘」——上面那句注释就是这么承诺的（半截编辑先提交）。
+      // 文本是**退出编辑时才写进模型**的（CardInteractions.exitEdit 里的 WritingDoc.setText）。
+      // 原先先 persistDoc 后 exitAllEdits：这次编辑既没进本档存档，随后 _loadDoc 又用新档卡片
+      // 覆盖 _notes → 丢失（未提交的输入法组字 + 未经 blur 的切档触发时命中）。
+      // 与 switchWritingGroup 的正确顺序（先 _exitAllEdits 再 _persistDoc）对齐。
+      ctrl._exitAllEdits();
       if (ctrl._mode === 'mindmap') {
         MindmapFeature.deactivate();
       } else {
         await ctrl._persistDoc(prev);   // 把这一档的卡片写回它自己的文档
       }
-      ctrl._exitAllEdits();
       ctrl._clearSelection();
 
       ctrl._mode = mode;

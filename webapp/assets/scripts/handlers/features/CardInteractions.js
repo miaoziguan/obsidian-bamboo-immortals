@@ -880,6 +880,13 @@ export const CardInteractions = {
       // innerText 是强制同步布局读：常规（未超限）只读一次；仅当超限才走截断+选区间恢复（罕见）
       let full = text.innerText;
       if (full.length > MAX_LEN) { ctrl._enforceEditLimit(text); full = text.innerText; }
+      // 【撤销】一次编辑 = 一步撤销：在**首次真正改动前**留档，捕获「编辑前」状态。
+      // 不放在 enterEdit 里 push —— 那会给「打开但一个字没改」的编辑也压一条空撤销帧。
+      // 组字期间（composing）不写模型，故首个非组字 input（含组字结束那次）才留档，时机正确。
+      if (!card._editUndoPushed) {
+        card._editUndoPushed = true;
+        if (ctrl._undoStack) ctrl._undoStack.push();
+      }
       ctrl._notes = WritingDoc.setText(ctrl._notes, card.dataset.id, full);  // 连续编辑改走 WritingDoc 原语
     }
     ctrl._scheduleSave();
@@ -908,6 +915,7 @@ export const CardInteractions = {
     if (!text) return;
     card.classList.add('editing');
     ctrl._editingId = card.dataset.id;   // 编辑中：钉在屏上，剔除跳过
+    card._editUndoPushed = false;   // 本次编辑会话是否已为撤销留档（首次真正改动时才 push）
     text.setAttribute('contenteditable', 'true'); // 所见即所得：直接在纸样内改，样式已就位
     text.focus();
     // 光标落到末尾
@@ -960,6 +968,7 @@ export const CardInteractions = {
       }
       if (window.getSelection) window.getSelection().removeAllRanges();
       ctrl._notes = WritingDoc.setText(ctrl._notes, card.dataset.id, text.innerText);  // 退出编辑：落盘前同步模型
+      card._editUndoPushed = false;   // 编辑会话结束：下次进入编辑重新留档
       ctrl._scheduleSave(); // 落盘：_collectNotes 读的是 .tw-card-text 内容
       if (typeof PrivacyMode !== 'undefined') PrivacyMode.markText();
     }

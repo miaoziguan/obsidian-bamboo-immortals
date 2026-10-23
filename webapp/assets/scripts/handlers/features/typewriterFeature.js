@@ -1035,7 +1035,13 @@ export const TypewriterFeature = {
     const cr = canvas.getBoundingClientRect();
     const cw = card.offsetWidth || 340;
     const ch = card.offsetHeight || 200;
-    const anchor = (this._mode === 'write') ? this._spawnAnchorCard(card) : null;
+    // 【性能】批量导入（_importDraft 传 skipWriteOrder=true）时跳过锚点计算：
+    // _spawnAnchorCard → _orderCards() 是一次 map + sort，逐块调用会让导入变成 O(K·N log N)。
+    // 而导入末尾本就会跑一次 reflowWriteOrder 统一重排，锚点算出的落点随即被覆盖 —— 纯属浪费。
+    // 单张新建（打字回车）不传该标记，锚点照旧，保证新卡接在文章流末尾。
+    const anchor = ((this._mode === 'write') && !(opts && opts.skipWriteOrder))
+      ? this._spawnAnchorCard(card)
+      : null;
     if (anchor) {
       // 文章流：与锚点卡左对齐、落在其下方 WRITE_FLOW_GAP 处（与顺流重排同一间距）。
       // 刻意不做吐纸堆叠错位：那是为了「看见下面压着纸」，文章里没有这个语义。

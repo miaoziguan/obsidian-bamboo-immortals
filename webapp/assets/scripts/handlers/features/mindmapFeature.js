@@ -1049,7 +1049,7 @@ export const MindmapFeature = {
     }
     // ── Excalidraw 语义 ──
     // 拖空白 = 框选（Shift = 追加）；平移改由 空格+拖 / 中键拖 / 抓手工具(H) / 滚轮 / 双指 承担（共享 CanvasGestures 接管）
-    if (!e.shiftKey) this._clearMultiSel();
+    // 清空选中（单选+多选）统一由 _startMarquee 在 additive=false 时完成 —— 单击空白（零尺寸框选）也会走到那里。
     this._startMarquee(e, e.shiftKey);
   },
 
@@ -1725,7 +1725,11 @@ export const MindmapFeature = {
   _startMarquee(e, additive) {
     const canvas = this._canvas;
     if (!canvas) return;
-    if (!additive) this._clearMultiSel();   // Shift 追加框选：保留已有选中
+    // 新建框选（additive=false）先把「单选 + 多选」一并清空：
+    //   否则单选存在 _selId 上（不在 _selSet 里），只清 _selSet 会漏掉单选 ——
+    //   表现为「选中节点后点空白画布，取消不掉选中」（单击空白 = 零尺寸框选，_selectInRect 选不到东西，
+    //   _selSet.size===0，也就不会走到后面「清 _selId」那行）。
+    if (!additive) { this._clearMultiSel(); this._select(null); }   // Shift 追加框选：保留已有选中
     if (this._marquee) this._marquee.remove();
     const m = document.createElement('div');
     m.className = 'tw-mm-marquee';

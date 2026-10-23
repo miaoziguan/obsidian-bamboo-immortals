@@ -267,7 +267,7 @@ export const MindmapFeature = {
       { act: 'dup',  icon: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>', title: '复制' },
       { act: 'del',  icon: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>', title: '删除子弹' },
       // 备注：子弹保持短关键词，细节写进备注（不显示在画布，导出时作为缩进引用）
-      { act: 'note', icon: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16M4 10h16M4 15h10M4 20h7"/></svg>', title: '备注（导出时作为缩进引用）' },
+      { act: 'note', icon: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16M4 10h16M4 15h10M4 20h7"/></svg>', title: '节点笔记（导出时作为缩进引用）' },
     ];
     acts.forEach(({ act, icon, title }) => {
       const b = document.createElement('button');
@@ -328,7 +328,7 @@ export const MindmapFeature = {
     // 卡片只保留输入区：标题、×、底部快捷键提示都已去掉（就地编辑、自动保存，
     // 收起由节点上的倒三角 / Esc / Cmd(Ctrl)+Enter 负责，提示文案没有额外价值）。
     box.innerHTML = `
-      <textarea class="tw-mm-note-input" placeholder="备注：不显示在画布上，导出 Markdown 时作为缩进引用" spellcheck="false"></textarea>`;
+      <textarea class="tw-mm-note-input" placeholder="写节点笔记…" spellcheck="false"></textarea>`;
     layer.appendChild(box);
     this._noteBox = box;
     this._noteInput = box.querySelector('.tw-mm-note-input');
@@ -353,12 +353,18 @@ export const MindmapFeature = {
     });
   },
 
-  /** 备注卡片自动增高（随内容，封顶 260px）。 */
+  /** 笔记卡片自动增高（随内容，封顶 260px）。
+   *  注意：scrollHeight 不包含 placeholder —— 空状态若只按内容取高度，会小于占位文案所需，
+   *  于是冒出滚动条。这里以 height:auto 让 CSS min-height 兜住下限（能容纳占位文案与首行输入），
+   *  且只有内容超过上限时才把 overflow-y 改成 auto。 */
   _autoGrowNote() {
     const t = this._noteInput;
     if (!t) return;
+    const MAX = 260;
     t.style.height = 'auto';
-    t.style.height = Math.min(Math.max(t.scrollHeight || 0, 52), 260) + 'px';
+    const need = t.scrollHeight || 0;
+    t.style.height = Math.min(need, MAX) + 'px';
+    t.style.overflowY = need > MAX ? 'auto' : 'hidden';
   },
 
   /** 把备注卡片贴到节点下方（空间不够翻到上方），水平夹紧在画布内；
@@ -406,7 +412,7 @@ export const MindmapFeature = {
     const n = this._nodeById(this._selId);
     this._noteInput.value = (n && n.note) || '';
     this._noteBox.hidden = false;
-    if (el._noteMark) { el._noteMark.classList.add('is-open'); el._noteMark.title = '收起备注'; }
+    if (el._noteMark) { el._noteMark.classList.add('is-open'); el._noteMark.title = '收起节点笔记'; }
     this._autoGrowNote();
     this._positionNoteCard();
     this._noteInput.focus();
@@ -427,7 +433,7 @@ export const MindmapFeature = {
     this._noteDragKeep = false;
     this._noteForId = null;
     const markEl = id ? this._els.get(id) : null;
-    if (markEl && markEl._noteMark) { markEl._noteMark.classList.remove('is-open'); markEl._noteMark.title = '展开备注'; }
+    if (markEl && markEl._noteMark) { markEl._noteMark.classList.remove('is-open'); markEl._noteMark.title = '展开节点笔记'; }
     if (discard) return;
     if (!id) return;
     const n = this._nodeById(id);
@@ -1055,7 +1061,7 @@ export const MindmapFeature = {
     el.dataset.id = n.id;
     el.innerHTML = `
       <span class="tw-mm-text"></span>
-      <button type="button" class="tw-mm-note-mark" aria-label="展开备注" title="展开备注" hidden>${ICON_NOTE_MARK}</button>`;
+      <button type="button" class="tw-mm-note-mark" aria-label="展开节点笔记" title="展开节点笔记" hidden>${ICON_NOTE_MARK}</button>`;
     el.title = '拖动=移动；拖右侧连线按钮=连线；双击=编辑';
     el._text = el.querySelector('.tw-mm-text');
     el._noteMark = el.querySelector('.tw-mm-note-mark');

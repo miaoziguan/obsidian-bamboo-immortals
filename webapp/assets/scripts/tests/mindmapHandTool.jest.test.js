@@ -152,7 +152,7 @@ describe('备注卡片：可展开 / 收起', () => {
     expect(mm._autoGrowNote).toHaveBeenCalled();
     expect(mm._positionNoteCard).toHaveBeenCalled();
     expect(mark.classList.add).toHaveBeenCalledWith('is-open');   // 倒三角 → 正三角
-    expect(mark.title).toBe('收起备注');
+    expect(mark.title).toBe('收起节点笔记');
     MindmapFeature._openNoteEditor.call(mm);   // 再点：收起
     expect(close).toHaveBeenCalled();
   });
@@ -174,6 +174,6 @@ describe('备注卡片：可展开 / 收起', () => {
     MindmapFeature._closeNoteEditor.call(mm);
     expect(mm._noteBox.hidden).toBe(true);
     expect(mark.classList.remove).toHaveBeenCalledWith('is-open');
-    expect(mark.title).toBe('展开备注');
+    expect(mark.title).toBe('展开节点笔记');
   });
 });

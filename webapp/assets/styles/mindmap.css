@@ -442,7 +442,8 @@
 .tw-mm-note-input {
   display: block;
   width: 100%;
-  min-height: 52px;
+  /* 空状态：高度需容纳占位文案与首行输入，否则会冒出滚动条（scrollHeight 不计 placeholder） */
+  min-height: 68px;
   max-height: 260px;
   resize: none;                 /* 自动增高，无需手动拖 */
   box-sizing: border-box;
@@ -453,7 +454,9 @@
   font-size: var(--type-sm);
   line-height: 1.55;
   outline: none;
-  overflow-y: auto;
+  overflow-x: hidden;
+  overflow-y: hidden;           /* 未超过上限时不滚动；由 JS 在超高时改为 auto */
+  overflow-wrap: break-word;    /* 长串不撑出横向滚动 */
 }
 .tw-mm-note-input::placeholder { color: var(--text-tertiary); }
 /* 编辑态不画焦点环：卡片本身就是明确的编辑区（还带箭头指向节点），

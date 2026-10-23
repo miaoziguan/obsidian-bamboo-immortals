@@ -2024,8 +2024,20 @@ export const MindmapFeature = {
     }
     if (!this._structBarDocHandler) {
       this._structBarDocHandler = (e) => {
+        // 【Shadow DOM 陷阱】本监听挂在 document（light DOM），而二级条在 shadow 树内：
+        // e.target 会被 retarget 成 shadow host，用 contains/closest 判会恒 false
+        // → 一按下就关条、click 落不到按钮上（表现为「点功能没反应」）。
+        // 必须用 composedPath() 取真实路径（与 utils/domRef / actionDispatcher 同一约定）。
+        const path = (e && typeof e.composedPath === 'function') ? e.composedPath() : [];
+        if (path.length) {
+          if (path.indexOf(bar) >= 0) return;   // 点在二级条内
+          if (path.some((el) => el && el.classList && el.classList.contains('tw-zoom-struct'))) return;   // 入口按钮自己 toggle
+          this._closeStructureBar();
+          return;
+        }
+        // 无 composedPath（合成事件 / 老环境）：退回 target 判定
         if (bar.contains(e.target)) return;
-        if (e.target.closest && e.target.closest('.tw-zoom-struct')) return;   // 点入口按钮自己 toggle
+        if (e.target && e.target.closest && e.target.closest('.tw-zoom-struct')) return;
         this._closeStructureBar();
       };
       document.addEventListener('pointerdown', this._structBarDocHandler, true);
@@ -2047,14 +2059,16 @@ export const MindmapFeature = {
    * - 无选区：排整张图并居中。
    * 返回 false 表示图里没有任何树边（结构无从谈起）。
    */
-  applyStructure(structure, scopeIds) {
+  applyStructure(structure, scopeIds, rootIdOverride) {
     const nodes = this._nodes || [];
     const links = this._links || [];
     if (!nodes.length) return false;
     const allowed = ['mindmap', 'logic', 'org', 'tree'];
     if (allowed.indexOf(structure) < 0) return false;
-    // 根：优先当前单选节点，其次上次结构的根，最后按入度/出度自动选
-    const rootId = this._selId || (this._presentation && this._presentation.rootId) || null;
+    // 根：显式指定（「以此为根」）> 上次结构的根 > 自动（入度0/出度最大）。
+    // 注意：**不要拿 _selId 当根** —— 选中的可能是叶子，以它为根的生成树没有 treeLinks，
+    // 会让「点结构」直接 return false（表现为点击毫无反应）。
+    const rootId = rootIdOverride || (this._presentation && this._presentation.rootId) || null;
     const tree = MindmapTree.build(nodes, links, rootId);
     if (!tree.treeLinks.length) return false;
 
@@ -2069,9 +2083,16 @@ export const MindmapFeature = {
       }
       targetIds = sub;
     }
-    const targetSet = targetIds ? new Set(targetIds) : null;
-    const subNodes = targetSet ? nodes.filter((n) => targetSet.has(n.id)) : nodes;
-    const subLinks = targetSet ? tree.treeLinks.filter((l) => targetSet.has(l.from) && targetSet.has(l.to)) : tree.treeLinks;
+    let targetSet = targetIds ? new Set(targetIds) : null;
+    let subNodes = targetSet ? nodes.filter((n) => targetSet.has(n.id)) : nodes;
+    let subLinks = targetSet ? tree.treeLinks.filter((l) => targetSet.has(l.from) && targetSet.has(l.to)) : tree.treeLinks;
+    // 单颗叶子（或选区内部没有连线）：局部排版对它没有任何可见变化 → 退回整图，
+    // 避免「点了结构什么都没发生」。想只整理某分支，请用「以此为根」。
+    if (targetSet && subNodes.length < 2) {
+      targetSet = null;
+      subNodes = nodes;
+      subLinks = tree.treeLinks;
+    }
     const pos = MindmapLayout.compute(structure, subNodes, subLinks);
     if (!pos || !pos.size) return false;
 
@@ -2131,7 +2152,7 @@ export const MindmapFeature = {
   _setStructureRoot() {
     if (!this._selId) { this._msg('先选中一颗子弹作为根'); return; }
     const st = (this._presentation && this._presentation.structure) || 'tree';
-    const ok = this.applyStructure(st, new Set([this._selId]));
+    const ok = this.applyStructure(st, new Set([this._selId]), this._selId);   // 明确以选中节点为根
     if (!ok) this._msg('结构不足，无法整理');
   },
 

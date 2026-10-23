@@ -287,6 +287,15 @@ describe('MindmapFeature.applyStructure（结构整理 + 恢复自由）', () =>
     expect(x.get('a')).toBeLessThan(x.get('c'));
   });
 
+  test('单选叶子节点：退回整图排版（不再"点了没反应"）', () => {
+    reset(LINKS4);
+    MM._selId = 'c';   // c 是叶子（r→a→c）：以它为根没有 treeLinks，旧实现会直接 false
+    expect(MM.applyStructure('org', new Set(['c']))).toBe(true);
+    expect(MM._presentation.structure).toBe('org');
+    const keys = new Set(MM._nodes.map((n) => n.x + ',' + n.y));
+    expect(keys.size).toBeGreaterThanOrEqual(3);   // 整图被排版，而不是原地不动
+  });
+
   test('恢复自由：清空 presentation、回到每条线自己的外观', () => {
     reset(LINKS4);
     MM.applyStructure('tree', null);

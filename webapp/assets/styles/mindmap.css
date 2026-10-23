@@ -438,34 +438,7 @@
   border-bottom-right-radius: 2px;
 }
 .tw-mm-note-pop[hidden] { display: none; }
-.tw-mm-note-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 7px 7px 7px 12px;
-  font-size: var(--type-xs);
-  font-weight: 600;
-  letter-spacing: .04em;
-  color: var(--text-tertiary);
-}
-.tw-mm-note-close {
-  width: 22px;
-  height: 22px;
-  padding: 0;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--text-tertiary);
-  font-size: 15px;
-  line-height: 1;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  transition: background .12s ease, color .12s ease;
-}
-.tw-mm-note-close:hover { background: rgba(var(--primary-rgb), .12); color: var(--text-primary); }
+/* 没有标题行 / 关闭按钮：收起由节点上的倒三角负责，卡片只保留输入区 + 快捷键提示 */
 .tw-mm-note-input {
   display: block;
   width: 100%;
@@ -473,7 +446,7 @@
   max-height: 260px;
   resize: none;                 /* 自动增高，无需手动拖 */
   box-sizing: border-box;
-  padding: 2px 12px 10px;
+  padding: 12px 12px 10px;
   border: 0;
   background: transparent;
   color: var(--text-primary);

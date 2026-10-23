@@ -325,11 +325,9 @@ export const MindmapFeature = {
     const box = document.createElement('div');
     box.className = 'tw-mm-note-pop';
     box.hidden = true;
+    // 不再放「备注」标题与右上角 ×：收起已由节点上的倒三角负责（再点一次即收起），
+    // 卡片自身只保留输入区 + 快捷键提示，更紧凑、少一个重复的关闭入口。
     box.innerHTML = `
-      <div class="tw-mm-note-head">
-        <span>备注</span>
-        <button type="button" class="tw-mm-note-close" aria-label="关闭备注" title="关闭">×</button>
-      </div>
       <textarea class="tw-mm-note-input" placeholder="备注：不显示在画布上，导出 Markdown 时作为缩进引用" spellcheck="false"></textarea>
       <div class="tw-mm-note-hint">Cmd/Ctrl+Enter 保存 · Esc 关闭</div>`;
     layer.appendChild(box);
@@ -339,10 +337,6 @@ export const MindmapFeature = {
     box.addEventListener('pointerdown', (e) => e.stopPropagation());
     box.addEventListener('click', (e) => e.stopPropagation());
     box.addEventListener('wheel', (e) => e.stopPropagation(), { passive: true });
-    box.querySelector('.tw-mm-note-close').addEventListener('click', (e) => {
-      e.stopPropagation();
-      this._closeNoteEditor();
-    });
     this._noteInput.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') { e.preventDefault(); this._closeNoteEditor(); }
       else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); this._closeNoteEditor(); }
@@ -353,7 +347,7 @@ export const MindmapFeature = {
       this._positionNoteCard();
     });
     // 失焦只静默保存，不再自动折叠：用户点画布其他处 / 平移画布后，卡片保持展开。
-    // 手动收起仍走 × / Esc / Cmd(Ctrl)+Enter / 再点三角（_openNoteEditor 的 toggle）。
+    // 手动收起：Esc / Cmd(Ctrl)+Enter / 再点节点上的三角（_openNoteEditor 的 toggle）。
     this._noteInput.addEventListener('blur', (e) => {
       if (this._noteDragKeep) return;   // 正在拖动这张卡片所属的节点：保持展开，卡片跟手移动
       this._persistNote();

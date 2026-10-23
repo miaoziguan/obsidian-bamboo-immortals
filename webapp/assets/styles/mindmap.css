@@ -365,20 +365,20 @@
 .tw-mm.is-hand .tw-mm-canvas { cursor: grab; }
 
 /* ===== 节点备注：可展开卡片 + 节点标记 ===== */
-/* 有备注的节点右上角出现可点标记（点开/收起备注卡片） */
-/* 有备注时，节点自动向右长出「座位」（约 22px）：倒三角坐在节点内部右端，
-   成为节点自身的一部分；文字仍留在左侧内容区（pre-wrap 自动折行，永不被三角压到）。
-   代价：顶到 max-width 的长文会提前一行折行 —— 已与用户确认接受。 */
-.tw-mm-node.has-note { padding-right: 1.75em; }
-
+/* 有备注的节点上出现可点标记（点开/收起备注卡片） */
+/* 倒三角是节点内的**真实布局成员**（flex item），不是绝对定位浮块：
+   文字是 flex 子项、可收缩换行，而三角 flex:none 不被压缩 —— 由布局保证
+   文字永远不会压到三角；也不再依赖 padding-right，主题/其他样式覆盖 padding 都不影响。
+   有备注时节点因此向右自然多出「三角 + 6px 间距」这一点，即「座位」。 */
 .tw-mm-note-mark {
-  position: absolute;
-  right: 5px;                   /* 坐在节点右端「座位」里，垂直居中 */
-  top: 50%;
-  left: auto;
-  bottom: auto;
+  position: static;
+  box-sizing: border-box;
+  flex: none;                   /* 三角自身不被压缩 */
   width: 14px;
   height: 16px;
+  min-width: 14px;              /* 覆盖全局触控目标 44px（同 .tw-link-anchor 套路） */
+  min-height: 16px;
+  margin-left: 6px;             /* 与文字留呼吸，不贴字 */
   padding: 0;
   border: 0;
   background: transparent;
@@ -388,15 +388,14 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transform: translateY(-50%);
-  z-index: 3;
   transition: transform .15s ease, color .15s ease, opacity .15s ease;
 }
 .tw-mm-note-mark:hover { color: var(--bamboo-primary); opacity: 1; }
-.tw-mm-note-mark.is-open { transform: translateY(-50%) rotate(180deg); color: var(--bamboo-primary); }
+.tw-mm-note-mark.is-open { transform: rotate(180deg); color: var(--bamboo-primary); }
 .tw-mm-note-mark[hidden] { display: none; }
-/* 编辑文字时不显示三角（与连线把手一致：编辑态只留文本） */
-.tw-mm-node.is-editing .tw-mm-note-mark { display: none; }
+/* 编辑文字时不显示三角，但保留占位（visibility 而非 display），
+   避免进入编辑时节点突然变窄、文字重排 */
+.tw-mm-node.is-editing .tw-mm-note-mark { visibility: hidden; pointer-events: none; }
 
 .tw-mm-note-pop {
   position: absolute;

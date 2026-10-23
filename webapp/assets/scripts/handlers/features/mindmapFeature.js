@@ -354,6 +354,7 @@ export const MindmapFeature = {
     });
     // 失焦即保存（点画布其他处 / 切选中）；焦点移到卡片内按钮时不关，交给按钮 click
     this._noteInput.addEventListener('blur', (e) => {
+      if (this._noteDragKeep) return;   // 正在拖动这张卡片所属的节点：保持展开，卡片跟手移动
       const to = e.relatedTarget;
       if (to && this._noteBox && this._noteBox.contains(to)) return;
       this._closeNoteEditor();
@@ -365,10 +366,12 @@ export const MindmapFeature = {
     const t = this._noteInput;
     if (!t) return;
     t.style.height = 'auto';
-    t.style.height = Math.min(Math.max(t.scrollHeight || 0, 78), 260) + 'px';
+    t.style.height = Math.min(Math.max(t.scrollHeight || 0, 52), 260) + 'px';
   },
 
-  /** 把备注卡片定位到节点下方；下方不够则翻到上方；水平夹紧在画布内。 */
+  /** 把备注卡片贴到节点下方（空间不够翻到上方），水平夹紧在画布内；
+   *  同时给出箭头朝向（data-side）与指向节点的水平偏移（--caret-x），让它看起来「长在节点上」。
+   *  所有坐标都相对画布层（this._el）换算，平移/缩放/拖动后重算即跟随。 */
   _positionNoteCard() {
     const id = this._noteForId;
     const box = this._noteBox;
@@ -379,15 +382,24 @@ export const MindmapFeature = {
     const r = el.getBoundingClientRect();
     const lw = this._el.clientWidth || 0;
     const lh = this._el.clientHeight || 0;
-    const W = Math.min(320, Math.max(200, lw - 16));
+    // 卡片宽度：跟随节点宽度（不随缩放过小），夹在 240~320，且不超过画布
+    let W = Math.min(320, Math.max(240, r.width || 0));
+    if (lw) W = Math.min(W, Math.max(160, lw - 16));
     box.style.width = W + 'px';
-    let left = r.left - lr.left + r.width / 2 - W / 2;
+    const nodeCx = r.left - lr.left + r.width / 2;                 // 节点中心（画布层坐标）
+    let left = nodeCx - W / 2;
     left = Math.max(8, Math.min(Math.max(8, lw - W - 8), left));
-    const h = box.offsetHeight || 140;
-    let top = r.bottom - lr.top + 10;                                         // 默认在节点下方
-    if (lh && top + h > lh - 8) top = Math.max(8, r.top - lr.top - h - 10);   // 下方不够 → 上方
+    const h = box.offsetHeight || 150;
+    const GAP = 12;
+    let side = 'below';
+    let top = r.bottom - lr.top + GAP;
+    if (lh && top + h > lh - 8) { side = 'above'; top = Math.max(8, r.top - lr.top - h - GAP); }
     box.style.left = Math.round(left) + 'px';
     box.style.top = Math.round(top) + 'px';
+    box.dataset.side = side;
+    // 箭头对准节点中心，同时夹在卡片内（避免箭头跑到圆角外）
+    const caretX = Math.max(16, Math.min(W - 16, nodeCx - left));
+    box.style.setProperty('--caret-x', Math.round(caretX) + 'px');
   },
 
   /** 展开/收起备注卡片（再点标记或工具条键 = 收起）。 */
@@ -420,6 +432,7 @@ export const MindmapFeature = {
     const id = this._noteForId;
     const next = this._noteInput ? this._noteInput.value : '';
     box.hidden = true;
+    this._noteDragKeep = false;
     this._noteForId = null;
     const markEl = id ? this._els.get(id) : null;
     if (markEl && markEl._noteMark) { markEl._noteMark.classList.remove('is-open'); markEl._noteMark.title = '展开备注'; }
@@ -807,6 +820,8 @@ export const MindmapFeature = {
     if (!n || !el) return;
     el.style.left = Math.round(n.x) + 'px';
     el.style.top = Math.round(n.y) + 'px';
+    // 备注卡片正挂在被移动的这颗子弹上时，同步跟随（拖动/重排/撤销都会走到这里）
+    if (this._noteForId === id) this._positionNoteCard();
   },
 
   /** 从 DOM 移除一颗子弹（增量删除用） */
@@ -990,11 +1005,12 @@ export const MindmapFeature = {
 
   _applyView() {
     if (!this._canvas || !this._view) return;
-    // 平移/缩放时让备注卡片跟随节点（不关闭，避免丢失上下文）
-    if (this._noteForId) this._positionNoteCard();
     // 与便签画布同一约定：translate(平移) scale(缩放)，transform-origin 已在 CSS(.tw-mm-canvas) 定为 0 0
     const s = CanvasViewport.scaleOf(this._view);
     this._canvas.style.transform = `translate(${this._view.x}px, ${this._view.y}px) scale(${s})`;
+    // 平移/缩放时让备注卡片跟随节点：必须在写入 transform **之后**重算，
+    // 否则每帧都按旧变换定位、永远落后一步（表现为「卡片不跟着动」）。
+    if (this._noteForId) this._positionNoteCard();
     this._updateToolbar();    // 平移时让工具条跟着选中节点走
     // 缩放/平移后同步缩放控件的百分比显示
     if (this._zoomUI && typeof this._zoomUI.sync === 'function') this._zoomUI.sync();
@@ -1221,6 +1237,8 @@ export const MindmapFeature = {
   _beginMoveDrag(e, nodeEl) {
     e.preventDefault();
     const id = nodeEl.dataset.id;
+    // 拖动的是「备注卡片所属节点」时，先于 blur 置位：避免按下瞬间 blur 把卡片关掉（否则看不到跟随效果）
+    this._noteDragKeep = (this._noteForId === id);
     const dragSet = (this._selSet && this._selSet.has(id)) ? this._selSet : null;
     this._dragSet = dragSet;   // 拖拽中的节点 pin，避免被剔除卸载
     this._select(id);   // 单选高亮（不清除 _selSet，多选框仍保留）
@@ -1268,6 +1286,8 @@ export const MindmapFeature = {
         s.el.style.left = (s.left + curDx) + 'px';
         s.el.style.top = (s.top + curDy) + 'px';
       });
+      // 拖动中让备注卡片实时跟手（位置写完后再量，读到的是本帧新坐标）
+      if (this._noteForId) this._positionNoteCard();
       this._linkLayer.render();
       if (lastEv) updateDropHint(lastEv);
     };
@@ -1289,6 +1309,7 @@ export const MindmapFeature = {
       document.removeEventListener('pointerup', up);
       document.removeEventListener('pointercancel', up);
       this._dragSet = null;
+      this._noteDragKeep = false;
       if (raf) { cancelAnimationFrame(raf); raf = 0; }   // 丢弃未执行的重绘
       if (commit && moved) flush();   // 补一次最终「写位置 + 画连线」（用最新 curDx/curDy），保证后续 elementFromPoint/setPos 读到终态
       if (dropTargetEl) { dropTargetEl.classList.remove('is-drop-target'); dropTargetEl = null; }
@@ -1337,6 +1358,7 @@ export const MindmapFeature = {
       document.removeEventListener('pointerup', up);
       document.removeEventListener('pointercancel', up);
       this._dragSet = null;
+      this._noteDragKeep = false;
       if (raf) { cancelAnimationFrame(raf); raf = 0; }
       if (moved) flush();   // 提交当前拖到的位置（不回弹），让位给捏合后节点停在原地
       if (dropTargetEl) { dropTargetEl.classList.remove('is-drop-target'); dropTargetEl = null; }

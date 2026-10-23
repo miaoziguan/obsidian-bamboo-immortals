@@ -403,60 +403,91 @@
   width: 300px;
   padding: 0;
   box-sizing: border-box;
-  border-radius: var(--radius-control);
+  border-radius: 12px;
   background: var(--bamboo-popup-bg);
   border: 1px solid var(--border-light);
-  box-shadow: var(--shadow-card);
+  /* 更轻更「浮起」的投影：悬浮层不抢节点视觉 */
+  box-shadow: 0 12px 30px -10px rgba(var(--black-rgb), .28), 0 2px 6px rgba(var(--black-rgb), .06);
+  outline: none;
   pointer-events: auto;
   user-select: text;
-  overflow: hidden;
+  overflow: visible;             /* 让指向节点的箭头露出来 */
+}
+/* 指向节点的箭头：下方展开在顶部、上方展开在底部；水平对准节点中心（--caret-x 由 JS 写） */
+.tw-mm-note-pop::before {
+  content: "";
+  position: absolute;
+  left: var(--caret-x, 50%);
+  top: -5px;
+  width: 9px;
+  height: 9px;
+  background: var(--bamboo-popup-bg);
+  border-left: 1px solid var(--border-light);
+  border-top: 1px solid var(--border-light);
+  transform: translateX(-50%) rotate(45deg);
+  border-top-left-radius: 2px;
+}
+.tw-mm-note-pop[data-side="above"]::before {
+  top: auto;
+  bottom: -5px;
+  border-left: 0;
+  border-top: 0;
+  border-right: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--border-light);
+  border-top-left-radius: 0;
+  border-bottom-right-radius: 2px;
 }
 .tw-mm-note-pop[hidden] { display: none; }
 .tw-mm-note-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 3px 5px 3px 10px;
-  border-bottom: 1px solid var(--border-light);
+  gap: 8px;
+  padding: 7px 7px 7px 12px;
   font-size: var(--type-xs);
-  color: var(--text-secondary);
+  font-weight: 600;
+  letter-spacing: .04em;
+  color: var(--text-tertiary);
 }
 .tw-mm-note-close {
   width: 22px;
   height: 22px;
   padding: 0;
   border: 0;
-  border-radius: var(--radius-pill);
+  border-radius: 6px;
   background: transparent;
-  color: var(--text-secondary);
+  color: var(--text-tertiary);
   font-size: 15px;
   line-height: 1;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  transition: background .12s ease, color .12s ease;
 }
 .tw-mm-note-close:hover { background: rgba(var(--primary-rgb), .12); color: var(--text-primary); }
 .tw-mm-note-input {
   display: block;
   width: 100%;
-  min-height: 78px;
+  min-height: 52px;
   max-height: 260px;
   resize: none;                 /* 自动增高，无需手动拖 */
   box-sizing: border-box;
-  padding: 8px 10px;
+  padding: 2px 12px 10px;
   border: 0;
   background: transparent;
   color: var(--text-primary);
   font-size: var(--type-sm);
-  line-height: var(--line-height-tight);
+  line-height: 1.55;
   outline: none;
   overflow-y: auto;
 }
+.tw-mm-note-input::placeholder { color: var(--text-tertiary); }
 .tw-mm-note-hint {
-  padding: 0 10px 7px;
-  font-size: var(--type-xs);
+  padding: 0 12px 9px;
+  font-size: 11px;
   color: var(--text-tertiary);
+  opacity: .85;
 }
 /* 工具条备注按钮：该节点已有备注时高亮 */
 .tw-mm-toolbar .tw-mm-tb-btn.is-active { color: var(--bamboo-primary); }

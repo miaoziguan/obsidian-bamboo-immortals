@@ -408,6 +408,7 @@ export const TypewriterStore = {
         x: Number.isFinite(n.x) ? n.x : 0,
         y: Number.isFinite(n.y) ? n.y : 0,
         color: typeof n.color === 'string' ? n.color : '',   // 每颗子弹可单独着色（'' = 默认），写/读都会过此净化，勿漏
+        note: typeof n.note === 'string' ? n.note : '',      // 备注：不显示在画布，导出时作为缩进引用；写/读同过此净化
       };
       if (typeof n.parent === 'string' && n.parent) item.parent = n.parent;   // v1 → v2 迁移通道
       out.push(item);

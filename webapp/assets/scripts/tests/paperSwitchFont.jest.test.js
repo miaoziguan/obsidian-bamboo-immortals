@@ -106,3 +106,15 @@ describe('默认字体 = 黑体（modern）', () => {
     expect(globalThis.FONT_LABELS[globalThis.DEFAULT_FONT]).toBe('黑 B');
   });
 });
+
+describe('TypewriterStore 净化保留 note', () => {
+  test('_sanitizeNodes 保留备注、非法 note 归空', () => {
+    const { TypewriterStore } = global;
+    const out = TypewriterStore._sanitizeNodes([
+      { id: 'a', text: 'x', note: '备注' },
+      { id: 'b', note: 123 },
+    ]);
+    expect(out[0].note).toBe('备注');
+    expect(out[1].note).toBe('');
+  });
+});

@@ -35,12 +35,23 @@ export const MindmapExport = {
       const t = (n && n.text ? String(n.text) : '').replace(/\r?\n/g, ' ').trim();
       return t || '（未填）';
     };
+    // 备注：作为列表项下的缩进 blockquote（多行逐行加 >）；不显示在画布，只进导出
+    const noteLines = (n, depth) => {
+      const note = (n && typeof n.note === 'string') ? n.note.trim() : '';
+      if (!note) return;
+      const indent = '  '.repeat(depth + 1);
+      note.split(/\r?\n/).forEach((ln) => {
+        const t = ln.replace(/\s+$/, '');
+        lines.push(indent + (t ? '> ' + t : '>'));
+      });
+    };
     const visited = new Set();
     const lines = [];
     const renderNode = (id, depth) => {
       if (visited.has(id) || !inScope(id)) return;
       visited.add(id);
       lines.push('  '.repeat(depth) + '- ' + oneLine(byId.get(id)));
+      noteLines(byId.get(id), depth);
       (childrenOf.get(id) || []).forEach((c) => renderNode(c, depth + 1));
     };
     const scopeNodes = idSet ? nodes.filter((n) => idSet.has(n.id)) : nodes;
@@ -53,7 +64,10 @@ export const MindmapExport = {
     const orphans = scopeNodes.filter((n) => !visited.has(n.id)).map((n) => n.id);
     if (orphans.length) {
       lines.push('', '## 未连接');
-      orphans.forEach((id) => lines.push('- ' + oneLine(byId.get(id))));
+      orphans.forEach((id) => {
+        lines.push('- ' + oneLine(byId.get(id)));
+        noteLines(byId.get(id), 0);
+      });
     }
     const d = new Date();
     const pad = (x) => String(x).padStart(2, '0');

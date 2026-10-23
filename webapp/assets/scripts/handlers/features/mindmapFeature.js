@@ -68,6 +68,9 @@ export const MindmapFeature = {
   _view: null,
   _style: MM_STYLE_AVAILABLE[0],   // 子弹样式索引：导图模式下第一个机身按钮在在售档位内循环切换
   _selId: null,
+  _noteBox: null,          // 备注浮层（DOM）
+  _noteInput: null,        // 备注输入框
+  _noteForId: null,        // 正在编辑备注的节点 id（null = 浮层关闭）
   _selLinkIdx: null,
   _els: null,               // Map<id, el>
   _nodeGeo: new Map(),      // Map<id, {cx,cy,hw,hh,rot}> 节点几何缓存（离屏卸载后供连线按缓存绘制，剔除核心）
@@ -170,6 +173,7 @@ export const MindmapFeature = {
     this._dragSet = null;
     this._cullRaf = 0;
     this._initToolbar(layer);
+    this._initNoteEditor(layer);
     this._initSearch(layer);
     this._initUndo();
     this._bindLayer();
@@ -259,6 +263,8 @@ export const MindmapFeature = {
     const acts = [
       { act: 'dup',  icon: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>', title: '复制' },
       { act: 'del',  icon: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>', title: '删除子弹' },
+      // 备注：子弹保持短关键词，细节写进备注（不显示在画布，导出时作为缩进引用）
+      { act: 'note', icon: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16M4 10h16M4 15h10M4 20h7"/></svg>', title: '备注（导出时作为缩进引用）' },
     ];
     acts.forEach(({ act, icon, title }) => {
       const b = document.createElement('button');
@@ -306,8 +312,83 @@ export const MindmapFeature = {
       const act = b.dataset.act;
       if (act === 'dup') this._duplicateSel();
       else if (act === 'del') this._deleteSel();
+      else if (act === 'note') this._openNoteEditor();
       if (e.detail > 0) b.blur();           // 鼠标点击后交还焦点：否则空格会再次 dup / del 选中
     });
+  },
+
+  /** 备注浮层（子弹只放短关键词，细节写这里；不显示在画布，导出时作为缩进引用）。 */
+  _initNoteEditor(layer) {
+    const box = document.createElement('div');
+    box.className = 'tw-mm-note-pop';
+    box.hidden = true;
+    box.innerHTML = `
+      <textarea class="tw-mm-note-input" placeholder="备注：不显示在画布上，导出 Markdown 时作为缩进引用" spellcheck="false"></textarea>
+      <div class="tw-mm-note-hint">Cmd/Ctrl+Enter 保存 · Esc 关闭</div>`;
+    layer.appendChild(box);
+    this._noteBox = box;
+    this._noteInput = box.querySelector('.tw-mm-note-input');
+    // 浮层内交互不冒泡到画布（否则会触发平移 / 取消选中）
+    box.addEventListener('pointerdown', (e) => e.stopPropagation());
+    box.addEventListener('click', (e) => e.stopPropagation());
+    box.addEventListener('wheel', (e) => e.stopPropagation(), { passive: true });
+    this._noteInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') { e.preventDefault(); this._closeNoteEditor(); }
+      else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); this._closeNoteEditor(); }
+    });
+    // 失焦即保存（点画布其他处 / 切选中）
+    this._noteInput.addEventListener('blur', () => this._closeNoteEditor());
+  },
+
+  /** 给当前单选节点打开备注浮层（定位在节点上方，空间不够翻到下方）。 */
+  _openNoteEditor() {
+    if (!this._noteBox || !this._selId) return;
+    const el = this._els.get(this._selId);
+    if (!el) return;
+    this._noteForId = this._selId;
+    const n = this._nodeById(this._selId);
+    this._noteInput.value = (n && n.note) || '';
+    const box = this._noteBox;
+    box.hidden = false;
+    const W = 260;
+    box.style.width = W + 'px';
+    const lr = this._el.getBoundingClientRect();
+    const r = el.getBoundingClientRect();
+    const lw = this._el.clientWidth || 0;
+    let left = r.left - lr.left + r.width / 2 - W / 2;
+    left = Math.max(8, Math.min(Math.max(8, lw - W - 8), left));
+    const h = box.offsetHeight || 130;
+    let top = r.top - lr.top - h - 10;
+    if (top < 8) top = r.bottom - lr.top + 10;   // 顶部不够 → 翻到节点下方
+    box.style.left = Math.round(left) + 'px';
+    box.style.top = Math.round(top) + 'px';
+    this._noteInput.focus();
+    try { this._noteInput.select(); } catch (_) { /* 选区失败不影响编辑 */ }
+  },
+
+  /** 关闭备注浮层：有改动则写回（可撤销），并刷新节点小圆点 / 工具条。
+   *  discard=true（撤销恢复/卸载）时丢弃未提交内容，避免在撤销栈里再插一笔。 */
+  _closeNoteEditor(discard) {
+    const box = this._noteBox;
+    if (!box || box.hidden) return;
+    const id = this._noteForId;
+    const next = this._noteInput ? this._noteInput.value : '';
+    box.hidden = true;
+    this._noteForId = null;
+    if (discard) return;
+    if (!id) return;
+    const n = this._nodeById(id);
+    if (!n) return;                       // 节点已被删除：不写回
+    const prev = n.note || '';
+    if (next === prev) return;
+    this._mutate(() => {
+      this._nodes = MindmapDoc.setNote(this._nodes, id, next);
+      const el = this._els.get(id);
+      const nn = this._nodeById(id);
+      if (el && nn) this._paintNode(el, nn);
+    });
+    this._scheduleSave();
+    this._updateToolbar();
   },
 
   /** 搜索框（Cmd/Ctrl+F 唤起：匹配子弹文本、回车跳转居中、高亮命中） */
@@ -352,6 +433,7 @@ export const MindmapFeature = {
   /** 离开子弹：先提交半截编辑，再落盘（节点 + 连线 + 视野），隐藏层 */
   deactivate() {
     if (!this._el) return;
+    if (this._noteForId) this._closeNoteEditor();   // 切档前提交备注（此时仍 active，可正常留档）
     this._active = false;
     // 必须「提交」而非「取消」：切档时由 ModeController 调用本方法（其注释即为「半截编辑先提交」），
     // 而旋钮滚轮拨档不改变焦点 → 不触发 _editBlur → 只能在这里把刚打字、尚未 blur 的文本写回模型。
@@ -860,6 +942,8 @@ export const MindmapFeature = {
 
   _applyView() {
     if (!this._canvas || !this._view) return;
+    // 平移/缩放后备注浮层会脱离节点 —— 直接收起（顺带保存当前内容）
+    if (this._noteForId) this._closeNoteEditor();
     // 与便签画布同一约定：translate(平移) scale(缩放)，transform-origin 已在 CSS(.tw-mm-canvas) 定为 0 0
     const s = CanvasViewport.scaleOf(this._view);
     this._canvas.style.transform = `translate(${this._view.x}px, ${this._view.y}px) scale(${s})`;
@@ -906,6 +990,8 @@ export const MindmapFeature = {
     el.style.maxWidth = this.NODE_MAX_W + 'px';
     if (n.color) el.style.setProperty('--mm-accent', n.color);
     else el.style.removeProperty('--mm-accent');
+    // 有备注的节点在右上角显示一个小圆点（细节不在画布上展开）
+    el.classList.toggle('has-note', !!(n.note && String(n.note).trim()));
   },
 
   _paintSelection() {
@@ -1253,6 +1339,7 @@ export const MindmapFeature = {
   _enterEdit(id) {
     const el = this._els.get(id);
     if (!el || !el._text) return;
+    if (this._noteForId) this._closeNoteEditor();   // 先保存并收起备注浮层，再进文本编辑
     this._exitConnectMode();
     // 先 _select（守卫会在「正在编辑别的节点」时先 commitEdit），再记 _editId；
     // 顺序颠倒会让守卫 `this._editId && this._editId !== id` 恒为 false → 旧编辑不提交、
@@ -1412,6 +1499,8 @@ export const MindmapFeature = {
   /** 用快照整体恢复：先退出编辑态与选中，再按数据重绘 */
   _restoreSnapshot(s) {
     if (!s) return;
+    // 备注浮层：丢弃未提交内容（不要在撤销恢复过程中再往撤销栈插一笔）
+    if (this._noteForId) this._closeNoteEditor(true);
     // 必须先把编辑态收掉：否则被撤销掉的那颗子弹仍处于 contentEditable，
     // 其 blur / keydown 回调会把内容写回一个已不存在的 id。
     if (this._editId) this._commitEdit(true);
@@ -1523,6 +1612,13 @@ export const MindmapFeature = {
     const hasSel = this._selId || (this._selSet && this._selSet.size);
     if (!hasSel || this._editId) { tb.hidden = true; return; }
     const single = !!this._selId;
+    // 备注只对单颗有意义：多选隐藏；已有备注时按钮高亮
+    const noteBtn = tb.querySelector('button[data-act="note"]');
+    if (noteBtn) {
+      noteBtn.hidden = !single;
+      const n = single ? this._nodeById(this._selId) : null;
+      noteBtn.classList.toggle('is-active', !!(n && n.note && String(n.note).trim()));
+    }
     const lr = this._el.getBoundingClientRect();
     let ax = 0, ayTop = 0, ayBottom = 0;
     if (single) {
@@ -1607,7 +1703,7 @@ export const MindmapFeature = {
       ids.forEach((oid) => {
         const on = this._nodeById(oid);
         if (!on) return;
-        this._nodes = MindmapDoc.addNode(this._nodes, on.text || '', on.x + 30, on.y + 36, on.color || '');
+        this._nodes = MindmapDoc.addNode(this._nodes, on.text || '', on.x + 30, on.y + 36, on.color || '', on.note || '');
         const nid = this._nodes[this._nodes.length - 1].id;
         map.set(oid, nid);
         newIds.push(nid);
@@ -2051,6 +2147,9 @@ export const MindmapFeature = {
     this._links = [];
     this._view = null;
     this._selId = null;
+    this._noteBox = null;
+    this._noteInput = null;
+    this._noteForId = null;
     this._selLinkIdx = null;
     this._editId = null;
     this._editKey = null;

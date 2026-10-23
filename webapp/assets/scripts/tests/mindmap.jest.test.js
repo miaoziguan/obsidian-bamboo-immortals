@@ -16,7 +16,7 @@ describe('MindmapDoc 纯逻辑（自由模型）', () => {
         []
       );
       expect(out.nodes.map((n) => n.id)).toEqual(['a']);        // 重复 id 去重
-      expect(out.nodes[0]).toEqual({ id: 'a', text: '甲', x: 1, y: 2, color: '' });
+      expect(out.nodes[0]).toEqual({ id: 'a', text: '甲', x: 1, y: 2, color: '', note: '' });
     });
 
     test('丢弃自环、悬空、重复连线（同一对不分方向只留一条）', () => {
@@ -199,5 +199,24 @@ describe('存储层：独立 key + 净化（TypewriterStore）', () => {
     await TypewriterStore.saveMindmap([{ id: 'b', text: '第二版', x: 0, y: 0 }], [], null);
     expect(mem[TypewriterStore.KEY_MINDMAP_BAK].nodes[0].id).toBe('a');
     expect(mem[TypewriterStore.KEY_MINDMAP].nodes[0].id).toBe('b');
+  });
+});
+
+describe('MindmapDoc · 节点备注（note）', () => {
+  test('normalize：note 规范化为字符串（非字符串 → 空）', () => {
+    const out = MindmapDoc.normalize([
+      { id: 'a', text: 'x', x: 0, y: 0, note: '备注' },
+      { id: 'b', text: 'y', x: 0, y: 0, note: 123 },
+    ], []);
+    expect(out.nodes[0].note).toBe('备注');
+    expect(out.nodes[1].note).toBe('');
+  });
+
+  test('setNote：不可变更新，空串即清除', () => {
+    const before = [{ id: 'a', text: 'x', x: 0, y: 0, color: '', note: '' }];
+    const after = MindmapDoc.setNote(before, 'a', '新备注');
+    expect(before[0].note).toBe('');          // 原数组不动
+    expect(after[0].note).toBe('新备注');
+    expect(MindmapDoc.setNote(after, 'a', '')[0].note).toBe('');
   });
 });

@@ -114,3 +114,16 @@ describe('思维子弹：抓手工具放在缩放条（对齐 Excalidraw）', ()
     expect(feature._showScreenMsg).not.toHaveBeenCalled();
   });
 });
+
+describe('节点备注：画布标记', () => {
+  test('有备注 → has-note；清空 → 移除', () => {
+    const el = document.createElement('div');
+    el.innerHTML = '<span class="tw-mm-text"></span>';
+    el._text = el.querySelector('.tw-mm-text');
+    const fake = { _editId: null, NODE_MAX_W: 220 };
+    MindmapFeature._paintNode.call(fake, el, { id: 'a', text: 'x', note: '有' });
+    expect(el.classList.contains('has-note')).toBe(true);
+    MindmapFeature._paintNode.call(fake, el, { id: 'a', text: 'x', note: '' });
+    expect(el.classList.contains('has-note')).toBe(false);
+  });
+});

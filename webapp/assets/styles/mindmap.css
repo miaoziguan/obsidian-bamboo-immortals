@@ -363,3 +363,56 @@
 .tw-mm.is-hand { cursor: grab; }
 .tw-mm.is-hand.is-panning { cursor: grabbing; }
 .tw-mm.is-hand .tw-mm-canvas { cursor: grab; }
+
+/* ===== 节点备注：画布小圆点 + 编辑浮层 ===== */
+.tw-mm-node.has-note::after {
+  content: '';
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--bamboo-primary);
+  opacity: .85;
+  pointer-events: none;
+}
+
+.tw-mm-note-pop {
+  position: absolute;
+  z-index: 60;
+  width: 260px;
+  padding: 8px;
+  box-sizing: border-box;
+  border-radius: var(--radius-control);
+  background: var(--bamboo-popup-bg);
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-card);
+  pointer-events: auto;
+  user-select: text;
+}
+.tw-mm-note-pop[hidden] { display: none; }
+.tw-mm-note-input {
+  display: block;
+  width: 100%;
+  min-height: 78px;
+  max-height: 220px;
+  resize: vertical;
+  box-sizing: border-box;
+  padding: 6px 8px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-5);
+  background: var(--card-bg);
+  color: var(--text-primary);
+  font-size: var(--type-sm);
+  line-height: var(--line-height-tight);
+  outline: none;
+}
+.tw-mm-note-input:focus { border-color: rgb(var(--primary-rgb)); }
+.tw-mm-note-hint {
+  margin-top: 4px;
+  font-size: var(--type-xs);
+  color: var(--text-tertiary);
+}
+/* 工具条备注按钮：该节点已有备注时高亮 */
+.tw-mm-toolbar .tw-mm-tb-btn.is-active { color: var(--bamboo-primary); }

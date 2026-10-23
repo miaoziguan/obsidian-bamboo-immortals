@@ -37,6 +37,7 @@ export const MindmapDoc = {
         x: Number.isFinite(n.x) ? n.x : 0,
         y: Number.isFinite(n.y) ? n.y : 0,
         color: typeof n.color === 'string' ? n.color : '',   // 每颗子弹可单独着色（'' = 默认）
+        note: typeof n.note === 'string' ? n.note : '',      // 备注：不显示在画布，导出时作为缩进引用
       });
     });
     const ids = new Set(out.map((n) => n.id));
@@ -60,8 +61,17 @@ export const MindmapDoc = {
   },
 
   /** 追加一颗子弹（返回新数组，调用方负责落盘）。color 可选：'' 表示未设（随主题默认） */
-  addNode(nodes, text, x, y, color) {
-    return nodes.concat([{ id: this.newId(), text: text || '', x: x || 0, y: y || 0, color: color || '' }]);
+  addNode(nodes, text, x, y, color, note) {
+    return nodes.concat([{
+      id: this.newId(), text: text || '', x: x || 0, y: y || 0,
+      color: color || '', note: note || '',
+    }]);
+  },
+
+  /** 改一颗子弹的备注（不可变更新；note='' 即清除） */
+  setNote(nodes, id, note) {
+    const t = (typeof note === 'string') ? note : '';
+    return nodes.map((n) => (n.id === id ? Object.assign({}, n, { note: t }) : n));
   },
 
   /** 改一颗子弹的颜色（'' = 清回默认） */

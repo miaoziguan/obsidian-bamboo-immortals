@@ -205,4 +205,18 @@ describe('MindmapExport.build', () => {
     expect(content).not.toContain('- 右');   // 右不在选择集合
     expect(content).toContain('子弹数: 3');
   });
+
+  test('节点备注：作为缩进 blockquote 导出（多行逐行 >）', () => {
+    const nodes = [
+      { id: 'a', text: '根', note: '这是根备注' },
+      { id: 'b', text: '子', note: '第一行\n第二行' },
+    ];
+    const links = [{ from: 'a', to: 'b' }];
+    const { content } = MindmapExport.build(nodes, links);
+    expect(content).toContain('- 根');
+    expect(content).toContain('  > 这是根备注');
+    expect(content).toContain('  - 子');
+    expect(content).toContain('    > 第一行');
+    expect(content).toContain('    > 第二行');
+  });
 });

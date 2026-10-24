@@ -390,3 +390,95 @@ describe('框选松手后不自动平移画布（保持原位，彻底消除松�
     expect(ctx.ctrl._updateSelBar).toHaveBeenCalled();
   });
 });
+
+// ── 双击进入编辑：原生 dblclick 被 startGroupDrag 的 preventDefault 抑制，须手动判定 ──
+// 现象：普通模式双击进不去编辑，但开抓手工具后（早退、无 preventDefault）反而能 → 说明
+// 双击编辑长期靠被吞掉的原生 dblclick 兜底，普通模式下彻底失效。
+describe('双击进入编辑（绕开被抑制的原生 dblclick）', () => {
+  test('cardDoubleTapHit：两次快速命中=双击；消费后重置；不同卡片 id 不配对', () => {
+    const ctrl = { _lastCardTap: null };
+    expect(CardInteractions.cardDoubleTapHit(ctrl, 'a')).toBe(false);   // 第一次 = 单击
+    expect(CardInteractions.cardDoubleTapHit(ctrl, 'a')).toBe(true);    // 350ms 内第二次 = 双击
+    expect(ctrl._lastCardTap).toBeNull();                              // 命中后已消费
+    expect(CardInteractions.cardDoubleTapHit(ctrl, 'a')).toBe(false);   // 消费后下一次重新计数（单击）
+    expect(CardInteractions.cardDoubleTapHit(ctrl, 'b')).toBe(false);   // 紧接刚点过 a，但 id 不同 → 不匹配（last.id='a'!='b'）
+    expect(CardInteractions.cardDoubleTapHit(ctrl, 'b')).toBe(true);    // 同样的 b 再点一次（窗口内）= 双击
+  });
+
+  function makeEditCtrl(card) {
+    const canvas = document.createElement('div');
+    canvas.setPointerCapture = jest.fn();
+    canvas.releasePointerCapture = jest.fn();
+    canvas.hasPointerCapture = jest.fn(() => false);
+    return {
+      _mode: 'notes',
+      _canvas: canvas,
+      _hand: { state: { handTool: false, spaceDown: false } },   // 普通模式：走手动双击判定
+      _selected: new Set(),
+      _materialMarket: null,
+      _linkLayer: null,
+      _undoStack: { push: jest.fn() },
+      _scheduleRenderLinks: jest.fn(),
+      _measureCard: jest.fn(),
+      _scheduleSave: jest.fn(),
+      _scheduleCull: jest.fn(),
+      _selectOnly: jest.fn(),
+      _toggleSelect: jest.fn(),
+      _pinOnly: jest.fn(),
+      _enterEdit: jest.fn(),
+    };
+  }
+
+  function pointerDown(target, id) {
+    const e = new Event('pointerdown', { bubbles: true });
+    e.clientX = 0; e.clientY = 0; e.pointerId = 1; e.pointerType = 'mouse'; e.button = 0;
+    e.shiftKey = false; e.preventDefault = jest.fn(); e.target = target; e.currentTarget = target;
+    target.dispatchEvent(e);
+  }
+
+  test('普通模式：双击卡片进入编辑，且第二次 pointerdown 不再起拖拽', () => {
+    const card = document.createElement('div');
+    card.className = 'tw-card';
+    card.dataset.id = 'n1';
+    const ctrl = makeEditCtrl(card);
+    const ctx = { state: {}, ctrl };
+    CardInteractions.makeDraggable(ctx, card);
+    CardInteractions.bindEdit(ctx, card);
+
+    // 第一次 pointerdown：普通模式 → 起拖拽（startGroupDrag），随后 pointerup 正常收尾
+    pointerDown(card, 'n1');
+    expect(ctrl._enterEdit).not.toHaveBeenCalled();   // 单击不应进编辑
+    const up = new Event('pointerup');
+    up.pointerId = 1; document.dispatchEvent(up);
+
+    // 第二次 pointerdown（同一毫秒，<350ms）：手动判定为双击 → 进编辑，不再拖拽
+    pointerDown(card, 'n1');
+    expect(ctrl._enterEdit).toHaveBeenCalledTimes(1);
+    expect(ctrl._enterEdit).toHaveBeenCalledWith(card);
+  });
+
+  test('普通模式：单次点击（无第二次）不进编辑', () => {
+    const card = document.createElement('div');
+    card.className = 'tw-card';
+    card.dataset.id = 'n1';
+    const ctrl = makeEditCtrl(card);
+    CardInteractions.makeDraggable({ state: {}, ctrl }, card);
+    CardInteractions.bindEdit({ state: {}, ctrl }, card);
+    pointerDown(card, 'n1');
+    const up = new Event('pointerup'); up.pointerId = 1; document.dispatchEvent(up);
+    expect(ctrl._enterEdit).not.toHaveBeenCalled();
+  });
+
+  test('抓手态：原生 dblclick 仍生效，手动判定不被调用（路径对照）', () => {
+    const card = document.createElement('div');
+    card.className = 'tw-card';
+    card.dataset.id = 'n1';
+    const ctrl = makeEditCtrl(card);
+    ctrl._hand = { state: { handTool: true, spaceDown: false } };   // 抓手态：onDown 早退
+    CardInteractions.makeDraggable({ state: {}, ctrl }, card);
+    CardInteractions.bindEdit({ state: {}, ctrl }, card);
+    // 在抓手态下，onDown 早退 → 不会写 _lastCardTap；模拟一次 pointerdown 后该字段仍为空
+    pointerDown(card, 'n1');
+    expect(ctrl._lastCardTap).toBeUndefined();   // 证明手动判定路径未被执行（让位给原生 dblclick）
+  });
+});

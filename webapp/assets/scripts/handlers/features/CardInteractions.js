@@ -42,6 +42,15 @@ export const CardInteractions = {
       // 卡片触点本就不进 CanvasGestures 的 ptrs；若这里不拦，会「卡片拖拽 + 画布平移」同时发生
       // （卡片 pointerdown 在卡片上先于根节点的 CanvasGestures 触发）。
       if (ctrl._hand && ctrl._hand.state && (ctrl._hand.state.handTool || ctrl._hand.state.spaceDown)) return;
+      // 双击 → 编辑：原生 dblclick 被 startGroupDrag 的 e.preventDefault() 抑制，这里手动判定。
+      // 命中即进入编辑并 return，不再起拖拽（避免一次手势同时触发「双击编辑 + 拖拽」）。
+      // 此分支在上面的「抓手早退」之后，故抓手态仍走原生 dblclick（无 preventDefault）。
+      if (CardInteractions.cardDoubleTapHit(ctrl, card.dataset.id) &&
+          !card.classList.contains('editing') &&
+          !e.target.closest('button, .tw-card-resize, .tw-card-rotate, .tw-card-link')) {
+        ctrl._enterEdit(card);
+        return;
+      }
       if (e.target.closest('button, .tw-card-resize, .tw-card-rotate, .tw-card-link')) return; // 删除/字级/缩放/连线锚点不触发拖拽
       // 编辑态下点在文本区不拖拽（让浏览器处理选字/光标）；点标题或纸边仍可移动便签
       if (card.classList.contains('editing') && e.target.closest('.tw-card-text')) return;
@@ -109,6 +118,7 @@ export const CardInteractions = {
       if (dragPointerId != null && ev.pointerId !== dragPointerId) return;   // 第二指不驱动本次拖拽
       if (!moved && (Math.abs(ev.clientX - startX) > 4 || Math.abs(ev.clientY - startY) > 4)) {
         moved = true;
+        ctrl._lastCardTap = null;   // 真拖拽：作废刚记录的「单击」，否则拖完快速点一下会被误判成双击编辑
         if (ctrl._undoStack) ctrl._undoStack.push();   // 变更前留档：拖动位置可撤销（Cmd+Z 不再回退更早快照）
       }
       // 无限画布：坐标相对 .tw-canvas（含其 transform 平移），不 clamp。
@@ -858,7 +868,26 @@ export const CardInteractions = {
       if (card.classList.contains('editing')) return;
       ctrl._enterEdit(card);
     });
-  
+
+  },
+  /**
+   * 双击进入编辑的手动判定（绕开被抑制的原生 dblclick）。
+   * startGroupDrag 在 pointerdown 上 e.preventDefault() —— 浏览器因此不再派发原生 dblclick，
+   * 卡片上的「双击编辑」入口（bindEdit 的 dblclick 监听）在普通模式下永远不触发
+   * （表现为「双击进不去编辑」，而开启抓手工具后因早退、没有 preventDefault，原生 dblclick 反而生效）。
+   * 这里用「时间点 + 同卡片」手动判定；命中返回 true（调用方进入编辑并跳过拖拽）。
+   * 抓手/空格态不走 makeDraggable 的 onDown（早退让位平移），那路没有 preventDefault，
+   * 原生 dblclick 仍有效，故该态不依赖本判定。
+   */
+  cardDoubleTapHit(ctrl, id) {
+    const now = Date.now();
+    const last = ctrl._lastCardTap;
+    if (last && last.id === id && (now - last.t) < 350) {
+      ctrl._lastCardTap = null;
+      return true;
+    }
+    ctrl._lastCardTap = { id, t: now };
+    return false;
   },
   // (was _exitAllEdits)
   exitAllEdits(ctx) {

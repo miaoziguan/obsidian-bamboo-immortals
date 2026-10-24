@@ -347,6 +347,10 @@ export const ModeController = {
     } finally {
       ctrl._switching = false;
       ctrl._docBusy = false;
+      // 分组操作窗口内若拨了旋钮，cycleMode 会因 _switching 为真而累积净步数。
+      // 但这个窗口不是切档，累积值对它毫无意义，必须就地丢弃 —— 否则会残留到
+      // 下一次**无关**的切档才被消费，表现为「莫名多跳一档」。
+      ctrl._pendingModeDir = 0;
     }
   
   },
@@ -369,6 +373,10 @@ export const ModeController = {
     } finally {
       ctrl._switching = false;
       ctrl._docBusy = false;
+      // 分组操作窗口内若拨了旋钮，cycleMode 会因 _switching 为真而累积净步数。
+      // 但这个窗口不是切档，累积值对它毫无意义，必须就地丢弃 —— 否则会残留到
+      // 下一次**无关**的切档才被消费，表现为「莫名多跳一档」。
+      ctrl._pendingModeDir = 0;
     }
   
   },
@@ -429,6 +437,10 @@ export const ModeController = {
     } finally {
       ctrl._switching = false;
       ctrl._docBusy = false;
+      // 分组操作窗口内若拨了旋钮，cycleMode 会因 _switching 为真而累积净步数。
+      // 但这个窗口不是切档，累积值对它毫无意义，必须就地丢弃 —— 否则会残留到
+      // 下一次**无关**的切档才被消费，表现为「莫名多跳一档」。
+      ctrl._pendingModeDir = 0;
     }
   
   },
@@ -458,6 +470,10 @@ export const ModeController = {
     } finally {
       ctrl._switching = false;
       ctrl._docBusy = false;
+      // 分组操作窗口内若拨了旋钮，cycleMode 会因 _switching 为真而累积净步数。
+      // 但这个窗口不是切档，累积值对它毫无意义，必须就地丢弃 —— 否则会残留到
+      // 下一次**无关**的切档才被消费，表现为「莫名多跳一档」。
+      ctrl._pendingModeDir = 0;
     }
   },
   async createNotesGroup(ctx) {
@@ -482,6 +498,10 @@ export const ModeController = {
     } finally {
       ctrl._switching = false;
       ctrl._docBusy = false;
+      // 分组操作窗口内若拨了旋钮，cycleMode 会因 _switching 为真而累积净步数。
+      // 但这个窗口不是切档，累积值对它毫无意义，必须就地丢弃 —— 否则会残留到
+      // 下一次**无关**的切档才被消费，表现为「莫名多跳一档」。
+      ctrl._pendingModeDir = 0;
     }
   },
   async deleteNotesGroup(ctx, id, title) {
@@ -507,6 +527,10 @@ export const ModeController = {
     } finally {
       ctrl._switching = false;
       ctrl._docBusy = false;
+      // 分组操作窗口内若拨了旋钮，cycleMode 会因 _switching 为真而累积净步数。
+      // 但这个窗口不是切档，累积值对它毫无意义，必须就地丢弃 —— 否则会残留到
+      // 下一次**无关**的切档才被消费，表现为「莫名多跳一档」。
+      ctrl._pendingModeDir = 0;
     }
   },
 
@@ -516,6 +540,11 @@ export const ModeController = {
     if (kind === 'mindmap') {
       if (ctrl._docBusy || ctrl._switching) return;
       ctrl._docBusy = true;
+      // 与 notes/write 的分组操作对称（switchWritingGroup / switchNotesGroup 都置这对标记）：
+      // setMode 只认 _switching，只置 _docBusy 挡不住「切组与切档交错」——
+      // 导图的窗口在 _groupId 已切换、load() 未完成时 _nodes 仍是旧组的，
+      // 此时切档 → deactivate() → _saveNow() 会把旧组内容落进新组文件。
+      ctrl._switching = true;
       try {
         ctrl._hideDocPanel();
         const cur = (await TypewriterStore.getCurrentMindmapGroup()).id;
@@ -525,7 +554,7 @@ export const ModeController = {
           await ctrl._renderDocPanel();
           ctrl._showScreenMsg('已切换思维导图组', 1200);
         }
-      } finally { ctrl._docBusy = false; }
+      } finally { ctrl._docBusy = false; ctrl._switching = false; ctrl._pendingModeDir = 0; }
     } else if (kind === 'notes') {
       await ctrl._switchNotesGroup(id);
     } else {
@@ -539,13 +568,14 @@ export const ModeController = {
     if (kind === 'mindmap') {
       if (ctrl._docBusy || ctrl._switching) return;
       ctrl._docBusy = true;
+      ctrl._switching = true;   // 同 switchDocGroup：新建组窗口同样要挡住切档
       try {
         ctrl._exitAllEdits();
         await MindmapFeature.newGroup();
         await ctrl._refreshDocBtnLabel();
         await ctrl._renderDocPanel();
         ctrl._showScreenMsg('已新建思维导图组', 1200);
-      } finally { ctrl._docBusy = false; }
+      } finally { ctrl._docBusy = false; ctrl._switching = false; ctrl._pendingModeDir = 0; }
     } else if (kind === 'notes') {
       await ctrl._createNotesGroup();
     } else {
@@ -571,6 +601,7 @@ export const ModeController = {
     const warn = '确定删除思维导图组「' + (title || '未命名思维导图') + '」？此操作无法撤销。';
     if (!window.confirm(warn)) return;
     ctrl._docBusy = true;
+    ctrl._switching = true;   // 同 switchDocGroup：删组窗口同样要挡住切档
     try {
       ctrl._exitAllEdits();
       const wasCurrent = (await TypewriterStore.getCurrentMindmapGroup()).id === id;
@@ -581,6 +612,8 @@ export const ModeController = {
       ctrl._showScreenMsg('已删除思维导图组', 1200);
     } finally {
       ctrl._docBusy = false;
+      ctrl._switching = false;
+      ctrl._pendingModeDir = 0;   // 同上：删组窗口内的旋钮累积就地丢弃
     }
   
   },

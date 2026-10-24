@@ -538,6 +538,9 @@ export const MindmapFeature = {
   async load() {
     const id = this._groupId || 'default';
     const doc = await TypewriterStore.loadMindmapGroupDoc(id);
+    // 读失败 ≠ 空档：此时 doc 是空 nodes，落盘已被 TypewriterStore 阻断（防覆盖真实数据），
+    // 但用户必须知道「这不是真的为空」，否则会以为子弹丢了、并继续徒劳地编辑。
+    if (TypewriterStore.docLoadFailed && TypewriterStore.docLoadFailed('mindmap')) this._showLoadFailed();
     let nodes = doc.nodes || [];
     let links = doc.links || [];
     // v1 遗留（父子树）→ 自由子弹 + 连线：一次性迁移并立即落盘，之后全是自由模型。
@@ -567,6 +570,10 @@ export const MindmapFeature = {
 
   /** 防抖落盘（拖动/编辑时高频触发，只在停手后写一次） */
   _scheduleSave() {
+    // 与便签/写作对称（PersistenceCoordinator.scheduleSave 的 `if (ctrl._switching) return`）：
+    // 切档 / 切组窗口内不排新的防抖落盘，避免窗口结束后拿旧内容覆盖新组文件。
+    // 注意只挡「防抖」，不挡 _saveNow —— 切组前的显式落盘（switchGroup 里那次）必须照常执行。
+    if (this._ctrl && this._ctrl._switching) return;
     clearTimeout(this._saveTimer);
     this._saveTimer = setTimeout(() => {
       // 【防丢数据】回调也要有错误面：_saveNow 内部只覆盖落盘本身，这里兜住前置抛错，
@@ -581,6 +588,17 @@ export const MindmapFeature = {
   /** 落盘失败的用户可见提示（子弹档无屏幕消息条，Toast 优先） */
   _showSaveFailed() {
     const text = '思维子弹保存失败，请检查 vault 写入权限';
+    try {
+      if (typeof Toast !== 'undefined' && Toast && typeof Toast.showToast === 'function') {
+        Toast.showToast(text, 'error');
+        return;
+      }
+    } catch (_) { /* Toast 不可用则仅记日志 */ }
+    console.error('[Mindmap] ' + text);
+  },
+  /** 读档失败提示：与「保存失败」分开——此时已暂停自动落盘，提示语要说明这一点。 */
+  _showLoadFailed() {
+    const text = '思维子弹读取失败（内容未加载），已暂停自动保存以防覆盖，请重新打开视图';
     try {
       if (typeof Toast !== 'undefined' && Toast && typeof Toast.showToast === 'function') {
         Toast.showToast(text, 'error');
@@ -2247,6 +2265,13 @@ export const MindmapFeature = {
     if (this._wheelDetach) { this._wheelDetach(); this._wheelDetach = null; }
     if (this._gestureDetach) { this._gestureDetach(); this._gestureDetach = null; }
     if (this._hand && typeof this._hand.destroy === 'function') { this._hand.destroy(); this._hand = null; }
+    // 导图的这份 LinkLayer 是本模块自己 new 的（mount 时），此前只在便签侧销毁了它那份 ——
+    // 本实例会残留未取消的 rAF / hover timer、以及 startConnect 挂的 document 级监听与元素引用。
+    // 必须与便签侧（typewriterFeature.unmount）对称销毁。
+    // 刻意**不置 null**（与便签侧一致）：_spawnFrom 的飞入动画有一条 rAF 轮询会调
+    // this._linkLayer.render()，它可能在 teardown 之后才被 cancel；置 null 会让它抛异常。
+    // destroy() 已清 RO/rAF/hover timer/元素引用，render() 在其后调用是安全的（会重建图层）。
+    if (this._linkLayer && typeof this._linkLayer.destroy === 'function') this._linkLayer.destroy();
     // 历史只属于本次会话的文档：卸载即弃，避免重挂载后把旧状态的快照带回来
     if (this._undoStack) { this._undoStack.reset(); this._undoStack = null; }
     this._active = false;

@@ -191,6 +191,12 @@ export const TypewriterStore = {
   _writingLoadFailed: false,
   _notesIdxCache: null,
   _notesLoadFailed: false,
+  // 【数据安全】正文「读取失败」标记：与上面的索引级标记同类，但作用于 **notes/nodes 正文**。
+  // 正文读失败时 _loadCardDoc 返回的是空 notes，若照常落盘，就会用空数组覆盖磁盘上的真实数据
+  // —— 索引级护栏早已存在（_saveCardDoc 跳过索引更新），但正文这一半此前漏了。
+  _writingDocFailed: false,
+  _notesDocFailed: false,
+  _mindmapDocFailed: false,
 
   async _loadWritingIndex() {
     if (this._writingIdxCache) { this._writingLoadFailed = false; return this._writingIdxCache; }
@@ -219,6 +225,10 @@ export const TypewriterStore = {
     this._writingLoadFailed = false;
     this._notesIdxCache = null;
     this._notesLoadFailed = false;
+    // 正文级失败标记一并复位：重挂载后应允许重新读取、并在读成功后解除落盘封锁
+    this._writingDocFailed = false;
+    this._notesDocFailed = false;
+    this._mindmapDocFailed = false;
   },
   async _writingCurrentId() {
     const idx = await this._loadWritingIndex();
@@ -288,6 +298,9 @@ export const TypewriterStore = {
       loadIndex: () => (write ? this._loadWritingIndex() : this._loadNotesIndex()),
       // 上一次 loadIndex 是否「读取失败」（而非索引不存在）。失败时调用方必须跳过索引更新。
       loadFailed: () => (write ? !!this._writingLoadFailed : !!this._notesLoadFailed),
+      // 正文读失败标记（同上，但作用于 notes）：读失败后必须阻断落盘，防空数组覆盖真实数据。
+      docFailed: () => (write ? !!this._writingDocFailed : !!this._notesDocFailed),
+      markDocFailed: (v) => { if (write) this._writingDocFailed = !!v; else this._notesDocFailed = !!v; },
       saveIndex: (i) => (write ? this._saveWritingIndex(i) : this._saveNotesIndex(i)),
       getIdxTs: () => (write ? this._writingIdxTs : this._notesIdxTs),
       setIdxTs: (n) => { if (write) this._writingIdxTs = n; else this._notesIdxTs = n; },
@@ -305,10 +318,24 @@ export const TypewriterStore = {
   async loadDoc(kind, id) {
     return this._loadCardDoc(this._docDesc(kind), id);
   },
+  /** 上一次「读正文」是否失败（档位：write / notes / mindmap）。
+   *  读失败 ≠ 空档：此时模型是空的，落盘已由本模块自身阻断（_saveCardDoc / saveMindmapGroupDoc），
+   *  调用方据此给用户可见提示，并避免把「读失败」误当成「这个档本来就是空的」。 */
+  docLoadFailed(kind) {
+    if (kind === 'mindmap') return !!this._mindmapDocFailed;
+    const desc = this._docDesc(kind);
+    return !!(desc.docFailed && desc.docFailed());
+  },
   async _saveCardDoc(desc, notes, canvasOffset, links, id) {
     const sm = window.storageManager;
     if (!sm || typeof sm.putSetting !== 'function') return;
     const gid = id || (await desc.currentId());
+    // 【数据安全】上一次「读正文」失败：磁盘真实内容未知（读失败时模型是空数组），
+    // 此时落盘等于用空内容覆盖真实数据。成功读取后由 _loadCardDoc 自动解除封锁。
+    if (desc.docFailed && desc.docFailed()) {
+      console.error('[TypewriterStore] 上次读取失败，跳过本次落盘以防覆盖真实数据：', desc.getBridge);
+      return;
+    }
     const clean = this._sanitizeNotes(notes);
     const wires = this._sanitizeLinks(links);
     const doc = { version: desc.version, notes: clean, links: wires, canvasOffset };
@@ -363,9 +390,11 @@ export const TypewriterStore = {
     if (!id && !idx0 && !desc.loadFailed()) await desc.migrate();
     let doc = null;
     if (sm[desc.getBridge]) {
-      try { doc = await sm[desc.getBridge](gid); } catch (_) { doc = null; }
+      try { doc = await sm[desc.getBridge](gid); }
+      catch (_) { doc = null; desc.markDocFailed(true); }   // 读失败 ≠ 空档：置位以阻断后续落盘
     }
     if (doc && Array.isArray(doc.notes)) {
+      desc.markDocFailed(false);   // 读成功：解除落盘封锁
       result.notes = this._sanitizeNotes(doc.notes);
       result.version = Number(doc.version) || desc.version;
       if (doc.canvasOffset && (typeof doc.canvasOffset.x === 'number' || typeof doc.canvasOffset.y === 'number')) {
@@ -818,6 +847,12 @@ export const TypewriterStore = {
 
   async saveMindmapGroupDoc(id, doc) {
     const sm = window.storageManager;
+    // 【数据安全】与卡片档同原则：上一次读失败时磁盘真实内容未知（模型是空 nodes），
+    // 此时落盘等于用空内容覆盖真实数据。成功读取后由 loadMindmapGroupDoc 解除封锁。
+    if (this._mindmapDocFailed) {
+      console.error('[TypewriterStore] 思维子弹上次读取失败，跳过本次落盘以防覆盖真实数据');
+      return false;
+    }
     const payload = {
       version: this.MINDMAP_VERSION,
       nodes: this._sanitizeNodes(doc.nodes),
@@ -841,13 +876,15 @@ export const TypewriterStore = {
     // 主路径：读独立文件（与写作档同构）
     let doc = null;
     if (sm && typeof sm.getTypewriterMindmapDoc === 'function') {
-      try { doc = await sm.getTypewriterMindmapDoc(id); } catch (_) { doc = null; }
+      try { doc = await sm.getTypewriterMindmapDoc(id); }
+      catch (_) { doc = null; this._mindmapDocFailed = true; }   // 读失败 ≠ 空档：置位阻断落盘
     }
     // 兜底：兼容尚未迁移的旧 settings key（不依赖桥也能恢复存量）
     if (!doc && sm && typeof sm.getSetting === 'function') {
       try { doc = await sm.getSetting('typewriter:mindmap:' + id); } catch (_) { doc = null; }
     }
     if (!doc) return { nodes: [], links: [], view: null, style: 0, version: this.MINDMAP_VERSION };
+    this._mindmapDocFailed = false;   // 读成功：解除落盘封锁
     return {
       nodes: this._sanitizeNodes(doc.nodes),
       links: this._sanitizeLinks(doc.links),

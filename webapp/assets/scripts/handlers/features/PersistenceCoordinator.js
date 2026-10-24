@@ -42,7 +42,7 @@ export const PersistenceCoordinator = {
       // 这里的 .catch 兜住 _collectNotes 等前置步骤抛错的情况，避免 unhandled rejection。
       Promise.resolve(ctrl._saveNow()).catch((e) => {
         console.error('[Typewriter] 防抖落盘失败', e);
-        ctrl._showSaveFailed('便签');
+        ctrl._showSaveFailed(PersistenceCoordinator.modeLabel(ctrl._mode));
       });
     }, SAVE_DEBOUNCE);
 
@@ -64,7 +64,7 @@ export const PersistenceCoordinator = {
       await TypewriterStore.saveDoc(ctrl._mode, notes, off, ctrl._links);
     } catch (e) {
       console.error('[Typewriter] 便签/写作落盘失败', e);
-      ctrl._showSaveFailed('便签');
+      ctrl._showSaveFailed(PersistenceCoordinator.modeLabel(ctrl._mode));
     }
 
   },
@@ -78,12 +78,32 @@ export const PersistenceCoordinator = {
     await TypewriterStore.saveDoc(mode, notes, off, ctrl._links); // write/notes 两档（mindmap 不走 persistDoc）
   
   },
+  /** 档位中文短名（提示文案用）。此前 saveNow / 防抖回调一律传「便签」，
+   *  而这两个出口同时服务 write 与 notes → 写作档保存失败却提示「便签保存失败」。 */
+  modeLabel(mode) {
+    if (mode === 'write') return '写作';
+    if (mode === 'mindmap') return '思维子弹';
+    return '便签';
+  },
+
   // (was _loadDoc)
   async loadDoc(ctx, mode) {
     const { state, ctrl } = ctx;
     const canvas = ctrl._canvas;
     if (!canvas) return;
     const data = await TypewriterStore.loadDoc(mode);
+    // 读失败 ≠ 空档：此时 data 是空 notes，落盘已被 TypewriterStore 阻断（防覆盖真实数据），
+    // 但用户必须知道「这不是真的为空」，否则会以为卡片丢了、并继续徒劳地编辑。
+    if (TypewriterStore.docLoadFailed && TypewriterStore.docLoadFailed(mode)) {
+      const label = PersistenceCoordinator.modeLabel(mode);
+      const text = label + '读取失败（内容未加载），已暂停自动保存以防覆盖，请重新打开视图';
+      try {
+        if (typeof Toast !== 'undefined' && Toast && typeof Toast.showToast === 'function') {
+          Toast.showToast(text, 'error');
+        }
+      } catch (_) { /* Toast 不可用则仅记日志 */ }
+      console.error('[Typewriter] ' + text);
+    }
     const cr = canvas.getBoundingClientRect();
     const w = cr.width || 1;
     const h = cr.height || 1;

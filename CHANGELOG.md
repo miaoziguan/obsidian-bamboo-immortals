@@ -1,5 +1,11 @@
 # Changelog
 
+## [3.29.1] — 2026-10-24
+
+### Fixed
+- **可视化写作模式：卡片工具条离卡片过远**：写作档原先无条件把工具条抬到「级别徽章再上方 8px」（形成 卡片 → 徽章 → 工具条 两行），但宽卡片下徽章在左、工具条居中本不重叠，凭空空出一大截。改为仅当两者水平方向会相撞（卡片较窄）时才上抬——`bindTools` 的 `placeTools` 按徽章与工具条的实际矩形切换 `.tw-tools-raised`，宽卡片工具条紧贴卡片上沿。
+- **CSS lint 清理**：`notes.css` 两处非法的 `::host(...)` 选择器改为 `:host(...)`（原写法被浏览器忽略，导致 `.tw-sel-attach` 暗色样式未生效）；`bamboo-garden.css` 四处正当的 `!important`（用于覆盖运行时注入主题的 `animation` 简写、以及元素内联 `filter`）补 `stylelint-disable-next-line declaration-no-important` 并注明理由。
+
 ## [3.29.0] — 2026-10-24
 
 ### Added

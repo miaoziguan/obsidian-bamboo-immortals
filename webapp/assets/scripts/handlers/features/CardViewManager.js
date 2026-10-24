@@ -549,6 +549,20 @@ export const CardViewManager = {
       const cr = canvas.getBoundingClientRect();
       const kr = card.getBoundingClientRect();
       card.classList.toggle('tw-tools-below', (kr.top - cr.top) < 46);
+      // 写作档：级别徽章在左上、工具条在上方居中。仅当两者水平方向会相撞（卡片较窄）时，
+      // 才给工具条加 .tw-tools-raised 上抬一行；卡片够宽时本就不重叠，保持工具条贴近卡片。
+      // 纯 CSS 无法感知卡片宽度，故按两元素实际矩形判断。
+      if (ctrl._mode === 'write' && !card.classList.contains('tw-tools-below')) {
+        const lvl = card.querySelector('.tw-card-level');
+        const tools = card.querySelector('.tw-card-tools');
+        if (lvl && tools) {
+          const lr = lvl.getBoundingClientRect();
+          const tr = tools.getBoundingClientRect();
+          card.classList.toggle('tw-tools-raised', lr.right > tr.left - 6);
+        }
+      } else {
+        card.classList.remove('tw-tools-raised');
+      }
     };
     card.addEventListener('mouseenter', placeTools);
     card.addEventListener('focusin', placeTools);

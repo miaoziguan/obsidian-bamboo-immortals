@@ -1253,12 +1253,13 @@
   color: var(--lv-color);
 }
 
-/* 写作档：H1 徽章常驻浮在卡片上方左端，工具条默认也浮在上方居中 ——
-   卡片一窄（或被缩放）两者必然叠在一起互相挡点击，而徽章 z-index(61) 更高，会压住工具条。
-   让工具条整体上抬一个徽章的高度，形成「卡片 → 徽章 → 工具条」两行，横向再宽也撞不上。
-   :not(.tw-tools-below) 必需：卡片贴顶时工具条会翻到卡片下方，那时它与徽章分处卡片两侧，
-   再上抬反而把它推离卡片（且该规则里的 bottom:auto 不能被本条覆盖）。 */
-.tw-canvas.tw-mode-write .tw-card:not(.tw-tools-below) .tw-card-tools {
+/* 写作档：H1 徽章常驻浮在卡片上方左端，工具条浮在上方居中。
+   仅当「卡片较窄」使两者在水平方向会重叠时，才把工具条整体上抬一行（形成 卡片 → 徽章 → 工具条），
+   避免徽章 z-index(61) 压住工具条按钮；卡片够宽时徽章在左、工具条居中本就不重叠，
+   工具条保持贴近卡片（2px），不再无谓空出一大截。
+   宽窄判定由 bindTools 的 placeTools 按两元素实际矩形切换 .tw-tools-raised（纯 CSS 无法感知卡片宽度）。
+   :not(.tw-tools-below) 必需：卡片贴顶时工具条翻到卡片下方，此时无需上抬（且 bottom:auto 不能被覆盖）。 */
+.tw-canvas.tw-mode-write .tw-card.tw-tools-raised:not(.tw-tools-below) .tw-card-tools {
   bottom: calc(100% + 8px + var(--tw-tools-size));
 }
 
@@ -1707,8 +1708,8 @@
 :host(.dark) .tw-sel-bar button { color: #cdc8bb; }
 :host(.dark) .tw-sel-merge { background: rgba(206, 220, 190, 0.16); color: #d8e3c6; }
 :host(.dark) .tw-sel-merge:hover { background: rgba(206, 220, 190, 0.28); }
-::host(.dark) .tw-sel-attach { background: rgba(206, 220, 190, 0.16); color: #d8e3c6; }
-::host(.dark) .tw-sel-attach:hover { background: rgba(206, 220, 190, 0.28); }
+:host(.dark) .tw-sel-attach { background: rgba(206, 220, 190, 0.16); color: #d8e3c6; }
+:host(.dark) .tw-sel-attach:hover { background: rgba(206, 220, 190, 0.28); }
 :host(.dark) .tw-sel-del:hover { color: #e09a86; background: rgba(214, 120, 96, 0.16); }
 
 

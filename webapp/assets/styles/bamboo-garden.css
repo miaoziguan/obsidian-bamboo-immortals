@@ -89,7 +89,8 @@
 .theme-card.is-paused *,
 .theme-card.is-paused *::before,
 .theme-card.is-paused *::after {
-    animation-play-state: paused !important;
+    /* stylelint-disable-next-line declaration-no-important */
+    animation-play-state: paused !important; /* 覆盖运行时注入主题的 animation 简写（会重置 play-state） */
 }
 /* 动效强度：框架在 .theme-card 上写 data-motion="full|lite|static"，并下发 --fl-blur-scale
    （1 / .5 / 0）。lite 档要停哪些动画由主题自己声明（高频低感知的那些），框架不猜。
@@ -98,11 +99,13 @@
 .theme-card[data-motion="static"] *,
 .theme-card[data-motion="static"] *::before,
 .theme-card[data-motion="static"] *::after {
-    animation-play-state: paused !important;
+    /* stylelint-disable-next-line declaration-no-important */
+    animation-play-state: paused !important; /* 静态档同样需压过主题 animation 简写 */
 }
 /* 兜底：未接 --fl-blur-scale 的主题，静止档也把内联 blur 直接关掉 */
 .theme-card[data-motion="static"] [style*="filter:blur"] {
-    filter: none !important;
+    /* stylelint-disable-next-line declaration-no-important */
+    filter: none !important; /* 必须覆盖元素内联 style，只有 !important 能做到 */
 }
 
 /* ===== 竹林诗词区（横向布局专用，填充动效卡片下方空白） =====
@@ -850,6 +853,7 @@
     .theme-card *,
     .theme-card *::before,
     .theme-card *::after {
-        animation-play-state: paused !important;
+        /* stylelint-disable-next-line declaration-no-important */
+        animation-play-state: paused !important; /* prefers-reduced-motion 兜底，需压过主题 animation 简写 */
     }
 }

@@ -3,6 +3,8 @@ const { loadModule } = require('./__helpers__/testUtils.js');
 // theme-effects 从 domRef import 的 byId 被 loadModule 剥离后需由全局补回（等价于 jsdom 下的 getDomRoot→document）。
 const { ThemeEffects } = loadModule('modules/theme-effects.js', ['ThemeEffects'], {
   byId: (id) => document.getElementById(id),
+  // _renderMarketBody 用 HTMLUtils.escapeHtmlAttr 拼接卡片 html；测试注入最小实现
+  HTMLUtils: { escapeHtmlAttr: (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;') },
 });
 
 // 确定性帧时钟：_autoTune 用 performance.now() 起算、requestAnimationFrame(t) 推进。
@@ -137,5 +139,97 @@ describe('P1-2 不可见即暂停（_setupPauseWhenHidden / _teardownPauseWhenHi
     expect(ThemeEffects._pauseCard).toBeNull();
     expect(ThemeEffects._pauseIO).toBeNull();
     expect(ThemeEffects._onVisibility).toBeNull();
+  });
+});
+
+// ── 切换主题：面板保持打开，市场「使用中」就地同步 ──
+describe('切换主题后市场「使用中」就地刷新（面板不关闭）', () => {
+  test('_syncThemeMode 把 .in-use 标到当前主题卡', () => {
+    document.body.innerHTML =
+      '<div id="themeEffectSection"><div class="theme-card"></div></div>' +
+      '<div id="panel-market" class="fab-panel">' +
+        '<div class="market-card is-applicable in-use" data-market-theme="a"></div>' +
+        '<div class="market-card is-applicable" data-market-theme="b"></div>' +
+      '</div>';
+    const orig = {
+      _applyThemeVars: ThemeEffects._applyThemeVars,
+      _applyPaletteToGlobal: ThemeEffects._applyPaletteToGlobal,
+      _notifyThemeUpdate: ThemeEffects._notifyThemeUpdate,
+      _getModeSetting: ThemeEffects._getModeSetting,
+      _getCurrentMode: ThemeEffects._getCurrentMode,
+      currentTheme: ThemeEffects.currentTheme,
+    };
+    ThemeEffects._applyThemeVars = jest.fn();
+    ThemeEffects._applyPaletteToGlobal = jest.fn();
+    ThemeEffects._notifyThemeUpdate = jest.fn();
+    ThemeEffects._getCurrentMode = () => 'light';
+    ThemeEffects._getModeSetting = () => ({ hue: null, lightness: null, saturation: null });
+    ThemeEffects.currentTheme = 'b';
+    try {
+      ThemeEffects._syncThemeMode();
+    } finally {
+      Object.assign(ThemeEffects, orig);
+    }
+    const a = document.querySelector('.market-card[data-market-theme="a"]');
+    const b = document.querySelector('.market-card[data-market-theme="b"]');
+    expect(b.classList.contains('in-use')).toBe(true);    // 使用中标到当前主题
+    expect(a.classList.contains('in-use')).toBe(false);
+  });
+});
+
+// ── 市场离线：目录不可用仍渲染「已安装」并可切换；目录可用时合并可装/可更新 ──
+describe('主题市场：本地已安装优先（离线可切换）', () => {
+  test('catalog=null 时渲染已安装卡 + 提示，无安装/更新按钮', () => {
+    const body = document.createElement('div');
+    const origAE = ThemeEffects.availableExternal;
+    const origCur = ThemeEffects.currentTheme;
+    try {
+      ThemeEffects.availableExternal = { '枫林晚照': { name: '枫林晚照' } };
+      ThemeEffects.currentTheme = 'bamboo';
+      ThemeEffects._renderMarketBody(body, {
+        catalog: null,
+        installed: {},
+        installedIds: ['枫林晚照'],
+        notice: '线上清单不可用，仅显示已安装的主题',
+      });
+    } finally {
+      ThemeEffects.availableExternal = origAE;
+      ThemeEffects.currentTheme = origCur;
+    }
+    expect(body.textContent).toContain('线上清单不可用');
+    const card = body.querySelector('.market-card[data-market-theme="枫林晚照"]');
+    expect(card).not.toBeNull();
+    expect(card.classList.contains('installed')).toBe(true);
+    expect(card.querySelector('.market-btn.install')).toBeNull();       // 无目录 → 无安装/更新
+    expect(card.querySelector('.market-btn.uninstall')).not.toBeNull(); // 仍可卸载
+    expect(body.querySelector('.market-card[data-market-theme="bamboo"]')).not.toBeNull();
+  });
+
+  test('catalog 可用：已安装补「可更新」，未安装作为可装项', () => {
+    const body = document.createElement('div');
+    const origAE = ThemeEffects.availableExternal;
+    const origCur = ThemeEffects.currentTheme;
+    try {
+      ThemeEffects.availableExternal = { a: { name: 'A' } };
+      ThemeEffects.currentTheme = 'bamboo';
+      ThemeEffects._renderMarketBody(body, {
+        catalog: [
+          { id: 'a', name: 'A', version: '2.0.0', url: 'https://x/a.js' },
+          { id: 'b', name: 'B', version: '1.0.0', url: 'https://x/b.js' },
+        ],
+        installed: { a: { version: '1.0.0' } },
+        installedIds: ['a'],
+      });
+    } finally {
+      ThemeEffects.availableExternal = origAE;
+      ThemeEffects.currentTheme = origCur;
+    }
+    const a = body.querySelector('.market-card[data-market-theme="a"]');
+    const b = body.querySelector('.market-card[data-market-theme="b"]');
+    expect(a.classList.contains('installed')).toBe(true);
+    expect(a.querySelector('.market-update-badge')).not.toBeNull();   // 1.0.0 → 2.0.0 可更新
+    expect(a.querySelector('.market-btn.install')).not.toBeNull();
+    expect(b.classList.contains('installed')).toBe(false);
+    expect(b.querySelector('.market-btn.install')).not.toBeNull();     // 可安装
   });
 });

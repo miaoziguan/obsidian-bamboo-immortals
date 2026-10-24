@@ -1038,6 +1038,22 @@
     background: rgba(var(--white-rgb), 0.03);
 }
 .market-card.installed { border-color: rgba(201, 138, 45, 0.55); }
+/* 主题市场：卡片主体可点击切换；「使用中」徽章。
+   仅作用于带 .is-applicable 的主题市场卡（模块市场无此类，不受影响）。 */
+.market-card.is-applicable { cursor: pointer; }
+.market-card.is-applicable:hover { border-color: rgba(var(--bm-primary-rgb), 0.55); }
+.market-card.is-applicable.in-use { border-color: var(--bamboo-primary, #7d9b6a); }
+.market-inuse-badge {
+    display: none;
+    font-size: var(--type-mini);
+    padding: 0 6px;
+    border-radius: 999px;
+    background: rgba(var(--bm-primary-rgb), 0.16);
+    color: var(--bamboo-primary, #7d9b6a);
+    line-height: 1.6;
+    white-space: nowrap;
+}
+.market-card.in-use .market-inuse-badge { display: inline-block; }
 .market-card-main { flex: 1; min-width: 0; }
 .market-card-head { display: flex; align-items: center; gap: 6px; }
 .market-card-head .theme-exclusive-badge { margin-top: 0; }

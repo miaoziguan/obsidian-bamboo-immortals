@@ -1540,7 +1540,16 @@ export class AppAPI {
         // 附带「已安装版本表」，webapp 拿它与 manifest 中各主题的 version 比对 → 得出「可更新」
         this.respond(id, { ok: true, manifest, installed: this.settings.marketInstalled || {}, installedIds: this.customThemeManifests.map((t) => t.name) });
       } catch (e) {
-        this.respondError(id, e instanceof Error ? e.message : '市场清单拉取失败');
+        // fail-soft：网络失败只影响「可装目录」，不能连累「本地已安装」。
+        // 返回本地半份数据（manifest:null + 已安装 id/版本表），webapp 仍可渲染已安装主题并切换
+        // （主题代码由本地磁盘按需加载，无需网络）。
+        this.respond(id, {
+          ok: true,
+          manifest: null,
+          installed: this.settings.marketInstalled || {},
+          installedIds: this.customThemeManifests.map((t) => t.name),
+        });
+        console.warn('[ThemeMarket] 清单拉取失败，已回退为本地已安装列表:', e instanceof Error ? e.message : e);
       }
       return;
     }

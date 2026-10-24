@@ -848,14 +848,16 @@ export class BridgeStorage {
     await this.ensureReady();
     try {
       const resp = await this._send('market:manifest', { refresh: !!refresh });
-      if (resp && resp.ok && resp.manifest) {
-        const m = resp.manifest;
-        // 宿主随清单带回「已安装版本表」（id → { version }）与「已装 id 列表」，
-        // 供面板比对出「已安装 / 可更新」。installedIds 用于判定 isInstalled，
-        // 必须一并透传——否则刷新后 installedSet 为空，已装主题会被误显示为「安装」。
-        m.installed = resp.installed || {};
-        m.installedIds = resp.installedIds || [];
-        return m;
+      if (resp && resp.ok) {
+        const m = resp.manifest || null;
+        // fail-soft：网络失败时宿主仍回本地「已安装」半份数据（manifest=null）。
+        // 宿主随调用带回「已安装版本表」（id → { version }）与「已装 id 列表」（磁盘扫描真相），
+        // 二者都来自本地，不依赖网络 —— 保证离线也能渲染并切换已安装主题。
+        const out = m || { themes: [] };
+        out.installed = resp.installed || {};
+        out.installedIds = resp.installedIds || [];
+        out.catalogAvailable = !!m;   // false = 线上目录不可用（仅本地已安装）
+        return out;
       }
       return null;
     } catch (e) {

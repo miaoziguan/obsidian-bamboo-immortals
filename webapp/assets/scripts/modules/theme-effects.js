@@ -1,4 +1,4 @@
-import { byId, $, modalMount } from '../utils/domRef.js';
+import { byId, modalMount } from '../utils/domRef.js';
 export const ThemeEffects = {
     currentTheme: 'bamboo',
     _intervals: [],
@@ -477,7 +477,7 @@ export const ThemeEffects = {
         this._applyPaletteToGlobal(this.currentTheme);
 
         // 如果主题面板正打开，刷新滑块值和模式标签
-        var panel = $('.panel[active-panel="theme"]');
+        var panel = byId('panel-theme');
         if (panel) {
             var mode = this._getCurrentMode();
             var modeLabel = mode === 'dark' ? '暗色' : '亮色';
@@ -502,6 +502,15 @@ export const ThemeEffects = {
             if (sv) sv.textContent = cur.saturation !== null ? cur.saturation + '%' : '自动';
             var sr = panel.querySelector('#tuneSatReset');
             if (sr) sr.style.display = cur.saturation !== null ? '' : 'none';
+        }
+
+        // 市场面板若正打开：把「使用中」标到当前主题卡（切换后面板保持打开，需就地同步）
+        var mpanel = byId('panel-market');
+        if (mpanel) {
+            var activeTheme = this.currentTheme;
+            mpanel.querySelectorAll('.market-card').forEach(function (c) {
+                c.classList.toggle('in-use', c.getAttribute('data-market-theme') === activeTheme);
+            });
         }
 
         // 统一通知当前主题刷新（合并 observer：明暗切换只需这一个观察者驱动）
@@ -970,19 +979,7 @@ export const ThemeEffects = {
 
     /** 打开主题选择面板（FAB 菜单入口） */
     showThemePanel() {
-        const themeList = this.getThemeList();
         const current = this.currentTheme;
-
-        const cards = themeList.map(t => `
-            <button class="theme-panel-card ${t.id === current ? 'active' : ''} ${t.loaded ? '' : 'theme-unloaded'}"
-                    data-theme="${HTMLUtils.escapeHtmlAttr(t.id)}"
-                    data-loaded="${t.loaded ? '1' : '0'}"
-                    title="${HTMLUtils.escapeHtmlAttr(t.name)}">
-                <span class="theme-panel-card-name">${t.name}</span>
-                ${t.license && t.license.indexOf('专享') !== -1 ? '<span class="theme-exclusive-badge">专享</span>' : ''}
-                ${t.loaded ? '' : '<span class="theme-panel-card-badge">待加载</span>'}
-            </button>
-        `).join('');
 
         // 当前主题的独立设置（按当前模式读取）
         var mode = this._getCurrentMode();
@@ -990,13 +987,10 @@ export const ThemeEffects = {
         var cur = this._getModeSetting(current, mode);
         var hasTune = cur.hue !== null || cur.lightness !== null || cur.saturation !== null;
 
+        // 主题面板只负责「当前主题的调校」；切换主题统一到主题市场（已去掉本地选择网格）。
         var content = [
             '<div class="theme-panel-market-entry">',
-                '<button class="theme-market-open-btn" id="openMarketBtn">逛竹林主题市场</button>',
-            '</div>',
-
-            '<div class="theme-panel-grid">',
-                cards,
+                '<button class="theme-market-open-btn" id="openMarketBtn">去主题市场切换主题</button>',
             '</div>',
 
             '<div class="theme-panel-tune">',
@@ -1044,37 +1038,6 @@ export const ThemeEffects = {
         if (!panel) return;
 
         var el = this;
-
-        // 主题卡片点击
-        panel.querySelectorAll('.theme-panel-card').forEach(function(btn) {
-            btn.addEventListener('click', async function() {
-                var themeName = btn.dataset.theme;
-                if (!themeName || themeName === el.currentTheme) return;
-                // 待加载外部主题：原地显示加载态，不关闭面板，加载完成再切换
-                if (btn.dataset.loaded === '0' && !el.themes[themeName]) {
-                    if (btn.classList.contains('theme-loading')) return;
-                    btn.classList.add('theme-loading');
-                    btn.textContent = '加载中…';
-                    const ok = await el._ensureLoaded(themeName);
-                    if (ok) {
-                        el.switchTheme(themeName);
-                        PanelManager.close();
-                    } else {
-                        const label = el.availableExternal[themeName] ? el.availableExternal[themeName].name : themeName;
-                        btn.classList.remove('theme-loading');
-                        btn.textContent = '';
-                        var span = document.createElement('span');
-                        span.className = 'theme-panel-card-name';
-                        span.textContent = label;
-                        btn.appendChild(span);
-                        Toast.showToast('主题「' + label + '」加载失败', 'error');
-                    }
-                    return;
-                }
-                el.switchTheme(themeName);
-                PanelManager.close();
-            });
-        });
 
         // 逛市场入口
         var marketBtn = panel.querySelector('#openMarketBtn');
@@ -1208,21 +1171,32 @@ export const ThemeEffects = {
         opts = opts || {};
         const keep = !!opts.keepContent;
         const mgr = (typeof window !== 'undefined' && window.storageManager) || null;
+        // 本地「已安装」真相：优先宿主磁盘扫描（installedIds），缺失时退回客户端同源缓存。
+        const localIds = Object.keys(this.availableExternal || {});
+
         if (!mgr || typeof mgr.fetchMarketManifest !== 'function') {
-            body.innerHTML = '<div class="market-empty">市场功能暂不可用</div>';
+            el._renderMarketBody(body, { catalog: null, installed: {}, installedIds: localIds, notice: '市场功能暂不可用' });
             return Promise.resolve(false);
         }
-        // 刷新时保留旧列表，只转图标：先清空再回填会让面板闪一下白，观感更像「卡了一下」
-        if (!keep) body.innerHTML = '<div class="market-loading">正在从竹林主题市场加载…</div>';
-        return mgr.fetchMarketManifest(!!opts.refresh).then(function(manifest) {
-            if (!manifest || !Array.isArray(manifest.themes) || manifest.themes.length === 0) {
-                body.innerHTML = '<div class="market-empty">市场暂无主题</div>';
-                return false;
-            }
-            el._renderMarketBody(body, manifest.themes, manifest.installed || {}, manifest.installedIds || []);
-            return true;
+        // 本地优先：先立刻渲染已安装（离线可用、秒开），再拉线上目录增强。
+        // 刷新场景（keepContent）保留旧列表，避免闪白。
+        if (!keep) el._renderMarketBody(body, { catalog: null, installed: {}, installedIds: localIds, notice: null });
+
+        return mgr.fetchMarketManifest(!!opts.refresh).then(function(res) {
+            const catalog = (res && res.catalogAvailable && Array.isArray(res.themes)) ? res.themes : null;
+            const installed = (res && res.installed) || {};
+            const installedIds = (res && Array.isArray(res.installedIds) && res.installedIds.length) ? res.installedIds : localIds;
+            if (!catalog && keep) return false;   // 刷新失败：保留旧列表，由 _refreshMarket 统一 toast
+            el._renderMarketBody(body, {
+                catalog: catalog,
+                installed: installed,
+                installedIds: installedIds,
+                notice: catalog ? null : '线上清单不可用，仅显示已安装的主题',
+            });
+            return !!catalog;
         }).catch(function() {
-            body.innerHTML = '<div class="market-empty">市场加载失败，请稍后重试</div>';
+            if (keep) return false;
+            el._renderMarketBody(body, { catalog: null, installed: {}, installedIds: localIds, notice: '线上清单不可用，仅显示已安装的主题' });
             return false;
         });
     },
@@ -1260,50 +1234,117 @@ export const ThemeEffects = {
      * @param {Array} themes manifest 中的主题条目（含 version）
      * @param {Object} installed 宿主持久化的「已安装版本表」：id → { version }
      */
-    _renderMarketBody(body, themes, installed, installedIds) {
+    _renderMarketBody(body, state) {
         const el = this;
-        installed = installed || {};
-        // 「已安装」以宿主下发的权威清单（磁盘扫描结果 customThemeManifests）为准，
-        // 不再依赖客户端内存注册表（availableExternal / themes），从机制上杜绝两套来源不一致。
-        const installedSet = new Set(installedIds || []);
-        const cards = themes.map(function(t) {
-            const isInstalled = installedSet.has(t.id);
-            const exclusive = t.license && t.license.indexOf('专享') !== -1;
-            const ver = t.version || '';
-            const rec = installed[t.id];
-            // 可更新：已安装 且线上声明了版本 且 记录版本与线上不一致。
-            // 老版本遗留（磁盘有文件但无记录）已由宿主在重扫时回填空版本，故不再用 !rec 兜底，
-            // 避免「刚卸载（记录被删）→ 被误判为可更新」的歧义。
-            const hasUpdate = isInstalled && !!ver && !!rec && rec.version !== ver;
-            const act = 'data-id="' + t.id + '"';
-            const ICON = {
-                download: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>',
-                trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>'
-            };
-            let btn;
-            if (!isInstalled) {
-                btn = '<button class="market-btn install" ' + act + ' data-action="install" data-url="' +
-                    (t.url || '') + '" data-version="' + ver + '" title="安装" aria-label="安装">' + ICON.download + '</button>';
-            } else if (hasUpdate) {
+        state = state || {};
+        const catalog = Array.isArray(state.catalog) ? state.catalog : null;   // null = 线上目录不可用
+        const installed = state.installed || {};
+        const installedList = (Array.isArray(state.installedIds) && state.installedIds.length)
+            ? state.installedIds
+            : Object.keys(this.availableExternal || {});
+        const notice = state.notice || null;
+        const installedIdsArr = installedList.slice();
+
+        // 合并成行：已安装（本地真相，来自宿主磁盘扫描）在前，线上目录补充在后
+        const rowMap = new Map();
+        installedList.forEach(function (id) {
+            if (!id || rowMap.has(id)) return;
+            const meta = (el.availableExternal && el.availableExternal[id]) || {};
+            const rec = installed[id];
+            rowMap.set(id, { id: id, name: meta.name || id, installed: true,
+                version: (rec && rec.version) || '', url: '', author: '', license: '', hasUpdate: false });
+        });
+        (catalog || []).forEach(function (t) {
+            if (!t || !t.id) return;
+            const row = rowMap.get(t.id);
+            if (row) {
+                // 已安装：用目录补全元数据，并算「可更新」
+                row.name = t.name || row.name;
+                row.url = t.url || row.url;
+                row.author = t.author || row.author;
+                row.license = t.license || row.license;
+                row.version = row.version || t.version || '';
+                const rec = installed[t.id];
+                row.hasUpdate = !!t.version && !!rec && rec.version !== t.version;
+            } else {
+                // 目录独有：可安装项
+                rowMap.set(t.id, { id: t.id, name: t.name || t.id, installed: false,
+                    version: t.version || '', url: t.url || '', author: t.author || '',
+                    license: t.license || '', hasUpdate: false });
+            }
+        });
+
+        const ICON = {
+            download: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>',
+            trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>'
+        };
+
+        const cards = Array.from(rowMap.values()).map(function(row) {
+            const idAttr = HTMLUtils.escapeHtmlAttr(row.id);
+            const act = 'data-id="' + idAttr + '"';
+            const ver = row.version || '';
+            const exclusive = row.license && row.license.indexOf('专享') !== -1;
+            let btn = '';
+            if (!row.installed) {
+                // 目录不可用（catalog=null）时不会有 url → 自然不渲染安装按钮
+                if (row.url) {
+                    btn = '<button class="market-btn install" ' + act + ' data-action="install" data-url="' +
+                        HTMLUtils.escapeHtmlAttr(row.url) + '" data-version="' + HTMLUtils.escapeHtmlAttr(ver) +
+                        '" title="安装" aria-label="安装">' + ICON.download + '</button>';
+                }
+            } else if (row.hasUpdate) {
                 btn = '<button class="market-btn install" ' + act + ' data-action="update" data-url="' +
-                    (t.url || '') + '" data-version="' + ver + '" title="更新" aria-label="更新">' + ICON.download + '</button>' +
+                    HTMLUtils.escapeHtmlAttr(row.url) + '" data-version="' + HTMLUtils.escapeHtmlAttr(ver) +
+                    '" title="更新" aria-label="更新">' + ICON.download + '</button>' +
                     '<button class="market-btn uninstall" ' + act + ' title="卸载" aria-label="卸载">' + ICON.trash + '</button>';
             } else {
                 btn = '<button class="market-btn uninstall" ' + act + ' title="卸载" aria-label="卸载">' + ICON.trash + '</button>';
             }
-            return '<div class="market-card' + (isInstalled ? ' installed' : '') + '">' +
+            return '<div class="market-card is-applicable' + (row.installed ? ' installed' : '') +
+                    (row.id === el.currentTheme ? ' in-use' : '') + '" data-market-theme="' + idAttr + '">' +
                 '<div class="market-card-main">' +
                     '<div class="market-card-head">' +
-                        '<span class="market-card-name">' + (t.name || t.id) + '</span>' +
+                        '<span class="market-card-name">' + (row.name || row.id) + '</span>' +
                         (exclusive ? '<span class="theme-exclusive-badge">专享</span>' : '') +
-                        (hasUpdate ? '<span class="market-update-badge">可更新 v' + ver + '</span>' : '') +
+                        (row.hasUpdate ? '<span class="market-update-badge">可更新 v' + ver + '</span>' : '') +
+                        '<span class="market-inuse-badge">使用中</span>' +
                     '</div>' +
-                    (t.author ? '<div class="market-card-author">作者：' + t.author + (ver ? ' · v' + ver : '') + '</div>' : '') +
+                    (row.author ? '<div class="market-card-author">作者：' + row.author + (ver ? ' · v' + ver : '') + '</div>' : '') +
                 '</div>' +
                 '<div class="market-card-actions">' + btn + '</div>' +
             '</div>';
         }).join('');
-        body.innerHTML = '<div class="market-list">' + cards + '</div>';
+        // 内置「竹林（默认）」常驻首位：市场是唯一切换面，必须保证随时能切回内置主题（含离线时）
+        const bambooCard = '<div class="market-card is-applicable' + (el.currentTheme === 'bamboo' ? ' in-use' : '') + '" data-market-theme="bamboo">' +
+            '<div class="market-card-main">' +
+                '<div class="market-card-head">' +
+                    '<span class="market-card-name">竹林（默认）</span>' +
+                    '<span class="market-inuse-badge">使用中</span>' +
+                '</div>' +
+                '<div class="market-card-author">内置主题 · 始终可用</div>' +
+            '</div>' +
+        '</div>';
+        body.innerHTML = (notice ? '<div class="market-empty">' + notice + '</div>' : '') + '<div class="market-list">' + bambooCard + cards + '</div>';
+
+        // 点击卡片主体 = 应用该主题（安装 / 更新 / 卸载按钮自理，不触发切换）
+        body.querySelectorAll('.market-card.is-applicable').forEach(function(cardEl) {
+            cardEl.addEventListener('click', function(e) {
+                if (e.target.closest('.market-btn')) return;
+                const id = cardEl.getAttribute('data-market-theme');
+                if (!id || id === el.currentTheme) return;
+                const hasUninstall = !!cardEl.querySelector('.market-btn.uninstall');
+                const installBtn = cardEl.querySelector('.market-btn.install');
+                if (id === 'bamboo' || hasUninstall || el.themes[id]) {
+                    el.switchTheme(id);   // 已安装/内置：直接切换（面板保持打开）
+                } else if (installBtn) {
+                    installBtn.click();   // 未安装：走安装，成功后自动切换
+                }
+            });
+        });
+
+        const rerender = function () {
+            el._renderMarketBody(body, { catalog: catalog, installed: installed, installedIds: installedIdsArr, notice: notice });
+        };
 
         body.querySelectorAll('.market-btn.install').forEach(function(btn) {
             btn.addEventListener('click', function() {
@@ -1311,7 +1352,7 @@ export const ThemeEffects = {
                 const url = btn.getAttribute('data-url');
                 const ver = btn.getAttribute('data-version') || '';
                 const isUpdate = btn.getAttribute('data-action') === 'update';
-                const entry = themes.find(function(x) { return x.id === id; });
+                const entry = (catalog || []).find(function(x) { return x && x.id === id; });
                 if (btn.disabled) return;
                 btn.disabled = true;
                 btn.textContent = isUpdate ? '更新中…' : '安装中…';
@@ -1319,7 +1360,7 @@ export const ThemeEffects = {
                     if (ok) {
                         el.registerExternalManifest(id, entry || {});
                         installed[id] = { version: ver };
-                        installedSet.add(id);
+                        if (installedIdsArr.indexOf(id) === -1) installedIdsArr.push(id);
                         // 更新且该主题正在显示：内存里注册的还是旧代码 → 注销后重新拉取并挂载，让新版本立即生效
                         if (isUpdate && el.currentTheme === id) {
                             const oldT = el.themes[id];
@@ -1331,9 +1372,13 @@ export const ThemeEffects = {
                                 if (ok2) el._mountTheme(id);
                             });
                         }
-                        el._renderMarketBody(body, themes, installed, installedSet);
+                        rerender();
+                        if (!isUpdate) {
+                            // 安装即使用：新装主题直接切上来（面板保持打开，「使用中」由 _syncThemeMode 刷新）
+                            el.switchTheme(id);
+                        }
                         Toast.showToast('「' + (entry ? entry.name : id) + '」' +
-                            (isUpdate ? '已更新' : '已安装，可在主题面板切换'), 'success');
+                            (isUpdate ? '已更新' : '已安装并切换'), 'success');
                     } else {
                         btn.disabled = false;
                         btn.textContent = isUpdate ? '更新失败，重试' : '安装失败，重试';
@@ -1358,8 +1403,9 @@ export const ThemeEffects = {
                             delete el.themes[id];
                         }
                         delete installed[id];
-                        installedSet.delete(id);
-                        el._renderMarketBody(body, themes, installed, installedSet);
+                        const ix = installedIdsArr.indexOf(id);
+                        if (ix >= 0) installedIdsArr.splice(ix, 1);
+                        rerender();
                         Toast.showToast('「' + id + '」已卸载', 'success');
                     } else {
                         btn.disabled = false; btn.textContent = '卸载失败，重试';

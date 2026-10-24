@@ -2,14 +2,13 @@
  * !important 使用量审计锁（Obsidian 插件审核友好性）。
  *
  * Obsidian 社区插件指南建议避免 !important —— 它会挡住主题/用户的覆盖。
- * 本项目的立场：
- *   · 能用「特异度」或「内联声明」解决的，一律不用 !important；
- *   · 仅保留【规范上真正需要】的少数几条，并在此处钉死数量与属性，防止悄悄变多。
+ * 本项目此前在 bamboo-garden.css 保留了 4 处（animation-play-state ×3 + filter ×1），
+ * 理由是「主题 CSS 运行时后注入 + animation 简写重置 play-state / 需覆盖内联 filter」。
  *
- * 允许清单（4 条，全在 bamboo-garden.css，理由见该文件注释）：
- *   animation-play-state: paused ×3  —— 主题 CSS 运行时后注入 + animation 简写重置 play-state，
- *                                       同特异度后定义者胜出，只能靠 !important 真正停住动画；
- *   filter: none ×1                   —— 要覆盖元素上的【内联 style】，非 !important 无法覆盖内联样式。
+ * 现已改为由 ThemeEffects._applyPauseAndMotion() 承担：
+ *   · 用 Element.getAnimations({subtree:true}).pause()/play() 直接控制动画对象（天然压过主题简写）；
+ *   · 静止档就地清除元素内联 filter（保存原值，离开静止档时还原）。
+ * 于是全仓 CSS 不再需要任何 !important —— 本测试把「0 条」钉死，防止回潮。
  */
 const fs = require('fs');
 const path = require('path');
@@ -35,19 +34,15 @@ function importantDecls() {
 }
 
 describe('!important 审计', () => {
-  test('CSS 中 !important 声明总数不超过 4 条（且都在 bamboo-garden.css）', () => {
+  test('CSS 中不得出现任何 !important 声明（0 条）', () => {
     const list = importantDecls();
-    expect(list.length).toBeLessThanOrEqual(4);
-    expect([...new Set(list.map((x) => x.file))]).toEqual(['bamboo-garden.css']);
+    expect(list).toEqual([]);
   });
 
-  test('保留的 !important 仅限 animation-play-state / filter', () => {
-    const props = [...new Set(importantDecls().map((x) => x.prop))].sort();
-    expect(props).toEqual(['animation-play-state', 'filter']);
-  });
-
-  test('theme-effects 不得用 important 优先级（内联普通声明已足够）', () => {
+  test('暂停/静止档的动画控制由 JS（Web Animations API）承担，且不得用 important 优先级', () => {
     const src = fs.readFileSync(THEME_EFFECTS, 'utf8');
-    expect(/'important'/.test(src)).toBe(false);
+    expect(/getAnimations\s*\(/.test(src)).toBe(true);   // 用 WAAPI 控制动画
+    expect(/\.pause\s*\(/.test(src)).toBe(true);
+    expect(/'important'/.test(src)).toBe(false);         // 仍不得使用 important 优先级
   });
 });

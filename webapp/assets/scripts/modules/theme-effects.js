@@ -219,9 +219,18 @@ export const ThemeEffects = {
         var card = section.querySelector('.theme-card') || section;
         var self = this;
         this._pauseCard = card;
+        // 系统「减少动效」可能运行时切换：监听 matchMedia，实时重算暂停（替代原 CSS @media 兜底）
+        if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
+            try {
+                this._motionMQ = window.matchMedia('(prefers-reduced-motion: reduce)');
+                this._onMotionMQ = function () { self._applyPauseAndMotion(); };
+                if (this._motionMQ.addEventListener) this._motionMQ.addEventListener('change', this._onMotionMQ);
+            } catch (e) { this._motionMQ = null; this._onMotionMQ = null; }
+        }
         var sync = function () {
             var hidden = (typeof document !== 'undefined' && document.hidden) || self._outOfView === true;
             card.classList.toggle('is-paused', !!hidden);
+            self._applyPauseAndMotion();
         };
         this._onVisibility = sync;
         if (typeof document !== 'undefined') document.addEventListener('visibilitychange', sync);
@@ -243,8 +252,62 @@ export const ThemeEffects = {
         }
         this._onVisibility = null;
         if (this._pauseIO) { this._pauseIO.disconnect(); this._pauseIO = null; }
-        if (this._pauseCard) { this._pauseCard.classList.remove('is-paused'); this._pauseCard = null; }
+        if (this._motionMQ && this._onMotionMQ && this._motionMQ.removeEventListener) {
+            this._motionMQ.removeEventListener('change', this._onMotionMQ);
+        }
+        this._motionMQ = null;
+        this._onMotionMQ = null;
+        if (this._pauseCard) {
+            // 恢复被 WAAPI 暂停的动画（随后卡片通常会被移除；若仍保留，也不应停在暂停态）
+            try {
+                if (typeof this._pauseCard.getAnimations === 'function') {
+                    this._pauseCard.getAnimations({ subtree: true }).forEach(function (a) { try { a.play(); } catch (e) {} });
+                }
+            } catch (e) {}
+            this._pauseCard.classList.remove('is-paused');
+            this._pauseCard = null;
+        }
         this._outOfView = false;
+    },
+
+    /** 按「隐藏 / 静止档 / 系统减少动效」暂停或恢复主题动画，并在静止档清除元素内联 blur。
+     *  用 Web Animations API 直接 pause()/play() 动画对象：天然压过主题的 animation 简写，
+     *  无需在 CSS 里写 !important（这正是此前 CSS lint 报「Avoid !important」的根源）。 */
+    _applyPauseAndMotion() {
+        var card = this._pauseCard;
+        if (!card) {
+            var section = byId('themeEffectSection');
+            card = section ? (section.querySelector('.theme-card') || section) : null;
+        }
+        if (!card) return;
+        var hidden = (typeof document !== 'undefined' && document.hidden) || this._outOfView === true;
+        var isStatic = this._motionLevel === 'static';
+        var paused = hidden || isStatic || this._prefersReduced();
+        // 1) 暂停 / 恢复动画（作用于动画对象，不依赖 CSS 层叠）
+        if (typeof card.getAnimations === 'function') {
+            var anims;
+            try { anims = card.getAnimations({ subtree: true }); } catch (e) { anims = null; }
+            if (anims) {
+                for (var i = 0; i < anims.length; i++) {
+                    try { if (paused) anims[i].pause(); else anims[i].play(); } catch (e) { /* 个别动画不可控，忽略 */ }
+                }
+            }
+        }
+        // 2) 静止档：清掉元素上的内联 blur；离开静止档时还原（原值存于 __origFilter）
+        var els = card.querySelectorAll('*');
+        for (var j = 0; j < els.length; j++) {
+            var el = els[j];
+            if (isStatic) {
+                var f = el.style && el.style.filter;
+                if (f && f.indexOf('blur') !== -1 && el.__origFilter === undefined) {
+                    el.__origFilter = f;
+                    el.style.filter = 'none';
+                }
+            } else if (el.__origFilter !== undefined) {
+                el.style.filter = el.__origFilter;
+                delete el.__origFilter;
+            }
+        }
     },
 
     switchTheme(themeName) {
@@ -585,6 +648,7 @@ export const ThemeEffects = {
         var lvl = this._motionLevel;
         card.setAttribute('data-motion', lvl);
         card.style.setProperty('--fl-blur-scale', lvl === 'static' ? '0' : (lvl === 'lite' ? '0.5' : '1'));
+        this._applyPauseAndMotion();
     },
 
     /** 面板里的「当前：完整/轻柔/静止」文字 */

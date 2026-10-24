@@ -80,33 +80,13 @@
    CSS 动画不受 rAF 节流 —— 窗口最小化、切到后台、或本区域滚出视口后仍在跑；
    主窗 + 画中卷同时开着还会翻倍占用 GPU。.theme-card.is-paused 由 ThemeEffects 依
    visibilitychange + IntersectionObserver 切换。 */
-/* 【为何这里必须用 !important】—— 这是 CSS 规范里 !important 的正当用途，非偷懒：
-   1) 主题 CSS 是运行时注入的（注入时机晚于本样式表），同特异度时「后定义者胜出」；
-   2) 主题普遍使用 animation 简写，而简写会把 animation-play-state 重置回 running；
-   3) 主题选择器可能带 id 或内联样式，无法用固定特异度稳定压住。
-   因此要真正停住动画（省电/省 GPU），只能用 !important。
-   下面的 filter:none 同理：它要覆盖的是元素上的【内联 style】，非 !important 无法覆盖内联样式。 */
-.theme-card.is-paused *,
-.theme-card.is-paused *::before,
-.theme-card.is-paused *::after {
-    /* stylelint-disable-next-line declaration-no-important */
-    animation-play-state: paused !important; /* 覆盖运行时注入主题的 animation 简写（会重置 play-state） */
-}
-/* 动效强度：框架在 .theme-card 上写 data-motion="full|lite|static"，并下发 --fl-blur-scale
-   （1 / .5 / 0）。lite 档要停哪些动画由主题自己声明（高频低感知的那些），框架不猜。
-   静止档用 paused 而非 animation:none —— none 会让元素回落到「基础样式」，
-   主题里靠 0% 关键帧隐藏的枫叶会僵在画面里；paused 则冻结在 0% 帧（叶片仍 opacity:0）。 */
-.theme-card[data-motion="static"] *,
-.theme-card[data-motion="static"] *::before,
-.theme-card[data-motion="static"] *::after {
-    /* stylelint-disable-next-line declaration-no-important */
-    animation-play-state: paused !important; /* 静态档同样需压过主题 animation 简写 */
-}
-/* 兜底：未接 --fl-blur-scale 的主题，静止档也把内联 blur 直接关掉 */
-.theme-card[data-motion="static"] [style*="filter:blur"] {
-    /* stylelint-disable-next-line declaration-no-important */
-    filter: none !important; /* 必须覆盖元素内联 style，只有 !important 能做到 */
-}
+/* 【暂停 / 静止档的动画控制改由 JS 完成，不再使用 CSS !important】
+   主题 CSS 运行时注入、普遍用 animation 简写（会把 play-state 重置回 running），且可能带 id 或内联样式；
+   纯 CSS 要压住它只能靠 !important —— 而 !important 属样式规范不推荐的写法（CSS lint 会告警）。
+   现改为 ThemeEffects._applyPauseAndMotion()：用 Element.getAnimations({subtree:true}) 直接
+   pause()/play() 动画对象（天然压过主题简写），并在静止档就地清除元素内联 blur。
+   框架仍在 .theme-card 上写 data-motion="full|lite|static" 与 --fl-blur-scale，供主题自行配合：
+   lite 档停哪些动画由主题声明；静止档用暂停（而非 animation:none，否则靠 0% 帧隐藏的元素会僵在画面里）。 */
 
 /* ===== 竹林诗词区（横向布局专用，填充动效卡片下方空白） =====
    默认隐藏；横向模式下 #themeEffectSection 撑满列高，
@@ -848,12 +828,6 @@
 .theme-card[data-motion="lite"] .foreground-haze {
     mix-blend-mode: normal;
 }
-/* 系统要求减少动效：框架级兜底（JS 还会把档位置为 static，双保险） */
-@media (prefers-reduced-motion: reduce) {
-    .theme-card *,
-    .theme-card *::before,
-    .theme-card *::after {
-        /* stylelint-disable-next-line declaration-no-important */
-        animation-play-state: paused !important; /* prefers-reduced-motion 兜底，需压过主题 animation 简写 */
-    }
-}
+/* 系统「减少动效」也由 JS 处理：_prefersReduced() 会把档位置为 static，
+   且 _applyPauseAndMotion() 在可见性/档位变化时按 prefers-reduced-motion 暂停动画，
+   并监听 matchMedia change 实时响应。原 @media 里的 animation-play-state: paused !important 已移除。 */

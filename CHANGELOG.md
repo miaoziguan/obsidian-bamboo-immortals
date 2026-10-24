@@ -1,5 +1,10 @@
 # Changelog
 
+## [3.29.2] — 2026-10-24
+
+### Changed
+- **移除全仓 CSS 的 `!important`（改用 JS 驱动，消除 CSS lint 告警）**：此前 `bamboo-garden.css` 用 4 处 `!important` 暂停主题动画 / 清除静止档内联模糊（理由是要覆盖运行时注入主题的 `animation` 简写与元素内联 `filter`）。现改为 `ThemeEffects._applyPauseAndMotion()`：用 `Element.getAnimations({subtree:true}).pause()/play()` 直接控制动画对象（天然压过主题简写，无需 `!important`），静止档就地清除内联 `blur` 并保存原值以便离开静止档还原；系统「减少动效」改由 `_prefersReduced()` + `matchMedia` 变化监听实时处理。行为不变，全仓 `.css` 不再包含任何 `!important` 声明。
+
 ## [3.29.1] — 2026-10-24
 
 ### Fixed

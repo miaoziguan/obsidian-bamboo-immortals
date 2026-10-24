@@ -45,6 +45,15 @@ export const ThemeEffects = {
                 if (typeof BambooGarden !== 'undefined' && BambooGarden.updateTheme) {
                     BambooGarden.updateTheme();
                 }
+            },
+            // 切走本主题时必须显式销毁：否则 BambooGarden 的落叶 setInterval / visibilitychange
+            // / 调试 HUD 五个 document 级监听都会在已脱离文档的 DOM 上继续跑（直到再切回才被
+            // init 的 `if (this._initialized) this.destroy()` 自愈）。_mountTheme 的
+            // `oldTheme.destroy()` 因本对象此前缺这个方法而被 typeof 守卫跳过，正是泄漏根因。
+            destroy() {
+                if (typeof BambooGarden !== 'undefined' && BambooGarden.destroy) {
+                    BambooGarden.destroy();
+                }
             }
         }
     },

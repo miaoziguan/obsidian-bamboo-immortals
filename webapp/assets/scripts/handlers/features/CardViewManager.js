@@ -83,13 +83,13 @@ export const CardViewManager = {
     // 工具条按钮/图标内联像素尺寸（与 apply() 中同策略），新卡片立即定型，
     // 不依赖 CSS 的 calc(var()) 在本环境是否可靠。
     const _ctScale = parseFloat(ctrl._el.style.getPropertyValue('--tw-scale')) || 1;
-    card.querySelectorAll('.tw-card-tools button').forEach((b) => {
+    card.querySelectorAll('button').forEach((b) => {
       // 级别钮是文字标签（「正文 / H1 / 引用」），宽度须自适应，不能钉成方钮
       if (b.classList.contains('tw-card-level')) return;
       b.style.width = (20 * _ctScale).toFixed(2) + 'px';
       b.style.height = (20 * _ctScale).toFixed(2) + 'px';
     });
-    card.querySelectorAll('.tw-card-tools svg').forEach((s) => {
+    card.querySelectorAll('svg').forEach((s) => {
       s.style.width = (18 * _ctScale).toFixed(2) + 'px';
       s.style.height = (18 * _ctScale).toFixed(2) + 'px';
     });
@@ -540,7 +540,9 @@ export const CardViewManager = {
   },
   // (was _bindTools)
   bindTools(ctx, card) {
-    const { state, ctrl } = ctx;
+    const { ctrl } = ctx;
+    // 悬停/聚焦仅按卡片与画布的相对位置决定工具条贴顶还是翻下（不再把卡片临时置顶）。
+    // 工具条可见性由 CSS `.tw-card:hover/.is-pinned .tw-card-tools` 驱动，无需 z-index 提层，也无需搬 DOM 到浮层。
     const placeTools = () => {
       const canvas = ctrl._canvas;
       if (!canvas) return;
@@ -548,26 +550,10 @@ export const CardViewManager = {
       const kr = card.getBoundingClientRect();
       card.classList.toggle('tw-tools-below', (kr.top - cr.top) < 46);
     };
-    const lift = () => {
-      placeTools();
-      if (card.dataset.zLifted === '1') return;
-      card.dataset.zLifted = '1';
-      card._zPrev = card.style.zIndex;
-      card.style.zIndex = '5000';
-    };
-    const drop = () => {
-      if (card.dataset.zLifted !== '1') return;
-      // 钉住态与拖拽中保持置顶，不回落
-      if (card.classList.contains('is-pinned') || card.classList.contains('dragging')) return;
-      card.dataset.zLifted = '';
-      card.style.zIndex = card._zPrev || '';
-    };
-    card.addEventListener('mouseenter', lift);
-    card.addEventListener('mouseleave', drop);
-    card.addEventListener('focusin', lift);
-    card.addEventListener('focusout', drop);
-  
+    card.addEventListener('mouseenter', placeTools);
+    card.addEventListener('focusin', placeTools);
   },
+
   // (was _applyRot)
   applyRot(ctx, card, deg) {
     const { state, ctrl } = ctx;

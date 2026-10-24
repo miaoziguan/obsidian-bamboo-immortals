@@ -100,8 +100,6 @@ export const CardInteractions = {
       d.el.style.willChange = 'transform';
     });
     primaryEl.style.zIndex = String(++ctrl._zTop);
-    // 拖拽置顶后同步层叠快照，避免 mouseleave 时把元素回落回旧层级
-    if (primaryEl.dataset.zLifted === '1') primaryEl._zPrev = primaryEl.style.zIndex;
     const apply = () => {
       raf = 0;
       // 【性能】拖拽期只写 translate 变量：transform 走合成，不触发布局；
@@ -1007,23 +1005,16 @@ export const CardInteractions = {
   },
   // (was _pinOnly)
   pinOnly(ctx, card) {
-    const { state, ctrl } = ctx;
+    const { ctrl } = ctx;
     const canvas = ctrl._canvas;
     if (!canvas) return;
+    // 取消其它卡片的钉住（不再把任何便签临时置顶；工具条可见性由 CSS `.is-pinned` 驱动）
     Array.from(canvas.querySelectorAll('.tw-card')).forEach((c) => {
       if (c === card) return;
       c.classList.remove('is-pinned');
-      if (c.dataset.zLifted === '1' && !c.classList.contains('dragging')) {
-        c.dataset.zLifted = '';
-        c.style.zIndex = c._zPrev || '';
-      }
     });
     if (!card) return;
     card.classList.add('is-pinned');
-    card.dataset.zLifted = '1';
-    card._zPrev = card._zPrev || card.style.zIndex;
-    card.style.zIndex = '5000';
-  
   },
   // (was _addLink)
   addLink(ctx, fromId, toId) {

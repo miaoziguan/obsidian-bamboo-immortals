@@ -1,5 +1,14 @@
 # Changelog
 
+## [3.28.25] — 2026-10-24
+
+### Fixed
+- **便签/贴纸悬停不再临时置顶**：移除鼠标悬停或钉住便签时把卡片 `z-index` 抬到 `5000` 的逻辑——此前鼠标掠过一张便签就会把它猛地盖到其他便签之上（视觉跳层）。工具条显隐仍由 CSS `:hover` / `.is-pinned` 驱动，观感不变。
+- **竹林动效主题：切换主题不再泄漏监听 / 计时器**：`BambooGarden` 调试 HUD 的 5 个 `document` 级监听与 `requestAnimationFrame` 循环此前「只挂不摘」，且切走竹林主题时不销毁 `BambooGarden`（落叶 `setInterval`、可见性监听持续在已脱离文档的节点上空转）。现 `destroy()` 逐一移除监听并取消 rAF，且为 `themes.bamboo` 补 `destroy()`，切走时正确析构。
+
+### Chore
+- 新增 `cardHoverNoLift` / `bambooGarden` 回归测试（悬停/钉住不写 `z-index`、监听不随主题切换累加、`destroy` 清理、源码守卫禁止「工具条域内查询」回归）。
+
 ## [3.28.20] — 2026-10-17
 
 ### Changed

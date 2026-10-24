@@ -126,9 +126,15 @@ export const BambooGarden = {
      */
     _initPerfHud() {
         try {
+            const self = this;
             const toggle = () => {
                 const existing = byId('__perfHud');
-                if (existing) { existing.remove(); return; }
+                if (existing) {
+                    existing.remove();
+                    // 关闭 HUD：必须停掉 rAF 循环，否则循环在 detached 节点上永久空转
+                    if (self._perfHudRaf) { cancelAnimationFrame(self._perfHudRaf); self._perfHudRaf = 0; }
+                    return;
+                }
                 const box = document.createElement('div');
                 box.id = '__perfHud';
                 box.style.cssText =
@@ -144,34 +150,41 @@ export const BambooGarden = {
                         const n = document.getElementsByTagName('*').length;
                         box.textContent = `FPS ${fps}\nDOM ${n}\nmobile ${_isMobileEnv() ? 'Y' : 'N'}`;
                     }
-                    requestAnimationFrame(loop);
+                    self._perfHudRaf = requestAnimationFrame(loop);
                 };
-                requestAnimationFrame(loop);
+                self._perfHudRaf = requestAnimationFrame(loop);
             };
             // 桌面（有键盘）：按 P 键切换
-            document.addEventListener('keydown', (e) => {
+            const onKey = (e) => {
                 if (e.key && e.key.toLowerCase() === 'p') toggle();
-            });
+            };
             // 触屏设备（平板/手机无键盘，P 键不可达）：长按约 0.7 秒呼出/收起
             let lpTimer = null, lpStart = null;
-            document.addEventListener('touchstart', (e) => {
+            const onTouchStart = (e) => {
                 if (!e.touches || !e.touches[0]) return;
                 lpStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
                 lpTimer = setTimeout(toggle, 700);
-            }, { passive: true });
-            document.addEventListener('touchmove', (e) => {
+            };
+            const onTouchMove = (e) => {
                 if (lpTimer && lpStart && e.touches && e.touches[0]) {
                     const dx = e.touches[0].clientX - lpStart.x;
                     const dy = e.touches[0].clientY - lpStart.y;
                     if (Math.hypot(dx, dy) > 12) { clearTimeout(lpTimer); lpTimer = null; }
                 }
-            }, { passive: true });
-            document.addEventListener('touchend', () => {
+            };
+            const onTouchEnd = () => {
                 if (lpTimer) { clearTimeout(lpTimer); lpTimer = null; }
                 lpStart = null;
-            });
+            };
             // 长按时不弹出系统右键菜单
-            document.addEventListener('contextmenu', (e) => { if (lpStart) e.preventDefault(); });
+            const onContext = (e) => { if (lpStart) e.preventDefault(); };
+            // 保存引用：destroy() 必须逐一移除，否则每次主题切换都会累加一批 document 级监听（泄漏）
+            this._perfHudHandlers = { onKey, onTouchStart, onTouchMove, onTouchEnd, onContext };
+            document.addEventListener('keydown', onKey);
+            document.addEventListener('touchstart', onTouchStart, { passive: true });
+            document.addEventListener('touchmove', onTouchMove, { passive: true });
+            document.addEventListener('touchend', onTouchEnd);
+            document.addEventListener('contextmenu', onContext);
         } catch (e) {}
     },
 
@@ -213,6 +226,24 @@ export const BambooGarden = {
             document.removeEventListener('visibilitychange', this._visibilityHandler);
             this._visibilityHandler = null;
         }
+
+        // 移除调试 HUD 的 document 级监听（每次 init 都会重新挂一批，不移除会随主题切换累加）
+        if (this._perfHudHandlers) {
+            const h = this._perfHudHandlers;
+            document.removeEventListener('keydown', h.onKey);
+            document.removeEventListener('touchstart', h.onTouchStart);
+            document.removeEventListener('touchmove', h.onTouchMove);
+            document.removeEventListener('touchend', h.onTouchEnd);
+            document.removeEventListener('contextmenu', h.onContext);
+            this._perfHudHandlers = null;
+        }
+        // 停掉 HUD 的 rAF 循环（即使 HUD 盒子已被用户关闭，循环也可能仍在空转）
+        if (this._perfHudRaf) {
+            if (typeof cancelAnimationFrame === 'function') cancelAnimationFrame(this._perfHudRaf);
+            this._perfHudRaf = 0;
+        }
+        const hud = byId('__perfHud');
+        if (hud) hud.remove();
 
         // 清理动态创建的 style 元素
         ['bambooSwayStyles', 'windLeafStyles'].forEach(id => {

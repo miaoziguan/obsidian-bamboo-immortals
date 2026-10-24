@@ -88,72 +88,11 @@
    框架仍在 .theme-card 上写 data-motion="full|lite|static" 与 --fl-blur-scale，供主题自行配合：
    lite 档停哪些动画由主题声明；静止档用暂停（而非 animation:none，否则靠 0% 帧隐藏的元素会僵在画面里）。 */
 
-/* ===== 竹林诗词区（横向布局专用，填充动效卡片下方空白） =====
-   默认隐藏；横向模式下 #themeEffectSection 撑满列高，
-   动画容器 flex:1 延展成大画布，诗词区贴底自然高度。 */
+/* ===== 竹林诗词区（默认隐藏；仅看板模式以竖排书签形式显示，规则见下方 kanban 段） ===== */
 .bamboo-poem-strip {
     display: none;
 }
 @media (min-width: 600px) {
-    /* ===== 横向模式：动效固定高 + 横排诗词（不强行拉伸动画画面） ===== */
-    .sections-container.horizontal-layout #themeEffectSection {
-        display: flex;
-        flex-direction: column;
-        /* 卡片自然高度（320 动效 + 诗词），不被 grid stretch 拉高 → 避免底部留白 */
-        align-self: start;
-    }
-    .sections-container.horizontal-layout #themeEffectSection .theme-card {
-        display: flex;
-        flex-direction: column;
-    }
-    .sections-container.horizontal-layout #themeEffectSection .theme-visual {
-        flex: 0 0 auto;
-        width: 100%;              /* 比例由 .theme-visual（主题画布比例）统一提供 */
-    }
-    .sections-container.horizontal-layout #themeEffectSection {
-        border-color: hsla(calc(var(--accent-hue) + 0), min(100%, calc(30% * var(--accent-saturation-scale, 1))), 50%, 0.35);
-        box-shadow:
-            0 2px 12px hsla(calc(var(--accent-hue) + 0), min(100%, calc(25% * var(--accent-saturation-scale, 1))), 40%, 0.10),
-            0 4px 20px hsla(calc(var(--accent-hue) + 0), min(100%, calc(15% * var(--accent-saturation-scale, 1))), 10%, 0.18),
-            inset 0 1px 0 rgba(var(--white-rgb), 0.12);
-    }
-    :host(.dark) .sections-container.horizontal-layout #themeEffectSection {
-        border-color: hsla(calc(var(--accent-hue) + 0), min(100%, calc(30% * var(--accent-saturation-scale, 1))), 45%, 0.40);
-        box-shadow:
-            0 1px 4px hsla(calc(var(--accent-hue) + 0), min(100%, calc(20% * var(--accent-saturation-scale, 1))), 3%, 0.30),
-            0 6px 24px hsla(calc(var(--accent-hue) + 0), min(100%, calc(15% * var(--accent-saturation-scale, 1))), 2%, 0.40),
-            inset 0 1px 0 rgba(var(--white-rgb), 0.06);
-    }
-    .sections-container.horizontal-layout .bamboo-poem-strip {
-        display: flex;
-        flex: 0 0 auto;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: var(--space-2);
-        padding: var(--space-3) var(--space-3);
-        text-align: center;
-        background: linear-gradient(180deg, transparent, rgba(var(--green-pale-rgb), 0.16));
-    }
-    .sections-container.horizontal-layout .bamboo-poem-text {
-        font-size: var(--type-sm);
-        color: var(--text-secondary);
-        letter-spacing: 0.08em;
-        line-height: 1.7;
-        max-width: 90%;
-    }
-    .sections-container.horizontal-layout .bamboo-poem-author {
-        font-size: var(--type-mini);
-        color: var(--text-tertiary);
-        letter-spacing: 0.1em;
-    }
-    .sections-container.horizontal-layout .bamboo-poem-date {
-        margin-top: var(--space-1);
-        font-size: var(--type-mini);
-        color: var(--text-tertiary);
-        letter-spacing: 0.3em;
-        font-weight: 600;
-    }
 
     /* ===== 看板模式：书签形态（顶部动效固定高 + 下方竖排诗词） =====
        不强行拉伸动画；动效固定高度，诗词区占满剩余、竖排居中（书签意象） */

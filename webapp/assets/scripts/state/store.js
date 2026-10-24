@@ -803,7 +803,14 @@ export class Store {
         const newMode = (typeof isDark === 'boolean') ? isDark : !currentMode;
 
         if (newMode === currentMode) {
-            this.notify();
+            // 【性能】模式未变：只做幂等的 DOM 类同步，**不再 notify()**。
+            // 原来这里仍 notify()，而 bridge 的 theme:changed → setDarkMode 会在
+            // 「iframe 绑定」与「app:ready」各推一次（视图重建时连推两次）；
+            // 每次 notify 都会让渲染调度器把 timeline/todo 标脏重渲染 —— 纯浪费，
+            // 而且正好落在「等新面板首帧」的时间窗里，放大切换卡顿。
+            [document.documentElement, document.body, document.getElementById('bamboo-shadow-host')]
+                .filter(Boolean)
+                .forEach((el) => el.classList.toggle('dark', !!newMode));
             return;
         }
 

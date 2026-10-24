@@ -1,4 +1,4 @@
-import { byId, $, modalMount, eventInTargets, getCssVarRoot, getGlobalComputedStyle, getHost, getShadowRoot } from '../utils/domRef.js';
+import { byId, $, modalMount, eventInTargets, getCssVarRoot, getGlobalComputedStyle, getHost } from '../utils/domRef.js';
 import { applyDerivedRgb } from '../utils/palette.js';
 /**
  * DisplayManager — 显示设置管理器
@@ -46,6 +46,7 @@ export const DisplayManager = {
     _saveTimer: null,
     _transitionTimer: null,
     _currentWidth: null,
+    _rwScheduled: false, // 响应式类重算是否已在当前帧排队（见 _scheduleResponsive）
     _resizeObserver: null,
 
     /* ===== 预设档位 ===== */
@@ -293,6 +294,27 @@ export const DisplayManager = {
      * 基于容器「实际渲染宽度」应用 display-compact / rw-* 响应式类。
      * 分离出来以便 ResizeObserver 在旋转/面板缩放时复用（不重置 --content-max-width）。
      */
+    /**
+     * 【性能】响应式类重算的合帧调度：同一帧内的多次请求合并为一次执行。
+     *
+     * 一次布局切换会让本函数被调用 3 次：
+     *   ① _applyWidth 内（改完宽度后必要的一次）；
+     *   ② LayoutMode._enter/_forceOff 的 finish rAF（下一帧）；
+     *   ③ ResizeObserver 回调（宽度变化必触发）——与 ② 几乎总落在同一帧。
+     * 每次调用内部都有 getBoundingClientRect()（强制同步布局），不合并就是每次切换
+     * 白跑 1~2 次整页重排。这里用「rAF + 进行中标志」把同帧请求收敛为一次。
+     */
+    _scheduleResponsive() {
+        if (this._rwScheduled) return;
+        this._rwScheduled = true;
+        const run = () => {
+            this._rwScheduled = false;
+            try { this._applyResponsiveClasses(); } catch (e) { /* 不阻塞 */ }
+        };
+        if (typeof requestAnimationFrame === 'function') requestAnimationFrame(run);
+        else setTimeout(run, 16);
+    },
+
     _applyResponsiveClasses() {
         const container = byId('reviewContainer');
         if (!container) return;
@@ -315,12 +337,6 @@ export const DisplayManager = {
             const settingWidth = this._currentWidth || this.DEFAULT_WIDTH;
             try { LayoutMode.checkAndExitIfNarrow(settingWidth); } catch (e) { /* 不阻塞 */ }
         }
-        // 宽度驱动升级：横向模式 + 内容宽度 ≥1080px → 自动进入看板模式（宽屏适合看板）
-        if (typeof LayoutMode !== 'undefined' && LayoutMode.checkAndUpgradeToKanban) {
-            const settingWidth = this._currentWidth || this.DEFAULT_WIDTH;
-            try { LayoutMode.checkAndUpgradeToKanban(settingWidth); } catch (e) { /* 不阻塞 */ }
-        }
-
         // 横向布局模式：板块是均分列（1fr），实际列宽 = 容器宽 / 列数，远窄于容器总宽。
         // 紧凑/超紧凑判定必须基于「列宽」而非容器总宽，否则用户调宽容器时
         // compact 类被移除、但列仍窄 → 票/票根瞬间失去堆叠适配（挤压/跳动）。
@@ -330,21 +346,26 @@ export const DisplayManager = {
             if (cols > 1) effectiveForCompact = Math.round(effective / cols);
         }
 
+        // 标记「当前处于多列（看板）」：供 CSS 区分「整宽元素（页眉/日期导航）」与「列内卡片」。
+        // 关键：上面的 rw 系列与 compact 类是按「列宽」算的（列内卡片需要），
+        // 但页眉是整宽元素，若跟着窄栏类走会被 .rw-460 的居中规则把天气/语录各自居到半区中部。
+        const layoutActive = typeof LayoutMode !== 'undefined' && LayoutMode.isActive && LayoutMode.isActive();
+        container.classList.toggle('has-multicol', !!layoutActive);
+
         // 紧凑模式：容器/列变窄时触发票/票根的堆叠布局
         container.classList.toggle('display-compact', effectiveForCompact <= 600);
         container.classList.toggle('display-ultra-compact', effectiveForCompact <= 480);
 
         // ===== 基于实际内容宽度的响应式类 =====
-        // 横向模式下 rw-* 也按列宽判定（板块内部窄屏修正需匹配真实列宽）
+        // 多列模式下 rw-* 也按列宽判定（板块内部窄屏修正需匹配真实列宽）。
+        // 【性能】用 toggle(cls, bool) 而非「remove 全部再 add」：类集合无变化时
+        // toggle 是零 mutation（不会触发样式失效），remove+add 则必然产生两次。
         const eff = effectiveForCompact;
-        container.classList.remove(
-            'rw-620', 'rw-520', 'rw-460', 'rw-420', 'rw-360'
-        );
-        if (eff <= 620) container.classList.add('rw-620');
-        if (eff <= 520) container.classList.add('rw-520');
-        if (eff <= 460) container.classList.add('rw-460');
-        if (eff <= 420) container.classList.add('rw-420');
-        if (eff <= 360) container.classList.add('rw-360');
+        container.classList.toggle('rw-620', eff <= 620);
+        container.classList.toggle('rw-520', eff <= 520);
+        container.classList.toggle('rw-460', eff <= 460);
+        container.classList.toggle('rw-420', eff <= 420);
+        container.classList.toggle('rw-360', eff <= 360);
     },
 
     /**
@@ -360,7 +381,6 @@ export const DisplayManager = {
         // 同帧内再触发观察 → 循环 → "ResizeObserver loop completed" 警告）。
         // 标准做法：回调里只记录尺寸，用 rAF 把类更新延迟到下一帧，打破循环。
         // 同时仅在有效宽度发生变化时才实际更新，避免无谓的重复写入。
-        this._roPending = false;
         this._roLastWidth = -1;
         this._resizeObserver = new ResizeObserver((entries) => {
             const entry = entries && entries[0];
@@ -368,13 +388,9 @@ export const DisplayManager = {
             if (typeof this._currentWidth !== 'number') return;
             if (w === this._roLastWidth) return;
             this._roLastWidth = w;
-            if (this._roPending) return;
-            this._roPending = true;
-            requestAnimationFrame(() => {
-                this._roPending = false;
-                // 仅重算响应式类，避免 reset 用户设置的 --content-max-width
-                this._applyResponsiveClasses();
-            });
+            // 仅重算响应式类，避免 reset 用户设置的 --content-max-width。
+            // 走合帧调度：与布局切换 finish 的那次重算落在同一帧时只跑一次（省一次强制布局）。
+            this._scheduleResponsive();
         });
         this._resizeObserver.observe(container);
     },
@@ -602,7 +618,6 @@ export const DisplayManager = {
     /* ===== 一次性应用整组调色（「跟随主题动效配色」用）=====
        避免三次 _applyXxx 各触发一次广播 + 一次派生 RGB 重算（会造成闪烁与多余重绘）。 */
     applyPaletteBundle(pal, save) {
-        console.log('[跟随主题] applyPaletteBundle 入参:', JSON.stringify(pal));
         if (!pal) return;
         const root = getCssVarRoot();
         if (!root) return;
@@ -615,6 +630,11 @@ export const DisplayManager = {
         const satRaw = Number(pal.saturation);
         const sat = Number.isFinite(satRaw)
             ? Math.max(this.SATURATION_MIN, Math.min(this.SATURATION_MAX, satRaw)) : this.DEFAULT_SATURATION;
+
+        // 【性能】去重：三项都没变则整段跳过。
+        // 「跟随主题配色」会在 初始化 / 明暗切换 / 延迟重试 里多次走到这里；
+        // 不去重就会重复 4 次 setProperty + 派生 RGB + 向宿主广播，是切换掉帧的来源之一。
+        if (this._currentHue === hue && this._currentLightness === lo && this._currentSaturation === sat) return;
 
         this._currentHue = hue;
         this._currentLightness = lo;
@@ -640,24 +660,9 @@ export const DisplayManager = {
             this._scheduleSaveLightness(lo);
             this._scheduleSaveSaturation(sat);
         }
-        /* [诊断] 变量写入后，读主题内一个 path 的实际计算 fill，确认是否真被吃进去。
-           主题可能挂在 Shadow DOM 里，必须用 shadow 感知查询（document.querySelector 找不到）。 */
-        try {
-            var _root = (typeof getShadowRoot === 'function' && getShadowRoot()) || document;
-            var _paths = _root.querySelectorAll('.fl-scene path');
-            var _cs = getGlobalComputedStyle();
-            // 注意：第一个 path 可能没有 fill 属性（默认黑），会误判 —— 必须找带 fill 的
-            var _p = null;
-            for (var i = 0; i < _paths.length; i++) {
-                if (_paths[i].getAttribute('fill')) { _p = _paths[i]; break; }
-            }
-            var _sec = _root.getElementById ? _root.getElementById('themeEffectSection') : null;
-            console.log('[跟随主题] :root hue =', _cs.getPropertyValue('--accent-hue').trim(),
-                '| section inline hue =', _sec ? JSON.stringify(_sec.style.getPropertyValue('--accent-hue')) : '(no sec)',
-                '| path总数:', _paths.length,
-                '| 带fill的path → fill =', _p ? getComputedStyle(_p).fill : '(无)',
-                '| 该path上 --fl-c1 计算值 =', _p ? JSON.stringify(getComputedStyle(_p).getPropertyValue('--fl-c1')) : '');
-        } catch (e) { console.log('[跟随主题] 探针失败:', e && e.message); }
+        // 注：此处原有「读 .fl-scene path 的 computed fill」诊断代码已移除 ——
+        // 它每次调色都要遍历主题 SVG + 两次 getComputedStyle（强制样式解析）+ 多次 console.log（走 IPC），
+        // 属于遗留调试代码，在切换/明暗切换路径上是纯开销。
     },
 
     /* 拖动滑块时把「写变量 + 同步 UI」合并到每帧一次（rAF），

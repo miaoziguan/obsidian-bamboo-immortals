@@ -29,6 +29,7 @@ export class BridgeStorage {
     this._goalWriteChain = Promise.resolve();
     this.sectionConfig = null;  // 从插件持久化层恢复的板块配置
     this._appSettingsCache = null; // 原生设置快照（app:getSettings），供同步上下文读取
+    this._settingsCache = null;    // 启动期 settings 快照（app:ready 带回，短期有效；见 _handleReady）
     this.customNoises = null;   // 从插件持久化层恢复的自定义音源
     this._messageHandler = this._onMessage.bind(this);
 
@@ -52,6 +53,14 @@ export class BridgeStorage {
       });
       if (readyResp && readyResp.sectionConfig) {
         this.sectionConfig = readyResp.sectionConfig;
+      }
+      // 【性能】启动期有大量 getSetting（全仓 52 处调用点，多数在 init 阶段串行执行），
+      // 而每次 getSetting 都是一次 IPC + 宿主「读整份 settings.json → 解析」。
+      // 宿主已在 app:ready 里一次性带回全量 settings —— 这里做**短期缓存**（5s 后失效，
+      // 避免长期持有可能被原生设置面板改动的旧值），把启动期的 N 次读盘降到 0。
+      if (readyResp && readyResp.settings && typeof readyResp.settings === 'object') {
+        this._settingsCache = readyResp.settings;
+        setTimeout(() => { this._settingsCache = null; }, 5000);
       }
       // 预热原生设置快照：滑动切换日期 / 自动保存间隔 / 香道时长已收归原生「外观」页
       this.getAppSettings().catch(() => { /* 预热失败不影响握手 */ });
@@ -103,6 +112,10 @@ export class BridgeStorage {
       // 重建视图（侧边栏移中央）后待恢复的布局模式
       if (readyResp && readyResp.pendingLayoutMode) {
         window.__bambooPendingLayoutMode = readyResp.pendingLayoutMode;
+      }
+      // 本视图是否由系统从侧栏移到中央：退出多列时"必然重建"→ 可跳过死视图上的 unreflow / 宽度复位（性能）
+      if (readyResp && typeof readyResp.cameFromSidebar === 'boolean') {
+        window.__bambooCameFromSidebar = readyResp.cameFromSidebar;
       }
 
       // 激活门控：未激活时挂全屏激活遮罩（密钥在宿主侧，本模块仅转发激活码）
@@ -326,7 +339,13 @@ export class BridgeStorage {
 
   async getSetting(key) {
     await this.ensureReady();
-    return this._send('storage:getSetting', { key });
+    // 启动期快照命中 → 直接返回，省掉一次 IPC + 宿主读盘解析（见 _handleReady 的说明）
+    if (this._settingsCache && Object.prototype.hasOwnProperty.call(this._settingsCache, key)) {
+      return this._settingsCache[key];
+    }
+    const v = await this._send('storage:getSetting', { key });
+    if (this._settingsCache) this._settingsCache[key] = v;
+    return v;
   }
 
   async getAppSettings() {
@@ -418,7 +437,20 @@ export class BridgeStorage {
 
   async putSetting(key, value) {
     await this.ensureReady();
+    // 同步更新启动期快照，避免「刚写又读到旧值」
+    if (this._settingsCache) this._settingsCache[key] = value;
     return this._send('storage:putSetting', { key, value });
+  }
+
+  /** 批量写设置：宿主侧「一次读 + 一次原子写」。切换布局时成对写 layoutMode/displayWidth 用它，
+   *  避免每个键各来一次全量 settings.json 读+写。 */
+  async putSettings(values) {
+    if (!values) return;
+    await this.ensureReady();
+    if (this._settingsCache) {
+      Object.keys(values).forEach((k) => { this._settingsCache[k] = values[k]; });
+    }
+    return this._send('storage:putSettings', { values });
   }
 
   async getAllSettings() {
@@ -1193,6 +1225,15 @@ window.addEventListener('message', (event) => {
     if (typeof window.GoalService !== 'undefined' && window.GoalService.load) {
       window.GoalService.load();
     }
+    return;
+  }
+
+  // 宿主在「移中央」完成揭示后通知：本面板此刻才真正可见且已绘制。
+  // 折叠右侧栏必须等到这一刻（提前折叠会把还没被接替的旧面板一起藏掉 → 空白闪烁）。
+  if (data.type === 'app:revealed') {
+    try {
+      if (typeof EventBus !== 'undefined' && EventBus.emit) EventBus.emit('layout:revealed', {});
+    } catch (e) { /* 不阻塞 */ }
     return;
   }
 

@@ -31,10 +31,10 @@ describe('AppAPI 布局板块路由', () => {
 
   it.each([
     ['kanban', 'kanban'],
-    ['horizontal', 'horizontal'],
-    ['evil-mode', 'horizontal'],     // 非法值 → 回落默认
-    ['', 'horizontal'],
-    ['KANBAN', 'horizontal'],        // 大小写敏感，不做隐式归一
+    ['horizontal', 'kanban'],   // 横向模式已移除 → 迁移为看板
+    ['evil-mode', 'kanban'],    // 非法值 → 回落默认（看板）
+    ['', 'kanban'],
+    ['KANBAN', 'kanban'],       // 大小写敏感，不做隐式归一；一律按看板
   ])('app:moveToCenter：payload.mode=%j → 回调收到 %j（白名单收口）', async (input, expected) => {
     bind();
     const spy = vi.fn();

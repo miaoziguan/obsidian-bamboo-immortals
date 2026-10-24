@@ -53,3 +53,31 @@ describe('首页 header 窄栏居中（.rw-460）', () => {
         expect(CSS).toMatch(/\.rw-460\s+\.header\s*\{/);
     });
 });
+
+/**
+ * 多列（看板）下页眉必须按「容器宽」对齐。
+ *
+ * 背景：rw 系列与 compact 类是按「列宽」算的（列内卡片需要），看板 N 列时列宽很小（如 1200/6≈200px），
+ * 于是整个 .container 被套上 .rw-460 —— 页眉这种**整宽元素**也被 `.rw-460 .header-left/-right
+ * { justify-content: center }` 各自居到半区中部，表现为「天气既没左对齐、语录也没右对齐」；
+ * 天气还会因 flex-shrink + max-width:100% 被裁成省略号（显示不全）。
+ * 修复：DisplayManager 在多列时给容器加 .has-multicol，页眉据此恢复两端对齐、天气按自然宽度显示。
+ */
+describe('多列（看板）下页眉按容器宽对齐（.has-multicol 覆盖窄栏居中）', () => {
+    test('.has-multicol 下 .header 恢复两端对齐', () => {
+        const r = ruleOf(CSS, '.container.has-multicol .header');
+        expect(r).not.toBeNull();
+        expect(r).toMatch(/justify-content:\s*space-between/);
+    });
+
+    test('天气贴左、语录贴右', () => {
+        expect(ruleOf(CSS, '.container.has-multicol .header-left')).toMatch(/justify-content:\s*flex-start/);
+        expect(ruleOf(CSS, '.container.has-multicol .header-right')).toMatch(/justify-content:\s*flex-end/);
+    });
+
+    test('天气按自然宽度显示，展开内容不再被压成 60% 而截断', () => {
+        expect(ruleOf(CSS, '.container.has-multicol .weather-widget')).toMatch(/flex-shrink:\s*0/);
+        expect(ruleOf(CSS, '.container.has-multicol .weather-widget.weather-open .weather-expand'))
+            .toMatch(/max-width:\s*520px/);
+    });
+});

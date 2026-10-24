@@ -39,8 +39,10 @@ export const BambooGarden = {
         try {
             const strip = document.querySelector('#themeEffectSection .bamboo-poem-strip');
             if (!strip || typeof BambooPoem === 'undefined') return;
-            const mode = (typeof LayoutMode !== 'undefined' && LayoutMode.isKanban && LayoutMode.isKanban())
-                ? 'kanban' : 'horizontal';
+            // 横向模式已移除：诗词区只在看板下显示（纵向时 strip 是 display:none）。
+            // 非看板直接返回，避免退出看板时白重建一次隐藏节点。
+            if (!(typeof LayoutMode !== 'undefined' && LayoutMode.isKanban && LayoutMode.isKanban())) return;
+            const mode = 'kanban';
             // 幂等：已是目标模式则直接返回。切换布局时 _enter 会手动调用一次、
             // sectionsContainer 的 class 变化又会经 MutationObserver 再调一次，
             // 没有这层判断就会把诗词卡 DOM 重建两遍（切换卡顿来源之一）。

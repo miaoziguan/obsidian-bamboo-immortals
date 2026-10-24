@@ -15,6 +15,8 @@ export const ThemeEffects = {
     _autoMotion: true,
     _motionLevel: 'full',
     _autoTuned: false,
+    /** 调色同步的延迟重试定时器（见 _schedulePaletteSync 的竞态说明） */
+    _paletteSyncTimer: null,
     _motionNotified: false,
 
     /** 外部主题清单（仅登记名字 + meta，代码未加载）。key=主题名，value={name,icon,description,loaded} */
@@ -132,6 +134,8 @@ export const ThemeEffects = {
         this._initThemeModeObserver();
         // 若「跟随主题动效配色」开启，把主题标准配色同步到全局显示调色（DisplayManager）
         this._applyPaletteToGlobal(themeName);
+        // 对方模块可能尚未初始化（上面会静默跳过）→ 排一次延迟重试兜住竞态
+        this._schedulePaletteSync();
     },
 
     /** 渲染并挂载指定主题：清空旧 DOM → 挂新 DOM → 销毁旧主题 → 初始化新主题。
@@ -435,10 +439,6 @@ export const ThemeEffects = {
      * 时序：DisplayManager 可能尚未初始化（启动顺序不定）→ 静默跳过，由其 init 末尾补齐。 */
     _applyPaletteToGlobal(themeName) {
         var dm = (typeof window !== 'undefined') ? window.DisplayManager : null;
-        console.log('[跟随主题] 同步请求:', themeName,
-            '| DisplayManager:', !!dm,
-            '| applyPaletteBundle:', dm && typeof dm.applyPaletteBundle,
-            '| followThemePalette:', dm && dm.followThemePalette);
         if (!dm || typeof dm.applyPaletteBundle !== 'function') return;
         if (dm.followThemePalette === false) return;
         var theme = this.themes[themeName || this.currentTheme];
@@ -447,12 +447,31 @@ export const ThemeEffects = {
         // per-mode：暗色优先用 palette.dark
         var mode = this._getCurrentMode();
         var use = (mode === 'dark' && pal.dark) ? pal.dark : pal;
-        console.log('[跟随主题] 该主题 palette:', JSON.stringify(pal), '| 模式:', mode, '| 采用:', JSON.stringify(use));
         dm.applyPaletteBundle({
             hue: +use.hue,
             lightness: Number.isFinite(+use.lightness) ? +use.lightness : 0,
             saturation: Number.isFinite(+use.saturation) ? +use.saturation : 100,
         }, true);
+    },
+
+    /**
+     * 调色同步的「延迟重试」（合并调度）。
+     *
+     * 竞态根因：主题调色同步是 ThemeEffects 与 DisplayManager **两个模块互相补齐**——
+     *   · ThemeEffects 挂载主题时调 _applyPaletteToGlobal；若 DisplayManager 尚未初始化 → 静默跳过；
+     *   · DisplayManager 初始化末尾反向补一次；若此时主题还没注册完 → 同样静默跳过。
+     * 两个模块各自异步初始化、谁先完成不确定，于是偶发「两边都错过」→ 配色不生效
+     * （重建视图 / 新建 webview 会重放这个竞态，表现为「改变视图过程中颜色偶尔失效」）。
+     *
+     * 这里在两个模块各自的初始化收尾处都排一次延迟重试：无论谁先就绪，最终都会对上并应用成功。
+     */
+    _schedulePaletteSync() {
+        var self = this;
+        if (this._paletteSyncTimer) window.clearTimeout(this._paletteSyncTimer);
+        this._paletteSyncTimer = window.setTimeout(function () {
+            self._paletteSyncTimer = null;
+            self._applyPaletteToGlobal(self.currentTheme);
+        }, 0);
     },
 
     /** 同步明暗模式到 #themeEffectSection 的 CSS 变量和 data 属性 */
@@ -475,6 +494,8 @@ export const ThemeEffects = {
 
         // 明暗切换后，若「跟随主题动效配色」开启，按新模式重新同步全局调色（per-mode）
         this._applyPaletteToGlobal(this.currentTheme);
+        // 同样可能撞上「对方未就绪」的竞态 → 排一次延迟重试
+        this._schedulePaletteSync();
 
         // 如果主题面板正打开，刷新滑块值和模式标签
         var panel = byId('panel-theme');

@@ -738,6 +738,29 @@ section[data-section-id] {
 .rw-460 .weather-widget {
     margin-right: 0;           /* 消除换行后天气相对行中心的 8px 偏移 */
 }
+
+/* ===== 多列（看板）下的页眉 =====
+   rw 系列与 compact 类是按「列宽」算的（列内卡片需要），但页眉是**整宽元素**：
+   若跟着窄栏类走，.rw-460 的 `justify-content: center` 会把天气/语录各自居到半区中部
+   —— 看起来既没左对齐也没右对齐；天气还会因 flex-shrink + max-width:100% 被裁成省略号。
+   这里统一按「容器宽」对齐，并让天气按自然宽度展开。
+   .has-multicol 由 DisplayManager._applyResponsiveClasses 按 LayoutMode.isActive() 同步。 */
+.container.has-multicol .header {
+    justify-content: space-between;
+}
+.container.has-multicol .header-left {
+    justify-content: flex-start;   /* 天气贴左 */
+}
+.container.has-multicol .header-right {
+    justify-content: flex-end;     /* 语录贴右 */
+}
+.container.has-multicol .weather-widget {
+    flex-shrink: 0;
+    max-width: none;
+}
+.container.has-multicol .weather-widget.weather-open .weather-expand {
+    max-width: 520px;              /* 展开内容按上限显示，不再被压缩成 60% 而截断 */
+}
 h1 {
     font-size: var(--type-2xl);
     color: var(--bamboo-light);

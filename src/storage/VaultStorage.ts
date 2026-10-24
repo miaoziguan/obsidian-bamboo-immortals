@@ -904,6 +904,63 @@ export class VaultStorage {
     }
   }
 
+  /**
+   * 批量写设置：**一次读 + 一次原子写**。
+   *
+   * 用途：切换布局时 layoutMode 与 displayWidth 成对写入；若各自调用 putSetting，
+   * 就是 2×(读整份 settings.json + 解析 + 原子写回)。批量接口把这类"成对写入"压到 1 次全量读写。
+   * 损坏文件沿用与 putSetting 相同的隔离重建策略。
+   */
+  async putSettings(values: Record<string, unknown>): Promise<void> {
+    const entries = Object.entries(values || {});
+    if (entries.length === 0) return;
+    const path = normalizePath(this.settingsPath());
+
+    const cur = await this.app.vault.adapter.read(path).catch(() => null);
+    if (cur !== null && cur.trim()) {
+      let ok = false;
+      try {
+        const p: unknown = JSON.parse(cur);
+        ok = !!p && typeof p === 'object' && !Array.isArray(p);
+      } catch { ok = false; }
+      if (!ok) {
+        await this.quarantineCorruptFile(path, cur, '设置');
+        await this.vaultWrite(path, JSON.stringify(Object.fromEntries(entries), null, 2));
+        return;
+      }
+    }
+
+    const abstract = this.app.vault.getAbstractFileByPath(path);
+    if (abstract instanceof TFile) {
+      await this.app.vault.process(abstract, (data) => {
+        let settings: Record<string, unknown> = {};
+        if (data && data.trim()) {
+          try {
+            settings = JSON.parse(data) as Record<string, unknown>;
+          } catch {
+            settings = {};
+          }
+        }
+        for (const [k, v] of entries) settings[k] = v;
+        return JSON.stringify(settings, null, 2);
+      });
+      return;
+    }
+
+    // 非 TFile：保留盘上已有内容后整体写入
+    let base: Record<string, unknown> = {};
+    if (cur && cur.trim()) {
+      try {
+        const parsed: unknown = JSON.parse(cur);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          base = parsed as Record<string, unknown>;
+        }
+      } catch { base = {}; }
+    }
+    for (const [k, v] of entries) base[k] = v;
+    await this.vaultWrite(path, JSON.stringify(base, null, 2));
+  }
+
   async getAllSettings(): Promise<AppSettings> {
     const path = this.settingsPath();
     if (!(await this.app.vault.adapter.exists(path))) {

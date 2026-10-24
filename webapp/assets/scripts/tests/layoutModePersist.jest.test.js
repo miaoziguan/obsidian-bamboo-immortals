@@ -56,6 +56,8 @@ function setup({ persisted, pending, isMainLeaf = true }) {
   LayoutMode._mode = 'none';
   LayoutMode._restoring = false;
   LayoutMode._collapsedRightSidebar = false;
+  LayoutMode._collapseRequested = false;
+  LayoutMode._movingToCenter = false;
   LayoutMode._justEntered = false;
   LayoutMode._resizeGuardBound = false;
   return LayoutMode;
@@ -73,10 +75,10 @@ test('重启恢复：settings=kanban 且宿主 pending 为 stale 的 horizontal 
   expect(LM._mode).toBe('kanban');
 });
 
-test('重启恢复：settings=horizontal → 恢复为横向', async () => {
+test('重启恢复：旧值 settings=horizontal → 迁移为看板（横向模式已移除）', async () => {
   const LM = setup({ persisted: 'horizontal', pending: 'horizontal' });
   await LM.init();
-  expect(LM._mode).toBe('horizontal');
+  expect(LM._mode).toBe('kanban');
 });
 
 test('重启恢复：无持久化（上次为纵向）→ 不进入多列', async () => {
@@ -139,4 +141,62 @@ test('多列垂直居中：进入加 layout-multicol 标记，退出移除（避
   expect(main.classList.contains('layout-multicol')).toBe(true);
   LM._forceOff();
   expect(main.classList.contains('layout-multicol')).toBe(false);
+});
+
+test('进入看板：宽度无条件固定为 1200px（即使当前设置是 800）', () => {
+  const LM = setup({ persisted: null, pending: null, isMainLeaf: true });
+  const applied = [];
+  global.DisplayManager._currentWidth = 800;
+  global.DisplayManager._applyWidth = (v) => { applied.push(v); global.DisplayManager._currentWidth = v; };
+  LM._enter('kanban');
+  expect(applied).toEqual([1200]);          // 800 → 1200（不再"仅不足时放宽"）
+  expect(global.DisplayManager._currentWidth).toBe(1200);
+  // 已是 1200 时不重复设置（先退出，退出会把宽度复位，故之后再清空记录）
+  LM._forceOff();
+  applied.length = 0;
+  global.DisplayManager._currentWidth = 1200;
+  LM._enter('kanban');
+  expect(applied).toEqual([]);
+});
+
+test('侧栏进入看板：不在旧面板上改宽度/分列，只请求移到中央（避免旧面板被撑到 1200 溢出）', () => {
+  const LM = setup({ persisted: null, pending: null, isMainLeaf: false });
+  const applied = [];
+  global.DisplayManager._applyWidth = (v) => { applied.push(v); };
+  LM._enter('kanban');
+  expect(applied).toEqual([]);                                                    // 未改旧面板宽度
+  expect(document.querySelector('#sectionsContainer > .layout-col')).toBeNull();   // 未提前分列
+  expect(LM._movingToCenter).toBe(true);                                           // 进入「移动中」
+  expect(LM._mode).toBe('kanban');
+});
+
+test('「移中央」进行中：reflow 不抢先分列（旧面板保持纵向，避免先变形再被替换）', () => {
+  const LM = setup({ persisted: null, pending: null });
+  LM._mode = 'kanban';
+  LM._movingToCenter = true;
+  LM.reflow();
+  expect(document.querySelector('#sectionsContainer > .layout-col')).toBeNull();
+  // 解除锁后恢复正常分列
+  LM._movingToCenter = false;
+  LM.reflow();
+  expect(document.querySelectorAll('#sectionsContainer > .layout-col').length).toBeGreaterThan(0);
+});
+
+test('折叠右侧栏按 wasCollapsed 记账：进入前已折叠 → 不记账（退出不会擅自展开用户侧栏）', async () => {
+  const LM = setup({ persisted: null, pending: null });
+
+  // 场景 1：进入前本就折叠（wasCollapsed=true）→ 不应记账
+  let resolveCollapse;
+  global.storageManager.collapseRightSidebar = () => new Promise((r) => { resolveCollapse = r; });
+  LM._requestCollapseIfNeeded();
+  resolveCollapse({ ok: true, wasCollapsed: true });
+  await Promise.resolve(); await Promise.resolve();
+  expect(LM._collapsedRightSidebar).toBe(false);
+
+  // 场景 2：进入前未折叠（wasCollapsed=false）→ 记账，退出时对称展开
+  LM._collapseRequested = false;
+  global.storageManager.collapseRightSidebar = () => Promise.resolve({ ok: true, wasCollapsed: false });
+  LM._requestCollapseIfNeeded();
+  await Promise.resolve(); await Promise.resolve();
+  expect(LM._collapsedRightSidebar).toBe(true);
 });

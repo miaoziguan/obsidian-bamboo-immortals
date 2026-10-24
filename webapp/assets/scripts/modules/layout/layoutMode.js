@@ -1,21 +1,63 @@
 import { byId } from '../../utils/domRef.js';
 
 /**
- * 桌面端多列布局模式（单按钮循环：纵向 → 横向 → 看板 → 纵向）
- * - 横向（horizontal-layout）：列数 = 每行 2 个板块（ceil(板块数/2)，最少 2 列）
+ * 桌面端多列布局模式（单按钮循环：纵向 ⇄ 看板；横向模式已移除）
  * - 看板（kanban-layout）：列数 = 板块数（每板块独占一列），一行全排开
  * - 跨重启持久化：进入多列模式即写入 settings.layoutMode，重启后 init() 自动恢复（并移回主工作区宽度）。
  * - 沿用现有 SectionRegistry.order 顺序，只改变排版方向，不触碰板块顺序逻辑。
- * - 宽度自动适配：内容宽度不足时临时放宽（横向<600→800，看板<1200→1200），
- *   退出时恢复原宽度。
+ * - 宽度自动适配：内容宽度不足 1200 时临时放宽到 1200，退出时恢复原宽度。
  * - 紧凑适配：切换后主动让 DisplayManager 按「列宽」重算 compact/ultra/rw 响应式类。
+ * - 兼容：历史值 'horizontal'（老设置 / 旧视图状态）一律按看板处理，见 _enter / _loadPersistedMode。
  */
 export const LayoutMode = {
-    _mode: 'none', // 'none' | 'horizontal' | 'kanban'
+    _mode: 'none', // 'none' | 'kanban'（'horizontal' 仅作旧值兼容，进入时归一为 kanban）
     _columns: 2,
     _justEntered: false, // 进入流程保护期：避开刚进入时浏览器未回流导致守卫读到旧宽
     _restoring: false, // 重建视图后恢复模式中：跳过 moveToCenter 请求（已在中央）
     _collapsedRightSidebar: false, // 右侧栏是否由本模块折叠（退出时据此对称展开，不动用户原有状态）
+    _collapseRequested: false, // 本次多列会话是否已请求过折叠（防重复 IPC；每次退出复位）
+    _movingToCenter: false, // 「侧栏 → 中央」进行中：旧面板不再分列/不吃多列紧凑类（即将被替换）
+    _lastPersist: {}, // 本会话已写过的键值（宿主 putSetting 是「读整份设置→解析→写回」，同值必须跳过）
+
+    /**
+     * 【性能】只在值真正变化时写盘。
+     * 宿主的 putSetting 每次都要 read + JSON.parse + vault.process 写回整份 settings.json，
+     * 而切换布局会连续写 layoutMode / displayWidth 两三个键 —— 不去重就是每次切换 2~3 次全量磁盘读写。
+     */
+    _persistOnce(key, value) {
+        if (typeof storageManager === 'undefined' || !storageManager.putSetting) return;
+        if (!this._lastPersist) this._lastPersist = {};
+        if (this._lastPersist[key] === value) return;
+        this._lastPersist[key] = value;
+        try { storageManager.putSetting(key, value); } catch (e) { /* 不阻塞 */ }
+    },
+
+    /**
+     * 【性能】批量写设置（同值跳过）：layoutMode + displayWidth 这类成对写入一次发完。
+     * 宿主的 putSetting 每次都要「读整份 settings.json → 解析 → 原子写回」；
+     * 原先切换布局要写 4 次（进出各两次），现压到 2 次，未来可再合并为 1 次。
+     */
+    _persistBatch(pairs) {
+        if (typeof storageManager === 'undefined') return;
+        if (!this._lastPersist) this._lastPersist = {};
+        const todo = {};
+        let any = false;
+        Object.keys(pairs || {}).forEach((k) => {
+            if (this._lastPersist[k] === pairs[k]) return;
+            this._lastPersist[k] = pairs[k];
+            todo[k] = pairs[k];
+            any = true;
+        });
+        if (!any) return;
+        try {
+            if (typeof storageManager.putSettings === 'function') {
+                storageManager.putSettings(todo);
+            } else {
+                // 老宿主：退化为逐键写入
+                Object.keys(todo).forEach((k) => storageManager.putSetting(k, todo[k]));
+            }
+        } catch (e) { /* 不阻塞 */ }
+    },
     _switchTimer: 0, // layout-switching 过渡类的收尾定时器
 
     isActive() {
@@ -58,17 +100,14 @@ export const LayoutMode = {
         let mode = null;
         try { mode = await this._loadPersistedMode(); } catch (e) { mode = null; }
         // pending 来自宿主视图状态（可由 webapp 消息写入），未受白名单约束，
-        // 必须在这里收口：否则非法值会被 _enter 当成横向处理并持久化进 settings.layoutMode。
-        if (!mode && (pending === 'horizontal' || pending === 'kanban')) mode = pending;
+        // 必须在这里收口；同时兼容旧值 'horizontal'（横向模式已移除 → 视为看板）。
+        const pendingMode = pending === 'horizontal' ? 'kanban' : pending;
+        if (!mode && pendingMode === 'kanban') mode = pendingMode;
         // _restoring（跳过 moveToCenter）仅在「同会话移中央重建且视图已在主工作区」时成立；
         // 重启即使 pending 非空（stale），若视图在侧栏仍需重新移回中央，故须绑定 __bambooIsMainLeaf
         this._restoring = !!(pending && window.__bambooIsMainLeaf);
         try {
-            if (mode === 'kanban') {
-                this._enter('kanban');
-            } else if (mode === 'horizontal') {
-                this._enter('horizontal');
-            }
+            if (mode === 'kanban') this._enter('kanban');
         } finally {
             this._restoring = false;
         }
@@ -79,7 +118,8 @@ export const LayoutMode = {
         if (typeof storageManager === 'undefined' || !storageManager.getSetting) return null;
         try {
             const v = await storageManager.getSetting('layoutMode');
-            if (v === 'horizontal' || v === 'kanban') return v;
+            // 横向模式已移除：历史值 'horizontal' 迁移为看板
+            if (v === 'kanban' || v === 'horizontal') return 'kanban';
         } catch (e) { /* 读取失败不阻塞 */ }
         return null;
     },
@@ -111,10 +151,8 @@ export const LayoutMode = {
             return;
         }
 
-        // 循环推进
+        // 循环推进（横向模式已移除：只有 纵向 ⇄ 看板）
         if (this._mode === 'none') {
-            this._enter('horizontal');
-        } else if (this._mode === 'horizontal') {
             this._enter('kanban');
         } else {
             this._forceOff();
@@ -122,78 +160,52 @@ export const LayoutMode = {
     },
 
     /**
-     * 进入指定模式
-     * @param {'horizontal'|'kanban'} mode
+     * 进入多列模式（现只剩「看板」一种）。
+     * 兼容：旧版本持久化 / 视图状态里的 'horizontal' 一律按看板处理（横向模式已移除）。
      */
     _enter(mode) {
-        // 白名单收口：本函数是唯一会把 layoutMode 写进 settings 的出口，
-        // 放行任意值会污染跨重启恢复（_loadPersistedMode 只接受这两个值，
-        // 被写脏后下次启动会静默回落纵向，且用户无从察觉）。
-        if (mode !== 'horizontal' && mode !== 'kanban') return;
+        // 兼容旧值：横向模式已移除，历史 settings / 视图状态里的 'horizontal' 归一到看板
+        if (mode === 'horizontal') mode = 'kanban';
+        // 白名单收口：本函数是唯一会把 layoutMode 写进 settings 的出口
+        if (mode !== 'kanban') return;
+        // 「移中央」进行中：忽略新的进入请求。否则会在即将被替换的旧面板上白做一次
+        // 分列 / 宽度调整 / 过渡动画（纯开销），而新视图恢复的仍是旧的 mode → 状态不一致。
+        if (this._movingToCenter) return;
         const el = byId('sectionsContainer');
         if (!el) return;
 
-        const container = byId('reviewContainer');
         const visibleCount = (typeof SectionRegistry !== 'undefined' && SectionRegistry.getVisible)
             ? SectionRegistry.getVisible().length
             : el.children.length;
 
-        // 各模式的目标列数
-        let columns, minWidth, autoBumpTo, label;
-        if (mode === 'kanban') {
-            // 看板：一行全排开，每板块独占一列（列数=板块数），保证所有板块顶部对齐；
-            // 不再限制 4 列，否则多余的板块会被追加到某列尾部变成列内第二块，
-            // 从而与相邻列的板块顶部不齐（出现缝隙）。
-            columns = Math.max(1, visibleCount);
-            minWidth = 1200;
-            autoBumpTo = 1200;
-            label = '看板模式';
-        } else {
-            // 横向：每行 2 个板块，最少 2 列
-            columns = Math.max(2, Math.ceil(visibleCount / 2));
-            minWidth = 600;
-            autoBumpTo = 800;
-            label = '横向布局';
-        }
+        // 先判断「本次是否需要移到中央」：若是，则**不在旧面板上**做宽度/分列（纯浪费，
+        // 而且会让仍在侧栏里的旧面板被撑到 1200px → 溢出变形），全部交给中央新视图渲染。
+        const prevMode = this._mode;
+        const inSidebar = typeof window !== 'undefined' && window.__bambooIsMainLeaf === false;
+        const willMove = !this._restoring && prevMode === 'none' && inSidebar
+            && typeof storageManager !== 'undefined' && storageManager.moveToCenter;
 
-        // 内容宽度自动适配：
-        // - 横向模式：无论当前内容宽度多少，点击「横向布局」一律设为 800px（确定性一致）
-        // - 看板模式：内容宽度不足 1200 时才放宽到 1200
+        // 看板：一行全排开，每板块独占一列（列数=板块数），保证所有板块顶部对齐。
+        const columns = Math.max(1, visibleCount);
+        const autoBumpTo = 1200;
+        const label = '看板模式';
+
+        // 进入看板固定 1200px（用户实测这是最佳视觉宽度）：无条件设为 1200，不再"仅不足时放宽"。
+        // 顺带省掉一次 container.getBoundingClientRect()（强制同步布局）。
+        // 不做宽度过渡：max-width 动画会让浏览器在 250ms 内持续重排，
+        // 与紧接着的分列 DOM 重构叠加 → 明显掉帧。
         let widthAutoBumped = false;
-        if (container && typeof DisplayManager !== 'undefined' && DisplayManager._applyWidth) {
-            if (mode === 'horizontal') {
-                // 无条件切到 800px
-                // 布局切换不做宽度过渡：max-width 动画会让浏览器在 250ms 内持续重排
-                // 整个容器，与紧接着的分列 DOM 重构叠加 → 明显掉帧。
-                DisplayManager._applyWidth(autoBumpTo, false);
-                // 同步持久化 800：避免 DisplayManager.init() 异步读回旧设置宽度（如 ≥1080）
-                // 覆盖本次 800，导致横向模式在 _justEntered 保护期后误升看板。
-                if (typeof storageManager !== 'undefined' && storageManager.putSetting) {
-                    try { storageManager.putSetting('displayWidth', autoBumpTo); } catch (e) { /* 不阻塞 */ }
-                }
+        if (!willMove && typeof DisplayManager !== 'undefined' && DisplayManager._applyWidth) {
+            if (DisplayManager._currentWidth !== autoBumpTo) {
+                try { DisplayManager._applyWidth(autoBumpTo, false); } catch (e) { /* 不阻塞 */ }
+                // 宽度持久化并入下面的批量写（layoutMode + displayWidth 一次发完）
                 widthAutoBumped = true;
-            } else {
-                let cw = 0;
-                try { cw = container.getBoundingClientRect().width; } catch (e) { cw = 0; }
-                let widthSetting = DisplayManager._currentWidth || 0;
-                if (cw < minWidth && widthSetting < minWidth) {
-                    // 同横向：布局切换期间不做宽度过渡，避免与分列重构叠加掉帧
-                    DisplayManager._applyWidth(autoBumpTo, false);
-                    // 同步持久化（看板 autoBumpTo=1200）：防止 DisplayManager.init 异步读回旧值覆盖
-                    if (typeof storageManager !== 'undefined' && storageManager.putSetting) {
-                        try { storageManager.putSetting('displayWidth', autoBumpTo); } catch (e) { /* 不阻塞 */ }
-                    }
-                    widthAutoBumped = true;
-                }
             }
         }
 
-        const prevMode = this._mode;
         this._mode = mode;
-        // 持久化当前模式，供跨重启恢复（init 读回 settings.layoutMode）
-        if (typeof storageManager !== 'undefined' && storageManager.putSetting) {
-            try { storageManager.putSetting('layoutMode', mode); } catch (e) { /* 不阻塞 */ }
-        }
+        // 持久化（批量一次写）：layoutMode + 本次是否改过宽度，供跨重启恢复（init 读回 settings.layoutMode）
+        this._persistBatch(widthAutoBumped ? { layoutMode: mode, displayWidth: autoBumpTo } : { layoutMode: mode });
         // 进入流程保护：避开刚进入时浏览器未回流、_applyResponsiveClasses 读到旧宽
         // 误触发守卫退出。下帧后清标志，守卫恢复生效。
         this._justEntered = true;
@@ -202,9 +214,34 @@ export const LayoutMode = {
         } else {
             setTimeout(() => { this._justEntered = false; }, 50);
         }
-        // 移除旧模式 class，设置新模式 class
+        // 【防闪关键：不要把多列布局套到「还在侧栏里的旧面板」上】
+        // 侧栏宽度远小于多列所需（800 / 1200px），先套上去会立刻被挤压 / 溢出 → 视觉上先闪一下；
+        // 移中央是「重建视图并直接揭示新视图」，旧面板一旦被替换即消失、不会长时间停留，
+        // 故保持旧面板原样（仍是纵向），只请求宿主移到中央；
+        // 真正的多列渲染交给中央的新视图（其 init 恢复模式时会完整跑一遍 _enter）。
+        if (willMove) {
+            try {
+                const p = storageManager.moveToCenter(mode);
+                // 折叠右侧栏不在此发起：本面板即将被销毁，其 promise 永远不会回调（宿主销毁后 respond 直接 return）。
+                // 改由「新面板」在宿主通知 layout:revealed 时折叠 —— 既不会提前藏掉旧面板，也不会丢回执。
+                if (p && typeof p.catch === 'function') {
+                    p.catch((e) => console.warn('[LayoutMode] moveToCenter err', e && e.message));
+                }
+            } catch (e) { console.warn('[LayoutMode] moveToCenter throw', e && e.message); }
+            this._updateButtonText();
+            // 旧面板保持纵向原样，等中央新视图接管；期间：
+            // · 列数按 1 计 —— 避免期间响应式重算按「多列」给仍在纵向的旧面板套紧凑类（字号/间距缩水）
+            // · 禁止 reflow 提前分列 —— 否则先变形再被替换，等于多闪一下
+            this._columns = 1;
+            this._movingToCenter = true;
+            // 兜底：移动若失败（宿主未注入/异常），3s 后解除封锁，避免面板永久卡在「半切换」状态
+            if (typeof setTimeout === 'function') setTimeout(() => { this._movingToCenter = false; }, 3000);
+            return true;
+        }
+
+        // 移除旧模式 class，设置新模式 class（横向模式已移除，只有看板）
         el.classList.remove('horizontal-layout', 'kanban-layout');
-        el.classList.add(mode === 'kanban' ? 'kanban-layout' : 'horizontal-layout');
+        el.classList.add('kanban-layout');
         // 多列（横向/看板）会把视图移到中央：给外层容器加标记，交给 CSS 做垂直居中。
         // 否则 #main-container 默认 align-items:flex-start + .container 下边距为 0 → 内容贴顶、偏上。
         const mainWrap = byId('main-container');
@@ -214,56 +251,18 @@ export const LayoutMode = {
             window.BambooGarden.rerenderPoem();
         }
 
-        // 分列：横向=交替入列；看板=一行全排开（列数由 reflow 内部按当前板块数最终确定）
+        // 分列：看板=一行全排开（列数由 reflow 内部按当前板块数最终确定）
         this._columns = columns;
-        if (mode === 'kanban') {
-            this._reflowKanban(el);
-        } else {
-            this._reflowHorizontal(el);
-        }
+        this._reflowKanban(el);
 
-        // 进入横向/看板 → 请求宿主把视图移动到主工作区（携带当前模式，宿主重建视图后恢复）。
-        // webapp 不自行判定是否侧边栏，宿主 moveToCenter 回调里自判：在主区域则无操作。
-        // bridge.js 暴露的全局是 storageManager（BridgeStorage 实例），非 Bridge。
-        // 重建视图后 init() 恢复模式时不请求移动（已在中央），静默跳过。
-        if (this._restoring) {
-            // 恢复模式：已在中央，不请求移动（storageManager 此时可能尚未就绪，属正常跳过）
-        } else if (prevMode === 'none') {
-            // 仅「纵向 → 多列」首次进入时请求移动。
-            // 横向↔看板互切（prevMode !== 'none'）时视图早已在中央，再请求 moveToCenter
-            // 会让宿主重建整个视图（webview 重挂载、DOM/CSS/动画全部重来），
-            // 这是切换卡顿的最大来源 —— 必须跳过。
-            if (typeof storageManager !== 'undefined' && storageManager.moveToCenter) {
-                try {
-                    const p = storageManager.moveToCenter(mode);
-                    // 不再 .then 打印响应：webview 的 console 走 IPC，切换路径上应尽量避免
-                    if (p && typeof p.catch === 'function') {
-                        p.catch((e) => console.warn('[LayoutMode] moveToCenter err', e && e.message));
-                    }
-                } catch (e) { console.warn('[LayoutMode] moveToCenter throw', e && e.message); }
-            } else {
-                console.warn('[LayoutMode] storageManager.moveToCenter unavailable');
-            }
-        }
+        // 注：这里**不再**发 moveToCenter —— 「侧栏 → 中央」已由上方 willMove 早退分支处理，
+        // 而「已在中央」时宿主 moveToCenter 本身也是 no-op。原来的这段是重复请求（每次白发一次 IPC），已删除。
 
-        // 进入多列模式（横向/看板）→ 请求宿主折叠 Obsidian 右侧栏，为多列布局腾出横向宽度。
-        // 记账：本次多列会话中我们请求过折叠 → 恢复纵向时对称展开。
-        // 这里【不区分折叠前是否已折叠】——需求是恢复纵向时把右侧栏展开；若按
-        // 「仅当折叠前是展开的才记账」判定，当右侧栏进入前本就折叠着（wasCollapsed=true，
-        // 折叠实为空操作）时就不会记账，退出时也不会展开，与预期不符。
-        // 宿主未注入或移动端无右侧栏时，展开请求会静默失败，无副作用。
-        // 性能：已折叠过（_collapsedRightSidebar 仍为 true）就不再重复请求——
-        // 宿主的折叠会改变 iframe 宽度 → 触发 resize → ResizeObserver → 重算响应式类，
-        // 白白多一轮跨进程往返和重排。跳过不影响记账（退出时仍会对称展开）。
-        if (!this._restoring && !this._collapsedRightSidebar && typeof storageManager !== 'undefined' && storageManager.collapseRightSidebar) {
-            try {
-                this._collapsedRightSidebar = true;
-                const pr = storageManager.collapseRightSidebar();
-                if (pr && typeof pr.then === 'function') {
-                    pr.catch((e) => console.warn('[LayoutMode] collapseRightSidebar err', e && e.message));
-                }
-            } catch (e) { console.warn('[LayoutMode] collapseRightSidebar throw', e && e.message); }
-        }
+        // 进入多列（看板）→ 请求宿主折叠 Obsidian 右侧栏，为多列布局腾出横向宽度。
+        // 记账规则：只有「进入前未折叠、本次由我们折叠」才记 `_collapsedRightSidebar`（退出时对称展开）；
+        // 若进入前本就折叠着（wasCollapsed=true），不记账、退出也不动它 —— 避免擅自展开用户原本折叠的侧栏。
+        // 宿主未注入或移动端无右侧栏时，折叠请求会静默失败，无副作用。
+        this._requestCollapseIfNeeded();
 
         this._updateButtonText();
 
@@ -273,8 +272,9 @@ export const LayoutMode = {
         // Toast 同理延后，让切帧先呈现给用户。
         const toastMsg = widthAutoBumped ? `已临时放宽宽度进入${label}` : `已切换为${label}`;
         const finish = () => {
-            if (typeof DisplayManager !== 'undefined' && DisplayManager._applyResponsiveClasses) {
-                try { DisplayManager._applyResponsiveClasses(); } catch (e) { /* 不阻塞布局切换 */ }
+            // 走合帧调度：本帧 ResizeObserver 也会请求重算，合并后只跑一次强制布局
+            if (typeof DisplayManager !== 'undefined' && DisplayManager._scheduleResponsive) {
+                try { DisplayManager._scheduleResponsive(); } catch (e) { /* 不阻塞布局切换 */ }
             }
             if (typeof Toast !== 'undefined') {
                 Toast.showToast(toastMsg, 'info');
@@ -283,8 +283,10 @@ export const LayoutMode = {
         if (typeof requestAnimationFrame === 'function') requestAnimationFrame(finish);
         else setTimeout(finish, 16);
 
-        // 切换后播放一次轻量淡入，消除瞬间跳变的生硬感
-        this._playSwitchTransition(el);
+        // 切换后播放一次轻量淡入，消除瞬间跳变的生硬感。
+        // 重建视图的恢复路径（_restoring）跳过：新视图刚加载，首帧本就晚，
+        // 再叠一次淡入等于把「空白/半透明」时段拉长，应让它一绘制就完整呈现。
+        if (!this._restoring) this._playSwitchTransition(el);
     },
 
     /**
@@ -304,20 +306,79 @@ export const LayoutMode = {
         else setTimeout(add, 16);
     },
 
+    /**
+     * 进入多列模式 → 请求宿主折叠 Obsidian 右侧栏，为多列布局腾出横向宽度。
+     * 记账 _collapsedRightSidebar：恢复纵向时据此对称展开。
+     *
+     * 调用时机很重要：若在「新面板尚未揭示」时折叠，会把仍在显示的旧面板（位于右栏）一起藏掉 →
+     * 出现一段谁都没画面的空白 → 观感闪烁。故「侧栏 → 中央」的场景由 _enter 在移中央完成之后再调。
+     */
+    _requestCollapseIfNeeded() {
+        if (this._restoring || this._collapseRequested) return;
+        if (typeof storageManager === 'undefined' || !storageManager.collapseRightSidebar) return;
+        this._collapseRequested = true;
+        try {
+            const pr = storageManager.collapseRightSidebar();
+            if (pr && typeof pr.then === 'function') {
+                pr.then((res) => {
+                    // 只有「此前未折叠、本次由我们折叠」才记账 → 退出时对称展开。
+                    // wasCollapsed=true 说明用户进入前本就折叠着，不能记 → 否则退出会擅自展开。
+                    if (res && res.wasCollapsed === false) this._collapsedRightSidebar = true;
+                }).catch((e) => console.warn('[LayoutMode] collapseRightSidebar err', e && e.message));
+            }
+            // 无 Promise 返回（老宿主）→ 保守不记账：宁可不展开，也不擅自改用户布局
+        } catch (e) { console.warn('[LayoutMode] collapseRightSidebar throw', e && e.message); }
+    },
+
     /** 退出多列模式（供「恢复纵向」按钮 / 边界守卫 / 离开视图调用） */
     _forceOff() {
         if (this._mode === 'none') return;
+        // 重建恢复途中不响应退出：否则会与「移中央」形成两条交叉的重建路径
+        if (this._restoring) return;
+        // 移中央进行中：退出请求会与正在进行的重建交叉（旧面板即将销毁，退出毫无意义）
+        if (this._movingToCenter) return;
         this._mode = 'none';
-        // 退出即清除持久化的模式（下次启动回到默认纵向）
-        if (typeof storageManager !== 'undefined' && storageManager.putSetting) {
-            try { storageManager.putSetting('layoutMode', 'none'); } catch (e) { /* 不阻塞 */ }
+        this._movingToCenter = false;
+        // 清掉切换过渡的收尾定时器（面板即将被重建替换，定时器不应再跑）
+        if (this._switchTimer) { clearTimeout(this._switchTimer); this._switchTimer = 0; }
+        // 【B3】本视图是由系统从侧栏移来的 → 退出时宿主一定会把它移回侧栏（= 重建整个 webview）。
+        // 于是"拆列 / 复位宽度 / 重算响应式类"这些打在**即将销毁的视图**上的工作可以整体跳过：
+        // 新的侧栏视图会按纵向重新渲染，旧视图保留原样直到被销毁即可（省一次 O(N) DOM 搬移 + 两次强制布局）。
+        const willRebuild = typeof window !== 'undefined' && window.__bambooCameFromSidebar === true;
+
+        // ① 本地清理（拆列 / 摘标记 / 复位宽度 / 诗词模板）：仅当本视图**不会被重建替换**时才做。
+        // willRebuild（本视图即将被原地 detach）时若还在"将死视图"上做这些，会出现一帧
+        // "多列突然摊开成单列"（用户感知为"先放大再消失"）；直接交给宿主 detach 旧 leaf，
+        // 新侧栏视图以自身纵向布局出现，即干净的硬切换。
+        const exitWidth = (typeof DisplayManager !== 'undefined' && DisplayManager.MIN_WIDTH) || 400;
+        if (!willRebuild) {
+            const el = byId('sectionsContainer');
+            const mainWrap = byId('main-container');
+            if (mainWrap) mainWrap.classList.remove('layout-multicol');
+            if (el) {
+                el.classList.remove('horizontal-layout', 'kanban-layout');
+                el.style.display = '';
+                // 拆掉列 wrapper：把板块移回容器直接子元素（恢复纵向流式）
+                this._unreflow(el);
+            }
+            // 退出多列后诗词卡恢复纵向/横向模板（带「——」）
+            if (typeof window !== 'undefined' && window.BambooGarden && typeof window.BambooGarden.rerenderPoem === 'function') {
+                window.BambooGarden.rerenderPoem();
+            }
+            // 退出横向/看板：恢复默认内容宽度（多列模式是临时放大，退出回到窄布局默认态）。
+            // 不做宽度过渡：刚拆完列 wrapper，再叠宽度动画会掉帧。
+            if (typeof DisplayManager !== 'undefined' && DisplayManager._applyWidth) {
+                try { DisplayManager._applyWidth(exitWidth, false); } catch (e) { /* 不阻塞 */ }
+            }
         }
-        // 恢复纵向：请求宿主把视图移回右侧栏（宿主仅当视图由系统从侧栏移来才执行）
-        if (typeof storageManager !== 'undefined' && storageManager.moveToSidebar) {
-            try { storageManager.moveToSidebar(); } catch (e) { /* 不阻塞 */ }
-        }
-        // 恢复纵向：展开右侧栏——但仅当它是进入多列时由本模块折叠的（对称还原）。
-        // 若用户进入前本就折叠着，此处不展开，避免擅自改动其原有工作区布局。
+        // 持久化必须跟上：_enter 已把 1200 写进 settings.displayWidth；不落盘则重启后宽度会读回 1200 —— 与「退出即回到纵向默认宽度」矛盾。
+        // 与 layoutMode 合并成**一次批量写**（原先两次 putSetting = 两次全量 settings.json 读+写）。
+        this._persistBatch({ layoutMode: 'none', displayWidth: exitWidth });
+        this._updateButtonText();
+        this._collapseRequested = false;   // 复位，供下次进入重新请求折叠
+
+        // ② 先展开右侧栏（仅当此前由本模块折叠），再移回侧栏。
+        //    顺序反过来会让面板落进一个「正在展开」的侧栏 → 位置跳动。
         if (this._collapsedRightSidebar) {
             this._collapsedRightSidebar = false;
             if (typeof storageManager !== 'undefined' && storageManager.expandRightSidebar) {
@@ -329,40 +390,18 @@ export const LayoutMode = {
                 } catch (e) { console.warn('[LayoutMode] expandRightSidebar throw', e && e.message); }
             }
         }
-        const el = byId('sectionsContainer');
-        // 恢复纵向：摘掉外层居中标记（回到顶部起排的常规纵向布局）
-        const mainWrap = byId('main-container');
-        if (mainWrap) mainWrap.classList.remove('layout-multicol');
-        if (el) {
-            el.classList.remove('horizontal-layout', 'kanban-layout');
-            el.style.display = '';
-            // 拆掉列 wrapper：把板块移回容器直接子元素（恢复纵向流式）
-            this._unreflow(el);
+
+        // ③ 最后请求宿主移回右侧栏（宿主仅当视图由系统从侧栏移来才执行）
+        if (typeof storageManager !== 'undefined' && storageManager.moveToSidebar) {
+            try { storageManager.moveToSidebar(); } catch (e) { /* 不阻塞 */ }
         }
-        // 退出多列后诗词卡恢复纵向/横向模板（带「——」）
-        if (typeof window !== 'undefined' && window.BambooGarden && typeof window.BambooGarden.rerenderPoem === 'function') {
-            window.BambooGarden.rerenderPoem();
-        }
-        // 退出横向/看板：无条件恢复默认内容宽度（多列模式是临时放大，
-        // 退出回到窄布局默认态），不保留进入前宽度。
-        // 同样不做宽度过渡：退出时刚拆完列 wrapper，再叠 250ms 宽度动画会掉帧。
-        // 宽度取 DisplayManager.MIN_WIDTH 而非硬编码 400，避免两处断点各说各话。
-        const exitWidth = (typeof DisplayManager !== 'undefined' && DisplayManager.MIN_WIDTH) || 400;
-        if (typeof DisplayManager !== 'undefined' && DisplayManager._applyWidth) {
-            try { DisplayManager._applyWidth(exitWidth, false); } catch (e) { /* 不阻塞 */ }
-            // 【持久化必须跟上】_enter 已把 800 / 1200 写进 settings.displayWidth，
-            // 若此处只改内存不落盘，重启后 DisplayManager._loadAndApply() 会把宽度读回
-            // 800/1200 —— 纵向布局却顶着多列模式的宽度，与「退出即回到窄布局」自相矛盾，
-            // 表现为「退出后宽度是对的，重启一次又变宽」。
-            if (typeof storageManager !== 'undefined' && storageManager.putSetting) {
-                try { storageManager.putSetting('displayWidth', exitWidth); } catch (e) { /* 不阻塞 */ }
-            }
-        }
-        this._updateButtonText();
+
         // 与进入时对称：响应式类重算和 Toast 延后到下一帧，等拆列后的布局稳定
         const finish = () => {
-            if (typeof DisplayManager !== 'undefined' && DisplayManager._applyResponsiveClasses) {
-                try { DisplayManager._applyResponsiveClasses(); } catch (e) { /* 不阻塞 */ }
+            // willRebuild 时本视图即将被替换，重算响应式类（含一次 getBoundingClientRect）纯属浪费 → 跳过。
+            // 否则走合帧调度：与 ResizeObserver 的请求合并，每帧最多一次强制布局。
+            if (!willRebuild && typeof DisplayManager !== 'undefined' && DisplayManager._scheduleResponsive) {
+                try { DisplayManager._scheduleResponsive(); } catch (e) { /* 不阻塞 */ }
             }
             if (typeof Toast !== 'undefined') {
                 Toast.showToast('已恢复纵向布局', 'info');
@@ -370,8 +409,8 @@ export const LayoutMode = {
         };
         if (typeof requestAnimationFrame === 'function') requestAnimationFrame(finish);
         else setTimeout(finish, 16);
-        // 退出也播一次淡入，切换手感一致
-        this._playSwitchTransition(el);
+        // 注意：退出不再播 layout-switching 淡入 —— 面板即将被重建替换，
+        // 淡入看不见，反而会与新面板叠加造成一次闪烁。
     },
 
     /**
@@ -383,8 +422,9 @@ export const LayoutMode = {
     reflow() {
         const el = byId('sectionsContainer');
         if (!el) return;
+        // 「移中央」进行中：旧面板保持纵向原样，不要抢先分列（否则先变形再被替换 = 闪一下）
+        if (this._movingToCenter) return;
         if (this._mode === 'kanban') this._reflowKanban(el);
-        else if (this._mode === 'horizontal') this._reflowHorizontal(el);
     },
 
     /**
@@ -428,31 +468,6 @@ export const LayoutMode = {
         return out;
     },
 
-    /** 横向分列：交替均衡入列（每行 2 个板块的瀑布流） */
-    _reflowHorizontal(container) {
-        if (!container) return;
-        this._unreflow(container);
-        const items = this._orderedItems(container);
-        // 按「当前」板块数重算列数（每行 2 个板块，最少 2 列）。
-        // 不能沿用 _enter 时算出的 _columns：渲染系统在 init() 恢复布局之后才渲染板块，
-        // 那时板块数为 0，陈旧值会让后续列数与实际板块数不符。
-        const cols = Math.max(2, Math.ceil(items.length / 2));
-        this._columns = cols;
-        // 在文档外（Fragment）把整棵列结构组装完，再一次插入容器：
-        // 逐个 appendChild 到文档中会让布局反复失效，批量插入只失效一次。
-        const frag = document.createDocumentFragment();
-        const wrappers = [];
-        for (let i = 0; i < cols; i++) {
-            const col = document.createElement('div');
-            col.className = 'layout-col';
-            wrappers.push(col);
-            frag.appendChild(col);
-        }
-        items.forEach((item, idx) => { wrappers[idx % cols].appendChild(item); });
-        container.appendChild(frag);
-        this._logReflow('reflowHorizontal', cols, wrappers);
-    },
-
     /** 看板分列：一行全排开，每个板块独占一列 */
     _reflowKanban(container) {
         if (!container) return;
@@ -460,6 +475,9 @@ export const LayoutMode = {
         // 同样走权威顺序：局部渲染会把新板块 appendChild 到容器顶层，
         // 直接用 DOM 顺序会让新板块被排到列尾而非其应在的位置。
         const items = this._orderedItems(container);
+        // 尚无板块（init 恢复时板块还没渲染）：不做任何 DOM 工作，等渲染完 reflow 再分列。
+        // 否则会先建一个空列 wrapper 再被下一次 reflow 拆掉 —— 白做一次 DOM 变更与重排。
+        if (items.length === 0) { this._columns = 1; return; }
         // 看板：一行全排开，每板块独占一列（列数 = 板块数）。
         // 必须按「当前」板块数重算：init() 恢复看板时板块尚未渲染（visibleCount=0），
         // 沿用那时算出的 _columns=1 会把所有板块塞进 1 列 → 视觉上等同纵向，
@@ -509,13 +527,12 @@ export const LayoutMode = {
         container.appendChild(frag);
     },
 
-    /** 同步循环按钮文案：纵向→「横向布局」、横向→「看板模式」、看板→「恢复纵向」 */
+    /** 同步循环按钮文案：纵向→「看板模式」、看板→「恢复纵向」 */
     _updateButtonText() {
         const textEl = byId('fabLayoutToggleText');
         if (!textEl) return;
-        if (this._mode === 'horizontal') textEl.textContent = '看板模式';
-        else if (this._mode === 'kanban') textEl.textContent = '恢复纵向';
-        else textEl.textContent = '横向布局';
+        if (this._mode === 'kanban') textEl.textContent = '恢复纵向';
+        else textEl.textContent = '看板模式';
     },
 
     /**
@@ -534,20 +551,6 @@ export const LayoutMode = {
         if (settingWidth > 0 && settingWidth < 600) {
             this._forceOff();
         }
-    },
-
-    /**
-     * 宽度驱动升级：横向模式 + 内容宽度 ≥1080px → 自动进入看板模式。
-     * 由 DisplayManager._applyResponsiveClasses 在内容宽度变化时调用。
-     * 单向联动（≥1080 升看板）；反向（<1080 回横向）保持手动切换。
-     * @param {number} settingWidth 内容宽度设置
-     */
-    checkAndUpgradeToKanban(settingWidth) {
-        if (this._mode !== 'horizontal') return;
-        if (this._justEntered) return;
-        if (settingWidth > 0 && settingWidth >= 1080) {
-            this._enter('kanban');
-        }
     }
 };
 
@@ -558,6 +561,20 @@ window.LayoutMode = LayoutMode;
     if (typeof EventBus !== 'undefined' && typeof EventBus.on === 'function') {
         EventBus.on('storage:initialized', () => {
             try { LayoutMode.init(); } catch (e) { /* 不阻塞启动 */ }
+        });
+        // 「移中央」完成后宿主通知本面板已揭示 → 此时才折叠右侧栏：
+        // 既不提前藏掉旧面板，也不会像旧面板那样因销毁而丢回执。
+        EventBus.on('layout:revealed', () => {
+            try {
+                if (!LayoutMode.isActive()) return;
+                if (LayoutMode._restoring) {
+                    // 极少数情况下 revealed 早于 init 的异步设置读取完成（_restoring 仍为 true）：
+                    // 下一拍重试一次，避免折叠请求被静默吞掉、右栏永不折叠。
+                    setTimeout(() => { try { LayoutMode._requestCollapseIfNeeded(); } catch (e) { /* 不阻塞 */ } }, 0);
+                    return;
+                }
+                LayoutMode._requestCollapseIfNeeded();
+            } catch (e) { /* 不阻塞 */ }
         });
     } else {
         setTimeout(() => {

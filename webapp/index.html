@@ -9,6 +9,9 @@
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect fill='%232D5A27' width='32' height='32' rx='6'/><path d='M16 6v20M16 10l-4 2M16 10l4 2M16 16l-3 1.5M16 16l3 1.5' stroke='%23ffffff' stroke-width='2' stroke-linecap='round'/></svg>">
 <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect fill='%232D5A27' width='180' height='180' rx='40'/><path d='M90 40v100M90 60l-20 10M90 60l20 10M90 90l-15 7.5M90 90l15 7.5' stroke='%23ffffff' stroke-width='8' stroke-linecap='round'/></svg>">
 <title>Bamboo Immortals</title>
+<!-- 注意：不要在这里给 html/文档加背景色兜底。
+     实测证明：iframe 原本不设背景 → 透明 → 透出 Obsidian 自身底色，启动时不会闪；
+     一旦强制刷成纯白，启动/重建时就会「先白 → 后渐变」闪一下（浅色模式尤其明显）。 -->
 <link rel="stylesheet" href="assets/styles/variables.css?__BUILD__">
 <link rel="stylesheet" href="assets/styles/base.css?__BUILD__">
 <link rel="stylesheet" href="assets/styles/scroll-overlay.css?__BUILD__">
@@ -161,9 +164,9 @@
                             <span class="fab-btn-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg></span>
                             <span class="fab-btn-text">设置</span>
                         </button>
-                        <button class="fab-action-btn desktop-only" data-action="fab-layout-toggle" role="menuitem" aria-label="横向布局">
+                        <button class="fab-action-btn desktop-only" data-action="fab-layout-toggle" role="menuitem" aria-label="看板模式">
                             <span class="fab-btn-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg></span>
-                            <span class="fab-btn-text" id="fabLayoutToggleText">横向布局</span>
+                            <span class="fab-btn-text" id="fabLayoutToggleText">看板模式</span>
                         </button>
                     </div>
                 </div>

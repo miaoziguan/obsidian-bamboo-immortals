@@ -102,6 +102,9 @@ export const RenderScheduler = {
             : [];
 
         const hasThemeEffect = dirtyIds.has('themeEffect');
+        // 【性能】只有「旧元素不存在、需按序插入到容器顶层」时才需要重分列；
+        // replaceWith 是原地替换（仍在列 wrapper 内），不需要重建所有列。
+        let needsReflow = false;
 
         dirtyIds.forEach(sectionId => {
             if (sectionId === 'themeEffect') return;
@@ -125,6 +128,7 @@ export const RenderScheduler = {
                     oldEl.replaceWith(newEl);
                 } else {
                     this._insertInOrder(sectionsContainer, newEl, sectionId, allSections);
+                    needsReflow = true;   // 新板块落在容器顶层（绕开列 wrapper）→ 需要重分列
                 }
             }
         });
@@ -146,6 +150,7 @@ export const RenderScheduler = {
                             oldThemeEl.replaceWith(newThemeEl);
                         } else {
                             this._insertInOrder(sectionsContainer, newThemeEl, 'themeEffect', allSections);
+                            needsReflow = true;   // 同上：新板块落在容器顶层
                         }
                     }
                 }
@@ -174,9 +179,27 @@ export const RenderScheduler = {
             try { this._tooltipFn(); } catch (e) { /* noop */ }
         }
 
-        // 多列（瀑布流）模式下，渲染可能把板块插回容器顶层（绕开列 wrapper），
-        // 重新分列保持列独立高度布局
-        if (typeof LayoutMode !== 'undefined' && LayoutMode.isActive && LayoutMode.isActive()) {
+        // 【性能 + 正确性】多列模式下：只要有板块落在容器顶层（不在 .layout-col 内），就必须重分列。
+        //
+        // 不能只看「本次是否新增插入」：firstPaintProgressive 会先清空容器（连同列 wrapper），
+        // 再插入顶层占位块，下一帧用真实板块 replaceWith 占位块 —— 替换后的板块仍在容器顶层。
+        // 若只按「新增插入」判断，这条路径会漏掉，导致看板列缺板块、排版错乱。
+        //
+        // 反之，常规局部渲染（勾选待办 / 时间线更新）里 replaceWith 是在列内原地替换，
+        // 所有顶层子元素都是 .layout-col → 无需 reflow，避免 O(N) DOM 搬移（这就是性能优化的目的）。
+        let needReflowFinal = needsReflow;
+        const layoutActive = typeof LayoutMode !== 'undefined' && LayoutMode.isActive && LayoutMode.isActive();
+        if (!needReflowFinal && layoutActive) {
+            const kids = sectionsContainer.children;
+            for (let i = 0; i < kids.length; i++) {
+                const child = kids[i];
+                if (!child.classList || !child.classList.contains('layout-col')) {
+                    needReflowFinal = true;   // 有板块裸露在容器顶层 → 必须重建列
+                    break;
+                }
+            }
+        }
+        if (needReflowFinal && layoutActive) {
             try { LayoutMode.reflow(); } catch (e) { /* noop */ }
         }
     },
@@ -286,10 +309,18 @@ export const RenderScheduler = {
             this._insertInOrder(sectionsContainer, placeholder, id, allVisible);
         });
 
-        requestAnimationFrame(() => {
+        // 第二帧渲染次要板块：用 rAF 让浏览器先画出 timeline/todo，避免首屏 jank。
+        // rAF 在「隐藏/后台」iframe 下会被 Chromium 节流甚至暂停；这里加 setTimeout 兜底（谁先到算谁），
+        // 确保次要板块总能及时渲染、不依赖 rAF 一定触发。
+        let deferredDone = false;
+        const renderDeferred = () => {
+            if (deferredDone) return;
+            deferredDone = true;
             deferredIds.forEach(id => this.markDirty(id));
             this.flush();
-        });
+        };
+        if (typeof requestAnimationFrame === 'function') requestAnimationFrame(renderDeferred);
+        setTimeout(renderDeferred, 60);
     },
 
     startDateTransition(direction, renderCallback) {

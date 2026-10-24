@@ -226,8 +226,12 @@ export class AppAPI {
   onLicenseActivated?: () => void;
   /** 当前视图是否位于主工作区（中央）回调（由 DailyReviewView 注入） */
   isMainLeaf?: () => boolean;
-  /** 把当前视图移动到主工作区回调（由 DailyReviewView 注入）；mode 为当前布局模式 */
-  moveToCenter?: (mode?: string) => void;
+  /** 当前视图是否是由系统从侧边栏移到中央的（由 DailyReviewView 注入）。webapp 用它判断
+   *  「退出多列时本视图一定会被重建」→ 可跳过 unreflow / 宽度复位等"打在即将销毁视图上"的工作（性能）。 */
+  cameFromSidebar?: () => boolean;
+  /** 把当前视图移动到主工作区回调（可返回 Promise：宿主等「新面板就绪 → 显示激活 → 销毁旧面板」
+   *  全部完成后再回复，webapp 据此在正确的时机折叠右侧栏，避免闪烁） */
+  moveToCenter?: (mode?: string) => void | Promise<void>;
   /** 把当前视图移回右侧栏回调（由 DailyReviewView 注入；仅当视图由系统从侧栏移来才执行） */
   moveToSidebar?: () => void;
   /** 折叠 Obsidian 右侧栏回调（由 DailyReviewView 注入；进入横向/看板多列模式时调用）
@@ -378,6 +382,12 @@ export class AppAPI {
       );
     }
     void this.saveSettings(); // 与 saveSectionConfig/saveCustomNoises 一致，持久化主题跟随开关
+  }
+
+  /** 向本视图的 webapp 推送一条单向消息（无 id、不期待响应）。用于「已揭示」等宿主主动通知。 */
+  pushRaw(type: string, payload?: unknown): void {
+    if (!this.iframe?.contentWindow) return;
+    this.iframe.contentWindow.postMessage({ type, payload: payload ?? {} }, '*');
   }
 
   /** 向 iframe 发送成功响应 */
@@ -803,6 +813,10 @@ export class AppAPI {
         // 门控：webapp 启动即知激活状态，未激活时显示全屏激活遮罩
         licenseActive: this.licenseStore.isActive(),
         sectionConfig: this.settings.sectionConfig || null,
+        // 【性能】全量设置随握手一次性下发：webapp 启动期有大量 getSetting（全仓 52 处调用点），
+        // 每条都是一次 IPC + 宿主「读整份 settings.json → 解析」。客户端拿这份快照做短期缓存，
+        // 可把「视图重建」（切换布局 / 重开面板）的启动读盘次数降到 0。
+        settings: this.settings || {},
         // 仅下发主题清单（名字 + meta），代码不在此全量下发；
         // webapp 在用户点选/恢复外部主题时经 theme:load 按需取回，避免 5 个主题代码一次性跨进程灌入。
         customThemes: this.customThemeManifests,
@@ -820,6 +834,8 @@ export class AppAPI {
         appVersion: hostAppVersion,
         // 视图是否在主工作区（中央）：侧边栏时 webapp 据此决定是否请求移动到中央
         isMainLeaf: this.isMainLeaf ? this.isMainLeaf() : true,
+        // 是否由系统从侧栏移到中央：webapp 据此判断"退出多列时本视图必然重建 → 跳过死视图上的工作"。
+        cameFromSidebar: this.cameFromSidebar ? this.cameFromSidebar() : false,
         // 重建视图（侧边栏移中央）后待恢复的布局模式，webapp 据此自动进入横向/看板
         pendingLayoutMode: this.getPendingLayoutMode ? this.getPendingLayoutMode() : null,
       });
@@ -1120,8 +1136,11 @@ export class AppAPI {
         // mode 会被写进视图状态（pendingLayoutMode）并随 workspace 布局跨重启持久化，
         // 重启后又经 app:ready 注入 webapp 兜底恢复。必须白名单收口，
         // 否则任意字符串会被存进布局文件、并在恢复时被当成布局模式消费。
-        const raw = (payload as { mode?: string })?.mode;
-        const mode = raw === 'kanban' || raw === 'horizontal' ? raw : 'horizontal';
+        // 横向模式已移除：无论 payload 传什么，一律按看板处理（仍保留白名单语义，不接受任意值）
+        const mode = 'kanban';
+        // 立即回复（不等移动完成）：移动会销毁本视图的 webview，
+        // 若等它结束再 respond，iframe 已不存在 → 回执必然丢失（respond 里 contentWindow 为空直接 return）。
+        // 折叠右侧栏已改为「新面板收到 app:revealed 后自行发起」，不依赖这条回执。
         this.moveToCenter(mode);
         this.respond(id, { ok: true });
       } else {
@@ -1784,6 +1803,9 @@ export class AppAPI {
         return await this.storage.getSetting(p.key as string);
       case 'storage:putSetting':
         return await this.storage.putSetting(p.key as string, p.value);
+      case 'storage:putSettings':
+        // 批量写：一次读 + 一次原子写（切换布局时成对写 layoutMode/displayWidth 用它）
+        return await this.storage.putSettings((p.values || {}) as Record<string, unknown>);
       case 'storage:getAllSettings':
         return await this.storage.getAllSettings();
       case 'storage:getGoals':

@@ -397,38 +397,14 @@
     gap: calc(var(--space-6) * var(--section-gap-scale));
 }
 
-/* 桌面端横向布局模式：在首页根容器 #reviewContainer（class .container）上加 .horizontal-layout 时，
-   首页板块从纵向流式改为多列网格（按板块数均分列数）。
-   沿用现有板块顺序，仅改变排版方向（多列换行），不触碰板块顺序逻辑。
-   默认纵向；仅手动切到横向才生效（会话内临时视图，不持久化）。
-   仅 ≥600px 生效（与 display-compact ≤600 窄栏语义对齐）：更窄时即使残留 class
-   也强制纵向 + 隐藏入口，保证"桌面/宽栏专属"。 */
+/* 桌面端多列（看板）入口显隐：仅 ≥600px 显示（与 display-compact ≤600 窄栏语义对齐），
+   保证"桌面/宽栏专属"。 */
 .desktop-only {
     display: none;
 }
 @media (min-width: 600px) {
     .desktop-only {
         display: inline-flex;
-    }
-
-    /* ===== 横向模式（独立规则）：交替入列瀑布流 ===== */
-    .sections-container.horizontal-layout {
-        display: flex;
-        flex-direction: row;
-        flex-wrap: wrap;
-        align-items: flex-start;
-        gap: calc(var(--space-6) * var(--section-gap-scale));
-    }
-    .sections-container.horizontal-layout .layout-col {
-        flex: 1 1 0;
-        min-width: 0;
-        display: flex;
-        flex-direction: column;
-        gap: calc(var(--space-6) * var(--section-gap-scale));
-    }
-    .sections-container.horizontal-layout .layout-col #themeEffectSection {
-        width: 100%;
-        min-width: 0;
     }
 
     /* ===== 看板模式（独立规则）：一行全排开，每板块一列 ===== */
@@ -481,8 +457,10 @@
 
 @keyframes layoutSwitchIn {
     from {
-        opacity: 0;
-        transform: translateY(8px);
+        /* 不能从 0 起步：整块内容消失 0.26s 会露出背景 = 一次"背景闪烁"。
+           0.85 足以柔化分列重建的跳变，同时保证画面全程可见。 */
+        opacity: 0.85;
+        transform: translateY(6px);
     }
     to {
         opacity: 1;

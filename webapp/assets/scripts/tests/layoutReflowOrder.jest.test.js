@@ -62,25 +62,24 @@ function setup(ids) {
     return { LayoutMode, put, sc: document.getElementById('sectionsContainer') };
 }
 
-describe('横向模式：reflow 幂等（板块顺序不跳）', () => {
+describe('多列 reflow 幂等（板块顺序不跳；横向模式已移除，统一按看板验证）', () => {
     test('连续两次 reflow 的列结构完全一致', () => {
         const { LayoutMode, sc } = setup(['a', 'b', 'c', 'd']);
-        LayoutMode._mode = 'horizontal';
+        LayoutMode._mode = 'kanban';
 
         LayoutMode.reflow();
         const first = colsOf(sc);
         LayoutMode.reflow();
         const second = colsOf(sc);
 
-        // 视觉阅读顺序（左右交替）= a b / c d
-        expect(first).toEqual([['a', 'c'], ['b', 'd']]);
-        // 关键：第二次不得变成 [['a','b'], ['c','d']]（那是旧实现的错序结果）
+        // 看板：每板块独占一列，按权威顺序排列
+        expect(first).toEqual([['a'], ['b'], ['c'], ['d']]);
         expect(second).toEqual(first);
     });
 
     test('连续五次 reflow 仍保持初始列结构', () => {
         const { LayoutMode, sc } = setup(['a', 'b', 'c', 'd', 'e']);
-        LayoutMode._mode = 'horizontal';
+        LayoutMode._mode = 'kanban';
 
         LayoutMode.reflow();
         const first = colsOf(sc);
@@ -91,7 +90,7 @@ describe('横向模式：reflow 幂等（板块顺序不跳）', () => {
 
     test('局部渲染新板块后（appendChild 到容器顶层）仍按注册表顺序归位', () => {
         const { LayoutMode, sc } = setup(['a', 'b', 'c']);
-        LayoutMode._mode = 'horizontal';
+        LayoutMode._mode = 'kanban';
         LayoutMode.reflow();
 
         // 模拟 renderScheduler._doPartialRender 的降级路径：新板块被追加到容器顶层
@@ -103,7 +102,7 @@ describe('横向模式：reflow 幂等（板块顺序不跳）', () => {
         global.SectionRegistry = { getVisible: () => ['a', 'b', 'c', 'd'].map((id) => ({ id })) };
 
         LayoutMode.reflow();
-        expect(colsOf(sc)).toEqual([['a', 'c'], ['b', 'd']]);
+        expect(colsOf(sc)).toEqual([['a'], ['b'], ['c'], ['d']]);
     });
 });
 
@@ -143,5 +142,43 @@ describe('退出多列：宽度持久化与模式白名单', () => {
 
         expect(LayoutMode._mode).toBe('none');
         expect(put.filter(([k]) => k === 'layoutMode')).toHaveLength(0);
+    });
+});
+
+// ── 渲染后「是否需要重分列」的判定（性能优化不得漏掉顶层板块） ──
+describe('渲染后重分列判定：顶层板块必须触发重分列', () => {
+    function loadScheduler() {
+        return loadModule('renderers/renderScheduler.js', ['RenderScheduler'], {
+            byId: (id) => document.getElementById(id),
+            getDomRoot: () => document.documentElement,
+        }).RenderScheduler;
+    }
+
+    test('列内原地替换（顶层全是 .layout-col）→ 不重分列（性能）', () => {
+        setup(['a', 'b']);
+        const sc = document.getElementById('sectionsContainer');
+        sc.innerHTML =
+            '<div class="layout-col kanban-col"><div class="section" data-section-id="a">a</div></div>' +
+            '<div class="layout-col kanban-col"><div class="section" data-section-id="b">b</div></div>';
+        const RS = loadScheduler();
+        RS._sectionRenderFns = {};
+        let reflows = 0;
+        global.LayoutMode = { isActive: () => true, reflow: () => { reflows++; } };
+        RS._doPartialRender(new Set());
+        expect(reflows).toBe(0);
+    });
+
+    test('有板块裸露在容器顶层（首屏占位块被替换后的形态）→ 必须重分列', () => {
+        setup(['a', 'b']);
+        const sc = document.getElementById('sectionsContainer');
+        sc.innerHTML =
+            '<div class="layout-col kanban-col"><div class="section" data-section-id="a">a</div></div>' +
+            '<div class="section" data-section-id="b">b</div>';
+        const RS = loadScheduler();
+        RS._sectionRenderFns = {};
+        let reflows = 0;
+        global.LayoutMode = { isActive: () => true, reflow: () => { reflows++; } };
+        RS._doPartialRender(new Set());
+        expect(reflows).toBe(1);
     });
 });

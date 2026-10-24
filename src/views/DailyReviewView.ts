@@ -30,6 +30,15 @@ export class DailyReviewView extends ItemView {
   private pendingLayoutMode: string | null = null;
   /** 视图是否由系统从侧边栏移到中央（恢复纵向时据此决定是否移回右栏） */
   private cameFromSidebar = false;
+  /** 重入保护：一次移动流程未结束时忽略后续移动请求（快速连点会并发重建 → 交接悬挂/双面板） */
+  private _movingToCenter = false;
+
+  /**
+   * 恢复纵向 / 进入看板：Obsidian 没有「移动 leaf 而不重建视图」的官方 API，故切换只能
+   * getLeaf/setRightLeaf + setViewState + detach 旧 leaf（新 webview 必然重新加载）。
+   * 方案 1：不做隐藏/预热/握手，直接 setViewState 激活新视图并 detach 旧视图，换取代码最简；
+   * 代价是冷加载时新视图先 blank 再填充（极短闪），热路径几乎无感。
+   */
 
   constructor(
     leaf: WorkspaceLeaf,
@@ -119,23 +128,33 @@ export class DailyReviewView extends ItemView {
 
     // 视图是否在主工作区（中央）：webapp 进入横向/看板模式时据此决定是否请求移动。
     // 用 leaf 容器是否位于左右侧边栏（Obsidian 固定布局类）判定，稳定可靠。
+    this.appAPI.cameFromSidebar = () => !!this.cameFromSidebar;
     this.appAPI.isMainLeaf = () => {
       try {
-        const el = this.leaf.view.containerEl;
-        const inSidebar = el.closest('.mod-left-split, .mod-right-split') !== null;
-        return !inSidebar;
+        // 用公开 API 判定：leaf 所属 root 只要不是左右侧栏，就算「在主工作区」。
+        // 旧实现依赖 Obsidian 内部类名（.mod-left-split/.mod-right-split），改版即失效。
+        const ws = this.app.workspace as unknown as { leftSplit?: unknown; rightSplit?: unknown };
+        const root = this.leaf.getRoot();
+        if (!root) return true;
+        return root !== ws.leftSplit && root !== ws.rightSplit;
       } catch {
         return true;
       }
     };
 
-    // 侧边栏点横向/看板 → 原位移动到主工作区（不重建视图，app.workspace.moveLeaf 为运行时 API，
-    // 未声明于 d.ts，故做类型断言 + 功能检测；缺失时回退为提示用户手动移动）
-    this.appAPI.moveToCenter = (mode?: string) => {
+    // 侧边栏点横向/看板 → 移动到主工作区。
+    // 注意：Obsidian 没有「移动 leaf 而不重建视图」的 API（moveLeaf / moveLeafToSplit 均不存在），
+    // 实现上必然是 getLeaf(true) + setViewState + detach 旧 leaf（重建 webview）。
+    // 因此切换必然有一次 webview 重载（冷加载先 blank 再填充）；方案 1 不做预热握手，
+    // 直接揭示新视图、换取代码最简，见 moveViewToCenter。
+    this.appAPI.moveToCenter = (_mode?: string) => {
       const isMain = this.appAPI?.isMainLeaf?.() ?? true;
       // 已在主工作区（中央）：无需移动
       if (isMain) return;
-      void this.moveViewToCenter(mode || 'horizontal');
+      // 返回 promise：宿主直接重建并揭示新视图后即回复 webapp（方案 1 不做预热握手）。
+      // 折叠右侧栏不依赖这个回执（旧 webview 会被销毁、回执收不到），改走 layout:revealed。
+      // 横向模式已移除：多列只有看板。
+      return this.moveViewToCenter('kanban');
     };
     // 重建视图（侧边栏移中央）后，webapp app:ready 时带回待恢复的布局模式
     this.appAPI.getPendingLayoutMode = () => {
@@ -322,28 +341,47 @@ export class DailyReviewView extends ItemView {
    * getLeaf(true)（中央新 leaf）→ setViewState(本视图，state 携带待恢复模式) → detach 旧 leaf。
    */
   private async moveViewToCenter(mode: string): Promise<void> {
+    if (this._movingToCenter) return;   // 重入保护：上一次移动尚未结束，忽略连点
+    this._movingToCenter = true;
     try {
       const ws = this.app.workspace;
+      const isMain = this.leaf.getRoot() === ws.rootSplit;
+      // 已在中央：原地切换，交给 webapp 的 _enter 在现有视图上做分列（不重建）
+      if (isMain) return;
+
+      // 侧栏 → 中央：Obsidian 无「移动 leaf 而不重建」的官方 API，只能重建。
+      // 方案 1：直接建中央 leaf 并激活，随即 detach 旧侧栏 leaf；不做隐藏/预热/握手，
+      // 换取代码最简。冷加载时新视图先 blank 再填充（极短闪），热路径几乎无感。
       const targetLeaf = ws.getLeaf(true);
       if (!targetLeaf) {
         new Notice('无法移动到中央工作区', 3000);
         return;
       }
-      // 在目标 leaf 上打开本视图，state 携带待恢复的布局模式 + 来源标记
       await targetLeaf.setViewState({
         type: VIEW_TYPE_DAILY_REVIEW,
         state: { pendingLayoutMode: mode, cameFromSidebar: true },
-        active: true,
+        active: false,
       });
-      // 关闭原侧边栏 leaf
+      const newView = targetLeaf.view instanceof DailyReviewView ? targetLeaf.view : null;
+      this.app.workspace.setActiveLeaf(targetLeaf, { focus: false });
+      // 通知新面板「已揭示」→ 它自行折叠右侧栏（由新面板发起，避免提前藏旧面板）
+      if (newView && typeof newView.notifyRevealed === 'function') newView.notifyRevealed();
+      // 最后才关闭原侧边栏 leaf
       this.leaf.detach();
     } catch {
       new Notice('请将视图移至中央工作区以获得最佳横向布局体验', 3000);
+    } finally {
+      this._movingToCenter = false;
     }
   }
 
-  /** 把视图移回右侧栏（方案 Y 反向：getRightLeaf + setViewState + detach 旧 leaf） */
+  /** 把视图移回右侧栏（方案 Y 反向：getRightLeaf + setViewState + detach 旧 leaf）。
+   *  说明：Obsidian 没有「移动 leaf 而不重建视图」的公开 API，故恢复纵向必然重建 webview。
+   *  方案 1：不做隐藏/预热/握手，直接激活侧栏新视图并 detach 旧中央 leaf，换取代码最简；
+   *  冷加载时新视图先 blank 再填充（极短闪），可接受。 */
   private async moveViewToSidebar(): Promise<void> {
+    if (this._movingToCenter) return;   // 与「移中央」互斥，避免两条重建路径交叉
+    this._movingToCenter = true;
     try {
       const ws = this.app.workspace;
       const rightLeaf = ws.getRightLeaf(false) || ws.getRightLeaf(true);
@@ -356,15 +394,31 @@ export class DailyReviewView extends ItemView {
       // 它就是 this.leaf —— 此时 setViewState 是空操作，而紧随的 this.leaf.detach()
       // 会把面板整个关掉，表现为「点了一下恢复纵向，面板没了」。已在右栏则直接收工。
       if (rightLeaf === this.leaf) return;
-      // 在右栏 leaf 上打开本视图（纵向为默认布局，无需恢复模式）
-      await rightLeaf.setViewState({
-        type: VIEW_TYPE_DAILY_REVIEW,
-        active: true,
-      });
+
+      // 该 leaf 已承载本视图（复用实例，不会重新加载页面）：直接激活并收工。
+      if (rightLeaf.view instanceof DailyReviewView) {
+        await rightLeaf.setViewState({ type: VIEW_TYPE_DAILY_REVIEW, active: true });
+        this.leaf.detach();
+        return;
+      }
+
+      // 方案 1：直接激活侧栏新视图（不隐藏/预热），再 detach 旧中央 leaf。
+      // 冷加载时新视图会先 blank 再填充（极短闪），可接受。
+      await rightLeaf.setViewState({ type: VIEW_TYPE_DAILY_REVIEW, active: false });
+      this.app.workspace.setActiveLeaf(rightLeaf, { focus: false });
       this.leaf.detach();
     } catch {
       // 移回侧栏失败：静默兜底
+    } finally {
+      this._movingToCenter = false;
     }
+  }
+
+  /** 通知本视图的 webapp：面板已被揭示（可见且已绘制）。
+   *  新面板据此**自己**折叠右侧栏 —— 提前折叠会把尚未被接替的旧面板一起藏掉，出现空白闪烁；
+   *  而由旧面板发起又因它将销毁而永远收不到回执。 */
+  notifyRevealed(): void {
+    this.appAPI?.pushRaw('app:revealed', {});
   }
 
   async onClose(): Promise<void> {

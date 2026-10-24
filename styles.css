@@ -31,6 +31,8 @@ html body .workspace-leaf-content[data-type="bamboo-module"] .view-header {
   overflow: hidden;
   padding: 0;
   margin: 0;
+  /* 不要在此设背景色：iframe 是透明的（见 .bamboo-review-frame），设了反而会在
+     视图重建/启动时先刷出一块实色再被 webapp 背景覆盖 —— 观感就是闪一下。保持透明即可。 */
 }
 
 .bamboo-review-frame {

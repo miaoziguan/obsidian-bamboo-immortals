@@ -346,6 +346,18 @@ a:active) {
     box-sizing: border-box;
 }
 
+/* 多列（横向/看板）把视图移到中央后：内容垂直居中，而不是贴顶偏上。
+   仅多列模式生效；常规纵向（长内容滚动）仍从顶部起排。
+   配合下面把 .container 的上下边距补成对称——它原本是 `margin: space-6 auto 0`
+   （下边距 0），单靠 align-items:center 也会因边距不对称而整体偏上。 */
+#main-container.layout-multicol {
+    align-items: center;
+}
+#main-container.layout-multicol .container {
+    margin-top: var(--space-6);
+    margin-bottom: var(--space-6);
+}
+
 :host::before {
     content: '';
     position: fixed;

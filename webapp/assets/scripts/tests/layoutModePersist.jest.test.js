@@ -18,11 +18,13 @@ const { loadModule } = require('./__helpers__/testUtils');
  */
 function setup({ persisted, pending, isMainLeaf = true }) {
   document.body.innerHTML = `
-    <div id="reviewContainer">
-      <div id="sectionsContainer">
-        <div class="section">a</div>
-        <div class="section">b</div>
-        <div class="section">c</div>
+    <div id="main-container">
+      <div id="reviewContainer">
+        <div id="sectionsContainer">
+          <div class="section">a</div>
+          <div class="section">b</div>
+          <div class="section">c</div>
+        </div>
       </div>
     </div>
   `;
@@ -127,4 +129,14 @@ test('渲染后 reflow() 按实际板块数重算看板列数（init 时板块�
 
   expect(LayoutMode.getColumns()).toBe(3);                                  // 列数按实际板块数重算
   expect(sc.querySelectorAll('.layout-col.kanban-col').length).toBe(3);      // 每板块独占一列
+});
+
+test('多列垂直居中：进入加 layout-multicol 标记，退出移除（避免中央视图内容贴顶偏上）', () => {
+  const LM = setup({ persisted: null, pending: null });
+  const main = document.getElementById('main-container');
+  expect(main.classList.contains('layout-multicol')).toBe(false);
+  LM._enter('kanban');
+  expect(main.classList.contains('layout-multicol')).toBe(true);
+  LM._forceOff();
+  expect(main.classList.contains('layout-multicol')).toBe(false);
 });

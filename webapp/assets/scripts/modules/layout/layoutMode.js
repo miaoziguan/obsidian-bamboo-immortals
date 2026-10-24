@@ -205,6 +205,10 @@ export const LayoutMode = {
         // 移除旧模式 class，设置新模式 class
         el.classList.remove('horizontal-layout', 'kanban-layout');
         el.classList.add(mode === 'kanban' ? 'kanban-layout' : 'horizontal-layout');
+        // 多列（横向/看板）会把视图移到中央：给外层容器加标记，交给 CSS 做垂直居中。
+        // 否则 #main-container 默认 align-items:flex-start + .container 下边距为 0 → 内容贴顶、偏上。
+        const mainWrap = byId('main-container');
+        if (mainWrap) mainWrap.classList.add('layout-multicol');
         // 布局切换后让诗词卡按新模式重渲染（看板用竖排无破折号模板，避免残留旧模板）
         if (typeof window !== 'undefined' && window.BambooGarden && typeof window.BambooGarden.rerenderPoem === 'function') {
             window.BambooGarden.rerenderPoem();
@@ -326,6 +330,9 @@ export const LayoutMode = {
             }
         }
         const el = byId('sectionsContainer');
+        // 恢复纵向：摘掉外层居中标记（回到顶部起排的常规纵向布局）
+        const mainWrap = byId('main-container');
+        if (mainWrap) mainWrap.classList.remove('layout-multicol');
         if (el) {
             el.classList.remove('horizontal-layout', 'kanban-layout');
             el.style.display = '';

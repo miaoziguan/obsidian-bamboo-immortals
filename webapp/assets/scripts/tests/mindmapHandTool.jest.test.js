@@ -131,49 +131,56 @@ describe('节点备注：画布标记', () => {
   });
 });
 
-describe('备注卡片：可展开 / 收起', () => {
-  test('点开 → 卡片显示、自动增高并定位，标记转「收起」；再点 → 收起', () => {
-    const close = jest.fn();
-    const mark = { classList: { add: jest.fn(), remove: jest.fn() }, title: '展开备注' };
-    const mm = {
-      _selId: 'a', _noteForId: null,
-      _noteBox: { hidden: true },
-      _noteInput: { value: '', focus: jest.fn(), setSelectionRange: jest.fn(), scrollHeight: 100 },
-      _els: new Map([['a', { _noteMark: mark }]]),
-      _nodeById: () => ({ id: 'a', note: '已有备注' }),
+describe('备注卡片：多实例（可同时展开多个节点笔记）', () => {
+  function mkMark() {
+    return { classList: { add: jest.fn(), remove: jest.fn(), toggle: jest.fn() }, title: '展开节点笔记', hidden: true };
+  }
+  function makeMM() {
+    return {
+      _noteLayer: document.createElement('div'),
+      _noteCards: new Map(),
+      _selId: 'a',
+      _els: new Map([['a', { _noteMark: mkMark() }], ['b', { _noteMark: mkMark() }]]),
+      _nodeById: (id) => ({ id, note: id === 'a' ? '已有备注A' : '已有备注B' }),
       _autoGrowNote: jest.fn(),
       _positionNoteCard: jest.fn(),
-      _closeNoteEditor: close,
+      _makeNoteCard: MindmapFeature._makeNoteCard,
+      _isNoteOpen: MindmapFeature._isNoteOpen,
+      _openNoteEditor: MindmapFeature._openNoteEditor,
     };
-    MindmapFeature._openNoteEditor.call(mm);
-    expect(mm._noteBox.hidden).toBe(false);
-    expect(mm._noteForId).toBe('a');
-    expect(mm._noteInput.value).toBe('已有备注');
-    expect(mm._autoGrowNote).toHaveBeenCalled();
-    expect(mm._positionNoteCard).toHaveBeenCalled();
-    expect(mark.classList.add).toHaveBeenCalledWith('is-open');   // 倒三角 → 正三角
-    expect(mark.title).toBe('收起节点笔记');
-    MindmapFeature._openNoteEditor.call(mm);   // 再点：收起
-    expect(close).toHaveBeenCalled();
+  }
+
+  test('打开 a 再打开 b：两张同时展开，a 不被关闭（核心回归）', () => {
+    const mm = makeMM();
+    mm._openNoteEditor('a');
+    mm._openNoteEditor('b');
+    expect(mm._noteCards.size).toBe(2);
+    expect(mm._noteCards.get('a').box.hidden).toBe(false);
+    expect(mm._noteCards.get('b').box.hidden).toBe(false);
+    expect(mm._noteCards.get('a').input.value).toBe('已有备注A');
+    expect(mm._noteCards.get('b').input.value).toBe('已有备注B');
+    expect(mm._autoGrowNote).toHaveBeenCalledTimes(2);
+    expect(mm._positionNoteCard).toHaveBeenCalledTimes(2);
+    expect(mm._els.get('a')._noteMark.classList.add).toHaveBeenCalledWith('is-open');
+    expect(mm._els.get('b')._noteMark.classList.add).toHaveBeenCalledWith('is-open');
   });
 
-  test('收起 → 标记恢复为倒三角（移除 is-open）', () => {
-    const mark = { classList: { add: jest.fn(), remove: jest.fn() }, title: '收起备注' };
-    const mm = {
-      _noteBox: { hidden: false },
-      _noteInput: { value: '' },
-      _noteForId: 'a',
-      _els: new Map([['a', { _noteMark: mark }]]),
-      _nodeById: () => ({ id: 'a', note: '' }),
-      _mutate: (fn) => fn(),
-      _nodes: [],
-      _paintNode: jest.fn(),
-      _scheduleSave: jest.fn(),
-      _updateToolbar: jest.fn(),
-    };
-    MindmapFeature._closeNoteEditor.call(mm);
-    expect(mm._noteBox.hidden).toBe(true);
-    expect(mark.classList.remove).toHaveBeenCalledWith('is-open');
-    expect(mark.title).toBe('展开节点笔记');
+  test('再点同一节点 = 只收起该张（toggle），另一张不受影响', () => {
+    const mm = makeMM();
+    mm._nodeById = (id) => ({ id, note: '' });
+    mm._mutate = (fn) => fn();
+    mm._nodes = [];
+    mm._paintNode = jest.fn();
+    mm._scheduleSave = jest.fn();
+    mm._updateToolbar = jest.fn();
+    mm._closeNoteEditor = MindmapFeature._closeNoteEditor;
+    mm._openNoteEditor('a');
+    mm._openNoteEditor('b');
+    expect(mm._noteCards.size).toBe(2);
+    mm._openNoteEditor('a');   // toggle a → 只收起 a
+    expect(mm._noteCards.has('a')).toBe(false);
+    expect(mm._noteCards.has('b')).toBe(true);
+    expect(mm._els.get('a')._noteMark.classList.remove).toHaveBeenCalledWith('is-open');
+    expect(mm._els.get('a')._noteMark.title).toBe('展开节点笔记');
   });
 });

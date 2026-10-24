@@ -82,9 +82,7 @@ function groupFixture(groupId = 'groupA') {
   MM._style = 0;
   MM._groupId = groupId;
   MM._editId = null;
-  MM._noteForId = 'n1';                       // 笔记卡片正开着
-  MM._noteBox = { hidden: false };
-  MM._noteInput = { value: '半截笔记' };
+  MM._noteCards = new Map([['n1', { box: { hidden: false }, input: { value: '半截笔记' } }]]);  // 笔记卡片正开着
   MM._closeNoteEditor = jest.fn();
   MM._msg = () => {};
   MM._scheduleSave = () => {};
@@ -126,7 +124,7 @@ describe('组操作前先收起笔记卡片', () => {
 
   test('没有打开笔记卡片时不做多余动作', async () => {
     const MM = groupFixture('groupA');
-    MM._noteForId = null;
+    MM._noteCards = new Map();
     await MM.switchGroup('groupB');
     expect(MM._closeNoteEditor).not.toHaveBeenCalled();
   });
@@ -139,9 +137,7 @@ describe('teardown 兜底写回未失焦的笔记', () => {
     MM._el = document.createElement('div');
     MM._active = true;
     MM._editId = null;
-    MM._noteForId = 'n1';
-    MM._noteBox = { hidden: false };
-    MM._noteInput = { value: '未失焦的笔记' };
+    MM._noteCards = new Map([['n1', { box: { hidden: false }, input: { value: '未失焦的笔记' } }]]);
     MM._persistNote = jest.fn();
     MM._commitEdit = jest.fn();
     MM._scheduleSave = jest.fn();
@@ -158,7 +154,7 @@ describe('teardown 兜底写回未失焦的笔记', () => {
     MM._el = document.createElement('div');
     MM._active = true;
     MM._editId = null;
-    MM._noteForId = null;
+    MM._noteCards = new Map();
     MM._persistNote = jest.fn();
     MM._saveNow = jest.fn();
     MM._saveTimer = 0;

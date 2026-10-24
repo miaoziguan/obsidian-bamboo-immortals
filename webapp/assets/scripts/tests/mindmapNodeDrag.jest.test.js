@@ -44,6 +44,7 @@ function mkDragThis(nodeEl) {
     _elementFromPoint: () => null,
     renderNodes: () => {},
     _nodeById: () => null,
+    _isNoteOpen: () => false,   // 拖拽时查询「该节点备注卡是否展开」，测试无备注
   };
 }
 

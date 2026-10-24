@@ -71,9 +71,8 @@ export const MindmapFeature = {
   _view: null,
   _style: MM_STYLE_AVAILABLE[0],   // 子弹样式索引：导图模式下第一个机身按钮在在售档位内循环切换
   _selId: null,
-  _noteBox: null,          // 备注浮层（DOM）
-  _noteInput: null,        // 备注输入框
-  _noteForId: null,        // 正在编辑备注的节点 id（null = 浮层关闭）
+  _noteLayer: null,        // 备注卡片挂载层（mount 时注入）
+  _noteCards: null,        // 备注卡片：Map<id, {box, input}>，可同时展开多张
   _tbNoteBtn: null,        // 工具条「节点笔记」按钮缓存（_updateToolbar 每帧会跑，不再每帧 querySelector）
   _tbSize: null,           // 工具条尺寸缓存 {h, hw}：尺寸固定，只在首次/重建后量一次（避免每帧强制回流）
   _els: null,               // Map<id, el>
@@ -325,45 +324,18 @@ export const MindmapFeature = {
     });
   },
 
-  /** 备注可展开卡片（子弹只放短关键词，细节写这里；不显示在画布，导出时作为缩进引用）。 */
+  /** 备注卡片改为多实例（每个节点一张，可同时展开多张）。此处只记录挂载层，卡片按需创建。 */
   _initNoteEditor(layer) {
-    const box = document.createElement('div');
-    box.className = 'tw-mm-note-pop';
-    box.hidden = true;
-    // 卡片只保留输入区：标题、×、底部快捷键提示都已去掉（就地编辑、自动保存，
-    // 收起由节点上的倒三角 / Esc / Cmd(Ctrl)+Enter 负责，提示文案没有额外价值）。
-    box.innerHTML = `
-      <textarea class="tw-mm-note-input" placeholder="写节点笔记…" spellcheck="false"></textarea>`;
-    layer.appendChild(box);
-    this._noteBox = box;
-    this._noteInput = box.querySelector('.tw-mm-note-input');
-    // 卡片内交互不冒泡到画布（否则会触发平移 / 取消选中）
-    box.addEventListener('pointerdown', (e) => e.stopPropagation());
-    box.addEventListener('click', (e) => e.stopPropagation());
-    box.addEventListener('wheel', (e) => e.stopPropagation(), { passive: true });
-    this._noteInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') { e.preventDefault(); this._closeNoteEditor(); }
-      else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); this._closeNoteEditor(); }
-    });
-    // 输入时自动增高，并保持卡片在视口内
-    this._noteInput.addEventListener('input', () => {
-      this._autoGrowNote();
-      this._positionNoteCard();
-    });
-    // 失焦只静默保存，不再自动折叠：用户点画布其他处 / 平移画布后，卡片保持展开。
-    // 手动收起：Esc / Cmd(Ctrl)+Enter / 再点节点上的三角（_openNoteEditor 的 toggle）。
-    this._noteInput.addEventListener('blur', (e) => {
-      if (this._noteDragKeep) return;   // 正在拖动这张卡片所属的节点：保持展开，卡片跟手移动
-      this._persistNote();
-    });
+    this._noteLayer = layer;
+    this._noteCards = new Map();
   },
 
-  /** 笔记卡片自动增高（随内容，封顶 260px）。
+  /** 笔记卡片自动增高（随内容，封顶 260px）。input 为对应卡片的 textarea。
    *  注意：scrollHeight 不包含 placeholder —— 空状态若只按内容取高度，会小于占位文案所需，
    *  于是冒出滚动条。这里以 height:auto 让 CSS min-height 兜住下限（能容纳占位文案与首行输入），
    *  且只有内容超过上限时才把 overflow-y 改成 auto。 */
-  _autoGrowNote() {
-    const t = this._noteInput;
+  _autoGrowNote(input) {
+    const t = input;
     if (!t) return;
     const MAX = 260;
     t.style.height = 'auto';
@@ -372,13 +344,13 @@ export const MindmapFeature = {
     t.style.overflowY = need > MAX ? 'auto' : 'hidden';
   },
 
-  /** 把备注卡片贴到节点下方（空间不够翻到上方），水平夹紧在画布内；
+  /** 把某个节点的备注卡片贴到该节点下方（空间不够翻到上方），水平夹紧在画布内；
    *  同时给出箭头朝向（data-side）与指向节点的水平偏移（--caret-x），让它看起来「长在节点上」。
    *  所有坐标都相对画布层（this._el）换算，平移/缩放/拖动后重算即跟随。 */
-  _positionNoteCard() {
-    const id = this._noteForId;
-    const box = this._noteBox;
-    if (!id || !box || box.hidden) return;
+  _positionNoteCard(id) {
+    const card = this._noteCards && this._noteCards.get(id);
+    if (!card || !card.box || card.box.hidden) return;
+    const box = card.box;
     const el = this._els.get(id);
     if (!el) return;
     const lr = this._el.getBoundingClientRect();
@@ -405,42 +377,42 @@ export const MindmapFeature = {
     box.style.setProperty('--caret-x', Math.round(caretX) + 'px');
   },
 
-  /** 展开/收起备注卡片（再点标记或工具条键 = 收起）。 */
-  _openNoteEditor() {
-    if (!this._noteBox || !this._selId) return;
-    if (this._noteForId === this._selId && !this._noteBox.hidden) { this._closeNoteEditor(); return; }   // toggle
-    // 切到另一颗节点前，先把上一张卡片的未提交内容写回
-    if (this._noteForId && this._noteForId !== this._selId) this._closeNoteEditor();
-    const el = this._els.get(this._selId);
+  /** 展开/收起某个节点的备注卡片（再点标记或工具条键 = 收起）。
+   *  多实例：打开一张不会关闭其他已展开的卡片。id 缺省取当前选中节点。 */
+  _openNoteEditor(id) {
+    const nid = id || this._selId;
+    if (!this._noteCards || !nid) return;
+    const el = this._els.get(nid);
     if (!el) return;
-    this._noteForId = this._selId;
-    const n = this._nodeById(this._selId);
-    this._noteInput.value = (n && n.note) || '';
-    this._noteBox.hidden = false;
+    if (this._isNoteOpen(nid)) { this._closeNoteEditor(nid); return; }   // toggle
+    let card = this._noteCards.get(nid);
+    if (!card) card = this._makeNoteCard(nid);
+    const n = this._nodeById(nid);
+    card.input.value = (n && n.note) || '';
+    card.box.hidden = false;
     if (el._noteMark) { el._noteMark.classList.add('is-open'); el._noteMark.title = '收起节点笔记'; }
-    this._autoGrowNote();
-    this._positionNoteCard();
-    this._noteInput.focus();
+    this._autoGrowNote(card.input);
+    this._positionNoteCard(nid);
+    card.input.focus();
     try {
-      const len = this._noteInput.value.length;
-      this._noteInput.setSelectionRange(len, len);   // 光标放到末尾（编辑已有备注不覆盖）
+      const len = card.input.value.length;
+      card.input.setSelectionRange(len, len);   // 光标放到末尾（编辑已有备注不覆盖）
     } catch (_) { /* 选区失败不影响编辑 */ }
   },
 
-  /** 收起备注卡片：有改动则写回（可撤销），并刷新节点标记 / 工具条。
+  /** 收起某个节点的备注卡片：有改动则写回（可撤销），并刷新节点标记 / 工具条。
    *  discard=true（撤销恢复/卸载）时丢弃未提交内容，避免在撤销栈里再插一笔。 */
-  _closeNoteEditor(discard) {
-    const box = this._noteBox;
-    if (!box || box.hidden) return;
-    const id = this._noteForId;
-    const next = this._noteInput ? this._noteInput.value : '';
-    box.hidden = true;
-    this._noteDragKeep = false;
-    this._noteForId = null;
-    const markEl = id ? this._els.get(id) : null;
+  _closeNoteEditor(id, discard) {
+    const card = this._noteCards && this._noteCards.get(id);
+    if (!card) return;
+    const box = card.box;
+    const next = card.input ? card.input.value : '';
+    this._noteCards.delete(id);
+    if (box && box.parentNode) box.parentNode.removeChild(box);
+    if (this._noteCards.size === 0) this._noteDragKeep = false;
+    const markEl = this._els.get(id);
     if (markEl && markEl._noteMark) { markEl._noteMark.classList.remove('is-open'); markEl._noteMark.title = '展开节点笔记'; }
     if (discard) return;
-    if (!id) return;
     const n = this._nodeById(id);
     if (!n) return;                       // 节点已被删除：不写回
     const prev = n.note || '';
@@ -455,16 +427,12 @@ export const MindmapFeature = {
     this._updateToolbar();
   },
 
-  /** 静默保存备注内容（不收起卡片）。
-   *  失焦时调用：之前「点画布其他处 / 平移画布」会触发 textarea blur 把卡片自动折叠，
-   *  现在改为只保存、不折叠 —— 卡片保持展开，直到用户手动 × / Esc / 再点三角收起。
+  /** 静默保存某个节点的备注内容（不收起卡片）。失焦时调用。
    *  与 _closeNoteEditor 的写回逻辑一致，仅不隐藏卡片。 */
-  _persistNote() {
-    const box = this._noteBox;
-    if (!box || box.hidden) return;
-    const id = this._noteForId;
-    if (!id) return;
-    const next = this._noteInput ? this._noteInput.value : '';
+  _persistNote(id) {
+    const card = this._noteCards && this._noteCards.get(id);
+    if (!card || !card.box || card.box.hidden) return;
+    const next = card.input ? card.input.value : '';
     const n = this._nodeById(id);
     if (!n) return;                       // 节点已被删除：不写回
     const prev = n.note || '';
@@ -477,6 +445,52 @@ export const MindmapFeature = {
     });
     this._scheduleSave();
     this._updateToolbar();
+  },
+
+  /** 是否已展开某节点的备注卡片 */
+  _isNoteOpen(id) {
+    const card = this._noteCards && this._noteCards.get(id);
+    return !!(card && card.box && !card.box.hidden);
+  },
+
+  /** 关闭全部备注卡片（切组/撤销/卸载前调用，避免卡片指向已消失的节点） */
+  _closeAllNoteEditors(discard) {
+    if (!this._noteCards || !this._noteCards.size) return;
+    Array.from(this._noteCards.keys()).forEach((id) => this._closeNoteEditor(id, discard));
+  },
+
+  /** 静默保存全部已展开卡片的备注（不收起；卸载/切后台兜底） */
+  _persistAllNotes() {
+    if (!this._noteCards || !this._noteCards.size) return;
+    Array.from(this._noteCards.keys()).forEach((id) => this._persistNote(id));
+  },
+
+  /** 创建某个节点的备注卡片 DOM（按需；关闭时移除） */
+  _makeNoteCard(id) {
+    const box = document.createElement('div');
+    box.className = 'tw-mm-note-pop';
+    box.innerHTML = `
+      <textarea class="tw-mm-note-input" placeholder="写节点笔记…" spellcheck="false"></textarea>`;
+    (this._noteLayer || this._el).appendChild(box);
+    const input = box.querySelector('.tw-mm-note-input');
+    // 卡片内交互不冒泡到画布（否则会触发平移 / 取消选中）
+    box.addEventListener('pointerdown', (e) => e.stopPropagation());
+    box.addEventListener('click', (e) => e.stopPropagation());
+    box.addEventListener('wheel', (e) => e.stopPropagation(), { passive: true });
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') { e.preventDefault(); this._closeNoteEditor(id); }
+      else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); this._closeNoteEditor(id); }
+    });
+    // 输入时自动增高，并保持卡片在视口内
+    input.addEventListener('input', () => { this._autoGrowNote(input); this._positionNoteCard(id); });
+    // 失焦只静默保存，不折叠（点画布其他处 / 平移画布后卡片保持展开）
+    input.addEventListener('blur', () => {
+      if (this._noteDragKeep) return;   // 正在拖动这张卡片所属的节点：保持展开，卡片跟手移动
+      this._persistNote(id);
+    });
+    const card = { box, input };
+    this._noteCards.set(id, card);
+    return card;
   },
 
   /** 搜索框（Cmd/Ctrl+F 唤起：匹配子弹文本、回车跳转居中、高亮命中） */
@@ -521,7 +535,7 @@ export const MindmapFeature = {
   /** 离开子弹：先提交半截编辑，再落盘（节点 + 连线 + 视野），隐藏层 */
   deactivate() {
     if (!this._el) return;
-    if (this._noteForId) this._closeNoteEditor();   // 切档前提交备注（此时仍 active，可正常留档）
+    if (this._noteCards && this._noteCards.size) this._closeAllNoteEditors();   // 切档前提交全部备注（此时仍 active，可正常留档）
     this._active = false;
     // 必须「提交」而非「取消」：切档时由 ModeController 调用本方法（其注释即为「半截编辑先提交」），
     // 而旋钮滚轮拨档不改变焦点 → 不触发 _editBlur → 只能在这里把刚打字、尚未 blur 的文本写回模型。
@@ -644,7 +658,7 @@ export const MindmapFeature = {
     // 否则下面的 _saveNow() 落的是旧文本，而当前组随即被目标组替换 → 静默丢字。与 deactivate() 同款。
     if (this._editId) this._commitEdit();
     // 笔记卡片：切组后它指向的节点已随旧文档消失，不收起会滞留并冻在旧位置
-    if (this._noteForId) this._closeNoteEditor();
+    if (this._noteCards && this._noteCards.size) this._closeAllNoteEditors();
     this._saveNow();
     await TypewriterStore.setMindmapCurrent(id);
     this._groupId = id;
@@ -662,7 +676,7 @@ export const MindmapFeature = {
     // 防御：新组会整体丢弃当前 _nodes，半截编辑必须先落进旧组，否则随 _nodes 一起消失
     if (this._editId) this._commitEdit();
     // 笔记卡片：新组是空文档，卡片指向的节点不复存在，先收起（内容会写回旧组）
-    if (this._noteForId) this._closeNoteEditor();
+    if (this._noteCards && this._noteCards.size) this._closeAllNoteEditors();
     this._saveNow();
     const g = await TypewriterStore.createMindmapGroup('未命名思维导图');
     this._groupId = g.id;
@@ -676,7 +690,7 @@ export const MindmapFeature = {
     // 防御：同 switchGroup —— 先把半截编辑写回「当前组」再落盘，避免删除动作顺带丢掉未提交文本
     if (this._editId) this._commitEdit();
     // 笔记卡片：删组后载入的是另一份文档，卡片指向的节点不复存在，先收起
-    if (this._noteForId) this._closeNoteEditor();
+    if (this._noteCards && this._noteCards.size) this._closeAllNoteEditors();
     this._saveNow();
     const res = await TypewriterStore.deleteMindmapGroup(id);
     this._groupId = res.current;
@@ -870,7 +884,7 @@ export const MindmapFeature = {
     el.style.left = Math.round(n.x) + 'px';
     el.style.top = Math.round(n.y) + 'px';
     // 备注卡片正挂在被移动的这颗子弹上时，同步跟随（拖动/重排/撤销都会走到这里）
-    if (this._noteForId === id) this._positionNoteCard();
+    if (this._isNoteOpen(id)) this._positionNoteCard(id);
   },
 
   /** 从 DOM 移除一颗子弹（增量删除用） */
@@ -884,6 +898,8 @@ export const MindmapFeature = {
       if (this._nodePool && this._nodePool.length < this._POOL_CAP) this._nodePool.push(el);
     }
     this._els.delete(id);
+    // 备注卡片：节点真被删除（不再在文档里）时，连带关掉它自己的卡片；剔除卸载时节点仍在，不关
+    if (this._noteCards && this._noteCards.has(id) && !this._nodeById(id)) this._closeNoteEditor(id, true);
   },
 
   /** 节点几何取用（供连线层 getGeom / 剔除缓存）。优先实时 DOM，离屏卸载后用缓存兜底。 */
@@ -953,6 +969,7 @@ export const MindmapFeature = {
     if (this._selSet) this._selSet.forEach((id) => pin.add(id));
     if (this._editId) pin.add(this._editId);
     if (this._dragSet) this._dragSet.forEach((id) => pin.add(id));
+    if (this._noteCards) this._noteCards.forEach((_, id) => pin.add(id));   // 展开备注的节点保活：卡片靠其 DOM 定位
     // 小图门控：节点少时不剔除，避免无谓的挂载/卸载抖动（仍走批量测量，统一路径）
     if (this._nodes.length <= this._CULL_MIN_NODES) {
       for (const n of this._nodes) if (!this._els.get(n.id)) this._mountNode(n, true);
@@ -1061,7 +1078,7 @@ export const MindmapFeature = {
     this._canvas.style.transform = `translate(${this._view.x}px, ${this._view.y}px) scale(${s})`;
     // 平移/缩放时让备注卡片跟随节点：必须在写入 transform **之后**重算，
     // 否则每帧都按旧变换定位、永远落后一步（表现为「卡片不跟着动」）。
-    if (this._noteForId) this._positionNoteCard();
+    if (this._noteCards && this._noteCards.size) this._noteCards.forEach((_, id) => this._positionNoteCard(id));
     this._updateToolbar();    // 平移时让工具条跟着选中节点走
     // 缩放/平移后同步缩放控件的百分比显示
     if (this._zoomUI && typeof this._zoomUI.sync === 'function') this._zoomUI.sync();
@@ -1099,9 +1116,9 @@ export const MindmapFeature = {
     el._noteMark.addEventListener('click', (e) => {
       e.stopPropagation();
       const id = el.dataset.id;
-      if (this._noteForId === id && this._noteBox && !this._noteBox.hidden) { this._closeNoteEditor(); return; }
+      if (this._isNoteOpen(id)) { this._closeNoteEditor(id); return; }
       this._select(id);
-      this._openNoteEditor();
+      this._openNoteEditor(id);
     });
     return el;
   },
@@ -1119,7 +1136,12 @@ export const MindmapFeature = {
     // 有备注时显示右上角「备注」标记（点它展开/收起备注卡片）
     const hasNote = !!(n.note && String(n.note).trim());
     el.classList.toggle('has-note', hasNote);
-    if (el._noteMark) el._noteMark.hidden = !hasNote;
+    if (el._noteMark) {
+      const open = this._isNoteOpen && this._isNoteOpen(n.id);
+      el._noteMark.hidden = !hasNote && !open;   // 卡片展开中即使暂无内容也保留标记（可点收起）
+      el._noteMark.classList.toggle('is-open', open);
+      el._noteMark.title = open ? '收起节点笔记' : '展开节点笔记';
+    }
   },
 
   _paintSelection() {
@@ -1289,7 +1311,7 @@ export const MindmapFeature = {
     e.preventDefault();
     const id = nodeEl.dataset.id;
     // 拖动的是「备注卡片所属节点」时，先于 blur 置位：避免按下瞬间 blur 把卡片关掉（否则看不到跟随效果）
-    this._noteDragKeep = (this._noteForId === id);
+    this._noteDragKeep = this._isNoteOpen(id);
     const dragSet = (this._selSet && this._selSet.has(id)) ? this._selSet : null;
     this._dragSet = dragSet;   // 拖拽中的节点 pin，避免被剔除卸载
     this._select(id);   // 单选高亮（不清除 _selSet，多选框仍保留）
@@ -1338,7 +1360,7 @@ export const MindmapFeature = {
         s.el.style.top = (s.top + curDy) + 'px';
       });
       // 拖动中让备注卡片实时跟手（位置写完后再量，读到的是本帧新坐标）
-      if (this._noteForId) this._positionNoteCard();
+      if (this._noteCards && this._noteCards.size) this._noteCards.forEach((_, nid) => this._positionNoteCard(nid));
       this._linkLayer.render();
       if (lastEv) updateDropHint(lastEv);
     };
@@ -1472,7 +1494,7 @@ export const MindmapFeature = {
   _enterEdit(id) {
     const el = this._els.get(id);
     if (!el || !el._text) return;
-    if (this._noteForId) this._closeNoteEditor();   // 先保存并收起备注浮层，再进文本编辑
+    if (this._noteCards && this._noteCards.size) this._closeAllNoteEditors();   // 先保存并收起全部备注浮层，再进文本编辑
     this._exitConnectMode();
     // 先 _select（守卫会在「正在编辑别的节点」时先 commitEdit），再记 _editId；
     // 顺序颠倒会让守卫 `this._editId && this._editId !== id` 恒为 false → 旧编辑不提交、
@@ -1641,7 +1663,7 @@ export const MindmapFeature = {
   _restoreSnapshot(s) {
     if (!s) return;
     // 备注浮层：丢弃未提交内容（不要在撤销恢复过程中再往撤销栈插一笔）
-    if (this._noteForId) this._closeNoteEditor(true);
+    if (this._noteCards && this._noteCards.size) this._closeAllNoteEditors(true);
     // 必须先把编辑态收掉：否则被撤销掉的那颗子弹仍处于 contentEditable，
     // 其 blur / keydown 回调会把内容写回一个已不存在的 id。
     if (this._editId) this._commitEdit(true);
@@ -2221,10 +2243,10 @@ export const MindmapFeature = {
       if (e && e.type === 'visibilitychange' && typeof document !== 'undefined' && document.visibilityState === 'visible') return;
       if (!this._active) return;    // 非导图档：没有本模块的未落盘状态，勿拿旧文档覆盖
       const openEdit = !!this._editId;
-      const openNote = !!this._noteForId;
+      const openNote = !!(this._noteCards && this._noteCards.size);
       if (!openEdit && !openNote && !this._saveTimer) return;   // 无待落盘/未提交内容：不写盘
       // 笔记卡片静默写回即可（不折叠、不打断输入；与文本编辑不同，后者要以退出编辑态来提交）
-      if (openNote) this._persistNote();
+      if (openNote) this._persistAllNotes();
       // 页面真要走了才提交半截编辑；仅切到后台就退出编辑态会打断用户正在进行的输入
       if (openEdit && e && e.type === 'pagehide') this._commitEdit();
       this._saveNow();              // 内部自行清 timer；无 _groupId 时自行 return
@@ -2249,7 +2271,7 @@ export const MindmapFeature = {
     // 所以「刚改完就关视图 / 硬关闭」只能由本方法自己兜住，否则最后一次改动会静默丢失。
     // 笔记卡片同理：它是「失焦才写回」（_persistNote），而移除 DOM 不保证触发 blur，
     // 硬关闭时已输入未失焦的笔记会静默丢失 —— 这里静默写回，不折叠（DOM 随即被弃）。
-    if (this._noteForId) this._persistNote();
+    if (this._noteCards && this._noteCards.size) this._persistAllNotes();
     if (this._editId) this._commitEdit();   // 提交后 _scheduleSave() 会挂起新的 timer，故下面重新取
     const pending = this._saveTimer;
     clearTimeout(this._saveTimer);
@@ -2298,9 +2320,8 @@ export const MindmapFeature = {
     this._links = [];
     this._view = null;
     this._selId = null;
-    this._noteBox = null;
-    this._noteInput = null;
-    this._noteForId = null;
+    this._noteCards = null;
+    this._noteLayer = null;
     this._editId = null;
     this._editKey = null;
     this._editBlur = null;

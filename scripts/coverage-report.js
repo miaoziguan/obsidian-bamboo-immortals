@@ -121,20 +121,27 @@ module.exports = async function globalTeardown() {
         return;
     }
 
-    if (hitStmt < baseline) {
+    // 容差：绝对覆盖数存在**环境相关抖动**（同一份代码，CI 与本地可能差几条 ——
+    // 实测 CI 8705 vs 本地 8708，总数一致，属条件分支走了不同路径）。
+    // 若不放容差，这种抖动会被误判成「回归」并阻断发布（3.32.2 首次实战即踩到）。
+    // 真实回归（删测试/整块逻辑失去覆盖）通常是数十~数百条，故 0.1%（至少 5 条）足够安全。
+    const tolerance = Math.max(5, Math.ceil(baseline * 0.001));
+    if (hitStmt < baseline - tolerance) {
         console.error(
-            `\n[coverage] ❌ 已覆盖语句 ${hitStmt} 低于基线 ${baseline}（减少 ${baseline - hitStmt}）—— 判定为覆盖率回归。`
+            `\n[coverage] ❌ 已覆盖语句 ${hitStmt} 低于基线 ${baseline}（容差 ±${tolerance}，减少 ${baseline - hitStmt}）—— 判定为覆盖率回归。`
         );
-        console.error('[coverage] 说明：本门禁对「补测未覆盖的大文件」免疫（只降百分比、不降绝对数时不拦）。');
+        console.error('[coverage] 说明：门禁对「补测未覆盖的大文件」免疫（只降百分比、不降绝对数时不拦）。');
         console.error('[coverage] 若确为有意删减测试，请同步下调 coverage-baseline.json。');
         console.log('=================================================================\n');
-        // globalTeardown 抛错 → jest 以非零码退出 → CI 步骤失败
-        throw new Error(`coverage gate: covered ${hitStmt} < baseline ${baseline}`);
+        throw new Error(`coverage gate: covered ${hitStmt} < baseline ${baseline} - ${tolerance}`);
     }
 
     if (hitStmt > baseline) {
         console.log(`\n[coverage] 📈 已覆盖语句 ${hitStmt} > 基线 ${baseline}（+${hitStmt - baseline}）：可运行 npm run coverage:baseline 抬升基线`);
     }
-    console.log(`[coverage] ✅ 已覆盖语句 ${hitStmt} ≥ 基线 ${baseline}（未回归）｜语句覆盖率 ${pct.toFixed(2)}%（仅供参考，非门禁）`);
+    console.log(
+        `[coverage] ✅ 已覆盖语句 ${hitStmt} ≥ 基线 ${baseline} − 容差 ${tolerance}（未回归）` +
+        `｜语句覆盖率 ${pct.toFixed(2)}%（仅供参考，非门禁）`
+    );
     console.log('=================================================================\n');
 };

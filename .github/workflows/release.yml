@@ -58,6 +58,14 @@ jobs:
       - name: Test (webapp)
         run: npm run test
 
+      # 覆盖率门禁（防回归）：「已覆盖语句数」低于 coverage-baseline.json 基线即失败，阻断 Release。
+      # 用绝对数而非百分比：给未覆盖的大文件补测会拉低百分比（逆向激励），绝对数只对真实退步敏感。
+      # 基线只升不降，抬升需显式执行 npm run coverage:baseline。
+      # 注：webapp 测试经 loadModule 用 new Function 求值，jest 原生 --coverage 恒为 0/0，
+      # 必须走 COVERAGE_EVAL=1 的插桩路径才有真实数据。
+      - name: Coverage gate (webapp 已覆盖语句数防回归)
+        run: npm run test:coverage
+
       - name: Build main.js
         run: node esbuild.config.mjs production
 

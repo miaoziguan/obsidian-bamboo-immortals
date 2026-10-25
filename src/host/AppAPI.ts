@@ -3,16 +3,48 @@ import { arrayBufferToBase64 } from '../utils/base64';
 import { assertSafeAssetId } from '../utils/assetId';
 import { VaultStorage } from '../storage/VaultStorage';
 import { ThemeBridge } from '../bridge/ThemeBridge';
-import type { BambooReviewSettings, NoiseItem } from '../settings/PluginSettings';
+import type { BambooReviewSettings } from '../settings/PluginSettings';
 import { ALLOWED_AUDIO_EXTENSIONS, MIME_TYPES } from '../constants/audio';
 import type { DayData, CustomTemplate } from '../types/data';
 import type { StrategyOverview } from '../ai/strategyOverview';
 import type { CultivationRealm } from '../cultivation';
 import { INBOUND_PREFIXES } from './protocol';
 import { LicenseStore } from '../license/licenseStore';
-import { verifyLicenseKey } from '../license/licenseKey';
 import { marketUrlCandidates, isGithubApiUrl, GITHUB_RAW_ACCEPT } from './marketSources';
 import { createManifestCache } from './manifestCache';
+import type { HostContext, RouteHandler } from './handlers/hostContext';
+import { layoutRoutes } from './handlers/layoutHandlers';
+import { backupLicenseRoutes } from './handlers/backupLicenseHandlers';
+import { settingsRoutes } from './handlers/settingsHandlers';
+import { viewFileRoutes } from './handlers/viewFileHandlers';
+import { providerRoutes } from './handlers/providerHandlers';
+import { audioThemeRoutes } from './handlers/audioThemeHandlers';
+import { themeRoutes } from './handlers/themeHandlers';
+import { fileRoutes } from './handlers/fileHandlers';
+import { marketRoutes } from './handlers/marketHandlers';
+import { moduleRoutes } from './handlers/moduleHandlers';
+
+/**
+ * 消息路由表：app:* 类型 → 各领域 handler（实现见 ./handlers/）。
+ *
+ * 背景：handleMessage 曾是一条约 950 行、31 个 if 分支的巨型方法，是本项目最热、
+ * 最大的文件（2100+ 行）的主要成因。现按领域把分支逐步搬到 handlers/ 下，
+ * 搬完后 handleMessage 只剩「查表 + 存储兜底」，各领域改动不再互相挤在一起。
+ *
+ * 迁移状态：布局类、备份码/激活码类已入表；其余分支仍在下方 if 链中，按阶段继续迁移。
+ */
+const ROUTES: Record<string, RouteHandler<HostContext>> = {
+    ...layoutRoutes,
+    ...backupLicenseRoutes,
+    ...settingsRoutes,
+    ...viewFileRoutes,
+    ...providerRoutes,
+    ...audioThemeRoutes,
+    ...themeRoutes,
+    ...fileRoutes,
+    ...marketRoutes,
+    ...moduleRoutes,
+};
 
 /**
  * 宿主插件版本（manifest.json 的 version）。
@@ -27,7 +59,6 @@ let hostAppVersion = '';
 export function setHostAppVersion(version: string): void {
   hostAppVersion = version || '';
 }
-import { encodeBackup, decodeBackup } from '../license/backupCode';
 
 /** Obsidian 插件运行时注入的主窗口 document（非插件沙箱内的 document） */
 declare const activeDocument: Document;
@@ -251,6 +282,9 @@ export class AppAPI {
   private disposed = false;
   /** Obsidian App 引用（打开文件等宿主操作需要） */
   private app: App;
+  /** 宿主能力门面：handlers/ 下各领域处理器经它访问宿主（见 ./handlers/hostContext.ts）。
+   *  在构造函数末尾构建 —— 视图层注入的回调用 getter 延迟读取，故构造后才注入也拿得到。 */
+  private ctx!: HostContext;
 
   constructor(
     app: App,
@@ -279,6 +313,216 @@ export class AppAPI {
     this.noisePath = noisePath;
     this.configDir = configDir;
     this.licenseStore = licenseStore;
+
+    // 宿主能力门面（只转发、不含业务）
+    // eslint-disable-next-line @typescript-eslint/no-this-alias -- 对象字面量的 getter 里 this 指向字面量自身，必须经 self 访问 AppAPI 实例（回调用 getter 延迟读取）
+    const self = this;
+    this.ctx = {
+      respond: (id, p) => self.respond(id, p),
+      respondError: (id, e) => self.respondError(id, e),
+      isLicenseActive: () => self.licenseStore.isActive(),
+      getSavedLicenseKey: () => self.licenseStore.getSavedKey(),
+      activateLicense: async (code) => { await self.licenseStore.activate(code); },
+      notifyLicenseActivated: () => { if (self.onLicenseActivated) self.onLicenseActivated(); },
+      getSettingsSnapshot: () => self.settings,
+      setSectionConfig: async (config) => {
+        self.settings.sectionConfig = config;
+        await self.saveSettings();
+      },
+      setNoiseItems: async (items) => {
+        self.settings.noiseItems = items;
+        await self.saveSettings();
+      },
+      openArchive: () => { if (self.onOpenArchive) self.onOpenArchive(); },
+      openScroll: (feature) => { if (self.onOpenScroll) self.onOpenScroll(feature); },
+      openScrollLeftSidebar: (feature) => {
+        if (self.onOpenScrollLeftSidebar) self.onOpenScrollLeftSidebar(feature);
+      },
+      moveScroll: (location) => { if (self.onMoveScroll) self.onMoveScroll(location); },
+      openModule: (moduleId, location) => { if (self.onOpenModule) self.onOpenModule(moduleId, location); },
+      improveGoal: (req) => { if (self.onAiImproveGoal) self.onAiImproveGoal(req); },
+      readVaultFile: (id, p) => self.handleReadVaultFile(id, p),
+      readLocalFile: (id, p) => self.handleReadLocalFile(id, p),
+      proxyAudioUrl: (id, p) => self.handleProxyAudioUrl(id, p),
+      scanVaultAudioFiles: () => self.scanVaultAudioFiles(),
+      isObsidianDark: () => activeDocument.body.classList.contains('theme-dark'),
+      switchObsidianTheme: (targetIsDark) => self._switchObsidianTheme(targetIsDark),
+      syncThemeFollow: () => self.themeBridge.pushTheme(self.settings.followObsidianTheme),
+      getThemeCode: (name) => self.customThemeCodeMap.get(name),
+      applyReaderPalette: (hue, lightnessOffset, saturation) => {
+        ThemeBridge.applyReaderPalette(hue, lightnessOffset, saturation);
+      },
+      shouldSyncPaletteToObsidian: () => !!self.settings.syncPaletteToObsidian,
+      applyPaletteToObsidian: (hue, lightnessOffset, isDark, saturation) => {
+        self.themeBridge.applyPalette(hue, lightnessOffset, isDark, saturation);
+      },
+      broadcastTheme: (isDark, palette) => {
+        if (palette) ThemeBridge.broadcastTheme(isDark, palette);
+        else ThemeBridge.broadcastTheme(isDark);
+      },
+      handleFileOp: (id, type, p) => self.handleFileOp(id, type, p),
+      fetchMarketJson: (which, refresh) => self._fetchMarketJson(
+        which === 'theme'
+          ? MARKET_MANIFEST_URL
+          : which === 'material'
+            ? MATERIAL_MANIFEST_URL
+            : MODULE_MARKET_MANIFEST_URL,
+        refresh,
+      ),
+      fetchMarketText: (url) => self._fetchMarketText(url),
+      wantRefresh: (p) => self._wantRefresh(p),
+      getInstalledMap: (kind) =>
+        (kind === 'theme' ? self.settings.marketInstalled : self.settings.materialInstalled) || {},
+      setInstalled: async (kind, id, record) => {
+        let changed = false;
+        if (kind === 'theme') {
+          if (record) {
+            if (!self.settings.marketInstalled) self.settings.marketInstalled = {};
+            self.settings.marketInstalled[id] = record;
+            changed = true;
+          } else if (self.settings.marketInstalled && id in self.settings.marketInstalled) {
+            delete self.settings.marketInstalled[id];
+            changed = true;
+          }
+        } else {
+          if (record) {
+            if (!self.settings.materialInstalled) self.settings.materialInstalled = {};
+            self.settings.materialInstalled[id] = record;
+            changed = true;
+          } else if (self.settings.materialInstalled && id in self.settings.materialInstalled) {
+            delete self.settings.materialInstalled[id];
+            changed = true;
+          }
+        }
+        if (changed) await self.saveSettings();
+      },
+      getCustomThemeNames: () => self.customThemeManifests.map((t) => t.name),
+      moduleDir: () => self._moduleDir(),
+      safeModulePath: (raw, label) => self.assertSafeModulePath(raw, label),
+      rescanModules: () => self._rescanModules(),
+      getModuleInstalled: () => self.settings.moduleInstalled || {},
+      setModuleInstalled: async (id, record) => {
+        if (!self.settings.moduleInstalled) self.settings.moduleInstalled = {};
+        self.settings.moduleInstalled[id] = record;
+        await self.saveSettings();
+      },
+      clearModuleRecords: async (id) => {
+        let dirty = false;
+        if (self.settings.moduleInstalled && id in self.settings.moduleInstalled) {
+          delete self.settings.moduleInstalled[id];
+          dirty = true;
+        }
+        // 模块数据一并清除：避免卸载后重装读到上个「人生」的残留配置
+        if (self.settings.moduleData && id in self.settings.moduleData) {
+          delete self.settings.moduleData[id];
+          dirty = true;
+        }
+        if (dirty) await self.saveSettings();
+      },
+      getModuleIds: () => Array.from(self.moduleCodeMap.keys()),
+      getModuleCode: (id) => self.moduleCodeMap.get(id),
+      getModuleMeta: (id) => self.moduleMetaMap.get(id),
+      getModuleData: (id) => (self.settings.moduleData?.[id] ?? null),
+      setModuleData: async (id, data) => {
+        if (!self.settings.moduleData) self.settings.moduleData = {};
+        self.settings.moduleData[id] = (data && typeof data === 'object' ? data : {}) as Record<string, unknown>;
+        await self.saveSettings();
+      },
+      normalizeVaultPath: (p) => normalizePath(p),
+      vaultFileExists: (p) => self.vaultAdapter.exists(p),
+      listVaultDir: async (p) => {
+        const listed = await self.vaultAdapter.list(p);
+        return { files: listed.files || [], folders: listed.folders || [] };
+      },
+      statVaultFile: async (p) => {
+        const tf = self.app.vault.getAbstractFileByPath(p) as TFile | null;
+        if (!tf || !tf.stat) return null;
+        return { mtime: tf.stat.mtime, ctime: tf.stat.ctime, size: tf.stat.size };
+      },
+      readVaultText: (p) => self.vaultAdapter.read(p),
+      resolveModuleFile: (p) => {
+        let tf = self.app.vault.getAbstractFileByPath(normalizePath(p)) as TFile | null;
+        if (!tf) {
+          // wikilink / 仅笔记名：按 basename 查找（模块内 markdown 的 [[笔记]] 跳转）
+          const base = p.split('#')[0].split('/').pop() || p;
+          const hit = self.app.metadataCache.getFirstLinkpathDest(base, '');
+          if (hit) tf = hit;
+        }
+        return tf ? { path: tf.path } : null;
+      },
+      openVaultFileInTab: async (p) => {
+        const tf = self.app.vault.getAbstractFileByPath(normalizePath(p)) as TFile | null;
+        if (!tf) throw new Error('文件不存在：' + p);
+        const leaf = self.app.workspace.getLeaf('tab');
+        await leaf.openFile(tf);
+      },
+      resolveWikiLink: (base, sourcePath) => {
+        const hit = self.app.metadataCache.getFirstLinkpathDest(base, sourcePath);
+        return hit ? { path: hit.path } : null;
+      },
+      resolveResourceUrl: (rawPath) => {
+        // 模块运行在 webview 里，拿不到 Obsidian 的 getResourcePath；必须由宿主换成 app:// 资源地址。
+        const safe = self.assertSafeModulePath(rawPath, '模块资源路径');
+        const tf = self.app.vault.getAbstractFileByPath(safe) as TFile | null;
+        if (!tf) return null;
+        return self.app.vault.getResourcePath(tf);
+      },
+      renderMarkdownToHtml: async (markdown, sourcePath) => {
+        // 渲染结果只以 innerHTML 字符串回传 webview，因此不需要 foreign document：
+        // activeDocument 就是 Obsidian 主窗口 document，其元素带 createEl/createDiv 增强。
+        // 挂一个一次性容器，渲染完（无论成败）立即卸载组件并移除节点，不留残留。
+        const el = activeDocument.body.createDiv();
+        const comp = new Component();
+        comp.load();
+        try {
+          await MarkdownRenderer.render(self.app, markdown, el, sourcePath, comp);
+          return el.innerHTML;
+        } finally {
+          comp.unload();
+          el.remove();
+        }
+      },
+      openReader: (p) => { if (self.onOpenReader) self.onOpenReader(p); },
+      backfillMaterialRecords: () => self._backfillMaterialRecords(),
+      safeAssetId: (id, label) => assertSafeAssetId(id, label),
+      getThemeDir: () => self.settings.themePath || '竹林动效主题',
+      getMaterialDir: () => MATERIAL_DIR,
+      removeVaultFileIfExists: async (path) => {
+        if (!(await self._fileExists(path))) return false;
+        await self.vaultAdapter.remove(path);
+        return true;
+      },
+      readVaultTextIfExists: async (path) => {
+        if (!(await self._fileExists(path))) return null;
+        return await self.vaultAdapter.read(path);
+      },
+      rescanThemes: () => self._rescanThemes(),
+      broadcastThemeManifests: () => self._broadcastThemeManifests(),
+      get strategyOverview() { return self.strategyOverviewProvider; },
+      get cultivationRealm() { return self.cultivationRealmProvider; },
+      get bambooCoinBalance() { return self.bambooCoinBalanceProvider; },
+      get bambooCoinAvailableBalance() { return self.bambooCoinAvailableBalanceProvider; },
+      openVaultFileByPath: async (path) => {
+        const file = self.app.vault.getAbstractFileByPath(path);
+        if (!file || !(file instanceof TFile)) throw new Error('文件不存在：' + path);
+        // false：在当前活跃 leaf 旁开新 leaf（不替换画中卷本身）
+        const leaf = self.app.workspace.getLeaf(false);
+        await leaf.openFile(file);
+      },
+      writeVaultText: async (path, content) => {
+        const full = normalizePath(path);
+        const parent = full.substring(0, full.lastIndexOf('/'));
+        if (parent) await self.mkdirP(parent);   // 逐级建目录，支持嵌套导出目录
+        await self.vaultAdapter.write(full, content);
+        return full;
+      },
+      // 视图层注入的回调：用 getter 延迟读取，避免构造时快照成 undefined
+      get moveToCenter() { return self.moveToCenter; },
+      get moveToSidebar() { return self.moveToSidebar; },
+      get toggleZen() { return self.toggleZen; },
+      get collapseRightSidebar() { return self.collapseRightSidebar; },
+      get expandRightSidebar() { return self.expandRightSidebar; },
+    };
   }
 
   /** 确保存储结构存在 */
@@ -799,11 +1043,15 @@ export class AppAPI {
   }
 
   private async handleMessage(type: string, id: string, payload: unknown): Promise<void> {
-    // ---- 原生设置读取（webapp 需要读取导出目录等 native 配置）----
-    if (type === 'app:getSettings') {
-      this.respond(id, { ok: true, settings: this.settings });
+    // ---- 路由表优先：按领域拆分到 ./handlers/ 下 ----
+    // 表内类型直接交给对应 handler；未命中的继续走下方 if 链，最终落到存储兜底。
+    const route = ROUTES[type];
+    if (route) {
+      await route(this.ctx, id, (payload ?? {}) as Record<string, unknown>);
       return;
     }
+
+    // （app:getSettings 已迁入 ./handlers/settingsHandlers.ts，由上方路由表分发）
     // ---- 生命周期 ----
     if (type === 'app:ready') {
       // 阶段3 · 契约化：版本协商 — 插件升级但 webapp 缓存旧版时，用户重新加载视图即可获取最新 webapp
@@ -848,903 +1096,67 @@ export class AppAPI {
     }
 
     // ---- 按需加载外部主题代码（清单先行，用户点选/恢复时才取回，避免全量跨进程下发 + 全量 new Function 执行）----
-    if (type === 'theme:load') {
-      const name = (payload as { name?: string } | undefined)?.name;
-      const code = name ? this.customThemeCodeMap.get(name) : undefined;
-      if (code !== undefined) {
-        this.respond(id, { ok: true, code });
-      } else {
-        this.respondError(id, 'THEME_NOT_FOUND');
-      }
-      return;
-    }
+    // （theme:load / theme:syncPalette / module:toggleTheme / theme:appDarkMode 已迁入 ./handlers/themeHandlers.ts；file:* 已迁入 ./handlers/fileHandlers.ts）
 
     // ================= 竹林模块系统 =================
     // 设计前提：模块是「按需下载」的可选能力，代码不在主 bundle 内，落盘在 vault 的
     // 模块目录（默认 <configDir>/bamboo-review/modules，收拢到插件管理区，不再散落 vault 根目录）。
     // webview 侧禁 fetch，故下载一律由宿主 requestUrl 完成。
     // 模块标记 __bamboo_module_ 用于校验下载物确为模块，避免把任意 .js 当模块执行。
-
-    // ---- 模块市场：拉取清单（host 侧 fetch 公开仓库的 manifest.json）----
-    if (type === 'module:market:manifest') {
-      try {
-        const manifest = await this._fetchMarketJson(MODULE_MARKET_MANIFEST_URL, this._wantRefresh(payload));
-        // 附带「已安装版本表」，webapp 拿它与 manifest 中各模块的 version 比对 → 得出「可更新」
-        this.respond(id, { ok: true, manifest, installed: this.settings.moduleInstalled || {} });
-      } catch (e) {
-        this.respondError(id, e instanceof Error ? e.message : '模块市场清单拉取失败');
-      }
-      return;
-    }
-
-    // ---- 模块市场：安装（下载 .js 写入模块目录，触发重扫）----
-    if (type === 'module:install') {
-      const p = (payload && typeof payload === 'object' ? payload : {}) as {
-        id?: string;
-        url?: string;
-        version?: string;
-      };
-      if (!p.id || !p.url) { this.respondError(id, 'module:install 缺少 id 或 url'); return; }
-      try {
-        const assetId = assertSafeAssetId(p.id ?? '', '模块 id');
-        const code = await this._fetchMarketText(p.url);
-        if (!code.includes('__bamboo_module_')) throw new Error('不是有效的竹林模块文件');
-        const dir = this._moduleDir();
-        await this.mkdirP(dir);
-        await this.vaultAdapter.write(`${dir}/${assetId}.js`, code);
-        // 记录本次安装的版本：后续与 manifest 的 version 比对即可判断「可更新」
-        if (!this.settings.moduleInstalled) this.settings.moduleInstalled = {};
-        this.settings.moduleInstalled[assetId] = { version: p.version || '', installedAt: Date.now() };
-        await this.saveSettings();
-        await this._rescanModules();
-        this.respond(id, { ok: true });
-      } catch (e) {
-        this.respondError(id, e instanceof Error ? e.message : '模块安装失败');
-      }
-      return;
-    }
-
-    // ---- 模块市场：卸载（删除模块 .js，连带清除其自持久化数据）----
-    if (type === 'module:uninstall') {
-      const p = (payload && typeof payload === 'object' ? payload : {}) as { id?: string };
-      if (!p.id) { this.respondError(id, 'module:uninstall 缺少 id'); return; }
-      try {
-        const assetId = assertSafeAssetId(p.id ?? '', '模块 id');
-        const dir = this._moduleDir();
-        if (await this._fileExists(`${dir}/${assetId}.js`)) {
-          await this.vaultAdapter.remove(`${dir}/${assetId}.js`);
-        }
-        let dirty = false;
-        if (this.settings.moduleInstalled) {
-          delete this.settings.moduleInstalled[assetId];
-          dirty = true;
-        }
-        // 模块数据一并清除：避免卸载后重装读到上个「人生」的残留配置
-        if (this.settings.moduleData) {
-          delete this.settings.moduleData[assetId];
-          dirty = true;
-        }
-        if (dirty) await this.saveSettings();
-        await this._rescanModules();
-        this.respond(id, { ok: true });
-      } catch (e) {
-        this.respondError(id, e instanceof Error ? e.message : '模块卸载失败');
-      }
-      return;
-    }
-
-    // ---- 已安装模块清单（主应用据此把模块声明的按钮注入悬浮菜单）----
-    if (type === 'module:list') {
-      await this._rescanModules();
-      const installed = this.settings.moduleInstalled || {};
-      this.respond(id, {
-        ok: true,
-        // 带上元数据（含 fab 按钮声明），主应用据此注入悬浮菜单按钮，无需执行模块代码
-        modules: Array.from(this.moduleCodeMap.keys()).map((mid) => {
-          const meta = this.moduleMetaMap.get(mid);
-          return {
-            id: meta?.id || mid,
-            name: meta?.name || mid,
-            // 版本以安装记录为准（市场装/卸时写入）；无记录（手工放入的文件）退回元数据声明
-            version: installed[mid]?.version || meta?.version || '',
-            fab: meta?.fab || null,
-            location: meta?.location || 'left',
-          };
-        }),
-      });
-      return;
-    }
-
-    // ---- 按需加载模块代码（同 theme:load，避免全量下发 + 全量 new Function 执行）----
-    if (type === 'module:load') {
-      const mid = (payload as { id?: string } | undefined)?.id;
-      if (!mid) { this.respondError(id, 'module:load 缺少 id'); return; }
-      if (this.moduleCodeMap.size === 0) await this._rescanModules();
-      const code = this.moduleCodeMap.get(mid);
-      if (code !== undefined) {
-        this.respond(id, { ok: true, code });
-      } else {
-        this.respondError(id, 'MODULE_NOT_FOUND');
-      }
-      return;
-    }
-
-    // ---- 模块自持久化数据：data: URL 下 localStorage/sessionStorage/indexedDB 读取即抛
-    //      SecurityError，故模块的用户数据统一由宿主存进插件设置 ----
-    if (type === 'module:saveData') {
-      const p = (payload && typeof payload === 'object' ? payload : {}) as { id?: string; data?: unknown };
-      if (!p.id) { this.respondError(id, 'module:saveData 缺少 id'); return; }
-      if (!this.settings.moduleData) this.settings.moduleData = {};
-      this.settings.moduleData[p.id] =
-        (p.data && typeof p.data === 'object' ? p.data : {}) as Record<string, unknown>;
-      await this.saveSettings();
-      this.respond(id, { ok: true });
-      return;
-    }
-
-    if (type === 'module:loadData') {
-      const p = (payload && typeof payload === 'object' ? payload : {}) as { id?: string };
-      const data = (p.id && this.settings.moduleData?.[p.id]) || null;
-      this.respond(id, { ok: true, data });
-      return;
-    }
-
-    // ---- 模块能力：列出指定目录下的 markdown 文件（博客文章列表）----
-    if (type === 'module:listFiles') {
-      const p = (payload && typeof payload === 'object' ? payload : {}) as {
-        folder?: string;
-        recursive?: boolean;
-      };
-      let folder: string;
-      try {
-        folder = this.assertSafeModulePath((p.folder || '').replace(/\/+$/, ''), '模块目录');
-      } catch (e) {
-        this.respondError(id, e instanceof Error ? e.message : '非法目录');
-        return;
-      }
-      try {
-        const out: { path: string; name: string; mtime: number; ctime: number; size: number }[] = [];
-        // 上限保护：误把 vault 根目录当博客目录时，不至于一次吞掉整个库
-        const MAX_FILES = 500;
-        const MAX_DEPTH = 5;
-        const queue: { p: string; d: number }[] = [{ p: folder, d: 0 }];
-        while (queue.length > 0 && out.length < MAX_FILES) {
-          const cur = queue.shift();
-          if (!cur) break;
-          const listed = await this.vaultAdapter.list(cur.p);
-          for (const f of listed.files || []) {
-            if (!f.endsWith('.md')) continue;
-            const np = normalizePath(f);
-            const tf = this.app.vault.getAbstractFileByPath(np) as TFile | null;
-            const st = tf ? tf.stat : null;
-            out.push({
-              path: np,
-              name: (np.split('/').pop() || np).replace(/\.md$/, ''),
-              mtime: st?.mtime ?? 0,
-              ctime: st?.ctime ?? 0,
-              size: st?.size ?? 0,
-            });
-            if (out.length >= MAX_FILES) break;
-          }
-          if (p.recursive && cur.d + 1 < MAX_DEPTH) {
-            for (const d of listed.folders || []) queue.push({ p: d, d: cur.d + 1 });
-          }
-        }
-        out.sort((a, b) => b.mtime - a.mtime);
-        this.respond(id, { ok: true, files: out });
-      } catch (e) {
-        this.respondError(id, e instanceof Error ? e.message : '目录读取失败');
-      }
-      return;
-    }
-
-    // ---- 模块能力：读取 vault 文件正文 ----
-    if (type === 'module:readFile') {
-      const p = (payload && typeof payload === 'object' ? payload : {}) as { path?: string };
-      if (!p.path) { this.respondError(id, 'module:readFile 缺少 path'); return; }
-      try {
-        const content = await this.vaultAdapter.read(this.assertSafeModulePath(p.path ?? '', '模块文件路径'));
-        this.respond(id, { ok: true, content });
-      } catch (e) {
-        this.respondError(id, e instanceof Error ? e.message : '文件读取失败');
-      }
-      return;
-    }
-
-    // ---- 模块能力：渲染 markdown 为 HTML（侧栏内置阅读视图，避免跳离模块）----
-    if (type === 'module:renderMarkdown') {
-      const p = (payload && typeof payload === 'object' ? payload : {}) as {
-        path?: string; content?: string; sourcePath?: string;
-      };
-      let markdown = typeof p.content === 'string' ? p.content : null;
-      let sourcePath = typeof p.sourcePath === 'string' ? p.sourcePath : (p.path || '');
-      if (markdown == null && p.path) {
-        // 与 module:readFile 同一套防护：拦路径遍历 + .obsidian 配置目录
-        let target = this.assertSafeModulePath((p.path || '').split('#')[0], '模块文件路径');
-        if (!(await this.app.vault.adapter.exists(target))) {
-          // wikilink / 仅笔记名：按 basename 查找（模块内 [[笔记]] 跳转）
-          const base = (p.path.split('#')[0].split('/').pop()) || p.path;
-          const hit = this.app.metadataCache.getFirstLinkpathDest(base, sourcePath);
-          if (hit) target = hit.path;
-        }
-        try {
-          markdown = await this.vaultAdapter.read(target);
-          sourcePath = target;
-        } catch (e) {
-          this.respondError(id, e instanceof Error ? e.message : '文件读取失败');
-          return;
-        }
-      }
-      if (markdown == null) { this.respondError(id, 'module:renderMarkdown 缺少 content/path'); return; }
-      // 渲染结果只以 innerHTML 字符串回传 webview，因此不需要 foreign document：
-      // activeDocument 就是 Obsidian 主窗口 document，其元素带 createEl/createDiv 增强。
-      // 挂一个一次性容器，渲染完（无论成败）立即卸载组件并移除节点，不留残留。
-      const el = activeDocument.body.createDiv();
-      const comp = new Component();
-      comp.load();
-      try {
-        await MarkdownRenderer.render(this.app, markdown, el, sourcePath, comp);
-        this.respond(id, { ok: true, html: el.innerHTML, sourcePath });
-      } catch (e) {
-        this.respondError(id, e instanceof Error ? e.message : '渲染失败');
-      } finally {
-        comp.unload();
-        el.remove();
-      }
-      return;
-    }
-
-    // ---- 模块能力：用 Obsidian 原生阅读视图打开文件 ----
-    // 模块视图常驻左侧栏，故文章一律在中央工作区新页签打开（不抢占模块视图所在的 leaf）。
-    if (type === 'module:openFile') {
-      const p = (payload && typeof payload === 'object' ? payload : {}) as { path?: string };
-      if (!p.path) { this.respondError(id, 'module:openFile 缺少 path'); return; }
-      const path = p.path;
-      let tf = this.app.vault.getAbstractFileByPath(normalizePath(path)) as TFile | null;
-      if (!tf) {
-        // wikilink / 仅笔记名：按 basename 查找（模块内 markdown 的 [[笔记]] 跳转）
-        const base = path.split('#')[0].split('/').pop() || path;
-        const hit = this.app.metadataCache.getFirstLinkpathDest(base, '');
-        if (hit) tf = hit;
-      }
-      if (!tf) { this.respondError(id, '文件不存在：' + path); return; }
-      const leaf = this.app.workspace.getLeaf('tab');
-      await leaf.openFile(tf);
-      this.respond(id, { ok: true });
-      return;
-    }
-
-    // ---- 模块能力：写入 vault 文件（博客模块「一键应用竹杖芒鞋排版」用）----
-    if (type === 'module:writeFile') {
-      const p = (payload && typeof payload === 'object' ? payload : {}) as { path?: string; content?: string };
-      if (!p.path || typeof p.content !== 'string') { this.respondError(id, 'module:writeFile 缺少 path/content'); return; }
-      const np = this.assertSafeModulePath(p.path ?? '', '模块文件路径');
-      try {
-        const dir = np.split('/').slice(0, -1).join('/');
-        if (dir) await this.mkdirP(dir); // 逐级建目录（原实现只建最后一层，嵌套路径会失败）
-        await this.vaultAdapter.write(np, p.content);
-        this.respond(id, { ok: true });
-      } catch (e) {
-        this.respondError(id, e instanceof Error ? e.message : '写入失败');
-      }
-      return;
-    }
+    // （module:* 全部 14 个分支已迁入 ./handlers/moduleHandlers.ts，由上方路由表分发）
 
     // ---- 视图移动到主工作区（侧边栏点横向/看板 → 自动切到中央）----
-    if (type === 'app:moveToCenter') {
-      if (this.moveToCenter) {
-        // mode 会被写进视图状态（pendingLayoutMode）并随 workspace 布局跨重启持久化，
-        // 重启后又经 app:ready 注入 webapp 兜底恢复。必须白名单收口，
-        // 否则任意字符串会被存进布局文件、并在恢复时被当成布局模式消费。
-        // 横向模式已移除：无论 payload 传什么，一律按看板处理（仍保留白名单语义，不接受任意值）
-        const mode = 'kanban';
-        // 立即回复（不等移动完成）：移动会销毁本视图的 webview，
-        // 若等它结束再 respond，iframe 已不存在 → 回执必然丢失（respond 里 contentWindow 为空直接 return）。
-        // 折叠右侧栏已改为「新面板收到 app:revealed 后自行发起」，不依赖这条回执。
-        // 故意不 await：移动会销毁本视图 webview，await 结束前 iframe 已不存在 → 回执必丢；
-        // 此处显式 void 标记「有意忽略 Promise」（满足发布校验的未处理 Promise 告警）。
-        void this.moveToCenter(mode);
-        this.respond(id, { ok: true });
-      } else {
-        this.respond(id, { ok: false, error: 'moveToCenter 未注入' });
-      }
-      return;
-    }
-
-    // ---- 视图移回右侧栏（恢复纵向时）----
-    if (type === 'app:moveToSidebar') {
-      if (this.moveToSidebar) {
-        this.moveToSidebar();
-        this.respond(id, { ok: true });
-      } else {
-        this.respond(id, { ok: false, error: 'moveToSidebar 未注入' });
-      }
-      return;
-    }
-
-    // ---- 画中卷·打字机「一键全屏」：折叠/恢复左右侧栏 ----
-    if (type === 'app:toggleZen') {
-      if (this.toggleZen) {
-        const zen = this.toggleZen();
-        this.respond(id, { ok: true, zen: !!zen });
-      } else {
-        this.respond(id, { ok: false, error: 'toggleZen 未注入' });
-      }
-      return;
-    }
-
-    // ---- 折叠 Obsidian 右侧栏（进入横向/看板多列模式时腾出横向宽度）----
-    if (type === 'app:collapseRightSidebar') {
-      if (this.collapseRightSidebar) {
-        const wasCollapsed = this.collapseRightSidebar();
-        this.respond(id, { ok: true, wasCollapsed: !!wasCollapsed });
-      } else {
-        this.respond(id, { ok: false, error: 'collapseRightSidebar 未注入' });
-      }
-      return;
-    }
-
-    // ---- 展开 Obsidian 右侧栏（恢复纵向时对称还原）----
-    if (type === 'app:expandRightSidebar') {
-      if (this.expandRightSidebar) {
-        this.expandRightSidebar();
-        this.respond(id, { ok: true });
-      } else {
-        this.respond(id, { ok: false, error: 'expandRightSidebar 未注入' });
-      }
-      return;
-    }
+    // （布局类 5 个分支已迁入 ./handlers/layoutHandlers.ts，由上方路由表分发）
 
     // ---- 备份码导出：仅已激活设备可导出（本质是已存激活码的便携封装）----
-    if (type === 'app:exportBackup') {
-      if (!this.licenseStore.isActive()) {
-        this.respond(id, { ok: false, error: '未激活，无法导出备份码' });
-        return;
-      }
-      const savedKey = this.licenseStore.getSavedKey();
-      if (!savedKey) {
-        this.respond(id, { ok: false, error: '未找到已保存的激活码' });
-        return;
-      }
-      // 用 Base64 包裹 + 前缀，避免与正式激活码混淆；不含任何密钥
-      let backup: string;
-      try {
-        backup = encodeBackup(savedKey);
-      } catch (e) {
-        this.respondError(id, e instanceof Error ? e.message : '备份码生成失败');
-        return;
-      }
-      this.respond(id, { ok: true, backup });
-      return;
-    }
+    // （备份码 / 激活码类 4 个分支已迁入 ./handlers/backupLicenseHandlers.ts，由上方路由表分发）
 
-    // ---- 备份码导入：解包得到激活码后走标准激活流程（换设备/换仓库用）----
-    if (type === 'app:importBackup') {
-      const p = payload as { backup?: string };
-      const raw = typeof p.backup === 'string' ? p.backup.trim() : '';
-      if (!raw) {
-        this.respond(id, { ok: false, error: '请输入备份码' });
-        return;
-      }
-      let code: string;
-      try {
-        code = decodeBackup(raw);
-      } catch (e) {
-        this.respond(id, { ok: false, error: e instanceof Error ? e.message : '备份码无效' });
-        return;
-      }
-      try {
-        const verified = await verifyLicenseKey(code);
-        if (!verified) {
-          this.respond(id, { ok: false, error: '备份码无效或已失效' });
-          return;
-        }
-        await this.licenseStore.activate(code);
-        this.onLicenseActivated?.();
-        this.respond(id, { ok: true });
-      } catch (e) {
-        this.respondError(id, e instanceof Error ? e.message : '备份码导入失败');
-      }
-      return;
-    }
+    // （设置持久化类 2 个分支已迁入 ./handlers/settingsHandlers.ts，由上方路由表分发）
 
-    // ---- 激活码校验（宿主侧持密钥，Web Crypto 异步校验）----
-    if (type === 'app:activateLicense') {
-      const p = payload as { code?: string };
-      const code = typeof p.code === 'string' ? p.code.trim() : '';
-      if (!code) {
-        this.respond(id, { ok: false, error: '请输入激活码' });
-        return;
-      }
-      try {
-        const verified = await verifyLicenseKey(code);
-        if (!verified) {
-          this.respond(id, { ok: false, error: '激活码无效或格式错误' });
-          return;
-        }
-        await this.licenseStore.activate(code);
-        this.onLicenseActivated?.();
-        this.respond(id, { ok: true });
-      } catch (e) {
-        this.respondError(id, e instanceof Error ? e.message : '激活校验失败');
-      }
-      return;
-    }
+    // （调色同步 / 模块明暗 / 应用内明暗 3 个分支已迁入 ./handlers/themeHandlers.ts）
 
-    if (type === 'app:close') {
-      this.respond(id, { ok: true });
-      return;
-    }
+    // （app:toggleObsidianTheme / app:theme:sync 已迁入 ./handlers/audioThemeHandlers.ts，由上方路由表分发）
 
-    // ---- 板块配置 ----
-    if (type === 'app:saveSectionConfig') {
-      this.settings.sectionConfig = payload as Record<string, unknown> | null;
-      await this.saveSettings();
-      this.respond(id, { ok: true });
-      return;
-    }
+    // （音频扫描 / 读取库内音频 / 读取本机音频 3 个分支已迁入 ./handlers/audioThemeHandlers.ts，由上方路由表分发）
 
-    // ---- 白噪音音源 ----
-    if (type === 'app:saveCustomNoises') {
-      this.settings.noiseItems = (Array.isArray(payload) ? payload : []) as NoiseItem[];
-      await this.saveSettings();
-      this.respond(id, { ok: true });
-      return;
-    }
+    // （file:list/get/write/delete 已迁入 ./handlers/fileHandlers.ts，由上方路由表分发）
 
-    // ---- 调色同步（webapp → Obsidian）----
-    if (type === 'theme:syncPalette') {
-      const p = payload as { hue: number; lightnessOffset: number; saturation?: number; isDark: boolean };
-      // 饱和度缺省 100（缩放系数，= 设计稿原饱和度）；异常值由下游统一夹紧，此处只做有限性兜底
-      const sat = (typeof p.saturation === 'number' && Number.isFinite(p.saturation)) ? p.saturation : 100;
-      // 阅读视图（宿主自有 BambooReaderView）的竹青强调色：始终跟随滑块。
-      // 放在开关判断之外——「将调色同步到 Obsidian」只管原生界面那 7 个变量，
-      // 插件自有视图跟随主视图调色属内部一致性要求（与下方 broadcastTheme 同理）。
-      ThemeBridge.applyReaderPalette(p.hue, p.lightnessOffset, sat);
-      if (this.settings.syncPaletteToObsidian) {
-        this.themeBridge.applyPalette(p.hue, p.lightnessOffset, p.isDark, sat);
-      }
-      // 应用内调色（含明暗、色相与饱和度）→ 广播给所有已打开视图（含画中卷独立 iframe）。
-      // 色相/明度/饱和度必须一并下发：画中卷等独立 iframe 视图内没有 DisplayManager，
-      // 只有拿到这些值才能驱动自身配色（其内部样式全由 --accent-hue /
-      // --accent-lightness-offset / --accent-saturation-scale 派生）。
-      // 注意：此处不受 syncPaletteToObsidian 开关控制——那个开关管的是
-      // 「webapp 调色是否写回 Obsidian 原生界面」，而「所有视图跟随主视图调色」
-      // 是插件内部一致性要求，始终生效。
-      ThemeBridge.broadcastTheme(p.isDark, { hue: p.hue, lightnessOffset: p.lightnessOffset, saturation: sat });
-      this.respond(id, { ok: true });
-      return;
-    }
-
-    // ---- 模块能力：切换 Obsidian 基础明暗（博客模块「快门」改作明暗开关用）----
-    // 与画中卷·打字机的机身明暗开关走同一实现（_switchObsidianTheme），
-    // 语义是「控制 Obsidian 外观明暗」，切换后整条主题管线会即时跟随，模块侧栏随之变明暗。
-    if (type === 'module:toggleTheme') {
-      const wanted = (payload as { isDark?: boolean } | null)?.isDark;
-      const currentlyDark = activeDocument.body.classList.contains('theme-dark');
-      const targetIsDark = typeof wanted === 'boolean' ? wanted : !currentlyDark;
-      const r = this._switchObsidianTheme(targetIsDark);
-      if (!r.ok) {
-        this.respondError(id, r.error || '切换明暗主题失败');
-        return;
-      }
-      this.respond(id, { ok: true, isDark: r.isDark });
-      return;
-    }
-
-    // ---- 应用内手动切换明暗（如悬浮菜单夜间模式）----
-    // webapp 的 store.setDarkMode 仅在用户手动切换时发出本消息（宿主推送不触发），
-    // 由宿主广播给所有视图，确保画中卷等独立 iframe 跟随应用明暗，不依赖 Obsidian 系统主题。
-    if (type === 'theme:appDarkMode') {
-      const isDark = !!(payload as { isDark?: boolean } | null)?.isDark;
-      ThemeBridge.broadcastTheme(isDark);
-      this.respond(id, { ok: true });
-      return;
-    }
-
-    // ---- 画中卷·打字机机身明暗开关：切换 Obsidian 基础主题 ----
-    // 该开关语义是「控制 Obsidian 外观明暗」（不是 webapp 内部夜间模式）：
-    // 宿主切换 moonstone(亮) / obsidian(暗) 后显式重放 css-change，
-    // 驱动既有主题管线（各视图 css-change → onThemeChanged → pushTheme → theme:changed）即时跟随。
-    if (type === 'app:toggleObsidianTheme') {
-      const wanted = (payload as { isDark?: boolean } | null)?.isDark;
-      const currentlyDark = activeDocument.body.classList.contains('theme-dark');
-      const targetIsDark = typeof wanted === 'boolean' ? wanted : !currentlyDark;
-      const r = this._switchObsidianTheme(targetIsDark);
-      if (!r.ok) {
-        this.respondError(id, r.error || '切换明暗主题失败');
-        return;
-      }
-      this.respond(id, { ok: true, isDark: r.isDark });
-      return;
-    }
-
-    // ---- 重新开启主题跟随（webapp → Obsidian）----
-    if (type === 'app:theme:sync') {
-      this.themeBridge.pushTheme(this.settings.followObsidianTheme);
-      this.respond(id, { ok: true });
-      return;
-    }
-
-    // ---- 音频文件扫描 ----
-    if (type === 'app:listVaultAudioFiles') {
-      try {
-        const files = await this.scanVaultAudioFiles();
-        this.respond(id, { files });
-      } catch (e) {
-        this.respondError(id, e instanceof Error ? e.message : '扫描库文件失败');
-      }
-      return;
-    }
-
-    // ---- 读取库内音频 ----
-    if (type === 'app:readVaultFile') {
-      await this.handleReadVaultFile(id, payload);
-      return;
-    }
-
-    // ---- 读取本机绝对路径音频（兼容旧音源）----
-    if (type === 'app:readLocalFile') {
-      await this.handleReadLocalFile(id, payload);
-      return;
-    }
-
-    // ---- 画中卷 · 通用文本文件协议（listDir / get / write / delete）----
-    // 作用域限定在「画中卷」绑定目录内，路径遍历防护由 handleFileOp 统一执行。
-    if (type === 'file:list' || type === 'file:get' || type === 'file:write' || type === 'file:delete') {
-      await this.handleFileOp(id, type, payload);
-      return;
-    }
-
-    // ---- 代理外部音源链接（绕过 webview CORS，桌面/移动一致）----
-    if (type === 'app:proxyAudioUrl') {
-      await this.handleProxyAudioUrl(id, payload);
-      return;
-    }
+    // （app:proxyAudioUrl 已迁入 ./handlers/audioThemeHandlers.ts，由上方路由表分发）
 
     // ---- 战略复盘面板 → AI 改进入口 ----
-    if (type === 'app:aiImproveGoal') {
-      const p = payload as { goalId?: unknown; title?: unknown; hints?: unknown };
-      if (typeof p.goalId !== 'string' || p.goalId.length === 0) {
-        this.respondError(id, 'app:aiImproveGoal 缺少 goalId');
-        return;
-      }
-      this.onAiImproveGoal?.({
-        goalId: p.goalId,
-        title: typeof p.title === 'string' ? p.title : undefined,
-        hints: typeof p.hints === 'string' ? p.hints : undefined,
-      });
-      this.respond(id, { ok: true });
-      return;
-    }
+    // （app:aiImproveGoal 已迁入 ./handlers/providerHandlers.ts，由上方路由表分发）
 
-    // ---- 目标归档：打开独立归档页 ----
-    if (type === 'app:openArchive') {
-      this.onOpenArchive?.();
-      this.respond(id, { ok: true });
-      return;
-    }
+    // （视图导航类 4 个分支已迁入 ./handlers/viewFileHandlers.ts，由上方路由表分发）
 
-    // ---- 画中卷：打开独立中央视图（不影响日报）----
-    if (type === 'app:openScroll') {
-      this.onOpenScroll?.(payload && typeof payload === 'object' ? (payload as { feature?: unknown }).feature as string | undefined : undefined);
-      this.respond(id, { ok: true });
-      return;
-    }
+    // （app:openModule 已迁入 ./handlers/viewFileHandlers.ts，由上方路由表分发）
 
-    // ---- 画中卷：打开到左侧边栏（百宝箱首个功能，默认形态）----
-    if (type === 'app:openScrollLeftSidebar') {
-      this.onOpenScrollLeftSidebar?.(payload && typeof payload === 'object' ? (payload as { feature?: unknown }).feature as string | undefined : undefined);
-      this.respond(id, { ok: true });
-      return;
-    }
-
-    // ---- 画中卷：画布内 3-dot 请求切换停靠位置 ----
-    if (type === 'app:moveScroll') {
-      const loc = payload && typeof payload === 'object' ? (payload as { location?: unknown }).location : undefined;
-      this.onMoveScroll?.(typeof loc === 'string' ? loc : undefined);
-      this.respond(id, { ok: true });
-      return;
-    }
-
-    // ---- 模块能力：把 vault 文件路径解析成 webview 可加载的资源 URL ----
-    // 模块运行在 webview 里，拿不到 Obsidian 的 getResourcePath；头像/封面等 vault 内图片
-    // 必须经宿主换成 app:// 资源地址才能渲染。只读操作，不写盘。
-    if (type === 'module:resolveResource') {
-      const p = (payload && typeof payload === 'object' ? payload : {}) as { path?: string };
-      if (!p.path) { this.respondError(id, 'module:resolveResource 缺少 path'); return; }
-      const tf = this.app.vault.getAbstractFileByPath(this.assertSafeModulePath(p.path ?? '', '模块资源路径')) as TFile | null;
-      if (!tf) { this.respondError(id, '文件不存在'); return; }
-      this.respond(id, { ok: true, url: this.app.vault.getResourcePath(tf) });
-      return;
-    }
-
-    // ---- 竹林模块：悬浮菜单点模块按钮 → 打开该模块视图 ----
-    if (type === 'app:openModule') {
-      const p = (payload && typeof payload === 'object' ? payload : {}) as {
-        moduleId?: unknown;
-        location?: unknown;
-      };
-      const moduleId = typeof p.moduleId === 'string' ? p.moduleId : '';
-      if (!moduleId) { this.respondError(id, 'app:openModule 缺少 moduleId'); return; }
-      const location = p.location === 'left' || p.location === 'center' || p.location === 'right'
-        ? p.location
-        : undefined;
-      this.onOpenModule?.(moduleId, location);
-      this.respond(id, { ok: true });
-      return;
-    }
-
-    // ---- 模块能力：在宿主自建的竹杖芒鞋式中央阅读视图打开文章 ----
-    if (type === 'module:openReader') {
-      const p = (payload && typeof payload === 'object' ? payload : {}) as { path?: string };
-      if (!p.path) { this.respondError(id, 'module:openReader 缺少 path'); return; }
-      this.onOpenReader?.(p.path);
-      this.respond(id, { ok: true });
-      return;
-    }
-
-    // ---- 在 Obsidian 原生打开指定 vault 文件（画中卷便签 → 原生 md 编辑器）----
-    if (type === 'app:openFile') {
-      try {
-        const raw = (payload as { path?: string } | null)?.path;
-        const p: string = typeof raw === 'string' ? raw : '';
-        if (!p) { this.respondError(id, '未提供文件路径'); return; }
-        const file = this.app.vault.getAbstractFileByPath(p);
-        if (!file || !(file instanceof TFile)) {
-          this.respondError(id, '文件不存在：' + p);
-          return;
-        }
-        // false：在当前活跃 leaf 旁开新 leaf（不替换画中卷本身）
-        const leaf = this.app.workspace.getLeaf(false);
-        await leaf.openFile(file);
-        this.respond(id, { ok: true });
-      } catch (e) {
-        this.respondError(id, e instanceof Error ? e.message : '打开文件失败');
-      }
-      return;
-    }
-
-    // ---- 思维子弹导出为 Markdown：写入 Vault 任意相对路径（不受画中卷目录限制）----
-    if (type === 'app:exportMindmap') {
-      try {
-        const p = payload as { path?: string; content?: string } | null;
-        const raw = typeof p?.path === 'string' ? p.path.trim() : '';
-        if (!raw) throw new Error('未提供文件路径');
-        if (raw.includes('..')) throw new Error('路径遍历禁止');
-        const full = normalizePath(raw);
-        const content = typeof p?.content === 'string' ? p.content : '';
-        const parent = full.substring(0, full.lastIndexOf('/'));
-        if (parent) await this.mkdirP(parent); // 逐级建目录，支持嵌套导出目录
-        await this.vaultAdapter.write(full, content);
-        this.respond(id, { ok: true, path: full });
-      } catch (e) {
-        this.respondError(id, e instanceof Error ? e.message : '导出失败');
-      }
-      return;
-    }
+    // （app:openFile / app:exportMindmap 已迁入 ./handlers/viewFileHandlers.ts，由上方路由表分发）
 
     // ---- 健康分权威快照（单一数据源，供 webapp 健康分环/详情消费）----
-    if (type === 'app:getHealthOverview') {
-      const provider = this.strategyOverviewProvider;
-      if (!provider) {
-        this.respondError(id, 'app:getHealthOverview 未配置数据源');
-        return;
-      }
-      try {
-        const overview = await provider();
-        if (!overview) {
-          this.respondError(id, '暂无目标数据，无法计算健康分');
-          return;
-        }
-        // overview 必须一并下发：webapp「数据概览」tab 此前拿不到它，只能本地再算一遍
-        // （且本地用的是未过滤归档的目标集），于是同一面板里「概览」与「诊断」两套口径。
-        // 下发后概览 tab 优先消费这份权威聚合，真正做到单一数据源。
-        this.respond(id, {
-          updatedAt: overview.updatedAt,
-          health: overview.health,
-          goals: overview.goals,
-          results: overview.results,
-          overview: overview.overview,
-          hints: overview.hints,
-        });
-      } catch (e) {
-        this.respondError(id, `app:getHealthOverview 计算失败: ${(e as Error)?.message ?? String(e)}`);
-      }
-      return;
-    }
+    // （app:getHealthOverview 已迁入 ./handlers/providerHandlers.ts，由上方路由表分发）
 
     // ---- 主题市场：拉取清单（host 侧 fetch 公开仓库的 manifest.json）----
-    if (type === 'market:manifest') {
-      try {
-        const manifest = await this._fetchMarketJson(MARKET_MANIFEST_URL, this._wantRefresh(payload));
-        // 附带「已安装版本表」，webapp 拿它与 manifest 中各主题的 version 比对 → 得出「可更新」
-        this.respond(id, { ok: true, manifest, installed: this.settings.marketInstalled || {}, installedIds: this.customThemeManifests.map((t) => t.name) });
-      } catch (e) {
-        // fail-soft：网络失败只影响「可装目录」，不能连累「本地已安装」。
-        // 返回本地半份数据（manifest:null + 已安装 id/版本表），webapp 仍可渲染已安装主题并切换
-        // （主题代码由本地磁盘按需加载，无需网络）。
-        this.respond(id, {
-          ok: true,
-          manifest: null,
-          installed: this.settings.marketInstalled || {},
-          installedIds: this.customThemeManifests.map((t) => t.name),
-        });
-        console.warn('[ThemeMarket] 清单拉取失败，已回退为本地已安装列表:', e instanceof Error ? e.message : e);
-      }
-      return;
-    }
-
-    // ---- 主题市场：安装（下载 .js 写入主题文件夹，触发重扫）----
-    if (type === 'market:install') {
-      const p = (payload && typeof payload === 'object' ? payload : {}) as {
-        id?: string;
-        url?: string;
-        version?: string;
-      };
-      const tid = p.id;
-      const url = p.url;
-      if (!tid || !url) { this.respondError(id, 'market:install 缺少 id 或 url'); return; }
-      try {
-        // 先校验 id 再下载：id 会直接拼进路径，且可能来自远程市场清单
-        const assetId = assertSafeAssetId(tid, '主题 id');
-        const code = await this._fetchMarketText(url);
-        if (!code.includes('__bamboo_theme_')) throw new Error('不是有效的竹林主题文件');
-        const dir = this.settings.themePath || '竹林动效主题';
-        const filePath = `${dir}/${assetId}.js`;
-        // 首次安装时目录可能尚不存在（用户改过 themePath / 从未装过主题）：
-        // 低层 adapter.write 不保证自动建目录，先逐级 mkdir 再写（themePath 可以是嵌套目录）。
-        await this.mkdirP(dir);
-        await this.vaultAdapter.write(filePath, code);
-        // 记录本次安装的版本：后续与 manifest 的 version 比对即可判断「可更新」
-        if (!this.settings.marketInstalled) this.settings.marketInstalled = {};
-        this.settings.marketInstalled[assetId] = { version: p.version || '', installedAt: Date.now() };
-        await this.saveSettings();
-        await this._rescanThemes();
-        this._broadcastThemeManifests();   // 让其它已打开的视图也看到新主题
-        this.respond(id, { ok: true });
-      } catch (e) {
-        this.respondError(id, e instanceof Error ? e.message : '主题安装失败');
-      }
-      return;
-    }
-
-    // ---- 主题市场：卸载（删除主题文件夹中的 .js，触发重扫）----
-    if (type === 'market:uninstall') {
-      const p = (payload && typeof payload === 'object' ? payload : {}) as { id?: string };
-      const tid = p.id;
-      if (!tid) { this.respondError(id, 'market:uninstall 缺少 id'); return; }
-      try {
-        const assetId = assertSafeAssetId(tid, '主题 id');
-        const dir = this.settings.themePath || '竹林动效主题';
-        const filePath = `${dir}/${assetId}.js`;
-        // 文件可能已被手动删除、或 themePath 与当初安装时不同：
-        // 此时 remove 会抛错并让整条卸载失败，故先判存在 —— 不存在时按「已卸载」处理，
-        // 版本记录照常清除，避免残留导致重装后误判「已最新」。
-        if (await this._fileExists(filePath)) {
-          await this.vaultAdapter.remove(filePath);
-        }
-        // 同步清除版本记录，避免残留导致重装后误判「已最新」
-        if (this.settings.marketInstalled) {
-          delete this.settings.marketInstalled[assetId];
-          await this.saveSettings();
-        }
-        await this._rescanThemes();
-        this._broadcastThemeManifests();
-        this.respond(id, { ok: true });
-      } catch (e) {
-        this.respondError(id, e instanceof Error ? e.message : '主题卸载失败');
-      }
-      return;
-    }
+    // （market:manifest / market:install / market:uninstall 已迁入 ./handlers/marketHandlers.ts，由上方路由表分发）
 
     // ---- 便签素材市场（画中卷·打字机「便签模式」）----
     // 与主题/模块市场同构：素材是一个 .js，导出 window.__bamboo_material_<id>；
     // webview 侧禁 fetch，故清单拉取与下载一律由宿主 requestUrl 完成。
     // 素材不需要「重扫广播」——webapp 拿到源码即刻沙箱执行并注入 CSS，故 install 直接回传 code。
 
-    // ---- 素材市场：拉取清单（host 侧 fetch 公开仓库的 manifest.json）----
-    if (type === 'material:manifest') {
-      try {
-        const manifest = await this._fetchMarketJson(MATERIAL_MANIFEST_URL, this._wantRefresh(payload));
-        // 回填遗留安装的版本记录（磁盘有 .js 但无记录）→ 使「可更新」判定与主题市场一致
-        await this._backfillMaterialRecords();
-        // 附带「已安装版本表」，webapp 拿它与 manifest 中各素材的 version 比对 → 得出「可更新」
-        this.respond(id, { ok: true, manifest, installed: this.settings.materialInstalled || {} });
-      } catch (e) {
-        this.respondError(id, e instanceof Error ? e.message : '素材市场清单拉取失败');
-      }
-      return;
-    }
-
-    // ---- 素材市场：安装（下载 .js 写入素材目录，并回传源码供 webapp 立即沙箱执行）----
-    if (type === 'material:install') {
-      const p = (payload && typeof payload === 'object' ? payload : {}) as {
-        id?: string;
-        url?: string;
-        version?: string;
-      };
-      if (!p.id || !p.url) { this.respondError(id, 'material:install 缺少 id 或 url'); return; }
-      try {
-        const assetId = assertSafeAssetId(p.id ?? '', '素材 id');
-        const code = await this._fetchMarketText(p.url);
-        if (!code.includes('__bamboo_material_')) throw new Error('不是有效的竹林素材文件');
-        await this.mkdirP(MATERIAL_DIR);
-        await this.vaultAdapter.write(`${MATERIAL_DIR}/${assetId}.js`, code);
-        // 记录本次安装的版本：后续与 manifest 的 version 比对即可判断「可更新」
-        if (!this.settings.materialInstalled) this.settings.materialInstalled = {};
-        this.settings.materialInstalled[assetId] = { version: p.version || '', installedAt: Date.now() };
-        await this.saveSettings();
-        // 直接回传源码：webapp 立即沙箱执行、注入 CSS 并落卡，无需像主题那样重扫广播
-        this.respond(id, { ok: true, code });
-      } catch (e) {
-        this.respondError(id, e instanceof Error ? e.message : '素材安装失败');
-      }
-      return;
-    }
-
-    // ---- 素材市场：读回已安装素材源码（webapp 重载后据此恢复本地素材库）----
-    if (type === 'material:load') {
-      const p = (payload && typeof payload === 'object' ? payload : {}) as { id?: string };
-      if (!p.id) { this.respondError(id, 'material:load 缺少 id'); return; }
-      try {
-        const filePath = `${MATERIAL_DIR}/${assertSafeAssetId(p.id ?? '', '素材 id')}.js`;
-        if (!(await this._fileExists(filePath))) { this.respond(id, { ok: false, code: null }); return; }
-        const code = await this.vaultAdapter.read(filePath);
-        this.respond(id, { ok: true, code });
-      } catch (e) {
-        this.respondError(id, e instanceof Error ? e.message : '素材读回失败');
-      }
-      return;
-    }
+    // （material:manifest / material:install / material:load 已迁入 ./handlers/marketHandlers.ts，由上方路由表分发）
 
     // ---- 当前修行境界（竹杖芒鞋侧栏常驻展示）----
-    if (type === 'app:getCultivationRealm') {
-      const provider = this.cultivationRealmProvider;
-      if (!provider) {
-        this.respondError(id, 'app:getCultivationRealm 未配置数据源');
-        return;
-      }
-      try {
-        this.respond(id, await provider());
-      } catch (e) {
-        this.respondError(id, `app:getCultivationRealm 计算失败: ${(e as Error)?.message ?? String(e)}`);
-      }
-      return;
-    }
-
-    // ---- 当前竹币余额（竹杖芒鞋侧栏常驻展示）----
-    if (type === 'app:getBambooCoinBalance') {
-      const provider = this.bambooCoinBalanceProvider;
-      if (!provider) {
-        this.respondError(id, 'app:getBambooCoinBalance 未配置数据源');
-        return;
-      }
-      try {
-        this.respond(id, await provider());
-      } catch (e) {
-        this.respondError(id, `app:getBambooCoinBalance 计算失败: ${(e as Error)?.message ?? String(e)}`);
-      }
-      return;
-    }
-
-    // ---- 当前可用竹币余额（竹杖芒鞋侧栏常驻展示，与 webapp 商店界面对齐）----
-    if (type === 'app:getBambooCoinAvailableBalance') {
-      const provider = this.bambooCoinAvailableBalanceProvider;
-      if (!provider) {
-        this.respondError(id, 'app:getBambooCoinAvailableBalance 未配置数据源');
-        return;
-      }
-      try {
-        this.respond(id, await provider());
-      } catch (e) {
-        this.respondError(id, `app:getBambooCoinAvailableBalance 计算失败: ${(e as Error)?.message ?? String(e)}`);
-      }
-      return;
-    }
+    // （境界 / 竹币余额 3 个数据源分支已迁入 ./handlers/providerHandlers.ts，由上方路由表分发）
 
     // ---- 存储类消息（委托给 VaultStorage）----
     const result = await this.handleStorageMessage(type, payload);
+    // 【可诊断性】未命中任何分支、且不是 storage:* 的类型，会静默 respond(undefined)：
+    // 任一侧拼错类型或漏改分支，双方都不报错、无日志，表现为「点了没反应」，极难排查。
+    // 这里只加告警、不改变响应内容（契约本身由 src/host/__tests__/appApiContract.test.ts 锁住）。
+    if (result === undefined && !type.startsWith('storage:')) {
+      // eslint-disable-next-line no-console -- 未命中分支属静默失效，必须留痕；仅告警不改响应
+      console.warn(`[AppAPI] 未知消息类型（未命中任何分支，已按 undefined 响应）: ${type}`);
+    }
     this.respond(id, result);
   }
 

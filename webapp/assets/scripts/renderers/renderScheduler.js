@@ -1,4 +1,5 @@
 import { byId, getDomRoot } from '../utils/domRef.js';
+import { Perf } from '../utils/perf.js';
 
 export const RenderScheduler = {
     _dirtySections: new Set(),
@@ -53,6 +54,18 @@ export const RenderScheduler = {
         }
 
         this._isRendering = true;
+        // 【P1-5】渲染耗时基线：flush 是「脏板块 → DOM」的唯一出口，覆盖全量与局部两条路径
+        const stopPerf = Perf.start('render:flush');
+        // 【P1-5】首帧指标：本 webview 从脚本启动到首次真正渲染的耗时。
+        // 视图重建（纵⇄看板切换时重建 webview）的主要成本就体现在这个数字上。
+        if (!this._firstRenderRecorded) {
+            this._firstRenderRecorded = true;
+            try {
+                if (typeof performance !== 'undefined' && typeof performance.now === 'function') {
+                    Perf.record('boot:first-render', performance.now());
+                }
+            } catch (_) { /* 忽略 */ }
+        }
 
         try {
             const needsFullRender = this._renderAllDirty;
@@ -70,6 +83,7 @@ export const RenderScheduler = {
             console.error('[RenderScheduler] 渲染出错:', e);
         } finally {
             this._isRendering = false;
+            stopPerf();
             if (this._pendingFlush) {
                 this._pendingFlush = false;
                 this.flush();

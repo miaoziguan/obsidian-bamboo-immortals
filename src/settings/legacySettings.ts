@@ -1,12 +1,10 @@
 import { App, normalizePath } from 'obsidian';
 import type { BambooReviewSettings } from './PluginSettings';
+import { EXPORT_FOLDER_DEFAULTS } from './settingsDefaults';
 
-/** 三类 Markdown 导出的默认目录（与 PluginSettings 的 DEFAULT_SETTINGS 保持一致） */
-export const EXPORT_FOLDER_DEFAULTS: Record<'mmExportFolder' | 'noteExportFolder' | 'writeExportFolder', string> = {
-  mmExportFolder: '思维子弹',
-  noteExportFolder: '便签',
-  writeExportFolder: 'MD可视化写作',
-};
+// 向后兼容再导出：既有测试/调用方仍可从 legacySettings 取该常量。
+// 定义已移到中立模块 settingsDefaults（打破 PluginSettings ⇄ legacySettings 的依赖环）。
+export { EXPORT_FOLDER_DEFAULTS };
 
 /** 安全子路径：去空白 / 反斜杠 / 首尾斜杠；空值或含 `..`（路径遍历）→ '' */
 function safeSub(raw: unknown): string {

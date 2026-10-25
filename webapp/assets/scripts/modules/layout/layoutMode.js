@@ -1,4 +1,5 @@
 import { byId } from '../../utils/domRef.js';
+import { Perf } from '../../utils/perf.js';
 
 /**
  * 桌面端多列布局模式（单按钮循环：纵向 ⇄ 看板；横向模式已移除）
@@ -164,6 +165,8 @@ export const LayoutMode = {
      * 兼容：旧版本持久化 / 视图状态里的 'horizontal' 一律按看板处理（横向模式已移除）。
      */
     _enter(mode) {
+        // 【P1-5】切档耗时基线（进入方向）：分发开始 → finish rAF 收尾（含分列/宽度/过渡）
+        const stopPerf = Perf.start('layout:enter');
         // 兼容旧值：横向模式已移除，历史 settings / 视图状态里的 'horizontal' 归一到看板
         if (mode === 'horizontal') mode = 'kanban';
         // 白名单收口：本函数是唯一会把 layoutMode 写进 settings 的出口
@@ -236,6 +239,7 @@ export const LayoutMode = {
             this._movingToCenter = true;
             // 兜底：移动若失败（宿主未注入/异常），3s 后解除封锁，避免面板永久卡在「半切换」状态
             if (typeof setTimeout === 'function') setTimeout(() => { this._movingToCenter = false; }, 3000);
+            stopPerf();   // 交接给宿主，旧面板路径结束
             return true;
         }
 
@@ -272,6 +276,7 @@ export const LayoutMode = {
         // Toast 同理延后，让切帧先呈现给用户。
         const toastMsg = widthAutoBumped ? `已临时放宽宽度进入${label}` : `已切换为${label}`;
         const finish = () => {
+            stopPerf();
             // 走合帧调度：本帧 ResizeObserver 也会请求重算，合并后只跑一次强制布局
             if (typeof DisplayManager !== 'undefined' && DisplayManager._scheduleResponsive) {
                 try { DisplayManager._scheduleResponsive(); } catch (e) { /* 不阻塞布局切换 */ }
@@ -337,6 +342,8 @@ export const LayoutMode = {
         if (this._restoring) return;
         // 移中央进行中：退出请求会与正在进行的重建交叉（旧面板即将销毁，退出毫无意义）
         if (this._movingToCenter) return;
+        // 【P1-5】切档耗时基线（退出方向）：从本地清理开始 → finish rAF 收尾
+        const stopPerf = Perf.start('layout:off');
         this._mode = 'none';
         this._movingToCenter = false;
         // 清掉切换过渡的收尾定时器（面板即将被重建替换，定时器不应再跑）
@@ -398,6 +405,7 @@ export const LayoutMode = {
 
         // 与进入时对称：响应式类重算和 Toast 延后到下一帧，等拆列后的布局稳定
         const finish = () => {
+            stopPerf();
             // willRebuild 时本视图即将被替换，重算响应式类（含一次 getBoundingClientRect）纯属浪费 → 跳过。
             // 否则走合帧调度：与 ResizeObserver 的请求合并，每帧最多一次强制布局。
             if (!willRebuild && typeof DisplayManager !== 'undefined' && DisplayManager._scheduleResponsive) {

@@ -1,6 +1,6 @@
 import { App, PluginSettingTab, Setting, Notice, Modal, SettingPage, SettingDefinitionItem } from 'obsidian';
 import { normalizeDirInput, migrateDataDir, bindFolderMigration } from './folderMigration';
-import { EXPORT_FOLDER_DEFAULTS } from './legacySettings';
+import { EXPORT_FOLDER_DEFAULTS } from './settingsDefaults';
 import type BambooReviewPlugin from '../../main';
 import { ThemeBridge } from '../bridge/ThemeBridge';
 import { arrayBufferToBase64 } from '../utils/base64';

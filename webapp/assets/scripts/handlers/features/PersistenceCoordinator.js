@@ -15,6 +15,7 @@ import { LinkLayer } from '../../services/LinkLayer.js';
 import { WritingDoc } from './writingDoc.js';
 import { UndoStack } from '../../services/undoStack.js';
 import { isFromTextEntry } from '../../utils/domRef.js';
+import { Perf } from '../../utils/perf.js';
 
 // 比例坐标(v1)→绝对px(v2)换算：旧版 x/y 是「相对画布宽高的比例」，画布尺寸一变便签就被按比例甩出视野。
 // 按当前画布尺寸换算成绝对 px 后即以 v2 落盘。此函数在「恢复」与「热切档」两条加载路径共用，
@@ -60,11 +61,15 @@ export const PersistenceCoordinator = {
     // 收敛：write/notes 走同一套 saveDoc（mindmap 已在顶部 return，不至此）
     // 【防丢数据】落盘是静默自动行为，失败必须让用户看见：此前此处无 try/catch，
     // 失败只表现为 unhandled rejection，用户直到下次打开才发现数据少了一块。
+    // 【P1-5】落盘耗时基线（按模式分桶：notes / write）
+    const stopPerf = Perf.start('save:' + ctrl._mode);
     try {
       await TypewriterStore.saveDoc(ctrl._mode, notes, off, ctrl._links);
     } catch (e) {
       console.error('[Typewriter] 便签/写作落盘失败', e);
       ctrl._showSaveFailed(PersistenceCoordinator.modeLabel(ctrl._mode));
+    } finally {
+      stopPerf();
     }
 
   },

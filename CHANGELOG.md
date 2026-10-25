@@ -1,5 +1,30 @@
 # Changelog
 
+## [3.32.2] — 2026-10-26
+
+> 把 Obsidian 官方审核规则**本地化**：不等退回，提交前就能自查。
+> 无运行时行为变化（仅工具链 + 源码卫生）。
+
+### Added
+- **`scripts/check-review-rules.mjs`**（CI 第 5 道闸门，4 条确定性检查）：
+  ① 禁止对 `no-console` 使用 eslint-disable（官方判 Error）；
+  ② 所有 eslint-disable 必须带 `-- 描述`（官方 `undescribed-directive`）；
+  ③ 注释里不得「散文式提及」指令字面量（扫描器按文本匹配，易误判）；
+  ④ 禁止在字符串字面量里硬编码 `.obsidian`（官方 `no-hardcoded-config-dir`，应改用 `vault.configDir`）。
+- **`npm run preflight`**：一条命令跑完「审核者视角自检」= lint（含无用 disable 检查）+ tsc + 4 道闸门。
+
+### Changed
+- 启用 `@typescript-eslint/no-unnecessary-type-assertion`（**error**），对齐官方审核
+  —— 正是 3.32.0 被退回的那条 Warning。
+- `npm run lint` 增加 `--report-unused-disable-directives`：无用 disable 现在直接报错。
+- `AGENTS.md` 新增 §5.1「审核闭环」：官方每退回一条 → 立刻转成本地检查并演示"违规即失败"，
+  不允许"下次记得注意"。
+
+### Fixed
+- 清理 3 处冗余 `as const`（`src/license/licenseStore.ts`，类型不变）。
+- 清理 **6 条已失效的 eslint-disable 死指令**
+  （`types/data.ts`×3、`ai/MarkdownPlanner.ts`×2、`ai/GoalCardValidator.ts`×1）。
+
 ## [3.32.1] — 2026-10-26
 
 > 修复 Obsidian 官方源码审核（Source review）报出的 1 个 Error + 1 个 Warning。

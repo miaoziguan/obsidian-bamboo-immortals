@@ -10,9 +10,11 @@ import type BambooReviewPlugin from '../../main';
 import { verifyLicenseKey, getLicenseTag } from './licenseKey';
 import { REVOKED_TAGS } from './secretShards';
 
-const LICENSE_FIELD = 'licenseKey' as const;
-const ACTIVE_FIELD = 'licenseActive' as const;
-const TAG_FIELD = 'licenseTag' as const;
+// 注：不加 `as const` —— const 声明的字面量本身即窄化类型，断言冗余
+// （Obsidian Source review 的 no-unnecessary-type-assertion 会判 Warning）。
+const LICENSE_FIELD = 'licenseKey';
+const ACTIVE_FIELD = 'licenseActive';
+const TAG_FIELD = 'licenseTag';
 
 export class LicenseStore {
   constructor(private plugin: BambooReviewPlugin) {}

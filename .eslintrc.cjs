@@ -55,6 +55,10 @@ module.exports = {
         '@typescript-eslint/no-non-null-assertion': 'warn',
         'no-console': 'warn',
         'no-debugger': 'error',
+        // Obsidian Source review 会据此判 Warning（本仓库 3.32.0 → 3.32.1 实测命中过）：
+        // 抽取/移动代码后类型上下文变化（unknown → Record<string,unknown>），原断言变冗余。
+        // 本地开启后可在提交审核前拦下，而不是等官方退回。
+        '@typescript-eslint/no-unnecessary-type-assertion': 'error',
         // 类型感知规则（需 parserOptions.project，已在下方 src override 开启）。
         // 它们不在 @typescript-eslint/recommended 内，必须显式启用——这正是 OB 官方审核系统
         // 拦 no-unsafe-assignment 的机制；启用后可挡住 any 从 Obsidian API 边界回潮。

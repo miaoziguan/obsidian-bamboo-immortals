@@ -266,7 +266,6 @@ export function buildMultiPrompt(
 /** 从模型回执文本中提取 goals 数组（容忍 ```json 围栏与前后废话） */
 function extractGoalsObject(raw: unknown): { goals?: unknown } {
   if (raw && typeof raw === 'object' && 'goals' in (raw as Record<string, unknown>)) {
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- raw 形参为 unknown，返回具名类型 {goals?: unknown} 必须断言；bot 缺少类型上下文误判为不必要
     return raw as { goals?: unknown };
   }
   // raw 可能是字符串（resp.text 或已 stringify 的回执）
@@ -322,7 +321,6 @@ export function parseGoals(rawText: unknown): GoalItem[] {
       : [];
 
     const categoryRaw = typeof goal.category === 'string' ? goal.category : '';
-    // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents -- 兼容 webapp 透传的任意分类字符串，下方 sanitize 回落
     const category: GoalCategory | string =
       GOAL_CATEGORIES.some((c) => c.id === categoryRaw) ? categoryRaw : 'other';
 

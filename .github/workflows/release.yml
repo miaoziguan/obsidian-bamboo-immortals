@@ -50,6 +50,11 @@ jobs:
       - name: Check window globals (全局挂载点清单未漂移)
         run: node scripts/check-window-globals.mjs
 
+      # Obsidian 官方 Source review 规则的本地闸门（3.32.0 被退回 1 Error + 1 Warning 后落地）：
+      # 禁止屏蔽 no-console / disable 必须带 -- 描述 / 禁止硬编码 .obsidian
+      - name: Check Obsidian review rules (审核规则本地自检)
+        run: node scripts/check-review-rules.mjs
+
       # webapp/ 被 .eslintrc.cjs 排除在 ESLint 之外，属性上下文转义无任何 lint 保护。
       # 闸门失败即阻断发布：属性值未转义可被闭合后注入任意事件处理器。
       - name: Check HTML attribute escaping (防 XSS 回归)

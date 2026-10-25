@@ -50,6 +50,28 @@
 - 覆盖率门禁用**绝对已覆盖语句数**棘轮，不用百分比。
 - 性能结论必须来自 `BambooPerf.report()` 的 p50/p95，不接受"感觉更快"。
 
+### 5.1 审核闭环（已自动化，2026-10-26 起）
+
+提交审核前**只需一条命令**：
+
+```bash
+npm run preflight   # lint(含无用 disable 检查) → tsc → 4 道闸门
+```
+
+| 闸门 | 覆盖 | 单跑命令 |
+|---|---|---|
+| load-matrix | 各入口 `<link>` 与矩阵一致；JS 类名 ↔ CSS 无漂移 | `npm run check:load-matrix` |
+| message-contract | 协议镜像同步 / 路由键唯一 / 入站前缀合规 | `npm run check:message-contract` |
+| window-globals | window 挂载点清单与源码一致 | `npm run check:window-globals` |
+| review-rules | 禁屏蔽 `no-console` / disable 带描述 / 注释无散文式指令 / 无硬编码 `.obsidian` | `npm run check:review-rules` |
+| coverage-baseline | 绝对已覆盖语句数不下降 | `npm run test:coverage` |
+
+**闭环规则**：官方每退回一条 → **立刻**在 `check-review-rules.mjs` 加一条对应检查（或补一条 eslint 规则），
+并当场演示"违规即失败"。**不允许"下次记得注意"** —— 靠记性等于没修。
+
+**已本地化的官方规则**（`no-unnecessary-type-assertion` 已启用为 error；`no-console` 禁止屏蔽已闸门化；
+`undescribed-directive` / `no-hardcoded-config-dir` 已闸门化；裸 `setTimeout` 由 eslint `no-restricted-globals` 覆盖）。
+
 ## 6. 交付要求
 - 每个结论附：主张 / 证据 / **如何证伪它**（三行缺一不可）。
 - 显著区分「已实证」与「推断」；推断必须标注，并给出验证它所需的最小实验。
@@ -77,6 +99,9 @@
 | §5 证伪需验证注入落地 | 两次注入失效（shell 反引号被替换；`replace(...,1)` 命中手写区）却误以为"检查能拦" | 输出为空才起疑，改为 assert 注入位置 |
 | §5 覆盖率用绝对数 | 补测 `displayManager.js` 后语句覆盖率 47.27% → 45.49%（分母涨得更快），百分比门禁反而惩罚补测 | 改为绝对已覆盖语句棘轮（8524 → 8705） |
 | §1 证伪前提 | P1-4 与 P2-6 两条 backlog 结论均被证伪 | 见上两行 |
+| §5.1 审核闭环 | 3.32.0 被 Obsidian 官方退回 1 Error（屏蔽 no-console）+ 1 Warning（多余断言），本地 lint 全绿却毫无察觉 | 已本地化为 `review-rules` 闸门 + 启用 `no-unnecessary-type-assertion`；3.32.1 过审 |
+| §5 禁散文式指令 | 我在 AppAPI 注释里写了「eslint-disable no-console」字面量，等同给扫描器递刀 | 已改写为自然语言，并加闸门（散文式提及即失败） |
+| §5 lint 无死指令 | 6 条 disable 已不再抑制任何问题（规则早就不报了），纯噪音+审核面 | `--report-unused-disable-directives` 进 lint，清理 6 条 |
 
 **当前基线（2026-10-26）**：webapp 121 套件 / 1073 用例；宿主 57 文件 / 636 用例；
 覆盖率基线 8705 绝对语句；CI 四道闸门（load-matrix / message-contract / window-globals / coverage）。

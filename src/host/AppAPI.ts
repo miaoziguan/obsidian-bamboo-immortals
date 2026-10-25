@@ -1149,14 +1149,12 @@ export class AppAPI {
     // （境界 / 竹币余额 3 个数据源分支已迁入 ./handlers/providerHandlers.ts，由上方路由表分发）
 
     // ---- 存储类消息（委托给 VaultStorage）----
+    // 注：未命中任何分支、且不是 storage:* 的类型会 respond(undefined)（静默）。
+    // 这里**不再**输出控制台告警：Obsidian 发布校验不允许屏蔽 console 相关规则，
+    // 而裸告警也会污染审核；该静默路径改由两道确定性闸门兜住 ——
+    //   ① 契约测试（src/host/__tests__/appApiContract.test.ts，59 个类型逐一断言不会落到兜底）
+    //   ② 协议镜像闸门（scripts/check-message-contract.mjs，host/webapp 类型集合必须一致）
     const result = await this.handleStorageMessage(type, payload);
-    // 【可诊断性】未命中任何分支、且不是 storage:* 的类型，会静默 respond(undefined)：
-    // 任一侧拼错类型或漏改分支，双方都不报错、无日志，表现为「点了没反应」，极难排查。
-    // 这里只加告警、不改变响应内容（契约本身由 src/host/__tests__/appApiContract.test.ts 锁住）。
-    if (result === undefined && !type.startsWith('storage:')) {
-      // eslint-disable-next-line no-console -- 未命中分支属静默失效，必须留痕；仅告警不改响应
-      console.warn(`[AppAPI] 未知消息类型（未命中任何分支，已按 undefined 响应）: ${type}`);
-    }
     this.respond(id, result);
   }
 

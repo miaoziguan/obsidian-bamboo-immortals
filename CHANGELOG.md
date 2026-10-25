@@ -1,5 +1,18 @@
 # Changelog
 
+## [3.32.1] — 2026-10-26
+
+> 修复 Obsidian 官方源码审核（Source review）报出的 1 个 Error + 1 个 Warning。
+
+### Fixed
+- **Error · 禁止屏蔽 `no-console`**（`src/host/AppAPI.ts`）：`handleMessage` 兜底对未知消息类型的
+  `console.warn` 使用了 `eslint-disable no-console`，而 Obsidian 发布校验不允许禁用该规则。
+  已移除该告警与 disable 注释。该静默路径改由两道确定性闸门覆盖：
+  契约测试（59 个类型逐一断言不会落到兜底）+ 协议镜像闸门（host/webapp 类型集合一致）。
+- **Warning · 多余的类型断言**（`src/host/handlers/settingsHandlers.ts`）：
+  `payload as Record<string, unknown> | null` 中 `payload` 本就是 `Record<string, unknown>`，
+  断言冗余，已去掉。
+
 ## [3.32.0] — 2026-10-26
 
 > 本版以**工程质量**为主：无用户可见的行为改动（除两处静默失效被修掉、一处协议注册表补全）。

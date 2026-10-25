@@ -21,7 +21,7 @@ const handleGetSettings: RouteHandler<SettingsHost> = async (ctx, id) => {
 
 /** 板块配置 */
 const handleSaveSectionConfig: RouteHandler<SettingsHost> = async (ctx, id, payload) => {
-    await ctx.setSectionConfig(payload as Record<string, unknown> | null);
+    await ctx.setSectionConfig(payload);
     ctx.respond(id, { ok: true });
 };
 

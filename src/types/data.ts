@@ -51,7 +51,8 @@ export interface GoalSubItem {
   currentValue?: string;
   /** 每日量（如 '30'、'2'），驱动今日任务增量；空则不生成今日任务 */
   dailyMin?: string;
-  taskDayType?: TaskDayType | string;
+  /** 取值见 TaskDayType（daily/weekly/monthly/custom）；持久化层允许任意字符串（历史数据/AI 回执） */
+  taskDayType?: string;
   /** 排期配置：custom_week=星期几（'1,3,5'）、custom_month=每月哪几天（'1,15'）、interval=每隔 N 天。
    *  【P0-3】webapp 侧（GoalService / editor）早已在用，但 AI 侧此前根本不携带此字段，
    *  自定义排期从 AI 规划路径无法表达 —— 类型先补齐，与运行时对齐。 */
@@ -68,8 +69,9 @@ export interface GoalItem {
   analysis?: string;
   icon?: string;
   meta?: string;
-  /** 领域（work/personal/health/study/finance/other），webapp 据此分组着色 */
-  category?: GoalCategory | string;
+  /** 领域（work/personal/health/study/finance/other），webapp 据此分组着色；
+   *  取值见 GoalCategory，持久化层允许任意字符串 */
+  category?: string;
   startDate?: string;
   endDate?: string;
   progress?: number;
@@ -96,7 +98,8 @@ export interface CustomTemplate {
     icon: string;
     title: string;
     meta: string;
-    category: GoalCategory | string;
+    /** 取值见 GoalCategory；持久化层允许任意字符串 */
+    category: string;
     progress: number;
     items: GoalSubItem[];
   };

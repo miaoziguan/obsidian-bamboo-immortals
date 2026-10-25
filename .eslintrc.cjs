@@ -58,6 +58,11 @@ module.exports = {
         // Obsidian Source review 会据此判 Warning（本仓库 3.32.0 → 3.32.1 实测命中过）：
         // 抽取/移动代码后类型上下文变化（unknown → Record<string,unknown>），原断言变冗余。
         // 本地开启后可在提交审核前拦下，而不是等官方退回。
+        // Obsidian Source review 会据此判 Warning（3.32.2 删 disable 后即回归）：
+        // `T | string` 这类「字面量联合被 string 吞掉」属冗余，官方会报。
+        // 本地启用后可在提交审核前拦下 —— 且使 --report-unused-disable-directives 的结论可信
+        // （指向未启用规则的 disable 会被误判为"无用"，3.32.2 已踩过）。
+        '@typescript-eslint/no-redundant-type-constituents': 'error',
         '@typescript-eslint/no-unnecessary-type-assertion': 'error',
         // 类型感知规则（需 parserOptions.project，已在下方 src override 开启）。
         // 它们不在 @typescript-eslint/recommended 内，必须显式启用——这正是 OB 官方审核系统

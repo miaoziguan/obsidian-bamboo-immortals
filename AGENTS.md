@@ -69,8 +69,9 @@ npm run preflight   # lint(含无用 disable 检查) → tsc → 4 道闸门
 **闭环规则**：官方每退回一条 → **立刻**在 `check-review-rules.mjs` 加一条对应检查（或补一条 eslint 规则），
 并当场演示"违规即失败"。**不允许"下次记得注意"** —— 靠记性等于没修。
 
-**已本地化的官方规则**（`no-unnecessary-type-assertion` 已启用为 error；`no-console` 禁止屏蔽已闸门化；
-`undescribed-directive` / `no-hardcoded-config-dir` 已闸门化；裸 `setTimeout` 由 eslint `no-restricted-globals` 覆盖）。
+**已本地化的官方规则**（`no-unnecessary-type-assertion` / `no-redundant-type-constituents` 已启用为 error；
+`no-console` 禁止屏蔽已闸门化；`undescribed-directive` / `no-hardcoded-config-dir` 已闸门化；
+「disable 只能指向已启用规则」已闸门化；裸 `setTimeout` 由 eslint `no-restricted-globals` 覆盖）。
 
 ## 6. 交付要求
 - 每个结论附：主张 / 证据 / **如何证伪它**（三行缺一不可）。
@@ -102,6 +103,7 @@ npm run preflight   # lint(含无用 disable 检查) → tsc → 4 道闸门
 | §5.1 审核闭环 | 3.32.0 被 Obsidian 官方退回 1 Error（屏蔽 no-console）+ 1 Warning（多余断言），本地 lint 全绿却毫无察觉 | 已本地化为 `review-rules` 闸门 + 启用 `no-unnecessary-type-assertion`；3.32.1 过审 |
 | §5 禁散文式指令 | 我在 AppAPI 注释里写了「eslint-disable no-console」字面量，等同给扫描器递刀 | 已改写为自然语言，并加闸门（散文式提及即失败） |
 | §5 lint 无死指令 | 6 条 disable 已不再抑制任何问题（规则早就不报了），纯噪音+审核面 | `--report-unused-disable-directives` 进 lint，清理 6 条 |
+| §5.1 删 disable 先验 | 3.32.2：`--report-unused` 把「指向**未启用**规则的 disable」判为"无用"→ 我删 6 条 → 官方退回 6 个告警（disable 抑制的是官方规则，不是本地规则） | 闸门第 ⑤ 条（disable 必须指向已启用规则，经 ESLint API 取真实生效配置）+ 启用 `no-redundant-type-constituents` 并真修类型 |
 
 **当前基线（2026-10-26）**：webapp 121 套件 / 1073 用例；宿主 57 文件 / 636 用例；
 覆盖率基线 8705 绝对语句；CI 四道闸门（load-matrix / message-contract / window-globals / coverage）。

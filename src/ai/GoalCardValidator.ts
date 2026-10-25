@@ -11,7 +11,6 @@
 
 import {
   GOAL_CATEGORIES,
-  type GoalCategory,
   type GoalItem,
   type GoalSubItem,
 } from '../types/data';
@@ -132,7 +131,7 @@ export function sanitizeSubItem(raw: unknown, idx: number): GoalSubItem {
 export function sanitizeGoal(raw: unknown): GoalItem {
   const g = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
   const categoryRaw = str(g.category);
-  const category: GoalCategory | string = CATEGORY_SET.has(categoryRaw) ? categoryRaw : 'other';
+  const category = CATEGORY_SET.has(categoryRaw) ? categoryRaw : 'other';
 
   const itemsRaw = Array.isArray(g.items) ? g.items : [];
   const items = itemsRaw.map((it, i) => sanitizeSubItem(it, i));

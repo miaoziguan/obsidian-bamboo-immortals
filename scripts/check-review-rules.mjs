@@ -27,6 +27,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { ESLint } from 'eslint';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SRC = path.join(ROOT, 'src');
@@ -47,6 +48,21 @@ function walk(dir, out = []) {
 const problems = [];
 const rel = (f) => path.relative(ROOT, f);
 const allow = (line, name) => line.includes(`review-allow: ${name}`);
+
+// ⑤ 需要本地 eslint 的**真实生效配置**（含 overrides），判断 disable 指向的规则是否已启用。
+//    教训：3.32.2 里 --report-unused-disable-directives 把「指向未启用规则的 disable」判为"无用"，
+//    我据此删了 6 条 → 官方退回 6 个告警（no-redundant-type-constituents / unnecessary-assertion）。
+//    规则：disable 只允许指向**本地已启用**的规则；否则结论不可信，必须先启用该规则或删掉 disable。
+const eslintApi = new ESLint();
+const sampleCfg = await eslintApi.calculateConfigForFile(path.join(SRC, 'host', 'AppAPI.ts'));
+const enabledRules = new Set(
+  Object.entries(sampleCfg?.rules || {})
+    .filter(([, v]) => {
+      const sev = Array.isArray(v) ? v[0] : v;
+      return sev !== 'off' && sev !== 0;
+    })
+    .map(([k]) => k),
+);
 
 for (const file of walk(SRC)) {
   const lines = fs.readFileSync(file, 'utf8').split('\n');
@@ -69,6 +85,16 @@ for (const file of walk(SRC)) {
       const hasDesc = /--\s*\S/.test(rest);
       if (!hasDesc && !allow(line, 'undescribed-directive')) {
         problems.push(`${at} eslint-disable 缺少 "-- 描述"（官方 undescribed-directive）。`);
+      }
+      // ⑤ 指向的规则必须在本地启用（否则「无用 disable」的判断不可信）
+      for (const r of rules.split(',').map((x) => x.trim()).filter(Boolean)) {
+        if (!enabledRules.has(r) && !allow(line, 'unenabled-rule-disable')) {
+          problems.push(
+            `${at} 对「本地未启用」的规则 ${r} 使用了 disable。` +
+              `这类 disable 会被 --report-unused-disable-directives 误判为"无用"，` +
+              `但官方审核仍会报（3.32.2 已踩过）。请先启用该规则，再修代码或删 disable。`,
+          );
+        }
       }
     }
 
@@ -103,6 +129,6 @@ if (problems.length) {
   process.exit(1);
 }
 console.log(
-  '[review] ✅ 审核规则自检通过（no-console 未被屏蔽 / disable 均带描述 / ' +
+  '[review] ✅ 审核规则自检通过（no-console 未被屏蔽 / disable 均带描述 / 均指向已启用规则 / ' +
     '注释无散文式指令字面量 / 无硬编码配置目录）',
 );

@@ -19,7 +19,7 @@
  */
 
 import { requestUrl } from 'obsidian';
-import { GOAL_CATEGORIES, type GoalCategory, type GoalItem, type GoalSubItem } from '../types/data';
+import { GOAL_CATEGORIES, type GoalItem, type GoalSubItem } from '../types/data';
 import { cleanDailyMin, normalizeTaskDay } from './GoalCardValidator';
 import { FRAMEWORKS, type FrameworkType } from './frameworks';
 
@@ -266,7 +266,7 @@ export function buildMultiPrompt(
 /** 从模型回执文本中提取 goals 数组（容忍 ```json 围栏与前后废话） */
 function extractGoalsObject(raw: unknown): { goals?: unknown } {
   if (raw && typeof raw === 'object' && 'goals' in (raw as Record<string, unknown>)) {
-    return raw as { goals?: unknown };
+    return raw;
   }
   // raw 可能是字符串（resp.text 或已 stringify 的回执）
   let text = typeof raw === 'string' ? raw : JSON.stringify(raw);
@@ -321,8 +321,7 @@ export function parseGoals(rawText: unknown): GoalItem[] {
       : [];
 
     const categoryRaw = typeof goal.category === 'string' ? goal.category : '';
-    const category: GoalCategory | string =
-      GOAL_CATEGORIES.some((c) => c.id === categoryRaw) ? categoryRaw : 'other';
+    const category = GOAL_CATEGORIES.some((c) => c.id === categoryRaw) ? categoryRaw : 'other';
 
     return {
       id: `goal_${Date.now().toString(36)}_${gi}_${Math.random().toString(36).slice(2, 8)}`,

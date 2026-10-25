@@ -1,5 +1,27 @@
 # Changelog
 
+## [3.32.4] — 2026-10-26
+
+> 修复第二次源码审核退回的 6 个 Warning —— 并把教训落成闸门，防止同类问题复发。
+
+### Fixed
+- **冗余联合类型 5 处**（`T | string` 中 `string` 吞掉字面量联合，官方判冗余）：
+  · `types/data.ts`：`taskDayType` / 两处 `category` → 收敛为 `string`（类型语义完全等价，
+    字面量取值仍由 `TaskDayType` / `GoalCategory` 常量与注释文档化）；
+  · `ai/GoalCardValidator.ts` / `ai/MarkdownPlanner.ts`：局部标注去掉冗余联合。
+  连带清理 2 个不再使用的 `GoalCategory` 类型导入。
+- **多余断言 1 处**（`ai/MarkdownPlanner.ts`）：`raw as { goals?: unknown }` 中收窄后的 `raw`
+  本就可赋值给返回类型，断言冗余，已去掉。
+
+### Added
+- **启用 `no-redundant-type-constituents`（error）**：本地对齐官方规则，同类问题提交前即拦。
+- **审核闸门新增第 ⑤ 条**：`eslint-disable` 只能指向**本地已启用**的规则（经 ESLint API 取真实生效配置）。
+  —— 根因：`--report-unused-disable-directives` 会把「指向未启用规则的 disable」误判为"无用"，
+  上轮据此删除 6 条，但它们抑制的是**官方规则**，导致本次 6 个告警。该闸门使这类误判不可能再发生。
+
+### 事后复盘
+- `AGENTS.md` 实证来源表新增 1 行：**删除 disable 前必须确认对应规则本地已启用**。
+
 ## [3.32.3] — 2026-10-26
 
 > 修复 3.32.2 的 CI 阻断（该 tag 未产出 Release，故顺延一个补丁版本重发，不移动旧 tag）。

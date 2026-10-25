@@ -1,5 +1,50 @@
 # Changelog
 
+## [3.32.0] — 2026-10-26
+
+> 本版以**工程质量**为主：无用户可见的行为改动（除两处静默失效被修掉、一处协议注册表补全）。
+
+### Added
+- **覆盖率基建**：webapp 测试改为可插桩（`COVERAGE_EVAL=1`），并新增**绝对已覆盖语句数**门禁；
+  当前基线 8705 条（解决「1016 个绿灯但覆盖率恒 0/0、无法评估」的盲区）。
+- **性能测量**：新增 `utils/perf.js`（环形缓冲 + p50/p95）与 5 处关键路径插桩
+  （`layout:enter` / `layout:off` / `render:flush` / `boot:first-render` / `save:*`）。
+  控制台执行 `BambooPerf.report()` 可查看。此前全仓**零性能测量**。
+- **两道 CI 闸门**：`check-message-contract`（协议镜像同步 / 路由键唯一 / 入站前缀合规）、
+  `check-window-globals`（window 挂载点清单与源码一致）。连同既有 load-matrix 与覆盖率门禁，共 4 道。
+- **`AGENTS.md`**：记录本仓库的工作守则与实证来源（含 8 类已踩过的坑）。
+
+### Changed
+- **AppAPI 拆分**：`AppAPI.ts` 2142 → 1547 行；`handleMessage` 由 950 行 / 31 个 if 分支
+  降为 117 行（仅 `app:ready`），其余按领域拆入 `src/host/handlers/` 共 11 个模块，
+  统一经 `HostContext` 门面访问宿主。
+- **goals 渲染器拆分**：`goals/renderer.js` 1659 → 1059 行
+  （健康详情模板 → `healthDetailView.js`；行内编辑编排 → `inlineEditStarter.js`）。
+- **typewriter 模板抽出**：`typewriterFeature.js` 2223 → 2159 行（`_ensureDom` 113 → 49）。
+- **依赖方向修正**：`EXPORT_FOLDER_DEFAULTS` 抽到中立模块 `settingsDefaults.ts`，
+  消除 `PluginSettings ⇄ legacySettings` 的依赖环。
+
+### Fixed
+- **未匹配消息静默失效**：`handleMessage` 兜底对未知类型 `respond(undefined)` 且无日志，
+  拼错类型表现为「点了没反应」。现在会打印告警（响应行为不变）。
+- **协议注册表 6 处漂移**：host 侧补登记 `module:renderMarkdown` / `module:writeFile` /
+  `module:openReader` / `app:beforeDetach`；webapp 侧补 `module:toggleTheme`、删除陈旧的
+  `file:response`。两侧现各 103 项。
+
+### Tests
+- webapp 1016 → **1073** 用例；宿主 555 → **636** 用例（+138）。
+  新增：AppAPI 契约（59 类型全覆盖）、module 特征测试、ready 载荷完整性、
+  displayManager 真实加载、bridge 契约、perf、goals 健康详情 / 行内编辑、依赖环守卫。
+- `docs/window-globals.md` 改为「手写说明 + 自动生成区块」（真实 130 个挂载点 / 84 文件；
+  原文档自称 70 项，已严重失真）。
+
+### Not changed（评估后有意不动）
+- **三模式切档 reset 撤销栈**：确认为**有意设计**（notes/write 共栈必 reset 防串味；
+  导图独立栈跨档保留），仅补契约测试锁定，不改行为。
+- **`mindmapFeature.js`（2332 行）**：测绘后判定为「职责广度」而非「方法失控」
+  （最大方法 139 行占 6%，已有 12 个专属测试），拆分收益低于风险，明确不拆。
+- **`app:ready`（41 行）**：纯聚合代码，外置只会让门面更膨胀且动到最关键握手路径，不做。
+
 ## [3.31.2] — 2026-10-25
 
 ### Changed

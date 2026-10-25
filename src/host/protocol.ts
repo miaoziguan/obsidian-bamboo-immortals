@@ -111,6 +111,7 @@ export const ALL_MESSAGE_TYPES = [
   'file:delete',
 
   // ---- host → webapp ----
+  'app:beforeDetach', // 视图销毁前的最后通牒：webapp 收到后立即落盘（防丢防抖窗口内的编辑）
   'goals:changed',
   'theme:changed',
   'theme:manifests', // 主题装/卸后宿主补发最新外部主题清单（原本只在 app:ready 下发）
@@ -140,6 +141,9 @@ export const ALL_MESSAGE_TYPES = [
   'module:listFiles',       // 列出指定目录下的 markdown 文件
   'module:readFile',        // 读取 vault 文件正文
   'module:openFile',        // 用 Obsidian 原生视图打开文件
+  'module:renderMarkdown',  // 把 markdown 渲染成 HTML（侧栏内置阅读视图）
+  'module:writeFile',       // 写入 vault 文件（博客模块「一键应用排版」用）
+  'module:openReader',      // 在宿主自建中央阅读视图打开文章
   'module:resolveResource', // 把 vault 内文件路径解析成 webview 可加载的资源 URL（头像/封面等）
   'module:toggleTheme',     // 模块切换 Obsidian 基础明暗（博客模块「快门」改作明暗开关用）
   // ---- 竹林模块系统（host → webapp）----

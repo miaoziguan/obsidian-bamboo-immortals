@@ -41,6 +41,15 @@ jobs:
       - name: Check webapp load matrix (防漂移)
         run: node scripts/check-load-matrix.mjs
 
+      # 消息契约闸门：协议注册表镜像同步 / 路由键唯一 / 入站前缀合规（三道确定性检查，零误报）
+      - name: Check message contract (协议镜像 / 路由唯一 / 前缀合规)
+        run: node scripts/check-message-contract.mjs
+
+      # window 全局挂载点清单闸门：docs/window-globals.md 的自动生成区块必须与源码一致
+      # （webapp 依赖「文件尾挂 window」的隐式契约；清单失真等于契约不可审计）
+      - name: Check window globals (全局挂载点清单未漂移)
+        run: node scripts/check-window-globals.mjs
+
       # webapp/ 被 .eslintrc.cjs 排除在 ESLint 之外，属性上下文转义无任何 lint 保护。
       # 闸门失败即阻断发布：属性值未转义可被闭合后注入任意事件处理器。
       - name: Check HTML attribute escaping (防 XSS 回归)

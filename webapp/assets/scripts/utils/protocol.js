@@ -88,7 +88,6 @@ export const APP_MESSAGE_TYPES = [
   'file:get',
   'file:write',
   'file:delete',
-  'file:response',
   // host → webapp
   'goals:changed',
   // 【防丢数据】宿主即将销毁本 iframe（关闭视图 / 插件重载）→ 通知 webapp 立即落盘。
@@ -126,6 +125,7 @@ export const APP_MESSAGE_TYPES = [
   'module:renderMarkdown',
   'module:writeFile',
   'module:openReader',
+  'module:toggleTheme',
   // 悬浮菜单点模块按钮 → 宿主打开该模块视图
   'app:openModule',
   // ---- 竹林模块系统（host → webapp）----

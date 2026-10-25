@@ -20,12 +20,15 @@ global.TypewriterStore = { setMode: jest.fn().mockResolvedValue(true) };
 global.MindmapFeature = {
   activate: jest.fn(),
   deactivate: jest.fn(),
+  // 导图档**独立**的撤销栈（与卡片档 ctrl._undoStack 是两份历史）
+  _undoStack: { reset: jest.fn() },
 };
 
 // 全局 mock 的调用计数会跨用例累积，逐个用例清零
 beforeEach(() => {
   global.MindmapFeature.activate.mockClear();
   global.MindmapFeature.deactivate.mockClear();
+  global.MindmapFeature._undoStack.reset.mockClear();
   global.TypewriterStore.setMode.mockClear();
   global.TypewriterStore.setMode.mockResolvedValue(true);
 });
@@ -206,6 +209,27 @@ describe('setMode 主流程顺序（卡片档）', () => {
     expect(global.MindmapFeature.activate).toHaveBeenCalledTimes(1);
     expect(ctrl._undoStack.reset).not.toHaveBeenCalled();   // 走的是导图分支
     expect(ctrl._loadDoc).not.toHaveBeenCalled();
+  });
+
+  /**
+   * P2-7 契约：撤销栈的**刻意不对称**（不是缺陷，是设计）。
+   *
+   * · 卡片档（notes/write）共用同一个 ctrl._undoStack，且两份文档不同 → 切档必须 reset，
+   *   否则栈里旧文档的快照会在新文档被 undo 回去 = 文档串味（见上一条用例）。
+   * · 导图档有**自己**的一份历史（MindmapFeature._undoStack），跨档保留：
+   *   在导图里做的一串操作，切走再切回仍可继续撤销。
+   *
+   * 这条用例锁住后半句，避免将来「统一成切档一律 reset」时把导图的历史误清空。
+   */
+  test('切档进出导图档：不清空导图自己的撤销栈（与卡片档 reset 形成刻意对照）', async () => {
+    const ctrl = makeCtrl('notes');
+
+    await ModeController.setMode({ state: {}, ctrl }, 'mindmap');   // 进导图档
+    expect(global.MindmapFeature._undoStack.reset).not.toHaveBeenCalled();
+
+    const ctrl2 = makeCtrl('mindmap');
+    await ModeController.setMode({ state: {}, ctrl: ctrl2 }, 'notes');  // 离开导图档
+    expect(global.MindmapFeature._undoStack.reset).not.toHaveBeenCalled();
   });
 
   test('离开导图档：deactivate 导图层', async () => {

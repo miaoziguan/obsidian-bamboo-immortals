@@ -9,6 +9,8 @@
     "build:webapp": "node scripts/bundle-webapp.mjs",
     "test": "jest",
     "test:coverage": "COVERAGE_EVAL=1 jest",
+    "check:message-contract": "node scripts/check-message-contract.mjs",
+    "check:window-globals": "node scripts/check-window-globals.mjs",
     "coverage:baseline": "COVERAGE_EVAL=1 COVERAGE_UPDATE_BASELINE=1 jest",
     "test:host": "vitest run",
     "lint": "eslint .",

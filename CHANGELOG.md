@@ -1,5 +1,10 @@
 # Changelog
 
+## [3.31.1] — 2026-10-25
+
+### Fixed
+- **消除 Obsidian 发布校验告警**：`AppAPI.ts` 处理 `app:moveToCenter` 时，`this.moveToCenter(mode)` 返回的 Promise 未显式处理，触发「Promises must be awaited / .catch / .then / 显式 `void` 标记」告警。改用 `void this.moveToCenter(mode)` 显式标记「有意忽略」（移动会销毁本视图 webview，await 结束前 iframe 已不存在 → 回执必丢，故本就刻意不 await），行为完全不变。
+
 ## [3.31.0] — 2026-10-25
 
 ### Changed

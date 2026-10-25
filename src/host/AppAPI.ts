@@ -1141,7 +1141,9 @@ export class AppAPI {
         // 立即回复（不等移动完成）：移动会销毁本视图的 webview，
         // 若等它结束再 respond，iframe 已不存在 → 回执必然丢失（respond 里 contentWindow 为空直接 return）。
         // 折叠右侧栏已改为「新面板收到 app:revealed 后自行发起」，不依赖这条回执。
-        this.moveToCenter(mode);
+        // 故意不 await：移动会销毁本视图 webview，await 结束前 iframe 已不存在 → 回执必丢；
+        // 此处显式 void 标记「有意忽略 Promise」（满足发布校验的未处理 Promise 告警）。
+        void this.moveToCenter(mode);
         this.respond(id, { ok: true });
       } else {
         this.respond(id, { ok: false, error: 'moveToCenter 未注入' });

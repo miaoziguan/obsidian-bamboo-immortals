@@ -143,23 +143,23 @@ test('多列垂直居中：进入加 layout-multicol 标记，退出移除（避
   expect(main.classList.contains('layout-multicol')).toBe(false);
 });
 
-test('进入看板：宽度无条件固定为 1200px（即使当前设置是 800）', () => {
+test('进入看板：宽度无条件固定为 1240px（即使当前设置是 800）', () => {
   const LM = setup({ persisted: null, pending: null, isMainLeaf: true });
   const applied = [];
   global.DisplayManager._currentWidth = 800;
   global.DisplayManager._applyWidth = (v) => { applied.push(v); global.DisplayManager._currentWidth = v; };
   LM._enter('kanban');
-  expect(applied).toEqual([1200]);          // 800 → 1200（不再"仅不足时放宽"）
-  expect(global.DisplayManager._currentWidth).toBe(1200);
-  // 已是 1200 时不重复设置（先退出，退出会把宽度复位，故之后再清空记录）
+  expect(applied).toEqual([1240]);          // 800 → 1240（不再"仅不足时放宽"）
+  expect(global.DisplayManager._currentWidth).toBe(1240);
+  // 已是 1240 时不重复设置（先退出，退出会把宽度复位，故之后再清空记录）
   LM._forceOff();
   applied.length = 0;
-  global.DisplayManager._currentWidth = 1200;
+  global.DisplayManager._currentWidth = 1240;
   LM._enter('kanban');
   expect(applied).toEqual([]);
 });
 
-test('侧栏进入看板：不在旧面板上改宽度/分列，只请求移到中央（避免旧面板被撑到 1200 溢出）', () => {
+test('侧栏进入看板：不在旧面板上改宽度/分列，只请求移到中央（避免旧面板被撑到 1240 溢出）', () => {
   const LM = setup({ persisted: null, pending: null, isMainLeaf: false });
   const applied = [];
   global.DisplayManager._applyWidth = (v) => { applied.push(v); };

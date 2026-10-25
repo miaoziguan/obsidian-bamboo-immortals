@@ -5,7 +5,7 @@ import { byId } from '../../utils/domRef.js';
  * - 看板（kanban-layout）：列数 = 板块数（每板块独占一列），一行全排开
  * - 跨重启持久化：进入多列模式即写入 settings.layoutMode，重启后 init() 自动恢复（并移回主工作区宽度）。
  * - 沿用现有 SectionRegistry.order 顺序，只改变排版方向，不触碰板块顺序逻辑。
- * - 宽度自动适配：内容宽度不足 1200 时临时放宽到 1200，退出时恢复原宽度。
+ * - 宽度自动适配：进入看板固定放宽到 1240px，退出时恢复原宽度。
  * - 紧凑适配：切换后主动让 DisplayManager 按「列宽」重算 compact/ultra/rw 响应式类。
  * - 兼容：历史值 'horizontal'（老设置 / 旧视图状态）一律按看板处理，见 _enter / _loadPersistedMode。
  */
@@ -179,7 +179,7 @@ export const LayoutMode = {
             : el.children.length;
 
         // 先判断「本次是否需要移到中央」：若是，则**不在旧面板上**做宽度/分列（纯浪费，
-        // 而且会让仍在侧栏里的旧面板被撑到 1200px → 溢出变形），全部交给中央新视图渲染。
+        // 而且会让仍在侧栏里的旧面板被撑到 1240px → 溢出变形），全部交给中央新视图渲染。
         const prevMode = this._mode;
         const inSidebar = typeof window !== 'undefined' && window.__bambooIsMainLeaf === false;
         const willMove = !this._restoring && prevMode === 'none' && inSidebar
@@ -187,10 +187,10 @@ export const LayoutMode = {
 
         // 看板：一行全排开，每板块独占一列（列数=板块数），保证所有板块顶部对齐。
         const columns = Math.max(1, visibleCount);
-        const autoBumpTo = 1200;
+        const autoBumpTo = 1240;
         const label = '看板模式';
 
-        // 进入看板固定 1200px（用户实测这是最佳视觉宽度）：无条件设为 1200，不再"仅不足时放宽"。
+        // 进入看板固定 1240px（用户指定内容宽度）：无条件设为 1240，不再"仅不足时放宽"。
         // 顺带省掉一次 container.getBoundingClientRect()（强制同步布局）。
         // 不做宽度过渡：max-width 动画会让浏览器在 250ms 内持续重排，
         // 与紧接着的分列 DOM 重构叠加 → 明显掉帧。
@@ -215,7 +215,7 @@ export const LayoutMode = {
             setTimeout(() => { this._justEntered = false; }, 50);
         }
         // 【防闪关键：不要把多列布局套到「还在侧栏里的旧面板」上】
-        // 侧栏宽度远小于多列所需（800 / 1200px），先套上去会立刻被挤压 / 溢出 → 视觉上先闪一下；
+        // 侧栏宽度远小于多列所需（800 / 1240px），先套上去会立刻被挤压 / 溢出 → 视觉上先闪一下；
         // 移中央是「重建视图并直接揭示新视图」，旧面板一旦被替换即消失、不会长时间停留，
         // 故保持旧面板原样（仍是纵向），只请求宿主移到中央；
         // 真正的多列渲染交给中央的新视图（其 init 恢复模式时会完整跑一遍 _enter）。
@@ -371,7 +371,7 @@ export const LayoutMode = {
                 try { DisplayManager._applyWidth(exitWidth, false); } catch (e) { /* 不阻塞 */ }
             }
         }
-        // 持久化必须跟上：_enter 已把 1200 写进 settings.displayWidth；不落盘则重启后宽度会读回 1200 —— 与「退出即回到纵向默认宽度」矛盾。
+        // 持久化必须跟上：_enter 已把 1240 写进 settings.displayWidth；不落盘则重启后宽度会读回 1240 —— 与「退出即回到纵向默认宽度」矛盾。
         // 与 layoutMode 合并成**一次批量写**（原先两次 putSetting = 两次全量 settings.json 读+写）。
         this._persistBatch({ layoutMode: 'none', displayWidth: exitWidth });
         this._updateButtonText();

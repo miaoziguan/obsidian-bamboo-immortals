@@ -228,6 +228,10 @@
          需要 24/28px 圆角时复用 --radius-3xl 或 --radius-pill，勿再新增数字名。）
     */
     --radius-3xs: 2px;
+    /* 4px 档：填补 3xs(2px) 与 2xs(6px) 之间的空洞。
+       用于小控件/进度条/徽标（quick-nav、checkbox、goal-row-bar、tw-card 工具条按钮等），
+       原为数字名 --radius-4（19 处）。命名改用语义名以符合 R11「禁止数字名圆角」。 */
+    --radius-tight: 4px;
     --radius-2xs: 6px;
     --radius-xs: 8px;
     --radius-sm: 10px;
@@ -240,7 +244,6 @@
     --radius-1: 1px;
     --radius-2-5: 2.5px;
     --radius-3: 3px;
-    --radius-4: 4px;
     /* R1 治理补充：代码里实际在用的散落档位，补齐后替换完全等价（零视觉变化） */
     --radius-9: 9px;
     --radius-26: 26px;

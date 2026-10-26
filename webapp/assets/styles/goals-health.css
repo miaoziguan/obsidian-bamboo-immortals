@@ -248,7 +248,7 @@
     margin-left: var(--space-4);
     background: transparent;
     border: none;
-    border-radius: var(--radius-4);
+    border-radius: var(--radius-tight);
     color: var(--health-color, #5A9A5A);
     font-size: var(--type-sm);
     font-weight: 500;

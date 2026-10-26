@@ -293,7 +293,7 @@
 .progress-bar {
     height: 8px;
     background: rgba(var(--primary-rgb), 0.1);
-    border-radius: var(--radius-4);
+    border-radius: var(--radius-tight);
     overflow: hidden;
     position: relative;
 }

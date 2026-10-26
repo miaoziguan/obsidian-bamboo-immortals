@@ -202,7 +202,7 @@
   align-items: center;
   justify-content: center;
   border: none;
-  border-radius: var(--radius-4);
+  border-radius: var(--radius-tight);
   background: transparent;
   color: #5b6257;
   cursor: pointer;
@@ -227,7 +227,7 @@
   min-height: 15px;
   padding: 0 0.34em;
   border: 1px solid var(--border-light);
-  border-radius: var(--radius-4);
+  border-radius: var(--radius-tight);
   background: transparent;
   color: #5b6257;
   font-size: clamp(9px, calc(10px * var(--tw-scale, 1)), 12px); /* lint-disable: R2 */

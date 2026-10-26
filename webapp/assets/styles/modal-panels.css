@@ -476,7 +476,7 @@
     padding: var(--space-2);
     min-width: var(--touch-target);
     min-height: var(--touch-target);
-    border-radius: var(--radius-4);
+    border-radius: var(--radius-tight);
     transition: transform, opacity, box-shadow, border-color, background-color var(--duration-instant);
     color: var(--text-tertiary);
 }

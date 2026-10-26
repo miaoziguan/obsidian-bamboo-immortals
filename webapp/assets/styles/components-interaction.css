@@ -96,7 +96,7 @@
     width: 4px;
     height: 20px;
     background: var(--bamboo-primary);
-    border-radius: 0 var(--radius-4) var(--radius-4) 0;
+    border-radius: 0 var(--radius-tight) var(--radius-tight) 0;
 }
 .quick-nav-btn-tooltip {
     position: absolute;

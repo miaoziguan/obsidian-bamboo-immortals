@@ -207,7 +207,7 @@
 
 :host(.dark) ::-webkit-scrollbar-thumb {
     background: rgba(var(--primary-rgb), 0.4);
-    border-radius: var(--radius-4);
+    border-radius: var(--radius-tight);
 }
 
 :host(.dark) ::-webkit-scrollbar-thumb:hover {

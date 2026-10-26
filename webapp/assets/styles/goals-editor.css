@@ -753,7 +753,7 @@
     display: block;
     width: 16px;
     height: 16px;
-    border-radius: var(--radius-4);
+    border-radius: var(--radius-tight);
     border: 1.5px solid var(--border-light);
     background: transparent;
     transition: transform, opacity, box-shadow, border-color, background-color var(--duration-instant) ease;
@@ -923,7 +923,7 @@
     font-size: var(--type-micro);
     font-weight: 500;
     border: 1px solid var(--border-light);
-    border-radius: var(--radius-4);
+    border-radius: var(--radius-tight);
     box-shadow: none;
     cursor: pointer;
     background: transparent;
@@ -999,7 +999,7 @@
     background: var(--card-bg, var(--white));
     z-index: 5;
     margin-top: var(--space-4);
-    border-radius: 0 0 var(--radius-4) var(--radius-4);
+    border-radius: 0 0 var(--radius-tight) var(--radius-tight);
     gap: var(--space-8);
 }
 .arch-sel-all {

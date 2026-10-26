@@ -117,7 +117,7 @@
     border: 0;
     background: transparent;
     color: var(--bamboo-primary);
-    border-radius: var(--radius-4);
+    border-radius: var(--radius-tight);
     cursor: pointer;
     transition: background-color var(--duration-instant) ease, color var(--duration-instant) ease;
     opacity: 0.85;
@@ -139,7 +139,7 @@
     width: 100px;
     padding: var(--space-1) var(--space-6);
     border: 1px solid rgba(var(--primary-rgb), 0.4);
-    border-radius: var(--radius-4);
+    border-radius: var(--radius-tight);
     font-size: var(--type-xs);
     color: var(--bamboo-primary);
     background: transparent;

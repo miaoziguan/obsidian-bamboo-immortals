@@ -606,14 +606,6 @@
     padding: var(--space-2);
 }
 
-/* 状态分布卡：纵向堆叠 */
-.rw-360 .status-distribution {
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-    padding: 10px;
-}
-
 /* 统计大数字：略小 */
 .rw-360 .stats-card-value,
 .rw-360 .stat-number {

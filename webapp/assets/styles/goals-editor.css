@@ -538,24 +538,6 @@
     transition: transform, opacity, box-shadow, border-color, background-color 0.3s ease;
 }
 
-.goal-status-indicator.status-pending {
-    background: var(--health-warning);
-    animation: pulse 1.5s infinite;
-}
-
-.goal-status-indicator.status-saving {
-    background: var(--health-info);
-    animation: pulse 0.8s infinite;
-}
-
-.goal-status-indicator.status-saved {
-    background: var(--bamboo-success);
-}
-
-.goal-status-indicator.status-error {
-    background: var(--bamboo-error);
-}
-
 /* 编辑器分区 */
 .goal-editor-section {
     padding: var(--space-4);

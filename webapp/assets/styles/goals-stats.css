@@ -131,33 +131,10 @@
     color: rgb(var(--danger-alt-rgb));
 }
 
-/* 状态分布 */
-.status-distribution {
-    display: flex;
-    gap: var(--space-5);
-    align-items: center;
-    padding: 18px;
-    background: linear-gradient(135deg, rgba(var(--white-rgb), 0.95), rgba(var(--pale-green-alt-rgb), 0.9));
-    border-radius: var(--radius-xl);
-    border: 1px solid rgba(var(--primary-rgb),0.12);
-}
-
 .pie-chart-wrapper {
     flex-shrink: 0;
     width: clamp(100px, 32vw, 140px);
     height: clamp(100px, 32vw, 140px);
-}
-
-.rw-460 .status-distribution {
-    gap: 14px;
-    padding: 14px;
-}
-
-.status-legend {
-    flex: 1;
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 10px;
 }
 
 .legend-item {

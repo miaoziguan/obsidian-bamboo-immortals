@@ -25,7 +25,7 @@ CSS 类名是模块/主题扩展 API 的天然契约面：外部主题、外部�
 | `ai`（ai-wizard*） | 28 | **建议删（整簇真死）** | 全分区 0，含打包 html 非 style 处亦 0 → 疑似未实现 AI 向导 UI 残留 |
 | `achievement(s)` | 34 | **建议删（整簇真死）** | 源 JS 仅 4 处非 class 引用；无任何 `achievement-*` 类名使用 → 疑似已移除成就系统 UI |
 | `history` | 11 | **✅ 已删除**（commit 见下） | `history-*` 全分区 0 且全仓 classList/className/模板无动态引用；已从 `components-interaction.css` 移除整块 11 条死规则（含嵌套 `.history-modal.active`/`.history-item.active`），并从 `components-interaction.css`/`base.css` 两处共享选择器列表移除 `.history-close`/`.history-item` |
-| `status` | 10 | **建议删（整簇真死）** | `status-*` 无任 class 令牌（注意：状态徽标若真需保留须在源码补 class 引用，否则视为残留） |
+| `status` | 10 | **✅ 已删除**（commit 见下） | `status-*` 全分区 0 且全仓 classList/className/模板无动态引用；跨 4 文件删除：`goals-stats.css`（`.status-distribution`/`.rw-460 .status-distribution`/`.status-legend`）、`goals-editor.css`（4 条 `.goal-status-indicator.status-*` 复合规则，保留基础类）、`goals-health.css`（`.rw-360 .status-distribution`）、`dark.css`（5 处暗色覆盖含 `:host(.dark) .status-distribution`） |
 | `verify` | 7 | **✅ 已删除**（commit 见下） | `verify-*` 全分区 0 且全仓 classList/className/模板无动态引用；已从 `components-interaction.css` 移除整块 7 条死规则（含嵌套 `.verify-item.ok/.warn`、`.verify-status.tag-execute/.tag-miss`） |
 | `habit` | 6 | **✅ 已删除**（commit 见下） | `habit-*` 全仓 classList/className/模板无动态引用；已从 `section-manager.css` 移除整块死规则、从 `forms.css` 暗色模式共享列表移除 `.habit-progress-fill` |
 | `edit` | 6 | **✅ 已删除**（commit 见下） | `edit-*` 全分区 0 且全仓 classList/className/模板无动态引用；已从 `components-interaction.css`/`forms.css`/`base.css` 移除 6 条死规则（含共享选择器列表中的 `.edit-btn` 与 `@keyframes slideDownFromTop`），保留异名活规则 `.catm-edit-btn`/`.card-edit-hint`/`.goal-inline-edit-hint` |
@@ -76,7 +76,7 @@ CSS 类名是模块/主题扩展 API 的天然契约面：外部主题、外部�
 > 扫描：定义 `webapp/assets/styles/**/*.css`；使用 `webapp/assets/scripts/**/*.js`(排除 tests) + `webapp/*src*.html`/`index.html`（刻意排除 4 个打包产物 html，避免把 CSS 定义当使用）。
 > 误判防护：十六进制颜色值过滤；动态拼接类名（`prefix`+n）移至「疑似动态」列，不计入判定。
 
-**确认死类名：576　疑似动态（已剔除）：3　死 ID 选择器：3**
+**确认死类名：566　疑似动态（已剔除）：3　死 ID 选择器：3**
 
 ### 按首段聚类（确认死类名）
 
@@ -98,7 +98,6 @@ CSS 类名是模块/主题扩展 API 的天然契约面：外部主题、外部�
 | `stats` | 12 | `stats-section-primary`, `stats-section-warning`, `stats-card-value`, `stats-grid`, `stats-modal`, `stats-header`, … |
 | `achievements` | 10 | `achievements-container`, `achievements-grid-full`, `achievements-summary-grid`, `achievements-empty-state`, `achievements-empty-icon`, `achievements-empty-title`, … |
 | `kpi` | 10 | `kpi-card`, `kpi-grid`, `kpi-icon`, `kpi-label`, `kpi-value`, `kpi-delta`, … |
-| `status` | 10 | `status-distribution-new`, `status-legend-new`, `status-distribution-vertical`, `status-legend-horizontal`, `status-distribution`, `status-pending`, … |
 | `alert` | 9 | `alert-item`, `alert-icon-wrapper`, `alert-content`, `alert-title`, `alert-meta`, `alert-days`, … |
 | `bm` | 8 | `bm-btn--md`, `bm-btn--lg`, `bm-btn--outline`, `bm-btn--ghost`, `bm-btn--success`, `bm-btn--loading`, … |
 | `completed` | 7 | `completed-legend`, `completed-horizontal`, `completed-item`, `completed-icon`, `completed-title`, `completed-more`, … |

@@ -193,13 +193,7 @@
     padding: 12px 14px;
 }
 
-.tier-bar-wrapper {
-    position: relative;
-    height: 20px;
-    background: rgba(var(--primary-rgb),0.06);
-    border-radius: var(--radius-sm);
-    overflow: hidden;
-}
+
 
 .tier-bar {
     height: 100%;
@@ -207,14 +201,7 @@
     transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.tier-info {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 12px;
-}
+
 
 .tier-label {
     font-size: var(--type-micro);
@@ -276,18 +263,8 @@
 }
 
 /* 分类空状态 */
-.category-empty-state {
-    text-align: center;
-    padding: 24px 16px;
-    background: rgba(var(--white-rgb), 0.6);
-    border-radius: var(--radius-md);
-    border: 1px dashed rgba(var(--primary-rgb), 0.2);
-}
 
-.category-empty-state-text {
-    font-size: var(--type-base);
-    color: var(--text-secondary);
-}
+
 
 /* 优先级分布 */
 .priority-stats {

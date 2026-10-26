@@ -74,7 +74,9 @@
     100% { transform: scale(1); }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 480px)   {
+
+
     .fab-panel {
         width: 92vw;
         max-height: 85vh;
@@ -82,7 +84,9 @@
     }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 768px)   {
+
+
     .fab-panel {
         width: min(100% - 2rem, 600px);
         max-width: 100%;
@@ -182,7 +186,9 @@
     to { transform: rotate(360deg); }
 }
 /* 系统关掉动效时改用慢速旋转而非静止：静止会丢失「正在刷新」这层反馈 */
-@media (prefers-reduced-motion: reduce) {
+@media (prefers-reduced-motion: reduce)   {
+
+
     .fab-panel-action.is-spinning .icon {
         animation-duration: 2.5s;
     }
@@ -450,8 +456,7 @@
 .wn-type-btn:hover .wn-btn-group {
     opacity: 1;
 }
-.wn-rename-btn,
-.wn-delete-btn {
+.wn-rename-btn, .wn-delete-btn {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -660,7 +665,9 @@
     border-color: rgba(var(--border-dark-rgb, 60, 70, 60), 0.3);
 }
 
-@media (max-width: 480px) {
+@media (max-width: 480px)   {
+
+
     .wn-panel {
         width: calc(100vw - 24px);
         right: 12px;
@@ -672,7 +679,9 @@
     }
 }
 
-@media (max-width: 360px) {
+@media (max-width: 360px)   {
+
+
     .theme-panel-grid {
         grid-template-columns: repeat(3, minmax(0, 1fr));
     }
@@ -905,7 +914,9 @@
 }
 
 /* 小屏幕适配 */
-@media (max-width: 360px) {
+@media (max-width: 360px)   {
+
+
     #panel-date-picker {
         width: min(280px, 92vw);
     }
@@ -1475,8 +1486,7 @@
     margin: 8px 0;
     font-size: var(--type-xs);
 }
-.theme-guide-var-table th,
-.theme-guide-var-table td {
+.theme-guide-var-table th, .theme-guide-var-table td {
     padding: 6px 8px;
     border: 1px solid var(--border-light);
     text-align: left;
@@ -1512,8 +1522,7 @@
     flex-shrink: 0;
 }
 
-.ai-wizard-dot.active,
-.ai-wizard-dot.done {
+.ai-wizard-dot.active, .ai-wizard-dot.done {
     background: var(--bamboo-primary, hsl(var(--accent-hue), min(100%, calc(35% * var(--accent-saturation-ui, 1))), 45%));
 }
 
@@ -1530,8 +1539,7 @@
 }
 
 /* 步骤行着色：通过 data-step 控制 */
-.ai-wizard-steps[data-step="2"] .ai-wizard-line:first-of-type,
-.ai-wizard-steps[data-step="3"] .ai-wizard-line {
+.ai-wizard-steps[data-step="2"] .ai-wizard-line:first-of-type, .ai-wizard-steps[data-step="3"] .ai-wizard-line {
     background: var(--bamboo-primary, hsl(var(--accent-hue), min(100%, calc(35% * var(--accent-saturation-ui, 1))), 45%));
 }
 
@@ -1548,8 +1556,7 @@
     margin-bottom: -6px;
 }
 
-.ai-wizard-input,
-.ai-wizard-textarea {
+.ai-wizard-input, .ai-wizard-textarea {
     width: 100%;
     padding: 10px 12px;
     border: 1px solid var(--border-light);
@@ -1562,14 +1569,12 @@
     box-sizing: border-box;
 }
 
-.ai-wizard-input:focus,
-.ai-wizard-textarea:focus {
+.ai-wizard-input:focus, .ai-wizard-textarea:focus {
     outline: none;
     border-color: var(--bamboo-primary, hsl(var(--accent-hue), min(100%, calc(35% * var(--accent-saturation-ui, 1))), 45%));
 }
 
-.ai-wizard-input:focus-visible,
-.ai-wizard-textarea:focus-visible {
+.ai-wizard-input:focus-visible, .ai-wizard-textarea:focus-visible {
     outline: none;
     border-color: var(--bamboo-primary, hsl(var(--accent-hue), min(100%, calc(35% * var(--accent-saturation-ui, 1))), 45%));
     box-shadow: var(--focus-ring);
@@ -2234,20 +2239,13 @@
 :host(.platform-mobile) .fab-main:not(.open) {
     animation: none;
 }
-:host(.platform-mobile) .kpi-card.up,
-:host(.platform-mobile) .focus-box.result {
+:host(.platform-mobile) .kpi-card.up, :host(.platform-mobile) .focus-box.result {
     animation: none;
 }
-:host(.platform-mobile) .goal-row::before,
-:host(.platform-mobile) .goal-row::after,
-:host(.platform-mobile) .bamboo-card.bamboo-card::before,
-:host(.platform-mobile) .bamboo-card.bamboo-card::after {
+:host(.platform-mobile) .goal-row::before, :host(.platform-mobile) .goal-row::after, :host(.platform-mobile) .bamboo-card.bamboo-card::before, :host(.platform-mobile) .bamboo-card.bamboo-card::after {
     animation: none;
 }
-:host(.platform-mobile) .glow-pulse,
-:host(.platform-mobile) .pulse-glow,
-:host(.platform-mobile) .bamboo-glow-subtle,
-:host(.platform-mobile) .glow-pulse-fade {
+:host(.platform-mobile) .glow-pulse, :host(.platform-mobile) .pulse-glow, :host(.platform-mobile) .bamboo-glow-subtle, :host(.platform-mobile) .glow-pulse-fade {
     animation: none;
 }
 :host(.platform-mobile) .status-excellent {

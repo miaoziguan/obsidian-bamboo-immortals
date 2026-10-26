@@ -45,5 +45,7 @@
 .realm-table-status { font-size: var(--type-sm); font-weight: 600; color: var(--text-secondary); }
 .cultivation-realm-table-row.is-past .realm-table-status { color: var(--bamboo-primary); }
 .cultivation-realm-table-row.is-current .realm-table-status { color: var(--bamboo-deep); }
-@media (max-width: 480px) { .cultivation-summary-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 480px)   {
+
+ .cultivation-summary-grid { grid-template-columns: repeat(2, 1fr); } }
 

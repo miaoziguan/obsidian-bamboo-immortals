@@ -57,6 +57,8 @@ CSS 类名是模块/主题扩展 API 的天然契约面：外部主题、外部�
 | `arch` | 5 | `arch-act-btn`/`arch-bar`(归档功能活着) |
 | `gho` | 5 | `gho-empty-icon`/`gho-left`(healthScore.js) |
 
+> **✅ MIXED 首批 9 小簇已执行**（badge/tooltip/view/weather/confirm/category/catm/tier/btn）：共删 17 个精确死名（按首段聚类过滤）。执行工具 `scripts/delete-dead-css.py`（注释感知括号扫描 + 安全处理 `:is()/:where()` 分组：仅剔死参、保留活参；顶层直接死类才整体删；`@keyframes`/`@font-face` 原样保留）。关键安全核验：① 全改动 diff 净删除的类**全部属于死名集合、零活类误删**；② 隐私模式 `:host(.privacy-on) :is(...)` 分组仅剔 `.weather-text`、活成员全部保留；③ 解包 4 产物 html 死名 `.name` 选择器精确 0；④ `npm run preflight` 全绿、webapp jest 121 套件 / host vitest 全绿（`process_css` 重建器首字符复制 bug 已修复，曾致 31 测试失败）。
+
 #### 单名死类长尾（无连字符）—— ✅ 已全部执行完毕（commit 见下）
 
 原估 20 个，经闸门精确复核（含 html 扫描 + 全仓 class 字符串边界复核）后实际为 **17 个真死**（无连字符）：
@@ -84,7 +86,7 @@ CSS 类名是模块/主题扩展 API 的天然契约面：外部主题、外部�
 > 扫描：定义 `webapp/assets/styles/**/*.css`；使用 `webapp/assets/scripts/**/*.js`(排除 tests) + `webapp/*src*.html`/`index.html`（刻意排除 4 个打包产物 html，避免把 CSS 定义当使用）。
 > 误判防护：十六进制颜色值过滤；动态拼接类名（`prefix`+n）移至「疑似动态」列，不计入判定。
 
-**确认死类名：523　疑似动态（已剔除）：3　死 ID 选择器：3**
+**确认死类名：506　疑似动态（已剔除）：3　死 ID 选择器：3**
 
 ### 按首段聚类（确认死类名）
 
@@ -109,7 +111,6 @@ CSS 类名是模块/主题扩展 API 的天然契约面：外部主题、外部�
 | `bm` | 8 | `bm-btn--md`, `bm-btn--lg`, `bm-btn--outline`, `bm-btn--ghost`, `bm-btn--success`, `bm-btn--loading`, … |
 | `completed` | 7 | `completed-legend`, `completed-horizontal`, `completed-item`, `completed-icon`, `completed-title`, `completed-more`, … |
 | `todo` | 7 | `todo-item-text`, `todo-item-action`, `todo-item-row`, `todo-item-name`, `todo-item-hint`, `todo-section-title`, … |
-| `btn` | 6 | `btn-sm`, `btn-primary`, `btn-secondary`, `btn-outline`, `btn-danger`, `btn-success` |
 | `empty` | 6 | `empty-state`, `empty-state-text`, `empty-state-btn`, `empty-icon`, `empty-text`, `empty-desc` |
 | `time` | 6 | `time-alerts-grid`, `time-alert`, `time-span-item`, `time-alert-list`, `time-span-stats`, `time-input` |
 | `cs` | 5 | `cs-liantai`, `cs-stone`, `cs-bianshan`, `cs-yezi`, `cs-mei` |
@@ -132,8 +133,6 @@ CSS 类名是模块/主题扩展 API 的天然契约面：外部主题、外部�
 | `pie` | 3 | `pie-container`, `pie-container-vertical`, `pie-chart-wrapper` |
 | `shortcut` | 3 | `shortcut-item`, `shortcut-key`, `shortcut-desc` |
 | `stat` | 3 | `stat-card`, `stat-number`, `stat-icon` |
-| `category` | 2 | `category-empty-state`, `category-empty-state-text` |
-| `catm` | 2 | `catm-item-icon`, `catm-icon-input` |
 | `chart` | 2 | `chart-canvas`, `chart-container` |
 | `color` | 2 | `color-picker`, `color-option` |
 | `form` | 2 | `form-textarea`, `form-actions` |
@@ -144,14 +143,11 @@ CSS 类名是模块/主题扩展 API 的天然契约面：外部主题、外部�
 | `item` | 2 | `item-complete`, `item-action-btn` |
 | `modal` | 2 | `modal-hero-big-number`, `modal-actions` |
 | `notstarted` | 2 | `notstarted-legend`, `notstarted-horizontal` |
-| `tier` | 2 | `tier-bar-wrapper`, `tier-info` |
 | `animations` | 1 | `animations-paused` |
 | `bad` | 1 | `bad` |
-| `badge` | 1 | `badge-info` |
 | `balance` | 1 | `balance-jump` |
 | `bar` | 1 | `bar-complete` |
 | `big` | 1 | `big-display-number` |
-| `confirm` | 1 | `confirm-dialog-content` |
 | `date` | 1 | `date-picker-btn` |
 | `detail` | 1 | `detail-complete` |
 | `display` | 1 | `display-follow-theme-section` |
@@ -180,11 +176,8 @@ CSS 类名是模块/主题扩展 API 的天然契约面：外部主题、外部�
 | `shortcuts` | 1 | `shortcuts-list` |
 | `swipe` | 1 | `swipe-hint` |
 | `text` | 1 | `text-block` |
-| `tooltip` | 1 | `tooltip-close` |
 | `urgent` | 1 | `urgent` |
-| `view` | 1 | `view-toggle-btn-sm` |
 | `wallet` | 1 | `wallet-action` |
-| `weather` | 1 | `weather-text` |
 
 ### 疑似动态拼接（已从判定剔除，待人工确认）
 

@@ -353,7 +353,9 @@
 }
 
 /* At wide widths (≥769px), keep .goal-row-title single-line and fully flexible */
-@media (min-width: 769px) {
+@media (min-width: 769px)   {
+
+
     .goal-row-title {
         display: inline-flex;
         height: 28px;
@@ -436,8 +438,7 @@
     align-items: center;
     gap: clamp(4px, 1vw, 8px);
 }
-.goal-item-row > .goal-item-status,
-.goal-item-row > .goal-item-delete-btn {
+.goal-item-row > .goal-item-status, .goal-item-row > .goal-item-delete-btn {
     align-self: center;
 }
 .goal-item-row .goal-item-progress {
@@ -453,9 +454,7 @@
     margin-top: 4px;
 }
 /* 覆盖编辑器上下文中被全局污染的 width，让内容自适应 */
-.goal-item-meta .goal-item-value,
-.goal-item-meta .goal-item-date,
-.goal-item-meta .goal-item-daily {
+.goal-item-meta .goal-item-value, .goal-item-meta .goal-item-date, .goal-item-meta .goal-item-daily {
     width: auto;
 }
 
@@ -481,8 +480,7 @@
     opacity: 0.8;
 }
 /* 隐藏数字输入框的上下箭头 */
-input[type="number"].goal-inline-edit-input::-webkit-outer-spin-button,
-input[type="number"].goal-inline-edit-input::-webkit-inner-spin-button {
+input[type="number"].goal-inline-edit-input::-webkit-outer-spin-button, input[type="number"].goal-inline-edit-input::-webkit-inner-spin-button {
     -webkit-appearance: none;
     margin: 0;
 }
@@ -751,8 +749,7 @@ input[type="number"].goal-inline-edit-input {
     transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
     flex-shrink: 0;
 }
-.goal-row:hover .goal-row-actions,
-.goal-row.is-hovered .goal-row-actions {
+.goal-row:hover .goal-row-actions, .goal-row.is-hovered .goal-row-actions {
     opacity: 1;
 }
 .goal-row-action-btn {
@@ -1013,9 +1010,7 @@ input[type="number"].goal-inline-edit-input {
     color: var(--bamboo-error);
     background: rgba(var(--danger-rgb), 0.1);
 }
-.goal-inline-sub-start-value,
-.goal-inline-sub-target-value,
-.goal-inline-sub-current-value {
+.goal-inline-sub-start-value, .goal-inline-sub-target-value, .goal-inline-sub-current-value {
     width: 75px;
     flex: 0 0 75px;
     text-align: center;
@@ -1245,11 +1240,7 @@ input[type="number"].goal-inline-edit-input {
 .catm-item:hover {
     background: rgba(var(--teal-rgb), 0.06);
 }
-.catm-item-icon {
-    font-size: var(--type-heading);
-    width: 28px;
-    text-align: center;
-}
+
 .catm-item-name {
     flex: 1;
     font-size: var(--type-md);
@@ -1329,10 +1320,7 @@ input[type="number"].goal-inline-edit-input {
     border-color: var(--bamboo-primary);
     box-shadow: var(--focus-ring);
 }
-.catm-icon-input {
-    width: 60px;
-    text-align: center;
-}
+
 .catm-name-input {
     flex: 1;
 }
@@ -1483,7 +1471,9 @@ input[type="number"].goal-inline-edit-input {
    Canonical breakpoints: 480px / 768px
    ============================================================ */
 
-@media (max-width: 768px) {
+@media (max-width: 768px)   {
+
+
     /* 子项目紧凑卡片：窄屏下允许换行，避免固定宽度撑出滚动条 */
     .goal-inline-subitem-mini {
         flex-wrap: wrap;
@@ -1500,11 +1490,7 @@ input[type="number"].goal-inline-edit-input {
     }
 
     /* 行内编辑固定宽度字段：改为弹性收缩，配合 flex-wrap */
-    .goal-inline-sub-date,
-    .goal-inline-sub-start-value,
-    .goal-inline-sub-target-value,
-    .goal-inline-sub-current-value,
-    .goal-inline-sub-daily-min {
+    .goal-inline-sub-date, .goal-inline-sub-start-value, .goal-inline-sub-target-value, .goal-inline-sub-current-value, .goal-inline-sub-daily-min {
         flex: 1 1 auto;
         width: auto;
         min-width: 0;
@@ -1529,7 +1515,9 @@ input[type="number"].goal-inline-edit-input {
     }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 480px)   {
+
+
     .goal-inline-subitem-mini {
         padding: var(--space-2);
     }
@@ -1546,31 +1534,11 @@ input[type="number"].goal-inline-edit-input {
     min-height: var(--touch-target);
 }
 
-.goal-row-header,
-.goal-item-edit-btn,
-.goal-item-name,
-.completed-items-toggle,
-.goal-row-edit-btn,
-.goal-inline-add-btn,
-.goal-inline-date-display,
-.goal-inline-suggested,
-.goal-item-daily-mini,
-.catp-item,
-.catp-manage-btn,
-.catm-inline-input,
-.catm-input,
-.catm-icon-input,
-.catm-add-btn,
-.catm-done-btn,
-.goal-item-date,
-.goal-item-daily,
-.goal-date-range {
+.goal-row-header, .goal-item-edit-btn, .goal-item-name, .completed-items-toggle, .goal-row-edit-btn, .goal-inline-add-btn, .goal-inline-date-display, .goal-inline-suggested, .goal-item-daily-mini, .catp-item, .catp-manage-btn, .catm-inline-input, .catm-input, .catm-add-btn, .catm-done-btn, .goal-item-date, .goal-item-daily, .goal-date-range {
     min-height: var(--touch-target);
 }
 
-.goal-date-range,
-.goal-item-date,
-.goal-item-daily {
+.goal-date-range, .goal-item-date, .goal-item-daily {
     display: inline-flex;
     align-items: center;
 }
@@ -1583,27 +1551,11 @@ input[type="number"].goal-inline-edit-input {
 }
 
 /* 小尺寸可点击元素使用伪元素扩展热区，保持视觉尺寸不变 */
-.goal-row-toggle,
-.goal-row-category,
-.goal-row-title,
-.goal-priority-tag,
-.goal-item-status,
-.goal-row-action-btn,
-.catp-close-btn,
-.catm-close-btn,
-.catm-item-actions button {
+.goal-row-toggle, .goal-row-category, .goal-row-title, .goal-priority-tag, .goal-item-status, .goal-row-action-btn, .catp-close-btn, .catm-close-btn, .catm-item-actions button {
     position: relative;
 }
 
-.goal-row-toggle::before,
-.goal-row-category::before,
-.goal-row-title::before,
-.goal-priority-tag::before,
-.goal-item-status::before,
-.goal-row-action-btn::before,
-.catp-close-btn::before,
-.catm-close-btn::before,
-.catm-item-actions button::before {
+.goal-row-toggle::before, .goal-row-category::before, .goal-row-title::before, .goal-priority-tag::before, .goal-item-status::before, .goal-row-action-btn::before, .catp-close-btn::before, .catm-close-btn::before, .catm-item-actions button::before {
     content: '';
     position: absolute;
     top: 50%;

@@ -13,89 +13,17 @@
    class 镜像到 shadow host（#bamboo-shadow-host），故隐私态的 .privacy-on 实际在
    host 上而非 shadow 内的 body。故需同时匹配 :host(.privacy-on)（shadow 模式）
    与 body.privacy-on（__BAMBOO_NO_SHADOW__ kill-switch 回退，无 shadow 时）。 */
-:host(.privacy-on) [data-private-text],
-:host(.privacy-on) :is(
-    p, [data-inline-edit],
-    .goal-item-name, .goal-item-daily, .goal-item-date, .goal-item-status, .goal-item-entry,
-    .goal-title, .goal-text,
-    .section-title, .section-desc, .section-settings-title, .section-settings-desc,
-    .health-goal-title, .stat-value, .stat-label,
-    .gho-score, .gho-label, .gho-metric-name, .gho-metric-val, .gho-suggestion-text,
-    .gho-stat-val, .gho-stat-label, .gho-empty-text,
-    .todo-focus-item, .todo-item-text, .todo-title, .todo-desc, .todo-goal-daily,
-    .todo-goal-progress, .todo-goal-source, .todo-stat-num, .todo-stat-label,
-    .todo-group-label, .todo-completed-count,
-    .bamboo-name, .bamboo-time, .bamboo-count, .bamboo-item-time, .bamboo-item-task,
-    .bamboo-item-eval, .bamboo-title, .empty-state-title, .empty-state-desc, .empty-state-hint,
-    .text-block, .card-title, .card-desc, .quote-text, .weather-text,
-    .ticket-time-name, .ticket-time-value, .ticket-highlight-value, .ticket-highlight-label,
-    .ticket-sub-label, .ticket-body-text,
-    .stub-back-ring-text, .stub-back-caption, .stub-back-stat-value, .stub-back-stat,
-    .stub-back-title, .stub-nc-name, .stub-name, .stub-caption, .stub-value,
-    .designer-ticket .ticket-text, .ticket-stub-content,
-    .scroll-note-title, .scroll-note-meta, .scroll-notes-empty
-),
-body.privacy-on [data-private-text],
-body.privacy-on :is(
-    p, [data-inline-edit],
-    .goal-item-name, .goal-item-daily, .goal-item-date, .goal-item-status, .goal-item-entry,
-    .goal-title, .goal-text,
-    .section-title, .section-desc, .section-settings-title, .section-settings-desc,
-    .health-goal-title, .stat-value, .stat-label,
-    .gho-score, .gho-label, .gho-metric-name, .gho-metric-val, .gho-suggestion-text,
-    .gho-stat-val, .gho-stat-label, .gho-empty-text,
-    .todo-focus-item, .todo-item-text, .todo-title, .todo-desc, .todo-goal-daily,
-    .todo-goal-progress, .todo-goal-source, .todo-stat-num, .todo-stat-label,
-    .todo-group-label, .todo-completed-count,
-    .bamboo-name, .bamboo-time, .bamboo-count, .bamboo-item-time, .bamboo-item-task,
-    .bamboo-item-eval, .bamboo-title, .empty-state-title, .empty-state-desc, .empty-state-hint,
-    .text-block, .card-title, .card-desc, .quote-text, .weather-text,
-    .ticket-time-name, .ticket-time-value, .ticket-highlight-value, .ticket-highlight-label,
-    .ticket-sub-label, .ticket-body-text,
-    .stub-back-ring-text, .stub-back-caption, .stub-back-stat-value, .stub-back-stat,
-    .stub-back-title, .stub-nc-name, .stub-name, .stub-caption, .stub-value,
-    .designer-ticket .ticket-text, .ticket-stub-content,
-    .scroll-note-title, .scroll-note-meta, .scroll-notes-empty
-) {
+:host(.privacy-on) [data-private-text], :host(.privacy-on) :is(p, [data-inline-edit], .goal-item-name, .goal-item-daily, .goal-item-date, .goal-item-status, .goal-item-entry, .goal-title, .goal-text, .section-title, .section-desc, .section-settings-title, .section-settings-desc, .health-goal-title, .stat-value, .stat-label, .gho-score, .gho-label, .gho-metric-name, .gho-metric-val, .gho-suggestion-text, .gho-stat-val, .gho-stat-label, .gho-empty-text, .todo-focus-item, .todo-item-text, .todo-title, .todo-desc, .todo-goal-daily, .todo-goal-progress, .todo-goal-source, .todo-stat-num, .todo-stat-label, .todo-group-label, .todo-completed-count, .bamboo-name, .bamboo-time, .bamboo-count, .bamboo-item-time, .bamboo-item-task, .bamboo-item-eval, .bamboo-title, .empty-state-title, .empty-state-desc, .empty-state-hint, .text-block, .card-title, .card-desc, .quote-text, .ticket-time-name, .ticket-time-value, .ticket-highlight-value, .ticket-highlight-label, .ticket-sub-label, .ticket-body-text, .stub-back-ring-text, .stub-back-caption, .stub-back-stat-value, .stub-back-stat, .stub-back-title, .stub-nc-name, .stub-name, .stub-caption, .stub-value, .designer-ticket .ticket-text, .ticket-stub-content, .scroll-note-title, .scroll-note-meta, .scroll-notes-empty), body.privacy-on [data-private-text], body.privacy-on :is(p, [data-inline-edit], .goal-item-name, .goal-item-daily, .goal-item-date, .goal-item-status, .goal-item-entry, .goal-title, .goal-text, .section-title, .section-desc, .section-settings-title, .section-settings-desc, .health-goal-title, .stat-value, .stat-label, .gho-score, .gho-label, .gho-metric-name, .gho-metric-val, .gho-suggestion-text, .gho-stat-val, .gho-stat-label, .gho-empty-text, .todo-focus-item, .todo-item-text, .todo-title, .todo-desc, .todo-goal-daily, .todo-goal-progress, .todo-goal-source, .todo-stat-num, .todo-stat-label, .todo-group-label, .todo-completed-count, .bamboo-name, .bamboo-time, .bamboo-count, .bamboo-item-time, .bamboo-item-task, .bamboo-item-eval, .bamboo-title, .empty-state-title, .empty-state-desc, .empty-state-hint, .text-block, .card-title, .card-desc, .quote-text, .ticket-time-name, .ticket-time-value, .ticket-highlight-value, .ticket-highlight-label, .ticket-sub-label, .ticket-body-text, .stub-back-ring-text, .stub-back-caption, .stub-back-stat-value, .stub-back-stat, .stub-back-title, .stub-nc-name, .stub-name, .stub-caption, .stub-value, .designer-ticket .ticket-text, .ticket-stub-content, .scroll-note-title, .scroll-note-meta, .scroll-notes-empty) {
     filter: blur(var(--privacy-blur));
     transition: filter 0.18s ease;
     /* 模糊状态下仍可被点击操作（如切日期、开设置），仅视觉遮挡 */
     pointer-events: auto;
 }
 /* 尊重用户的「减少动态效果」系统偏好：关闭模糊过渡（直接切） */
-@media (prefers-reduced-motion: reduce) {
-    :host(.privacy-on) [data-private-text],
-    :host(.privacy-on) :is(
-        p, [data-inline-edit],
-        .goal-item-name, .goal-item-daily, .goal-item-date, .goal-item-status, .goal-item-entry,
-        .goal-title, .goal-text,
-        .section-title, .section-desc, .section-settings-title, .section-settings-desc,
-        .health-goal-title, .stat-value, .stat-label,
-        .gho-score, .gho-label, .gho-metric-name, .gho-metric-val, .gho-suggestion-text,
-        .gho-stat-val, .gho-stat-label, .gho-empty-text,
-        .todo-focus-item, .todo-item-text, .todo-title, .todo-desc, .todo-goal-daily,
-        .todo-goal-progress, .todo-goal-source, .todo-stat-num, .todo-stat-label,
-        .todo-group-label, .todo-completed-count,
-        .bamboo-name, .bamboo-time, .bamboo-count, .bamboo-item-time, .bamboo-item-task,
-        .bamboo-item-eval, .bamboo-title, .empty-state-title, .empty-state-desc, .empty-state-hint,
-        .text-block, .card-title, .card-desc, .quote-text, .weather-text
-    ),
-    body.privacy-on [data-private-text],
-    body.privacy-on :is(
-        p, [data-inline-edit],
-        .goal-item-name, .goal-item-daily, .goal-item-date, .goal-item-status, .goal-item-entry,
-        .goal-title, .goal-text,
-        .section-title, .section-desc, .section-settings-title, .section-settings-desc,
-        .health-goal-title, .stat-value, .stat-label,
-        .gho-score, .gho-label, .gho-metric-name, .gho-metric-val, .gho-suggestion-text,
-        .gho-stat-val, .gho-stat-label, .gho-empty-text,
-        .todo-focus-item, .todo-item-text, .todo-title, .todo-desc, .todo-goal-daily,
-        .todo-goal-progress, .todo-goal-source, .todo-stat-num, .todo-stat-label,
-        .todo-group-label, .todo-completed-count,
-        .bamboo-name, .bamboo-time, .bamboo-count, .bamboo-item-time, .bamboo-item-task,
-        .bamboo-item-eval, .bamboo-title, .empty-state-title, .empty-state-desc, .empty-state-hint,
-        .text-block, .card-title, .card-desc, .quote-text, .weather-text
-    ) {
+@media (prefers-reduced-motion: reduce)   {
+
+
+    :host(.privacy-on) [data-private-text], :host(.privacy-on) :is(p, [data-inline-edit], .goal-item-name, .goal-item-daily, .goal-item-date, .goal-item-status, .goal-item-entry, .goal-title, .goal-text, .section-title, .section-desc, .section-settings-title, .section-settings-desc, .health-goal-title, .stat-value, .stat-label, .gho-score, .gho-label, .gho-metric-name, .gho-metric-val, .gho-suggestion-text, .gho-stat-val, .gho-stat-label, .gho-empty-text, .todo-focus-item, .todo-item-text, .todo-title, .todo-desc, .todo-goal-daily, .todo-goal-progress, .todo-goal-source, .todo-stat-num, .todo-stat-label, .todo-group-label, .todo-completed-count, .bamboo-name, .bamboo-time, .bamboo-count, .bamboo-item-time, .bamboo-item-task, .bamboo-item-eval, .bamboo-title, .empty-state-title, .empty-state-desc, .empty-state-hint, .text-block, .card-title, .card-desc, .quote-text), body.privacy-on [data-private-text], body.privacy-on :is(p, [data-inline-edit], .goal-item-name, .goal-item-daily, .goal-item-date, .goal-item-status, .goal-item-entry, .goal-title, .goal-text, .section-title, .section-desc, .section-settings-title, .section-settings-desc, .health-goal-title, .stat-value, .stat-label, .gho-score, .gho-label, .gho-metric-name, .gho-metric-val, .gho-suggestion-text, .gho-stat-val, .gho-stat-label, .gho-empty-text, .todo-focus-item, .todo-item-text, .todo-title, .todo-desc, .todo-goal-daily, .todo-goal-progress, .todo-goal-source, .todo-stat-num, .todo-stat-label, .todo-group-label, .todo-completed-count, .bamboo-name, .bamboo-time, .bamboo-count, .bamboo-item-time, .bamboo-item-task, .bamboo-item-eval, .bamboo-title, .empty-state-title, .empty-state-desc, .empty-state-hint, .text-block, .card-title, .card-desc, .quote-text) {
         transition: none;
     }
 }
@@ -103,10 +31,7 @@ body.privacy-on :is(
 /* 付费激活页永远不被隐私模糊：它包含 <p> 等通用文字标签，必须兜底豁免。
    本规则位于隐私模糊规则之后，且选择器特异性不低于 [data-private-text]/
    :is(...) 规则，故无需 !important 即可靠覆盖（后定义者胜出）。 */
-:host(.privacy-on) .bamboo-license-gate,
-:host(.privacy-on) .bamboo-license-gate *,
-body.privacy-on .bamboo-license-gate,
-body.privacy-on .bamboo-license-gate * {
+:host(.privacy-on) .bamboo-license-gate, :host(.privacy-on) .bamboo-license-gate *, body.privacy-on .bamboo-license-gate, body.privacy-on .bamboo-license-gate * {
     filter: none;
     transition: none;
 }
@@ -118,10 +43,7 @@ body.privacy-on .bamboo-license-gate * {
    本规则定义于隐私模糊规则之后、特异性与其相同，按「后定义者胜出」可靠覆盖，无需 !important。
    已 grep 到的受影响者：confirmDialog 的 .confirm-message、目标编辑器 .tmpl-empty-hint、
    思维导图画中卷 .tw-mm-empty-*、预览合成 .tw-preview-hint、意境选择器 .scroll-pick-sub。 */
-:host(.privacy-on) :is(.modal-container, .modal-base, .modal-panel, .fab-container, .fab-actions, .tooltip) *,
-:host(.privacy-on) :is(.confirm-message, .tmpl-empty-hint, .tw-mm-empty-title, .tw-mm-empty-sub, .tw-mm-empty-note, .tw-preview-hint, .scroll-pick-sub),
-body.privacy-on :is(.modal-container, .modal-base, .modal-panel, .fab-container, .fab-actions, .tooltip) *,
-body.privacy-on :is(.confirm-message, .tmpl-empty-hint, .tw-mm-empty-title, .tw-mm-empty-sub, .tw-mm-empty-note, .tw-preview-hint, .scroll-pick-sub) {
+:host(.privacy-on) :is(.modal-container, .modal-base, .modal-panel, .fab-container, .fab-actions, .tooltip) *, :host(.privacy-on) :is(.confirm-message, .tmpl-empty-hint, .tw-mm-empty-title, .tw-mm-empty-sub, .tw-mm-empty-note, .tw-preview-hint, .scroll-pick-sub), body.privacy-on :is(.modal-container, .modal-base, .modal-panel, .fab-container, .fab-actions, .tooltip) *, body.privacy-on :is(.confirm-message, .tmpl-empty-hint, .tw-mm-empty-title, .tw-mm-empty-sub, .tw-mm-empty-note, .tw-preview-hint, .scroll-pick-sub) {
     filter: none;
     transition: none;
 }
@@ -141,7 +63,9 @@ body.privacy-on :is(.confirm-message, .tmpl-empty-hint, .tw-mm-empty-title, .tw-
 /* 容器查询：画中卷放进左侧栏（约 200-300px 宽）时，番茄钟纵向堆叠、火折子缩小，避免溢出 */
 .scroll-body { container-type: inline-size; }
 
-@media (max-width: 760px) {
+@media (max-width: 760px)   {
+
+
     .scroll-body { grid-template-columns: 1fr; grid-auto-rows: minmax(0, auto); overflow-y: auto; }
     .scroll-left { border-right: none; border-bottom: 1px solid rgba(96, 132, 96, 0.16); }
 }
@@ -155,20 +79,12 @@ body.privacy-on :is(.confirm-message, .tmpl-empty-hint, .tw-mm-empty-title, .tw-
    裸标签选择器（button/a/select）用 :where() 包裹降为 0,0,0 权重，
    作为 Shadow DOM 内的零权重默认值；组件类可无权重竞赛地覆写。
    见 ui-audit-report 4.1.3。 */
-:where(button,
-[role="button"],
-.clickable,
-a,
-select,
-label[for]) {
+:where(button, [role="button"], .clickable, a, select, label[for]) {
     cursor: pointer;
     transition: color var(--transition-normal), background-color var(--transition-normal), border-color var(--transition-normal), opacity var(--transition-normal), transform var(--transition-normal), box-shadow var(--transition-normal);
 }
 
-:where(button:active,
-[role="button"]:active,
-.clickable:active,
-a:active) {
+:where(button:active, [role="button"]:active, .clickable:active, a:active) {
     transform: var(--scale-click);
     opacity: 0.9;
 }
@@ -241,21 +157,7 @@ a:active) {
 }
 
 /* === 主题切换过渡 — 限定在需要平滑过渡的组件级元素，避免 :host * 全局性能开销 === */
-.container,
-.header,
-.date-nav,
-.bamboo-card,
-.goal-row,
-.kpi-card,
-.section-title,
-.bamboo-garden-section,
-.theme-card,
-.timeline-entry,
-.todo-item,
-.fab-action-btn,
-[class*="-card"],
-[class*="-section"],
-[class*="-panel"] {
+.container, .header, .date-nav, .bamboo-card, .goal-row, .kpi-card, .section-title, .bamboo-garden-section, .theme-card, .timeline-entry, .todo-item, .fab-action-btn, [class*="-card"], [class*="-section"], [class*="-panel"] {
     transition: 
         background-color var(--transition-smooth),
         color var(--transition-smooth),
@@ -264,32 +166,20 @@ a:active) {
 }
 
 /* 排除不需要过渡的元素 */
-.modal-overlay,
-.modal-content,
-.fab-container,
-.toast-container,
-.loading::after {
+.modal-overlay, .modal-content, .fab-container, .toast-container, .loading::after {
     transition: none;
 }
-.fab-actions,
-.fab-action-btn,
-.fab-main,
-.fab-main-icon {
+.fab-actions, .fab-action-btn, .fab-main, .fab-main-icon {
     transition: transform, opacity, box-shadow, border-color, background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* === 性能优化：全局动画控制 === */
-:host(.animations-paused) *,
-:host(.animations-paused) *::before,
-:host(.animations-paused) *::after {
+:host(.animations-paused) *, :host(.animations-paused) *::before, :host(.animations-paused) *::after {
     animation-play-state: paused;
 }
 
 /* 离屏动效容器暂停 - 替代逐元素 style 设置 */
-.effect-offscreen,
-.effect-offscreen *,
-.effect-offscreen *::before,
-.effect-offscreen *::after {
+.effect-offscreen, .effect-offscreen *, .effect-offscreen *::before, .effect-offscreen *::after {
     animation-play-state: paused;
 }
 
@@ -384,7 +274,9 @@ a:active) {
     opacity: 0.85;
 }
 
-@media (prefers-reduced-motion: no-preference) {
+@media (prefers-reduced-motion: no-preference)   {
+
+
     :host::before {
         animation: bgFloat 20s ease-in-out infinite;
     }
@@ -402,15 +294,14 @@ a:active) {
    这是滑块拖动时整页每帧都在跑过渡动画、丝滑度不足的隐藏主因。松手（change）即移除 class 恢复过渡。 */
 /* 用 :not(#recoloring) 把特异性抬到 ID 级 (1,x,x)，压过各组件自己的 transition 声明，
    从而不必借助 !important —— 拖动调色滑块期间全局停掉过渡，避免每帧重跑动画。 */
-html.recoloring:not(#recoloring), html.recoloring:not(#recoloring) *,
-html.recoloring:not(#recoloring) *::before, html.recoloring:not(#recoloring) *::after {
+html.recoloring:not(#recoloring), html.recoloring:not(#recoloring) *, html.recoloring:not(#recoloring) *::before, html.recoloring:not(#recoloring) *::after {
     transition: none;
 }
 
-@media (prefers-reduced-motion: reduce) {
-    :host(.motion-reduced) *,
-    :host(.motion-reduced) *::before,
-    :host(.motion-reduced) *::after {
+@media (prefers-reduced-motion: reduce)   {
+
+
+    :host(.motion-reduced) *, :host(.motion-reduced) *::before, :host(.motion-reduced) *::after {
         animation-duration: 0.01ms;
         animation-iteration-count: 1;
         transition-duration: 0.01ms;
@@ -449,7 +340,9 @@ html.recoloring:not(#recoloring) *::before, html.recoloring:not(#recoloring) *::
 :host(.loading) .container { opacity: 0; }
 .container { transition: opacity 0.3s ease; }
 
-@media print {
+@media print   {
+
+
     :host { background: var(--white); }
     .fab-container { display: none; }
     .period-content.collapsed { max-height: none; opacity: 1; display: block; }
@@ -480,9 +373,7 @@ html.recoloring:not(#recoloring) *::before, html.recoloring:not(#recoloring) *::
  * 或 date-transitioning / date-enter（本文件日期切换动画，类名由 renderScheduler
  * 在动画前后添加/移除）。动画结束 → 类名移除 → will-change 随之失效，合成层释放。
  * contain: layout style 为廉价 containment，常驻安全，予以保留。 */
-.bamboo-node,
-.goal-row,
-section[data-section-id] {
+.bamboo-node, .goal-row, section[data-section-id] {
     contain: layout style;
 }
 
@@ -511,11 +402,10 @@ section[data-section-id] {
 
 /* === 玻璃拟态 fallback：backdrop-filter 不被支持或背景过透时使用不透明底色 ===
    保持玻璃效果在受支持浏览器下不变；仅在 @supports not 时切换，避免文字透底导致对比度不足。 */
-@supports not (backdrop-filter: blur(1px)) {
-    .container,
-    .bamboo-card,
-    .modal-content,
-    .skeleton-section {
+@supports not (backdrop-filter: blur(1px))   {
+
+
+    .container, .bamboo-card, .modal-content, .skeleton-section {
         background: var(--card-bg-fallback);
         -webkit-backdrop-filter: none;
         backdrop-filter: none;
@@ -609,7 +499,9 @@ section[data-section-id] {
     animation: skeletonShimmer 1.5s infinite;
 }
 
-@media (prefers-reduced-motion: reduce) {
+@media (prefers-reduced-motion: reduce)   {
+
+
     .section-placeholder::before {
         animation: none;
         display: none;
@@ -774,29 +666,7 @@ h1 {
    Mobile rule below bumps to comfortable 48px on small screens.
    裸标签（button/a/input/select/textarea）用 :where() 降为 0 权重默认值，
    组件类（.fab-action-btn 等）保持原权重；任一组件类均可无竞赛覆写最小触控尺寸。 */
-:where(button,
-[role="button"],
-a,
-input,
-select,
-textarea),
-.fab-action-btn,
-.quick-nav-btn,
-.goal-row-main,
-.goal-row,
-.bamboo-card,
-.bamboo-card-header,
-.todo-item-action,
-.section-title,
-.section-toggle,
-.date-nav-btn,
-.view-toggle-btn,
-.wallet-action,
-.modal-close,
-.tooltip-close,
-.kpi-card,
-.empty-state-card,
-.expand-btn {
+:where(button, [role="button"], a, input, select, textarea), .fab-action-btn, .quick-nav-btn, .goal-row-main, .goal-row, .bamboo-card, .bamboo-card-header, .todo-item-action, .section-title, .section-toggle, .date-nav-btn, .view-toggle-btn, .wallet-action, .modal-close, .kpi-card, .empty-state-card, .expand-btn {
     min-height: var(--touch-target);
     min-width: var(--touch-target);
     touch-action: manipulation;
@@ -804,24 +674,10 @@ textarea),
 }
 
 /* 伪元素扩展热区：固定小尺寸且布局敏感的交互元素保持视觉尺寸不变 */
-.touch-target-sm,
-.flip-stub-btn,
-.drp-close-btn,
-.drp-nav-btn,
-.display-panel-close,
-.sm-btn,
-.view-toggle-btn-sm,
-.shop-history-arrow {
+.touch-target-sm, .flip-stub-btn, .drp-close-btn, .drp-nav-btn, .display-panel-close, .sm-btn, .shop-history-arrow {
     position: relative;
 }
-.touch-target-sm::before,
-.flip-stub-btn::before,
-.drp-close-btn::before,
-.drp-nav-btn::before,
-.display-panel-close::before,
-.sm-btn::before,
-.view-toggle-btn-sm::before,
-.shop-history-arrow::before {
+.touch-target-sm::before, .flip-stub-btn::before, .drp-close-btn::before, .drp-nav-btn::before, .display-panel-close::before, .sm-btn::before, .shop-history-arrow::before {
     content: '';
     position: absolute;
     top: 50%;
@@ -832,11 +688,11 @@ textarea),
 }
 
 /* === MOBILE (≤480px): phone in portrait, tiny Obsidian sidebar === */
-@media (max-width: 480px) {
+@media (max-width: 480px)   {
+
+
     /* Larger comfortable touch targets on mobile */
-    :where(button,
-    [role="button"]),
-    .fab-action-btn {
+    :where(button, [role="button"]), .fab-action-btn {
         min-height: var(--touch-comfortable);
         min-width: var(--touch-comfortable);
     }
@@ -888,7 +744,9 @@ textarea),
 
 /* === TABLET / NARROW SIDEBAR (≤768px)
    Rules here ALSO apply to ≤480px due to cascade. */
-@media (max-width: 768px) {
+@media (max-width: 768px)   {
+
+
     #main-container {
         /* 移动端（含普通 iframe 中央视图）移除顶部留白，避免露出白底 */
         padding: 0 var(--space-4);
@@ -901,9 +759,7 @@ textarea),
     }
 
     /* Ensure text doesn't overflow card edges */
-    .ticket-body,
-    .goal-row-main,
-    .timeline-entry {
+    .ticket-body, .goal-row-main, .timeline-entry {
         overflow-wrap: anywhere;
         word-break: break-word;
     }
@@ -911,7 +767,9 @@ textarea),
 
 
 /* === WIDE DESKTOP (≥1025px): ensure comfortable reading width === */
-@media (min-width: 1025px) {
+@media (min-width: 1025px)   {
+
+
     .container {
         max-width: min(100% - 2rem, var(--content-max-width-wide));
     }
@@ -920,7 +778,9 @@ textarea),
 /* === TINY VIEWPORT (≤360px): Obsidian 窄侧边栏 / 最小手机。
    紧急压缩层。避免视觉破坏 — 它应该只是 ≤480px 设计的紧凑版本。
    目标：ZERO 水平滚动。 */
-@media (max-width: 360px) {
+@media (max-width: 360px)   {
+
+
     :host {
         padding: var(--space-2) var(--space-1);
     }
@@ -995,12 +855,7 @@ textarea),
 }
 
 /* 裸标签 focus-visible 降为 0 权重默认值，组件级焦点环可无竞赛覆写 */
-:where(button:focus-visible,
-[role="button"]:focus-visible,
-a:focus-visible,
-select:focus-visible,
-input:focus-visible,
-textarea:focus-visible) {
+:where(button:focus-visible, [role="button"]:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible) {
     outline: none;
     box-shadow: var(--focus-ring);
 }

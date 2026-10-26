@@ -117,7 +117,9 @@
 }
 
 /* 响应式适配 — Canonical breakpoints: 480px (mobile), 768px (tablet), 1024px (desktop) */
-@media (max-width: 768px) {
+@media (max-width: 768px)   {
+
+
     :host {
         --glow-width: 2px;
         --glow-opacity: 0.25;
@@ -127,13 +129,11 @@
 
 /* 夜间模式下应用流光效果（已移除票根扫描光效） */
 
-:host(.dark):not(.glows-disabled) .goal-row,
-:host(.dark):not(.glows-disabled) .bamboo-card {
+:host(.dark):not(.glows-disabled) .goal-row, :host(.dark):not(.glows-disabled) .bamboo-card {
     /* 方案3：脉冲闪烁 - 目标卡片和时光卡（改为 hover 触发，避免常驻重绘） */
     position: relative;
 }
-:host(.dark):not(.glows-disabled) .goal-row::before,
-:host(.dark):not(.glows-disabled) .bamboo-card::before {
+:host(.dark):not(.glows-disabled) .goal-row::before, :host(.dark):not(.glows-disabled) .bamboo-card::before {
     content: '';
     position: absolute;
     top: -1px;
@@ -145,8 +145,7 @@
     opacity: 0;
     pointer-events: none;
 }
-:host(.dark):not(.glows-disabled) .goal-row::after,
-:host(.dark):not(.glows-disabled) .bamboo-card::after {
+:host(.dark):not(.glows-disabled) .goal-row::after, :host(.dark):not(.glows-disabled) .bamboo-card::after {
     content: '';
     position: absolute;
     top: -1px;
@@ -159,12 +158,10 @@
     pointer-events: none;
 }
 /* 仅在悬停时启流光脉冲，纯 opacity 过渡（GPU 合成，无重排） */
-:host(.dark):not(.glows-disabled) .goal-row:hover::before,
-:host(.dark):not(.glows-disabled) .bamboo-card:hover::before {
+:host(.dark):not(.glows-disabled) .goal-row:hover::before, :host(.dark):not(.glows-disabled) .bamboo-card:hover::before {
     animation: glow-pulse-fade calc(var(--glow-duration) / 2) ease-in-out infinite;
 }
-:host(.dark):not(.glows-disabled) .goal-row:hover::after,
-:host(.dark):not(.glows-disabled) .bamboo-card:hover::after {
+:host(.dark):not(.glows-disabled) .goal-row:hover::after, :host(.dark):not(.glows-disabled) .bamboo-card:hover::after {
     animation: glow-pulse-fade calc(var(--glow-duration) / 2) ease-in-out infinite;
     animation-delay: calc(var(--glow-duration) / 4);
 }
@@ -240,7 +237,9 @@
     width: var(--bm-icon-xxl);
     height: var(--bm-icon-xxl);
 }
-@media (prefers-reduced-motion: no-preference) {
+@media (prefers-reduced-motion: no-preference)   {
+
+
     .fab-main:not(.open) {
         animation: fabPulse 3.8s ease-in-out infinite;
     }
@@ -433,8 +432,7 @@
     flex-direction: column;
     align-items: flex-start;
 }
-.fab-container.fab-top .fab-actions,
-.fab-container.fab-below .fab-actions {
+.fab-container.fab-top .fab-actions, .fab-container.fab-below .fab-actions {
     bottom: auto;
     top: calc(100% + 10px);
 }

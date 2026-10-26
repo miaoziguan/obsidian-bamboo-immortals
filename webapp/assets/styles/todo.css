@@ -674,27 +674,23 @@
     transform: scale(0.92);
 }
 
-.todo-lottery-btn:disabled,
-.todo-lottery-btn.disabled {
+.todo-lottery-btn:disabled, .todo-lottery-btn.disabled {
     opacity: 0.3;
     cursor: not-allowed;
     pointer-events: none;
 }
 
-.todo-lottery-btn:disabled svg,
-.todo-lottery-btn.disabled svg {
+.todo-lottery-btn:disabled svg, .todo-lottery-btn.disabled svg {
     opacity: 0.3;
 }
 
-.todo-lottery-btn:disabled:hover,
-.todo-lottery-btn.disabled:hover {
+.todo-lottery-btn:disabled:hover, .todo-lottery-btn.disabled:hover {
     background: transparent;
     box-shadow: none;
     transform: none;
 }
 
-.todo-lottery-btn:disabled:hover svg,
-.todo-lottery-btn.disabled:hover svg {
+.todo-lottery-btn:disabled:hover svg, .todo-lottery-btn.disabled:hover svg {
     transform: none;
     opacity: 0.3;
 }
@@ -880,7 +876,9 @@
 
 
 /* === TINY VIEWPORT (≤360px): 待办紧凑布局 === */
-@media (max-width: 360px) {
+@media (max-width: 360px)   {
+
+
     .todo-item {
         padding: 6px 4px;
         gap: 6px;

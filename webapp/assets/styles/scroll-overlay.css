@@ -140,10 +140,7 @@
    与 overflow-y: visible 共存也不会像 hidden 那样把另一方向隐式变成 auto。
    overflow-clip-margin 留出 120px 余量，让化雁飞出、火折子拖出一段距离仍完整可见，
    超出该余量才被裁掉。 */
-.scroll-body,
-.scroll-left,
-.scroll-screen,
-.scroll-screen-inner {
+.scroll-body, .scroll-left, .scroll-screen, .scroll-screen-inner {
     overflow-x: clip;
     overflow-y: visible;
     overflow-clip-margin: 120px;
@@ -161,9 +158,7 @@
     display: flex;
 }
 /* 以下装饰层在去掉卡片背景后隐藏，保留 DOM 结构兼容 */
-.scroll-screen::before,
-.scroll-screen-glass,
-.scroll-scanlines {
+.scroll-screen::before, .scroll-screen-glass, .scroll-scanlines {
     display: none;
 }
 @keyframes scroll-flicker {
@@ -209,8 +204,7 @@
 }
 /* 拖拽火折子期间全局禁用文本选择：杜绝原生选区高亮在画面中拖出多余色带
    （mousedown 已 preventDefault，但 mousemove 仍可能扩展残留选区） */
-.scroll-workbench.scroll-dragging,
-.scroll-workbench.scroll-dragging * {
+.scroll-workbench.scroll-dragging, .scroll-workbench.scroll-dragging * {
     /* 无需 !important：shadow root 内只有本样式表，且本选择器优先级
        高于任何元素级 / 继承来的 user-select 声明 */
     user-select: none;
@@ -250,8 +244,7 @@
 /* 火绒动效：火苗跳动 + 火星上飘，全部走 transform/opacity（合成属性）。
    默认 paused —— 未拔帽时火绒完全不可见，原 SMIL 却在常驻播放，纯属空耗 CPU；
    拔帽(.cap-off)后才真正运行。 */
-.scroll-firebrand .flame-outer,
-.scroll-firebrand .flame-inner {
+.scroll-firebrand .flame-outer, .scroll-firebrand .flame-inner {
     transform-box: fill-box;
     transform-origin: 50% 100%; /* 绕火焰根部跳动 */
     animation-play-state: paused;
@@ -262,9 +255,7 @@
 /* 火星用 translateY 上飘，替代原 SMIL 的 cy 属性动画（后者每帧重算 SVG 几何） */
 .scroll-firebrand .spark-a { animation: scroll-spark-rise 1.2s ease-out infinite; }
 .scroll-firebrand .spark-b { animation: scroll-spark-rise 1.5s ease-out -0.4s infinite; }
-.scroll-firebrand.cap-off .flame-outer,
-.scroll-firebrand.cap-off .flame-inner,
-.scroll-firebrand.cap-off .flame-spark { animation-play-state: running; }
+.scroll-firebrand.cap-off .flame-outer, .scroll-firebrand.cap-off .flame-inner, .scroll-firebrand.cap-off .flame-spark { animation-play-state: running; }
 /* 火折子配色：随主体色相 + 明度联动（HSL 派生，与香插同源）。
    竹身/竹帽为青竹材质（色相约 +30 跟随主体），火苗为暖橙（色相约 -95/-75 跟随主体）。
    注意：SVG 呈现属性不解析 var()，故 fill/stroke 与渐变 stop-color 一律由 CSS 施加。 */
@@ -446,7 +437,7 @@
    的一项；改为固定模糊 + opacity/scale 呼吸，视觉几无差别。 */
 /* 余烬发光范围收小：核心点 8px→5px、模糊半径 2.5→1.6px，光晕扩散随之收窄，
    暗红闷烧点更集中（模糊半径变小也顺带降低每帧光栅化的开销）。 */
-.ember-core  { width: 5px;  height: 5px;  background: rgba(245,130,70,0.75); top: 50%; left: 50%; transform: translate(-50%,-50%); filter: blur(1.6px); }
+.ember-core { width: 5px;  height: 5px;  background: rgba(245,130,70,0.75); top: 50%; left: 50%; transform: translate(-50%,-50%); filter: blur(1.6px); }
 /* 呼吸动画只改 opacity（scale 已移除，以免 blur 每帧重栅格化），
    故 will-change 也只声明 opacity，避免为用不到的 transform 额外提升合成层。 */
 .scroll-incense.is-lit .scroll-incense-ember span { animation: scroll-ember-breath 3.4s ease-in-out infinite; will-change: opacity; }
@@ -461,9 +452,7 @@
     50%      { transform: translate(-50%,-50%); opacity: 0.8; }
 }
 /* 吹熄过渡（#7）：余烬暗灭、火光隐去、前沿焦褐带消散、青烟被吹散加速淡出，香身停在当前进度 */
-.scroll-incense.blowing .scroll-incense-ember,
-.scroll-incense.blowing .scroll-incense-flare,
-.scroll-incense.blowing .scroll-incense-transition {
+.scroll-incense.blowing .scroll-incense-ember, .scroll-incense.blowing .scroll-incense-flare, .scroll-incense.blowing .scroll-incense-transition {
     /* 先 animation:none 停掉余烬/火光的 opacity 关键帧，再以普通声明压到 0：
        动画的优先级高于普通声明，不停动画就得靠 !important 才能盖住。 */
     animation: none;

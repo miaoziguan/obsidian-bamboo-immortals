@@ -146,9 +146,7 @@
     color: var(--text-secondary);
     margin-bottom: var(--space-2);
 }
-.form-input,
-.form-textarea,
-.form-select {
+.form-input, .form-textarea, .form-select {
     width: 100%;
     padding: var(--space-3) var(--space-4);
     min-height: var(--touch-target);
@@ -163,15 +161,12 @@
     font-family: inherit;
     box-shadow: var(--shadow-surface);
 }
-.form-input:focus,
-.form-textarea:focus,
-.form-select:focus {
+.form-input:focus, .form-textarea:focus, .form-select:focus {
     outline: none;
     border-color: var(--bamboo-primary);
     box-shadow: var(--shadow-card), 0 0 0 3px rgba(var(--primary-rgb), 0.12);
 }
-.form-input.input-error,
-.form-textarea.input-error {
+.form-input.input-error, .form-textarea.input-error {
     border-color: var(--status-danger);
     box-shadow: 0 0 0 3px rgba(var(--danger-rgb), 0.15);
 }
@@ -196,54 +191,19 @@
     gap: var(--space-2);
     font-family: inherit;
 }
-.btn-primary {
-    background: var(--btn-primary-bg);
-    color: var(--white);
-    box-shadow: var(--shadow-surface);
-}
-.btn-primary:hover {
-    background: var(--btn-primary-hover);
-    box-shadow: var(--shadow-elevated);
-    transform: translateY(-2px);
-}
-.btn-primary:active {
-    transform: translateY(0) scale(0.97);
-    box-shadow: var(--shadow-surface);
-}
-.btn-secondary {
-    background: var(--btn-secondary-bg);
-    color: var(--text-primary);
-    border: 1px solid var(--border-light);
-}
-.btn-secondary:hover {
-    background: var(--btn-secondary-hover);
-    border-color: var(--bamboo-primary);
-    box-shadow: var(--shadow-card);
-    transform: translateY(-1px);
-}
-.btn-secondary:active {
-    transform: scale(0.97);
-}
-.btn-outline {
-    background: transparent;
-    color: var(--bamboo-primary);
-    border: 1px solid var(--bamboo-primary);
-}
-.btn-outline:hover {
-    background: var(--btn-outline-hover);
-}
-.btn-sm {
-    padding: var(--space-2) var(--space-4);
-    min-height: var(--touch-target);
-    min-width: var(--touch-target);
-    font-size: var(--type-xs);
-    border-radius: var(--radius-sm);
-}
+
+
+
+
+
+
+
+
+
 .btn-block {
     width: 100%;
 }
-.btn:disabled,
-.btn.disabled {
+.btn:disabled, .btn.disabled {
     opacity: 0.5;
     cursor: not-allowed;
     pointer-events: none;

@@ -173,18 +173,13 @@
   top: 100%;
   height: 10px;
 }
-.tw-card:hover .tw-card-tools,
-.tw-card:focus-within .tw-card-tools,
-.tw-card.is-pinned .tw-card-tools {
+.tw-card:hover .tw-card-tools, .tw-card:focus-within .tw-card-tools, .tw-card.is-pinned .tw-card-tools {
   opacity: 1;
   transform: translate(-50%, 0) scale(1);
   pointer-events: auto;
 }
 
-.tw-card:hover .tw-card-rotate,
-.tw-card:focus-within .tw-card-rotate,
-.tw-card.is-pinned .tw-card-rotate,
-.tw-card.is-rotating .tw-card-rotate {
+.tw-card:hover .tw-card-rotate, .tw-card:focus-within .tw-card-rotate, .tw-card.is-pinned .tw-card-rotate, .tw-card.is-rotating .tw-card-rotate {
   opacity: 1;
   pointer-events: auto;
 }
@@ -197,15 +192,7 @@
   top: auto;
   bottom: 100%;
 }
-.tw-card-del,
-.tw-card-paper,
-.tw-card-font,
-.tw-card-zoom-out,
-.tw-card-zoom-in,
-.tw-card-move,
-.tw-card-lv,
-.tw-card-split,
-.tw-card-export {
+.tw-card-del, .tw-card-paper, .tw-card-font, .tw-card-zoom-out, .tw-card-zoom-in, .tw-card-move, .tw-card-lv, .tw-card-split, .tw-card-export {
   
   width: clamp(18px, calc(20px * var(--tw-scale, 1)), 24px);
   height: clamp(18px, calc(20px * var(--tw-scale, 1)), 24px);
@@ -227,15 +214,7 @@
   cursor: pointer;
   transition: background 0.12s ease, color 0.12s ease, transform 0.08s ease;
 }
-.tw-card-del svg,
-.tw-card-paper svg,
-.tw-card-font svg,
-.tw-card-zoom-out svg,
-.tw-card-zoom-in svg,
-.tw-card-move svg,
-.tw-card-lv svg,
-.tw-card-split svg,
-.tw-card-export svg {
+.tw-card-del svg, .tw-card-paper svg, .tw-card-font svg, .tw-card-zoom-out svg, .tw-card-zoom-in svg, .tw-card-move svg, .tw-card-lv svg, .tw-card-split svg, .tw-card-export svg {
   width: clamp(16px, calc(18px * var(--tw-scale, 1)), 22px);
   height: clamp(16px, calc(18px * var(--tw-scale, 1)), 22px);
   flex: none;
@@ -287,36 +266,16 @@
 /* 导出与删除同为「语义色 hover」，但一律不铺底 —— 与同排裸图标钮一致（曾唯一带 background 填充，显异类）。
    语义色由令牌自身随明暗切换（亮 --primary-rgb=90,154,90 / 暗 130,195,130），无需另写暗色 hover。 */
 .tw-card-export:hover { color: rgb(var(--primary-rgb)); }
-.tw-card-font:hover,
-.tw-card-paper:hover,
-.tw-card-zoom-out:hover,
-.tw-card-zoom-in:hover,
-.tw-card-split:hover { color: #2f3a2c; }
+.tw-card-font:hover, .tw-card-paper:hover, .tw-card-zoom-out:hover, .tw-card-zoom-in:hover, .tw-card-split:hover { color: #2f3a2c; }
 
-.tw-card-del:active,
-.tw-card-paper:active,
-.tw-card-font:active,
-.tw-card-zoom-out:active,
-.tw-card-zoom-in:active,
-.tw-card-split:active,
-.tw-card-export:active { transform: scale(0.92); }
-.tw-card-font:disabled,
-.tw-card-zoom-out:disabled,
-.tw-card-zoom-in:disabled {
+.tw-card-del:active, .tw-card-paper:active, .tw-card-font:active, .tw-card-zoom-out:active, .tw-card-zoom-in:active, .tw-card-split:active, .tw-card-export:active { transform: scale(0.92); }
+.tw-card-font:disabled, .tw-card-zoom-out:disabled, .tw-card-zoom-in:disabled {
   opacity: 0.28;
   cursor: default;
   background: transparent;
   transform: none;
 }
-.tw-card-del:focus-visible,
-.tw-card-paper:focus-visible,
-.tw-card-font:focus-visible,
-.tw-card-zoom-out:focus-visible,
-.tw-card-zoom-in:focus-visible,
-.tw-card-move:focus-visible,
-.tw-card-lv:focus-visible,
-.tw-card-split:focus-visible,
-.tw-card-export:focus-visible {
+.tw-card-del:focus-visible, .tw-card-paper:focus-visible, .tw-card-font:focus-visible, .tw-card-zoom-out:focus-visible, .tw-card-zoom-in:focus-visible, .tw-card-move:focus-visible, .tw-card-lv:focus-visible, .tw-card-split:focus-visible, .tw-card-export:focus-visible {
   outline: 2px solid rgb(var(--primary-rgb));
   outline-offset: 1px;
 }
@@ -381,8 +340,7 @@
 .tw-card[data-id][data-paper]:hover .tw-card-text::-webkit-scrollbar-thumb {
   background: rgba(var(--bamboo-deep-rgb), 0.3);
 }
-:host(.dark) .tw-card[data-id][data-paper]:hover .tw-card-text::-webkit-scrollbar-thumb,
-.theme-dark .tw-card[data-id][data-paper]:hover .tw-card-text::-webkit-scrollbar-thumb {
+:host(.dark) .tw-card[data-id][data-paper]:hover .tw-card-text::-webkit-scrollbar-thumb, .theme-dark .tw-card[data-id][data-paper]:hover .tw-card-text::-webkit-scrollbar-thumb {
   background: rgba(var(--green-very-bright-rgb), 0.3);
 }
 
@@ -505,8 +463,7 @@
 .tw-card[data-paper="shuyan"] {
   aspect-ratio: 600 / 300;
 }
-.tw-card[data-paper="shuyan"] .tw-card-edge,
-.tw-card[data-paper="shuyan"] .tw-card-noise {
+.tw-card[data-paper="shuyan"] .tw-card-edge, .tw-card[data-paper="shuyan"] .tw-card-noise {
   display: none;
 }
 .tw-card[data-paper="shuyan"] .tw-card-main {
@@ -557,8 +514,7 @@
 .tw-card[data-paper="redsilk"] {
   aspect-ratio: 600 / 300;
 }
-.tw-card[data-paper="redsilk"] .tw-card-edge,
-.tw-card[data-paper="redsilk"] .tw-card-noise {
+.tw-card[data-paper="redsilk"] .tw-card-edge, .tw-card[data-paper="redsilk"] .tw-card-noise {
   display: none;
 }
 .tw-card[data-paper="redsilk"] .tw-card-main {
@@ -608,8 +564,7 @@
 .tw-card[data-paper="ruoshui"] {
   aspect-ratio: 600 / 300;
 }
-.tw-card[data-paper="ruoshui"] .tw-card-edge,
-.tw-card[data-paper="ruoshui"] .tw-card-noise {
+.tw-card[data-paper="ruoshui"] .tw-card-edge, .tw-card[data-paper="ruoshui"] .tw-card-noise {
   display: none;
 }
 .tw-card[data-paper="ruoshui"] .tw-card-main {
@@ -659,8 +614,7 @@
 .tw-card[data-paper="tengyun"] {
   aspect-ratio: 600 / 300;
 }
-.tw-card[data-paper="tengyun"] .tw-card-edge,
-.tw-card[data-paper="tengyun"] .tw-card-noise {
+.tw-card[data-paper="tengyun"] .tw-card-edge, .tw-card[data-paper="tengyun"] .tw-card-noise {
   display: none;
 }
 .tw-card[data-paper="tengyun"] .tw-card-main {
@@ -710,8 +664,7 @@
 .tw-card[data-paper="juhuo"] {
   aspect-ratio: 600 / 300;
 }
-.tw-card[data-paper="juhuo"] .tw-card-edge,
-.tw-card[data-paper="juhuo"] .tw-card-noise {
+.tw-card[data-paper="juhuo"] .tw-card-edge, .tw-card[data-paper="juhuo"] .tw-card-noise {
   display: none;
 }
 .tw-card[data-paper="juhuo"] .tw-card-main {
@@ -761,8 +714,7 @@
 .tw-card[data-paper="yingyue"] {
   aspect-ratio: 600 / 300;
 }
-.tw-card[data-paper="yingyue"] .tw-card-edge,
-.tw-card[data-paper="yingyue"] .tw-card-noise {
+.tw-card[data-paper="yingyue"] .tw-card-edge, .tw-card[data-paper="yingyue"] .tw-card-noise {
   display: none;
 }
 .tw-card[data-paper="yingyue"] .tw-card-main {
@@ -821,11 +773,9 @@
   transition: opacity 0.15s;
   touch-action: none;
 }
-.tw-card:hover .tw-card-resize,
-.tw-card.is-resizing .tw-card-resize { opacity: 0.75; }
+.tw-card:hover .tw-card-resize, .tw-card.is-resizing .tw-card-resize { opacity: 0.75; }
 
-.tw-card-resize::before,
-.tw-card-resize::after {
+.tw-card-resize::before, .tw-card-resize::after {
   content: "";
   position: absolute;
   right: 0.2em;
@@ -834,7 +784,7 @@
   border-bottom-right-radius: 1px;
 }
 .tw-card-resize::before { bottom: 0.85em; width: 0.45em; height: 0.45em; }
-.tw-card-resize::after  { bottom: 0.2em;  width: 0.9em;  height: 0.9em; }
+.tw-card-resize::after { bottom: 0.2em;  width: 0.9em;  height: 0.9em; }
 
 
 .tw-card-rotate {
@@ -895,8 +845,7 @@
  * （invalid at computed-value time → 属性退回初始值）。而 .tw-link.is-temp 只靠
  * stroke 上色，stroke 的初始值正是 none，于是「拖锚点连线」全程看不到任何预览线，
  * 即连线过程不可见。便签与子弹两种模式共用这两个类名，故此处修复同时生效。 */
-.tw-links,
-.tw-links-ctl {
+.tw-links, .tw-links-ctl {
   --tw-link-stroke: rgba(46, 62, 40, 0.42);
   --tw-link-stroke-hi: rgba(46, 62, 40, 0.9);
 }
@@ -1062,9 +1011,7 @@
 }
 .tw-card-link svg { width: clamp(15px, calc(17px * var(--tw-scale, 1)), 21px); height: clamp(15px, calc(17px * var(--tw-scale, 1)), 21px); }
 .tw-card-link:hover { color: #2f3a2c; }
-.tw-card:hover .tw-card-link,
-.tw-card:focus-within .tw-card-link,
-.tw-card.is-pinned .tw-card-link {
+.tw-card:hover .tw-card-link, .tw-card:focus-within .tw-card-link, .tw-card.is-pinned .tw-card-link {
   opacity: 1;
   pointer-events: auto;
 }
@@ -1139,31 +1086,24 @@
 }
 
 /* 卸掉便签的装饰资产：上下齿边与纸纹 */
-.tw-canvas.tw-mode-write .tw-card-edge,
-.tw-canvas.tw-mode-write .tw-card-noise { display: none; }
+.tw-canvas.tw-mode-write .tw-card-edge, .tw-canvas.tw-mode-write .tw-card-noise { display: none; }
 /* 写作档不需要旋转：卡片是平铺成文的「纸片」，旋转只会打乱阅读秩序。
    连线锚点（.tw-card-link）必须保留 —— 连线正是本模式的文章顺序来源。 */
 .tw-canvas.tw-mode-write .tw-card-rotate { display: none; }
 /* 去掉信笺抬头（BAMBOO IMMORTALS 属纸样资产）；纸样钮在写作档同样无意义 */
-.tw-canvas.tw-mode-write .tw-card-head,
-.tw-canvas.tw-mode-write .tw-card-paper { display: none; }
+.tw-canvas.tw-mode-write .tw-card-head, .tw-canvas.tw-mode-write .tw-card-paper { display: none; }
 
 /* ===== 写作档专属工具：上移 / 下移（文章顺序）与层级 ± =====
    默认 display:none —— 便签档/导图档不出现；写作档由 .tw-mode-write 打开。
    同时隐藏便签档那套「字号 ± / 卡片缩放 ±」：写作档的字号由层级（字阶）决定，
    再给手动字号与卡片缩放，就是同一视觉属性的第二、第三个真值 —— 「这卡为什么这么大」
    将无从判断，正是配色段明确规避的「颜色与结构两个真值打架」的同款问题。 */
-.tw-card-move,
-.tw-card-lv { display: none; }
-.tw-canvas.tw-mode-write .tw-card-move,
-.tw-canvas.tw-mode-write .tw-card-lv { display: inline-flex; }
-.tw-canvas.tw-mode-write .tw-card-font,
-.tw-canvas.tw-mode-write .tw-card-zoom-out,
-.tw-canvas.tw-mode-write .tw-card-zoom-in { display: none; }
+.tw-card-move, .tw-card-lv { display: none; }
+.tw-canvas.tw-mode-write .tw-card-move, .tw-canvas.tw-mode-write .tw-card-lv { display: inline-flex; }
+.tw-canvas.tw-mode-write .tw-card-font, .tw-canvas.tw-mode-write .tw-card-zoom-out, .tw-canvas.tw-mode-write .tw-card-zoom-in { display: none; }
 /* 到边界置灰（首卡不能再上移、H1 不能再提升、引用/列表不参与升降）——
    别让「点了没反应」变成没有解释的失灵。 */
-.tw-card-move[disabled],
-.tw-card-lv[disabled] { opacity: 0.3; cursor: default; }
+.tw-card-move[disabled], .tw-card-lv[disabled] { opacity: 0.3; cursor: default; }
 .tw-canvas.tw-mode-write .tw-card-text {
   font-family: var(--tw-font-global);
   color: var(--tw-write-ink);
@@ -1577,8 +1517,7 @@
 :host(.dark) .tw-doc-corner { color: #E6EAF2; }
 :host(.dark) .tw-doc-corner:hover { background: rgba(var(--white-rgb), 0.10); }
 
-:host(.dark) .tw-links,
-:host(.dark) .tw-links-ctl {
+:host(.dark) .tw-links, :host(.dark) .tw-links-ctl {
   --tw-link-stroke: rgba(206, 220, 190, 0.4);
   --tw-link-stroke-hi: rgba(206, 220, 190, 0.85);
 }
@@ -1589,9 +1528,7 @@
   border-color: transparent;
 }
 
-.tw-card-font-down,
-.tw-card-zoom-out,
-.tw-card-del { margin-left: 0; }
+.tw-card-font-down, .tw-card-zoom-out, .tw-card-del { margin-left: 0; }
 
 
 .tw-card.editing { outline: 1.5px solid rgba(59, 130, 246, 0.7); outline-offset: 2px; }
@@ -1603,20 +1540,8 @@
   border-color: transparent;
   box-shadow: none;
 }
-:host(.dark) .tw-card-del,
-:host(.dark) .tw-card-paper,
-:host(.dark) .tw-card-font,
-:host(.dark) .tw-card-zoom-out,
-:host(.dark) .tw-card-zoom-in,
-:host(.dark) .tw-card-move,
-:host(.dark) .tw-card-lv,
-:host(.dark) .tw-card-split,
-:host(.dark) .tw-card-export { color: #cdc8bb; }
-:host(.dark) .tw-card-paper:hover,
-:host(.dark) .tw-card-font:hover,
-:host(.dark) .tw-card-zoom-out:hover,
-:host(.dark) .tw-card-zoom-in:hover,
-:host(.dark) .tw-card-split:hover { color: #f2efe6; }
+:host(.dark) .tw-card-del, :host(.dark) .tw-card-paper, :host(.dark) .tw-card-font, :host(.dark) .tw-card-zoom-out, :host(.dark) .tw-card-zoom-in, :host(.dark) .tw-card-move, :host(.dark) .tw-card-lv, :host(.dark) .tw-card-split, :host(.dark) .tw-card-export { color: #cdc8bb; }
+:host(.dark) .tw-card-paper:hover, :host(.dark) .tw-card-font:hover, :host(.dark) .tw-card-zoom-out:hover, :host(.dark) .tw-card-zoom-in:hover, :host(.dark) .tw-card-split:hover { color: #f2efe6; }
 
 /* ===== LOD（Level of Detail）分级渲染 =====
    对标 tldraw 的 Level of Detail / built-in shape simplifications。
@@ -1631,18 +1556,12 @@
    正文 .tw-card-text 永远保留：LOD 不得造成任何内容丢失。 */
 
 /* 纸纹：每卡一张 repeating-linear-gradient 叠加层，密集时是纯绘制负担 */
-.tw-canvas.tw-lod-dense .tw-card-noise,
-.tw-canvas.tw-lod-drag  .tw-card-noise { display: none; }
+.tw-canvas.tw-lod-dense .tw-card-noise, .tw-canvas.tw-lod-drag  .tw-card-noise { display: none; }
 
 /* 投影：每卡两层大范围 box-shadow，百级卡片时是合成器的主要开销。
    选择器特意带上 :hover 与 :host(.dark) 变体，以压过 .tw-mode-write 下的同名规则
    （同特异度靠源码顺序取胜，故本块必须留在文件末尾）。 */
-.tw-canvas.tw-lod-dense .tw-card-main,
-.tw-canvas.tw-lod-dense .tw-card:hover .tw-card-main,
-.tw-canvas.tw-lod-drag  .tw-card-main,
-.tw-canvas.tw-lod-drag  .tw-card:hover .tw-card-main,
-:host(.dark) .tw-canvas.tw-lod-dense .tw-card-main,
-:host(.dark) .tw-canvas.tw-lod-drag  .tw-card-main {
+.tw-canvas.tw-lod-dense .tw-card-main, .tw-canvas.tw-lod-dense .tw-card:hover .tw-card-main, .tw-canvas.tw-lod-drag  .tw-card-main, .tw-canvas.tw-lod-drag  .tw-card:hover .tw-card-main, :host(.dark) .tw-canvas.tw-lod-dense .tw-card-main, :host(.dark) .tw-canvas.tw-lod-drag  .tw-card-main {
   box-shadow: none;
   transition: none;
 }
@@ -1793,8 +1712,7 @@
 .bm-market-title { font: 600 14px/1.2 var(--font-ui, system-ui); letter-spacing: .06em; }
 /* 头部动作按钮（刷新 ⟳ / 关闭 ×）：与市场标题栏 .fab-panel-close / .fab-panel-action 完全同规格
    —— 无边框透明底、圆形触摸目标、悬停淡底；关闭按钮悬停旋转 90°，语义与市场一致。 */
-.bm-market-close,
-.bm-market-refresh {
+.bm-market-close, .bm-market-refresh {
   display: inline-flex; align-items: center; justify-content: center;
   padding: 6px; min-width: var(--touch-target, 32px); min-height: var(--touch-target, 32px);
   border: 0; border-radius: 50%; background: transparent;
@@ -1803,15 +1721,12 @@
   transition: background-color .2s, color .2s, opacity .2s, transform .2s;
 }
 /* 头部按钮内图标：与卡片按钮同走 Lucide 描边图标体系，锁定尺寸避免受全局 .icon 影响 */
-.bm-market-close .icon,
-.bm-market-refresh .icon { width: 16px; height: 16px; display: block; }
+.bm-market-close .icon, .bm-market-refresh .icon { width: 16px; height: 16px; display: block; }
 /* 刷新：绕过宿主 TTL 缓存强制重拉（margin-left:auto → 标题靠左、两个按钮靠右） */
 .bm-market-refresh { margin-left: auto; }
-.bm-market-close:hover,
-.bm-market-refresh:hover { background: rgba(var(--black-rgb, 0,0,0), .06); color: var(--text-primary, #eee); }
+.bm-market-close:hover, .bm-market-refresh:hover { background: rgba(var(--black-rgb, 0,0,0), .06); color: var(--text-primary, #eee); }
 .bm-market-close:hover { transform: rotate(90deg); }
-.bm-market-close:focus-visible,
-.bm-market-refresh:focus-visible { outline: 2px solid var(--bamboo-primary, #7d9b6a); outline-offset: 2px; }
+.bm-market-close:focus-visible, .bm-market-refresh:focus-visible { outline: 2px solid var(--bamboo-primary, #7d9b6a); outline-offset: 2px; }
 .bm-market-body { flex: 1 1 auto; overflow-y: auto; padding: 10px; }
 .market-loading, .market-empty { padding: 24px 12px; color: rgba(255,255,255,.5); font-size: 13px; text-align: center; }
 .bm-market-body .market-list { display: flex; flex-direction: column; gap: 10px; }
@@ -1994,8 +1909,7 @@
 }
 .bm-sticker-rotate { top: -8px; left: -8px; cursor: grab; }
 .bm-sticker-resize { bottom: -8px; right: -8px; cursor: nwse-resize; }
-.bm-sticker:hover .bm-sticker-rotate, .bm-sticker:hover .bm-sticker-resize,
-.bm-sticker.selected .bm-sticker-rotate, .bm-sticker.selected .bm-sticker-resize { opacity: 1; }
+.bm-sticker:hover .bm-sticker-rotate, .bm-sticker:hover .bm-sticker-resize, .bm-sticker.selected .bm-sticker-rotate, .bm-sticker.selected .bm-sticker-resize { opacity: 1; }
 .bm-sticker-rotate:hover, .bm-sticker-resize:hover { background: rgba(60,140,200,.9); }
 /* 「⋯ 更多」：与 ↻ / ⇲ 同规格的第三枚手柄，占右上角。
    悬停只露这 3 枚，其余操作全部收进菜单 —— 取代旧版 6 钮围成一圈的拥挤布局。 */
@@ -2006,8 +1920,7 @@
   display: flex; align-items: center; justify-content: center;
   cursor: pointer; opacity: 0; transition: opacity .15s ease; z-index: 3;
 }
-.bm-sticker:hover .bm-sticker-more,
-.bm-sticker.selected .bm-sticker-more { opacity: 1; }
+.bm-sticker:hover .bm-sticker-more, .bm-sticker.selected .bm-sticker-more { opacity: 1; }
 .bm-sticker-more:hover { background: rgba(60,140,200,.9); }
 
 /* 「⋯」菜单：贴纸的子元素，锚在右上角向下展开；JS 反向旋转抵消贴纸/便签旋转，文字恒为正。

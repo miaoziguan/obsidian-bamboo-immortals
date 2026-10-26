@@ -114,7 +114,9 @@
 }
 
 /* Canonical breakpoints: 480px (mobile), 768px (tablet), 1024px (desktop) */
-@media (max-width: 480px) {
+@media (max-width: 480px)   {
+
+
     .toast-container {
         left: 10px;
         right: 10px;
@@ -214,34 +216,17 @@
     transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
 }
 
-.btn-primary {
-    background: var(--bamboo-deep);
-    color: var(--white);
-    border-color: var(--bamboo-deep);
-}
 
-.btn-primary:hover {
-    background: #1e3d1a; /* bamboo-deep darker: for hover state */
-}
 
-.btn-secondary {
-    background: var(--card-bg);
-    color: var(--text-secondary);
-}
 
-.btn-secondary:hover {
-    background: var(--bamboo-background-soft, #f6f7f4);
-}
 
-.btn-danger {
-    background: var(--status-danger);
-    color: var(--white);
-    border-color: var(--status-danger);
-}
 
-.btn-danger:hover {
-    background: #c82333; /* danger hover: 85% brightness of --status-danger */
-}
+
+
+
+
+
+
 
 /* 确认弹窗 - 额外选项（分类回退等） */
 .confirm-extra {
@@ -252,8 +237,7 @@
     border: 1px solid var(--bamboo-border);
 }
 
-.theme-dark .confirm-extra,
-:host(.dark) .confirm-extra {
+.theme-dark .confirm-extra, :host(.dark) .confirm-extra {
     background: rgba(var(--white-rgb), 0.04);
     border-color: rgba(var(--white-rgb), 0.08);
 }
@@ -288,8 +272,7 @@
     background: rgba(var(--deep-rgb), 0.06);
 }
 
-.theme-dark .confirm-extra-choice:hover,
-:host(.dark) .confirm-extra-choice:hover {
+.theme-dark .confirm-extra-choice:hover, :host(.dark) .confirm-extra-choice:hover {
     background: rgba(var(--green-alt-rgb), 0.08);
 }
 
@@ -355,8 +338,7 @@
     animation: cmp-scale-in 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
-.theme-dark .catm-migrate-picker .cmp-container,
-:host(.dark) .catm-migrate-picker .cmp-container {
+.theme-dark .catm-migrate-picker .cmp-container, :host(.dark) .catm-migrate-picker .cmp-container {
     /* 暗色同样走 --overlay-surface（令牌已含暗色实心值），与 base 一致，无需特判。 */
     background: var(--overlay-surface);
     border: var(--overlay-border);
@@ -370,8 +352,7 @@
     border-bottom: 1px solid var(--bamboo-border);
 }
 
-.theme-dark .catm-migrate-picker .cmp-header,
-:host(.dark) .catm-migrate-picker .cmp-header {
+.theme-dark .catm-migrate-picker .cmp-header, :host(.dark) .catm-migrate-picker .cmp-header {
     border-bottom-color: rgba(var(--white-rgb), 0.06);
 }
 
@@ -428,7 +409,3 @@
     font-weight: 500;
 }
 
-.btn-sm {
-    padding: var(--space-2) var(--space-3);
-    font-size: var(--type-sm);
-}

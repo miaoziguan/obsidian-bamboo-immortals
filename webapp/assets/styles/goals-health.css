@@ -238,9 +238,7 @@
     background: rgba(var(--warning-yellow-rgb), 0.08);
 }
 
-.gho-stat-today .gho-stat-icon,
-.gho-stat-today .gho-stat-val,
-.gho-stat-today .gho-stat-label {
+.gho-stat-today .gho-stat-icon, .gho-stat-today .gho-stat-val, .gho-stat-today .gho-stat-label {
     color: var(--gold);
 }
 
@@ -590,8 +588,7 @@
     word-break: break-word;
     overflow-wrap: anywhere;
 }
-.rw-360 .goal-item-date,
-.rw-360 .goal-item-check {
+.rw-360 .goal-item-date, .rw-360 .goal-item-check {
     font-size: var(--type-mini);
 }
 
@@ -607,8 +604,7 @@
 }
 
 /* 统计大数字：略小 */
-.rw-360 .stats-card-value,
-.rw-360 .stat-number {
+.rw-360 .stats-card-value, .rw-360 .stat-number {
     font-size: var(--type-lg);
 }
 
@@ -968,8 +964,6 @@
 /* ==========================================================
    触控目标扩展：保证所有交互元素热区 ≥ 44×44px
    ========================================================== */
-.goal-health-overview,
-.gho-review-btn,
-.health-goal-improve {
+.goal-health-overview, .gho-review-btn, .health-goal-improve {
     min-height: var(--touch-target);
 }

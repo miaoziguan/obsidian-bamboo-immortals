@@ -248,7 +248,9 @@
     from { opacity: 0; transform: translate(-50%, -50%) scale(0.94); }
     to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
 }
-@media (prefers-reduced-motion: reduce) {
+@media (prefers-reduced-motion: reduce)   {
+
+
     .tstd-container { animation: none; }
 }
 
@@ -490,8 +492,7 @@
     padding: var(--space-3) var(--space-5);
     border-top: 1px solid var(--border-light);
 }
-.tstd-cancel,
-.tstd-save {
+.tstd-cancel, .tstd-save {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -528,12 +529,7 @@
 /* ==========================================================
    触控目标扩展：保证所有交互元素热区 ≥ 44×44px
    ========================================================== */
-.tmpl-card,
-.tmpl-tab,
-.tstd-icon-btn,
-.tstd-cancel,
-.tstd-save,
-.tstd-input {
+.tmpl-card, .tmpl-tab, .tstd-icon-btn, .tstd-cancel, .tstd-save, .tstd-input {
     min-height: var(--touch-target);
 }
 
@@ -542,15 +538,11 @@
 }
 
 /* 小尺寸关闭/删除按钮使用伪元素扩展热区，保持视觉尺寸不变 */
-.tmpl-close-btn,
-.tmpl-card-delete,
-.tstd-close-btn {
+.tmpl-close-btn, .tmpl-card-delete, .tstd-close-btn {
     position: relative;
 }
 
-.tmpl-close-btn::before,
-.tmpl-card-delete::before,
-.tstd-close-btn::before {
+.tmpl-close-btn::before, .tmpl-card-delete::before, .tstd-close-btn::before {
     content: '';
     position: absolute;
     top: 50%;

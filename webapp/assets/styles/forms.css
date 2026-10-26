@@ -21,8 +21,7 @@
  * ======================================================== */
 
 /* === 基础类 === */
-.bm-btn,
-.btn {
+.bm-btn, .btn {
     padding: var(--space-2) var(--space-5);
     border-radius: var(--radius-sm);
     border: none;
@@ -42,24 +41,19 @@
 }
 
 /* === 禁用状态 === */
-.bm-btn:disabled,
-.bm-btn.disabled,
-.btn:disabled,
-.btn.disabled {
+.bm-btn:disabled, .bm-btn.disabled, .btn:disabled, .btn.disabled {
     opacity: 0.5;
     cursor: not-allowed;
     pointer-events: none;
 }
 
 /* === 点击反馈 === */
-.bm-btn:active:not(:disabled),
-.btn:active:not(:disabled) {
+.bm-btn:active:not(:disabled), .btn:active:not(:disabled) {
     transform: var(--scale-click);
 }
 
 /* === 尺寸变体 === */
-.bm-btn--sm,
-.btn-sm {
+.bm-btn--sm {
     padding: var(--space-2) var(--space-3);
     font-size: var(--type-sm);
     min-height: var(--touch-target);
@@ -83,53 +77,45 @@
 }
 
 /* === 样式变体：primary === */
-.bm-btn--primary,
-.btn-primary {
+.bm-btn--primary {
     background: var(--btn-primary-bg);
     color: var(--white);
     box-shadow: var(--shadow-surface);
 }
-.bm-btn--primary:hover:not(:disabled),
-.btn-primary:hover:not(:disabled) {
+.bm-btn--primary:hover:not(:disabled) {
     background: var(--btn-primary-hover);
     transform: translateY(-2px);
     box-shadow: var(--shadow-elevated);
 }
-.bm-btn--primary:active:not(:disabled),
-.btn-primary:active:not(:disabled) {
+.bm-btn--primary:active:not(:disabled) {
     transform: translateY(-1px) var(--scale-tiny);
     box-shadow: var(--shadow-card);
 }
 
 /* === 样式变体：secondary === */
-.bm-btn--secondary,
-.btn-secondary {
+.bm-btn--secondary {
     background: var(--btn-secondary-bg);
     color: var(--text-primary);
     border: 1px solid var(--border-light);
     box-shadow: none;
 }
-.bm-btn--secondary:hover:not(:disabled),
-.btn-secondary:hover:not(:disabled) {
+.bm-btn--secondary:hover:not(:disabled) {
     background: var(--btn-secondary-hover);
     transform: translateY(-1px);
     box-shadow: var(--shadow-surface);
 }
 
 /* === 样式变体：outline === */
-.bm-btn--outline,
-.btn-outline {
+.bm-btn--outline {
     background: transparent;
     color: var(--bamboo-primary);
     border: var(--btn-outline-border);
 }
-.bm-btn--outline:hover:not(:disabled),
-.btn-outline:hover:not(:disabled) {
+.bm-btn--outline:hover:not(:disabled) {
     background: var(--btn-outline-hover);
     transform: translateY(-1px);
 }
-.bm-btn--outline:active:not(:disabled),
-.btn-outline:active:not(:disabled) {
+.bm-btn--outline:active:not(:disabled) {
     transform: var(--scale-click);
 }
 
@@ -150,25 +136,21 @@
 }
 
 /* === 样式变体：danger === */
-.bm-btn--danger,
-.btn-danger {
+.bm-btn--danger {
     background: linear-gradient(135deg, var(--cinnabar), #e57368);
     color: var(--white);
 }
-.bm-btn--danger:hover:not(:disabled),
-.btn-danger:hover:not(:disabled) {
+.bm-btn--danger:hover:not(:disabled) {
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(var(--danger-rgb), 0.3);
 }
 
 /* === 样式变体：success === */
-.bm-btn--success,
-.btn-success {
+.bm-btn--success {
     background: linear-gradient(135deg, var(--bamboo-primary), var(--bamboo-deep));
     color: var(--white);
 }
-.bm-btn--success:hover:not(:disabled),
-.btn-success:hover:not(:disabled) {
+.bm-btn--success:hover:not(:disabled) {
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.3);
 }
@@ -204,9 +186,7 @@
     box-sizing: border-box;
 }
 /* 浅色背景变体用主色 spinner，保证对比度 */
-.bm-btn--secondary.bm-btn--loading::after,
-.bm-btn--ghost.bm-btn--loading::after,
-.bm-btn--outline.bm-btn--loading::after {
+.bm-btn--secondary.bm-btn--loading::after, .bm-btn--ghost.bm-btn--loading::after, .bm-btn--outline.bm-btn--loading::after {
     border-color: rgba(var(--primary-rgb), 0.3);
     border-top-color: var(--bamboo-primary);
 }
@@ -214,7 +194,9 @@
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
 }
-@media (prefers-reduced-motion: reduce) {
+@media (prefers-reduced-motion: reduce)   {
+
+
     .bm-btn--loading::after {
         animation-duration: 1.4s;
     }
@@ -307,17 +289,13 @@
 }
 
 /* 竹林暗色模式：卡片微光边框 */
-:host(.dark) .bamboo-card,
-:host(.dark) .goal-row,
-:host(.dark) .kpi-card {
+:host(.dark) .bamboo-card, :host(.dark) .goal-row, :host(.dark) .kpi-card {
     background: var(--card-bg);
     border-color: rgba(var(--primary-rgb), 0.25);
 }
 
 /* 竹林暗色模式：进度条光晕 */
-:host(.dark) .goal-row-bar-fill,
-:host(.dark) .bamboo-progress-fill,
-:host(.dark) .progress-fill-green {
+:host(.dark) .goal-row-bar-fill, :host(.dark) .bamboo-progress-fill, :host(.dark) .progress-fill-green {
     box-shadow: 0 0 8px rgba(var(--primary-rgb), 0.4);
 }
 
@@ -328,17 +306,13 @@
    轨道背景整个覆盖成深色底色 → 暗色下所有滑块「轨道消失、只剩一个孤点」，
    色相滑块的七彩轨道同样被吃掉（它也是元素级 background）。
    这正是「亮色与暗色滑块不一致」的真正根因（与 thumb 的圆环无关）。 */
-:host(.dark) input:not([type="range"]),
-:host(.dark) select,
-:host(.dark) textarea {
+:host(.dark) input:not([type="range"]), :host(.dark) select, :host(.dark) textarea {
     background: rgba(var(--surface-dark-rgb), 0.8);
     border-color: rgba(var(--primary-rgb), 0.3);
     color: var(--text-primary);
 }
 
-:host(.dark) input:not([type="range"]):focus,
-:host(.dark) select:focus,
-:host(.dark) textarea:focus {
+:host(.dark) input:not([type="range"]):focus, :host(.dark) select:focus, :host(.dark) textarea:focus {
     border-color: var(--bamboo-primary);
     box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.2), 0 0 12px rgba(var(--primary-rgb), 0.15);
 }
@@ -370,7 +344,6 @@
 }
 
 /* 竹林暗色模式：按钮星光悬停 */
-:host(.dark) .btn-primary:hover,
 :host(.dark) .bm-btn--primary:hover {
     box-shadow: 0 0 20px rgba(var(--primary-rgb), 0.3);
 }
@@ -403,7 +376,9 @@
     background: rgba(var(--primary-rgb), 0.1);
 }
 
-@media (max-width: 480px) {
+@media (max-width: 480px)   {
+
+
     .header-right .header-quick-btn {
         width: var(--touch-target);
         height: var(--touch-target);

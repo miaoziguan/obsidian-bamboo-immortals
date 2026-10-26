@@ -65,8 +65,7 @@
     box-shadow: var(--shadow);
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
-.quick-nav:hover,
-.quick-nav.expanded {
+.quick-nav:hover, .quick-nav.expanded {
     will-change: transform;
     transform: translateY(-50%) translateX(0);
 }
@@ -96,8 +95,7 @@
     opacity: 0;
     transition: opacity 0.2s;
 }
-.quick-nav:hover .quick-nav-toggle::after,
-.quick-nav.expanded .quick-nav-toggle::after {
+.quick-nav:hover .quick-nav-toggle::after, .quick-nav.expanded .quick-nav-toggle::after {
     opacity: 1;
 }
 .quick-nav-btn {
@@ -169,7 +167,9 @@
 .quick-nav-action-btn:hover {
     background: rgba(var(--primary-rgb), 0.18);
 }
-@media (max-width: 768px) {
+@media (max-width: 768px)   {
+
+
     .quick-nav {
         display: none;
     }
@@ -214,14 +214,13 @@
     pointer-events: none;
     z-index: 10;
 }
-.bamboo-card.editable:hover .card-edit-hint,
-.goal-row.editable:hover .card-edit-hint { opacity: 0.9; }
-.bamboo-card.editable,
-.goal-row.editable { cursor: pointer; }
-.bamboo-card.editable:hover,
-.goal-row.editable:hover { border-color: var(--bamboo-primary); }
+.bamboo-card.editable:hover .card-edit-hint, .goal-row.editable:hover .card-edit-hint { opacity: 0.9; }
+.bamboo-card.editable, .goal-row.editable { cursor: pointer; }
+.bamboo-card.editable:hover, .goal-row.editable:hover { border-color: var(--bamboo-primary); }
 
-@media (prefers-reduced-motion: no-preference) {
+@media (prefers-reduced-motion: no-preference)   {
+
+
     .kpi-card.up { animation: breathePink 3.8s ease-in-out infinite; }
 }
 
@@ -297,7 +296,9 @@
 .desktop-only {
     display: none;
 }
-@media (min-width: 600px) {
+@media (min-width: 600px)   {
+
+
     .desktop-only {
         display: inline-flex;
     }
@@ -364,15 +365,16 @@
 }
 
 /* 尊重系统「减少动效」设置 */
-@media (prefers-reduced-motion: reduce) {
+@media (prefers-reduced-motion: reduce)   {
+
+
     .sections-container.layout-switching {
         animation: none;
     }
 }
 
 /* ========== 触控区域优化 ========== */
-.touch-friendly,
-button, .btn, .date-nav-btn, .view-toggle-btn, .modal-close, .tooltip-close {
+.touch-friendly, button, .btn, .date-nav-btn, .view-toggle-btn, .modal-close {
     min-height: var(--min-touch-target);
     min-width: var(--min-touch-target);
 }
@@ -466,7 +468,9 @@ button, .btn, .date-nav-btn, .view-toggle-btn, .modal-close, .tooltip-close {
     background: linear-gradient(135deg, rgba(var(--sky-azure-rgb), 0.2) 0%, rgba(var(--sky-azure-rgb), 0.1) 100%);
     border: 1px solid rgba(var(--sky-azure-rgb), 0.3);
 }
-@media (prefers-reduced-motion: no-preference) {
+@media (prefers-reduced-motion: no-preference)   {
+
+
     .focus-box.result { animation: breatheSkyColor 3.2s ease-in-out infinite; }
 }
 

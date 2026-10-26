@@ -146,10 +146,7 @@
 }
 
 /* 隐藏日期显示区域的下拉箭头 */
-.date-display .dropdown-arrow,
-.date-display .chevron,
-.date-display .bamboo-chevron,
-.date-display::after {
+.date-display .dropdown-arrow, .date-display .chevron, .date-display .bamboo-chevron, .date-display::after {
     display: none;
 }
 
@@ -440,8 +437,7 @@
     font-weight: 600;
     color: var(--bamboo-primary);
 }
-.drp-day-start,
-.drp-day-end {
+.drp-day-start, .drp-day-end {
     background: var(--bamboo-primary);
     color: var(--white);
     font-weight: 600;
@@ -481,8 +477,7 @@
 .drp-arrow {
     color: var(--text-secondary);
 }
-.drp-input-start,
-.drp-input-end {
+.drp-input-start, .drp-input-end {
     color: var(--bamboo-primary);
     font-weight: 600;
     background: rgba(var(--teal-rgb), 0.1);
@@ -495,21 +490,16 @@
     text-align: center;
     transition: transform, opacity, box-shadow, border-color, background-color 0.2s;
 }
-.drp-input-start:hover,
-.drp-input-end:hover {
+.drp-input-start:hover, .drp-input-end:hover {
     border-color: var(--bamboo-primary);
 }
-.drp-input-start:focus,
-.drp-input-end:focus,
-.drp-input-start:focus-visible,
-.drp-input-end:focus-visible {
+.drp-input-start:focus, .drp-input-end:focus, .drp-input-start:focus-visible, .drp-input-end:focus-visible {
     outline: none;
     border-color: var(--bamboo-primary);
     background: rgba(var(--teal-rgb), 0.15);
     box-shadow: 0 0 0 2px rgba(var(--teal-rgb), 0.2);
 }
-.drp-input-start::placeholder,
-.drp-input-end::placeholder {
+.drp-input-start::placeholder, .drp-input-end::placeholder {
     color: var(--text-secondary);
     font-weight: 400;
 }
@@ -519,8 +509,7 @@
     flex: 0 0 auto;
     margin-left: auto;
 }
-.drp-cancel-btn,
-.drp-confirm-btn {
+.drp-cancel-btn, .drp-confirm-btn {
     /* 高度与 28px 输入框对齐，底栏视觉更协调 */
     padding: 4px 14px;
     min-height: 28px;
@@ -559,25 +548,17 @@
    桌面端的窄侧边栏 / 窄窗口同样会命中 max-width: 480px，会把紧凑尺寸
    顶回 44px，使紧凑化改动看起来「完全没生效」。
    移动端的权威来源是 bridge 下发的 :host(.platform-mobile)（见下条规则）。 */
-@media (hover: none) and (pointer: coarse) {
-    .drp-tab,
-    .drp-quick-btn,
-    .drp-cancel-btn,
-    .drp-confirm-btn,
-    .drp-input-start,
-    .drp-input-end {
+@media (hover: none) and (pointer: coarse)   {
+
+
+    .drp-tab, .drp-quick-btn, .drp-cancel-btn, .drp-confirm-btn, .drp-input-start, .drp-input-end {
         min-height: var(--touch-target);
     }
     .drp-day {
         height: 40px;
     }
 }
-:host(.platform-mobile) .drp-tab,
-:host(.platform-mobile) .drp-quick-btn,
-:host(.platform-mobile) .drp-cancel-btn,
-:host(.platform-mobile) .drp-confirm-btn,
-:host(.platform-mobile) .drp-input-start,
-:host(.platform-mobile) .drp-input-end {
+:host(.platform-mobile) .drp-tab, :host(.platform-mobile) .drp-quick-btn, :host(.platform-mobile) .drp-cancel-btn, :host(.platform-mobile) .drp-confirm-btn, :host(.platform-mobile) .drp-input-start, :host(.platform-mobile) .drp-input-end {
     min-height: var(--touch-target);
 }
 :host(.platform-mobile) .drp-day {

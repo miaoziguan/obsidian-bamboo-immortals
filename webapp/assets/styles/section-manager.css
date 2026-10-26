@@ -1,9 +1,4 @@
-.view-toggle-btn-sm {
-    width: 24px;
-    height: 24px;
-    font-size: var(--type-mini);
-    position: relative;
-}
+
 .sm-container {
     display: flex;
     flex-direction: column;
@@ -195,13 +190,11 @@
     background: rgba(var(--primary-rgb), 0.2);
 }
 
-.sm-btn-hide,
-.sm-btn-show {
+.sm-btn-hide, .sm-btn-show {
     background: rgba(var(--gray-mid-rgb), 0.08);
 }
 
-.sm-btn-hide:hover,
-.sm-btn-show:hover {
+.sm-btn-hide:hover, .sm-btn-show:hover {
     background: rgba(var(--gray-mid-rgb), 0.15);
 }
 
@@ -358,13 +351,7 @@ nav .view-toggle-btn {
     min-height: var(--touch-target);
 }
 
-nav .view-toggle-btn-sm {
-    width: min(36px, 10vw);
-    height: 36px;
-    font-size: var(--type-md);
-    min-width: var(--touch-target);
-    min-height: var(--touch-target);
-}
+
 
 nav .date-display {
     min-width: min(80px, 25vw);
@@ -581,7 +568,9 @@ nav .date-display-sub {
 }
 
 /* === TINY VIEWPORT (≤360px): 板块管理弹窗紧凑布局 === */
-@media (max-width: 360px) {
+@media (max-width: 360px)   {
+
+
     .section-manager-modal {
         max-width: calc(100vw - 16px);
         width: calc(100vw - 16px);
@@ -609,13 +598,9 @@ nav .date-display-sub {
     .sm-modal-row label {
         font-size: var(--type-sm);
     }
-    .sm-modal-input,
-    .sm-modal-textarea {
+    .sm-modal-input, .sm-modal-textarea {
         padding: 6px 8px;
         font-size: var(--type-sm);
     }
-    .confirm-dialog-content {
-        padding: var(--space-3);
-        gap: 10px;
-    }
+    
 }

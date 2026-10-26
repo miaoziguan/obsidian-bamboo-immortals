@@ -28,8 +28,7 @@
  *   --bamboo-success → 用 --bamboo-primary（当前同值）
  *   --status-success → 用 --bamboo-primary（当前同值）
  * ======================================================== */
-:host,
-:root {
+:host, :root {
     /* === 隐私模糊强度（防偷窥模式，可变）===
        由 PrivacyMode.setLevel 写入，单位 px；0 = 关闭（清晰）。
        仅 [data-private] 元素消费该变量，UI 骨架不受影响。 */
@@ -741,7 +740,9 @@
 :host {
     --viewport-height: 100vh;
 }
-@supports (height: 100dvh) {
+@supports (height: 100dvh)   {
+
+
     :host {
         --viewport-height: 100dvh;
     }
@@ -752,7 +753,9 @@
    ============================================================ */
 
 /* prefers-contrast: high-contrast mode — ensure text stays readable */
-@media (prefers-contrast: more) {
+@media (prefers-contrast: more)   {
+
+
     :host {
         --text-primary: #000000;
         --text-secondary: #222222;

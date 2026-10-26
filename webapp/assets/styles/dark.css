@@ -23,24 +23,12 @@
    drop-shadow、弱化 mix-blend-mode，保留静态外观（背景渐变/形状/透明度
    不变），滚动与渲染开销大幅下降。
    =========================== */
-:host(.dark) .mist-layer-1,
-:host(.dark) .mist-layer-2,
-:host(.dark) .mist-layer-3,
-:host(.dark) .mountain-mist,
-:host(.dark) .foreground-haze,
-:host(.dark) .mountain-1,
-:host(.dark) .mountain-2,
-:host(.dark) .mountain-3,
-:host(.dark) .boat-container,
-:host(.dark) .moon {
+:host(.dark) .mist-layer-1, :host(.dark) .mist-layer-2, :host(.dark) .mist-layer-3, :host(.dark) .mountain-mist, :host(.dark) .foreground-haze, :host(.dark) .mountain-1, :host(.dark) .mountain-2, :host(.dark) .mountain-3, :host(.dark) .boat-container, :host(.dark) .moon {
     animation: none;
     mix-blend-mode: normal;
 }
 
-:host(.dark) .mountain-1,
-:host(.dark) .mountain-2,
-:host(.dark) .mountain-3,
-:host(.dark) .boat {
+:host(.dark) .mountain-1, :host(.dark) .mountain-2, :host(.dark) .mountain-3, :host(.dark) .boat {
     filter: none;
     box-shadow: none;
 }
@@ -50,11 +38,7 @@
    下列发光/脉冲类受 prefers-reduced-motion 保护，用户未开系统降运动时
    会持续重绘 box-shadow。暗色下与 goal 行发光降级对齐，统一关闭。
    =========================== */
-:host(.dark) .ticket-dot.current,
-:host(.dark) .ticket-highlight-value,
-:host(.dark) .bamboo-node.focus-now::before,
-:host(.dark) .goal-row-bar-fill,
-:host(.dark) .goal-row-header:hover {
+:host(.dark) .ticket-dot.current, :host(.dark) .ticket-highlight-value, :host(.dark) .bamboo-node.focus-now::before, :host(.dark) .goal-row-bar-fill, :host(.dark) .goal-row-header:hover {
     animation: none;
 }
 
@@ -765,8 +749,7 @@
     grid-template-columns: repeat(2, 1fr);
 }
 
-.rw-768 .progress-tiers-grid,
-.rw-768 .priority-grid {
+.rw-768 .progress-tiers-grid, .rw-768 .priority-grid {
     grid-template-columns: 1fr;
 }
 
@@ -1611,9 +1594,7 @@
     background: rgba(var(--warning-yellow-rgb), 0.12);
 }
 
-:host(.dark) .gho-stat-today .gho-stat-icon,
-:host(.dark) .gho-stat-today .gho-stat-val,
-:host(.dark) .gho-stat-today .gho-stat-label {
+:host(.dark) .gho-stat-today .gho-stat-icon, :host(.dark) .gho-stat-today .gho-stat-val, :host(.dark) .gho-stat-today .gho-stat-label {
     color: var(--gold);
 }
 
@@ -1640,8 +1621,7 @@
     color: var(--text-secondary);
 }
 
-:host(.dark) .gho-suggestion-icon,
-:host(.dark) .gho-suggestion-text { color: var(--ink-light); }
+:host(.dark) .gho-suggestion-icon, :host(.dark) .gho-suggestion-text { color: var(--ink-light); }
 
 /* 暗色模式适配健康分详情面板 */
 :host(.dark) .health-overview-large {
@@ -1694,8 +1674,7 @@
     color: var(--bamboo-pale);
 }
 
-:host(.dark) .health-layer-item,
-:host(.dark) .health-goal-item {
+:host(.dark) .health-layer-item, :host(.dark) .health-goal-item {
     background: rgba(var(--surface-dark-rgb-mid), 0.7);
     border-color: rgba(var(--primary-rgb), 0.15);
     box-shadow: 
@@ -1703,8 +1682,7 @@
         0 2px 8px rgba(var(--black-rgb), 0.2);
 }
 
-:host(.dark) .health-layer-item:hover,
-:host(.dark) .health-goal-item:hover {
+:host(.dark) .health-layer-item:hover, :host(.dark) .health-goal-item:hover {
     background: rgba(var(--surface-deep-alt-rgb), 0.8);
     border-color: rgba(var(--primary-rgb), 0.25);
     box-shadow: 
@@ -1712,8 +1690,7 @@
         0 4px 16px rgba(var(--black-rgb), 0.3);
 }
 
-:host(.dark) .health-layer-name,
-:host(.dark) .health-goal-title {
+:host(.dark) .health-layer-name, :host(.dark) .health-goal-title {
     color: var(--bamboo-pale);
 }
 
@@ -1827,10 +1804,7 @@
         0 0 0 1px rgba(var(--primary-rgb), 0.1);
 }
 
-:host(.dark) .core-metric-card,
-:host(.dark) .tier-card,
-:host(.dark) .priority-card,
-:host(.dark) .alert-item {
+:host(.dark) .core-metric-card, :host(.dark) .tier-card, :host(.dark) .priority-card, :host(.dark) .alert-item {
     background: linear-gradient(145deg, rgba(var(--surface-deep-rgb), 0.95), rgba(var(--surface-deep-alt-rgb), 0.92));
     border-color: rgba(var(--primary-rgb), 0.15);
 }
@@ -1853,24 +1827,16 @@
     border-color: rgba(var(--warning-orange-rgb), 0.2);
 }
 
-:host(.dark) .time-alert,
-:host(.dark) .progress-tier,
-:host(.dark) .category-item,
-:host(.dark) .priority-item,
-:host(.dark) .heatmap-container {
+:host(.dark) .time-alert, :host(.dark) .progress-tier, :host(.dark) .category-item, :host(.dark) .priority-item, :host(.dark) .heatmap-container {
     background: rgba(var(--surface-dark-rgb-mid), 0.8);
     border-color: rgba(var(--primary-rgb),0.15);
 }
 
-:host(.dark) .tier-label,
-:host(.dark) .legend-label,
-:host(.dark) .category-value,
-:host(.dark) .priority-label {
+:host(.dark) .tier-label, :host(.dark) .legend-label, :host(.dark) .category-value, :host(.dark) .priority-label {
     color: var(--text-secondary);
 }
 
-:host(.dark) .tier-count,
-:host(.dark) .legend-value {
+:host(.dark) .tier-count, :host(.dark) .legend-value {
     color: var(--bamboo-pale);
 }
 
@@ -2050,17 +2016,13 @@
 }
 
 
-:host(.dark) .philosophy-card,
-:host(.dark) .rating-card,
-:host(.dark) .layers-detail-card {
+:host(.dark) .philosophy-card, :host(.dark) .rating-card, :host(.dark) .layers-detail-card {
     background: linear-gradient(135deg, rgba(var(--surface-dark-rgb-mid), 0.95) 0%, rgba(var(--surface-deep-rgb), 0.9) 100%);
     border-color: rgba(var(--primary-rgb), 0.2);
     box-shadow: 0 1px 0 rgba(var(--primary-rgb), 0.1) inset, 0 4px 16px rgba(var(--black-rgb), 0.3);
 }
 
-:host(.dark) .philosophy-item,
-:host(.dark) .rating-tier,
-:host(.dark) .layer-detail-item {
+:host(.dark) .philosophy-item, :host(.dark) .rating-tier, :host(.dark) .layer-detail-item {
     background: rgba(var(--surface-dark-rgb-mid), 0.7);
     border-color: rgba(var(--primary-rgb), 0.15);
 }
@@ -2069,8 +2031,7 @@
     background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.08) 0%, rgba(var(--surface-dark-rgb-mid), 0.8) 100%);
 }
 
-:host(.dark) .philosophy-title,
-:host(.dark) .layer-detail-name {
+:host(.dark) .philosophy-title, :host(.dark) .layer-detail-name {
     color: var(--bamboo-pale);
 }
 
@@ -2390,8 +2351,7 @@
     background: transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23b0b8b0' stroke-width='1.2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right center;
     box-shadow: none;
 }
-:host(.dark) .arch-select:hover,
-:host(.dark) .arch-select:focus {
+:host(.dark) .arch-select:hover, :host(.dark) .arch-select:focus {
     border-color: rgba(var(--text-secondary-rgb, 140, 150, 140), 0.5);
     background-color: transparent;
 }
@@ -2402,8 +2362,7 @@
     background: rgba(var(--surface-dark-rgb, 20, 30, 24), 0.35);
     color-scheme: dark;
 }
-:host(.dark) .arch-date-input:hover,
-:host(.dark) .arch-date-input:focus {
+:host(.dark) .arch-date-input:hover, :host(.dark) .arch-date-input:focus {
     border-color: rgba(var(--text-secondary-rgb, 140, 150, 140), 0.5);
     background: rgba(var(--surface-dark-rgb, 20, 30, 24), 0.55);
 }
@@ -2475,8 +2434,7 @@
 :host(.dark) .arch-cb-box {
     border-color: rgba(var(--border-dark-rgb, 60, 70, 60), 0.4);
 }
-:host(.dark) .arch-check:hover .arch-cb-box,
-:host(.dark) .arch-sel-all:hover .arch-cb-box {
+:host(.dark) .arch-check:hover .arch-cb-box, :host(.dark) .arch-sel-all:hover .arch-cb-box {
     border-color: rgba(var(--bamboo-primary-rgb, 62, 179, 112), 0.6);
     box-shadow: 0 0 0 2.5px rgba(var(--bamboo-primary-rgb, 62, 179, 112), 0.1);
 }

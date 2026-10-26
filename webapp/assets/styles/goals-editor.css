@@ -908,8 +908,7 @@
     background: transparent;
 }
 
-:host(.dark) .goal-progress-slider::-webkit-slider-thumb,
-:host(.dark) .goal-progress-slider::-moz-range-thumb {
+:host(.dark) .goal-progress-slider::-webkit-slider-thumb, :host(.dark) .goal-progress-slider::-moz-range-thumb {
     box-shadow: var(--bamboo-glow-xs);
 }
 
@@ -1010,8 +1009,7 @@
     font-size: var(--type-xs);
 }
 
-.rw-460 .goal-item-value,
-.rw-460 .goal-item-daily {
+.rw-460 .goal-item-value, .rw-460 .goal-item-daily {
     font-size: var(--type-xs);
 }
 
@@ -1024,8 +1022,7 @@
     padding: var(--space-3);
 }
 
-.rw-460 .goal-field-input,
-.rw-460 .goal-field-select {
+.rw-460 .goal-field-input, .rw-460 .goal-field-select {
     font-size: var(--type-md);
 }
 
@@ -1502,7 +1499,9 @@
     user-select: none;
     min-width: 140px;
 }
-@media (max-width: 360px) {
+@media (max-width: 360px)   {
+
+
     .arch-date-trigger { min-width: 100px; }
     .arch-filter-search { min-width: 100px; }
 }
@@ -1647,8 +1646,7 @@
     height: 18px;
 }
 /* 隐藏原生 input */
-.arch-cb,
-.arch-cb-all {
+.arch-cb, .arch-cb-all {
     position: absolute;
     opacity: 0;
     width: 0;
@@ -1682,24 +1680,20 @@
     transition: transform 0.15s ease;
 }
 /* 选中态 */
-.arch-cb:checked + .arch-cb-box,
-.arch-cb-all:checked + .arch-cb-box {
+.arch-cb:checked + .arch-cb-box, .arch-cb-all:checked + .arch-cb-box {
     background: var(--bamboo-primary, #3eb370);
     border-color: var(--bamboo-primary, #3eb370);
 }
-.arch-cb:checked + .arch-cb-box::after,
-.arch-cb-all:checked + .arch-cb-box::after {
+.arch-cb:checked + .arch-cb-box::after, .arch-cb-all:checked + .arch-cb-box::after {
     transform: rotate(45deg) scale(1);
 }
 /* hover */
-.arch-check:hover .arch-cb-box,
-.arch-sel-all:hover .arch-cb-box {
+.arch-check:hover .arch-cb-box, .arch-sel-all:hover .arch-cb-box {
     border-color: var(--bamboo-primary, #3eb370);
     box-shadow: 0 0 0 2.5px rgba(var(--bamboo-primary-rgb, 62, 179, 112), 0.12);
 }
 /* 已选中时 hover 加深 */
-.arch-cb:checked + .arch-cb-box:hover,
-.arch-cb-all:checked + .arch-cb-box:hover {
+.arch-cb:checked + .arch-cb-box:hover, .arch-cb-all:checked + .arch-cb-box:hover {
     background: var(--bamboo-primary-hover, #369e63);
     border-color: var(--bamboo-primary-hover, #369e63);
 }
@@ -1998,8 +1992,7 @@
     color: var(--text-tertiary);
 }
 
-:host(.dark) .arch-date-input:hover,
-:host(.dark) .arch-date-input:focus {
+:host(.dark) .arch-date-input:hover, :host(.dark) .arch-date-input:focus {
     border-color: rgba(var(--text-secondary-rgb, 140, 150, 140), 0.5);
 }
 
@@ -2011,38 +2004,12 @@
    触控目标扩展：保证所有交互元素热区 ≥ 44×44px
    视觉尺寸尽量保持不变，小尺寸图标/复选框使用 ::before 伪元素扩展
    ========================================================== */
-.goal-icon-picker-compact,
-.goal-icon-option {
+.goal-icon-picker-compact, .goal-icon-option {
     min-width: var(--touch-target);
     min-height: var(--touch-target);
 }
 
-.goal-field-title-compact,
-.goal-field-select-compact,
-.goal-field-date-compact,
-.goal-add-item-btn-compact,
-.goal-item-name-input,
-.goal-item-status-select,
-.goal-item-input,
-.goal-item-percent,
-.goal-editor-v2 .goal-item-date,
-.goal-item-value,
-.goal-item-daily-min,
-.goal-item-taskday-select,
-.goal-dep-inline-btn,
-.goal-icon-picker,
-.goal-field-input,
-.goal-field-select,
-.goal-progress-btn,
-.goal-add-item-btn,
-.goal-item-add-btn,
-.arch-select,
-.arch-reset-btn,
-.arch-card,
-.arch-act-btn,
-.arch-bar-btn,
-.arch-sel-all,
-.arch-date-input {
+.goal-field-title-compact, .goal-field-select-compact, .goal-field-date-compact, .goal-add-item-btn-compact, .goal-item-name-input, .goal-item-status-select, .goal-item-input, .goal-item-percent, .goal-editor-v2 .goal-item-date, .goal-item-value, .goal-item-daily-min, .goal-item-taskday-select, .goal-dep-inline-btn, .goal-icon-picker, .goal-field-input, .goal-field-select, .goal-progress-btn, .goal-add-item-btn, .goal-item-add-btn, .arch-select, .arch-reset-btn, .arch-card, .arch-act-btn, .arch-bar-btn, .arch-sel-all, .arch-date-input {
     min-height: var(--touch-target);
 }
 
@@ -2055,23 +2022,11 @@
 }
 
 /* 小尺寸按钮/图标使用伪元素扩展热区，保持视觉尺寸不变 */
-.goal-item-status,
-.goal-item-delete-btn,
-.goal-item-expand-btn,
-.goal-day-btn,
-.arch-icon-btn,
-.arch-check,
-.arch-toggle-icon {
+.goal-item-status, .goal-item-delete-btn, .goal-item-expand-btn, .goal-day-btn, .arch-icon-btn, .arch-check, .arch-toggle-icon {
     position: relative;
 }
 
-.goal-item-status::before,
-.goal-item-delete-btn::before,
-.goal-item-expand-btn::before,
-.goal-day-btn::before,
-.arch-icon-btn::before,
-.arch-check::before,
-.arch-toggle-icon::before {
+.goal-item-status::before, .goal-item-delete-btn::before, .goal-item-expand-btn::before, .goal-day-btn::before, .arch-icon-btn::before, .arch-check::before, .arch-toggle-icon::before {
     content: '';
     position: absolute;
     top: 50%;
@@ -2098,8 +2053,7 @@
 }
 
 /* Step 2: 保存失败 / 校验失败 — 红色边框 + 抖动 */
-.goal-inline-edit-input-error,
-.goal-inline-edit-input.goal-inline-edit-input-error {
+.goal-inline-edit-input-error, .goal-inline-edit-input.goal-inline-edit-input-error {
     border-color: var(--bamboo-error, #ef5350);
     animation: goal-inline-edit-shake 0.4s ease-in-out;
 }
@@ -2159,7 +2113,9 @@
 }
 
 /* 减弱动效偏好：关闭闪烁与抖动 */
-@media (prefers-reduced-motion: reduce) {
+@media (prefers-reduced-motion: reduce)   {
+
+
     .goal-inline-edit-flash-success { animation: none; background-color: rgba(var(--primary-rgb), 0.12); }
     .goal-inline-edit-input-error { animation: none; }
 }
@@ -2307,9 +2263,7 @@
 }
 
 /* 暗色模式覆盖 */
-:host(.dark) .goal-section-header,
-:host(.dark) .archive-standalone-header,
-:host(.dark) .archive-standalone-root .arch-list {
+:host(.dark) .goal-section-header, :host(.dark) .archive-standalone-header, :host(.dark) .archive-standalone-root .arch-list {
     background: rgba(var(--surface-dark-rgb, 20, 30, 24), 0.35);
     border-color: rgba(var(--border-dark-rgb, 60, 70, 60), 0.25);
 }

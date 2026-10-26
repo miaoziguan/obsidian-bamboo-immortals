@@ -27,8 +27,7 @@
     margin-bottom: 4px;
     letter-spacing: 2px;
 }
-.shop-balance-amount-block--centered #shopBalanceValue,
-.shop-balance-amount-block--centered .shop-balance-value {
+.shop-balance-amount-block--centered #shopBalanceValue, .shop-balance-amount-block--centered .shop-balance-value {
     font-size: var(--type-display, clamp(28px, 8vw, 44px));
     font-weight: 800;
     color: var(--bamboo-primary);
@@ -83,8 +82,7 @@
 .shop-balance-metric--card .shop-metric-value.is-income-total {
     color: var(--bamboo-light);
 }
-.shop-balance-metric--card .shop-metric-value.is-spent-total,
-.shop-balance-metric--card .shop-metric-value.is-spent-today {
+.shop-balance-metric--card .shop-metric-value.is-spent-total, .shop-balance-metric--card .shop-metric-value.is-spent-today {
     color: var(--bamboo-warning);
 }
 
@@ -707,8 +705,7 @@
     border-bottom-color: rgba(var(--primary-rgb), 0.15);
 }
 
-:host(.dark) .shop-item-name,
-:host(.dark) .shop-price-row-text {
+:host(.dark) .shop-item-name, :host(.dark) .shop-price-row-text {
     color: hsl(var(--accent-hue), min(100%, calc(15% * var(--accent-saturation-ui, 1))), 88%);
 }
 
@@ -725,13 +722,11 @@
     color: hsl(var(--accent-hue), min(100%, calc(38% * var(--accent-saturation-ui, 1))), 62%);
 }
 
-:host(.dark) .shop-sort-option.is-active,
-:host(.dark) .shop-sort-option:hover {
+:host(.dark) .shop-sort-option.is-active, :host(.dark) .shop-sort-option:hover {
     color: hsl(var(--accent-hue), min(100%, calc(38% * var(--accent-saturation-ui, 1))), 62%);
 }
 
 /* 商品状态标签 */
-:host(.dark) .shop-item-status.is-purchased,
-:host(.dark) .shop-item-status.is-available {
+:host(.dark) .shop-item-status.is-purchased, :host(.dark) .shop-item-status.is-available {
     color: hsl(var(--accent-hue), min(100%, calc(35% * var(--accent-saturation-ui, 1))), 62%);
 }

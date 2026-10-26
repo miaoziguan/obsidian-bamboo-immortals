@@ -72,9 +72,7 @@
     font-size: var(--type-xs);
     opacity: 0.85;
 }
-.weather-range,
-.weather-meta,
-.weather-city {
+.weather-range, .weather-meta, .weather-city {
     font-size: var(--type-xs);
     color: var(--bamboo-primary);
     font-variant-numeric: tabular-nums;
@@ -227,7 +225,9 @@
 /* === 天气 + 语录 — 响应式（与项目既有断点对齐） === */
 
 /* TABLET / NARROW OBSIDIAN SIDEBAR (≤768px) */
-@media (max-width: 768px) {
+@media (max-width: 768px)   {
+
+
     .weather-widget {
         font-size: var(--type-xs);
         padding: 3px 6px;
@@ -236,11 +236,7 @@
     .weather-widget.weather-open .weather-expand {
         max-width: 280px;
     }
-    .weather-label,
-    .weather-range,
-    .weather-meta,
-    .weather-city,
-    .weather-sep {
+    .weather-label, .weather-range, .weather-meta, .weather-city, .weather-sep {
         font-size: var(--type-mini);
     }
     .quote-widget {
@@ -255,7 +251,9 @@
 }
 
 /* MOBILE (≤480px) — 头部已在 base.css 堆叠，这里做内容压缩 */
-@media (max-width: 480px) {
+@media (max-width: 480px)   {
+
+
     .weather-widget {
         font-size: var(--type-xs);
         padding: 3px 6px;
@@ -264,11 +262,7 @@
     .weather-widget.weather-open .weather-expand {
         max-width: 180px;
     }
-    .weather-label,
-    .weather-range,
-    .weather-meta,
-    .weather-city,
-    .weather-sep {
+    .weather-label, .weather-range, .weather-meta, .weather-city, .weather-sep {
         font-size: var(--type-mini);
     }
     .quote-widget {
@@ -283,15 +277,13 @@
 }
 
 /* TINY (≤360px) — 极限压缩 */
-@media (max-width: 360px) {
+@media (max-width: 360px)   {
+
+
     .weather-widget.weather-open .weather-expand {
         max-width: 120px;
     }
-    .weather-label,
-    .weather-range,
-    .weather-meta,
-    .weather-city,
-    .weather-sep {
+    .weather-label, .weather-range, .weather-meta, .weather-city, .weather-sep {
         font-size: var(--type-mini);
     }
     .quote-widget {

@@ -36,7 +36,9 @@
     z-index: 1;
 }
 
-@media (prefers-reduced-motion: no-preference) {
+@media (prefers-reduced-motion: no-preference)   {
+
+
     .empty-state-icon {
         animation: emptyStateFloat 3s ease-in-out infinite;
     }

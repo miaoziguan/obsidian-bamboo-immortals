@@ -338,7 +338,9 @@
 }
 
 /* === TINY VIEWPORT (≤360px): 模态框极端压缩，防止水平溢出 */
-@media (max-width: 360px) {
+@media (max-width: 360px)   {
+
+
     .modal-content {
         max-width: calc(100vw - 16px);
         width: calc(100vw - 16px);
@@ -364,27 +366,22 @@
     }
 
     /* 庆祝数字上限 */
-    .modal-hero-big-number,
-    .big-display-number {
+    .modal-hero-big-number, .big-display-number {
         font-size: var(--type-mega);
     }
 
     /* 表单输入更紧凑 */
-    .form-input,
-    .form-textarea,
-    .form-select {
+    .form-input, .form-textarea, .form-select {
         padding: 8px 10px;
         font-size: var(--type-sm);
     }
 
     /* 按钮组 */
-    .modal-actions,
-    .form-actions {
+    .modal-actions, .form-actions {
         flex-direction: column;
         gap: var(--space-2);
     }
-    .modal-actions .btn,
-    .form-actions .btn {
+    .modal-actions .btn, .form-actions .btn {
         width: 100%;
     }
 }

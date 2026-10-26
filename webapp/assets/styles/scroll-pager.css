@@ -129,9 +129,7 @@
   pointer-events: none; /* 机身外壳不拦截鼠标事件，让后方便签仍可被选中拖动 */
 }
 /* 机身内部交互控件仍接收事件，避免 pointer-events:none 误伤按钮/输入框 */
-.tw-beeper button,
-.tw-beeper textarea,
-.tw-beeper input {
+.tw-beeper button, .tw-beeper textarea, .tw-beeper input {
   pointer-events: auto;
 }
 
@@ -248,8 +246,7 @@
 }
 
 /* 暗色模式：降低机身绿玻璃不透明度 + 降饱和，让背景透出，避免颜色太实 */
-.theme-dark .tw-case,
-:host(.dark) .tw-case {
+.theme-dark .tw-case, :host(.dark) .tw-case {
   background:
     linear-gradient(135deg,
       rgba(var(--pale-rgb), 0.30) 0%,
@@ -294,8 +291,7 @@
   opacity: 0.95;
 }
 /* 标签两端文字禁止折行，避免窄设备下 "AUTO- FEED" 被截断 */
-.tw-case-label > span,
-.tw-case-label .tw-case-right { white-space: nowrap; }
+.tw-case-label > span, .tw-case-label .tw-case-right { white-space: nowrap; }
 .tw-case-label .tw-dot {
   display: inline-block;
   width: 0.4em; height: 0.4em;
@@ -333,8 +329,7 @@
 }
 
 /* 亮色模式：屏幕/标签在浅机身中减重（暗色模式保持原深色） */
-:host(:not(.dark)) .tw-screen,
-body:not(.dark) .tw-screen {
+:host(:not(.dark)) .tw-screen, body:not(.dark) .tw-screen {
   background: linear-gradient(135deg, rgba(var(--white-rgb), 0.55), rgba(var(--pale-rgb), 0.72));
   -webkit-backdrop-filter: blur(6px) saturate(1.0) brightness(1.05);
   backdrop-filter: blur(6px) saturate(1.0) brightness(1.05);
@@ -353,14 +348,12 @@ body:not(.dark) .tw-screen {
   }
 /* 亮色模式：系统消息浮层改用主题深色半透明底（随 --bamboo-deep-rgb 走色相），
    既避免切换便签样式瞬间闪黑屏，又让浮层跟随主题而非固定绿 */
-:host(:not(.dark)) .tw-screen-msg,
-body:not(.dark) .tw-screen-msg {
+:host(:not(.dark)) .tw-screen-msg, body:not(.dark) .tw-screen-msg {
   background: rgba(var(--bamboo-deep-rgb), 0.72);
 }
 
 /* 暗色模式：深色屏幕凹进机身（挖孔质感，光源在上方，加深） */
-.theme-dark .tw-screen,
-:host(.dark) .tw-screen {
+.theme-dark .tw-screen, :host(.dark) .tw-screen {
   background: linear-gradient(160deg, rgba(var(--black-rgb), 0.74), rgba(var(--deep-rgb), 0.86));
   -webkit-backdrop-filter: blur(6px) saturate(1.3) brightness(0.78);
   backdrop-filter: blur(6px) saturate(1.3) brightness(0.78);
@@ -378,20 +371,16 @@ body:not(.dark) .tw-screen-msg {
     /* CRT 屏幕中心极淡荧光绿辉光（仅为内容发光感） */
     inset 0 0 40px rgba(var(--green-very-bright-rgb), 0.06);
 }
-.theme-dark .tw-screen-top,
-:host(.dark) .tw-screen-top { color: rgba(var(--green-very-bright-rgb), 0.7); }
+.theme-dark .tw-screen-top, :host(.dark) .tw-screen-top { color: rgba(var(--green-very-bright-rgb), 0.7); }
 /* 暗色屏幕：隐藏右侧玻璃高光，避免凹陷玻璃被方向性照亮出现"右侧翘起" */
-.theme-dark .tw-screen-glare,
-:host(.dark) .tw-screen-glare { display: none; }
+.theme-dark .tw-screen-glare, :host(.dark) .tw-screen-glare { display: none; }
 
-:host(:not(.dark)) .tw-screen-top,
-body:not(.dark) .tw-screen-top {
+:host(:not(.dark)) .tw-screen-top, body:not(.dark) .tw-screen-top {
   color: rgba(var(--bamboo-deep-rgb), 0.72);
 }
 
 /* 亮色模式：屏内文字改深绿可读，避免荧光绿在淡白绿背景上糊 */
-:host(:not(.dark)) .tw-input,
-body:not(.dark) .tw-input {
+:host(:not(.dark)) .tw-input, body:not(.dark) .tw-input {
   color: rgb(var(--bamboo-deep-rgb));
   caret-color: rgb(var(--bamboo-deep-rgb));
   text-shadow: none;
@@ -404,20 +393,17 @@ body:not(.dark) .tw-input {
     inset 0 -2px 4px -2px rgba(var(--white-rgb), 0.75),
     0 0 0 1px rgba(var(--primary-rgb), 0.15);
 }
-:host(:not(.dark)) .tw-screen-font,
-body:not(.dark) .tw-screen-font {
+:host(:not(.dark)) .tw-screen-font, body:not(.dark) .tw-screen-font {
   color: rgb(var(--bamboo-deep-rgb));
   opacity: 0.85;
 }
 
-:host(:not(.dark)) .tw-case-label,
-body:not(.dark) .tw-case-label {
+:host(:not(.dark)) .tw-case-label, body:not(.dark) .tw-case-label {
   color: var(--ink-medium);
   opacity: 0.78;
 }
 
-:host(:not(.dark)) .tw-case-right,
-body:not(.dark) .tw-case-right {
+:host(:not(.dark)) .tw-case-right, body:not(.dark) .tw-case-right {
   /* 此前写死 rgba(45,130,70) 绿 → 主题换色相时这枚「BAMBOO IMMORTALS」铭牌
      卡在绿色不跟随。改用随色相的 --bamboo-deep-rgb（与同行 .tw-brand 同源），
      使机身标签整体跟随主题色相/明度。 */
@@ -444,11 +430,9 @@ body:not(.dark) .tw-case-right {
   user-select: none;
 }
 /* 屏幕顶栏两端文字禁止折行（避免窄设备下 "凝墨成笺FONT:" 粘连） */
-.tw-screen-top > span,
-.tw-screen-font { white-space: nowrap; }
+.tw-screen-top > span, .tw-screen-font { white-space: nowrap; }
 .tw-screen-font { color: rgb(var(--bamboo-deep-rgb)); opacity: 0.85; }
-.theme-dark .tw-screen-font,
-:host(.dark) .tw-screen-font { color: rgb(var(--green-very-bright-rgb)); opacity: 0.8; }
+.theme-dark .tw-screen-font, :host(.dark) .tw-screen-font { color: rgb(var(--green-very-bright-rgb)); opacity: 0.8; }
 .tw-batt { opacity: 0.6; }
 
 /* 窄栏（.scroll-body ≤340px，由 scrollManager 的 ResizeObserver 加 .is-narrow）：
@@ -481,27 +465,22 @@ body:not(.dark) .tw-case-right {
   caret-color: rgb(var(--bamboo-deep-rgb));
   text-shadow: none;
 }
-.theme-dark .tw-input,
-:host(.dark) .tw-input {
+.theme-dark .tw-input, :host(.dark) .tw-input {
   color: rgb(var(--green-very-bright-rgb));
   caret-color: rgb(var(--green-very-bright-rgb));
   text-shadow: 0 0 6px rgba(var(--green-very-bright-rgb), 0.4);
 }
 .tw-input::placeholder { color: rgba(var(--bamboo-deep-rgb), 0.5); text-transform: uppercase; }
-.theme-dark .tw-input::placeholder,
-:host(.dark) .tw-input::placeholder { color: rgba(var(--green-very-bright-rgb), 0.5); }
+.theme-dark .tw-input::placeholder, :host(.dark) .tw-input::placeholder { color: rgba(var(--green-very-bright-rgb), 0.5); }
 .tw-input::selection { background: rgb(var(--bamboo-deep-rgb)); color: var(--white); }
-.theme-dark .tw-input::selection,
-:host(.dark) .tw-input::selection { background: rgb(var(--green-very-bright-rgb)); color: var(--black); }
+.theme-dark .tw-input::selection, :host(.dark) .tw-input::selection { background: rgb(var(--green-very-bright-rgb)); color: var(--black); }
 /* 黑屏细滚动条（文字超屏时不突兀） */
 .tw-input { scrollbar-width: thin; scrollbar-color: rgba(var(--bamboo-deep-rgb),0.25) transparent; }
 .tw-input::-webkit-scrollbar { width: 6px; }
 .tw-input::-webkit-scrollbar-track { background: transparent; }
 .tw-input::-webkit-scrollbar-thumb { background: rgba(var(--bamboo-deep-rgb),0.25); border-radius: var(--radius-3); }
-.theme-dark .tw-input,
-:host(.dark) .tw-input { scrollbar-color: rgba(var(--green-very-bright-rgb),0.25) transparent; }
-.theme-dark .tw-input::-webkit-scrollbar-thumb,
-:host(.dark) .tw-input::-webkit-scrollbar-thumb { background: rgba(var(--green-very-bright-rgb),0.25); }
+.theme-dark .tw-input, :host(.dark) .tw-input { scrollbar-color: rgba(var(--green-very-bright-rgb),0.25) transparent; }
+.theme-dark .tw-input::-webkit-scrollbar-thumb, :host(.dark) .tw-input::-webkit-scrollbar-thumb { background: rgba(var(--green-very-bright-rgb),0.25); }
 
 /* 屏幕光标（聚焦时右上角脉冲点） */
 .tw-cursor {
@@ -513,8 +492,7 @@ body:not(.dark) .tw-case-right {
   opacity: 0;
   pointer-events: none;
 }
-.theme-dark .tw-cursor,
-:host(.dark) .tw-cursor {
+.theme-dark .tw-cursor, :host(.dark) .tw-cursor {
   background: rgb(var(--green-very-bright-rgb));
 }
 .tw-cursor.on { opacity: 0.5; }
@@ -608,7 +586,9 @@ body:not(.dark) .tw-case-right {
 
 .tw-grill { display: none; flex-direction: column; gap: 0.27em; opacity: 0.2; }
 .tw-grill i { display: block; width: 3.2em; height: 0.13em; border-radius: 0.13em; background: var(--black); }
-@media (min-width: 768px) { .tw-grill { display: flex; } }
+@media (min-width: 768px)   {
+
+ .tw-grill { display: flex; } }
 
 /* 橙色 PRINT 大钮 */
 .tw-print {
@@ -663,8 +643,7 @@ body:not(.dark) .tw-case-right {
 }
 
 /* 亮色模式：PRINT 钮井口压淡，避免黄球边缘显脏 */
-:host(:not(.dark)) .tw-print,
-body:not(.dark) .tw-print {
+:host(:not(.dark)) .tw-print, body:not(.dark) .tw-print {
   box-shadow:
     0 0 0 0.1em rgba(var(--surface-deep-rgb), 0.24),
     0 0 0 0.17em rgba(var(--surface-deep-rgb), 0.08),
@@ -679,8 +658,7 @@ body:not(.dark) .tw-print {
 
 
 /* 暗色模式：按钮恢复饱和实色，并加深井口让凹槽更明显 */
-body.dark .tw-rbtn,
-:host(.dark) .tw-rbtn {
+body.dark .tw-rbtn, :host(.dark) .tw-rbtn {
   background:
     radial-gradient(circle at 33% 27%,
       rgba(var(--white-rgb), 0.82) 0%,
@@ -705,8 +683,7 @@ body.dark .tw-rbtn,
     0 0.09em 0.22em rgba(var(--black-rgb), 0.30),
     0 0 0.55em rgba(var(--primary-rgb), 0.30);
 }
-body.dark .tw-print,
-:host(.dark) .tw-print {
+body.dark .tw-print, :host(.dark) .tw-print {
   background:
     radial-gradient(circle at 30% 22%,
       rgba(var(--white-rgb), 0.95) 0%,
@@ -732,9 +709,7 @@ body.dark .tw-print,
 }
 
 /* 键盘聚焦轮廓（可访问性） */
-.tw-rbtn:focus-visible,
-.tw-print:focus-visible,
-.tw-card-del:focus-visible {
+.tw-rbtn:focus-visible, .tw-print:focus-visible, .tw-card-del:focus-visible {
   outline: 0.14em solid rgb(var(--primary-rgb));
   outline-offset: 0.14em;
 }
@@ -770,8 +745,7 @@ body.dark .tw-print,
   margin-left: 0.4em;
 }
 /* 暗色模式：品牌牌改深底荧光绿字 */
-.theme-dark .tw-brand,
-:host(.dark) .tw-brand {
+.theme-dark .tw-brand, :host(.dark) .tw-brand {
   /* 凹刻药丸：渐变背景让"上深下浅"在小尺寸下也能被肉眼读出，
      再叠加内阴影把边缘压暗、底部补一道微高光，凹槽感更明确。
      同时写 :host(.dark) 兜底——Shadow DOM 内不总有 .theme-dark 祖先。 */
@@ -915,8 +889,7 @@ body.dark .tw-print,
    于是亮色下两颗开关一颗绿一颗灰白，明显不一致。
    只有暗色机身，基础底座 rgba(primary,.20) 才几乎隐形（实测只剩 knob 一个点），
    故把覆盖收窄到暗色作用域（:host(.dark) 与 body.dark 双写，同本文件其余暗色规则）。 */
-:host(.dark) .tw-theme-switch#twZenSwitch:not([aria-checked="true"]),
-body.dark .tw-theme-switch#twZenSwitch:not([aria-checked="true"]) {
+:host(.dark) .tw-theme-switch#twZenSwitch:not([aria-checked="true"]), body.dark .tw-theme-switch#twZenSwitch:not([aria-checked="true"]) {
   border-color: rgba(var(--green-very-bright-rgb), 0.32);
   background: linear-gradient(
     180deg,
@@ -929,14 +902,12 @@ body.dark .tw-theme-switch#twZenSwitch:not([aria-checked="true"]) {
     inset 0 -1px 1px rgba(var(--green-very-bright-rgb), 0.12);
 }
 /* 暗色·关态 knob：半透明荧光绿停左侧（开态一律沿用 checked 态：滑右 + 点亮） */
-:host(.dark) .tw-theme-switch#twZenSwitch:not([aria-checked="true"]) .tw-theme-switch-knob,
-body.dark .tw-theme-switch#twZenSwitch:not([aria-checked="true"]) .tw-theme-switch-knob {
+:host(.dark) .tw-theme-switch#twZenSwitch:not([aria-checked="true"]) .tw-theme-switch-knob, body.dark .tw-theme-switch#twZenSwitch:not([aria-checked="true"]) .tw-theme-switch-knob {
   background: rgba(var(--green-very-bright-rgb), 0.5);
   box-shadow: 0 1px 2px rgba(var(--black-rgb), 0.35);
 }
 /* 暗色·关态 hover：加深描边，避免被基础态 hover 的亮色底洗掉 */
-:host(.dark) .tw-theme-switch#twZenSwitch:not([aria-checked="true"]):hover,
-body.dark .tw-theme-switch#twZenSwitch:not([aria-checked="true"]):hover {
+:host(.dark) .tw-theme-switch#twZenSwitch:not([aria-checked="true"]):hover, body.dark .tw-theme-switch#twZenSwitch:not([aria-checked="true"]):hover {
   border-color: rgba(var(--green-very-bright-rgb), 0.5);
   background: linear-gradient(
     180deg,
@@ -976,8 +947,7 @@ body.dark .tw-theme-switch#twZenSwitch:not([aria-checked="true"]):hover {
     0 1px 4px rgba(var(--primary-rgb), 0.5);
 }
 /* 暗色·开态：恢复凹刻深底 + 荧光绿边（与原 [aria-checked="true"] 完全一致） */
-:host(.dark) .tw-theme-switch#twZenSwitch[aria-checked="true"],
-body.dark .tw-theme-switch#twZenSwitch[aria-checked="true"] {
+:host(.dark) .tw-theme-switch#twZenSwitch[aria-checked="true"], body.dark .tw-theme-switch#twZenSwitch[aria-checked="true"] {
   border-color: rgba(var(--green-very-bright-rgb), 0.32);
   background: linear-gradient(
     180deg,
@@ -989,13 +959,11 @@ body.dark .tw-theme-switch#twZenSwitch[aria-checked="true"] {
     inset 0 3px 4px rgba(var(--black-rgb), 0.55),
     inset 0 -1px 1px rgba(var(--green-very-bright-rgb), 0.12);
 }
-:host(.dark) .tw-theme-switch#twZenSwitch[aria-checked="true"] .tw-theme-switch-knob,
-body.dark .tw-theme-switch#twZenSwitch[aria-checked="true"] .tw-theme-switch-knob {
+:host(.dark) .tw-theme-switch#twZenSwitch[aria-checked="true"] .tw-theme-switch-knob, body.dark .tw-theme-switch#twZenSwitch[aria-checked="true"] .tw-theme-switch-knob {
   background: rgb(var(--green-very-bright-rgb));
   box-shadow: 0 0 0.3em rgba(var(--green-very-bright-rgb), 0.6);
 }
-:host(.dark) .tw-theme-switch#twZenSwitch[aria-checked="true"]:hover,
-body.dark .tw-theme-switch#twZenSwitch[aria-checked="true"]:hover {
+:host(.dark) .tw-theme-switch#twZenSwitch[aria-checked="true"]:hover, body.dark .tw-theme-switch#twZenSwitch[aria-checked="true"]:hover {
   border-color: rgba(var(--green-very-bright-rgb), 0.62);
   background: linear-gradient(
     180deg,
@@ -1092,8 +1060,7 @@ body.dark .tw-theme-switch#twZenSwitch[aria-checked="true"]:hover {
 }
 /* 暗色模式：胶木叠层换回更深的近黑边——亮色下那种饱和红边会显脏，暗底上近黑边正好压住体积。
    此覆盖层确保暗色模式外观与之前完全一致（未引入脏感时的样子）。 */
-.theme-dark .tw-knob-wheel::after,
-:host(.dark) .tw-knob-wheel::after {
+.theme-dark .tw-knob-wheel::after, :host(.dark) .tw-knob-wheel::after {
   background: linear-gradient(90deg,
     rgba(54, 6, 2, .55) 0%, rgba(54, 6, 2, .12) 14%,
     rgba(255, 244, 234, .10) 50%,
@@ -1168,8 +1135,7 @@ body.dark .tw-theme-switch#twZenSwitch[aria-checked="true"]:hover {
    不再挪用「搜索高亮」的金色 #c9a24a；且配合 JS 点击后 blur，鼠标流程不再显形。 */
 .tw-knob:focus-visible { outline: 2px solid rgb(var(--primary-rgb)); outline-offset: 2px; }
 /* 暗色下齿轮压暗一档（同样只收暗不发黑，镜面高光带保留），保持与机身玻璃的明度关系 */
-.theme-dark .tw-knob-wheel,
-:host(.dark) .tw-knob-wheel {
+.theme-dark .tw-knob-wheel, :host(.dark) .tw-knob-wheel {
   background:
     linear-gradient(180deg,
       #8d2412 0%, #a93a22 14%, #c45734 34%, #d06845 46%,
@@ -1196,8 +1162,7 @@ body.dark .tw-theme-switch#twZenSwitch[aria-checked="true"]:hover {
   z-index: -1;
 }
 /* 暗色模式：桌面投影转深黑（下沉），避免浅绿光晕在暗背景上发亮 */
-.theme-dark .tw-desk-shadow,
-:host(.dark) .tw-desk-shadow {
+.theme-dark .tw-desk-shadow, :host(.dark) .tw-desk-shadow {
   background:
     repeating-linear-gradient(90deg,
       rgba(var(--black-rgb), 0.10) 0px,

@@ -187,6 +187,13 @@ export class Store {
                     dayKeys = [];
                 }
             }
+            // bridge 是通用通道：宿主异常、或页面对自身回环（无宿主时 window.parent === window）时，
+            // 请求会 resolve 出与约定不符的形状（实测 getDayKeys 返回 {}）。这里做形状收窄，
+            // 否则 state.dayKeys 变成非数组后，_ensureCurrentDateLoaded 的 .includes 会直接抛错。
+            if (!Array.isArray(dayKeys)) {
+                console.warn('[Store] getDayKeys 返回非数组，按空处理:', typeof dayKeys);
+                dayKeys = [];
+            }
             this.state.dayKeys = dayKeys;
 
             const PAGE_SIZE = 30;
@@ -215,7 +222,9 @@ export class Store {
             // 由 _ensureCurrentDateLoaded() 逐日补读（dayKeys 是全量键，故任何历史日期都取得到）。
             // 原有的「加载更多」翻页簇（loadMoreDays + _loadedPages/_hasMoreDays/_loadingMore）
             // 因此全仓无调用者，已一并移除；宿主 getDaysPaginated 仍保留，供此处轻量预热使用。
-            const days = paginated.days;
+            // 同上：分页返回值也可能不是约定形状（{} 或缺失 days），缺失时按空对象处理，
+            // 否则 Object.keys(undefined) 会中断整个 init。
+            const days = paginated && paginated.days && typeof paginated.days === 'object' ? paginated.days : {};
 
             if (Object.keys(days).length > 0) {
                 Object.assign(this.state.data, days);

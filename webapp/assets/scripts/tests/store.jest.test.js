@@ -662,3 +662,49 @@ describe('Store 钱包桥接', () => {
         expect(global.WalletService.updateBalance.mock.calls[0].length).toBe(4);
     });
 });
+
+/**
+ * 回归：bridge 响应形状异常时的兜底
+ *
+ * 起因：无宿主（顶层页面自我回环，window.parent === window）时，
+ * storageManager.getDayKeys() 会 resolve 出 {} 而不是数组；getDaysPaginated() 同样可能是 {}。
+ * 旧实现直接把 {} 赋给 state.dayKeys，导致 _ensureCurrentDateLoaded 的
+ * `this.state.dayKeys.includes(key)` 抛 TypeError（由 scripts/scan-runtime-coverage.mjs 发现）。
+ */
+describe('Store 对 bridge 异常响应形状的兜底', () => {
+    afterEach(() => {
+        cleanupGlobals();
+        document.documentElement.className = '';
+    });
+
+    test('getDayKeys 返回非数组时归一为 []，_ensureCurrentDateLoaded 不抛错', async () => {
+        jest.resetModules();
+        cleanupGlobals();
+        setupGlobals();
+        global.storageManager.getDayKeys = jest.fn().mockResolvedValue({});
+        global.storageManager.getDaysPaginated = jest.fn().mockResolvedValue({});
+
+        const { store } = loadStoreModule();
+        await store.ready();
+
+        expect(Array.isArray(store.state.dayKeys)).toBe(true);
+        expect(store.state.dayKeys).toEqual([]);
+        await expect(store._ensureCurrentDateLoaded()).resolves.toBeUndefined();
+    });
+
+    test('getDaysPaginated 缺少 days 时 init 不中断，按全新安装写入默认数据', async () => {
+        jest.resetModules();
+        cleanupGlobals();
+        setupGlobals();
+        // setupGlobals 里 DEFAULT_DATA 是空桩，这里给一份真实形状，才能观察到全新安装分支
+        global.DEFAULT_DATA = { '2026-01-01': { date: '2026-01-01', metrics: {}, timeline: [] } };
+        global.storageManager.getDayKeys = jest.fn().mockResolvedValue([]);
+        global.storageManager.getDaysPaginated = jest.fn().mockResolvedValue({});
+
+        const { store } = loadStoreModule();
+        // 修复前：paginated.days 为 undefined → Object.keys(undefined) → init 中断
+        await expect(store.ready()).resolves.toBeTruthy();
+        expect(store.state.dayKeys).toEqual([]);
+        expect(store.state.data['2026-01-01']).toBeTruthy();
+    });
+});

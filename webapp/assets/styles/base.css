@@ -417,10 +417,6 @@ html.recoloring:not(#recoloring) *::before, html.recoloring:not(#recoloring) *::
         scroll-behavior: auto;
     }
 
-    .breathePink, .breatheSky, .heartbeat {
-        animation: none;
-    }
-
     .empty-state::before {
         animation: none;
         opacity: 0;
@@ -429,12 +425,6 @@ html.recoloring:not(#recoloring) *::before, html.recoloring:not(#recoloring) *::
     .onboarding-highlight {
         animation: none;
         box-shadow: 0 0 0 9999px rgba(var(--black-rgb), 0.7);
-    }
-
-    .fadeInUp, .slideUp, .fadeIn {
-        animation: none;
-        opacity: 1;
-        transform: none;
     }
 
     .loading-spinner::before {
@@ -766,14 +756,6 @@ h1 {
     color: var(--bamboo-light);
     font-weight: 700;
     letter-spacing: 0.05em;
-}
-.subtitle {
-    font-size: var(--type-xs);
-    color: var(--text-secondary);
-    font-weight: 600;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    margin-top: var(--space-1);
 }
 
 /* ============================================================

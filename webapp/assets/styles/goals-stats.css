@@ -378,9 +378,6 @@
     padding: var(--space-6);
 }
 
-.empty-state.large {
-    padding: 48px 24px;
-}
 
 .empty-icon {
     font-size: var(--type-display-big);

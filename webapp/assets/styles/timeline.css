@@ -29,10 +29,6 @@
     opacity: 0;
     transition: opacity 0.3s;
 }
-.timeline-stat.heartbeat::before {
-    background: linear-gradient(90deg, var(--cinnabar), rgba(var(--danger-bright-rgb), 0.7));
-    opacity: 0;
-}
 .timeline-stat:hover {
     transform: translateY(-3px);
     box-shadow: var(--shadow-card);
@@ -50,12 +46,6 @@
     font-size: var(--type-large);
     font-weight: 700;
     color: var(--bamboo-deep);
-}
-
-@media (prefers-reduced-motion: no-preference) {
-    .timeline-stat.heartbeat {
-        animation: heartbeatPink 2.4s ease-in-out infinite;
-    }
 }
 
 @keyframes heartbeatPink {

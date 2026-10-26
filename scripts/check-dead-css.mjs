@@ -82,6 +82,8 @@ function collectSelectors() {
   for (const file of walk(STYLES_DIR)) {
     let css = fs.readFileSync(file, 'utf8');
     css = css.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+    // 先剥离 url(...) 内容：避免把路径里的 .jpg / #fragment 误提成类/ID 选择器（如 url('../x.jpg')）
+    css = css.replace(/url\([^)]*\)/g, ' ');
     for (const m of css.matchAll(/\.(-?[_a-zA-Z][\w-]*)/g)) classes.add(m[1]);
     for (const m of css.matchAll(/#(-?[_a-zA-Z][\w-]*)/g)) {
       const id = m[1];

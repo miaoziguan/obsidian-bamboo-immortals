@@ -223,13 +223,10 @@
 
 @media (prefers-reduced-motion: no-preference) {
     .kpi-card.up { animation: breathePink 3.8s ease-in-out infinite; }
-    .kpi-card.breakthrough { animation: breatheSky 4s ease-in-out infinite; }
 }
 
 .kpi-card.up:hover { box-shadow: 0 12px 22px rgba(var(--danger-rgb), 0.2); }
 .kpi-card.down { background: var(--kpi-down-bg); }
-.kpi-card.neutral { background: var(--kpi-neutral-bg); }
-.kpi-card.breakthrough { background: var(--kpi-break-bg); }
 
 @keyframes breathePink {
     0% { box-shadow: 0 0 0 0 rgba(var(--danger-rgb), 0); }
@@ -260,15 +257,12 @@
     transition: color 0.2s;
 }
 .kpi-card.up .kpi-value { color: var(--cinnabar); }
-.kpi-card.breakthrough .kpi-value { color: var(--sky-azure); }
 .kpi-delta {
     font-size: var(--type-xs);
     margin-top: var(--space-1);
 }
 .kpi-card.up .kpi-delta { color: var(--kpi-up-delta-color); }
 .kpi-card.down .kpi-delta { color: var(--bamboo-primary); }
-.kpi-card.neutral .kpi-delta { color: var(--gold); }
-.kpi-card.breakthrough .kpi-delta { color: var(--sky-azure); }
 
 /* ========== KPI Semantic States ========== */
 .kpi-card--positive {
@@ -427,7 +421,6 @@ button, .btn, .date-nav-btn, .view-toggle-btn, .modal-close, .tooltip-close {
     padding: var(--space-2) var(--space-3);
     border-radius: var(--radius-sm);
 }
-.diagnosis-tag.highlight { background: rgba(var(--primary-rgb), 0.1); color: var(--bamboo-primary); }
 .diagnosis-tag.warning { background: rgba(var(--gold-rgb), 0.1); color: var(--gold); }
 .diagnosis-card {
     padding: var(--space-3);
@@ -473,14 +466,8 @@ button, .btn, .date-nav-btn, .view-toggle-btn, .modal-close, .tooltip-close {
     background: linear-gradient(135deg, rgba(var(--sky-azure-rgb), 0.2) 0%, rgba(var(--sky-azure-rgb), 0.1) 100%);
     border: 1px solid rgba(var(--sky-azure-rgb), 0.3);
 }
-.focus-box.tomorrow {
-    background: linear-gradient(135deg, rgba(var(--gold-rgb), 0.06) 0%, rgba(var(--gold-rgb), 0.02) 100%);
-    border: 1px solid rgba(var(--gold-rgb), 0.15);
-}
-
 @media (prefers-reduced-motion: no-preference) {
     .focus-box.result { animation: breatheSkyColor 3.2s ease-in-out infinite; }
-    .focus-box.tomorrow { animation: breatheTomorrowColor 1.5s ease-in-out infinite; }
 }
 
 @keyframes breatheSkyColor {
@@ -496,7 +483,6 @@ button, .btn, .date-nav-btn, .view-toggle-btn, .modal-close, .tooltip-close {
 
 .focus-label { font-size: var(--type-xs); font-weight: 700; letter-spacing: 1px; margin-bottom: var(--space-1); text-transform: uppercase; }
 .focus-label.result { color: var(--sky-azure); }
-.focus-label.tomorrow { color: var(--gold); }
 .focus-text { font-size: var(--type-base); font-weight: 500; color: var(--text-primary); line-height: 1.5; }
 .expand-btn {
     display: flex;

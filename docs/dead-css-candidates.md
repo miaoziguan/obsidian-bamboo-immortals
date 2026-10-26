@@ -57,9 +57,15 @@ CSS 类名是模块/主题扩展 API 的天然契约面：外部主题、外部�
 | `arch` | 5 | `arch-act-btn`/`arch-bar`(归档功能活着) |
 | `gho` | 5 | `gho-empty-icon`/`gho-left`(healthScore.js) |
 
-#### 单名死类长尾（无连字符，共 20 个，逐条见 AUTO-GENERATED 生成区）
+#### 单名死类长尾（无连字符）—— ✅ 已全部执行完毕（commit 见下）
 
-多为动画/工具类。**其中 11 个是 `@keyframes` 动画名**（`breathePink`/`breatheSky`/`dotBreath`/`fadeIn`/`fadeInUp`/`heartbeat`/`highlight`/`lotteryPickedGlow`/`moonGlow`/`nodeGlow`/`slideUp`）：**这些 class 本身死，但其 `@keyframes` 必须保留**，删 `.name` class 即可、勿删 keyframes。其余纯死 class（可删）：`breakthrough`/`future`/`jpg`/`large`/`neutral`/`secondary`/`small`/`subtitle`/`tomorrow`。
+原估 20 个，经闸门精确复核（含 html 扫描 + 全仓 class 字符串边界复核）后实际为 **17 个真死**（无连字符）：
+- **11 个 `@keyframes` 名**（删 `.name` class 规则、**保留 `@keyframes`** 与活规则里的 `animation:` 引用）：`breathePink`/`breatheSky`/`dotBreath`/`fadeIn`/`fadeInUp`/`heartbeat`/`highlight`/`lotteryPickedGlow`/`moonGlow`/`nodeGlow`/`slideUp`
+- **6 个纯死 class**：`breakthrough`/`large`/`neutral`/`secondary`/`subtitle`/`tomorrow`
+
+> **排除项（非死，勿删）**：`clickable` 在 `webapp/index.html` 是运行期活类（闸门正确排除）；`jpg` 是 `url('../images/author-avatar.jpg')` 被 `\.` 正则误提的**假阳性**，已在 `scripts/check-dead-css.mjs` 修复；原估的 `future`/`small` 实为 `.week-day.future`（随 week 特性删除，已无定义）与活类，不在死清单。
+
+> **手术要点**：11 个 keyframes 名的 `.name{}` 类规则分布于共享选择器列表（base.css 减动块、modal-panels.css `:host(.platform-mobile)` 块、dark.css 暗色降级列表）与复合规则（`.kpi-card.breakthrough`、`.timeline-stat.heartbeat` 等），均按名精确移除并保留兄弟项与 `@keyframes`。
 
 ### 核查方法论（避免误判的关键）
 - **变量 ≠ 类名**：`cs-` 命中 89 处实是 `var(--cs-*)`，类名本身仍死——切忌把 CSS 变量引用当类名使用。
@@ -67,6 +73,7 @@ CSS 类名是模块/主题扩展 API 的天然契约面：外部主题、外部�
 - **打包 html 含 CSS 定义**：`kpi-card` 在打包 `<style>` 内出现 2 次是 CSS 定义本身，非使用；已用「剥离 `<style>` 后计数」区分。
 - **动态赋类盲区（classList / className / 模板）**：本清单初版只比对 `class="x"` / `className='x'` 字面量令牌，会漏掉通过 `el.classList.add('x')` / `el.className = '…x…'` / `` class=`…${x}…` `` 施加的类。状态类（`edit-mode-active` 等）尤其危险。删除前必须**全仓（含产物 html / host TS）用边界正则 `(?<![-\w])x(?![-\w])` 复核**，确认无动态引用。已执行的 `action`/`edit` 簇均通过此复核。
 - **复合选择器孤儿陷阱（已修正原「整簇真死」误判）**：死名清单只按 class 令牌判死，会漏掉「死基础类 + 活修饰符」的复合规则（如 `.week-day.today`——`week-day` 死、`today` 活令牌却让该规则不被标死）。**结论：本仓 `week`/`kpi`/`cs`/`ai`/`achievement` 均非干净整簇死，而是纠缠型死特性**——删前须把含死名的所有规则（含复合/暗色/共享列表）按**特性级整体**移除，并确认修饰符（`today`/`selected`/`future` 等）不是别处的活特性依赖。已执行的 `week` 即按此整块删除 `date-nav.css` L587-786。
+- **`url()` 假阳性盲区（已修复）**：CSS 选择器提取正则 `\.x` 会把 `url('../x.jpg')` 里的 `.jpg`、以及 `url('#frag')` 里的 `#frag` 误提成类/ID 选择器。已在 `scripts/check-dead-css.mjs` 提取前先 `css.replace(/url\([^)]*\)/g,' ')` 剥离 url 内容，消除此类假阳性（单名尾里的 `jpg` 即此例，已不再误标）。
 
 ---
 
@@ -77,7 +84,7 @@ CSS 类名是模块/主题扩展 API 的天然契约面：外部主题、外部�
 > 扫描：定义 `webapp/assets/styles/**/*.css`；使用 `webapp/assets/scripts/**/*.js`(排除 tests) + `webapp/*src*.html`/`index.html`（刻意排除 4 个打包产物 html，避免把 CSS 定义当使用）。
 > 误判防护：十六进制颜色值过滤；动态拼接类名（`prefix`+n）移至「疑似动态」列，不计入判定。
 
-**确认死类名：547　疑似动态（已剔除）：3　死 ID 选择器：3**
+**确认死类名：528　疑似动态（已剔除）：3　死 ID 选择器：3**
 
 ### 按首段聚类（确认死类名）
 
@@ -105,13 +112,13 @@ CSS 类名是模块/主题扩展 API 的天然契约面：外部主题、外部�
 | `btn` | 6 | `btn-sm`, `btn-primary`, `btn-secondary`, `btn-outline`, `btn-danger`, `btn-success` |
 | `empty` | 6 | `empty-state`, `empty-state-text`, `empty-state-btn`, `empty-icon`, `empty-text`, `empty-desc` |
 | `time` | 6 | `time-alerts-grid`, `time-alert`, `time-span-item`, `time-alert-list`, `time-span-stats`, `time-input` |
-| `arch` | 5 | `arch-date-input`, `arch-sep`, `arch-select-progress`, `arch-date-range`, `arch-date-err` |
 | `cs` | 5 | `cs-liantai`, `cs-stone`, `cs-bianshan`, `cs-yezi`, `cs-mei` |
 | `gho` | 5 | `gho-stat-today`, `gho-svg-bg`, `gho-hero-inner`, `gho-hero-ring`, `gho-hero-score` |
 | `stub` | 5 | `stub-back-title`, `stub-name`, `stub-caption`, `stub-value`, `stub-title-en` |
 | `ticket` | 5 | `ticket-sub-label`, `ticket-body-text`, `ticket-text`, `ticket-notch`, `ticket-pattern` |
-| `timeline` | 5 | `timeline-entry`, `timeline-stat`, `timeline-stats-row`, `timeline-stat-label`, `timeline-stat-value` |
+| `timeline` | 5 | `timeline-entry`, `timeline-stats-row`, `timeline-stat`, `timeline-stat-label`, `timeline-stat-value` |
 | `toast` | 5 | `toast-success`, `toast-error`, `toast-warning`, `toast-info`, `toast-loading` |
+| `arch` | 4 | `arch-date-input`, `arch-sep`, `arch-date-err`, `arch-select-progress` |
 | `icon` | 4 | `icon-option`, `icon-picker`, `icon-picker-sm`, `icon-option-sm` |
 | `keyboard` | 4 | `keyboard-hint`, `keyboard-hint-icon`, `keyboard-hint-text`, `keyboard-hint-close` |
 | `progress` | 4 | `progress-tier`, `progress-fill-green`, `progress-tiers`, `progress-fill` |
@@ -134,7 +141,6 @@ CSS 类名是模块/主题扩展 API 的天然契约面：外部主题、外部�
 | `glow` | 2 | `glow-pulse`, `glow-pulse-fade` |
 | `has` | 2 | `has-advanced`, `has-pending` |
 | `heatmap` | 2 | `heatmap-container`, `heatmap-day` |
-| `highlight` | 2 | `highlight`, `highlight-subitem` |
 | `inprogress` | 2 | `inprogress-legend`, `inprogress-horizontal` |
 | `item` | 2 | `item-complete`, `item-action-btn` |
 | `modal` | 2 | `modal-hero-big-number`, `modal-actions` |
@@ -146,51 +152,35 @@ CSS 类名是模块/主题扩展 API 的天然契约面：外部主题、外部�
 | `balance` | 1 | `balance-jump` |
 | `bar` | 1 | `bar-complete` |
 | `big` | 1 | `big-display-number` |
-| `breakthrough` | 1 | `breakthrough` |
-| `breathePink` | 1 | `breathePink` |
-| `breatheSky` | 1 | `breatheSky` |
 | `confirm` | 1 | `confirm-dialog-content` |
 | `date` | 1 | `date-picker-btn` |
 | `detail` | 1 | `detail-complete` |
 | `display` | 1 | `display-follow-theme-section` |
-| `dotBreath` | 1 | `dotBreath` |
 | `dropdown` | 1 | `dropdown-arrow` |
 | `effect` | 1 | `effect-offscreen` |
 | `emoji` | 1 | `emoji-decorative` |
 | `expand` | 1 | `expand-btn` |
-| `fadeIn` | 1 | `fadeIn` |
-| `fadeInUp` | 1 | `fadeInUp` |
 | `glows` | 1 | `glows-disabled` |
 | `goose` | 1 | `goose-body` |
 | `header` | 1 | `header-quick-btn` |
 | `health` | 1 | `health-tips-list` |
-| `heartbeat` | 1 | `heartbeat` |
 | `high` | 1 | `high-priority` |
+| `highlight` | 1 | `highlight-subitem` |
 | `input` | 1 | `input-error` |
 | `is` | 1 | `is-typing` |
-| `jpg` | 1 | `jpg` |
 | `just` | 1 | `just-completed` |
-| `large` | 1 | `large` |
 | `list` | 1 | `list-item-row` |
 | `loading` | 1 | `loading-spinner` |
-| `lotteryPickedGlow` | 1 | `lotteryPickedGlow` |
 | `low` | 1 | `low-priority` |
 | `medium` | 1 | `medium-priority` |
-| `moonGlow` | 1 | `moonGlow` |
-| `neutral` | 1 | `neutral` |
-| `nodeGlow` | 1 | `nodeGlow` |
 | `onboarding` | 1 | `onboarding-highlight` |
 | `period` | 1 | `period-content` |
 | `philosophy` | 1 | `philosophy-icon` |
 | `pulse` | 1 | `pulse-glow` |
-| `secondary` | 1 | `secondary` |
 | `shop` | 1 | `shop-currency` |
 | `shortcuts` | 1 | `shortcuts-list` |
-| `slideUp` | 1 | `slideUp` |
-| `subtitle` | 1 | `subtitle` |
 | `swipe` | 1 | `swipe-hint` |
 | `text` | 1 | `text-block` |
-| `tomorrow` | 1 | `tomorrow` |
 | `tooltip` | 1 | `tooltip-close` |
 | `urgent` | 1 | `urgent` |
 | `view` | 1 | `view-toggle-btn-sm` |

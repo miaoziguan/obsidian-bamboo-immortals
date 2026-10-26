@@ -50,7 +50,6 @@
    下列发光/脉冲类受 prefers-reduced-motion 保护，用户未开系统降运动时
    会持续重绘 box-shadow。暗色下与 goal 行发光降级对齐，统一关闭。
    =========================== */
-:host(.dark) .timeline-stat.heartbeat,
 :host(.dark) .ticket-dot.current,
 :host(.dark) .ticket-highlight-value,
 :host(.dark) .bamboo-node.focus-now::before,

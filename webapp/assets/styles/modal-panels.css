@@ -1808,12 +1808,6 @@
     color: var(--white);
 }
 
-.ai-wizard-btn.secondary {
-    background: var(--bg-tertiary);
-    color: var(--text-secondary);
-    border: 1px solid var(--border-light);
-}
-
 .ai-wizard-btn:hover {
     opacity: 0.88;
 }
@@ -2241,14 +2235,7 @@
     animation: none;
 }
 :host(.platform-mobile) .kpi-card.up,
-:host(.platform-mobile) .kpi-card.breakthrough,
-:host(.platform-mobile) .focus-box.result,
-:host(.platform-mobile) .focus-box.tomorrow {
-    animation: none;
-}
-:host(.platform-mobile) .breathePink,
-:host(.platform-mobile) .breatheSky,
-:host(.platform-mobile) .heartbeat {
+:host(.platform-mobile) .focus-box.result {
     animation: none;
 }
 :host(.platform-mobile) .goal-row::before,
@@ -2258,11 +2245,7 @@
     animation: none;
 }
 :host(.platform-mobile) .glow-pulse,
-:host(.platform-mobile) .lotteryPickedGlow,
 :host(.platform-mobile) .pulse-glow,
-:host(.platform-mobile) .nodeGlow,
-:host(.platform-mobile) .dotBreath,
-:host(.platform-mobile) .moonGlow,
 :host(.platform-mobile) .bamboo-glow-subtle,
 :host(.platform-mobile) .glow-pulse-fade {
     animation: none;

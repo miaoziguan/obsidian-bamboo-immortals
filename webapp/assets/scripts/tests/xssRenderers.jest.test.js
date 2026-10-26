@@ -78,41 +78,25 @@ describe('渲染层 XSS 防护（属性/文本上下文）', () => {
         });
     });
 
-    describe('TimelineRenderer.render —— aria-label / class 属性', () => {
-        // render() 是"写进容器"而非返回字符串，且容器缺失时直接 return
-        const render = (period) => {
-            const container = document.createElement('div');
-            container.id = 'timelinePath';
-            document.body.appendChild(container);
-            const { TimelineRenderer } = loadModule('modules/timeline/renderer.js', ['TimelineRenderer'], {
-                LucideUtils: LucideStub,
-                ActionDispatcher: ActionDispatcherStub,
-                ...domStubs,
-                byId: (id) => (id === 'timelinePath' ? container : null),
-            });
-            TimelineRenderer.render({
-                timeline: [{
-                    period: period.period,
-                    name: period.name,
-                    time: '09:00',
-                    icon: '',
-                    // 至少一条活动，否则会走"无任务"空态分支
-                    items: [{ time: '09:00', task: '任务' }],
-                }],
-            });
-            return container;
-        };
+    describe('时间线活实现（renderers.js renderTimelineSection）—— 属性注入面', () => {
+        // 历史注：此块原测 modules/timeline/renderer.js 的 render()；时间线渲染已迁移至
+        // renderers.js 的 renderTimelineSection（createDefaultSection 的 case 'timeline'），
+        // 旧实现为死代码并已删除。同样的注入面在活实现上依旧存在：
+        //   period.period -> class 属性（renderers.js:415）、period.name -> 文本（renderers.js:421）。
+        // renderers.js 依赖链重（RenderScheduler/TodoRenderer…），jsdom 直接加载成本高，
+        // 故以源码锁覆盖：两处插值必须各自经过 escapeHtmlAttr / escapeHtml。
+        const fs = require('fs');
+        const path = require('path');
+        const RENDERERS_SRC = fs.readFileSync(
+            path.join(__dirname, '..', 'renderers', 'renderers.js'), 'utf8'
+        );
 
-        test('恶意时段名不得闭合 aria-label 属性', () => {
-            const el = render({ period: 'dawn', name: PAYLOAD });
-            expect(el.querySelector('img')).toBeNull();
-            const card = el.querySelector('.bamboo-card');
-            expect(card.getAttribute('aria-label')).toBe(PAYLOAD + '时间段');
+        test('period -> class 属性必须经 escapeHtmlAttr', () => {
+            expect(RENDERERS_SRC).toMatch(/bamboo-card \$\{HTMLUtils\.escapeHtmlAttr\(period\.period/);
         });
 
-        test('时段类型（class 属性）被约束，不产生注入', () => {
-            const el = render({ period: PAYLOAD, name: '正常' });
-            expect(el.querySelector('img')).toBeNull();
+        test('period.name -> 文本必须经 escapeHtml', () => {
+            expect(RENDERERS_SRC).toMatch(/bamboo-name">\$\{escapeHtml\(period\.name/);
         });
     });
 

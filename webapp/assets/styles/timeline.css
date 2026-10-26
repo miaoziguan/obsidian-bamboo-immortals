@@ -1225,21 +1225,6 @@
 
 
 
-.bamboo-eval.bad {
-    background: rgba(var(--danger-rgb), 0.12);
-    color: var(--cinnabar);
-    border: 1px solid rgba(var(--danger-rgb), 0.3);
-}
-
-
-
-
-
-:host(.dark) .bamboo-eval.bad {
-    color: rgba(var(--danger-bright-rgb), 0.85);
-    background: rgba(var(--danger-rgb), 0.2);
-    border-color: rgba(var(--danger-rgb), 0.4);
-}
 
 /* 暗色模式：抬头元素用亮绿，与深色玻璃底色区分 */
 :host(.dark) .bamboo-icon {

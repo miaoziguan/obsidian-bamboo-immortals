@@ -89,7 +89,7 @@ describe('helpers.parseTime（产在用：renderers.js:245）', () => {
     });
 });
 
-describe('helpers.calculateCheckInTimes（产在用：renderers.js:480 + timeline/editor.js:50/179/196）', () => {
+describe('helpers.calculateCheckInTimes（产在用：renderers.js:480（原 timeline/editor.js 引用随死代码删除））', () => {
     let h;
 
     beforeEach(() => {

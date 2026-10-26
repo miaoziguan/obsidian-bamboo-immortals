@@ -601,33 +601,6 @@ button, .btn, .date-nav-btn, .edit-btn, .view-toggle-btn, .history-close, .modal
 .diagnosis-card strong { font-weight: 600; }
 
 /* ========== 行动卡片 ========== */
-.action-card {
-    background: var(--card-bg);
-    border-radius: var(--radius-xl);
-    margin: var(--space-4) 0;
-    overflow: clip; /* 允许 tooltip/focus ring 溢出 */
-    border: 1px solid var(--border-light);
-    transition: transform, opacity, box-shadow, border-color, background-color 0.3s ease;
-}
-.action-card:hover { box-shadow: 0 4px 20px rgba(var(--primary-rgb), 0.1); }
-.action-header-bar {
-    padding: var(--space-2) var(--space-4);
-    font-size: var(--type-base);
-    font-weight: 600;
-    color: var(--white);
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    background: var(--action-bg);
-}
-.action-diagnosis {
-    padding: var(--space-3) var(--space-4);
-    background: rgba(var(--primary-rgb), 0.1);
-    font-size: var(--type-base);
-    color: var(--text-secondary);
-    border-bottom: 1px solid rgba(var(--primary-rgb), 0.08);
-}
-.action-normal-zone { padding: var(--space-3) var(--space-4); }
 .normal-row {
     display: flex;
     margin-bottom: var(--space-2);
@@ -638,11 +611,6 @@ button, .btn, .date-nav-btn, .edit-btn, .view-toggle-btn, .history-close, .modal
 .normal-row:last-child { margin-bottom: 0; }
 .normal-label { width: 80px; min-width: 60px; color: var(--text-secondary); flex-shrink: 1; font-weight: 500; }
 .normal-content { color: var(--text-primary); flex: 1; min-width: 0; word-break: break-word; }
-.action-focus-zone {
-    padding: var(--space-3) var(--space-4);
-    background: rgba(var(--primary-rgb), 0.08);
-    border-top: 1px solid rgba(var(--primary-rgb), 0.08);
-}
 .focus-box {
     border-radius: var(--radius-md);
     padding: var(--space-3);

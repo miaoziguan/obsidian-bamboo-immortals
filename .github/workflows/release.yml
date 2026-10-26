@@ -50,6 +50,14 @@ jobs:
       - name: Check window globals (全局挂载点清单未漂移)
         run: node scripts/check-window-globals.mjs
 
+      # 死代码闸门（防再次堆积）：docs/dead-css-candidates.md / docs/dead-exports.md 的自动生成区块
+      # 必须与源码一致。任何新增的「未评审死 CSS 类」或「零消费者运行时导出」都会触发漂移而阻断发布。
+      - name: Check dead CSS candidates (死 CSS 清单未漂移)
+        run: node scripts/check-dead-css.mjs
+
+      - name: Check dead exports (零消费者导出清单未漂移)
+        run: node scripts/check-dead-exports.mjs
+
       # Obsidian 官方 Source review 规则的本地闸门（3.32.0 被退回 1 Error + 1 Warning 后落地）：
       # 禁止屏蔽 no-console / disable 必须带 -- 描述 / 禁止硬编码 .obsidian
       - name: Check Obsidian review rules (审核规则本地自检)

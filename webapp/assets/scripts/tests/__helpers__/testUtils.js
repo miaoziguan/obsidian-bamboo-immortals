@@ -58,7 +58,12 @@ function loadModule(relativePath, bindings, globals = {}) {
             _loadedModules.add(abs);
             try {
                 loadModule(path.relative(SCRIPTS_DIR, abs).split(path.sep).join('/'), [], globals);
-            } catch (_) { /* 依赖加载失败不影响主模块求值 */ }
+            } catch (e) {
+                // 依赖加载失败：此前静默吞掉，会残留「全 0 覆盖率」条目且无任何告警，
+                // 使 B 类（0 执行）判定失真（死代码审计已证实此伪影）。这里显式告警，
+                // 便于发现「被递归加载但从未求值」的依赖。
+                console.warn(`[testUtils] 依赖加载失败（不影响主模块求值）: ${path.relative(SCRIPTS_DIR, abs)} -> ${e && e.message ? e.message : e}`);
+            }
         }
     }
 

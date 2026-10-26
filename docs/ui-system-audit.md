@@ -201,4 +201,44 @@ tw-card-resize ×15 · goal-row ×14 · market-card ×14 · tw-mm-node ×14
 1. **原子层级分类是关键词启发式**，426 个未分类，只能当初筛，不能当结论，需人工校正。
 2. **静态计数无法区分**「写死一处」与「模板内复用 100 次」，故「一次性样式」是**上界**。
 3. 硬编码处数按 px 出现次数计，与声明数口径不同（圆角 105 vs 46、字号 94 vs 86）。
-4. R1（穿透 shadow DOM 的视觉回归基线）尚未建立，目前**无客观视觉基线**，后续任何视觉改动都无法自动验证。
+4. R1 视觉回归基线已建立（见 §7），但**仅覆盖 `app.html` 外壳**的 4 个主题态；`scroll`/`archive` 与各面板需注入种子数据后才能纳入。
+
+---
+
+## 7. 视觉回归基线（R1）
+
+### 关键实现要点
+
+- webapp 用 `attachShadow(open)`，**整套 UI 在 shadow 内** → 对 iframe / DOM 外层截图只会得到空白，必须穿透 `shadowRoot`（`window.__bambooShadowRoot`）。
+- `app.html` 是自包含产物（内联 CSS+JS），可 `file://` 直开独立渲染；仅存储桥接不可用（控制台一条 `Failed to load from storage`，无害，不影响样式）。
+- 主题切换即在 shadow host（`.bamboo-shadow-host`）上加 `dark` / `privacy-on` 类，与生产 `:host(.dark)` / `:host(.privacy-on)` 机制**完全一致**。
+- 截图用 `reducedMotion: 'reduce'` 抑制动画，保证可复现。
+
+### 基线清单（`docs/ui-baseline/`）
+
+| 文件 | 状态 |
+|---|---|
+| `app-light.png` | 亮色（默认） |
+| `app-dark.png` | 暗色（`host.dark`） |
+| `app-privacy.png` | 隐私模糊（`host.privacy-on`） |
+| `app-dark-privacy.png` | 暗色 + 隐私 |
+
+### 基线本身暴露的现状（有价值的一手观察）
+
+- **每日箴言按主题分流**：亮色「繁华有憔悴，堂上生荆杞」/ 暗色「俯仰自得，游心太玄」——不是同一份文案，说明存在按明暗切换的文案表。
+- 暗色画布是**浅色竹纹 + 暖色日轮**压在深竹背景上，属于「反相纸张」设计，不是简单变暗。
+- 隐私态是整体高斯模糊，**UI 骨架（尺寸/布局）不变**。
+
+### 未覆盖（诚实声明）
+
+- `scroll.html`（画中卷三模式）与 `archive.html` 在无数据时近乎空白（仅页面圆点），需先注入种子文档。
+- FAB 展开 / `display-panel` / `modal-panel` 的内容由 `moduleManager` 等依宿主数据动态生成，独立运行时为空，截图与 light 态相同 → 面板级基线待二阶段（注入种子数据）。
+
+### 复现
+
+```bash
+# playwright 体积大且会触发浏览器下载，故不列入项目依赖，避免 CI 的 npm ci 拉浏览器
+npm --prefix /tmp/uirig i playwright@1.49.1   # Node 18 需 ≤1.49；1.64 起要求 Node 20
+BAMBOO_REPO=<repo 根> cp scripts/ui-visual-baseline.mjs /tmp/uirig/
+(cd /tmp/uirig && node ui-visual-baseline.mjs)
+```

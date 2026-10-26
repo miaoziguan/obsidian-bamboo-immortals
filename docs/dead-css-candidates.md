@@ -28,7 +28,7 @@ CSS 类名是模块/主题扩展 API 的天然契约面：外部主题、外部�
 | `status` | 10 | **建议删（整簇真死）** | `status-*` 无任 class 令牌（注意：状态徽标若真需保留须在源码补 class 引用，否则视为残留） |
 | `verify` | 7 | **建议删（整簇真死）** | `verify-*` 全分区 0 → 疑似已移除校验 UI |
 | `habit` | 6 | **建议删（整簇真死）** | `habit-*` 全分区 0 |
-| `edit` | 6 | **建议删（整簇真死）** | `edit-*` 全分区 0 |
+| `edit` | 6 | **✅ 已删除**（commit 见下） | `edit-*` 全分区 0 且全仓 classList/className/模板无动态引用；已从 `components-interaction.css`/`forms.css`/`base.css` 移除 6 条死规则（含共享选择器列表中的 `.edit-btn` 与 `@keyframes slideDownFromTop`），保留异名活规则 `.catm-edit-btn`/`.card-edit-hint`/`.goal-inline-edit-hint` |
 | `action` | 5 | **✅ 已删除**（commit f0f03cf） | `action-*` 全分区 0；已从 `components-interaction.css` 移除 5 条死规则，保留同区段活规则 `.normal-row`/`.normal-label`/`.normal-content`/`.focus-box` |
 | `theme-guide` | (theme 内) | **建议删（子簇真死）** | `theme-guide*` 全 0；theme 簇整体 MIXED |
 
@@ -65,6 +65,7 @@ CSS 类名是模块/主题扩展 API 的天然契约面：外部主题、外部�
 - **变量 ≠ 类名**：`cs-` 命中 89 处实是 `var(--cs-*)`，类名本身仍死——切忌把 CSS 变量引用当类名使用。
 - **前缀拼接陷阱**：`week-`/`kpi-` 为 0 是「整簇真死」；而 `goal-`/`sm-`/`gho-` 虽前缀大量出现，但活的是**其它具体类名**，死的是**特定旧名**——必须用 AUTO-GENERATED 的逐类名清单删，不能整簇删。
 - **打包 html 含 CSS 定义**：`kpi-card` 在打包 `<style>` 内出现 2 次是 CSS 定义本身，非使用；已用「剥离 `<style>` 后计数」区分。
+- **动态赋类盲区（classList / className / 模板）**：本清单初版只比对 `class="x"` / `className='x'` 字面量令牌，会漏掉通过 `el.classList.add('x')` / `el.className = '…x…'` / `` class=`…${x}…` `` 施加的类。状态类（`edit-mode-active` 等）尤其危险。删除前必须**全仓（含产物 html / host TS）用边界正则 `(?<![-\w])x(?![-\w])` 复核**，确认无动态引用。已执行的 `action`/`edit` 簇均通过此复核。
 
 ---
 
@@ -75,7 +76,7 @@ CSS 类名是模块/主题扩展 API 的天然契约面：外部主题、外部�
 > 扫描：定义 `webapp/assets/styles/**/*.css`；使用 `webapp/assets/scripts/**/*.js`(排除 tests) + `webapp/*src*.html`/`index.html`（刻意排除 4 个打包产物 html，避免把 CSS 定义当使用）。
 > 误判防护：十六进制颜色值过滤；动态拼接类名（`prefix`+n）移至「疑似动态」列，不计入判定。
 
-**确认死类名：611　疑似动态（已剔除）：3　死 ID 选择器：3**
+**确认死类名：602　疑似动态（已剔除）：3　死 ID 选择器：3**
 
 ### 按首段聚类（确认死类名）
 
@@ -105,7 +106,6 @@ CSS 类名是模块/主题扩展 API 的天然契约面：外部主题、外部�
 | `todo` | 7 | `todo-item-text`, `todo-item-action`, `todo-item-row`, `todo-item-name`, `todo-item-hint`, `todo-section-title`, … |
 | `verify` | 7 | `verify-list`, `verify-item`, `verify-badge`, `verify-content`, `verify-title`, `verify-detail`, … |
 | `btn` | 6 | `btn-sm`, `btn-primary`, `btn-secondary`, `btn-outline`, `btn-danger`, `btn-success` |
-| `edit` | 6 | `edit-btn`, `edit-mode-bar`, `edit-mode-bar-text`, `edit-mode-bar-close`, `edit-mode-active`, `edit-hint` |
 | `empty` | 6 | `empty-state`, `empty-state-text`, `empty-state-btn`, `empty-icon`, `empty-text`, `empty-desc` |
 | `habit` | 6 | `habit-progress-fill`, `habit-actions`, `habit-btn`, `habit-btn-complete`, `habit-btn-reset`, `habit-btn-manage` |
 | `time` | 6 | `time-alerts-grid`, `time-alert`, `time-span-item`, `time-alert-list`, `time-span-stats`, `time-input` |
@@ -134,7 +134,6 @@ CSS 类名是模块/主题扩展 API 的天然契约面：外部主题、外部�
 | `catm` | 2 | `catm-item-icon`, `catm-icon-input` |
 | `chart` | 2 | `chart-canvas`, `chart-container` |
 | `color` | 2 | `color-picker`, `color-option` |
-| `editable` | 2 | `editable-section`, `editable-title` |
 | `form` | 2 | `form-textarea`, `form-actions` |
 | `glow` | 2 | `glow-pulse`, `glow-pulse-fade` |
 | `has` | 2 | `has-advanced`, `has-pending` |
@@ -194,7 +193,6 @@ CSS 类名是模块/主题扩展 API 的天然契约面：外部主题、外部�
 | `shop` | 1 | `shop-currency` |
 | `shortcuts` | 1 | `shortcuts-list` |
 | `slideUp` | 1 | `slideUp` |
-| `small` | 1 | `small` |
 | `subtitle` | 1 | `subtitle` |
 | `swipe` | 1 | `swipe-hint` |
 | `text` | 1 | `text-block` |

@@ -243,30 +243,6 @@
     box-sizing: border-box;
 }
 
-/* ========== 通用编辑按钮 ========== */
-.edit-btn {
-    background: rgba(var(--primary-rgb), 0.1);
-    border: 1px solid var(--border-light);
-    border-radius: var(--radius-sm);
-    padding: var(--space-1) var(--space-3);
-    cursor: pointer;
-    font-size: var(--type-sm);
-    color: var(--bamboo-primary);
-    transition: transform, opacity, box-shadow, border-color, background-color var(--transition-normal);
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-1);
-    min-height: var(--min-touch-target);
-    min-width: var(--min-touch-target);
-}
-.edit-btn:hover { background: rgba(var(--primary-rgb), 0.2); transform: translateY(-1px); }
-.edit-btn:active { transform: var(--scale-click); }
-.edit-btn.small {
-    padding: var(--space-1) var(--space-2);
-    font-size: var(--type-xs);
-    min-height: var(--touch-target);
-    min-width: var(--touch-target);
-}
 
 /* ========== 触摸友好的通用类 ========== */
 .touch-target {

@@ -1,91 +1,3 @@
-/* ========== Edit Mode Bar ========== */
-.edit-mode-bar[hidden] {
-    display: none;
-}
-
-.edit-mode-bar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    z-index: var(--z-layer-tooltip);
-    background: linear-gradient(135deg, var(--bamboo-deep), var(--bamboo-primary));
-    color: var(--white);
-    /* 顶部安全区避让（iPhone 刘海屏），env() 为主、constant() 兼容旧 iOS */
-    padding-top: calc(var(--space-3) + env(safe-area-inset-top, constant(safe-area-inset-top, 0px)));
-    padding-right: var(--space-6);
-    padding-bottom: var(--space-3);
-    padding-left: var(--space-6);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--space-4);
-    box-shadow: 0 4px 20px rgba(var(--deep-rgb), 0.3);
-    animation: slideDownFromTop 0.3s ease;
-}
-@keyframes slideDownFromTop {
-    from { transform: translateY(-100%); }
-    to { transform: translateY(0); }
-}
-.edit-mode-bar-text {
-    font-weight: 600;
-}
-.edit-mode-bar-close {
-    background: rgba(var(--white-rgb), 0.2);
-    color: var(--white);
-    border: 1px solid rgba(var(--white-rgb), 0.3);
-    padding: var(--space-2) var(--space-3);
-    border-radius: var(--radius-md);
-    cursor: pointer;
-    font-weight: 600;
-    font-family: inherit;
-    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
-    min-height: var(--touch-target);
-    min-width: var(--touch-target);
-}
-.edit-mode-bar-close:hover {
-    background: rgba(var(--white-rgb), 0.3);
-}
-
-/* ========== 可编辑区域样式 ========== */
-.edit-mode-active .editable-section {
-    border: 2px dashed rgba(var(--primary-rgb), 0.3);
-    border-radius: var(--radius-lg);
-    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
-    position: relative;
-    padding: var(--space-2);
-    margin: calc(var(--space-2) * -1);
-}
-
-.edit-mode-active .editable-section::before {
-    content: '✏️ 点击编辑';
-    position: absolute;
-    top: calc(var(--space-3) * -1);
-    right: var(--space-2);
-    background: var(--bamboo-primary);
-    color: var(--white);
-    padding: var(--space-1) var(--space-3);
-    border-radius: var(--radius-md);
-    font-size: var(--type-xs);
-    font-weight: 600;
-}
-
-.edit-mode-active .editable-section:hover {
-    border-color: var(--bamboo-primary);
-    background: rgba(var(--primary-rgb), 0.08);
-}
-
-.edit-mode-active .editable-title {
-    border: 2px dashed rgba(var(--primary-rgb), 0.3);
-    border-radius: var(--radius-md);
-    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
-}
-
-.edit-mode-active .editable-title:hover {
-    border-color: var(--bamboo-primary);
-    background: rgba(var(--primary-rgb), 0.1);
-}
-
 
 /* ========== Keyboard Hint ========== */
 .keyboard-hint {
@@ -288,17 +200,6 @@
 .kpi-card:active { transform: var(--scale-click); }
 .kpi-card.editable { cursor: pointer; }
 .kpi-card.editable:hover { border-color: var(--bamboo-primary); }
-.kpi-card .edit-hint {
-    position: absolute;
-    bottom: 4px;
-    right: 8px;
-    font-size: var(--type-mini);
-    color: var(--bamboo-primary);
-    opacity: 0;
-    transition: opacity var(--transition-fast);
-    pointer-events: none;
-}
-.kpi-card.editable:hover .edit-hint { opacity: 0.8; }
 .card-edit-hint {
     position: absolute;
     top: 8px;
@@ -477,7 +378,7 @@
 
 /* ========== 触控区域优化 ========== */
 .touch-friendly,
-button, .btn, .date-nav-btn, .edit-btn, .view-toggle-btn, .history-close, .modal-close, .tooltip-close {
+button, .btn, .date-nav-btn, .view-toggle-btn, .history-close, .modal-close, .tooltip-close {
     min-height: var(--min-touch-target);
     min-width: var(--min-touch-target);
 }

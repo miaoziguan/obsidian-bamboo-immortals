@@ -84,7 +84,7 @@ CSS 类名是模块/主题扩展 API 的天然契约面：外部主题、外部�
 > 扫描：定义 `webapp/assets/styles/**/*.css`；使用 `webapp/assets/scripts/**/*.js`(排除 tests) + `webapp/*src*.html`/`index.html`（刻意排除 4 个打包产物 html，避免把 CSS 定义当使用）。
 > 误判防护：十六进制颜色值过滤；动态拼接类名（`prefix`+n）移至「疑似动态」列，不计入判定。
 
-**确认死类名：528　疑似动态（已剔除）：3　死 ID 选择器：3**
+**确认死类名：523　疑似动态（已剔除）：3　死 ID 选择器：3**
 
 ### 按首段聚类（确认死类名）
 
@@ -117,7 +117,6 @@ CSS 类名是模块/主题扩展 API 的天然契约面：外部主题、外部�
 | `stub` | 5 | `stub-back-title`, `stub-name`, `stub-caption`, `stub-value`, `stub-title-en` |
 | `ticket` | 5 | `ticket-sub-label`, `ticket-body-text`, `ticket-text`, `ticket-notch`, `ticket-pattern` |
 | `timeline` | 5 | `timeline-entry`, `timeline-stats-row`, `timeline-stat`, `timeline-stat-label`, `timeline-stat-value` |
-| `toast` | 5 | `toast-success`, `toast-error`, `toast-warning`, `toast-info`, `toast-loading` |
 | `arch` | 4 | `arch-date-input`, `arch-sep`, `arch-date-err`, `arch-select-progress` |
 | `icon` | 4 | `icon-option`, `icon-picker`, `icon-picker-sm`, `icon-option-sm` |
 | `keyboard` | 4 | `keyboard-hint`, `keyboard-hint-icon`, `keyboard-hint-text`, `keyboard-hint-close` |

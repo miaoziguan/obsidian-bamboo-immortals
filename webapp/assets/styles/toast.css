@@ -47,32 +47,6 @@
     border-radius: 50%;
 }
 
-.toast-success .toast-icon {
-    color: var(--status-success);
-    background: var(--status-success-bg);
-}
-
-.toast-error .toast-icon {
-    color: var(--status-danger);
-    background: var(--status-danger-bg);
-}
-
-.toast-warning .toast-icon {
-    color: var(--status-warning);
-    background: var(--status-warning-bg);
-}
-
-.toast-info .toast-icon {
-    color: var(--status-info);
-    background: var(--status-info-bg);
-}
-
-.toast-loading .toast-icon {
-    color: var(--bamboo-primary);
-    background: var(--status-success-bg);
-    animation: toast-spin 1s linear infinite;
-}
-
 @keyframes toast-spin {
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }

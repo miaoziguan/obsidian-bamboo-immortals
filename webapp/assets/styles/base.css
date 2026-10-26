@@ -810,11 +810,9 @@ textarea),
 .date-nav-btn,
 .view-toggle-btn,
 .wallet-action,
-.history-close,
 .modal-close,
 .tooltip-close,
 .kpi-card,
-.history-item,
 .empty-state-card,
 .expand-btn {
     min-height: var(--touch-target);

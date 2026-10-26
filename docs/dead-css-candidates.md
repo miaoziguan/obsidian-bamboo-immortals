@@ -24,7 +24,7 @@ CSS 类名是模块/主题扩展 API 的天然契约面：外部主题、外部�
 | `cs` | 5 | **建议删（类名真死）** | 源 JS 89 处 `cs-` 实为 `var(--cs-1..4)` **CSS 变量**；`cs-liantai/stone/yezi/mei/bianshan` 类名 0 引用 → incense 主题类名残留 |
 | `ai`（ai-wizard*） | 28 | **建议删（整簇真死）** | 全分区 0，含打包 html 非 style 处亦 0 → 疑似未实现 AI 向导 UI 残留 |
 | `achievement(s)` | 34 | **建议删（整簇真死）** | 源 JS 仅 4 处非 class 引用；无任何 `achievement-*` 类名使用 → 疑似已移除成就系统 UI |
-| `history` | 11 | **建议删（整簇真死）** | `history-*` 无任 class 令牌使用 → 疑似已移除历史视图 UI |
+| `history` | 11 | **✅ 已删除**（commit 见下） | `history-*` 全分区 0 且全仓 classList/className/模板无动态引用；已从 `components-interaction.css` 移除整块 11 条死规则（含嵌套 `.history-modal.active`/`.history-item.active`），并从 `components-interaction.css`/`base.css` 两处共享选择器列表移除 `.history-close`/`.history-item` |
 | `status` | 10 | **建议删（整簇真死）** | `status-*` 无任 class 令牌（注意：状态徽标若真需保留须在源码补 class 引用，否则视为残留） |
 | `verify` | 7 | **✅ 已删除**（commit 见下） | `verify-*` 全分区 0 且全仓 classList/className/模板无动态引用；已从 `components-interaction.css` 移除整块 7 条死规则（含嵌套 `.verify-item.ok/.warn`、`.verify-status.tag-execute/.tag-miss`） |
 | `habit` | 6 | **✅ 已删除**（commit 见下） | `habit-*` 全仓 classList/className/模板无动态引用；已从 `section-manager.css` 移除整块死规则、从 `forms.css` 暗色模式共享列表移除 `.habit-progress-fill` |
@@ -76,7 +76,7 @@ CSS 类名是模块/主题扩展 API 的天然契约面：外部主题、外部�
 > 扫描：定义 `webapp/assets/styles/**/*.css`；使用 `webapp/assets/scripts/**/*.js`(排除 tests) + `webapp/*src*.html`/`index.html`（刻意排除 4 个打包产物 html，避免把 CSS 定义当使用）。
 > 误判防护：十六进制颜色值过滤；动态拼接类名（`prefix`+n）移至「疑似动态」列，不计入判定。
 
-**确认死类名：587　疑似动态（已剔除）：3　死 ID 选择器：3**
+**确认死类名：576　疑似动态（已剔除）：3　死 ID 选择器：3**
 
 ### 按首段聚类（确认死类名）
 
@@ -96,7 +96,6 @@ CSS 类名是模块/主题扩展 API 的天然契约面：外部主题、外部�
 | `sm` | 13 | `sm-container`, `sm-section`, `sm-section-header`, `sm-count`, `sm-btn-edit`, `sm-btn-delete`, … |
 | `section` | 12 | `section-title`, `section-desc`, `section-toggle`, `section-settings-trigger`, `section-action-trigger`, `section-settings-btn-edit`, … |
 | `stats` | 12 | `stats-section-primary`, `stats-section-warning`, `stats-card-value`, `stats-grid`, `stats-modal`, `stats-header`, … |
-| `history` | 11 | `history-close`, `history-item`, `history-modal`, `history-content`, `history-header`, `history-title`, … |
 | `achievements` | 10 | `achievements-container`, `achievements-grid-full`, `achievements-summary-grid`, `achievements-empty-state`, `achievements-empty-icon`, `achievements-empty-title`, … |
 | `kpi` | 10 | `kpi-card`, `kpi-grid`, `kpi-icon`, `kpi-label`, `kpi-value`, `kpi-delta`, … |
 | `status` | 10 | `status-distribution-new`, `status-legend-new`, `status-distribution-vertical`, `status-legend-horizontal`, `status-distribution`, `status-pending`, … |

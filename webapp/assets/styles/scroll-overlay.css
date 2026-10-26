@@ -1,7 +1,10 @@
 /* === 画中卷功能选择浮层（悬浮菜单）— 从 base.css 抽出 === */
 /* 加载矩阵：index / scroll / archive 三视图均已 <link> 引入本文件；浮层由主视图
    handlers.js → ScrollFeaturePicker.open() 触发，主视图不可漏挂（否则浮层完全无样式）。
-   incense.css 仅提供 :host(.dark) 暗色覆盖，不替代本文件主定义。 */
+   香道／火折子／化雁／烟雾的样式由 incense.css 承载。
+   （2026-10-27：原注释称「incense.css 仅提供 :host(.dark) 暗色覆盖，不替代本文件主定义」
+   是不成立的——它其实有完整定义。本文件因此曾整块复制了一份，共 59 条逐字重复规则，
+   已按「同一规则只留一处」删除，并以 ui-scroll-fixture-diff 验证 11 状态×2 主题零差异。） */
 
 /* === 画中卷功能选择浮层（悬浮菜单点击「画中卷」后弹出）===
    功能选择发生在悬浮菜单侧；选定香道才打开画中卷视图。 */
@@ -158,7 +161,6 @@
     52% { opacity: 1; }
 }
 
-
 /* 番茄钟配色变量（青瓷竹节体系，供 SVG 引用）
    清理（R10 治理）：此处原重复定义了 --bamboo / --bamboo-deep / --ink / --ink-light / --jade。
      · --bamboo / --ink / --jade：全仓 var() 引用数为 0，系遗留死变量；
@@ -200,52 +202,20 @@
     user-select: none;
     -webkit-user-select: none;
 }
-.scroll-firebrand.lit {
-    opacity: 0;
-    pointer-events: none;
-    transform: translateY(20px);
-    animation: none;
-}
 .scroll-firebrand svg {
     width: 32px;
     height: 64px;
     display: block;
     filter: drop-shadow(0 3px 6px rgba(90,130,95,0.28));
 }
-/* 火绒：帽未开时藏起，拔帽后显火 */
-.scroll-firebrand .flame {
-    opacity: 0;
-    /* 关键：SVG <g> 的 transform-origin 默认按元素自身包围盒解析，
-       火焰盒仅约 10×23，24px 34px 会落到盒外 → rotate(45deg) 绕远处点旋转，
-       虽父级 -45deg 抵消了「旋转」却把火焰甩偏（看起来歪/不直）。
-       显式 view-box 让 24px 34px 落在 SVG 视口坐标（火焰根部），
-       +45deg 绕根部转、父级 -45deg 抵消后火焰竖直贴合筒口。 */
-    transform-box: view-box;
-    transform-origin: 24px 34px;
-    transform: scale(0.4);
-    transition: opacity var(--duration-normal) ease, transform var(--duration-normal) cubic-bezier(0.34, 1.56, 0.64, 1);
-    pointer-events: none;
-}
 /* 拔帽显火：火苗绕根部反向旋转 45°，抵消火折子 -45° 斜举，使火焰始终竖直向上（物理规律：热浮力使火苗朝正上方） */
 .scroll-firebrand.cap-off .flame {
     opacity: 1;
     transform: scale(1) rotate(45deg);
 }
-/* 火绒动效：火苗跳动 + 火星上飘，全部走 transform/opacity（合成属性）。
-   默认 paused —— 未拔帽时火绒完全不可见，原 SMIL 却在常驻播放，纯属空耗 CPU；
-   拔帽(.cap-off)后才真正运行。 */
-.scroll-firebrand .flame-outer, .scroll-firebrand .flame-inner {
-    transform-box: fill-box;
-    transform-origin: 50% 100%; /* 绕火焰根部跳动 */
-    animation-play-state: paused;
-}
 .scroll-firebrand .flame-outer { animation: scroll-flame-outer var(--duration-slower) ease-in-out infinite; }
 .scroll-firebrand .flame-inner { animation: scroll-flame-inner var(--duration-slow) ease-in-out infinite; }
 .scroll-firebrand .flame-spark { animation-play-state: paused; }
-/* 火星用 translateY 上飘，替代原 SMIL 的 cy 属性动画（后者每帧重算 SVG 几何） */
-.scroll-firebrand .spark-a { animation: scroll-spark-rise 1.2s ease-out infinite; }
-.scroll-firebrand .spark-b { animation: scroll-spark-rise 1.5s ease-out -var(--duration-normal) infinite; }
-.scroll-firebrand.cap-off .flame-outer, .scroll-firebrand.cap-off .flame-inner, .scroll-firebrand.cap-off .flame-spark { animation-play-state: running; }
 /* 火折子配色：随主体色相 + 明度联动（HSL 派生，与香插同源）。
    竹身/竹帽为青竹材质（色相约 +30 跟随主体），火苗为暖橙（色相约 -95/-75 跟随主体）。
    注意：此处 fill/stroke 一律由 CSS 施加。
@@ -268,22 +238,6 @@
   --fb-flame-inner: hsl(calc(var(--accent-hue) + -75), min(100%, calc(100% * var(--accent-saturation-ui, 1))), calc(70% + var(--accent-lightness-offset)));
   --fb-spark: hsl(calc(var(--accent-hue) + -84), min(100%, calc(100% * var(--accent-saturation-ui, 1))), calc(75% + var(--accent-lightness-offset)));
 }
-.scroll-firebrand .fb-body { stroke: var(--fb-bamboo-stroke); }
-.scroll-firebrand .fb-stroke { stroke: var(--fb-bamboo-stroke); }
-.scroll-firebrand .fb-top { fill: var(--fb-bamboo-top); }
-.scroll-firebrand .fb-cap-body { stroke: var(--fb-bamboo-stroke); }
-.scroll-firebrand .fb-cap-stroke { stroke: var(--fb-cap-knob-stroke); }
-.scroll-firebrand .fb-cap-edge { fill: var(--fb-cap-edge); }
-.scroll-firebrand .fb-cap-knob { fill: var(--fb-cap-knob); stroke: var(--fb-cap-knob-stroke); }
-.scroll-firebrand .flame-outer { fill: var(--fb-flame-outer); }
-.scroll-firebrand .flame-inner { fill: var(--fb-flame-inner); }
-.scroll-firebrand .flame-spark { fill: var(--fb-spark); }
-.scroll-firebrand #fbBamboo stop:nth-of-type(1) { stop-color: var(--fb-bamboo-1); }
-.scroll-firebrand #fbBamboo stop:nth-of-type(2) { stop-color: var(--fb-bamboo-2); }
-.scroll-firebrand #fbBamboo stop:nth-of-type(3) { stop-color: var(--fb-bamboo-3); }
-.scroll-firebrand #fbCap stop:nth-of-type(1) { stop-color: var(--fb-cap-1); }
-.scroll-firebrand #fbCap stop:nth-of-type(2) { stop-color: var(--fb-cap-2); }
-.scroll-firebrand #fbCap stop:nth-of-type(3) { stop-color: var(--fb-cap-3); }
 @keyframes scroll-flame-outer {
     0%, 100% { transform: scale(1) scaleX(1); }
     50%      { transform: scale(1.05) scaleX(0.92); }
@@ -302,27 +256,6 @@
     animation: none;
     transform: rotate(-45deg);
     transform-origin: 50% 65%;
-}
-/* 可拔竹帽：拔帽后飞出并消失，再次轻点盖回 */
-.scroll-firebrand-cap {
-    transform-box: fill-box;
-    transform-origin: center;
-    transition: transform var(--duration-normal) cubic-bezier(0.34, 1.3, 0.64, 1), opacity var(--duration-normal) ease;
-}
-.scroll-firebrand.cap-off .scroll-firebrand-cap {
-    transform: translateY(-26px) rotate(-10deg) scale(0.72);
-    opacity: 0;
-    pointer-events: none;
-}
-/* 拖拽靠近香头、可点燃时，火折子与香头高亮反馈 */
-.scroll-firebrand.near .flame {
-    filter: drop-shadow(0 0 4px rgba(255,160,80,0.7));
-}
-.scroll-incense.near .scroll-incense-ember { opacity: 1; }
-.scroll-incense.near .scroll-incense-ember span { animation-play-state: running; }
-@keyframes scroll-firebrand-idle {
-    0%, 100% { transform: translateY(0) rotate(-1deg); }
-    50% { transform: translateY(-3px) rotate(1deg); }
 }
 
 .scroll-screen-inner {
@@ -349,47 +282,9 @@
     align-items: center;
     --burn: 1;
 }
-/* 青烟：SVG 曲折烟缕，自燃烧点持续升腾（点燃后明显）；位置随燃烧前沿下移 */
-.scroll-incense-smoke {
-    position: absolute;
-    /* 位置改由 translateY 表达（合成属性），top 固定为基准值：
-       原用 top 跟随 --burn，每次写入都会触发一次重排与重绘。 */
-    top: 22px;
-    left: 50%;
-    transform: translateX(-50%) translateY(calc((1 - var(--burn)) * 560px));
-    width: 44px;
-    height: 150px;
-    z-index: 2;
-    pointer-events: none;
-    opacity: 0;
-    transition: transform var(--duration-slower) linear, opacity var(--duration-slower) ease;
-}
-.scroll-incense.is-lit .scroll-incense-smoke { opacity: 1; }
-.scroll-incense-smoke svg { width: 100%; height: 100%; overflow: visible; }
 /* 去掉 drop-shadow：烟缕在跑 drift 动画（transform），带滤镜会让每帧重新计算滤镜，
    这是点燃后长期运行中的一项持续开销。烟缕本身有描边色，去掉投影视觉几乎无差别。 */
 .scroll-smoke-wisp { fill: none; }
-/* 青烟：单股烟缕，靠「姿态变化 + 明暗起伏」两条合成动画叠加来模拟流动。
-   曾经的做法有两种代价更高的：逐帧改写 path 的 d（每帧重算并光栅化 SVG 几何，
-   无法进合成层），以及多股烟缕叠加（动画/合成层数成倍增加）。
-   现为单股：姿态（上飘 / 左右摆 / 扭动 / 纵向拉伸 / 微旋）与明暗两个周期互不同步
-   （7s 与 4.6s），叠加后不断产生新的姿态与浓度组合，形成边升边散的流动错觉，
-   而开销只是两个 transform/opacity 合成动画。默认 paused，仅点燃(.is-lit)后运行。 */
-.scroll-smoke-wisp {
-    transform-box: fill-box;
-    transform-origin: 50% 100%; /* 以靠近香头的烟缕底端为支点摆动 */
-    animation-play-state: paused;
-}
-.scroll-smoke-wisp.w1 {
-    --wisp-o: 0.62;
-    opacity: var(--wisp-o);
-    animation: scroll-smoke-drift 7s ease-in-out infinite alternate,
-               scroll-smoke-fade 4.6s ease-in-out infinite;
-}
-.scroll-incense.is-lit .scroll-smoke-wisp {
-    animation-play-state: running;
-    will-change: transform, opacity;
-}
 /* 姿态：7 个关键帧的连续变形——上飘的同时左右摆、扭腰、纵向拉伸并微微旋转，
    避免单股烟看起来是「一个固定姿势在平移」 */
 @keyframes scroll-smoke-drift {
@@ -406,34 +301,6 @@
     0%, 100% { opacity: calc(var(--wisp-o, 0.6) * 0.5); }
     50%      { opacity: var(--wisp-o, 0.6); }
 }
-/* 余烬（单个暗红闷烧点）：位置随燃烧前沿下移（top 跟随 --burn） */
-.scroll-incense-ember {
-    position: absolute;
-    /* 同上：跟随燃烧前沿的位移走 translateY（合成属性），top 固定为基准值。
-       余烬呼吸动画在内部 span 上，不占用本元素的 transform。 */
-    top: 22px;
-    left: 50%;
-    transform: translateX(-50%) translateY(calc((1 - var(--burn)) * 560px));
-    width: 16px;
-    height: 16px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    opacity: 0;
-    transition: transform var(--duration-slower) linear, opacity var(--duration-slow) ease;
-    z-index: 5;
-}
-.scroll-incense.is-lit .scroll-incense-ember { opacity: var(--burn, 1); }
-.scroll-incense-ember span { position: absolute; border-radius: 50%; }
-/* 点燃后归于静态暗红余烬：闷烧般呼吸（#4），明暗涨落 + 轻微胀缩，整体亮度随 --burn 淡出 */
-/* blur 固定而非逐帧动画：模糊半径每变化一次都要重新光栅化，是点燃后长期运行中最贵
-   的一项；改为固定模糊 + opacity/scale 呼吸，视觉几无差别。 */
-/* 余烬发光范围收小：核心点 8px→5px、模糊半径 2.5→1.6px，光晕扩散随之收窄，
-   暗红闷烧点更集中（模糊半径变小也顺带降低每帧光栅化的开销）。 */
-.ember-core { width: 5px;  height: 5px;  background: rgba(245,130,70,0.75); top: 50%; left: 50%; transform: translate(-50%,-50%); filter: blur(1.6px); }
-/* 呼吸动画只改 opacity（scale 已移除，以免 blur 每帧重栅格化），
-   故 will-change 也只声明 opacity，避免为用不到的 transform 额外提升合成层。 */
-.scroll-incense.is-lit .scroll-incense-ember span { animation: scroll-ember-breath 3.4s ease-in-out infinite; will-change: opacity; }
 /* 余烬呼吸只改 opacity、不再改 scale：余烬带固定 blur，缩放会迫使模糊每帧重新
    光栅化（点燃后长期运行中的一项隐性开销）。仅明暗涨落，视觉差异极小。 */
 @keyframes scroll-ember-sleep {
@@ -444,53 +311,10 @@
     0%, 100% { transform: translate(-50%,-50%); opacity: 0.45; }
     50%      { transform: translate(-50%,-50%); opacity: 0.8; }
 }
-/* 吹熄过渡（#7）：余烬暗灭、火光隐去、前沿焦褐带消散、青烟被吹散加速淡出，香身停在当前进度 */
-.scroll-incense.blowing .scroll-incense-ember, .scroll-incense.blowing .scroll-incense-flare, .scroll-incense.blowing .scroll-incense-transition {
-    /* 先 animation: none 停掉余烬/火光的 opacity 关键帧，再以普通声明压到 0：
-       动画的优先级高于普通声明，不停动画就得靠 !important 才能盖住。 */
-    animation: none;
-    opacity: 0;
-    transition: opacity var(--duration-slower) ease;
-}
-.scroll-incense.blowing .scroll-incense-ember span { animation: none; opacity: 0; }
-.scroll-incense.blowing .scroll-incense-smoke { opacity: 0; transition: opacity 1.1s ease; }
-.scroll-incense.blowing .scroll-smoke-wisp { animation-duration: 2.2s; }
-/* 点燃演化：大火光 → 微光闪烁 → 静态暗红余烬，青烟全程持续 */
-.scroll-incense-flare {
-    position: absolute;
-    top: calc(12px + (1 - var(--burn)) * 560px);
-    left: 50%;
-    transform: translateX(-50%);
-    width: 42px;
-    height: 48px;
-    border-radius: 50%;
-    background: radial-gradient(ellipse at center,
-        rgba(255,224,160,0.95) 0%,
-        rgba(255,176,86,0.72) 35%,
-        rgba(255,120,50,0.28) 60%,
-        transparent 76%);
-    /* 去掉 blur：光晕的柔和边缘由上面的 radial-gradient 本身提供；
-       flicker 动画含 scale，带模糊会迫使每帧重新光栅化。 */
-    opacity: 0;
-    pointer-events: none;
-    z-index: 6;
-    transition: top var(--duration-slower) linear, opacity var(--duration-slow) ease;
-}
-.scroll-incense.lighting .scroll-incense-flare { opacity: 1; animation: scroll-flare-flicker var(--duration-normal) ease-in-out infinite; }
-.scroll-incense.glowing .scroll-incense-flare { opacity: 0.5; animation: scroll-flare-flicker var(--duration-slower) ease-in-out infinite; }
 @keyframes scroll-flare-flicker {
     0%, 100% { opacity: 1;   transform: translateX(-50%) scale(1); }
     50%      { opacity: 0.72; transform: translateX(-50%) scale(1.1); }
 }
-/* 余烬阶段：lighting 强闪、glowing 微闪，最终（无阶段类）静态暗红闷烧 */
-.scroll-incense.lighting .scroll-incense-ember span { animation: scroll-ember-sleep var(--duration-slow) ease-in-out infinite; }
-.scroll-incense.glowing .scroll-incense-ember span { animation: scroll-ember-sleep 2.2s ease-in-out infinite; }
-/* 引燃衔接（#6）：火苗由大收敛吻上香头、余烬由小被点亮，避免点燃瞬间的跳变 */
-.scroll-incense.kissing .scroll-incense-flare {
-    opacity: 1;
-    animation: scroll-flare-kiss var(--duration-slower) cubic-bezier(.3,.7,.4,1);
-}
-.scroll-incense.kissing .scroll-incense-ember span { animation: scroll-ember-kindle var(--duration-slower) ease-out; }
 @keyframes scroll-flare-kiss {
     0%   { transform: translateX(-50%) scale(1.35); opacity: 0.35; }
     35%  { transform: translateX(-50%) scale(1.05); opacity: 1; }
@@ -501,101 +325,9 @@
     45%  { transform: translate(-50%,-50%) scale(1.15); opacity: 1; }
     100% { transform: translate(-50%,-50%) scale(1); opacity: 0.9; }
 }
-/* 线香：已燃(灰白)/过渡/未燃(暖木)，高度比由 --burn 驱动 */
-.scroll-incense-stick {
-    position: absolute;
-    top: 30px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 3px;
-    height: 560px;
-    border-radius: var(--radius-3xs);
-    overflow: hidden;
-    z-index: 3;
-}
-.scroll-incense-ash {
-    position: absolute;
-    top: calc(var(--ash-top, 0) * 100%);
-    left: 0; width: 100%;
-    /* 仅保留「最近一个 10 分钟段」内已燃的灰；更早的段已掉落（--ash-top 抬升） */
-    height: max(0px, calc((1 - var(--burn)) * 100% - var(--ash-top, 0) * 100%));
-    /* 香灰：灰白主体 + 细微颗粒/裂纹纹理，顶部刚燃过处略暗带余温。
-       颜色改为走变量：暗色模式下整体提亮偏白，否则深底上的灰段会糊成暗色一条。 */
-    --ash-1: rgba(146,138,128,0.9);
-    --ash-2: rgba(176,168,158,0.72);
-    --ash-3: rgba(198,192,184,0.62);
-    --ash-4: rgba(172,164,152,0.58);
-    --ash-tex-1: rgba(110,100,90,0.14);
-    --ash-tex-2: rgba(86,78,70,0.12);
-    background:
-        repeating-linear-gradient(180deg, var(--ash-tex-1) 0px, transparent 1px, transparent 3px, var(--ash-tex-2) 4px),
-        repeating-linear-gradient(90deg, rgba(var(--white-rgb), 0.10) 0px, transparent 2px, transparent 5px, rgba(120,110,100,0.10) 6px),
-        linear-gradient(180deg, var(--ash-1) 0%, var(--ash-2) 10%, var(--ash-3) 55%, var(--ash-4) 100%);
-    /* 色带与颗粒按「整支香」(560px) 定位，并随 --ash-top 上移：
-       本元素高度随 --ash-top / --burn 变化，若让渐变按元素自身高度铺开，
-       灰段伸缩时颜色分布会被反复重新压缩。固定成 560px + 反向偏移后，
-       颜色始终锚在整支香的绝对位置上，与原「整支香上裁一段」的观感一致。 */
-    background-size: 100% 560px;
-    background-position: 0 calc(var(--ash-top, 0) * -560px);
-    border-radius: var(--radius-1) var(--radius-1) 0 0;
-    box-shadow: inset 0 0 1px rgba(90,82,74,0.4);
-    transition: height var(--duration-slower) linear, top var(--duration-slower) linear;
-}
-/* 曾用 @supports + clip-path: inset() 走「整支香上裁剪出已燃区间」以规避 height/top 重排；
-   现统一退回 top/height 方案：元素仅 3px×560px、每 250ms 更新一次，重排代价可忽略，
-   换取零 clip-path 依赖（caniuse 对该属性的「部分支持」标记会持续告警且无法豁免）。 */
-/* 暗色模式：香灰整体提亮偏白，深底上更清晰；颗粒纹理也换成浅色，
-   避免深色颗粒在浅灰底上变成脏点。 */
-:host(.dark) .scroll-incense-ash {
-    --ash-1: rgba(226,222,214,0.92);
-    --ash-2: rgba(238,234,226,0.8);
-    --ash-3: rgba(248,245,238,0.7);
-    --ash-4: rgba(232,228,220,0.66);
-    --ash-tex-1: rgba(var(--white-rgb), 0.16);
-    --ash-tex-2: rgba(240,236,228,0.14);
-}
-/* 随风化雁的全部样式（含 @keyframes scroll-goose-flap）统一放在 incense.css。
-   此处原有一份逐字重复的副本，2026-10-27 去重删除 —— 否则改一处漏一处
-   （本次修暗色提亮时就必须改两遍，正是隐患的实证）。 */
-.scroll-incense { overflow: visible; } /* 确保大雁飞出香身不被裁切（#8） */
-.scroll-incense-transition {
-    position: absolute;
-    left: 0; width: 100%;
-    top: calc((1 - var(--burn)) * 100%);
-    height: 6%;
-    /* 燃烧前沿：暗红余烬 → 焦褐，体现正在燃烧的位置 */
-    background: linear-gradient(180deg, rgba(150,70,42,0.6), rgba(150,118,92,0.42) 70%, rgba(140,115,90,0.18));
-    transition: top var(--duration-slower) linear;
-}
-/* 燃烧前沿轻微跳动（#5）：火舌舔舐前沿，opacity 起伏 + 高度微胀，避免过渡带静止呆板 */
-.scroll-incense.is-lit .scroll-incense-transition {
-    transform-origin: 50% 0%;
-    animation: scroll-front-flicker var(--duration-slower) ease-in-out infinite;
-    will-change: opacity, transform;
-}
 @keyframes scroll-front-flicker {
     0%, 100% { opacity: 0.9;  transform: scaleY(1); }
     50%      { opacity: 1;    transform: scaleY(1.18); }
-}
-.scroll-incense-unburnt {
-    position: absolute;
-    bottom: 0; left: 0; width: 100%;
-    height: calc(var(--burn) * 100%);
-    background: linear-gradient(180deg, rgba(148,118,88,0.85) 0%, rgba(135,105,75,0.9) 30%, rgba(125,98,70,0.85) 60%, rgba(118,92,65,0.9) 100%);
-    /* 同 .scroll-incense-ash：把渐变锚在整支香（560px）上，元素底边固定、
-       高度随 --burn 收缩时，颜色不会被重新压缩。顶边即燃点位置 (1 - --burn)。 */
-    background-size: 100% 560px;
-    background-position: 0 calc((1 - var(--burn)) * -560px);
-    border-radius: 0 0 var(--radius-3xs) var(--radius-3xs);
-    transition: height var(--duration-slower) linear;
-}
-/* 此处同样不再使用 clip-path（理由同 .scroll-incense-ash）。 */
-.scroll-incense-texture {
-    position: absolute;
-    inset: 0;
-    opacity: 0.15;
-    background: repeating-linear-gradient(180deg, transparent 0px, rgba(80,60,40,0.1) 1px, transparent 2px, transparent 6px);
-    pointer-events: none;
 }
 /* 青瓷竹节香插（SVG 渲染，见 DOM） */
 .scroll-censer {
@@ -607,6 +339,3 @@
     height: 80px;
     z-index: 4;
 }
-/* 仅莲台（花瓣应在香后、花心在香前遮香根）取消容器层叠上下文，
-   让两层 SVG 与线香直接比较层级；其余款式保持容器整体在香前、孔透香。 */
-.scroll-censer.cs-liantai { z-index: auto; }

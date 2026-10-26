@@ -469,7 +469,11 @@
 .scroll-wild-goose svg { width: 100%; height: 100%; overflow: visible; display: block; transform-origin: 50% 50%; }
 /* 雁身填充：亮色下为深灰褐（如远处剪影）；暗色模式提亮为浅色，
    否则深底上的深色雁几乎不可见（化雁看不清）。 */
+/* ⚠️ 2026-10-27 修正：此前 fill 写死在 scrollManager.js 的 SVG 字符串里，
+   导致上面承诺的"暗色提亮"从未生效（暗底上的深色雁确实几乎不可见）。
+   现改为 JS 不写 fill、统一由 CSS 施加。 */
 .scroll-wild-goose { --goose-fill: rgba(86,80,74,0.82); }
+.scroll-wild-goose svg path { fill: var(--goose-fill); }
 
 /* 暗色模式：填充提亮到近乎实心，并把雁身放大一号（26×14 → 32×18），
    配合 JS 里更缓的缩小与更晚的淡出，让雁在深底上全程可辨。
@@ -479,7 +483,11 @@
     width: 32px;
     height: 18px;
     margin-left: -16px;
+    /* 提亮填充：深褐雁压在深底上几乎不可见（本块注释早已承诺，此前因 fill 硬编码而未生效） */
+    --goose-fill: rgba(186, 182, 172, 0.88);
 }
+/* 再给雁身描一圈淡白边把轮廓加粗，让它在深底上更跳（同为注释承诺、此前未实现） */
+:host(.dark) .scroll-wild-goose svg path { stroke: rgba(var(--white-rgb), 0.28); stroke-width: 0.5; }
 /* 再给雁身描一圈白边把轮廓加粗，让它在深底上更跳。
    这里刻意不用 filter 做发光：滤镜会随振翅动画每帧重算，代价高于加粗描边。 */
 /* 扇翅：双翼随振翅轻微上下压扁，赋予远去大雁生命感（#2） */

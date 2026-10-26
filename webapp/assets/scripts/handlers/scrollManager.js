@@ -478,10 +478,11 @@ const ScrollManager = {
     const goose = document.createElement('div');
     goose.className = 'scroll-wild-goose';
     goose.style.top = frontY + 'px';
+    // 雁身 fill 不再写死在此处：由 CSS `.scroll-wild-goose svg path { fill: var(--goose-fill) }`
+    // 施加，暗色模式才能通过 --goose-fill 提亮（此前硬编码导致暗底上雁几乎不可见）。
     goose.innerHTML =
       '<svg viewBox="0 0 26 14" fill="none">' +
-      '<path d="M13 10 Q7 2 1 5 Q6 6.5 13 10 Q20 2 25 5 Q19 6.5 13 10 Z" ' +
-      'fill="rgba(86,80,74,0.82)"/></svg>';
+      '<path d="M13 10 Q7 2 1 5 Q6 6.5 13 10 Q20 2 25 5 Q19 6.5 13 10 Z"/></svg>';
     incense.appendChild(goose);
 
     // 化雁声效：一片雁飘落配一声缥缈雁鸣；节流避免后台补算多段时连响成片

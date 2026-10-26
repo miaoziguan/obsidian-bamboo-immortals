@@ -505,7 +505,7 @@
     border-radius: var(--radius-sm);
     flex: 1;
     min-width: 130px;
-    transition: border-color var(--duration-instant), background var(--duration-instant), box-shadow var(--duration-instant);
+    transition: background var(--duration-instant);
 }
 .arch-filter-search:focus-within {
     background: rgba(var(--white-rgb), 0.85);
@@ -560,12 +560,11 @@
     border: 1px solid var(--border-light);
     border-radius: var(--radius-sm);
     flex-shrink: 0;
-    transition: border-color var(--duration-instant), background var(--duration-instant), box-shadow var(--duration-instant);
+    transition: background var(--duration-instant);
 }
 .arch-filter-field:focus-within {
+    /* 同 .arch-filter-search：仅提亮背景，不画"激活框" */
     background: rgba(var(--white-rgb), 0.85);
-    border-color: var(--bamboo-primary);
-    box-shadow: 0 0 0 2px rgba(var(--bamboo-primary-rgb, 62, 179, 112), 0.1);
 }
 .arch-filter-field svg {
     color: var(--text-tertiary);

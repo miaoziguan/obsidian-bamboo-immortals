@@ -1526,7 +1526,7 @@
     background: rgba(var(--surface-dark-rgb, 20, 30, 24), 0.3);
 }
 :host(.dark) .arch-filter-search:focus-within {
-    border-color: rgba(var(--primary-rgb), 0.5);
+    /* 与亮色一致：只提亮背景，不画激活框 */
     background: rgba(var(--surface-dark-rgb, 20, 30, 24), 0.5);
 }
 
@@ -1539,7 +1539,7 @@
     background: rgba(var(--surface-dark-rgb, 20, 30, 24), 0.55);
 }
 :host(.dark) .arch-filter-field:focus-within {
-    border-color: rgba(var(--primary-rgb), 0.5);
+    /* 与亮色一致：只提亮背景，不画激活框 */
     background: rgba(var(--surface-dark-rgb, 20, 30, 24), 0.75);
 }
 :host(.dark) .arch-date-trigger:hover {

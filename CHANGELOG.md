@@ -1,5 +1,24 @@
 # Changelog
 
+## [3.32.5] — 2026-10-27
+
+> 死代码系统性清理收官（JS 与 CSS 全线），并修掉「开启 AI 但 Key 为空」时只报看不懂 401 的体验问题。
+
+### Changed
+- **死代码闸门 + JS 死代码删除**：新增死代码检测闸门，并删除确认无引用的 JS 死代码
+  （`appendToRoot` / `fallbackQuestion`）与 `action` / `edit` / `verify` / `history` / `status` /
+  `week` 六个真死簇（特性级整块删除，含补删遗漏的 habit CSS）。
+- **CSS 死类清理（四批，共约 230 个死类名）**：`scripts/delete-dead-css.py` 升级为
+  「保守模式 + 受控激进模式」，死类名总数由 506 降至 29，净删 CSS 约 2300 行。
+  安全护栏：含活类的规则永不删、`:host/:root` 全局变量块零误删、动态拼接类名族
+  （`cs-*` / `icon-*` 等）经全前缀扫描排除、零活类被孤立。
+
+### Fixed
+- **AI 入口空凭据不再报 cryptic 401**：原先只校验「启用 AI」开关，若开启但未填
+  API Key / Base URL，请求会带着空 `Authorization` 打到服务端，最终只弹出
+  `Request failed, status 401`，无法判断缺什么。现新增统一校验，缺 Key / 缺 Base URL
+  分别给出明确提示，覆盖 AI 规划、AI 澄清、AI 诊断等 9 个入口。
+
 ## [3.32.4] — 2026-10-26
 
 > 修复第二次源码审核退回的 6 个 Warning —— 并把教训落成闸门，防止同类问题复发。

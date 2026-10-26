@@ -106,12 +106,6 @@
   flex-direction: column;
 }
 /* 香道功能根：接管原单栏布局，撑满舞台 */
-.scroll-incense-feature {
-    flex: 1;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-}
 .scroll-incense-feature > .scroll-body {
     flex: 1;
     min-height: 0;

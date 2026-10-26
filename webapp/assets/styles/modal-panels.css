@@ -74,7 +74,9 @@
     100% { transform: scale(1); }
 }
 
-@media (max-width: 480px)     {
+@media (max-width: 480px)       {
+
+
 
 
 
@@ -86,7 +88,9 @@
     }
 }
 
-@media (max-width: 768px)     {
+@media (max-width: 768px)       {
+
+
 
 
 
@@ -190,7 +194,9 @@
     to { transform: rotate(360deg); }
 }
 /* 系统关掉动效时改用慢速旋转而非静止：静止会丢失「正在刷新」这层反馈 */
-@media (prefers-reduced-motion: reduce)     {
+@media (prefers-reduced-motion: reduce)       {
+
+
 
 
 
@@ -671,7 +677,9 @@
     border-color: rgba(var(--border-dark-rgb, 60, 70, 60), 0.3);
 }
 
-@media (max-width: 480px)     {
+@media (max-width: 480px)       {
+
+
 
 
 
@@ -682,19 +690,16 @@
     }
 
     /* 主题动效选择面板：6 列 → 4 列，避免窄屏畸形窄条 */
-    .theme-panel-grid {
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-    }
 }
 
-@media (max-width: 360px)     {
+@media (max-width: 360px)       {
 
 
 
 
-    .theme-panel-grid {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
+
+
+    
     /* 白噪音类型：4 列 → 3 列，文字加省略号防溢出 */
     .wn-type-grid {
         grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -924,7 +929,9 @@
 }
 
 /* 小屏幕适配 */
-@media (max-width: 360px)     {
+@media (max-width: 360px)       {
+
+
 
 
 
@@ -950,35 +957,10 @@
 /* ========== 编辑器模态框样式 ========== */
 
 /* ========== 主题动效选择面板 ========== */
-.theme-panel-grid {
-    display: grid;
-    grid-template-columns: repeat(6, 1fr);
-    gap: 6px;
-    padding: 4px 0;
-}
 
-.theme-panel-card {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 3px;
-    padding: 6px 4px;
-    border: 1.5px solid var(--border-light);
-    background: var(--btn-secondary-bg);
-    border-radius: var(--radius-md);
-    cursor: pointer;
-    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
-    min-height: var(--touch-target);
-    position: relative;
-}
 
-.theme-panel-card:hover {
-    background: var(--btn-secondary-hover);
-    border-color: var(--bamboo-primary);
-    transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(var(--primary-rgb), 0.1);
-}
+
+
 
 .theme-panel-card.active {
     background: rgba(var(--primary-rgb), 0.1);
@@ -986,35 +968,13 @@
     box-shadow: 0 0 0 1px var(--bamboo-primary);
 }
 
-.theme-panel-card-name {
-    font-size: var(--type-sm);
-    font-weight: 600;
-    color: var(--text-primary);
-    letter-spacing: 0.5px;
-}
+
 
 /* 待加载（仅清单已登记、代码未拉取）的外部主题：视觉上略淡 + 角标提示 */
-.theme-panel-card.theme-unloaded {
-    opacity: 0.62;
-    border-style: dashed;
-}
 
-.theme-panel-card.theme-unloaded:hover {
-    opacity: 0.85;
-}
 
-.theme-panel-card-badge {
-    position: absolute;
-    top: -6px;
-    right: -4px;
-    font-size: var(--type-mini);
-    line-height: 1;
-    padding: 2px 4px;
-    border-radius: var(--radius-2xs);
-    background: var(--bamboo-primary);
-    color: var(--white);
-    opacity: 0.85;
-}
+
+
 
 /* 「专享」徽章：license 含「专享」时显示，琥珀色突出稀缺感；排于主题名下方、居中 */
 .theme-exclusive-badge {
@@ -1133,10 +1093,7 @@
     color: var(--text-normal);
 }
 
-.theme-panel-card.theme-loading {
-    opacity: 0.7;
-    cursor: progress;
-}
+
 
 /* 主题颜色微调区 */
 .theme-panel-tune {
@@ -1367,150 +1324,41 @@
 }
 
 /* 主题面板底部帮助入口 */
-.theme-panel-help {
-    margin-top: 12px;
-    padding-top: 10px;
-    border-top: 1px solid var(--border-light);
-}
 
-.theme-panel-help-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-    padding: 8px 0;
-    min-height: var(--touch-target);
-    border: none;
-    background: transparent;
-    color: var(--text-tertiary);
-    font-size: var(--type-xs);
-    cursor: pointer;
-    border-radius: var(--radius-sm);
-    transition: transform, opacity, box-shadow, border-color, background-color var(--transition-fast);
-}
 
-.theme-panel-help-btn:hover {
-    color: var(--bamboo-primary);
-    background: rgba(var(--primary-rgb), 0.06);
-}
+
+
 
 /* 主题开发指南面板 */
-.theme-guide {
-    font-size: var(--type-sm);
-    line-height: 1.7;
-    color: var(--text-secondary);
-}
 
-.theme-guide-section {
-    margin-bottom: var(--space-4);
-}
 
-.theme-guide-section h3 {
-    font-size: var(--type-sm);
-    font-weight: 700;
-    color: var(--text-primary);
-    margin: 0 0 8px;
-}
 
-.theme-guide-section p {
-    margin: 0 0 6px;
-}
 
-.theme-guide-section code {
-    font-size: var(--type-xs);
-    background: rgba(var(--primary-rgb), 0.08);
-    padding: 1px 5px;
-    border-radius: var(--radius-3);
-    color: var(--bamboo-primary);
-    font-family: 'SF Mono', 'Monaco', 'Menlo', monospace;
-}
 
-.theme-guide-section pre {
-    background: rgba(var(--primary-rgb), 0.04);
-    border: 1px solid var(--border-light);
-    border-radius: var(--radius-sm);
-    padding: var(--space-3);
-    overflow-x: auto;
-    margin: 8px 0;
-}
 
-.theme-guide-section pre code {
-    background: none;
-    padding: 0;
-    color: var(--text-secondary);
-    font-size: var(--type-xs);
-    line-height: 1.6;
-    white-space: pre-wrap;
-    word-break: break-all;
-}
 
-.theme-guide-section a {
-    color: var(--bamboo-primary);
-    text-decoration: none;
-}
 
-.theme-guide-section a:hover {
-    text-decoration: underline;
-}
+
+
+
+
+
+
+
+
 
 /* AI 辅助创建入口 */
-.theme-guide-ai-bar {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    margin-bottom: 16px;
-    padding: 14px 16px;
-    border-radius: var(--radius-md);
-    background: linear-gradient(135deg,
-        rgba(var(--primary-rgb), 0.08),
-        rgba(var(--primary-rgb), 0.04));
-    border: 1px solid rgba(var(--primary-rgb), 0.12);
-}
 
-.theme-guide-ai-btn {
-    flex-shrink: 0;
-    padding: 8px 16px;
-    border: none;
-    border-radius: var(--radius-sm);
-    background: var(--bamboo-primary, hsl(var(--accent-hue), min(100%, calc(35% * var(--accent-saturation-ui, 1))), 45%));
-    color: var(--white);
-    font-size: var(--type-sm);
-    font-weight: 600;
-    cursor: pointer;
-    transition: opacity var(--transition-fast), transform var(--transition-fast);
-}
 
-.theme-guide-ai-btn:hover {
-    opacity: 0.88;
-    transform: scale(1.02);
-}
 
-.theme-guide-ai-hint {
-    color: var(--text-tertiary);
-    font-size: var(--type-xs);
-    line-height: 1.4;
-}
+
+
+
 
 /* 平台变量表 */
-.theme-guide-var-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin: 8px 0;
-    font-size: var(--type-xs);
-}
-.theme-guide-var-table th, .theme-guide-var-table td {
-    padding: 6px 8px;
-    border: 1px solid var(--border-light);
-    text-align: left;
-}
-.theme-guide-var-table th {
-    background: rgba(var(--primary-rgb), 0.06);
-    font-weight: 600;
-    color: var(--text-primary);
-}
-.theme-guide-var-table td code {
-    white-space: nowrap;
-}
+
+
+
 
 /* AI 向导 */
 .ai-wizard {

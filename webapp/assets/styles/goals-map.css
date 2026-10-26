@@ -353,7 +353,9 @@
 }
 
 /* At wide widths (≥769px), keep .goal-row-title single-line and fully flexible */
-@media (min-width: 769px)     {
+@media (min-width: 769px)       {
+
+
 
 
 
@@ -514,13 +516,7 @@ input[type="number"].goal-inline-edit-input {
 .goal-item-status.goal-item-status-paused {
     color: var(--text-secondary);
 }
-.goal-item-status-icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-size: var(--type-mini);
-    flex-shrink: 0;
-}
+
 .goal-item-status-icon.complete {
     color: var(--bamboo-success);
 }
@@ -531,20 +527,8 @@ input[type="number"].goal-inline-edit-input {
     background: rgba(var(--primary-rgb), 0.1);
     border-color: rgba(var(--primary-rgb), 0.2);
 }
-.goal-item-edit-btn {
-    opacity: 0;
-    background: none;
-    border: none;
-    cursor: pointer;
-    font-size: var(--type-sm);
-    padding: 2px 6px;
-    border-radius: var(--radius-4);
-    transition: transform, opacity, box-shadow, border-color, background-color 0.2s;
-    flex-shrink: 0;
-}
-.goal-item-edit-btn:hover {
-    background: rgba(var(--primary-rgb), 0.15);
-}
+
+
 .highlight-subitem {
     animation: highlightPulse 1s ease-in-out 3;
     background: rgba(var(--primary-rgb), 0.1);
@@ -572,15 +556,7 @@ input[type="number"].goal-inline-edit-input {
     border-radius: var(--radius-2xs);
     border: 1px solid transparent;
 }
-.goal-item-detail {
-    font-size: var(--type-micro);
-    color: var(--text-secondary);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    flex-shrink: 1;
-    min-width: 0;
-}
+
 .goal-item-value {
     display: flex;
     align-items: center;
@@ -645,12 +621,7 @@ input[type="number"].goal-inline-edit-input {
     align-items: center;
     justify-content: flex-end;
 }
-.goal-progress-display {
-    font-size: var(--type-sm);
-    font-weight: 600;
-    color: var(--bamboo-primary);
-    padding: 6px 0;
-}
+
 .goal-row.goal-complete {
     border-color: rgba(var(--primary-rgb), 0.3);
     background: rgba(var(--primary-rgb), 0.04);
@@ -724,24 +695,11 @@ input[type="number"].goal-inline-edit-input {
     color: var(--bamboo-primary);
     font-weight: 600;
 }
-.goal-row-edit-btn {
-    background: none;
-    border: none;
-    cursor: pointer;
-    font-size: var(--type-md);
-    padding: 4px 6px;
-    border-radius: var(--radius-2xs);
-    opacity: 0;
-    transition: opacity 0.2s, background 0.2s;
-    flex-shrink: 0;
-}
+
 .goal-row:hover .goal-row-edit-btn {
     opacity: 0.6;
 }
-.goal-row-edit-btn:hover {
-    opacity: 1;
-    background: rgba(var(--primary-rgb), 0.1);
-}
+
 .goal-row-actions {
     display: flex;
     align-items: center;
@@ -924,48 +882,12 @@ input[type="number"].goal-inline-edit-input {
 .goal-item-date:hover {
     opacity: 0.8;
 }
-.goal-inline-date-row {
-    align-items: center;
-}
-.goal-inline-date-sep {
-    color: var(--text-secondary);
-    font-size: var(--type-sm);
-    flex-shrink: 0;
-}
-.goal-inline-date-display {
-    display: inline-flex;
-    align-items: center;
-    padding: 4px 10px;
-    border: 1px solid var(--border-light);
-    border-radius: var(--radius-sm);
-    background: var(--bamboo-background);
-    font-size: var(--type-sm);
-    color: var(--text-primary);
-    cursor: pointer;
-    transition: transform, opacity, box-shadow, border-color, background-color 0.2s;
-    min-height: 28px;
-    gap: var(--space-1);
-}
-.goal-inline-date-display:hover {
-    border-color: var(--bamboo-primary);
-    color: var(--bamboo-primary);
-    background: rgba(var(--teal-rgb), 0.06);
-}
-.goal-inline-days-badge {
-    display: inline-flex;
-    align-items: center;
-    color: var(--bamboo-primary);
-    font-size: var(--type-micro);
-    font-weight: 700;
-    white-space: nowrap;
-    flex-shrink: 0;
-}
-.goal-inline-sub-date {
-    width: 110px;
-    flex: 0 0 110px;
-    font-size: var(--type-micro);
-    padding: 6px 8px;
-}
+
+
+
+
+
+
 .goal-editor-v2 .goal-item-value {
     font-size: var(--type-micro);
     font-weight: 600;
@@ -1012,45 +934,13 @@ input[type="number"].goal-inline-edit-input {
     color: var(--bamboo-error);
     background: rgba(var(--danger-rgb), 0.1);
 }
-.goal-inline-sub-start-value, .goal-inline-sub-target-value, .goal-inline-sub-current-value {
-    width: 75px;
-    flex: 0 0 75px;
-    text-align: center;
-    font-size: var(--type-micro);
-}
-.goal-inline-sub-target-value {
-    width: 80px;
-    flex: 0 0 80px;
-}
-.goal-inline-sub-current-value {
-    width: 70px;
-    flex: 0 0 70px;
-}
-.goal-inline-sub-value-sep {
-    color: var(--text-secondary);
-    font-size: var(--type-micro);
-}
-.goal-inline-sub-daily-min {
-    width: 90px;
-    flex: 0 0 90px;
-    text-align: center;
-    font-size: var(--type-micro);
-}
-.goal-inline-suggested {
-    font-size: var(--type-micro);
-    padding: 3px 8px;
-    border-radius: var(--radius-xs);
-    background: rgba(var(--info-blue-rgb), 0.1);
-    color: rgb(var(--info-blue-rgb));
-    white-space: nowrap;
-    cursor: pointer;
-    transition: transform, opacity, box-shadow, border-color, background-color 0.2s;
-    user-select: none;
-}
-.goal-inline-suggested:hover {
-    background: rgba(var(--info-blue-rgb), 0.2);
-    color: #1a73e8;
-}
+
+
+
+
+
+
+
 
 /* 分类选择器 */
 .category-picker {
@@ -1362,143 +1252,60 @@ input[type="number"].goal-inline-edit-input {
 .catm-done-btn:hover {
     filter: brightness(1.1);
 }
-.goal-deadline {
-    font-size: var(--type-micro);
-    padding: 1px 6px;
-    border-radius: var(--radius-xs);
-    background: rgba(var(--primary-rgb), 0.08);
-    color: var(--text-secondary);
-    white-space: nowrap;
-    flex-shrink: 0;
-}
-.goal-deadline-overdue {
-    background: rgba(var(--danger-rgb), 0.12);
-    color: var(--cinnabar);
-    font-weight: 600;
-}
-.goal-deadline-today {
-    background: rgba(var(--warning-orange-rgb), 0.12);
-    color: var(--bamboo-warning);
-    font-weight: 600;
-}
-.goal-deadline-soon {
-    background: rgba(var(--warning-orange-rgb), 0.08);
-    color: var(--bamboo-warning);
-}
+
+
+
+
 .item-card.dragging {
     opacity: 0.5;
     transform: scale(0.98);
 }
 
 /* ========== 子项目紧凑卡片样式 ========== */
-.goal-inline-subitem-mini {
-    display: flex;
-    align-items: center;
-    padding: var(--space-2) var(--space-3);
-    margin-bottom: var(--space-1);
-    background: rgba(var(--primary-rgb), 0.03);
-    border-radius: var(--radius-sm);
-    border: 1px solid transparent;
-    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
-}
 
-.goal-inline-subitem-mini:hover {
-    background: rgba(var(--primary-rgb), 0.08);
-    border-color: var(--bamboo-border);
-}
 
-.goal-item-name-mini {
-    flex: 1;
-    font-size: var(--type-sm);
-    color: var(--text-secondary);
-}
 
-.goal-item-value-mini {
-    font-size: var(--type-micro);
-    color: var(--bamboo-primary);
-    margin-right: 8px;
-    font-weight: 500;
-}
 
-.goal-item-daily-mini {
-    font-size: var(--type-xs);
-    color: var(--bamboo-warning);
-    white-space: nowrap;
-    cursor: pointer;
-    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
-    font-weight: 600;
-    flex-shrink: 0;
-    margin-right: var(--space-2);
-}
+
+
+
+
 
 .goal-item-daily-mini.goal-item-daily-complete {
     color: var(--bamboo-primary);
 }
 
-.goal-item-progress-mini {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    width: 100px;
-}
 
-.goal-item-bar-mini {
-    flex: 1;
-    height: 4px;
-    background: var(--bamboo-border);
-    border-radius: var(--radius-3xs);
-    overflow: hidden;
-}
 
-.goal-item-bar-fill-mini {
-    height: 100%;
-    background: var(--bamboo-primary);
-    border-radius: var(--radius-3xs);
-    transition: width 0.3s ease;
-}
+
+
+
 
 .goal-item-bar-fill-mini.goal-item-bar-complete {
     background: var(--bamboo-success);
 }
 
-.goal-item-percent-mini {
-    font-size: var(--type-mini);
-    color: var(--text-muted);
-    min-width: 30px;
-    text-align: right;
-}
+
 
 /* ============================================================
    响应式 — 目标地图子项目/内联编辑
    Canonical breakpoints: 480px / 768px
    ============================================================ */
 
-@media (max-width: 768px)     {
+@media (max-width: 768px)       {
+
+
 
 
 
 
     /* 子项目紧凑卡片：窄屏下允许换行，避免固定宽度撑出滚动条 */
-    .goal-inline-subitem-mini {
-        flex-wrap: wrap;
-        gap: var(--space-2);
-    }
 
-    .goal-item-name-mini {
-        min-width: 0;
-    }
+    
 
-    .goal-item-progress-mini {
-        width: 100%;
-        margin-top: var(--space-1);
-    }
+    
 
     /* 行内编辑固定宽度字段：改为弹性收缩，配合 flex-wrap */
-    .goal-inline-sub-date, .goal-inline-sub-start-value, .goal-inline-sub-target-value, .goal-inline-sub-current-value, .goal-inline-sub-daily-min {
-        flex: 1 1 auto;
-        width: auto;
-        min-width: 0;
-    }
 
     /* 子项目元数据行：压缩间距，必须换行时让剩余天数徽章靠右 */
     .goal-item-meta {
@@ -1519,18 +1326,16 @@ input[type="number"].goal-inline-edit-input {
     }
 }
 
-@media (max-width: 480px)     {
+@media (max-width: 480px)       {
 
 
 
 
-    .goal-inline-subitem-mini {
-        padding: var(--space-2);
-    }
 
-    .goal-item-progress-mini {
-        gap: var(--space-1);
-    }
+
+    
+
+    
 }
 
 /* ==========================================================
@@ -1540,7 +1345,7 @@ input[type="number"].goal-inline-edit-input {
     min-height: var(--touch-target);
 }
 
-.goal-row-header, .goal-item-edit-btn, .goal-item-name, .completed-items-toggle, .goal-row-edit-btn, .goal-inline-add-btn, .goal-inline-date-display, .goal-inline-suggested, .goal-item-daily-mini, .catp-item, .catp-manage-btn, .catm-inline-input, .catm-input, .catm-add-btn, .catm-done-btn, .goal-item-date, .goal-item-daily, .goal-date-range {
+.goal-row-header, .goal-item-name, .completed-items-toggle, .goal-inline-add-btn, .catp-item, .catp-manage-btn, .catm-inline-input, .catm-input, .catm-add-btn, .catm-done-btn, .goal-item-date, .goal-item-daily, .goal-date-range {
     min-height: var(--touch-target);
 }
 

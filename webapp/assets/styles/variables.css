@@ -740,7 +740,9 @@
 :host {
     --viewport-height: 100vh;
 }
-@supports (height: 100dvh)     {
+@supports (height: 100dvh)       {
+
+
 
 
 
@@ -755,7 +757,9 @@
    ============================================================ */
 
 /* prefers-contrast: high-contrast mode — ensure text stays readable */
-@media (prefers-contrast: more)     {
+@media (prefers-contrast: more)       {
+
+
 
 
 

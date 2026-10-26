@@ -60,6 +60,8 @@ CSS 类名是模块/主题扩展 API 的天然契约面：外部主题、外部�
 > **✅ MIXED 首批 9 小簇已执行**（badge/tooltip/view/weather/confirm/category/catm/tier/btn）：共删 17 个精确死名（按首段聚类过滤）。执行工具 `scripts/delete-dead-css.py`（注释感知括号扫描 + 安全处理 `:is()/:where()` 分组：仅剔死参、保留活参；顶层直接死类才整体删；`@keyframes`/`@font-face` 原样保留）。关键安全核验：① 全改动 diff 净删除的类**全部属于死名集合、零活类误删**；② 隐私模式 `:host(.privacy-on) :is(...)` 分组仅剔 `.weather-text`、活成员全部保留；③ 解包 4 产物 html 死名 `.name` 选择器精确 0；④ `npm run preflight` 全绿、webapp jest 121 套件 / host vitest 全绿（`process_css` 重建器首字符复制 bug 已修复，曾致 31 测试失败）。
 >
 > **✅ MIXED 第二批 15 簇已执行**（settings/template/legend/sm/priority/section/stats/alert/todo/completed/time/empty/bm/arch/gho）：经保守模式工具删 93 个精确死名（范围 145，余 ~52 为「死类与活类复合纠缠」规则被保守保留）。工具升级为**保守模式**——顶层选择器只要含任一活类令牌（或 `:is()/:where()` 剔死参后仍有活参）即**整体保留**（死类令牌一并保留、绝不剥落/扩大）；仅当「零活类令牌」或「无 `.class` 令牌的结构性选择器」(`:host`/`:root`/`body`/`*`) 才保留时才删除。关键安全核验：① `:host,:root` 全局变量块**零误删**（曾因「无 .class 即当死」bug 被整体删除，已修）；② 曾误删的 4 个活类 `.urgent/.error/.danger/.count` 全部保留；③ 全改动 diff 净删除类全属死名集合、零活类误删；④ 解包产物死名选择器 0、括号平衡、无 `,,`/`:is((` 伪影；⑤ webapp jest 121 套件 / host vitest 57 文件全绿。
+>
+> **✅ MIXED 第三批 4 簇已执行**（goal/scroll/theme/bamboo）：保守模式工具删 ~120 个精确死名（范围 167，余 ~47 为「死类与活类复合纠缠」规则被保守保留），涉及 56 个 css 文件、478 规则块。安全核验：① diff 零 `.urgent/.error/.danger/.count` 删除行（活类规则完整保留）；② 全改动 diff 净删除类全属死名集合、零活类误删；③ `:host,:root` 全局块零误删；④ 解包产物死名选择器 0、括号平衡、无伪影；⑤ webapp jest 121 套件 / host vitest 57 文件全绿。至此 **MIXED 簇（非纠缠型特性）已全部执行完毕**，仅余 `kpi/cs/ai/achievement` 4 个「死类与活类深度纠缠」特性簇，按协议留作**功能下线决策**（需先确认对应 UI 是否已废弃，再整体 takedown 其死类）。
 
 #### 单名死类长尾（无连字符）—— ✅ 已全部执行完毕（commit 见下）
 
@@ -88,22 +90,20 @@ CSS 类名是模块/主题扩展 API 的天然契约面：外部主题、外部�
 > 扫描：定义 `webapp/assets/styles/**/*.css`；使用 `webapp/assets/scripts/**/*.js`(排除 tests) + `webapp/*src*.html`/`index.html`（刻意排除 4 个打包产物 html，避免把 CSS 定义当使用）。
 > 误判防护：十六进制颜色值过滤；动态拼接类名（`prefix`+n）移至「疑似动态」列，不计入判定。
 
-**确认死类名：413　疑似动态（已剔除）：3　死 ID 选择器：3**
+**确认死类名：293　疑似动态（已剔除）：3　死 ID 选择器：3**
 
 ### 按首段聚类（确认死类名）
 
 | 前缀簇 | 数量 | 样例 |
 |---|---|---|
-| `goal` | 126 | `goal-title`, `goal-text`, `goal-row-meta-empty`, `goal-action-cancel`, `goal-action-btn`, `goal-editor-v2`, … |
+| `goal` | 34 | `goal-row-meta-empty`, `goal-action-cancel`, `goal-action-btn`, `goal-item-card`, `goal-item-bar-fill-mini`, `goal-item-expand-btn`, … |
 | `ai` | 28 | `ai-wizard`, `ai-wizard-steps`, `ai-wizard-dot`, `ai-wizard-line`, `ai-wizard-body`, `ai-wizard-label`, … |
 | `achievement` | 24 | `achievement-icon-wrapper`, `achievement-icon-wrapper-horizontal`, `achievement-card-full`, `achievement-icon-wrapper-full`, `achievement-content-full`, `achievement-title-full`, … |
-| `scroll` | 14 | `scroll-note-title`, `scroll-note-meta`, `scroll-notes-empty`, `scroll-top-btn`, `scroll-incense-feature`, `scroll-btn`, … |
-| `theme` | 14 | `theme-panel-grid`, `theme-panel-card`, `theme-panel-card-name`, `theme-unloaded`, `theme-panel-card-badge`, `theme-loading`, … |
-| `bamboo` | 13 | `bamboo-controls`, `bamboo-garden-btn`, `bamboo-garden-section`, `bamboo-progress-fill`, `bamboo-progress-minimal`, `bamboo-progress-main`, … |
 | `priority` | 11 | `priority-card`, `priority-indicator`, `priority-value`, `priority-grid`, `priority-cards`, `priority-card-new`, … |
 | `achievements` | 10 | `achievements-container`, `achievements-grid-full`, `achievements-summary-grid`, `achievements-empty-state`, `achievements-empty-icon`, `achievements-empty-title`, … |
 | `kpi` | 10 | `kpi-card`, `kpi-grid`, `kpi-icon`, `kpi-label`, `kpi-value`, `kpi-delta`, … |
 | `legend` | 8 | `legend-item-new`, `legend-dot-new`, `legend-value-new`, `legend-item-horizontal`, `legend-dot-horizontal`, `legend-value-horizontal`, … |
+| `scroll` | 8 | `scroll-top-btn`, `scroll-incense-feature`, `scroll-btn`, `scroll-btn-primary`, `scroll-timer`, `scroll-feature-bar`, … |
 | `stats` | 6 | `stats-section-primary`, `stats-section-warning`, `stats-card-value`, `stats-grid`, `stats-modal`, `stats-period-btn` |
 | `cs` | 5 | `cs-liantai`, `cs-stone`, `cs-bianshan`, `cs-yezi`, `cs-mei` |
 | `gho` | 5 | `gho-stat-today`, `gho-svg-bg`, `gho-hero-inner`, `gho-hero-ring`, `gho-hero-score` |
@@ -112,6 +112,7 @@ CSS 类名是模块/主题扩展 API 的天然契约面：外部主题、外部�
 | `timeline` | 5 | `timeline-entry`, `timeline-stats-row`, `timeline-stat`, `timeline-stat-label`, `timeline-stat-value` |
 | `alert` | 4 | `alert-icon-wrapper`, `alert-item`, `alert-days`, `alert-badge` |
 | `arch` | 4 | `arch-date-input`, `arch-sep`, `arch-date-err`, `arch-select-progress` |
+| `bamboo` | 4 | `bamboo-garden-btn`, `bamboo-progress-fill`, `bamboo-glow-subtle`, `bamboo-eval` |
 | `completed` | 4 | `completed-item`, `completed-icon`, `completed-title`, `completed-more` |
 | `icon` | 4 | `icon-option`, `icon-picker`, `icon-picker-sm`, `icon-option-sm` |
 | `keyboard` | 4 | `keyboard-hint`, `keyboard-hint-icon`, `keyboard-hint-text`, `keyboard-hint-close` |
@@ -176,6 +177,7 @@ CSS 类名是模块/主题扩展 API 的天然契约面：外部主题、外部�
 | `swipe` | 1 | `swipe-hint` |
 | `template` | 1 | `template-tab` |
 | `text` | 1 | `text-block` |
+| `theme` | 1 | `theme-panel-card` |
 | `urgent` | 1 | `urgent` |
 | `wallet` | 1 | `wallet-action` |
 

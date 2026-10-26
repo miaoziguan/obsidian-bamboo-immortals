@@ -2,232 +2,66 @@
 
 /* 编辑器容器 */
 /* ========== 紧凑版目标编辑器 ========== */
-.goal-editor-v2 {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-    padding: var(--space-3);
-    max-height: 85vh;
-    overflow-y: auto;
-}
 
 /* 基本信息区 - 紧凑 */
-.goal-editor-section.goal-editor-basic {
-    padding: var(--space-2);
-}
 
-.goal-editor-header-row {
-    display: flex;
-    align-items: flex-start;
-    gap: var(--space-2);
-    position: relative;
-}
 
-.goal-icon-picker-compact {
-    width: 40px;
-    height: 40px;
-    border: 2px solid;
-    border-radius: var(--radius-sm);
-    font-size: var(--type-large);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
-    flex-shrink: 0;
-}
 
-.goal-icon-picker-compact:hover {
-    opacity: 0.85;
-}
 
-.goal-header-fields {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-}
 
-.goal-field-title-compact {
-    width: 100%;
-    padding: var(--space-1) var(--space-2);
-    border: 1px solid var(--bamboo-border);
-    border-radius: var(--radius-sm);
-    background: var(--bamboo-background);
-    font-size: var(--type-base);
-    font-weight: 600;
-    color: var(--text-primary);
-}
 
-.goal-field-title-compact:focus {
-    outline: none;
-    border-color: var(--bamboo-primary);
-}
 
-.goal-field-title-compact:focus-visible {
-    outline: none;
-    border-color: var(--bamboo-primary);
-    box-shadow: var(--focus-ring);
-}
 
-.goal-header-meta-row {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    flex-wrap: wrap;
-}
 
-.goal-field-select-compact {
-    padding: var(--space-1);
-    border: 1px solid var(--bamboo-border);
-    border-radius: var(--radius-sm);
-    background: var(--bamboo-background);
-    font-size: var(--type-xs);
-    color: var(--text-primary);
-    cursor: pointer;
-}
 
-.goal-date-range-inline {
-    display: flex;
-    align-items: center;
-    gap: var(--space-1);
-}
 
-.goal-field-date-compact {
-    padding: var(--space-1);
-    border: 1px solid var(--bamboo-border);
-    border-radius: var(--radius-sm);
-    background: var(--bamboo-background);
-    font-size: var(--type-xs);
-    color: var(--text-primary);
-    width: 105px;
-}
 
-.goal-date-sep {
-    color: var(--text-secondary);
-    font-size: var(--type-xs);
-}
+
+
+
+
+
+
+
+
+
+
+
+
 
 /* 进度条 */
-.goal-progress-bar-row {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    padding: var(--space-1) 0;
-}
 
-.goal-progress-bar-row .goal-progress-track {
-    position: static;
-    transform: none;
-    flex: 1;
-    height: 6px;
-    background: var(--bamboo-border);
-    border-radius: var(--radius-3);
-    overflow: hidden;
-    pointer-events: auto;
-}
 
-.goal-progress-bar-row .goal-progress-fill {
-    height: 100%;
-    background: linear-gradient(90deg, var(--bamboo-primary), var(--bamboo-light));
-    border-radius: var(--radius-3);
-    transition: width 0.3s ease;
-}
 
-.goal-progress-num {
-    font-size: var(--type-sm);
-    font-weight: 600;
-    color: var(--bamboo-primary);
-    min-width: 36px;
-    text-align: right;
-}
 
-.goal-progress-status {
-    font-size: var(--type-xs);
-    color: var(--text-secondary);
-}
+
+
+
+
 
 /* 子项目区 */
-.goal-editor-section.goal-editor-items {
-    padding: var(--space-2);
-}
 
-.goal-items-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: var(--space-2);
-}
 
-.goal-items-count {
-    font-size: var(--type-sm);
-    color: var(--text-secondary);
-}
 
-.goal-add-item-btn-compact {
-    display: flex;
-    align-items: center;
-    gap: var(--space-1);
-    min-height: 32px;
-    padding: 4px var(--space-2);
-    border: 1px dashed var(--bamboo-primary);
-    border-radius: var(--radius-sm);
-    background: transparent;
-    color: var(--bamboo-primary);
-    font-size: var(--type-sm);
-    line-height: 1.4;
-    white-space: nowrap;
-    overflow: visible;
-    cursor: pointer;
-    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
-}
 
-.goal-add-item-btn-compact:hover {
-    background: rgba(var(--primary-rgb), 0.1);
-}
 
-.goal-items-list {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-}
+
+
+
+
+
 
 /* 操作按钮 */
-.goal-editor-actions-compact {
-    display: flex;
-    justify-content: flex-end;
-    gap: var(--space-2);
-    padding-top: var(--space-2);
-    border-top: 1px solid var(--bamboo-border);
-}
 
 /* ========== 子项目卡片 - 紧凑 ========== */
-.goal-editor-v2 .goal-item-card {
-    padding: var(--space-2);
-    background: var(--bamboo-card);
-    border: 1px solid var(--bamboo-border);
-    border-radius: var(--radius-md);
-    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
-}
 
-.goal-item-card:hover {
-    border-color: var(--bamboo-primary);
-}
+
 
 .goal-item-card.item-complete {
     opacity: 0.7;
 }
 
-.goal-item-header {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    cursor: pointer;
-    padding: var(--space-1);
-    margin: calc(-1 * var(--space-1));
-    border-radius: var(--radius-sm);
-}
+
 
 .goal-item-status {
     width: 20px;
@@ -250,62 +84,23 @@
     background: var(--bamboo-primary);
 }
 
-.goal-item-name-input {
-    flex: 1;
-    min-width: 0;
-    padding: var(--space-1);
-    border: 1px solid transparent;
-    border-radius: var(--radius-sm);
-    background: transparent;
-    font-size: var(--type-sm);
-    font-weight: 600;
-    color: var(--text-primary);
-}
 
-.goal-item-name-input:focus {
-    border-color: var(--bamboo-border);
-    background: var(--bamboo-background);
-}
 
-.goal-item-progress-mini {
-    display: flex;
-    align-items: center;
-    gap: var(--space-1);
-    min-width: 70px;
-}
 
-.goal-item-bar-mini {
-    flex: 1;
-    height: 4px;
-    background: var(--bamboo-border);
-    border-radius: var(--radius-3xs);
-    overflow: hidden;
-}
 
-.goal-item-bar-fill-mini {
-    height: 100%;
-    background: var(--bamboo-primary);
-    border-radius: var(--radius-3xs);
-    transition: width 0.3s ease;
-}
+
+
+
+
+
 
 .goal-item-bar-fill-mini.bar-complete {
     background: var(--bamboo-success);
 }
 
-.goal-item-percent-mini {
-    font-size: var(--type-xs);
-    color: var(--text-secondary);
-}
 
-.goal-item-status-select {
-    padding: 2px 6px;
-    border: 1px solid var(--bamboo-border);
-    border-radius: var(--radius-sm);
-    background: var(--bamboo-background);
-    font-size: var(--type-xs);
-    color: var(--text-primary);
-}
+
+
 
 .goal-item-delete-btn {
     width: 24px;
@@ -353,30 +148,13 @@
     border-color: var(--bamboo-primary);
 }
 
-.goal-item-expand-btn {
-    width: 24px;
-    height: 24px;
-    border: none;
-    border-radius: var(--radius-sm);
-    background: transparent;
-    font-size: var(--type-mini);
-    color: var(--text-secondary);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
+
 
 .goal-item-expand-btn.has-advanced {
     color: var(--bamboo-primary);
 }
 
 /* 卡片展开内容 */
-.goal-item-body {
-    margin-top: var(--space-2);
-    padding-top: var(--space-2);
-    border-top: 1px dashed var(--bamboo-border);
-}
 
 .goal-editor-items .goal-item-row {
     display: flex;
@@ -385,95 +163,48 @@
     margin-bottom: var(--space-1);
 }
 
-.goal-editor-items .goal-item-label {
-    font-size: var(--type-xs);
-    color: var(--text-secondary);
-    min-width: 36px;
-}
 
-.goal-item-input {
-    padding: var(--space-1);
-    border: 1px solid var(--bamboo-border);
-    border-radius: var(--radius-sm);
-    background: var(--bamboo-background);
-    font-size: var(--type-sm);
-    color: var(--text-primary);
-}
+
+
 
 .goal-item-percent {
     width: 50px;
     text-align: center;
 }
 
-.goal-item-suffix {
-    font-size: var(--type-xs);
-    color: var(--text-secondary);
-}
 
-.goal-item-dates {
-    flex-wrap: wrap;
-}
+
+
 
 .goal-editor-v2 .goal-item-date {
     width: 100px;
     font-size: var(--type-xs);
 }
 
-.goal-item-date-sep {
-    font-size: var(--type-xs);
-    color: var(--text-secondary);
-}
+
 
 /* 高级选项折叠 */
-.goal-item-advanced {
-    display: block;
-}
 
 .goal-item-advanced.collapsed {
     display: none;
 }
 
-.goal-value-group {
-    display: flex;
-    align-items: center;
-    gap: var(--space-1);
-    flex-wrap: wrap;
-}
 
-.goal-value-tag {
-    font-size: var(--type-xs);
-    color: var(--text-secondary);
-}
+
+
 
 .goal-item-value {
     width: 50px;
     font-size: var(--type-xs);
 }
 
-.goal-value-sep {
-    color: var(--text-secondary);
-    font-size: var(--type-xs);
-}
 
-.goal-item-daily-min {
-    width: 60px;
-    font-size: var(--type-xs);
-}
 
-.goal-item-taskday-select {
-    flex: 1;
-    font-size: var(--type-xs);
-}
 
-.goal-day-btn {
-    padding: 2px 6px;
-    border: 1px solid var(--bamboo-border);
-    border-radius: var(--radius-sm);
-    background: transparent;
-    font-size: var(--type-xs);
-    color: var(--text-secondary);
-    cursor: pointer;
-}
+
+
+
+
 
 .goal-day-btn.selected {
     background: var(--bamboo-primary);
@@ -482,25 +213,10 @@
 }
 
 /* 内联依赖按钮 */
-.goal-item-deps-inline {
-    margin-top: var(--space-1);
-}
 
-.goal-deps-inline-btns {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-1);
-}
 
-.goal-dep-inline-btn {
-    padding: 2px 8px;
-    border: 1px solid var(--bamboo-border);
-    border-radius: var(--radius-md);
-    background: transparent;
-    font-size: var(--type-xs);
-    color: var(--text-secondary);
-    cursor: pointer;
-}
+
+
 
 .goal-dep-inline-btn.selected {
     background: rgba(var(--primary-rgb), 0.2);
@@ -509,452 +225,141 @@
 }
 
 /* 空状态 */
-.goal-editor-v2 .goal-items-empty {
-    text-align: center;
-    padding: var(--space-4);
-}
 
-.goal-items-empty-icon {
-    color: var(--text-secondary);
-    opacity: 0.4;
-    margin-bottom: var(--space-1);
-}
 
-.goal-items-empty-text {
-    font-size: var(--type-sm);
-    color: var(--text-secondary);
-}
 
-.goal-items-empty-hint {
-    font-size: var(--type-xs);
-    color: var(--text-secondary);
-    opacity: 0.7;
-}
 
-.goal-status-indicator {
-    height: 8px;
-    border-radius: 50%;
-    background: var(--text-secondary);
-    transition: transform, opacity, box-shadow, border-color, background-color 0.3s ease;
-}
+
+
+
+
 
 /* 编辑器分区 */
-.goal-editor-section {
-    padding: var(--space-4);
-    background: var(--bamboo-background);
-    border-radius: var(--radius-lg);
-    border: 1px solid var(--bamboo-border);
-}
 
-.goal-editor-section-title {
-    font-size: var(--type-sm);
-    font-weight: 600;
-    color: var(--text-primary);
-    margin-bottom: var(--space-3);
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-}
+
 
 /* 图标选择器 */
-.goal-editor-icon-row {
-    position: relative;
-    margin-bottom: var(--space-3);
-}
 
-.goal-icon-picker {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    padding: var(--space-3);
-    border: 2px solid var(--bamboo-primary);
-    border-radius: var(--radius-md);
-    background: rgba(var(--primary-rgb), 0.08);
-    cursor: pointer;
-    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
-}
 
-.goal-icon-picker:hover {
-    background: rgba(var(--primary-rgb), 0.15);
-    transform: translateY(-1px);
-}
 
-.goal-icon-preview {
-    font-size: var(--type-hero);
-}
 
-.goal-icon-hint {
-    font-size: var(--type-sm);
-    color: var(--text-secondary);
-}
 
-.goal-icon-selector {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    margin-top: var(--space-2);
-    padding: var(--space-3);
-    background: var(--bamboo-card);
-    border: 1px solid var(--bamboo-border);
-    border-radius: var(--radius-card);
-    box-shadow: var(--shadow-elevated);
-    z-index: 10;
-}
 
-.goal-icon-grid {
-    display: grid;
-    grid-template-columns: repeat(10, 1fr);
-    gap: var(--space-2);
-}
 
-.goal-icon-option {
-    width: 40px;
-    height: 40px;
-    border: none;
-    border-radius: var(--radius-md);
-    background: var(--bamboo-background);
-    font-size: var(--type-heading);
-    cursor: pointer;
-    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
 
-.goal-icon-option:hover {
-    background: rgba(var(--primary-rgb), 0.15);
-    transform: scale(1.1);
-}
+
+
+
+
+
+
+
+
 
 /* 字段样式 */
-.goal-editor-field {
-    margin-bottom: var(--space-3);
-    position: relative;
-}
 
-.goal-editor-field:last-child {
-    margin-bottom: 0;
-}
 
-.goal-field-label {
-    display: block;
-    font-size: var(--type-sm);
-    font-weight: 600;
-    color: var(--text-primary);
-    margin-bottom: var(--space-2);
-}
 
-.goal-field-input {
-    width: 100%;
-    padding: var(--space-3);
-    border: 1px solid var(--bamboo-border);
-    border-radius: var(--radius-md);
-    background: var(--bamboo-background);
-    font-size: var(--type-base);
-    color: var(--text-primary);
-    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
-}
 
-.goal-field-input:focus {
-    outline: none;
-    border-color: var(--bamboo-primary);
-    box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.15);
-}
 
-.goal-field-input:focus-visible {
-    outline: none;
-    border-color: var(--bamboo-primary);
-    box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.15);
-}
 
-.goal-field-input::placeholder {
-    color: var(--text-secondary);
-    opacity: 0.6;
-}
 
-.goal-field-title {
-    font-size: var(--type-lg);
-    font-weight: 600;
-}
 
-.goal-field-textarea {
-    min-height: 80px;
-    resize: vertical;
-}
 
-.goal-field-select {
-    width: 100%;
-    padding: var(--space-3);
-    border: 1px solid var(--bamboo-border);
-    border-radius: var(--radius-md);
-    background: var(--bamboo-background);
-    font-size: var(--type-base);
-    color: var(--text-primary);
-    cursor: pointer;
-}
 
-.goal-field-select:focus {
-    outline: none;
-    border-color: var(--bamboo-primary);
-    box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.15);
-}
 
-.goal-field-select:focus-visible {
-    outline: none;
-    border-color: var(--bamboo-primary);
-    box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.15);
-}
 
-.goal-field-hint {
-    position: absolute;
-    right: var(--space-3);
-    bottom: var(--space-3);
-    font-size: var(--type-xs);
-    color: var(--text-secondary);
-}
+
+
+
+
+
+
+
+
+
+
+
+
 
 /* 日期范围 */
-.goal-editor-date-range {
-    display: flex;
-    flex-direction: column;
-}
 
-.goal-date-inputs {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-}
 
-.goal-field-date {
-    flex: 1;
-}
 
-.goal-date-separator {
-    color: var(--text-secondary);
-    font-size: var(--type-sm);
-}
 
-.goal-date-hint {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-1);
-    margin-top: var(--space-2);
-    padding: var(--space-1) var(--space-2);
-    background: rgba(var(--primary-rgb), 0.1);
-    border-radius: var(--radius-sm);
-    font-size: var(--type-xs);
-    color: var(--bamboo-primary);
-}
+
+
+
+
 
 /* 竹林主题进度展示 - 极简纯文字风格 */
-.bamboo-progress-minimal {
-    padding: var(--space-3) 0;
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-}
 
-.bamboo-progress-main {
-    display: flex;
-    align-items: baseline;
-    line-height: 1;
-}
 
-.bamboo-progress-num {
-    font-size: var(--type-mega);
-    font-weight: 200;
-    color: var(--bamboo-primary);
-    letter-spacing: -1px;
-    transition: color 0.3s ease;
-}
 
-.bamboo-progress-unit {
-    font-size: var(--type-md);
-    font-weight: 300;
-    color: var(--bamboo-primary);
-    opacity: 0.6;
-    margin-left: 2px;
-}
 
-.bamboo-progress-meta {
-    margin-top: var(--space-1);
-}
 
-.bamboo-progress-status {
-    font-size: var(--type-base);
-    font-weight: 400;
-    color: var(--text-secondary);
-    letter-spacing: 0.5px;
-}
 
-.bamboo-progress-detail {
-    font-size: var(--type-sm);
-    font-weight: 300;
-    color: var(--text-secondary);
-    opacity: 0.6;
-}
+
+
+
+
+
+
 
 /* 不同进度阶段的字重变化 */
-.bamboo-progress-num[data-level="0"] { font-weight: 200; color: var(--text-tertiary); }
-.bamboo-progress-num[data-level="1"] { font-weight: 300; color: var(--text-secondary); }
-.bamboo-progress-num[data-level="2"] { font-weight: 400; color: var(--text-secondary); }
-.bamboo-progress-num[data-level="3"] { font-weight: 500; color: var(--bamboo-primary); }
-.bamboo-progress-num[data-level="4"] { font-weight: 600; color: var(--bamboo-primary); }
-.bamboo-progress-num[data-level="5"] { font-weight: 700; color: var(--bamboo-primary); }
 
-.goal-progress-visual {
-    display: flex;
-    gap: var(--space-4);
-    align-items: center;
-}
 
-.goal-progress-chart-container {
-    position: relative;
-    width: 100px;
-    height: 100px;
-    flex-shrink: 0;
-}
+
+
+
+
+
+
+
 
 #goalProgressChart {
     width: 100px;
     height: 100px;
 }
 
-.goal-progress-chart-value {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    font-size: var(--type-lg);
-    font-weight: 700;
-    color: var(--bamboo-primary);
-}
 
-.goal-progress-controls {
-    flex: 1;
-}
 
-.goal-progress-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: var(--space-2);
-}
 
-.goal-progress-value {
-    font-size: var(--type-xl);
-    font-weight: 700;
-    color: var(--bamboo-primary);
-}
 
-.goal-progress-slider-wrapper {
-    position: relative;
-    margin-bottom: var(--space-2);
-}
+
+
+
+
+
 
 /* 统一滑块规范（与 .display-slider 同款 thumb）：18px 圆点 + 2px 白环。
    本滑块自带独立填充轨道（.goal-progress-track，4px），故本体背景保持透明，
    仅统一热区高度与 thumb，避免「细轨道 + 大圆点」与其它滑块不一致。
    原 thumb 为 20px / 3px 裸 white 环 / --shadow-card，已对齐为 18px / 2px var(--white)。 */
-.goal-progress-slider {
-    width: 100%;
-    height: var(--touch-target);
-    -webkit-appearance: none;
-    appearance: none;
-    margin: 0;
-    background: transparent;
-    cursor: pointer;
-    position: relative;
-    z-index: 2;
-}
 
-.goal-progress-slider::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    background: var(--bamboo-primary);
-    border: 2px solid var(--white);
-    box-shadow: 0 1px 4px rgba(var(--black-rgb), 0.2);
-    cursor: pointer;
-    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
-}
 
-.goal-progress-slider::-webkit-slider-thumb:hover {
-    transform: scale(1.15);
-    box-shadow: var(--bamboo-glow-sm);
-}
 
-.goal-progress-slider::-webkit-slider-thumb:active {
-    transform: scale(1.05);
-    background: var(--bamboo-dark);
-}
 
-.goal-progress-slider::-moz-range-thumb {
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    background: var(--bamboo-primary);
-    border: 2px solid var(--white);
-    box-shadow: 0 1px 4px rgba(var(--black-rgb), 0.2);
-    cursor: pointer;
-}
 
-.goal-progress-slider::-moz-range-track {
-    height: 4px;
-    border-radius: var(--radius-3xs);
-    background: transparent;
-}
+
+
+
+
+
 
 :host(.dark) .goal-progress-slider::-webkit-slider-thumb, :host(.dark) .goal-progress-slider::-moz-range-thumb {
     box-shadow: var(--bamboo-glow-xs);
 }
 
-.goal-progress-track {
-    position: absolute;
-    top: 50%;
-    left: 0;
-    right: 0;
-    height: 4px;
-    transform: translateY(-50%);
-    background: var(--bamboo-border);
-    border-radius: var(--radius-3xs);
-    overflow: hidden;
-    pointer-events: none;
-}
 
-.goal-progress-fill {
-    height: 100%;
-    background: linear-gradient(90deg, var(--bamboo-primary), var(--bamboo-primary-light));
-    border-radius: var(--radius-3xs);
-    transition: width 0.2s ease;
-}
 
-.goal-progress-quick-btns {
-    display: flex;
-    gap: var(--space-2);
-    justify-content: space-between;
-}
 
-.goal-progress-btn {
-    flex: 1;
-    padding: var(--space-2);
-    border: 1px solid var(--bamboo-border);
-    border-radius: var(--radius-md);
-    background: var(--bamboo-background);
-    font-size: var(--type-sm);
-    color: var(--text-secondary);
-    cursor: pointer;
-    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
-}
 
-.goal-progress-btn:hover {
-    border-color: var(--bamboo-primary);
-    color: var(--bamboo-primary);
-    background: rgba(var(--primary-rgb), 0.08);
-}
+
+
+
+
+
 
 /* 移动端适配 - rw-460 */
 .rw-460 .goal-progress-visual {
@@ -1046,41 +451,14 @@
 }
 
 /* 任务日配置样式 */
-.goal-item-taskday {
-    flex-wrap: wrap;
-}
 
-.goal-item-taskday-select {
-    padding: var(--space-1) var(--space-2);
-    border: 1px solid var(--bamboo-border);
-    border-radius: var(--radius-sm);
-    background: var(--bamboo-background);
-    font-size: var(--type-xs);
-    color: var(--text-primary);
-    cursor: pointer;
-}
 
-.goal-taskday-config {
-    margin-top: var(--space-2);
-    padding-left: 40px;
-}
 
-.goal-day-btn {
-    width: 32px;
-    height: 32px;
-    border: 1px solid var(--bamboo-border);
-    border-radius: var(--radius-sm);
-    background: var(--bamboo-background);
-    font-size: var(--type-xs);
-    color: var(--text-secondary);
-    cursor: pointer;
-    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
-}
 
-.goal-day-btn:hover {
-    border-color: var(--bamboo-primary);
-    color: var(--bamboo-primary);
-}
+
+
+
+
 
 .goal-day-btn.selected {
     background: var(--bamboo-primary);
@@ -1089,107 +467,32 @@
 }
 
 /* 建议每日完成量说明 */
-.goal-item-suggested {
-    display: flex;
-    align-items: center;
-    gap: var(--space-1);
-    margin-top: var(--space-1);
-    padding: var(--space-1) var(--space-2);
-    background: rgba(var(--primary-rgb), 0.08);
-    border-radius: var(--radius-sm);
-    font-size: var(--type-xs);
-    color: var(--bamboo-primary);
-    cursor: help;
-}
 
-.goal-item-suggested-icon {
-    font-size: var(--type-sm);
-}
+
 
 /* 子项目列表 */
-.goal-editor-items {
-    padding: var(--space-4);
-    background: var(--bamboo-background);
-    border-radius: var(--radius-card);
-    border: 1px solid var(--bamboo-border);
-}
 
-.goal-items-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: var(--space-3);
-}
 
-.goal-add-item-btn {
-    display: flex;
-    align-items: center;
-    gap: var(--space-1);
-    min-height: 36px;
-    padding: 6px var(--space-3);
-    border: 1px dashed var(--bamboo-border);
-    border-radius: var(--radius-md);
-    background: transparent;
-    font-size: var(--type-sm);
-    line-height: 1.4;
-    white-space: nowrap;
-    overflow: visible;
-    color: var(--bamboo-primary);
-    cursor: pointer;
-    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
-}
 
-.goal-add-item-btn:hover {
-    border-color: var(--bamboo-primary);
-    background: rgba(var(--primary-rgb), 0.08);
-}
 
-.goal-btn-icon {
-    font-size: var(--type-md);
-    font-weight: 700;
-}
 
-.goal-items-list {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
-}
 
-.goal-items-empty {
-    text-align: center;
-    padding: var(--space-6);
-    color: var(--text-secondary);
-}
 
-.goal-items-empty-icon {
-    font-size: var(--type-mega);
-    margin-bottom: var(--space-2);
-    opacity: 0.5;
-}
 
-.goal-items-empty-text {
-    font-size: var(--type-base);
-    margin-bottom: var(--space-1);
-}
 
-.goal-items-empty-hint {
-    font-size: var(--type-sm);
-    opacity: 0.7;
-}
+
+
+
+
+
+
+
+
+
 
 /* 子项目卡片 - 增强版 */
-.goal-item-card {
-    padding: var(--space-3);
-    background: var(--bamboo-card);
-    border: 1px solid var(--bamboo-border);
-    border-radius: var(--radius-md);
-    transition: transform, opacity, box-shadow, border-color, background-color 0.3s ease;
-}
 
-.goal-item-card:hover {
-    border-color: var(--bamboo-primary);
-    box-shadow: var(--shadow-card);
-}
+
 
 .goal-item-card.item-complete {
     opacity: 0.75;
@@ -1200,21 +503,9 @@
     border-left: 3px solid var(--bamboo-primary);
 }
 
-.goal-item-header {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    margin-bottom: var(--space-2);
-    cursor: pointer;
-    padding: var(--space-1);
-    margin: calc(-1 * var(--space-1));
-    border-radius: var(--radius-sm);
-    transition: background 0.2s ease;
-}
 
-.goal-item-header:hover {
-    background: rgba(var(--primary-rgb), 0.05);
-}
+
+
 
 .goal-item-status {
     width: 24px;
@@ -1250,86 +541,26 @@
 }
 
 /* 迷你进度条 */
-.goal-item-progress-mini {
-    display: flex;
-    align-items: center;
-    gap: var(--space-1);
-    min-width: 80px;
-}
 
-.goal-item-bar-mini {
-    flex: 1;
-    height: 6px;
-    background: var(--bamboo-border);
-    border-radius: var(--radius-3);
-    overflow: hidden;
-}
 
-.goal-item-bar-fill-mini {
-    height: 100%;
-    background: var(--bamboo-primary);
-    border-radius: var(--radius-3);
-    transition: width 0.3s ease;
-}
+
+
 
 .goal-item-bar-fill-mini.bar-complete {
     background: var(--bamboo-success);
 }
 
-.goal-item-percent-mini {
-    font-size: var(--type-xs);
-    color: var(--text-secondary);
-    min-width: 28px;
-    text-align: right;
-}
+
 
 /* 展开/收起按钮 */
-.goal-item-expand-btn {
-    width: 24px;
-    height: 24px;
-    border: none;
-    border-radius: var(--radius-sm);
-    background: transparent;
-    font-size: var(--type-mini);
-    color: var(--text-secondary);
-    cursor: pointer;
-    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
 
-.goal-item-expand-btn:hover {
-    background: var(--bamboo-background);
-    color: var(--bamboo-primary);
-}
 
-.goal-item-name-input {
-    flex: 1;
-    padding: var(--space-2);
-    border: 1px solid transparent;
-    border-radius: var(--radius-sm);
-    background: transparent;
-    font-size: var(--type-sm);
-    font-weight: 600;
-    color: var(--text-primary);
-    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
-}
 
-.goal-item-name-input:focus {
-    border-color: var(--bamboo-primary);
-    background: var(--bamboo-background);
-}
 
-.goal-item-status-select {
-    padding: var(--space-1) var(--space-2);
-    border: 1px solid var(--bamboo-border);
-    border-radius: var(--radius-sm);
-    background: var(--bamboo-background);
-    font-size: var(--type-xs);
-    color: var(--text-primary);
-    cursor: pointer;
-}
+
+
+
+
 
 .goal-item-delete-btn {
     width: 28px;
@@ -1496,7 +727,9 @@
     user-select: none;
     min-width: 140px;
 }
-@media (max-width: 360px)     {
+@media (max-width: 360px)       {
+
+
 
 
 
@@ -1979,29 +1212,21 @@
    触控目标扩展：保证所有交互元素热区 ≥ 44×44px
    视觉尺寸尽量保持不变，小尺寸图标/复选框使用 ::before 伪元素扩展
    ========================================================== */
-.goal-icon-picker-compact, .goal-icon-option {
-    min-width: var(--touch-target);
+
+.goal-item-percent, .goal-editor-v2 .goal-item-date, .goal-item-value, .goal-item-add-btn, .arch-select, .arch-reset-btn, .arch-card, .arch-act-btn, .arch-bar-btn, .arch-sel-all {
     min-height: var(--touch-target);
 }
 
-.goal-field-title-compact, .goal-field-select-compact, .goal-field-date-compact, .goal-add-item-btn-compact, .goal-item-name-input, .goal-item-status-select, .goal-item-input, .goal-item-percent, .goal-editor-v2 .goal-item-date, .goal-item-value, .goal-item-daily-min, .goal-item-taskday-select, .goal-dep-inline-btn, .goal-icon-picker, .goal-field-input, .goal-field-select, .goal-progress-btn, .goal-add-item-btn, .goal-item-add-btn, .arch-select, .arch-reset-btn, .arch-card, .arch-act-btn, .arch-bar-btn, .arch-sel-all {
-    min-height: var(--touch-target);
-}
 
-.goal-progress-slider {
-    min-height: var(--touch-target);
-}
 
-.goal-item-header {
-    min-height: var(--touch-target);
-}
+
 
 /* 小尺寸按钮/图标使用伪元素扩展热区，保持视觉尺寸不变 */
-.goal-item-status, .goal-item-delete-btn, .goal-item-expand-btn, .goal-day-btn, .arch-icon-btn, .arch-check, .arch-toggle-icon {
+.goal-item-status, .goal-item-delete-btn, .arch-icon-btn, .arch-check, .arch-toggle-icon {
     position: relative;
 }
 
-.goal-item-status::before, .goal-item-delete-btn::before, .goal-item-expand-btn::before, .goal-day-btn::before, .arch-icon-btn::before, .arch-check::before, .arch-toggle-icon::before {
+.goal-item-status::before, .goal-item-delete-btn::before, .arch-icon-btn::before, .arch-check::before, .arch-toggle-icon::before {
     content: '';
     position: absolute;
     top: 50%;
@@ -2088,7 +1313,9 @@
 }
 
 /* 减弱动效偏好：关闭闪烁与抖动 */
-@media (prefers-reduced-motion: reduce)     {
+@media (prefers-reduced-motion: reduce)       {
+
+
 
 
 
@@ -2101,56 +1328,15 @@
    目标地图 — 板块标题栏与归档入口
    ========================================================================== */
 
-.goal-section-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-3);
-    padding: var(--space-3) var(--space-4);
-    margin-bottom: var(--space-2);
-    border-radius: var(--radius-lg);
-    background: var(--card-bg);
-    border: 1px solid var(--border-light);
-    box-shadow: var(--shadow-surface);
-}
 
-.goal-section-title {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    font-size: var(--type-base);
-    font-weight: 700;
-    color: var(--text-primary);
-}
 
-.goal-section-title svg {
-    color: var(--bamboo-primary);
-    flex-shrink: 0;
-}
 
-.goal-section-action {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-1);
-    padding: var(--space-2) var(--space-3);
-    font-size: var(--type-xs);
-    font-weight: 600;
-    color: var(--bamboo-primary);
-    background: rgba(var(--bamboo-primary-rgb), 0.08);
-    border: 1px solid rgba(var(--bamboo-primary-rgb), 0.25);
-    border-radius: var(--radius-md);
-    cursor: pointer;
-    transition: background 0.15s, border-color 0.15s, color 0.15s;
-}
 
-.goal-section-action:hover {
-    background: rgba(var(--bamboo-primary-rgb), 0.16);
-    border-color: rgba(var(--bamboo-primary-rgb), 0.45);
-}
 
-.goal-section-action svg {
-    flex-shrink: 0;
-}
+
+
+
+
 
 /* ==========================================================================
    归档独立页 — GoalsArchiver Standalone

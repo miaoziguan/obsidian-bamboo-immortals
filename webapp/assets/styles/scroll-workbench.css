@@ -9,11 +9,6 @@
 /* Obsidian 视图挂载在 shadow host 内，host 本身没有明确高度，子元素 height:100% 会退化为 auto。
    给 host 加 .scroll-workbench-host 类后，把它拉成 flex 容器并让 workbench flex:1，
    这样背景才能精确铺满侧边栏/面板底部。 */
-:host(.scroll-workbench-host) {
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-}
 :host(.scroll-workbench-host) .scroll-workbench {
     height: auto;
     flex: 1;
@@ -38,13 +33,5 @@
     overflow: hidden;
 }
 .scroll-workbench[hidden] { display: none; }
-.scroll-close {
-    border: none;
-    background: transparent;
-    font-size: var(--type-2xl);
-    line-height: 1;
-    color: #7c8473;
-    cursor: pointer;
-    padding: 0 6px;
-}
-.scroll-close:hover { color: #3f5a3a; }
+
+

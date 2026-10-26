@@ -130,7 +130,9 @@
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
 }
-@media (prefers-reduced-motion: reduce)     {
+@media (prefers-reduced-motion: reduce)       {
+
+
 
 
 
@@ -312,7 +314,9 @@
     background: rgba(var(--primary-rgb), 0.1);
 }
 
-@media (max-width: 480px)     {
+@media (max-width: 480px)       {
+
+
 
 
 

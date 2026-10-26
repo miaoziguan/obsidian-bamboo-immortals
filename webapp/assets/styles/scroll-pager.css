@@ -1,24 +1,5 @@
 /* ========== 画中卷·复古打字机 ========== */
-.scroll-feature-bar {
-  flex: none;
-  display: flex;
-  gap: 6px;
-  padding: 8px 10px;
-  border-bottom: 1px solid var(--border-subtle, rgba(120,100,70,0.18));
-  background: var(--scroll-bar-bg, rgba(255,250,238,0.5));
-}
-.scroll-feature-tab {
-  flex: 1;
-  min-height: 36px;
-  border: 1px solid var(--border-subtle, rgba(120,100,70,0.22));
-  border-radius: var(--radius-xs);
-  background: var(--scroll-tab-bg, rgba(255,255,255,0.55));
-  color: var(--text-secondary, #6b5d49);
-  font-size: var(--type-sm);
-  font-weight: 600;
-  cursor: pointer;
-  transition: background .18s, color .18s, box-shadow .18s;
-}
+
 .scroll-feature-tab.is-active {
   background: var(--scroll-tab-active, #6b5640);
   color: #f4ecd8;
@@ -586,7 +567,9 @@
 
 .tw-grill { display: none; flex-direction: column; gap: 0.27em; opacity: 0.2; }
 .tw-grill i { display: block; width: 3.2em; height: 0.13em; border-radius: 0.13em; background: var(--black); }
-@media (min-width: 768px)     {
+@media (min-width: 768px)       {
+
+
 
 
 

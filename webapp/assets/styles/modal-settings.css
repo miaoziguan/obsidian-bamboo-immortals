@@ -232,14 +232,18 @@
 
 
 /* 窄屏降级（设置模态框内部，@media 度量模态框所在视口） */
-@media (max-width: 480px)     {
+@media (max-width: 480px)       {
+
+
 
 
 
 
     
 }
-@media (max-width: 360px)     {
+@media (max-width: 360px)       {
+
+
 
 
 

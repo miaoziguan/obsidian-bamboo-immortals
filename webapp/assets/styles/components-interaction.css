@@ -167,7 +167,9 @@
 .quick-nav-action-btn:hover {
     background: rgba(var(--primary-rgb), 0.18);
 }
-@media (max-width: 768px)     {
+@media (max-width: 768px)       {
+
+
 
 
 
@@ -220,7 +222,9 @@
 .bamboo-card.editable, .goal-row.editable { cursor: pointer; }
 .bamboo-card.editable:hover, .goal-row.editable:hover { border-color: var(--bamboo-primary); }
 
-@media (prefers-reduced-motion: no-preference)     {
+@media (prefers-reduced-motion: no-preference)       {
+
+
 
 
 
@@ -300,7 +304,9 @@
 .desktop-only {
     display: none;
 }
-@media (min-width: 600px)     {
+@media (min-width: 600px)       {
+
+
 
 
 
@@ -371,7 +377,9 @@
 }
 
 /* 尊重系统「减少动效」设置 */
-@media (prefers-reduced-motion: reduce)     {
+@media (prefers-reduced-motion: reduce)       {
+
+
 
 
 
@@ -476,7 +484,9 @@
     background: linear-gradient(135deg, rgba(var(--sky-azure-rgb), 0.2) 0%, rgba(var(--sky-azure-rgb), 0.1) 100%);
     border: 1px solid rgba(var(--sky-azure-rgb), 0.3);
 }
-@media (prefers-reduced-motion: no-preference)     {
+@media (prefers-reduced-motion: no-preference)       {
+
+
 
 
 

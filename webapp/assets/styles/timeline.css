@@ -263,7 +263,9 @@
 }
 
 /* 移动端始终可见 */
-@media (hover: none) and (pointer: coarse)     {
+@media (hover: none) and (pointer: coarse)       {
+
+
 
 
 
@@ -477,7 +479,9 @@
     background: var(--bamboo-light);
     box-shadow: inset 0 1px 2px rgba(var(--black-rgb), 0.08), 0 0 4px rgba(var(--primary-rgb), 0.3);
 }
-@media (prefers-reduced-motion: no-preference)     {
+@media (prefers-reduced-motion: no-preference)       {
+
+
 
 
 
@@ -752,7 +756,9 @@
         -32px 0 0 rgba(var(--bamboo-deep-rgb), 0.1);
 }
 
-@media (prefers-reduced-motion: no-preference)     {
+@media (prefers-reduced-motion: no-preference)       {
+
+
 
 
 
@@ -919,7 +925,9 @@
 /* ========== 暗色模式 — 动画 ========== */
 
 /* 减少动画偏好适配 */
-@media (prefers-reduced-motion: reduce)     {
+@media (prefers-reduced-motion: reduce)       {
+
+
 
 
 
@@ -947,7 +955,9 @@
     margin-bottom: var(--space-4);
 }
 
-@media (prefers-reduced-motion: no-preference)     {
+@media (prefers-reduced-motion: no-preference)       {
+
+
 
 
 
@@ -986,7 +996,9 @@
     box-shadow: 0 0 0 2px var(--bamboo-primary), 0 0 16px rgba(var(--primary-rgb), 0.5);
 }
 
-@media (prefers-reduced-motion: no-preference)     {
+@media (prefers-reduced-motion: no-preference)       {
+
+
 
 
 
@@ -1264,13 +1276,7 @@
 
 
 
-.bamboo-eval {
-    font-size: var(--type-xs);
-    font-weight: 600;
-    padding: var(--space-1) var(--space-3);
-    border-radius: var(--radius-3xl);
-    white-space: nowrap;
-}
+
 
 .bamboo-eval.good {
     background: rgba(var(--primary-rgb), 0.15);
@@ -1457,7 +1463,9 @@
    ============================================= */
 
 /* ≤768px: 票体+票根上下堆叠，票根内容横向排列 */
-@media (max-width: 768px)     {
+@media (max-width: 768px)       {
+
+
 
 
 
@@ -1621,7 +1629,9 @@
 }
 
 /* ≤480px: 三块一行横排，紧凑字号 */
-@media (max-width: 480px)     {
+@media (max-width: 480px)       {
+
+
 
 
 
@@ -1779,7 +1789,9 @@
    响应式 — 暗色模式覆盖
    ============================================= */
 
-@media (max-width: 768px)     {
+@media (max-width: 768px)       {
+
+
 
 
 
@@ -2200,7 +2212,9 @@
     用户手动调窄"内容宽度"时两者互补，防止统计行残留 4 列挤压）
    ============================================= */
 
-@media (max-width: 768px)     {
+@media (max-width: 768px)       {
+
+
 
 
 
@@ -2210,7 +2224,9 @@
     }
 }
 
-@media (max-width: 480px)     {
+@media (max-width: 480px)       {
+
+
 
 
 

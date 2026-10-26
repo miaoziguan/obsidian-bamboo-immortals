@@ -1,44 +1,11 @@
 /* ========== 返回顶部按钮 ========== */
-.scroll-top-btn {
-    position: fixed;
-    bottom: 80px;
-    right: 20px;
-    width: min(40px, 11vw);
-    height: 40px;
-    background: var(--card-glass);
-    backdrop-filter: blur(var(--glass-blur));
-    color: var(--bamboo-primary);
-    border: 1px solid var(--border-light);
-    border-radius: 50%;
-    font-size: var(--type-heading);
-    font-weight: 400;
-    cursor: pointer;
-    box-shadow: var(--shadow-surface);
-    z-index: var(--z-layer-overlay);
-    opacity: 0;
-    visibility: hidden;
-    transform: translateY(12px) scale(0.8);
-    transition: transform, opacity, box-shadow, border-color, background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    line-height: 1;
-}
 .scroll-top-btn.show {
     opacity: 1;
     visibility: visible;
     transform: translateY(0) scale(1);
 }
-.scroll-top-btn:hover {
-    background: var(--bamboo-primary);
-    color: var(--white);
-    border-color: var(--bamboo-primary);
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-card);
-}
-.scroll-top-btn:active {
-    transform: translateY(0) scale(0.95);
-}
+
+
 
 
 /* ========== 副券内极简白噪音控制 ========== */
@@ -117,7 +84,9 @@
 }
 
 /* 响应式适配 — Canonical breakpoints: 480px (mobile), 768px (tablet), 1024px (desktop) */
-@media (max-width: 768px)     {
+@media (max-width: 768px)       {
+
+
 
 
 
@@ -239,7 +208,9 @@
     width: var(--bm-icon-xxl);
     height: var(--bm-icon-xxl);
 }
-@media (prefers-reduced-motion: no-preference)     {
+@media (prefers-reduced-motion: no-preference)       {
+
+
 
 
 

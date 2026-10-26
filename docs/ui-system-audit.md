@@ -268,6 +268,19 @@ BAMBOO_REPO=<repo 根> cp scripts/ui-visual-baseline.mjs /tmp/uirig/
 (cd /tmp/uirig && node ui-visual-baseline.mjs)
 ```
 
+### 补充：两个 computed-style 比对脚本
+
+| 脚本 | 覆盖范围 | 用途 |
+|---|---|---|
+| `scripts/ui-style-diff.mjs` | `app.html` 真实渲染的 2182 个元素 | 通用样式回归（免疫渲染抖动） |
+| `scripts/ui-scroll-fixture-diff.mjs` | `scroll.html` + **注入 fixture** 的香道/雁/火折子 | 上述组件需燃烧数据才渲染，只能靠注入同款 DOM 来覆盖 |
+
+第二个脚本是**去重 `incense.css` / `scroll-overlay.css`（63 条重复规则）的前置安全网**。
+
+灵敏度自检（已实测）：对 `HEAD` 报 **0 差异**；对"修雁之前"的提交报 **22 处差异**，
+且精确指向 `path` 的 `fill: none → rgba(86,80,74,0.82)` —— 说明它确实能抓到这类变更，
+而不是恒返回 0 的摆设。
+
 ---
 
 ## 8. 对比度审计（D，`scripts/ui-contrast-audit.py`）

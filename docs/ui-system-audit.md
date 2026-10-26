@@ -242,3 +242,57 @@ npm --prefix /tmp/uirig i playwright@1.49.1   # Node 18 需 ≤1.49；1.64 起�
 BAMBOO_REPO=<repo 根> cp scripts/ui-visual-baseline.mjs /tmp/uirig/
 (cd /tmp/uirig && node ui-visual-baseline.mjs)
 ```
+
+---
+
+## 8. 对比度审计（D，`scripts/ui-contrast-audit.py`）
+
+### 方法
+
+- 从 `variables.css` 解析 token 求值。暗色 token 不是写死十六进制，而是
+  `hsl(calc(var(--accent-hue) - 7), min(100%, calc(40% * var(--accent-saturation-ui, 1))), calc(25% + var(--accent-lightness-offset)))`
+  这类表达式，**必须自行求值**；脚本内置了 `calc()`/`min()`/`var()` 的求值器。
+  默认取产品默认值 `--accent-hue=120`、`--accent-saturation-ui=1`、`--accent-lightness-offset=0%`。
+- 半透明背景（如 `--card-bg: rgba(255,255,255,.6)`）按 alpha 合成到该主题 `--surface-solid` 再算。
+- 用 WCAG 2.1 相对亮度公式，阈值：AAA 7:1 / AA 4.5:1 / 大字与 UI 组件 3:1。
+
+> 解析坑：必须先剥注释。注释里出现的 `--surface-solid: #1c2a1e，写死色…`
+> 会被当成真实定义覆盖真值，导致暗色主题整块解析失败。
+
+### 默认态结果：全部达标 ✅
+
+| 主题 | 最低对比度 | 出现位置 | 整体 |
+|---|---|---|---|
+| 亮色 | 4.49 | `--ink-pale` on `--bg-gradient-end` | 其余多为 AAA / AA |
+| 暗色 | 4.49 | `--ink-pale` on `--bamboo-background` | 其余多为 AAA / AA |
+
+20 组/主题全部 ≥3:1。
+
+### ⚠️ 关键发现：明度滑块会击穿对比度
+
+用户可拖动 DisplayManager 明度滑块（注释标明范围 **~-15% ~ +15%**）。
+扫描 `色相{0,60,120,180,240,300} × 明度{-15%,0%,+15%}`：
+
+| 主题 | <3:1（不合格） | 未达 AA(4.5) |
+|---|---|---|
+| 亮色 | **4** 组 | 22 / 360 |
+| 暗色 | **9** 组 | 35 / 360（最低 **2.39**） |
+
+全部集中在 `--ink-pale`（最浅文字档）。
+
+**根因（两个方向相反，却是同一类错误：文字阶梯与表面阶梯未耦合）**
+
+- **暗色**：`--ink-pale = hsl(hue, 6%, calc(60% + offset))` → offset `-15%` 时明度降到 45%，
+  文字变成 `rgb(108,122,108)`（**更暗**），而背景未同步变亮 → 对比度跌至 **2.39**。
+- **亮色**：`--ink-pale` 是**写死的 `#707070` 完全不动**，而 `--bg-gradient-* = hsl(..., 95% + offset)`
+  随滑块变暗 → 对比度跌至 **2.83**。
+
+即：调主题明度时，文字与表面**各自为政**，其比值不守恒——这正是「视觉能量守恒」被破坏的实例。
+
+### 建议（尚未实施，待定）
+
+1. **文字色阶梯做反向补偿**：暗色 `--ink-pale` 改为 `calc(60% - offset)` 之类，使表面变暗时文字反而变亮。
+2. **或**给明度滑块设安全下界（如 −8%），把最低对比度抬回 3:1 以上。
+3. **或**在 DisplayManager 加实时对比度守护提示（越界时提示并可选自动修正）。
+
+推荐方案 1（治本，且不动交互），方案 2 作为兜底。

@@ -486,10 +486,8 @@
     /* 提亮填充：深褐雁压在深底上几乎不可见（本块注释早已承诺，此前因 fill 硬编码而未生效） */
     --goose-fill: rgba(186, 182, 172, 0.88);
 }
-/* 再给雁身描一圈淡白边把轮廓加粗，让它在深底上更跳（同为注释承诺、此前未实现） */
-:host(.dark) .scroll-wild-goose svg path { stroke: rgba(var(--white-rgb), 0.28); stroke-width: 0.5; }
-/* 再给雁身描一圈白边把轮廓加粗，让它在深底上更跳。
-   这里刻意不用 filter 做发光：滤镜会随振翅动画每帧重算，代价高于加粗描边。 */
+/* 不加白边描边：提亮后的填充本身已足够清晰，再加白边反而显生硬。
+   （另外，描边会随父元素 scale 一起缩放，non-scaling-stroke 也拦不住。） */
 /* 扇翅：双翼随振翅轻微上下压扁，赋予远去大雁生命感（#2） */
 .scroll-wild-goose svg { animation: scroll-goose-flap var(--duration-slow) ease-in-out infinite; }
 @keyframes scroll-goose-flap {

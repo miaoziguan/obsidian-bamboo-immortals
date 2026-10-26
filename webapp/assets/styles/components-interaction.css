@@ -167,7 +167,9 @@
 .quick-nav-action-btn:hover {
     background: rgba(var(--primary-rgb), 0.18);
 }
-@media (max-width: 768px)   {
+@media (max-width: 768px)     {
+
+
 
 
     .quick-nav {
@@ -218,7 +220,9 @@
 .bamboo-card.editable, .goal-row.editable { cursor: pointer; }
 .bamboo-card.editable:hover, .goal-row.editable:hover { border-color: var(--bamboo-primary); }
 
-@media (prefers-reduced-motion: no-preference)   {
+@media (prefers-reduced-motion: no-preference)     {
+
+
 
 
     .kpi-card.up { animation: breathePink 3.8s ease-in-out infinite; }
@@ -296,7 +300,9 @@
 .desktop-only {
     display: none;
 }
-@media (min-width: 600px)   {
+@media (min-width: 600px)     {
+
+
 
 
     .desktop-only {
@@ -365,7 +371,9 @@
 }
 
 /* 尊重系统「减少动效」设置 */
-@media (prefers-reduced-motion: reduce)   {
+@media (prefers-reduced-motion: reduce)     {
+
+
 
 
     .sections-container.layout-switching {
@@ -468,7 +476,9 @@
     background: linear-gradient(135deg, rgba(var(--sky-azure-rgb), 0.2) 0%, rgba(var(--sky-azure-rgb), 0.1) 100%);
     border: 1px solid rgba(var(--sky-azure-rgb), 0.3);
 }
-@media (prefers-reduced-motion: no-preference)   {
+@media (prefers-reduced-motion: no-preference)     {
+
+
 
 
     .focus-box.result { animation: breatheSkyColor 3.2s ease-in-out infinite; }

@@ -876,27 +876,19 @@
 
 
 /* === TINY VIEWPORT (≤360px): 待办紧凑布局 === */
-@media (max-width: 360px)   {
+@media (max-width: 360px)     {
+
+
 
 
     .todo-item {
         padding: 6px 4px;
         gap: 6px;
     }
-    .todo-item-row {
-        gap: 6px;
-    }
-    .todo-item-name {
-        font-size: var(--type-sm);
-    }
-    .todo-item-hint {
-        font-size: var(--type-mini);
-    }
-    .todo-section-title {
-        font-size: var(--type-sm);
-    }
-    .todo-count-num {
-        font-size: var(--type-mini);
-    }
+    
+    
+    
+    
+    
 }
 

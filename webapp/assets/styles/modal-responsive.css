@@ -8,7 +8,9 @@
    ≤ 360px (--bp-xxs)：极度紧凑，字号缩小
    ============================================================ */
 
-@media (max-width: 768px)   {
+@media (max-width: 768px)     {
+
+
 
 
     .shop-balance-metrics--row {
@@ -19,7 +21,9 @@
     }
 }
 
-@media (max-width: 480px)   {
+@media (max-width: 480px)     {
+
+
 
 
     .shop-balance-metric--card .shop-metric-value {
@@ -41,7 +45,9 @@
     }
 }
 
-@media (max-width: 360px)   {
+@media (max-width: 360px)     {
+
+
 
 
     .shop-balance-amount-block--centered .shop-balance-value {

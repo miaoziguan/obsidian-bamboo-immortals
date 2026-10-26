@@ -114,7 +114,9 @@
 }
 
 /* Canonical breakpoints: 480px (mobile), 768px (tablet), 1024px (desktop) */
-@media (max-width: 480px)   {
+@media (max-width: 480px)     {
+
+
 
 
     .toast-container {

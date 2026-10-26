@@ -2,18 +2,23 @@
 """
 安全半自动删除死 CSS 类选择器（MIXED 簇精确死名）。
 
-核心安全规则：
+核心安全规则（保守模式，绝不误删活类）：
 - 解析前先剥离 /* ... */ 注释（避免注释内的 { } 干扰括号匹配）。
-- 对每条 CSS 规则，按逗号拆选择器；凡某选择器含死名令牌（.name 且 name∈DEAD），则【整体删除该选择器】，
-  绝不只剥令牌（避免把 .alive.dead 还原成 .alive 而扩大命中范围）。
-- 规则内所有选择器都含死名 → 整条规则删除。
-- 共享列表（.a,.dead,.c）只删 .dead，保留 .a/.c。
-- 后代选择器（.dead .alive-child）整体删除。
+- 对每条 CSS 规则，按逗号拆选择器，逐个判定：
+  · 若选择器【含任一活类令牌】（top-level 出现 .alive，或 :is()/:where() 剔死参后仍有活参）→
+    【整体保留该选择器】（死类令牌也一并保留，绝不剥落、绝不扩大命中范围）。
+  · 若选择器【零活类令牌】（全是死类，或 :is()/:where() 剔死参后为空）→ 整条删除。
+- 规则内所有选择器都零活类 → 整条规则删除。
+- 共享列表（.alive,.dead）保留 .alive、删 .dead。
+- :is()/:where() 仅剔死参、保留活参（安全）；:not()/:has()/:host() 括号内原样保留。
 - 绝不触碰 @keyframes / @font-face 等 at-rule 内部；绝不触碰声明里的 animation:/var(-- 引用。
 - 死名集合取自 check-dead-css 同款逻辑（含 url() 剥离 + webapp JS/html 语料），可按首段簇过滤。
 
+说明：保守模式会保留「含活类的复合/后代规则」（即便其中混有死类令牌），这些死类令牌是
+「与活类纠缠」的残留，留待功能下线决策，绝不为删死类而牺牲活类的样式。
+
 注意：处理后源文件注释会被去除（生产构建本就 minify 去注释；且多数注释描述的是已删死别名）。
-请每个簇 --apply 后用 git diff 复核（确认只删死选择器、未扩大活选择器、未删活规则），再 build+preflight 核验。
+请每个簇 --apply 后用 git diff 复核（确认只删零活类死规则、未删活规则），再 build+preflight 核验。
 
 用法：
   python3 scripts/delete-dead-css.py --cluster badge tooltip   # dry-run
@@ -115,14 +120,19 @@ def process_pseudo_inner(inner, dead):
     return ', '.join(kept)
 
 def process_selector(sel, dead):
-    """处理单个顶层选择器（无顶层逗号）。返回新选择器，或 None（整条死）/''（空，等同死）。
-    规则：顶层（depth 0）直接出现死类令牌 → 整条死（该选择器无法匹配）；
-    死令牌位于 :is()/:where() 内 → 仅剔除该参数，保留活参数；
-    死令牌位于 :not()/:has() 内或 :host() 括号内 → 不触发整体删（保留原样）。"""
+    """处理单个顶层选择器（无顶层逗号）。保守模式：
+    返回新选择器，或 None（整条删除）。
+    - 无 .class 令牌的结构性选择器（:host / :root / body / * 等）→ 一律保留（绝不删全局块）。
+    - 含 .class 且全部为死类（零活类令牌）→ 整条删除（None）。
+    - 含任一活类令牌（top-level .alive，或 :is()/:where() 剔死参后仍有活参）→ 整体保留
+      （死类令牌一并保留，绝不剥落/扩大）。
+    - :not()/:has()/:host() 括号内的类原样保留（不触发删）。"""
     i = 0
     n = len(sel)
     out = []
     depth = 0
+    has_alive = False
+    has_class = False  # 输出中是否含 .class 令牌
     while i < n:
         c = sel[i]
         if c == '(':
@@ -145,9 +155,10 @@ def process_selector(sel, dead):
                 inner = sel[j:k - 1]
                 if hit in ('is', 'where'):
                     inner2 = process_pseudo_inner(inner, dead)
-                    if inner2 == '':
-                        return None  # :is()/:where() 剔除后为空 → 选择器无法匹配 → 整条死
-                    out.append(':' + hit + '(' + inner2 + ')')
+                    if inner2 != '':
+                        out.append(':' + hit + '(' + inner2 + ')')
+                        has_alive = True
+                        has_class = True
                 else:
                     out.append(':' + hit + '(' + inner + ')')  # not/has 原样保留
                 i = k
@@ -155,13 +166,18 @@ def process_selector(sel, dead):
         if c == '.':
             m = CLASS_RE.match(sel, i)
             cls = m.group(1)
-            if cls in dead and depth == 0:
-                return None  # 顶层直接死类 → 整条死
-            out.append('.' + cls)
+            out.append('.' + cls)  # 顶/嵌套均原样保留（不剥不扩大）
+            has_class = True
+            if cls not in dead:
+                has_alive = True
             i = m.end()
             continue
         out.append(c)
         i += 1
+    if not has_class:
+        return ''.join(out)  # 结构性选择器（无 .class）→ 原样保留
+    if not has_alive:
+        return None  # 含 .class 但全死 → 整条删除
     return ''.join(out)
 
 def process_preamble(preamble, dead):

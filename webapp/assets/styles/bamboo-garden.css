@@ -91,7 +91,9 @@
 .bamboo-poem-strip {
     display: none;
 }
-@media (min-width: 600px)   {
+@media (min-width: 600px)     {
+
+
 
 
 
@@ -690,7 +692,9 @@
    transform/opacity，杜绝上千节点常驻动画、JS 落叶强制重排、以及模糊层每帧
    重绘。模糊只保留在「静止」图层（山/雾/水），paint 一次即被缓存，叠加飘叶
    时仅混合位图、不重算 blur。桌面（fine pointer + hover）不受影响。 */
-@media (pointer: coarse) and (hover: none)   {
+@media (pointer: coarse) and (hover: none)     {
+
+
 
 
     /* 关闭一切非必要时序动效：迷雾漂移、远山浮动、江水波、竹身摇曳、竹叶轻颤。

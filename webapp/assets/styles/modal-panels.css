@@ -74,7 +74,9 @@
     100% { transform: scale(1); }
 }
 
-@media (max-width: 480px)   {
+@media (max-width: 480px)     {
+
+
 
 
     .fab-panel {
@@ -84,7 +86,9 @@
     }
 }
 
-@media (max-width: 768px)   {
+@media (max-width: 768px)     {
+
+
 
 
     .fab-panel {
@@ -186,7 +190,9 @@
     to { transform: rotate(360deg); }
 }
 /* 系统关掉动效时改用慢速旋转而非静止：静止会丢失「正在刷新」这层反馈 */
-@media (prefers-reduced-motion: reduce)   {
+@media (prefers-reduced-motion: reduce)     {
+
+
 
 
     .fab-panel-action.is-spinning .icon {
@@ -665,7 +671,9 @@
     border-color: rgba(var(--border-dark-rgb, 60, 70, 60), 0.3);
 }
 
-@media (max-width: 480px)   {
+@media (max-width: 480px)     {
+
+
 
 
     .wn-panel {
@@ -679,7 +687,9 @@
     }
 }
 
-@media (max-width: 360px)   {
+@media (max-width: 360px)     {
+
+
 
 
     .theme-panel-grid {
@@ -914,7 +924,9 @@
 }
 
 /* 小屏幕适配 */
-@media (max-width: 360px)   {
+@media (max-width: 360px)     {
+
+
 
 
     #panel-date-picker {

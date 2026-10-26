@@ -75,22 +75,9 @@
     transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.stats-section-primary {
-    padding: var(--space-5);
-    margin-bottom: 22px;
-    border-color: rgba(var(--primary-rgb), 0.18);
-    box-shadow: 
-        0 6px 24px rgba(var(--deep-rgb), 0.08);
-}
 
-.stats-section-warning {
-    padding: var(--space-5);
-    margin-bottom: 22px;
-    border-color: rgba(var(--warning-orange-rgb), 0.18);
-    background: linear-gradient(145deg, rgba(255,250,245,0.95), rgba(255,248,240,0.9));
-    box-shadow: 
-        0 6px 24px rgba(var(--warning-orange-rgb), 0.08);
-}
+
+
 
 .stats-section:hover {
     transform: translateY(-2px);
@@ -173,42 +160,12 @@
 }
 
 /* 预警项目 */
-.time-alerts-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: var(--space-3);
-}
 
-.alert-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: var(--space-2);
-    padding: 16px 12px;
-    background: linear-gradient(145deg, rgba(var(--white-rgb), 0.95), rgba(var(--pale-green-alt-rgb), 0.9));
-    border-radius: var(--radius-lg);
-    border: 1px solid rgba(var(--primary-rgb), 0.1);
-    box-shadow: 0 2px 8px rgba(var(--deep-rgb), 0.04);
-    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
-    text-align: center;
-}
 
-.alert-item:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 4px 16px rgba(var(--deep-rgb), 0.08);
-    border-color: rgba(var(--primary-rgb), 0.18);
-}
 
-.alert-icon-wrapper {
-    width: 44px;
-    height: 44px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: var(--radius-md);
-    flex-shrink: 0;
-}
+
+
+
 
 .alert-icon-wrapper.urgent {
     background: linear-gradient(145deg, rgba(var(--danger-bright-rgb), 0.18), rgba(var(--danger-bright-rgb), 0.12));
@@ -222,34 +179,13 @@
     box-shadow: 0 2px 10px rgba(var(--warning-orange-rgb), 0.12);
 }
 
-.alert-content {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--space-1);
-}
 
-.alert-title {
-    font-size: var(--type-base);
-    font-weight: 700;
-    color: var(--bamboo-deep);
-}
 
-.alert-meta {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--space-1);
-    font-size: var(--type-micro);
-    color: var(--text-secondary);
-}
 
-.alert-days {
-    font-weight: 800;
-    font-size: var(--type-heading);
-    padding: 4px 10px;
-    border-radius: var(--radius-2xs);
-}
+
+
+
+
 
 .alert-item.urgent .alert-days {
     background: rgba(var(--danger-bright-rgb), 0.12);
@@ -341,30 +277,10 @@
 }
 
 /* 优先级分布 */
-.priority-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: var(--space-3);
-}
 
-.priority-card {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: var(--space-2);
-    padding: 16px 12px;
-    background: linear-gradient(145deg, rgba(var(--white-rgb), 0.95), rgba(var(--pale-green-alt-rgb), 0.9));
-    border-radius: var(--radius-lg);
-    border: 1px solid rgba(var(--primary-rgb), 0.1);
-    box-shadow: 0 2px 8px rgba(var(--deep-rgb), 0.04);
-    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
-}
 
-.priority-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 4px 16px rgba(var(--deep-rgb), 0.08);
-}
+
+
 
 .priority-card.high:hover {
     border-color: rgba(var(--danger-bright-rgb), 0.2);
@@ -378,17 +294,9 @@
     border-color: rgba(var(--gray-rgb), 0.2);
 }
 
-.priority-header {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-}
 
-.priority-indicator {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-}
+
+
 
 .priority-card.high .priority-indicator {
     background: var(--health-danger);
@@ -405,16 +313,9 @@
     box-shadow: 0 0 0 5px rgba(var(--gray-rgb), 0.18);
 }
 
-.priority-label {
-    font-size: var(--type-base);
-    font-weight: 700;
-    color: var(--bamboo-deep);
-}
 
-.priority-value {
-    font-size: var(--type-hero);
-    font-weight: 900;
-}
+
+
 
 .priority-card.high .priority-value {
     color: var(--health-danger);
@@ -997,98 +898,33 @@
     border-radius: 50%;
 }
 
-.legend-item-new {
-    position: relative;
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    padding: 14px 16px;
-    border-radius: var(--radius-lg);
-    background: linear-gradient(145deg, 
-        rgba(var(--white-rgb), 0.95), 
-        rgba(var(--pale-green-alt-rgb), 0.9)
-    );
-    border: 1px solid rgba(var(--primary-rgb), 0.1);
-    cursor: pointer;
-    overflow: clip; /* 允许 tooltip/focus ring 溢出 */
-    transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), box-shadow 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-}
 
-.legend-item-new::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: 4px;
-    transition: width 0.3s ease;
-}
 
-.legend-item-new:hover {
-    transform: translateX(6px);
-    box-shadow: 0 6px 20px rgba(var(--deep-rgb), 0.08);
-}
 
-.legend-item-new:hover::before {
-    width: 6px;
-}
 
-.legend-dot-new {
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    flex-shrink: 0;
-    position: relative;
-    box-shadow: 0 0 0 6px rgba(var(--health-success-rgb), 0.12);
-    transition: transform 0.3s ease;
-}
 
-.legend-item-new:hover .legend-dot-new {
-    transform: scale(1.15);
-}
 
-.legend-text-new {
-    flex: 1;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: var(--space-3);
-}
 
-.legend-label-new {
-    font-size: var(--type-base);
-    font-weight: 700;
-    color: var(--bamboo-deep);
-}
 
-.legend-value-new {
-    font-size: var(--type-hero);
-    font-weight: 900;
-    line-height: 1;
-    transition: transform 0.3s ease;
-}
 
-.legend-item-new:hover .legend-value-new {
-    transform: scale(1.1);
-}
+
+
+
+
+
+
+
+
+
+
 
 /* 已完成图例 */
-.legend-item-new.completed-legend {
-    border-color: rgba(var(--health-success-rgb), 0.2);
-}
 
-.legend-item-new.completed-legend::before {
-    background: linear-gradient(180deg, var(--health-success-clr), var(--bamboo-primary));
-}
 
-.legend-item-new.completed-legend .legend-dot-new {
-    background: linear-gradient(145deg, var(--health-success-clr), var(--bamboo-primary));
-    box-shadow: 0 0 0 6px rgba(var(--health-success-rgb), 0.18);
-}
 
-.legend-item-new.completed-legend .legend-value-new {
-    color: var(--health-success-clr);
-}
+
+
+
 
 /* 进行中图例 */
 .legend-item-new.inprogress-legend {
@@ -1127,85 +963,24 @@
 }
 
 /* === 新设计：优先级分布 === */
-.priority-cards {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: var(--space-3);
-}
 
-.priority-card-new {
-    position: relative;
-    padding: 20px 14px;
-    border-radius: var(--radius-3xl);
-    border: 1px solid rgba(var(--primary-rgb), 0.12);
-    background: linear-gradient(145deg, 
-        rgba(var(--white-rgb), 0.95), 
-        rgba(var(--pale-green-alt-rgb), 0.9)
-    );
-    text-align: center;
-    cursor: pointer;
-    overflow: clip; /* 允许 tooltip/focus ring 溢出 */
-    transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94), box-shadow 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-}
 
-.priority-card-new::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: radial-gradient(circle, rgba(var(--white-rgb), 0.4), transparent 60%);
-    opacity: 0;
-    transform: scale(0);
-    transition: opacity 0.4s ease, transform 0.4s ease;
-}
 
-.priority-card-new:hover {
-    transform: translateY(-8px) scale(1.02);
-    box-shadow: 
-        0 16px 40px rgba(var(--deep-rgb), 0.15),
-        0 6px 16px rgba(var(--deep-rgb), 0.08);
-}
 
-.priority-card-new:hover::before {
-    opacity: 1;
-    transform: scale(1);
-}
 
-.priority-card-icon {
-    width: 52px;
-    height: 52px;
-    margin: 0 auto 14px;
-    border-radius: var(--radius-xl);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    transition: transform 0.4s ease;
-}
 
-.priority-card-new:hover .priority-card-icon {
-    transform: rotate(8deg) scale(1.08);
-}
 
-.priority-card-number {
-    font-size: var(--type-mega);
-    font-weight: 900;
-    line-height: 1;
-    margin-bottom: 6px;
-    transition: transform 0.3s ease;
-}
 
-.priority-card-new:hover .priority-card-number {
-    transform: scale(1.15);
-}
 
-.priority-card-label {
-    font-size: var(--type-sm);
-    font-weight: 700;
-    letter-spacing: 0.3px;
-}
+
+
+
+
+
+
+
+
+
 
 /* 高优先级卡片 */
 .priority-card-new.high-priority {
@@ -1301,82 +1076,27 @@
     border-radius: 50%;
 }
 
-.legend-item-horizontal {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--space-2);
-    padding: 12px 10px;
-    border-radius: var(--radius-lg);
-    background: linear-gradient(145deg, 
-        rgba(var(--white-rgb), 0.95), 
-        rgba(var(--pale-green-alt-rgb), 0.9)
-    );
-    border: 1px solid rgba(var(--primary-rgb), 0.1);
-    cursor: pointer;
-    transition: transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94), box-shadow 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-    position: relative;
-    overflow: clip; /* 允许 tooltip/focus ring 溢出 */
-}
 
-.legend-item-horizontal:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 6px 20px rgba(var(--deep-rgb), 0.08);
-}
 
-.legend-dot-horizontal {
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    flex-shrink: 0;
-    transition: transform 0.3s ease;
-}
 
-.legend-item-horizontal:hover .legend-dot-horizontal {
-    transform: scale(1.15);
-}
 
-.legend-label-horizontal {
-    font-size: var(--type-base);
-    font-weight: 700;
-    color: var(--bamboo-deep);
-}
 
-.legend-value-horizontal {
-    font-size: var(--type-large);
-    font-weight: 900;
-    line-height: 1;
-    transition: transform 0.3s ease;
-}
 
-.legend-item-horizontal:hover .legend-value-horizontal {
-    transform: scale(1.1);
-}
+
+
+
+
+
+
+
 
 /* 已完成图例 */
-.legend-item-horizontal.completed-horizontal {
-    border-color: rgba(var(--health-success-rgb), 0.25);
-}
 
-.legend-item-horizontal.completed-horizontal::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: 4px;
-    background: linear-gradient(180deg, var(--health-success-clr), var(--bamboo-primary));
-}
 
-.legend-item-horizontal.completed-horizontal .legend-dot-horizontal {
-    background: linear-gradient(145deg, var(--health-success-clr), var(--bamboo-primary));
-    box-shadow: 0 0 0 6px rgba(var(--health-success-rgb), 0.18);
-}
 
-.legend-item-horizontal.completed-horizontal .legend-value-horizontal {
-    color: var(--health-success-clr);
-}
+
+
+
 
 /* 进行中图例 */
 .legend-item-horizontal.inprogress-horizontal {

@@ -13,17 +13,19 @@
    class 镜像到 shadow host（#bamboo-shadow-host），故隐私态的 .privacy-on 实际在
    host 上而非 shadow 内的 body。故需同时匹配 :host(.privacy-on)（shadow 模式）
    与 body.privacy-on（__BAMBOO_NO_SHADOW__ kill-switch 回退，无 shadow 时）。 */
-:host(.privacy-on) [data-private-text], :host(.privacy-on) :is(p, [data-inline-edit], .goal-item-name, .goal-item-daily, .goal-item-date, .goal-item-status, .goal-item-entry, .goal-title, .goal-text, .section-title, .section-desc, .section-settings-title, .section-settings-desc, .health-goal-title, .stat-value, .stat-label, .gho-score, .gho-label, .gho-metric-name, .gho-metric-val, .gho-suggestion-text, .gho-stat-val, .gho-stat-label, .gho-empty-text, .todo-focus-item, .todo-item-text, .todo-title, .todo-desc, .todo-goal-daily, .todo-goal-progress, .todo-goal-source, .todo-stat-num, .todo-stat-label, .todo-group-label, .todo-completed-count, .bamboo-name, .bamboo-time, .bamboo-count, .bamboo-item-time, .bamboo-item-task, .bamboo-item-eval, .bamboo-title, .empty-state-title, .empty-state-desc, .empty-state-hint, .text-block, .card-title, .card-desc, .quote-text, .ticket-time-name, .ticket-time-value, .ticket-highlight-value, .ticket-highlight-label, .ticket-sub-label, .ticket-body-text, .stub-back-ring-text, .stub-back-caption, .stub-back-stat-value, .stub-back-stat, .stub-back-title, .stub-nc-name, .stub-name, .stub-caption, .stub-value, .designer-ticket .ticket-text, .ticket-stub-content, .scroll-note-title, .scroll-note-meta, .scroll-notes-empty), body.privacy-on [data-private-text], body.privacy-on :is(p, [data-inline-edit], .goal-item-name, .goal-item-daily, .goal-item-date, .goal-item-status, .goal-item-entry, .goal-title, .goal-text, .section-title, .section-desc, .section-settings-title, .section-settings-desc, .health-goal-title, .stat-value, .stat-label, .gho-score, .gho-label, .gho-metric-name, .gho-metric-val, .gho-suggestion-text, .gho-stat-val, .gho-stat-label, .gho-empty-text, .todo-focus-item, .todo-item-text, .todo-title, .todo-desc, .todo-goal-daily, .todo-goal-progress, .todo-goal-source, .todo-stat-num, .todo-stat-label, .todo-group-label, .todo-completed-count, .bamboo-name, .bamboo-time, .bamboo-count, .bamboo-item-time, .bamboo-item-task, .bamboo-item-eval, .bamboo-title, .empty-state-title, .empty-state-desc, .empty-state-hint, .text-block, .card-title, .card-desc, .quote-text, .ticket-time-name, .ticket-time-value, .ticket-highlight-value, .ticket-highlight-label, .ticket-sub-label, .ticket-body-text, .stub-back-ring-text, .stub-back-caption, .stub-back-stat-value, .stub-back-stat, .stub-back-title, .stub-nc-name, .stub-name, .stub-caption, .stub-value, .designer-ticket .ticket-text, .ticket-stub-content, .scroll-note-title, .scroll-note-meta, .scroll-notes-empty) {
+:host(.privacy-on) [data-private-text], :host(.privacy-on) :is(p, [data-inline-edit], .goal-item-name, .goal-item-daily, .goal-item-date, .goal-item-status, .goal-item-entry, .goal-title, .goal-text, .section-settings-title, .section-settings-desc, .health-goal-title, .stat-value, .stat-label, .gho-score, .gho-label, .gho-metric-name, .gho-metric-val, .gho-suggestion-text, .gho-stat-val, .gho-stat-label, .gho-empty-text, .todo-focus-item, .todo-title, .todo-desc, .todo-goal-daily, .todo-goal-progress, .todo-goal-source, .todo-stat-num, .todo-stat-label, .todo-group-label, .todo-completed-count, .bamboo-name, .bamboo-time, .bamboo-count, .bamboo-item-time, .bamboo-item-task, .bamboo-item-eval, .bamboo-title, .empty-state-title, .empty-state-desc, .empty-state-hint, .text-block, .card-title, .card-desc, .quote-text, .ticket-time-name, .ticket-time-value, .ticket-highlight-value, .ticket-highlight-label, .ticket-sub-label, .ticket-body-text, .stub-back-ring-text, .stub-back-caption, .stub-back-stat-value, .stub-back-stat, .stub-back-title, .stub-nc-name, .stub-name, .stub-caption, .stub-value, .designer-ticket .ticket-text, .ticket-stub-content, .scroll-note-title, .scroll-note-meta, .scroll-notes-empty), body.privacy-on [data-private-text], body.privacy-on :is(p, [data-inline-edit], .goal-item-name, .goal-item-daily, .goal-item-date, .goal-item-status, .goal-item-entry, .goal-title, .goal-text, .section-settings-title, .section-settings-desc, .health-goal-title, .stat-value, .stat-label, .gho-score, .gho-label, .gho-metric-name, .gho-metric-val, .gho-suggestion-text, .gho-stat-val, .gho-stat-label, .gho-empty-text, .todo-focus-item, .todo-title, .todo-desc, .todo-goal-daily, .todo-goal-progress, .todo-goal-source, .todo-stat-num, .todo-stat-label, .todo-group-label, .todo-completed-count, .bamboo-name, .bamboo-time, .bamboo-count, .bamboo-item-time, .bamboo-item-task, .bamboo-item-eval, .bamboo-title, .empty-state-title, .empty-state-desc, .empty-state-hint, .text-block, .card-title, .card-desc, .quote-text, .ticket-time-name, .ticket-time-value, .ticket-highlight-value, .ticket-highlight-label, .ticket-sub-label, .ticket-body-text, .stub-back-ring-text, .stub-back-caption, .stub-back-stat-value, .stub-back-stat, .stub-back-title, .stub-nc-name, .stub-name, .stub-caption, .stub-value, .designer-ticket .ticket-text, .ticket-stub-content, .scroll-note-title, .scroll-note-meta, .scroll-notes-empty) {
     filter: blur(var(--privacy-blur));
     transition: filter 0.18s ease;
     /* 模糊状态下仍可被点击操作（如切日期、开设置），仅视觉遮挡 */
     pointer-events: auto;
 }
 /* 尊重用户的「减少动态效果」系统偏好：关闭模糊过渡（直接切） */
-@media (prefers-reduced-motion: reduce)   {
+@media (prefers-reduced-motion: reduce)     {
 
 
-    :host(.privacy-on) [data-private-text], :host(.privacy-on) :is(p, [data-inline-edit], .goal-item-name, .goal-item-daily, .goal-item-date, .goal-item-status, .goal-item-entry, .goal-title, .goal-text, .section-title, .section-desc, .section-settings-title, .section-settings-desc, .health-goal-title, .stat-value, .stat-label, .gho-score, .gho-label, .gho-metric-name, .gho-metric-val, .gho-suggestion-text, .gho-stat-val, .gho-stat-label, .gho-empty-text, .todo-focus-item, .todo-item-text, .todo-title, .todo-desc, .todo-goal-daily, .todo-goal-progress, .todo-goal-source, .todo-stat-num, .todo-stat-label, .todo-group-label, .todo-completed-count, .bamboo-name, .bamboo-time, .bamboo-count, .bamboo-item-time, .bamboo-item-task, .bamboo-item-eval, .bamboo-title, .empty-state-title, .empty-state-desc, .empty-state-hint, .text-block, .card-title, .card-desc, .quote-text), body.privacy-on [data-private-text], body.privacy-on :is(p, [data-inline-edit], .goal-item-name, .goal-item-daily, .goal-item-date, .goal-item-status, .goal-item-entry, .goal-title, .goal-text, .section-title, .section-desc, .section-settings-title, .section-settings-desc, .health-goal-title, .stat-value, .stat-label, .gho-score, .gho-label, .gho-metric-name, .gho-metric-val, .gho-suggestion-text, .gho-stat-val, .gho-stat-label, .gho-empty-text, .todo-focus-item, .todo-item-text, .todo-title, .todo-desc, .todo-goal-daily, .todo-goal-progress, .todo-goal-source, .todo-stat-num, .todo-stat-label, .todo-group-label, .todo-completed-count, .bamboo-name, .bamboo-time, .bamboo-count, .bamboo-item-time, .bamboo-item-task, .bamboo-item-eval, .bamboo-title, .empty-state-title, .empty-state-desc, .empty-state-hint, .text-block, .card-title, .card-desc, .quote-text) {
+
+
+    :host(.privacy-on) [data-private-text], :host(.privacy-on) :is(p, [data-inline-edit], .goal-item-name, .goal-item-daily, .goal-item-date, .goal-item-status, .goal-item-entry, .goal-title, .goal-text, .section-settings-title, .section-settings-desc, .health-goal-title, .stat-value, .stat-label, .gho-score, .gho-label, .gho-metric-name, .gho-metric-val, .gho-suggestion-text, .gho-stat-val, .gho-stat-label, .gho-empty-text, .todo-focus-item, .todo-title, .todo-desc, .todo-goal-daily, .todo-goal-progress, .todo-goal-source, .todo-stat-num, .todo-stat-label, .todo-group-label, .todo-completed-count, .bamboo-name, .bamboo-time, .bamboo-count, .bamboo-item-time, .bamboo-item-task, .bamboo-item-eval, .bamboo-title, .empty-state-title, .empty-state-desc, .empty-state-hint, .text-block, .card-title, .card-desc, .quote-text), body.privacy-on [data-private-text], body.privacy-on :is(p, [data-inline-edit], .goal-item-name, .goal-item-daily, .goal-item-date, .goal-item-status, .goal-item-entry, .goal-title, .goal-text, .section-settings-title, .section-settings-desc, .health-goal-title, .stat-value, .stat-label, .gho-score, .gho-label, .gho-metric-name, .gho-metric-val, .gho-suggestion-text, .gho-stat-val, .gho-stat-label, .gho-empty-text, .todo-focus-item, .todo-title, .todo-desc, .todo-goal-daily, .todo-goal-progress, .todo-goal-source, .todo-stat-num, .todo-stat-label, .todo-group-label, .todo-completed-count, .bamboo-name, .bamboo-time, .bamboo-count, .bamboo-item-time, .bamboo-item-task, .bamboo-item-eval, .bamboo-title, .empty-state-title, .empty-state-desc, .empty-state-hint, .text-block, .card-title, .card-desc, .quote-text) {
         transition: none;
     }
 }
@@ -63,7 +65,9 @@
 /* 容器查询：画中卷放进左侧栏（约 200-300px 宽）时，番茄钟纵向堆叠、火折子缩小，避免溢出 */
 .scroll-body { container-type: inline-size; }
 
-@media (max-width: 760px)   {
+@media (max-width: 760px)     {
+
+
 
 
     .scroll-body { grid-template-columns: 1fr; grid-auto-rows: minmax(0, auto); overflow-y: auto; }
@@ -157,7 +161,7 @@
 }
 
 /* === 主题切换过渡 — 限定在需要平滑过渡的组件级元素，避免 :host * 全局性能开销 === */
-.container, .header, .date-nav, .bamboo-card, .goal-row, .kpi-card, .section-title, .bamboo-garden-section, .theme-card, .timeline-entry, .todo-item, .fab-action-btn, [class*="-card"], [class*="-section"], [class*="-panel"] {
+.container, .header, .date-nav, .bamboo-card, .goal-row, .kpi-card, .bamboo-garden-section, .theme-card, .timeline-entry, .todo-item, .fab-action-btn, [class*="-card"], [class*="-section"], [class*="-panel"] {
     transition: 
         background-color var(--transition-smooth),
         color var(--transition-smooth),
@@ -274,7 +278,9 @@
     opacity: 0.85;
 }
 
-@media (prefers-reduced-motion: no-preference)   {
+@media (prefers-reduced-motion: no-preference)     {
+
+
 
 
     :host::before {
@@ -298,7 +304,9 @@ html.recoloring:not(#recoloring), html.recoloring:not(#recoloring) *, html.recol
     transition: none;
 }
 
-@media (prefers-reduced-motion: reduce)   {
+@media (prefers-reduced-motion: reduce)     {
+
+
 
 
     :host(.motion-reduced) *, :host(.motion-reduced) *::before, :host(.motion-reduced) *::after {
@@ -308,10 +316,7 @@ html.recoloring:not(#recoloring), html.recoloring:not(#recoloring) *, html.recol
         scroll-behavior: auto;
     }
 
-    .empty-state::before {
-        animation: none;
-        opacity: 0;
-    }
+    
 
     .onboarding-highlight {
         animation: none;
@@ -340,7 +345,9 @@ html.recoloring:not(#recoloring), html.recoloring:not(#recoloring) *, html.recol
 :host(.loading) .container { opacity: 0; }
 .container { transition: opacity 0.3s ease; }
 
-@media print   {
+@media print     {
+
+
 
 
     :host { background: var(--white); }
@@ -402,7 +409,9 @@ html.recoloring:not(#recoloring), html.recoloring:not(#recoloring) *, html.recol
 
 /* === 玻璃拟态 fallback：backdrop-filter 不被支持或背景过透时使用不透明底色 ===
    保持玻璃效果在受支持浏览器下不变；仅在 @supports not 时切换，避免文字透底导致对比度不足。 */
-@supports not (backdrop-filter: blur(1px))   {
+@supports not (backdrop-filter: blur(1px))     {
+
+
 
 
     .container, .bamboo-card, .modal-content, .skeleton-section {
@@ -499,7 +508,9 @@ html.recoloring:not(#recoloring), html.recoloring:not(#recoloring) *, html.recol
     animation: skeletonShimmer 1.5s infinite;
 }
 
-@media (prefers-reduced-motion: reduce)   {
+@media (prefers-reduced-motion: reduce)     {
+
+
 
 
     .section-placeholder::before {
@@ -666,7 +677,7 @@ h1 {
    Mobile rule below bumps to comfortable 48px on small screens.
    裸标签（button/a/input/select/textarea）用 :where() 降为 0 权重默认值，
    组件类（.fab-action-btn 等）保持原权重；任一组件类均可无竞赛覆写最小触控尺寸。 */
-:where(button, [role="button"], a, input, select, textarea), .fab-action-btn, .quick-nav-btn, .goal-row-main, .goal-row, .bamboo-card, .bamboo-card-header, .todo-item-action, .section-title, .section-toggle, .date-nav-btn, .view-toggle-btn, .wallet-action, .modal-close, .kpi-card, .empty-state-card, .expand-btn {
+:where(button, [role="button"], a, input, select, textarea), .fab-action-btn, .quick-nav-btn, .goal-row-main, .goal-row, .bamboo-card, .bamboo-card-header, .date-nav-btn, .view-toggle-btn, .wallet-action, .modal-close, .kpi-card, .empty-state-card, .expand-btn {
     min-height: var(--touch-target);
     min-width: var(--touch-target);
     touch-action: manipulation;
@@ -688,7 +699,9 @@ h1 {
 }
 
 /* === MOBILE (≤480px): phone in portrait, tiny Obsidian sidebar === */
-@media (max-width: 480px)   {
+@media (max-width: 480px)     {
+
+
 
 
     /* Larger comfortable touch targets on mobile */
@@ -744,7 +757,9 @@ h1 {
 
 /* === TABLET / NARROW SIDEBAR (≤768px)
    Rules here ALSO apply to ≤480px due to cascade. */
-@media (max-width: 768px)   {
+@media (max-width: 768px)     {
+
+
 
 
     #main-container {
@@ -767,7 +782,9 @@ h1 {
 
 
 /* === WIDE DESKTOP (≥1025px): ensure comfortable reading width === */
-@media (min-width: 1025px)   {
+@media (min-width: 1025px)     {
+
+
 
 
     .container {
@@ -778,7 +795,9 @@ h1 {
 /* === TINY VIEWPORT (≤360px): Obsidian 窄侧边栏 / 最小手机。
    紧急压缩层。避免视觉破坏 — 它应该只是 ≤480px 设计的紧凑版本。
    目标：ZERO 水平滚动。 */
-@media (max-width: 360px)   {
+@media (max-width: 360px)     {
+
+
 
 
     :host {
@@ -815,11 +834,6 @@ h1 {
     }
 
     /* 段标题：更紧凑 */
-    .section-title {
-        font-size: var(--type-sm);
-        padding: 6px 10px;
-        min-height: var(--touch-comfortable);
-    }
 }
 
 /* 防止iOS上的高亮 */

@@ -117,7 +117,9 @@
 }
 
 /* 响应式适配 — Canonical breakpoints: 480px (mobile), 768px (tablet), 1024px (desktop) */
-@media (max-width: 768px)   {
+@media (max-width: 768px)     {
+
+
 
 
     :host {
@@ -237,7 +239,9 @@
     width: var(--bm-icon-xxl);
     height: var(--bm-icon-xxl);
 }
-@media (prefers-reduced-motion: no-preference)   {
+@media (prefers-reduced-motion: no-preference)     {
+
+
 
 
     .fab-main:not(.open) {

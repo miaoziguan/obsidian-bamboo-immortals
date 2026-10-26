@@ -1472,10 +1472,7 @@
     flex: 1;
     min-width: 0;
 }
-.arch-select-progress {
-    min-width: 60px;
-    width: auto;
-}
+
 .arch-select-category {
     min-width: 72px;
     max-width: 120px;
@@ -1499,7 +1496,9 @@
     user-select: none;
     min-width: 140px;
 }
-@media (max-width: 360px)   {
+@media (max-width: 360px)     {
+
+
 
 
     .arch-date-trigger { min-width: 100px; }
@@ -1519,34 +1518,14 @@
     overflow: hidden;
     text-overflow: ellipsis;
 }
-.arch-date-input {
-    height: 100%;
-    width: auto;
-    min-width: 90px;
-    padding: 0;
-    font-size: var(--type-xs);
-    font-weight: 500;
-    color: var(--text-primary);
-    background: transparent;
-    border: none;
-    border-radius: 0;
-    transition: color 0.12s;
-    flex: 1;
-    color-scheme: light;
-}
-.arch-date-input:focus {
-    outline: none;
-}
+
+
 .arch-filter-field-date .arch-date-input::-webkit-calendar-picker-indicator {
     margin-left: 2px;
     opacity: 0.55;
     cursor: pointer;
 }
-.arch-sep {
-    font-size: var(--type-xs);
-    color: var(--text-tertiary);
-    flex-shrink: 0;
-}
+
 
 /* 重置按钮：紧凑 */
 .arch-reset-btn {
@@ -1573,10 +1552,6 @@
 }
 
 /* 格式错误 — 红框提示 */
-.arch-date-err {
-    border-color: var(--bamboo-error, #e74c3c);
-    box-shadow: 0 0 0 2px rgba(231, 76, 60, 0.1);
-}
 
 /* ---- 列表容器 ---- */
 .arch-list {
@@ -2009,7 +1984,7 @@
     min-height: var(--touch-target);
 }
 
-.goal-field-title-compact, .goal-field-select-compact, .goal-field-date-compact, .goal-add-item-btn-compact, .goal-item-name-input, .goal-item-status-select, .goal-item-input, .goal-item-percent, .goal-editor-v2 .goal-item-date, .goal-item-value, .goal-item-daily-min, .goal-item-taskday-select, .goal-dep-inline-btn, .goal-icon-picker, .goal-field-input, .goal-field-select, .goal-progress-btn, .goal-add-item-btn, .goal-item-add-btn, .arch-select, .arch-reset-btn, .arch-card, .arch-act-btn, .arch-bar-btn, .arch-sel-all, .arch-date-input {
+.goal-field-title-compact, .goal-field-select-compact, .goal-field-date-compact, .goal-add-item-btn-compact, .goal-item-name-input, .goal-item-status-select, .goal-item-input, .goal-item-percent, .goal-editor-v2 .goal-item-date, .goal-item-value, .goal-item-daily-min, .goal-item-taskday-select, .goal-dep-inline-btn, .goal-icon-picker, .goal-field-input, .goal-field-select, .goal-progress-btn, .goal-add-item-btn, .goal-item-add-btn, .arch-select, .arch-reset-btn, .arch-card, .arch-act-btn, .arch-bar-btn, .arch-sel-all {
     min-height: var(--touch-target);
 }
 
@@ -2113,7 +2088,9 @@
 }
 
 /* 减弱动效偏好：关闭闪烁与抖动 */
-@media (prefers-reduced-motion: reduce)   {
+@media (prefers-reduced-motion: reduce)     {
+
+
 
 
     .goal-inline-edit-flash-success { animation: none; background-color: rgba(var(--primary-rgb), 0.12); }

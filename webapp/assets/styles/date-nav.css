@@ -548,7 +548,9 @@
    桌面端的窄侧边栏 / 窄窗口同样会命中 max-width: 480px，会把紧凑尺寸
    顶回 44px，使紧凑化改动看起来「完全没生效」。
    移动端的权威来源是 bridge 下发的 :host(.platform-mobile)（见下条规则）。 */
-@media (hover: none) and (pointer: coarse)   {
+@media (hover: none) and (pointer: coarse)     {
+
+
 
 
     .drp-tab, .drp-quick-btn, .drp-cancel-btn, .drp-confirm-btn, .drp-input-start, .drp-input-end {

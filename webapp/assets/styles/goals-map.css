@@ -353,7 +353,9 @@
 }
 
 /* At wide widths (≥769px), keep .goal-row-title single-line and fully flexible */
-@media (min-width: 769px)   {
+@media (min-width: 769px)     {
+
+
 
 
     .goal-row-title {
@@ -1471,7 +1473,9 @@ input[type="number"].goal-inline-edit-input {
    Canonical breakpoints: 480px / 768px
    ============================================================ */
 
-@media (max-width: 768px)   {
+@media (max-width: 768px)     {
+
+
 
 
     /* 子项目紧凑卡片：窄屏下允许换行，避免固定宽度撑出滚动条 */
@@ -1515,7 +1519,9 @@ input[type="number"].goal-inline-edit-input {
     }
 }
 
-@media (max-width: 480px)   {
+@media (max-width: 480px)     {
+
+
 
 
     .goal-inline-subitem-mini {

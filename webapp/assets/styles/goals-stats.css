@@ -1,9 +1,4 @@
 /* ============== 统计概览样式 ============== */
-.stats-grid {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: var(--space-3);
-}
 
 .stat-card {
     background: linear-gradient(135deg, rgba(var(--white-rgb), 0.95), rgba(var(--pale-green-rgb), 0.9));
@@ -55,27 +50,10 @@
 }
 
 /* 时间预警列表 */
-.time-alert-list {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
 
-.time-alert {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    padding: 14px;
-    background: rgba(var(--white-rgb), 0.8);
-    border: 1px solid rgba(var(--primary-rgb),0.1);
-    border-radius: var(--radius-md);
-    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
-}
 
-.time-alert:hover {
-    transform: translateX(4px);
-    box-shadow: 0 4px 12px rgba(var(--deep-rgb),0.08);
-}
+
+
 
 .time-alert.danger {
     border-color: rgba(var(--warning-orange-rgb), 0.3);
@@ -92,34 +70,15 @@
     background: linear-gradient(135deg, rgba(var(--danger-alt-rgb), 0.08), rgba(var(--danger-alt-rgb), 0.05));
 }
 
-.alert-icon {
-    font-size: var(--type-hero);
-}
 
-.alert-content {
-    flex: 1;
-}
 
-.alert-title {
-    font-size: var(--type-base);
-    font-weight: 700;
-    color: var(--bamboo-deep);
-    margin-bottom: 2px;
-}
 
-.alert-desc {
-    font-size: var(--type-micro);
-    color: var(--text-secondary);
-}
 
-.alert-badge {
-    font-size: var(--type-md);
-    font-weight: 800;
-    padding: 4px 10px;
-    background: rgba(var(--primary-rgb),0.1);
-    color: var(--bamboo-primary);
-    border-radius: var(--radius-sm);
-}
+
+
+
+
+
 
 .time-alert.danger .alert-badge {
     background: rgba(var(--warning-orange-rgb), 0.15);
@@ -137,28 +96,11 @@
     height: clamp(100px, 32vw, 140px);
 }
 
-.legend-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    padding: 10px 12px;
-    background: rgba(var(--white-rgb), 0.8);
-    border-radius: var(--radius-sm);
-    border: 1px solid rgba(var(--primary-rgb),0.08);
-    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
-}
 
-.legend-item:hover {
-    transform: translateX(4px);
-    border-color: rgba(var(--primary-rgb),0.15);
-}
 
-.legend-left {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
+
+
+
 
 .legend-dot {
     width: 14px;
@@ -167,17 +109,9 @@
     box-shadow: 0 0 0 4px rgba(var(--white-rgb), 0.6);
 }
 
-.legend-label {
-    font-size: var(--type-base);
-    font-weight: 600;
-    color: var(--bamboo-deep);
-}
 
-.legend-value {
-    font-size: var(--type-heading);
-    font-weight: 900;
-    color: var(--bamboo-deep);
-}
+
+
 
 /* 进度梯队 */
 .progress-tiers {
@@ -267,21 +201,8 @@
 
 
 /* 优先级分布 */
-.priority-stats {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
 
-.priority-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 14px 16px;
-    border-radius: var(--radius-md);
-    background: rgba(var(--white-rgb), 0.8);
-    border: 1px solid rgba(var(--primary-rgb),0.08);
-}
+
 
 .priority-item.high {
     border-color: rgba(var(--danger-alt-rgb), 0.2);
@@ -298,16 +219,9 @@
     background: linear-gradient(135deg, rgba(var(--gray-rgb), 0.06), rgba(var(--gray-rgb), 0.03));
 }
 
-.priority-label {
-    font-size: var(--type-base);
-    font-weight: 600;
-    color: var(--text-secondary);
-}
 
-.priority-value {
-    font-size: var(--type-large);
-    font-weight: 800;
-}
+
+
 
 .priority-item.high .priority-value {
     color: rgb(var(--danger-alt-rgb));
@@ -350,86 +264,29 @@
 }
 
 /* 空状态 */
-.empty-state {
-    text-align: center;
-    padding: var(--space-6);
-}
 
 
-.empty-icon {
-    font-size: var(--type-display-big);
-    margin-bottom: 12px;
-}
 
-.empty-text {
-    font-size: var(--type-md);
-    font-weight: 600;
-    color: var(--bamboo-deep);
-    margin-bottom: 4px;
-}
 
-.empty-desc {
-    font-size: var(--type-sm);
-    color: var(--text-secondary);
-}
+
+
+
 
 /* 已完成目标列表 */
-.completed-list {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
 
-.completed-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 12px 14px;
-    background: linear-gradient(135deg, rgba(var(--health-success-rgb), 0.08), rgba(var(--mint-rgb), 0.05));
-    border: 1px solid rgba(var(--health-success-rgb), 0.15);
-    border-radius: var(--radius-md);
-    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
-}
 
-.completed-item:hover {
-    transform: translateX(4px);
-    box-shadow: 0 4px 12px rgba(var(--health-success-rgb), 0.1);
-}
 
-.completed-icon {
-    font-size: var(--type-heading);
-}
 
-.completed-title {
-    flex: 1;
-    font-size: var(--type-base);
-    color: var(--bamboo-deep);
-    font-weight: 500;
-}
 
-.completed-more {
-    padding: 10px 14px;
-    text-align: center;
-    font-size: var(--type-sm);
-    color: var(--text-secondary);
-}
+
+
+
+
+
 
 /* 时间跨度分布 */
-.time-span-stats {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
 
-.time-span-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 14px 16px;
-    background: rgba(var(--white-rgb), 0.8);
-    border-radius: var(--radius-md);
-    border: 1px solid rgba(var(--primary-rgb),0.08);
-}
+
 
 .time-span-item.short {
     border-color: rgba(var(--primary-rgb),0.2);

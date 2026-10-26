@@ -1890,15 +1890,8 @@
   content-visibility: auto;
 }
 /* 贴纸删除钮：默认隐藏，悬停贴纸时显现（贴纸会持久化，必须能删） */
-.bm-sticker-del {
-  position: absolute; top: -8px; right: -8px; width: 22px; height: 22px;
-  border-radius: 50%; border: 1px solid rgba(255,255,255,.28);
-  background: rgba(0,0,0,.55); color: #fff; font-size: 15px; line-height: 1;
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer; opacity: 0; transition: opacity .15s ease; z-index: 2;
-}
 .bm-sticker:hover .bm-sticker-del { opacity: 1; }
-.bm-sticker-del:hover { background: rgba(200,60,60,.9); }
+
 /* 旋转（左上）/ 缩放（右下）手柄：同删除钮，悬停贴纸时显现 */
 .bm-sticker-rotate, .bm-sticker-resize {
   position: absolute; width: 24px; height: 24px; padding: 0;
@@ -1949,14 +1942,7 @@
 .bm-sticker-mi-del { color: #ff8f7a; }
 .bm-sticker-mi-del:hover { background: rgba(255,90,70,.16); color: #ffb0a0; }
 /* 翻转（左下）手柄：切换水平/垂直镜像，仅作用于内容层，不波及旋转与四角手柄 */
-.bm-sticker-flip {
-  position: absolute; bottom: -8px; left: -8px; padding: 0;
-  width: 22px; height: 22px; border-radius: 50%; border: 1px solid rgba(255,255,255,.28);
-  background: rgba(0,0,0,.55); color: #fff; font-size: 14px; line-height: 1;
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer; opacity: 0; transition: opacity .15s ease; z-index: 2;
-}
 .bm-sticker:hover .bm-sticker-flip { opacity: 1; }
-.bm-sticker-flip:hover { background: rgba(60,140,200,.9); }
+
 /* 缩放条「素材市场」入口：区别于缩放按钮的强调色 */
 .tw-zoom-bar .tw-zoom-market { color: var(--accent, #6fae8f); }

@@ -58,6 +58,8 @@ CSS 类名是模块/主题扩展 API 的天然契约面：外部主题、外部�
 | `gho` | 5 | `gho-empty-icon`/`gho-left`(healthScore.js) |
 
 > **✅ MIXED 首批 9 小簇已执行**（badge/tooltip/view/weather/confirm/category/catm/tier/btn）：共删 17 个精确死名（按首段聚类过滤）。执行工具 `scripts/delete-dead-css.py`（注释感知括号扫描 + 安全处理 `:is()/:where()` 分组：仅剔死参、保留活参；顶层直接死类才整体删；`@keyframes`/`@font-face` 原样保留）。关键安全核验：① 全改动 diff 净删除的类**全部属于死名集合、零活类误删**；② 隐私模式 `:host(.privacy-on) :is(...)` 分组仅剔 `.weather-text`、活成员全部保留；③ 解包 4 产物 html 死名 `.name` 选择器精确 0；④ `npm run preflight` 全绿、webapp jest 121 套件 / host vitest 全绿（`process_css` 重建器首字符复制 bug 已修复，曾致 31 测试失败）。
+>
+> **✅ MIXED 第二批 15 簇已执行**（settings/template/legend/sm/priority/section/stats/alert/todo/completed/time/empty/bm/arch/gho）：经保守模式工具删 93 个精确死名（范围 145，余 ~52 为「死类与活类复合纠缠」规则被保守保留）。工具升级为**保守模式**——顶层选择器只要含任一活类令牌（或 `:is()/:where()` 剔死参后仍有活参）即**整体保留**（死类令牌一并保留、绝不剥落/扩大）；仅当「零活类令牌」或「无 `.class` 令牌的结构性选择器」(`:host`/`:root`/`body`/`*`) 才保留时才删除。关键安全核验：① `:host,:root` 全局变量块**零误删**（曾因「无 .class 即当死」bug 被整体删除，已修）；② 曾误删的 4 个活类 `.urgent/.error/.danger/.count` 全部保留；③ 全改动 diff 净删除类全属死名集合、零活类误删；④ 解包产物死名选择器 0、括号平衡、无 `,,`/`:is((` 伪影；⑤ webapp jest 121 套件 / host vitest 57 文件全绿。
 
 #### 单名死类长尾（无连字符）—— ✅ 已全部执行完毕（commit 见下）
 
@@ -86,7 +88,7 @@ CSS 类名是模块/主题扩展 API 的天然契约面：外部主题、外部�
 > 扫描：定义 `webapp/assets/styles/**/*.css`；使用 `webapp/assets/scripts/**/*.js`(排除 tests) + `webapp/*src*.html`/`index.html`（刻意排除 4 个打包产物 html，避免把 CSS 定义当使用）。
 > 误判防护：十六进制颜色值过滤；动态拼接类名（`prefix`+n）移至「疑似动态」列，不计入判定。
 
-**确认死类名：506　疑似动态（已剔除）：3　死 ID 选择器：3**
+**确认死类名：413　疑似动态（已剔除）：3　死 ID 选择器：3**
 
 ### 按首段聚类（确认死类名）
 
@@ -95,35 +97,28 @@ CSS 类名是模块/主题扩展 API 的天然契约面：外部主题、外部�
 | `goal` | 126 | `goal-title`, `goal-text`, `goal-row-meta-empty`, `goal-action-cancel`, `goal-action-btn`, `goal-editor-v2`, … |
 | `ai` | 28 | `ai-wizard`, `ai-wizard-steps`, `ai-wizard-dot`, `ai-wizard-line`, `ai-wizard-body`, `ai-wizard-label`, … |
 | `achievement` | 24 | `achievement-icon-wrapper`, `achievement-icon-wrapper-horizontal`, `achievement-card-full`, `achievement-icon-wrapper-full`, `achievement-content-full`, `achievement-title-full`, … |
-| `settings` | 15 | `settings-section`, `settings-section-title`, `settings-backup-status`, `settings-theme-grid`, `settings-theme-card`, `settings-theme-preview`, … |
-| `template` | 15 | `template-tabs`, `template-tab`, `template-grid`, `template-card`, `template-card-icon`, `template-card-content`, … |
 | `scroll` | 14 | `scroll-note-title`, `scroll-note-meta`, `scroll-notes-empty`, `scroll-top-btn`, `scroll-incense-feature`, `scroll-btn`, … |
 | `theme` | 14 | `theme-panel-grid`, `theme-panel-card`, `theme-panel-card-name`, `theme-unloaded`, `theme-panel-card-badge`, `theme-loading`, … |
 | `bamboo` | 13 | `bamboo-controls`, `bamboo-garden-btn`, `bamboo-garden-section`, `bamboo-progress-fill`, `bamboo-progress-minimal`, `bamboo-progress-main`, … |
-| `legend` | 13 | `legend-item-new`, `legend-dot-new`, `legend-text-new`, `legend-label-new`, `legend-value-new`, `legend-item-horizontal`, … |
-| `priority` | 13 | `priority-grid`, `priority-card`, `priority-header`, `priority-indicator`, `priority-label`, `priority-value`, … |
-| `sm` | 13 | `sm-container`, `sm-section`, `sm-section-header`, `sm-count`, `sm-btn-edit`, `sm-btn-delete`, … |
-| `section` | 12 | `section-title`, `section-desc`, `section-toggle`, `section-settings-trigger`, `section-action-trigger`, `section-settings-btn-edit`, … |
-| `stats` | 12 | `stats-section-primary`, `stats-section-warning`, `stats-card-value`, `stats-grid`, `stats-modal`, `stats-header`, … |
+| `priority` | 11 | `priority-card`, `priority-indicator`, `priority-value`, `priority-grid`, `priority-cards`, `priority-card-new`, … |
 | `achievements` | 10 | `achievements-container`, `achievements-grid-full`, `achievements-summary-grid`, `achievements-empty-state`, `achievements-empty-icon`, `achievements-empty-title`, … |
 | `kpi` | 10 | `kpi-card`, `kpi-grid`, `kpi-icon`, `kpi-label`, `kpi-value`, `kpi-delta`, … |
-| `alert` | 9 | `alert-item`, `alert-icon-wrapper`, `alert-content`, `alert-title`, `alert-meta`, `alert-days`, … |
-| `bm` | 8 | `bm-btn--md`, `bm-btn--lg`, `bm-btn--outline`, `bm-btn--ghost`, `bm-btn--success`, `bm-btn--loading`, … |
-| `completed` | 7 | `completed-legend`, `completed-horizontal`, `completed-item`, `completed-icon`, `completed-title`, `completed-more`, … |
-| `todo` | 7 | `todo-item-text`, `todo-item-action`, `todo-item-row`, `todo-item-name`, `todo-item-hint`, `todo-section-title`, … |
-| `empty` | 6 | `empty-state`, `empty-state-text`, `empty-state-btn`, `empty-icon`, `empty-text`, `empty-desc` |
-| `time` | 6 | `time-alerts-grid`, `time-alert`, `time-span-item`, `time-alert-list`, `time-span-stats`, `time-input` |
+| `legend` | 8 | `legend-item-new`, `legend-dot-new`, `legend-value-new`, `legend-item-horizontal`, `legend-dot-horizontal`, `legend-value-horizontal`, … |
+| `stats` | 6 | `stats-section-primary`, `stats-section-warning`, `stats-card-value`, `stats-grid`, `stats-modal`, `stats-period-btn` |
 | `cs` | 5 | `cs-liantai`, `cs-stone`, `cs-bianshan`, `cs-yezi`, `cs-mei` |
 | `gho` | 5 | `gho-stat-today`, `gho-svg-bg`, `gho-hero-inner`, `gho-hero-ring`, `gho-hero-score` |
 | `stub` | 5 | `stub-back-title`, `stub-name`, `stub-caption`, `stub-value`, `stub-title-en` |
 | `ticket` | 5 | `ticket-sub-label`, `ticket-body-text`, `ticket-text`, `ticket-notch`, `ticket-pattern` |
 | `timeline` | 5 | `timeline-entry`, `timeline-stats-row`, `timeline-stat`, `timeline-stat-label`, `timeline-stat-value` |
+| `alert` | 4 | `alert-icon-wrapper`, `alert-item`, `alert-days`, `alert-badge` |
 | `arch` | 4 | `arch-date-input`, `arch-sep`, `arch-date-err`, `arch-select-progress` |
+| `completed` | 4 | `completed-item`, `completed-icon`, `completed-title`, `completed-more` |
 | `icon` | 4 | `icon-option`, `icon-picker`, `icon-picker-sm`, `icon-option-sm` |
 | `keyboard` | 4 | `keyboard-hint`, `keyboard-hint-icon`, `keyboard-hint-text`, `keyboard-hint-close` |
 | `progress` | 4 | `progress-tier`, `progress-fill-green`, `progress-tiers`, `progress-fill` |
 | `touch` | 4 | `touch-target-sm`, `touch-friendly`, `touch-active`, `touch-target` |
 | `tw` | 4 | `tw-signal`, `tw-batt`, `tw-auto`, `tw-canvas-hint` |
+| `bm` | 3 | `bm-btn--loading`, `bm-sticker-del`, `bm-sticker-flip` |
 | `card` | 3 | `card-title`, `card-desc`, `card-edit-hint` |
 | `diagnosis` | 3 | `diagnosis-group`, `diagnosis-tag`, `diagnosis-card` |
 | `editor` | 3 | `editor-modal`, `editor-title-input`, `editor-content-textarea` |
@@ -143,6 +138,8 @@ CSS 类名是模块/主题扩展 API 的天然契约面：外部主题、外部�
 | `item` | 2 | `item-complete`, `item-action-btn` |
 | `modal` | 2 | `modal-hero-big-number`, `modal-actions` |
 | `notstarted` | 2 | `notstarted-legend`, `notstarted-horizontal` |
+| `sm` | 2 | `sm-section`, `sm-apply-btn` |
+| `time` | 2 | `time-alert`, `time-span-item` |
 | `animations` | 1 | `animations-paused` |
 | `bad` | 1 | `bad` |
 | `balance` | 1 | `balance-jump` |
@@ -172,9 +169,12 @@ CSS 类名是模块/主题扩展 API 的天然契约面：外部主题、外部�
 | `period` | 1 | `period-content` |
 | `philosophy` | 1 | `philosophy-icon` |
 | `pulse` | 1 | `pulse-glow` |
+| `section` | 1 | `section-title` |
+| `settings` | 1 | `settings-theme-card` |
 | `shop` | 1 | `shop-currency` |
 | `shortcuts` | 1 | `shortcuts-list` |
 | `swipe` | 1 | `swipe-hint` |
+| `template` | 1 | `template-tab` |
 | `text` | 1 | `text-block` |
 | `urgent` | 1 | `urgent` |
 | `wallet` | 1 | `wallet-action` |

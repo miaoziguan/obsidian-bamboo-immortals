@@ -234,9 +234,7 @@
     color: var(--health-color, #5A9A5A);
 }
 
-.gho-stat-today {
-    background: rgba(var(--warning-yellow-rgb), 0.08);
-}
+
 
 .gho-stat-today .gho-stat-icon, .gho-stat-today .gho-stat-val, .gho-stat-today .gho-stat-label {
     color: var(--gold);

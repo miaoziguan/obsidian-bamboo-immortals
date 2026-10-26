@@ -30,8 +30,12 @@ TOOL = os.path.join(ROOT, 'scripts', 'delete-dead-css.py')
 
 # 参与审计的文字色刻度与表面（均为项目已有语义 token）
 TEXT_TOKENS = ['--ink-dark', '--ink-medium', '--ink-light', '--ink-pale']
-SURFACE_TOKENS = ['--surface-solid', '--card-bg', '--bamboo-background',
-                  '--bg-gradient-start', '--bg-gradient-end']
+# 表面必须与活体样式指南（docs/ui-styleguide.html）保持一致：
+# 初版只测了 start/end，漏掉 card-glass / mid1 / mid2，导致 mid2（明度界更宽）
+# 成为盲区——浏览器实测在 -15% 处跌到 4.25 而脚本却报全绿。已补全。
+SURFACE_TOKENS = ['--surface-solid', '--card-bg', '--card-glass', '--bamboo-background',
+                  '--bg-gradient-start', '--bg-gradient-mid1', '--bg-gradient-mid2',
+                  '--bg-gradient-end']
 
 
 def load_blocks(path):

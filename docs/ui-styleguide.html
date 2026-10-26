@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>UI 活体样式指南 · 竹林修仙传</title>
+<style>
+  body{margin:0;font-family:-apple-system,'PingFang SC','Microsoft YaHei',sans-serif;background:#f6f6f4;color:#222}
+  header{position:sticky;top:0;z-index:9;background:#fff;border-bottom:1px solid #e2e2de;padding:14px 20px}
+  h1{margin:0 0 8px;font-size:17px}
+  .ctl{display:flex;gap:14px;flex-wrap:wrap;align-items:center;font-size:13px}
+  .ctl label{display:flex;gap:6px;align-items:center}
+  button{font:inherit;padding:5px 12px;border:1px solid #ccc;background:#fff;border-radius:6px;cursor:pointer}
+  button.on{background:#2f6b3a;color:#fff;border-color:#2f6b3a}
+  .note{font-size:12px;color:#666;margin-top:8px;line-height:1.6}
+</style>
+</head>
+<body>
+<header>
+  <h1>UI 活体样式指南 <span style="font-weight:400;color:#888;font-size:13px">（数值全部由浏览器从真实 variables.css 实时解析）</span></h1>
+  <div class="ctl">
+    <span>主题：</span>
+    <button id="btnLight" class="on">亮色</button>
+    <button id="btnDark">暗色</button>
+    <label>色相 <input type="range" id="hue" min="0" max="360" value="120"><span id="hueV">120</span></label>
+    <label>明度偏移 <input type="range" id="off" min="-15" max="15" value="0"><span id="offV">0%</span></label>
+    <span id="verdict" style="font-weight:600"></span>
+  </div>
+  <div class="note">本页在 shadow host 内加载 <code>../webapp/assets/styles/variables.css</code>，
+    主题切换即给 host 加 <code>.dark</code> 类，与生产 <code>:host(.dark)</code> 机制完全一致。
+    所有色值经 <code>getComputedStyle</code> 真实解析后计算 WCAG 对比度——不是手写副本，也不是离线近似。</div>
+</header>
+<div id="bamboo-host" class="bamboo-shadow-host"></div>
+
+<script>
+const CSS_HREF = '../webapp/assets/styles/variables.css';
+const INK   = ['--ink-dark','--ink-medium','--ink-light','--ink-pale'];
+const SURF  = ['--surface-solid','--card-bg','--card-glass','--bamboo-background',
+               '--bg-gradient-start','--bg-gradient-mid1','--bg-gradient-mid2','--bg-gradient-end'];
+const TYPES = ['--type-mini','--type-micro','--type-xs','--type-sm','--type-base','--type-caption',
+               '--type-md','--type-body','--type-lg','--type-lead','--type-xl','--type-heading',
+               '--type-2xl','--type-large','--type-display','--type-hero','--type-mega'];
+const SPACES= Array.from({length:8},(_,i)=>`--space-${i+1}`);
+const RADII = ['--radius-2xs','--radius-xs','--radius-sm','--radius-md','--radius-lg','--radius-xl',
+               '--radius-2xl','--radius-3xl','--radius-4xl','--radius-5xl','--radius-pill',
+               '--radius-control','--radius-card','--radius-panel','--radius-modal','--radius-tooltip'];
+
+const host = document.getElementById('bamboo-host');
+const sr   = host.attachShadow({mode:'open'});
+sr.innerHTML = `
+  <link rel="stylesheet" href="${CSS_HREF}">
+  <style>
+    :host{display:block;padding:20px;font-family:-apple-system,'PingFang SC','Microsoft YaHei',sans-serif}
+    .sg-h{font-size:15px;font-weight:700;margin:26px 0 10px;color:var(--ink-dark);border-bottom:1px solid rgba(128,128,128,.25);padding-bottom:6px}
+    .sg-sub{font-size:12px;color:var(--ink-light);margin:0 0 12px;line-height:1.6}
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+    .sw{border:1px solid rgba(128,128,128,.3);border-radius:8px;padding:10px;background:var(--surface-solid)}
+    .chip{height:44px;border-radius:6px;border:1px solid rgba(128,128,128,.25)}
+    .nm{font-size:12px;font-weight:600;color:var(--ink-dark);margin-top:6px;word-break:break-all}
+    .val{font-size:11px;color:var(--ink-light);font-family:ui-monospace,monospace}
+    table{border-collapse:collapse;font-size:12px;background:var(--surface-solid);color:var(--ink-dark)}
+    th,td{border:1px solid rgba(128,128,128,.25);padding:6px 8px;text-align:center}
+    th{background:rgba(128,128,128,.08);font-weight:600}
+    .ok{background:#e6f4ea}.warn{background:#fff4ce}.bad{background:#fdecea}
+    .row{display:flex;align-items:baseline;gap:12px;padding:4px 0;border-bottom:1px dashed rgba(128,128,128,.18)}
+    .rname{width:140px;font-size:11px;font-family:ui-monospace,monospace;color:var(--ink-light)}
+    .sp{display:flex;align-items:center;gap:10px;padding:3px 0}
+    .spbar{background:var(--bm-primary,#5a9a5a);height:14px;border-radius:3px}
+    .rbox{width:64px;height:44px;background:var(--surface-solid);border:1px solid var(--ink-pale)}
+    .comps{display:flex;gap:14px;flex-wrap:wrap;align-items:center;padding:14px;background:var(--surface-solid);border-radius:8px}
+  </style>
+  <div id="root"></div>`;
+const root = sr.getElementById('root');
+
+/* ---------- 取值：交给浏览器解析 ---------- */
+const probe = document.createElement('div');
+probe.style.position='absolute'; probe.style.visibility='hidden';
+sr.appendChild(probe);
+function resolve(prop, tok){
+  if(prop==='color'){ probe.style.color=`var(${tok})`; return getComputedStyle(probe).color; }
+  probe.style.backgroundColor=`var(${tok})`; return getComputedStyle(probe).backgroundColor;
+}
+function raw(tok){ return getComputedStyle(host).getPropertyValue(tok).trim(); }
+
+/* ---------- 颜色工具 ---------- */
+function parse(c){
+  const m=c.match(/[\d.]+/g)||[];
+  return {r:+m[0]||0,g:+m[1]||0,b:+m[2]||0,a:m[3]!==undefined?+m[3]:1};
+}
+function over(fg,bg){ const a=fg.a; return {r:Math.round(a*fg.r+(1-a)*bg.r),g:Math.round(a*fg.g+(1-a)*bg.g),b:Math.round(a*fg.b+(1-a)*bg.b),a:1}; }
+const lum=c=>{const f=v=>{v/=255;return v<=0.03928?v/12.92:Math.pow((v+0.055)/1.055,2.4)};
+  return 0.2126*f(c.r)+0.7152*f(c.g)+0.0722*f(c.b)};
+function contrast(a,b){const l1=lum(a),l2=lum(b);const hi=Math.max(l1,l2),lo=Math.min(l1,l2);return (hi+0.05)/(lo+0.05);}
+const verdict=r=> r>=7?['AAA','ok'] : r>=4.5?['AA','ok'] : r>=3?['大字','warn'] : ['FAIL','bad'];
+const hex=c=>'#'+[c.r,c.g,c.b].map(v=>v.toString(16).padStart(2,'0')).join('');
+
+/* ---------- 渲染 ---------- */
+function swatches(list,prop){
+  // 色块一律用 background 呈现：墨色 token 本质是文字色，用 color 填一个无文字的
+  // div 不会显色（初版 bug），故统一 background，视觉上即"该 token 的颜色"。
+  return `<div class="grid">`+list.map(t=>{
+    const c=parse(resolve(prop,t));
+    return `<div class="sw"><div class="chip" style="background:var(${t})"></div>
+      <div class="nm">${t}</div><div class="val">${hex(c)}</div>
+      <div class="val" style="opacity:.7">${raw(t).slice(0,46)}</div></div>`;
+  }).join('')+`</div>`;
+}
+
+function render(){
+  const base=parse(resolve('bg','--surface-solid'));
+  let worst=99, fails=0, cells='';
+  cells += '<tr><th>文字 \\ 表面</th>'+SURF.map(s=>`<th>${s.replace('--','')}</th>`).join('')+'</tr>';
+  for(const t of INK){
+    const tc=parse(resolve('color',t));
+    cells += `<tr><th style="text-align:left">${t.replace('--','')}</th>`;
+    for(const s of SURF){
+      const sc=parse(resolve('bg',s));
+      const bg = sc.a<1 ? over(sc,base) : sc;
+      const r=contrast(tc,bg); worst=Math.min(worst,r);
+      const [v,cls]=verdict(r); if(r<4.5) fails++;
+      cells += `<td class="${cls}">${r.toFixed(2)}<br><small>${v}</small></td>`;
+    }
+    cells += '</tr>';
+  }
+
+  root.innerHTML = `
+    <div class="sg-h">墨色文字阶梯</div>
+    <div class="sg-sub">暗色主题下这些 token 已与「明度偏移」解耦（2026-10-27 修复），拖动上方明度滑块可见对比度不再塌陷。</div>
+    ${swatches(INK,'color')}
+
+    <div class="sg-h">表面 / 纸面</div>
+    <div class="sg-sub">半透明表面按 alpha 合成到 --surface-solid（当前 ${hex(base)}）后再参与对比度计算。</div>
+    ${swatches(SURF,'bg')}
+
+    <div class="sg-h">对比度矩阵（浏览器实时计算 · WCAG 2.1）</div>
+    <div class="sg-sub">AA 正文 4.5:1 ／ 大字与 UI 组件 3:1 ／ AAA 7:1</div>
+    <table>${cells}</table>
+
+    <div class="sg-h">字号刻度 --type-*（共 ${TYPES.length} 档，存在两条并行命名族）</div>
+    ${TYPES.map(t=>`<div class="row"><span class="rname">${t}</span>
+        <span style="font-size:var(${t});color:var(--ink-dark)">竹林修仙传 Bamboo Immortals 0123</span></div>`).join('')}
+
+    <div class="sg-h">间距刻度 --space-*</div>
+    ${SPACES.map(t=>{const v=raw(t)||'0';
+      return `<div class="sp"><span class="rname">${t}</span>
+        <div class="spbar" style="width:var(${t})"></div><span class="val">${v}</span></div>`}).join('')}
+
+    <div class="sg-h">圆角刻度 --radius-*（全量 25 个，存在冗余）</div>
+    <div class="grid">${RADII.map(t=>`<div class="sw">
+        <div class="rbox" style="border-radius:var(${t})"></div>
+        <div class="nm">${t}</div><div class="val">${raw(t)}</div></div>`).join('')}</div>
+
+    <div class="sg-h">组件示例（真实 class 渲染）</div>
+    <div class="sg-sub">以下使用项目真实类名，样式来自 variables.css；部分组件依赖应用上下文（如画布/数据），此处仅示意骨架。</div>
+    <div class="comps">
+      <button class="bm-btn">bm-btn</button>
+      <button class="fab-action-btn"><span class="fab-btn-icon">＋</span><span class="fab-btn-text">fab-action-btn</span></button>
+      <button class="market-btn">market-btn</button>
+      <button class="drp-quick-btn">drp-quick-btn</button>
+    </div>`;
+
+  const v=document.getElementById('verdict');
+  v.textContent = `当前最低对比度 ${worst.toFixed(2)} ／ 未达 AA ${fails} 组`;
+  v.style.color = fails? '#c0392b' : '#1e7a3c';
+}
+
+/* ---------- 交互 ---------- */
+function setTheme(dark){
+  host.classList.toggle('dark', dark);
+  document.getElementById('btnLight').classList.toggle('on', !dark);
+  document.getElementById('btnDark').classList.toggle('on', dark);
+  render();
+}
+document.getElementById('btnLight').onclick = ()=>setTheme(false);
+document.getElementById('btnDark').onclick  = ()=>setTheme(true);
+document.getElementById('hue').oninput = e=>{
+  host.style.setProperty('--accent-hue', e.target.value);
+  document.getElementById('hueV').textContent = e.target.value; render();
+};
+document.getElementById('off').oninput = e=>{
+  host.style.setProperty('--accent-lightness-offset', e.target.value+'%');
+  document.getElementById('offV').textContent = e.target.value+'%'; render();
+};
+
+// CSS 加载完成后再渲染（否则取到空值）
+const link = sr.querySelector('link');
+if(link.sheet) render(); else link.addEventListener('load', render);
+</script>
+</body>
+</html>

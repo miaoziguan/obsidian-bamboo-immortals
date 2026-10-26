@@ -170,10 +170,12 @@
        无论饱和度怎么提都还是近白，故「跟随」只剩色相微调——这是"变化不大"的第二层根因。 */
     /* ⚠️ 明度下限（2026-10-27 对比度审计修正）：滑块拖到 -15% 时纸面会暗到 81% 明度，
        逼近最浅文字 --ink-pale，对比度跌至 2.83。故给纸面明度设下限（92/90/86/91%），
-       保证纸面与文字的亮度差不被吃掉——滑块仍可作用于强调色，只是不再牺牲可读性。 */
+       保证纸面与文字的亮度差不被吃掉——滑块仍可作用于强调色，只是不再牺牲可读性。
+       ⚠️ 具体下限（92/91/91/91%）系由「文字 × 全部 8 个表面」的 576 组网格实测反推：
+       mid2 原设 86% 时最低仅 3.95，故一并收紧到 91%。 */
     --bg-gradient-start: hsl(var(--accent-hue), min(100%, calc(18% * var(--accent-saturation-ui, 1))), max(92%, calc(96% + var(--accent-lightness-offset) - (var(--accent-saturation-ui, 1) - 1) * 12%)));
-    --bg-gradient-mid1: hsl(var(--accent-hue), min(100%, calc(21% * var(--accent-saturation-ui, 1))), max(90%, calc(94% + var(--accent-lightness-offset) - (var(--accent-saturation-ui, 1) - 1) * 12%)));
-    --bg-gradient-mid2: hsl(var(--accent-hue), min(100%, calc(17% * var(--accent-saturation-ui, 1))), max(86%, calc(90% + var(--accent-lightness-offset) - (var(--accent-saturation-ui, 1) - 1) * 12%)));
+    --bg-gradient-mid1: hsl(var(--accent-hue), min(100%, calc(21% * var(--accent-saturation-ui, 1))), max(91%, calc(94% + var(--accent-lightness-offset) - (var(--accent-saturation-ui, 1) - 1) * 12%)));
+    --bg-gradient-mid2: hsl(var(--accent-hue), min(100%, calc(17% * var(--accent-saturation-ui, 1))), max(91%, calc(90% + var(--accent-lightness-offset) - (var(--accent-saturation-ui, 1) - 1) * 12%)));
     --bg-gradient-end: hsl(var(--accent-hue), min(100%, calc(20% * var(--accent-saturation-ui, 1))), max(91%, calc(95% + var(--accent-lightness-offset) - (var(--accent-saturation-ui, 1) - 1) * 12%)));
     --card-bg: rgba(var(--white-rgb), 0.60);
     --card-glass: rgba(var(--white-rgb), 0.55);
@@ -480,7 +482,7 @@
        与文字解耦配套：给表面明度加上限，保证「文字—表面」亮度差不被吃掉。 */
     --bg-gradient-start: hsl(calc(var(--accent-hue) + 16), min(100%, calc(30% * var(--accent-saturation-ui, 1))), min(18%, calc(13% + var(--accent-lightness-offset))));
     --bg-gradient-mid1: hsl(calc(var(--accent-hue) + 6), min(100%, calc(34% * var(--accent-saturation-ui, 1))), min(12%, calc(7% + var(--accent-lightness-offset))));
-    --bg-gradient-mid2: hsl(calc(var(--accent-hue) + 28), min(100%, calc(38% * var(--accent-saturation-ui, 1))), min(21%, calc(16% + var(--accent-lightness-offset))));
+    --bg-gradient-mid2: hsl(calc(var(--accent-hue) + 28), min(100%, calc(38% * var(--accent-saturation-ui, 1))), min(18%, calc(16% + var(--accent-lightness-offset))));
     --bg-gradient-end: hsl(calc(var(--accent-hue) + 2), min(100%, calc(30% * var(--accent-saturation-ui, 1))), min(15%, calc(9% + var(--accent-lightness-offset))));
     
     /* 卡片：深邃中透出微光，跟随色相和明度 */

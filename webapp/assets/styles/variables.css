@@ -723,6 +723,15 @@
     --type-mega:    calc(clamp(24px, 7vw, 36px) * var(--font-size-scale));
     --type-display-big: calc(clamp(32px, 9vw, 48px) * var(--font-size-scale));
 
+    /* 固定字号（紧凑面板专用，故意不响应视口）
+       material market 等紧凑面板用固定 11/12/13/15px；若改用响应式 --type-*，
+       桌面端会被放大 1–2px（13px→15px），造成视觉回退。为守住「零视觉变化」，
+       另立固定档。lint R2 要求字号走 token，这 4 个即其合法出口。 */
+    --bm-type-fixed-11: 11px;
+    --bm-type-fixed-12: 12px;
+    --bm-type-fixed-13: 13px;
+    --bm-type-fixed-15: 15px;
+
     /* Fluid spacing additions (used inside padding/gap declarations) */
     --fluid-card-padding: clamp(10px, 2.5vw, 16px);
     --fluid-gap-small: clamp(6px, 1.5vw, 10px);

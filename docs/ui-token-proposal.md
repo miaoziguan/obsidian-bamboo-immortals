@@ -187,6 +187,41 @@ lint R10：新增自定义属性须用 `--bm-*` / `--bamboo-*`；`variables.css`
 `scripts/ui-visual-baseline.mjs` 重新生成截图并与基线 diff，且 `npm run preflight` 全绿，
 方可进入下一批。
 
+### 4.1 阶段 0 已执行（2026-10-27）
+
+**关键发现：守门员早就写好了，但从未上岗。**
+
+`scripts/lint-css-tokens.mjs` 已内置 R1（裸圆角）/ R2（裸字号）/ R3-R8（裸白黑）/
+R6（阴影裸色）/ R9（transition: all）/ R10（无前缀变量），**但 `lint:css` 退出码为 1
+（80 处违规），且不在 `preflight` / `build` / `.husky/pre-commit` 任何一处**。
+这才是 `variables.css` 明文禁止的 `#fff` 仍出现 37 次的真因——不是没人写规则，
+是规则没通电。
+
+**执行内容**
+
+1. **清零 80 处历史违规**（保值替换，非重设计）：
+   - R5/R3/R6（50 处）：`rgba(0,0,0,α)`→`rgba(var(--black-rgb),α)`、
+     `rgba(255,255,255,α)`→`rgba(var(--white-rgb),α)`、`#fff`→`var(--white)`，
+     数值完全等价。
+   - R1（13 处）：映射到**同值** token（3px→`--radius-3`、8px→`--radius-xs`、
+     10px→`--radius-sm`、999px→`--radius-pill`…）；仅 11px 无同值项，
+     取 `--radius-md`(12px)，**差 1px**。
+   - R2（17 处）：响应式 `--type-*` 在桌面端会放大 1–2px（13px→15px），
+     故新增 4 个**固定档** token `--bm-type-fixed-{11,12,13,15}`
+     （符合阶段 1「只加 token」），零视觉变化。
+2. **上电**：`lint:css` 接入 `preflight`、`build`、`.husky/pre-commit` 三道闸。
+3. **修复视觉基线不可复现**（顺带发现的硬缺陷）：
+   - `utils/quoteService.js` 用 `Math.random()` 抽箴言 → 基线脚本注入确定性 LCG；
+   - 竹叶有 **338 个元素在跑连续动画**（`bambooSway1-5`/`leafTremble`/`leafDrift3`），
+     `reducedMotion` 只设媒体查询、拦不住 → 改为向 shadowRoot 注入
+     `animation:none!important`。两次运行 md5 现已完全一致。
+
+**零视觉变化的硬证明**：把 HEAD 版 `app.html`（改动前构建）与当前版
+同页对比 **2191 个元素的 computed style**（color / background / font-size /
+border-radius / box-shadow）——**仅 1 个元素不同**（即 11px→12px 那处），其余全等。
+
+**结果**：`lint:css` 退出码 0；`npm run preflight` 全绿。
+
 ---
 
 ## 5. 护栏（防复发，否则收敛完还会漂回去）

@@ -1033,7 +1033,7 @@
     display: none;
     font-size: var(--type-mini);
     padding: 0 6px;
-    border-radius: 999px;
+    border-radius: var(--radius-pill);
     background: rgba(var(--bm-primary-rgb), 0.16);
     color: var(--bamboo-primary, #7d9b6a);
     line-height: 1.6;

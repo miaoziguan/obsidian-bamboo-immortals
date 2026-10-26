@@ -6,6 +6,10 @@
 # 发现 20+ 处，含 3 处真实注入点）。豁免须写进 scripts/html-escape-allow.json
 # 并附 _reason，禁止为了「让闸门变绿」而登记。
 npm run lint
+# lint:css = CSS 令牌守门员（scripts/lint-css-tokens.mjs）
+# 长期以来它已存在却未接入任何闸门，导致 80 处裸写硬编码（含明文禁止的 #fff×37）
+# 长期累积无人拦截。2026-10-27 接入：先清零历史债，再上电，防止再次回潮。
+npm run lint:css
 npm run check:html-escape
 npm run check:load-matrix
 npm run test:host

@@ -48,6 +48,20 @@ const waitReady = (page) =>
     { timeout: 15000 }
   );
 
+/**
+ * 固定 Math.random，否则截图不可复现。
+ * 根因：utils/quoteService.js 用 Math.random() 抽取「每日箴言」，
+ * 同一构建两次截图会因文案不同而 md5 不同 —— 基线就此失去回归意义。
+ * 用确定性 LCG 覆写，保证每次抽到同一条。
+ */
+const FREEZE_RANDOM = () => {
+  let s = 42;
+  Math.random = () => {
+    s = (s * 1103515245 + 12345) & 0x7fffffff;
+    return s / 0x7fffffff;
+  };
+};
+
 async function main() {
   await mkdir(OUT, { recursive: true });
   const browser = await chromium.launch();
@@ -58,8 +72,23 @@ async function main() {
       // 稳定截图：抑制动画（项目自身也遵循 prefers-reduced-motion）
       reducedMotion: 'reduce',
     });
+    await page.addInitScript(FREEZE_RANDOM);
     await page.goto(APP, { waitUntil: 'load' });
     await waitReady(page);
+
+    // 冻结动画/过渡：竹子有 338 个元素在跑连续动画
+    // （bambooSway1-5 / leafTremble / leafDrift3…），Playwright 的 reducedMotion
+    // 只设媒体查询、拦不住这些未响应该查询的动画，截图相位随机 → 基线不可复现。
+    // 必须注入到 shadowRoot 内（light DOM 的样式进不了 shadow）。
+    await page.evaluate(() => {
+      const sr = window.__bambooShadowRoot;
+      if (!sr) return;
+      const s = document.createElement('style');
+      s.textContent =
+        '*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important}';
+      sr.appendChild(s);
+    });
+    await page.waitForTimeout(120);
 
     if (st.classes.length) {
       await page.evaluate((cls) => {

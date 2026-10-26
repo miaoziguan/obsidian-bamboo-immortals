@@ -474,13 +474,32 @@ export default class BambooReviewPlugin extends Plugin {
     new ConsultModal(this.app, options).open();
   }
 
-  /** AI 规划主流程：取当前笔记 → 调大模型 → 校验 → 审阅弹窗 → 写入目标库 */
-  async aiPlanFromNote(): Promise<void> {
+  /**
+   * AI 入口前置校验：启用开关 + 关键凭据齐备（API Key / Base URL）。
+   * 不齐备时弹对应 Notice 并返回 false，避免带着空 key 打到 AI 服务后
+   * 才得到看不懂的 "Request failed, status 401"。
+   */
+  private aiCredentialsReady(): boolean {
     const s = this.settings;
     if (!s.aiEnabled) {
       new Notice('AI 规划未启用：请先在插件设置中开启并填写 API Key');
-      return;
+      return false;
     }
+    if (!s.aiApiKey || !s.aiApiKey.trim()) {
+      new Notice('AI 规划未启用：API Key 为空，请先在插件设置中填写');
+      return false;
+    }
+    if (!s.aiBaseUrl || !s.aiBaseUrl.trim()) {
+      new Notice('AI 规划未启用：API Base URL 为空，请先在插件设置中填写');
+      return false;
+    }
+    return true;
+  }
+
+  /** AI 规划主流程：取当前笔记 → 调大模型 → 校验 → 审阅弹窗 → 写入目标库 */
+  async aiPlanFromNote(): Promise<void> {
+    const s = this.settings;
+    if (!this.aiCredentialsReady()) return;
 
     const file = this.app.workspace.getActiveFile();
     if (!file || !(file instanceof TFile) || file.extension !== 'md') {
@@ -518,10 +537,7 @@ export default class BambooReviewPlugin extends Plugin {
   /** 选中文本转目标卡片：取编辑器选区 → 调大模型(标注 selection) → 校验 → 审阅弹窗 → 写入目标库 */
   async aiPlanFromSelection(selectionArg?: string): Promise<void> {
     const s = this.settings;
-    if (!s.aiEnabled) {
-      new Notice('AI 规划未启用：请先在插件设置中开启并填写 API Key');
-      return;
-    }
+    if (!this.aiCredentialsReady()) return;
 
     const file = this.app.workspace.getActiveFile();
     if (!file || !(file instanceof TFile) || file.extension !== 'md') {
@@ -563,10 +579,7 @@ export default class BambooReviewPlugin extends Plugin {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- _scope 保留以对齐规划入口统一形参（当前未使用，维持签名一致）
   async runElicit(rawIntent: string, file: TFile, _scope: 'note' | 'selection'): Promise<void> {
     const s = this.settings;
-    if (!s.aiEnabled) {
-      new Notice('AI 规划未启用：请先在插件设置中开启并填写 API Key');
-      return;
-    }
+    if (!this.aiCredentialsReady()) return;
     const plannerSettings: PlannerSettings = {
       aiApiKey: s.aiApiKey,
       aiBaseUrl: s.aiBaseUrl,
@@ -610,11 +623,7 @@ export default class BambooReviewPlugin extends Plugin {
 
   /** 选中文本先澄清：取编辑器选区 → 澄清弹窗 → 简报 → 下游规划 */
   async elicitFromSelection(selectionArg?: string): Promise<void> {
-    const s = this.settings;
-    if (!s.aiEnabled) {
-      new Notice('AI 规划未启用：请先在插件设置中开启并填写 API Key');
-      return;
-    }
+    if (!this.aiCredentialsReady()) return;
     const file = this.app.workspace.getActiveFile();
     if (!file || !(file instanceof TFile) || file.extension !== 'md') {
       new Notice('AI 澄清：请先打开一篇 Markdown 笔记');
@@ -633,11 +642,7 @@ export default class BambooReviewPlugin extends Plugin {
 
   /** 整篇笔记先澄清：取当前笔记 → 澄清弹窗 → 简报 → 下游规划 */
   async elicitFromNote(): Promise<void> {
-    const s = this.settings;
-    if (!s.aiEnabled) {
-      new Notice('AI 规划未启用：请先在插件设置中开启并填写 API Key');
-      return;
-    }
+    if (!this.aiCredentialsReady()) return;
     const file = this.app.workspace.getActiveFile();
     if (!file || !(file instanceof TFile) || file.extension !== 'md') {
       new Notice('AI 澄清：请先打开一篇 Markdown 笔记');
@@ -777,10 +782,7 @@ export default class BambooReviewPlugin extends Plugin {
     opts?: { sourceLabel?: string; sourceRef?: string }
   ): Promise<void> {
     const s = this.settings;
-    if (!s.aiEnabled) {
-      new Notice('AI 规划未启用：请先在插件设置中开启并填写 API Key');
-      return;
-    }
+    if (!this.aiCredentialsReady()) return;
     const trimmed = (text ?? '').trim();
     if (!trimmed) {
       new Notice('传入文本为空，无法规划');
@@ -809,6 +811,7 @@ export default class BambooReviewPlugin extends Plugin {
    * 确认后写回目标库。编排逻辑在 runDiagnosis（纯函数），此处只注入真实依赖。
    */
   async aiDiagnose(): Promise<void> {
+    if (!this.aiCredentialsReady()) return;
     const s = this.settings;
     const plannerSettings: PlannerSettings = {
       aiApiKey: s.aiApiKey,
@@ -949,10 +952,7 @@ export default class BambooReviewPlugin extends Plugin {
    */
   async requestAiImprove(p: { goalId: string; title?: string; hints?: string }): Promise<void> {
     const s = this.settings;
-    if (!s.aiEnabled) {
-      new Notice('先到设置里开启 AI 规划，才能用 AI 改进目标');
-      return;
-    }
+    if (!this.aiCredentialsReady()) return;
     const storage = new VaultStorage(this.app, this.settings.dataPath || 'bamboo-review');
     const goals = await storage.getGoals();
     if (goals.length === 0) {
@@ -1012,10 +1012,7 @@ export default class BambooReviewPlugin extends Plugin {
   /** 命令面板：直接打开规划台编辑当前目标库（不依赖笔记，随时可调用） */
   private async openPlanEditorForGoals(): Promise<void> {
     const s = this.settings;
-    if (!s.aiEnabled) {
-      new Notice('AI 规划未启用：请先在插件设置中开启并填写 API Key');
-      return;
-    }
+    if (!this.aiCredentialsReady()) return;
     const storage = new VaultStorage(this.app, this.settings.dataPath || 'bamboo-review');
     const allGoals = await storage.getGoals();
     // 归档目标不进规划台编辑（避免误改/误删）；但写回时必须并回，否则 putGoals 整体覆盖会丢失它们

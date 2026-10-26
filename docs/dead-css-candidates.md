@@ -29,7 +29,7 @@ CSS 类名是模块/主题扩展 API 的天然契约面：外部主题、外部�
 | `verify` | 7 | **建议删（整簇真死）** | `verify-*` 全分区 0 → 疑似已移除校验 UI |
 | `habit` | 6 | **建议删（整簇真死）** | `habit-*` 全分区 0 |
 | `edit` | 6 | **建议删（整簇真死）** | `edit-*` 全分区 0 |
-| `action` | 5 | **建议删（整簇真死）** | `action-*` 全分区 0 |
+| `action` | 5 | **✅ 已删除**（commit f0f03cf） | `action-*` 全分区 0；已从 `components-interaction.css` 移除 5 条死规则，保留同区段活规则 `.normal-row`/`.normal-label`/`.normal-content`/`.focus-box` |
 | `theme-guide` | (theme 内) | **建议删（子簇真死）** | `theme-guide*` 全 0；theme 簇整体 MIXED |
 
 #### 部分删（MIXED：簇内有活类名，按 AUTO-GENERATED 精确死名逐条删，勿整簇删）

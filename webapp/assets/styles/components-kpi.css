@@ -60,7 +60,7 @@
     .goal-priority-tag {
         height: 20px;
         padding: 0 6px;
-        font-size: var(--type-2xs, 10px);
+        font-size: var(--type-mini);
         line-height: 1;
         background: transparent;
     }

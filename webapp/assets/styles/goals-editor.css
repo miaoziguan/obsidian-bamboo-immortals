@@ -545,7 +545,7 @@
     flex-shrink: 0;
 }
 .arch-icon-btn:hover {
-    background: var(--background-modifier-hover);
+    background: rgba(var(--primary-rgb), 0.1);
     color: var(--text-primary);
 }
 
@@ -754,7 +754,7 @@
     width: 16px;
     height: 16px;
     border-radius: var(--radius-4);
-    border: 1.5px solid var(--border-medium, rgba(128, 128, 128, 0.3));
+    border: 1.5px solid var(--border-light);
     background: transparent;
     transition: transform, opacity, box-shadow, border-color, background-color 0.15s ease;
     flex-shrink: 0;
@@ -834,7 +834,7 @@
     font-size: var(--type-mini);
     padding: 0px 5px;
     border-radius: var(--radius-3);
-    background: var(--background-tertiary);
+    background: var(--bamboo-background);
     color: var(--text-tertiary);
     white-space: nowrap;
     font-weight: 500;

@@ -478,7 +478,7 @@
     min-height: var(--touch-target);
     border-radius: var(--radius-4);
     transition: transform, opacity, box-shadow, border-color, background-color 0.15s;
-    color: var(--text-faint);
+    color: var(--text-tertiary);
 }
 .wn-rename-btn:hover {
     color: var(--bamboo-primary);
@@ -1004,7 +1004,7 @@
     border: 1px solid var(--bamboo-primary, #7d9b6a);
     /* 原为写死竹绿 rgba(125,155,106)（= hsl(97,20%,51%)），换主题不发绿；改为随色相的半透明 tint */
     background: hsla(var(--accent-hue), min(100%, calc(20% * var(--accent-saturation-ui, 1))), calc(51% + var(--accent-lightness-offset, 0%)), 0.12);
-    color: var(--text-normal);
+    color: var(--text-primary);
     font-size: var(--type-sm);
     cursor: pointer;
     transition: background .15s ease;
@@ -1012,7 +1012,7 @@
 .theme-market-open-btn:hover { background: hsla(var(--accent-hue), min(100%, calc(20% * var(--accent-saturation-ui, 1))), calc(51% + var(--accent-lightness-offset, 0%)), 0.22); }
 
 /* 主题市场面板 */
-.market-loading, .market-empty { padding: 28px 16px; text-align: center; color: var(--text-muted); font-size: var(--type-sm); }
+.market-loading, .market-empty { padding: 28px 16px; text-align: center; color: var(--text-secondary); font-size: var(--type-sm); }
 .market-list { display: flex; flex-direction: column; gap: 8px; padding: 4px 2px; }
 .market-card {
     display: flex;
@@ -1056,7 +1056,7 @@
     letter-spacing: 0.5px;
 }
 .market-card-name { font-weight: 600; font-size: var(--type-md); }
-.market-card-author { font-size: var(--type-caption); color: var(--text-muted); margin-top: 2px; }
+.market-card-author { font-size: var(--type-caption); color: var(--text-secondary); margin-top: 2px; }
 .market-card-actions { flex-shrink: 0; display: flex; align-items: center; gap: 6px; }
 /* 市场操作按钮：圆形图标按钮（安装/更新/卸载），模块 / 主题市场共用，与素材市场统一 */
 .market-btn {
@@ -1088,12 +1088,12 @@
 .market-btn.uninstall {
     background: rgba(var(--bm-primary-rgb), 0.06);
     border-color: var(--bamboo-border, rgba(var(--bm-primary-rgb), 0.25));
-    color: var(--text-muted);
+    color: var(--text-secondary);
 }
 .market-btn.uninstall:hover:not(:disabled) {
     background: rgba(var(--bm-primary-rgb), 0.14);
     border-color: rgba(var(--bm-primary-rgb), 0.5);
-    color: var(--text-normal);
+    color: var(--text-primary);
 }
 
 
@@ -1121,8 +1121,8 @@
 }
 
 .theme-tune-reset-all-btn {
-    font-size: var(--type-2xs);
-    color: var(--text-quaternary);
+    font-size: var(--type-mini);
+    color: var(--text-tertiary);
     background: none;
     border: 1px solid var(--border-light);
     border-radius: var(--radius-xs);
@@ -1167,8 +1167,8 @@
 }
 
 .theme-tune-val {
-    font-size: var(--type-2xs);
-    color: var(--text-quaternary);
+    font-size: var(--type-mini);
+    color: var(--text-tertiary);
     flex-shrink: 0;
     min-width: 36px;
     text-align: right;
@@ -1304,8 +1304,8 @@
 
 .theme-tune-reset {
     flex-shrink: 0;
-    font-size: var(--type-2xs);
-    color: var(--text-quaternary);
+    font-size: var(--type-mini);
+    color: var(--text-tertiary);
     background: none;
     border: none;
     cursor: pointer;
@@ -1541,7 +1541,7 @@
 
 .wnfp-field input {
     padding: 8px 10px;
-    border: 1px solid var(--border-medium, #d1d5db);
+    border: 1px solid var(--border-light);
     border-radius: var(--radius-control);
     font-size: var(--type-base);
     background: var(--input-bg, var(--white));
@@ -1678,7 +1678,7 @@
 }
 
 .wnfp-btn-cancel:hover {
-    background: var(--bg-tertiary);
+    background: rgba(var(--primary-rgb), 0.1);
 }
 
 .wnfp-btn-add {
@@ -1777,7 +1777,7 @@
 .wnfp-vf-meta {
     flex-shrink: 0;
     font-size: var(--type-mini);
-    color: var(--text-quaternary);
+    color: var(--text-tertiary);
     white-space: nowrap;
 }
 

@@ -392,7 +392,7 @@ html.recoloring:not(#recoloring), html.recoloring:not(#recoloring) *, html.recol
     border-radius: var(--radius-2xl);
     padding: var(--space-4);
     margin-bottom: var(--space-4);
-    border: 1px solid var(--card-border);
+    border: 1px solid var(--border-light);
     opacity: 0;
     transform: translateY(12px);
     animation: skeletonFadeIn 0.5s ease forwards;
@@ -435,7 +435,7 @@ html.recoloring:not(#recoloring), html.recoloring:not(#recoloring) *, html.recol
     width: 32px;
     height: 32px;
     border-radius: var(--radius-lg);
-    background: linear-gradient(90deg, var(--card-border) 25%, rgba(var(--primary-rgb), 0.1) 50%, var(--card-border) 75%);
+    background: linear-gradient(90deg, var(--border-light) 25%, rgba(var(--primary-rgb), 0.1) 50%, var(--border-light) 75%);
     background-size: 200% 100%;
     animation: skeletonShimmer 1.5s infinite;
 }
@@ -450,7 +450,7 @@ html.recoloring:not(#recoloring), html.recoloring:not(#recoloring) *, html.recol
 .skeleton-line {
     height: 14px;
     border-radius: var(--radius-md);
-    background: linear-gradient(90deg, var(--card-border) 25%, rgba(var(--primary-rgb), 0.08) 50%, var(--card-border) 75%);
+    background: linear-gradient(90deg, var(--border-light) 25%, rgba(var(--primary-rgb), 0.08) 50%, var(--border-light) 75%);
     background-size: 200% 100%;
     animation: skeletonShimmer 1.5s infinite;
 }
@@ -464,7 +464,7 @@ html.recoloring:not(#recoloring), html.recoloring:not(#recoloring) *, html.recol
     flex-direction: column;
     gap: 8px;
     padding-top: var(--space-2);
-    border-top: 1px solid var(--card-border);
+    border-top: 1px solid var(--border-light);
 }
 
 .skeleton-row {
@@ -477,7 +477,7 @@ html.recoloring:not(#recoloring), html.recoloring:not(#recoloring) *, html.recol
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    background: var(--card-border);
+    background: var(--border-light);
     flex-shrink: 0;
 }
 
@@ -494,7 +494,7 @@ html.recoloring:not(#recoloring), html.recoloring:not(#recoloring) *, html.recol
     min-height: var(--bm-placeholder-min-h, 160px);
     margin-bottom: var(--space-4);
     border-radius: var(--radius-2xl);
-    border: 1px solid var(--card-border);
+    border: 1px solid var(--border-light);
     background: var(--card-glass);
     -webkit-backdrop-filter: blur(var(--glass-blur));
     backdrop-filter: blur(var(--glass-blur));

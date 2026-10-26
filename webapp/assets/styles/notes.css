@@ -1702,7 +1702,7 @@
 }
 .bm-market-drawer.is-open { transform: translateX(0); visibility: visible; }
 .bm-market-head { flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-bottom: 1px solid var(--border-light, rgba(255,255,255,.08)); }
-.bm-market-title { font: 600 14px/1.2 var(--font-ui, system-ui); letter-spacing: .06em; }
+.bm-market-title { font: 600 14px/1.2 var(--font-family); letter-spacing: .06em; }
 /* 头部动作按钮（刷新 ⟳ / 关闭 ×）：与市场标题栏 .fab-panel-close / .fab-panel-action 完全同规格
    —— 无边框透明底、圆形触摸目标、悬停淡底；关闭按钮悬停旋转 90°，语义与市场一致。 */
 .bm-market-close, .bm-market-refresh {
@@ -1734,7 +1734,7 @@
 .bm-market-chip {
   display: inline-flex; align-items: center; gap: 4px;
   padding: 5px 12px; margin: 0; border: 0; background: transparent;
-  color: rgba(0,0,0,.55); font: 500 12px/1.2 var(--font-ui, system-ui);
+  color: rgba(0,0,0,.55); font: 500 12px/1.2 var(--font-family);
   cursor: pointer; transition: background .15s, color .15s;
 }
 .bm-market-chip + .bm-market-chip { border-left: 1px solid rgba(0,0,0,.12); }
@@ -1749,7 +1749,7 @@
   display: flex; align-items: center; gap: 7px; width: 100%;
   margin: 0 0 8px; padding: 6px 8px;
   background: transparent; border: 0; border-radius: 8px;
-  color: var(--text-primary, #2b2b2b); font: 600 12px/1.2 var(--font-ui, system-ui);
+  color: var(--text-primary, #2b2b2b); font: 600 12px/1.2 var(--font-family);
   letter-spacing: .06em; text-align: left; cursor: pointer;
 }
 .bm-market-group-head:hover { background: rgba(0,0,0,.045); }
@@ -1761,7 +1761,7 @@
 .bm-market-group.is-collapsed .bm-market-group-arrow { transform: rotate(0); }
 .bm-market-group-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bm-market-group-count {
-  flex: 0 0 auto; font: 500 11px/1.6 var(--font-ui, system-ui); padding: 0 7px;
+  flex: 0 0 auto; font: 500 11px/1.6 var(--font-family); padding: 0 7px;
   border-radius: 999px; background: rgba(0,0,0,.06); color: rgba(0,0,0,.55);
 }
 .bm-market-group.is-collapsed .market-list { display: none; }

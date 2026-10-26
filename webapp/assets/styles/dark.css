@@ -1526,7 +1526,7 @@
     background: rgba(var(--surface-dark-rgb, 20, 30, 24), 0.3);
 }
 :host(.dark) .arch-filter-search:focus-within {
-    border-color: rgba(var(--text-secondary-rgb, 140, 150, 140), 0.5);
+    border-color: rgba(var(--primary-rgb), 0.5);
     background: rgba(var(--surface-dark-rgb, 20, 30, 24), 0.5);
 }
 
@@ -1539,11 +1539,11 @@
     background: rgba(var(--surface-dark-rgb, 20, 30, 24), 0.55);
 }
 :host(.dark) .arch-filter-field:focus-within {
-    border-color: rgba(var(--text-secondary-rgb, 140, 150, 140), 0.5);
+    border-color: rgba(var(--primary-rgb), 0.5);
     background: rgba(var(--surface-dark-rgb, 20, 30, 24), 0.75);
 }
 :host(.dark) .arch-date-trigger:hover {
-    border-color: rgba(var(--text-secondary-rgb, 140, 150, 140), 0.5);
+    border-color: rgba(var(--primary-rgb), 0.5);
     background: rgba(var(--surface-dark-rgb, 20, 30, 24), 0.75);
 }
 
@@ -1563,7 +1563,7 @@
     box-shadow: none;
 }
 :host(.dark) .arch-select:hover, :host(.dark) .arch-select:focus {
-    border-color: rgba(var(--text-secondary-rgb, 140, 150, 140), 0.5);
+    border-color: rgba(var(--primary-rgb), 0.5);
     background-color: transparent;
 }
 

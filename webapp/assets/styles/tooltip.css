@@ -47,7 +47,7 @@
   padding: 0;
   margin: 0;
   border-radius: 50%;
-  background: var(--text-muted, rgba(150, 160, 150, 0.9));
+  background: var(--text-tertiary);
   cursor: pointer;
   transition: background-color 120ms ease;
 }
@@ -58,8 +58,8 @@
   inset: -5px;
   border-radius: 50%;
 }
-.tw-scroll-dot:hover { background: var(--text-normal, rgba(110, 130, 110, 1)); }
+.tw-scroll-dot:hover { background: var(--text-secondary); }
 .tw-scroll-dot.is-active {
-  background: var(--text-accent, rgba(75, 200, 130, 1));
+  background: var(--bamboo-primary);
 }
 

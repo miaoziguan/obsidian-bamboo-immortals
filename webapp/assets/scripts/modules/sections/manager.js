@@ -49,9 +49,6 @@ export const SectionManager = {
         });
     },
 
-    openSectionSettings(sectionId) {
-        SectionSettings.open(sectionId);
-    },
 
     hideFromSettings(sectionId) {
         SectionRegistry.setVisible(sectionId, false);

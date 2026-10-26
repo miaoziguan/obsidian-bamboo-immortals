@@ -71,13 +71,7 @@ export const GoalsRenderer = {
         return GoalService.completeGoalTask(goalId, itemIdx, dateStr, isUncompleting);
     },
 
-    addGoalTaskToTimeline(goal, item, dayData) {
-        TimelineService.addEvent(dayData, `${goal.title} - ${item.name}`, '完成');
-    },
 
-    removeGoalTaskFromTimeline(goal, item, dayData) {
-        TimelineService.removeEvent(dayData, `${goal.title} - ${item.name}`);
-    },
 
     async render(data, container) {
         container = container || byId('goalList');

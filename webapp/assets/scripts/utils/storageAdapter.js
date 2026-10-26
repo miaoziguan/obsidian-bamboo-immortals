@@ -36,14 +36,6 @@ const StorageAdapter = {
         }
     },
 
-    getJSON(key, fallback = null) {
-        try {
-            const val = localStorage.getItem(key);
-            return val ? JSON.parse(val) : fallback;
-        } catch (e) {
-            return fallback;
-        }
-    },
 
     set(key, value) {
         try {
@@ -53,13 +45,6 @@ const StorageAdapter = {
         }
     },
 
-    setJSON(key, value) {
-        try {
-            localStorage.setItem(key, JSON.stringify(value));
-        } catch (e) {
-            // quota exceeded or private browsing
-        }
-    },
 
     remove(key) {
         try {

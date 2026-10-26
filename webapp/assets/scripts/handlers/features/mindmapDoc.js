@@ -118,10 +118,6 @@ export const MindmapDoc = {
     return links.filter((l) => !((l.from === from && l.to === to) || (l.from === to && l.to === from)));
   },
 
-  /** 某颗子弹的所有邻居（用于删除提示等） */
-  linksOf(links, id) {
-    return links.filter((l) => l.from === id || l.to === id);
-  },
 
   /**
    * 给新子弹找一个不压住已有子弹的落点：以 anchor 为中心向外螺旋试探。

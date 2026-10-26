@@ -137,13 +137,4 @@ export const FocusTrap = {
         }
     },
 
-    /**
-     * 获取当前焦点陷阱内的可聚焦元素（供调用方做初始焦点）
-     * @param {HTMLElement} [root] — 默认当前 root
-     */
-    getFocusable(root) {
-        const ctx = trapContext();
-        const target = root || (ctx && ctx.root);
-        return target ? getFocusableElements(target).filter(isElementVisible) : [];
-    }
 };

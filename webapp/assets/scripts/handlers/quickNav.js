@@ -114,13 +114,6 @@ export const QuickNav = {
         updateActiveSection();
     },
 
-    scrollToTop() {
-        // 与 scrollToSection / setupScrollSpy 同源：shadow 模式下要滚的是 host，
-        // window.scrollTo 不会有任何效果。
-        const host = getScrollHost();
-        if (host && host !== document.scrollingElement) host.scrollTo({ top: 0, behavior: 'smooth' });
-        else window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
 };
 
 ActionDispatcher.registerMany({

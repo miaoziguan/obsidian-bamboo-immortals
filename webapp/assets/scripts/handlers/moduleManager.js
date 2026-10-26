@@ -440,17 +440,6 @@ export const ModuleManager = {
         };
     },
 
-    /** 卸载当前模块（模块声明了 destroy 则调用） */
-    destroyMounted() {
-        if (!this._mounted) return;
-        try {
-            if (typeof this._mounted.mod.destroy === 'function') this._mounted.mod.destroy();
-        } catch (e) {
-            console.warn('[ModuleManager] 模块 destroy 出错:', e && e.message);
-        }
-        if (this._mounted.container) this._mounted.container.innerHTML = '';
-        this._mounted = null;
-    },
 
     // ===================== 沙箱：审计 + 执行 =====================
 

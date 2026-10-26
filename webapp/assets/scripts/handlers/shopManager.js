@@ -112,13 +112,6 @@ export const ShopManager = {
         } catch (e) { /* ignore */ }
     },
 
-    _loadSortPreference() {
-        try {
-            const saved = storageManager.getSetting('shopSortBy');
-            // getSetting 返回 Promise，在 open() 中已 await
-            this._loadSortPreferencePromise = saved;
-        } catch (e) { /* ignore */ }
-    },
 
     async _loadSortPreferenceAsync() {
         try {

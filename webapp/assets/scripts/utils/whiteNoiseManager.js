@@ -296,10 +296,6 @@ export const WhiteNoiseManager = {
         NoisePanel.show();
     },
 
-    // 隐藏面板
-    hidePanel() {
-        NoisePanel.hide();
-    },
 
     // 切换面板
     togglePanel() {

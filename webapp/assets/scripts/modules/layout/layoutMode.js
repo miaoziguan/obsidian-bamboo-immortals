@@ -20,18 +20,6 @@ export const LayoutMode = {
     _movingToCenter: false, // 「侧栏 → 中央」进行中：旧面板不再分列/不吃多列紧凑类（即将被替换）
     _lastPersist: {}, // 本会话已写过的键值（宿主 putSetting 是「读整份设置→解析→写回」，同值必须跳过）
 
-    /**
-     * 【性能】只在值真正变化时写盘。
-     * 宿主的 putSetting 每次都要 read + JSON.parse + vault.process 写回整份 settings.json，
-     * 而切换布局会连续写 layoutMode / displayWidth 两三个键 —— 不去重就是每次切换 2~3 次全量磁盘读写。
-     */
-    _persistOnce(key, value) {
-        if (typeof storageManager === 'undefined' || !storageManager.putSetting) return;
-        if (!this._lastPersist) this._lastPersist = {};
-        if (this._lastPersist[key] === value) return;
-        this._lastPersist[key] = value;
-        try { storageManager.putSetting(key, value); } catch (e) { /* 不阻塞 */ }
-    },
 
     /**
      * 【性能】批量写设置（同值跳过）：layoutMode + displayWidth 这类成对写入一次发完。

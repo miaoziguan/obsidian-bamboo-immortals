@@ -52,7 +52,11 @@ function walk(dir, out = []) {
     if (e.isDirectory()) {
       if (e.name === 'tests' || e.name === '__tests__' || e.name === 'node_modules') continue;
       walk(full, out);
-    } else if (e.name.endsWith('.js')) out.push(full);
+    } else if (e.name.endsWith('.js') || e.name.endsWith('.ts')) out.push(full);
+    // ↑ .ts 必须收：src/ 宿主侧是生产语料的一半（~1.5 万行）。
+    //   初版漏收导致 src 独占引用的方法被误判死（如 layoutMode.exit ——
+    //   其 4 处「引用」实为 BambooReaderView.ts 的同名局部变量，但
+    //   src 里真正调用这些方法的场景若存在也会被同样漏掉）。
   }
   return out;
 }

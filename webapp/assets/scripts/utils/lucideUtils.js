@@ -110,24 +110,7 @@ export const LucideUtils = {
         sunset: (s, sw) => LucideUtils._svg('sunset', '<path d="M12 10V2"/><path d="m4.93 10.93 1.41 1.41"/><path d="M2 18h2"/><path d="M20 18h2"/><path d="m19.07 10.93-1.41 1.41"/><path d="M22 22H2"/><path d="m8 6 4-4 4 4"/><circle cx="12" cy="12" r="4"/>', s, sw),
     },
 
-    emojiMap: {
-        '🎋': 'treePine', '🏆': 'trophy', '📆': 'calendar', '✨': 'sparkles',
-        '🤖': 'bot', '📊': 'barChart', '🎨': 'palette', '🌙': 'moon',
-        '📋': 'list', '🤝': 'handshake', '☁️': 'cloud', '🖥️': 'monitor',
-        '🔔': 'bell', '🗺️': 'map', '🎯': 'target', '📝': 'penTool',
-        '✎': 'edit', '⚠️': 'alertTriangle', '❌': 'x', '✅': 'check',
-        '💡': 'lightbulb', '💪': 'dumbbell', '🚀': 'rocket', '📅': 'calendar',
-        '📜': 'fileText', '📈': 'trendingUp', '🔄': 'refreshCw', '⭐': 'star',
-        'ℹ️': 'info', '🎪': 'ticket', '🌿': 'leaf', '🌊': 'waves',
-        '🏔️': 'mountain', '🌸': 'flower', '☔': 'cloudRain', '🍵': 'coffee',
-        '🎵': 'music', '🎉': 'partyPopper', '📌': 'pin', '💼': 'briefcase',
-        '☀️': 'sun', '🗑️': 'trash', '✏️': 'edit', '🔴': 'circle',
-        '🟡': 'circle', '🟢': 'circle', '📦': 'archive', '🎲': 'dice5'
-    },
 
-    getIconName(emoji) {
-        return this.emojiMap[emoji] || 'circle';
-    },
 
     _iconCache: new Map(),
     _CACHE_MAX: 500,
@@ -156,18 +139,7 @@ export const LucideUtils = {
         return this.createIcon(name, { size: size || 20, strokeWidth });
     },
 
-    replaceEmojiWithIcon(emoji, options = {}) {
-        const iconName = this.getIconName(emoji);
-        return this.createIcon(iconName, options);
-    },
 
-    renderIconForData(iconValue, options = {}) {
-        if (!iconValue) return this.createIcon('circle', options);
-        if (iconValue.startsWith('<svg')) return iconValue;
-        if (this.emojiMap[iconValue]) return this.createIcon(this.emojiMap[iconValue], options);
-        if (this.ICONS[iconValue]) return this.createIcon(iconValue, options);
-        return this.createIcon('circle', options);
-    },
 };
 
 window.LucideUtils = LucideUtils;

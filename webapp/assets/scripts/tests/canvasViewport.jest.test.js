@@ -42,15 +42,6 @@ test('clamp：上下限生效，非法值一律回退 1', () => {
   expect(CanvasViewport.clamp(Infinity)).toBe(1);
 });
 
-test('screenToCanvas / canvasToScreen 往返一致（1x / 0.5x / 2x）', () => {
-  [1, 0.5, 2].forEach((s) => {
-    const { CanvasViewport, ctx } = setup({ x: 120, y: -40, scale: s });
-    const p = CanvasViewport.screenToCanvas(ctx, 400, 300);
-    const back = CanvasViewport.canvasToScreen(ctx, p.x, p.y);
-    expect(back.x).toBeCloseTo(400, 6);
-    expect(back.y).toBeCloseTo(300, 6);
-  });
-});
 
 test('screenToCanvas 按缩放比换算：屏幕走 200px 在 2x 下等于 100 画布 px', () => {
   const { CanvasViewport, ctx } = setup({ x: 0, y: 0, scale: 2 });

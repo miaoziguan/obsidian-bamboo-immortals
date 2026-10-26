@@ -170,22 +170,19 @@ describe('WritingDoc 纯逻辑（自由模型）', () => {
       expect(next[1].id.startsWith('wc')).toBe(true);
     });
 
-    test('setText / setFont / setLevel / setZoom / setPos 不可变更新', () => {
+    test('setText / setLevel / setZoom / setPos 不可变更新', () => {
       const notes = [{ id: 'a', text: 'x', x: 1, y: 1, font: 'classic', paper: 'plain', level: 'p', zoom: 1, rot: 0 }];
       const t = WritingDoc.setText(notes, 'a', '改');
-      const f = WritingDoc.setFont(notes, 'a', 'kai');
       const lv = WritingDoc.setLevel(notes, 'a', 'h3');
       const z = WritingDoc.setZoom(notes, 'a', 9);     // 越界钳到 2.4
       const p = WritingDoc.setPos(notes, 'a', 5.6, 6.4); // 取整
       expect(notes[0].text).toBe('x');                  // 原数组不动
       expect(t[0].text).toBe('改');
-      expect(f[0].font).toBe('kai');
       expect(lv[0].level).toBe('h3');
       expect(z[0].zoom).toBe(2.4);
       expect(p[0]).toMatchObject({ x: 6, y: 6 });
       // 非法枚举回落默认
       expect(WritingDoc.setLevel(notes, 'a', 'zzz')[0].level).toBe('p');
-      expect(WritingDoc.setFont(notes, 'a', 'zzz')[0].font).toBe('classic');
     });
   });
 
@@ -209,21 +206,10 @@ describe('WritingDoc 纯逻辑（自由模型）', () => {
       expect(r.links).toEqual([]);                                           // 与 a 相关的线全删
     });
 
-    test('linksOf 返回某卡的所有邻居', () => {
-      let links = [];
-      links = WritingDoc.addLink(notes, links, 'a', 'b');
-      links = WritingDoc.addLink(notes, links, 'c', 'a');
-      expect(WritingDoc.linksOf(links, 'a')).toHaveLength(2);
-    });
-  });
+      });
 
   describe('画布偏移 & 落点', () => {
-    test('clampOffset：缺省与非法值兜底', () => {
-      expect(WritingDoc.clampOffset(null)).toEqual({ x: 0, y: 0 });
-      expect(WritingDoc.clampOffset({ x: 3 })).toEqual({ x: 3, y: 0 });
-    });
-
-    test('freeSpot：确定性、不与已有卡片重叠', () => {
+        test('freeSpot：确定性、不与已有卡片重叠', () => {
       const notes = [];
       const s1 = WritingDoc.freeSpot(notes, { x: 0, y: 0 });
       const s2 = WritingDoc.freeSpot(notes.concat([{ id: 'a', x: s1.x, y: s1.y }]), { x: 0, y: 0 });

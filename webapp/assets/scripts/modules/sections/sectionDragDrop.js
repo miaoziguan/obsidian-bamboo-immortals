@@ -278,10 +278,6 @@ export const SectionDragDrop = {
         return true;
     },
 
-    destroyAll() {
-        const instanceIds = [...this.instances.keys()];
-        instanceIds.forEach(id => this.destroy(id));
-    },
 
     refresh(instanceId) {
         const instance = this.instances.get(instanceId);
@@ -318,13 +314,7 @@ export const SectionDragDrop = {
         return null;
     },
 
-    getInstance(instanceId) {
-        return this.instances.get(instanceId) || null;
-    },
 
-    getActiveDraggable() {
-        return this.draggedItem;
-    },
 
     isDragging() {
         return this.draggedItem !== null;

@@ -34,13 +34,7 @@ export const TimelineService = {
         return new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
     },
 
-    getPeriodConfig(periodKey) {
-        return PERIOD_CONFIG[periodKey] || null;
-    },
 
-    getAllPeriodConfigs() {
-        return PERIOD_CONFIG;
-    },
 
     ensurePeriod(dayData, periodKey) {
         if (!dayData.timeline) dayData.timeline = [];
@@ -82,34 +76,6 @@ export const TimelineService = {
         periodItem.items.push(eventItem);
     },
 
-    removeEvent(dayData, identifier) {
-        if (!dayData.timeline) return;
-
-        let removed = false;
-
-        dayData.timeline.forEach(periodItem => {
-            if (removed || !periodItem.items) return;
-
-            const refIdx = periodItem.items.findIndex(i => identifier && i.refId && i.refId === identifier);
-            if (refIdx !== -1) {
-                periodItem.items.splice(refIdx, 1);
-                removed = true;
-                return;
-            }
-
-            if (typeof identifier === 'string') {
-                const textIdx = periodItem.items.findIndex(i => !i.refId && i.task === identifier);
-                if (textIdx !== -1) {
-                    periodItem.items.splice(textIdx, 1);
-                    removed = true;
-                }
-            }
-        });
-
-        dayData.timeline = dayData.timeline.filter(periodItem => {
-            return periodItem.items && periodItem.items.length > 0;
-        });
-    },
 
     /**
      * 解析时间字符串 → { hour, minute } | null。

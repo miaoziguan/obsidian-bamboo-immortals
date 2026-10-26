@@ -68,9 +68,6 @@ export const Gestures = {
         scrollToSectionImpl(id);
     },
 
-    scrollToTop() {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
 };
 
 window.Gestures = Gestures;

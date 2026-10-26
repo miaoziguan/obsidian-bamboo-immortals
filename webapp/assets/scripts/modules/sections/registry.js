@@ -73,18 +73,6 @@ export const SectionRegistry = {
         }
     },
 
-    addCustom(config) {
-        const id = config.id || `custom_${Date.now()}`;
-        this.register(id, {
-            ...config,
-            id,
-            isCustom: true,
-            order: this.getAll().length
-        });
-        this.customSections.push(id);
-        this.save();
-        return id;
-    },
 
     remove(id) {
         if (this.sections[id] && this.sections[id].isCustom) {

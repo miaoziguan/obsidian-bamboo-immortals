@@ -359,11 +359,6 @@ export const TypewriterFeature = {
     if (!this._el) return;
     this._el.querySelectorAll('.tw-card-rotate, .tw-card-link').forEach((k) => this._applyKnobSize(k));
   },
-  /** 给单张卡的控件（旋转钮/连线锚点）定尺寸：新挂载时调用，配合 apply 的 scale 门控避免每 pan 帧全画布重算 */
-  _sizeCardKnobs(card) {
-    if (!card || !card.querySelectorAll) return;
-    card.querySelectorAll('.tw-card-rotate, .tw-card-link').forEach((k) => this._applyKnobSize(k));
-  },
 
   /** 缩放变化后同步缩放控件的百分比显示 */
   _syncZoomUI() {

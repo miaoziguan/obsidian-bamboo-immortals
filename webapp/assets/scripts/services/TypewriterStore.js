@@ -413,9 +413,6 @@ export const TypewriterStore = {
     return result;
   },
 
-  async loadWriting(id) {
-    return this._loadCardDoc(this._docDesc('write'), id);
-  },
 
   /** 落盘MD可视化写作文档（每组独立文件 + 轻量索引，与便签零耦合）。
    *  只重写该组文件，绝不波及 settings.json 里的其他组 / 便签；索引仅更新轻量元信息。
@@ -691,11 +688,6 @@ export const TypewriterStore = {
    *  @returns {{notes: Array, canvasOffset: {x:number,y:number}|null, links: Array, version: number}} */
   async loadNotes(id) {
     return this._loadCardDoc(this._docDesc('notes'), id);
-  },
-  /** 落盘便签组文档（每组独立文件 + 轻量索引，与写作/导图同构）。
-   *  桥不可用时退化回旧单文档 key（putSetting），行为与改造前一致，不丢数据。 */
-  async saveNotes(notes, canvasOffset, links, id) {
-    return this._saveCardDoc(this._docDesc('notes'), notes, canvasOffset, links, id);
   },
   async listNotesGroups() {
     const idx = await this.ensureNotesIndex();

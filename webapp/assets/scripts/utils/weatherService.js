@@ -238,9 +238,6 @@ export const WeatherService = {
         };
     },
 
-    getLast() {
-        return readCache();
-    },
 
     setManualCity(name) {
         setManualCity(name);

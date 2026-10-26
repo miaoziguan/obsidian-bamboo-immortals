@@ -25,7 +25,7 @@
 > 扫描：webapp JS(排除 tests) + src TS(排除 __tests__) + 根 main.ts（插件入口）；排除 TS type/interface/declare。
 > 判定：生产代码零消费者（标识符 + 引号内字符串键）即记为死导出。非单词名($/$$)用专用边界。
 
-**零消费者运行时导出合计：66**
+**零消费者运行时导出合计：67**
 
 | 导出名 | 状态 | 内部/测试引用 |
 |---|---|---|
@@ -50,6 +50,7 @@
 | `allFonts` | 内部使用(冗余export) | 内部:1 测试:0 |
 | `allPapers` | 内部使用(冗余export) | 内部:1 测试:0 |
 | `GOAL_TEMPLATES` | 内部使用(冗余export) | 内部:1 测试:0 |
+| `SectionSettings` | 内部使用(冗余export) | 内部:2 测试:0 |
 | `_iconSvg` | 内部使用(冗余export) | 内部:1 测试:0 |
 | `buildBambooNodeHTML` | 内部使用(冗余export) | 内部:2 测试:0 |
 | `buildBambooPathHTML` | 内部使用(冗余export) | 内部:2 测试:1 |
@@ -72,7 +73,7 @@
 | `stubIconList` | 内部使用(冗余export) | 内部:1 测试:0 |
 | `MAX_CUSTOM_TEMPLATES` | 内部使用(冗余export) | 内部:2 测试:0 |
 | `ICON_LINK` | 内部使用(冗余export) | 内部:2 测试:0 |
-| `PERIOD_CONFIG` | 内部使用(冗余export) | 内部:3 测试:0 |
+| `PERIOD_CONFIG` | 内部使用(冗余export) | 内部:1 测试:0 |
 | `BridgeStorage` | 内部使用(冗余export) | 内部:1 测试:3 |
 | `computeFitScale` | 内部使用(冗余export) | 内部:1 测试:1 |
 | `MIN_FIT_SCALE` | 内部使用(冗余export) | 内部:4 测试:1 |
@@ -90,7 +91,7 @@
 | `CACHE_KEY` | 内部使用(冗余export) | 内部:3 测试:0 |
 | `CACHE_TTL` | 内部使用(冗余export) | 内部:1 测试:0 |
 | `clearCache` | 内部使用(冗余export) | 内部:2 测试:0 |
-| `readCache` | 内部使用(冗余export) | 内部:2 测试:0 |
+| `readCache` | 内部使用(冗余export) | 内部:1 测试:0 |
 | `WEATHER_ICONS` | 内部使用(冗余export) | 内部:5 测试:0 |
 | `WEATHER_LABELS` | 内部使用(冗余export) | 内部:2 测试:0 |
 | `writeCache` | 内部使用(冗余export) | 内部:2 测试:0 |

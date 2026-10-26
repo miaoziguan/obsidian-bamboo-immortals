@@ -456,11 +456,6 @@ export const WritingDoc = {
     return { notes: this.setOrder(kept, kept.map((n) => n.id)), links: outLinks, anchorId: anchor.id };
   },
 
-  setFont(notes, id, font) {
-    // 内置字体 ∪ 市场字体（后者运行时注册）；否则回落 classic。市场字体曾被误判为非法→静默丢字体。
-    const f = (this.FONTS.indexOf(font) >= 0 || (this.MARKET_FONTS || []).indexOf(font) >= 0) ? font : 'classic';
-    return notes.map((n) => (n.id === id ? Object.assign({}, n, { font: f }) : n));
-  },
 
   setPaper(notes, id, paper) {
     // 内置纸样 ∪ 市场纸样（后者运行时注册）；否则回落 plain。
@@ -531,18 +526,7 @@ export const WritingDoc = {
     return links.filter((l) => !((l.from === from && l.to === to) || (l.from === to && l.to === from)));
   },
 
-  /** 某张卡片的所有邻居（用于删除提示等） */
-  linksOf(links, id) {
-    return links.filter((l) => l.from === id || l.to === id);
-  },
 
-  /** 把画布偏移归一到合法数值（缺省 0,0） */
-  clampOffset(offset) {
-    return {
-      x: (offset && Number.isFinite(offset.x)) ? offset.x : 0,
-      y: (offset && Number.isFinite(offset.y)) ? offset.y : 0,
-    };
-  },
 
   /**
    * 给新卡片找一个不压住已有卡片的落点：以 anchor 为中心向外螺旋试探。

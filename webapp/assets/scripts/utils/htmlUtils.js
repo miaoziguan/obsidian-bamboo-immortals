@@ -16,44 +16,10 @@ export const HTMLUtils = {
             .replace(/>/g, '&gt;');
     },
 
-    setSafeContent(el, html, allowHtml) {
-        if (allowHtml) {
-            el.innerHTML = html;
-        } else {
-            el.textContent = html;
-        }
-    },
 
-    setSafeHTML(el, html) {
-        el.textContent = html;
-    },
 
-    createSafeElement(tag, attrs = {}, text) {
-        const el = document.createElement(tag);
-        Object.entries(attrs).forEach(([key, value]) => {
-            if (key === 'className') {
-                el.className = value;
-            } else if (key === 'onClick') {
-                el.addEventListener('click', value);
-            } else if (key.startsWith('data-')) {
-                el.setAttribute(key, value);
-            } else {
-                el[key] = value;
-            }
-        });
-        if (text !== undefined) el.textContent = text;
-        return el;
-    },
 
-    sanitizeHTML(html) {
-        return this.escapeHtml(html);
-    },
 
-    stripAllTags(html) {
-        const tmp = document.createElement('div');
-        tmp.innerHTML = html;
-        return tmp.textContent || '';
-    },
 
     /**
      * 数值强制器：把任意值收敛为有限数字，供属性上下文使用。

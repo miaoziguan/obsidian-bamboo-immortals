@@ -47,16 +47,7 @@ describe('SpatialIndex 均匀网格空间哈希', () => {
     expect(idx.size).toBe(0);
   });
 
-  test('bounds 返回全部几何包围盒', () => {
-    const idx = new SpatialIndex(512);
-    expect(idx.bounds()).toBeNull();
-    idx.insert('a', 0, 0, 100, 100, 0);
-    idx.insert('b', 900, 900, 100, 100, 0);
-    const b = idx.bounds();
-    expect(b).toEqual({ minX: 0, minY: 0, maxX: 1000, maxY: 1000 });
-  });
-
-  test('O(可视)：5000 张卡散布大画布，视口查询返回量远小于总量', () => {
+    test('O(可视)：5000 张卡散布大画布，视口查询返回量远小于总量', () => {
     const N = 5000;
     const AREA = 10000; // 10000×10000 画布
     const idx = new SpatialIndex(512);

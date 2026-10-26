@@ -241,44 +241,8 @@ export const RenderScheduler = {
         }
     },
 
-    syncOrder() {
-        const sectionsContainer = byId('sectionsContainer');
-        if (!sectionsContainer) return;
 
-        const sections = (typeof SectionRegistry !== 'undefined' && SectionRegistry.getVisible)
-            ? SectionRegistry.getVisible()
-            : [];
-        const savedThemeWrapper = byId('themeEffectSection');
-        const sectionElements = [];
 
-        sections.forEach((section, index) => {
-            if (section.id === 'themeEffect' && savedThemeWrapper) {
-                savedThemeWrapper.setAttribute('data-section-id', 'themeEffect');
-                savedThemeWrapper.style.animationDelay = `${index * 0.05}s`;
-                sectionElements.push(savedThemeWrapper);
-                return;
-            }
-            const existingEl = sectionsContainer.querySelector(`[data-section-id="${section.id}"]`);
-            if (existingEl) {
-                existingEl.style.animationDelay = `${index * 0.05}s`;
-                sectionElements.push(existingEl);
-            }
-        });
-
-        sectionsContainer.innerHTML = '';
-        sectionElements.forEach(el => sectionsContainer.appendChild(el));
-    },
-
-    removeSection(sectionId) {
-        const sectionsContainer = byId('sectionsContainer');
-        if (!sectionsContainer) return;
-        const el = sectionsContainer.querySelector(`[data-section-id="${sectionId}"]`);
-        if (el) el.remove();
-    },
-
-    isRendering() {
-        return this._isRendering;
-    },
 
     cancel() {
         if (this._timer) {
@@ -391,7 +355,4 @@ export const RenderScheduler = {
         this._dateTransitioning = false;
     },
 
-    isDateTransitioning() {
-        return this._dateTransitioning;
-    }
 };

@@ -580,7 +580,7 @@ describe('saveToStorage 保存隔离（回归）', () => {
         };
         store.state.data[key] = dayData;
         store.markDayDirty(key);
-        store.markSettingDirty('balance');
+        store._dirtySettings.add('balance'); // markSettingDirty 已随死代码删除，直接注入内部集合
 
         // settings 写入失败，dayData 写入成功
         storageManager.putSetting.mockRejectedValueOnce(new Error('bridge putSetting failed'));
@@ -602,7 +602,7 @@ describe('saveToStorage 保存隔离（回归）', () => {
         const key = '2026-07-24';
         store.state.data[key] = { date: key, metrics: {}, timeline: [] };
         store.markDayDirty(key);
-        store.markSettingDirty('balance');
+        store._dirtySettings.add('balance'); // markSettingDirty 已随死代码删除，直接注入内部集合
 
         storageManager.putDay.mockRejectedValueOnce(new Error('bridge putDay failed'));
 
@@ -618,7 +618,7 @@ describe('saveToStorage 保存隔离（回归）', () => {
         const key = '2026-07-24';
         store.state.data[key] = { date: key, metrics: {}, timeline: [] };
         store.markDayDirty(key);
-        store.markSettingDirty('balance');
+        store._dirtySettings.add('balance'); // markSettingDirty 已随死代码删除，直接注入内部集合
 
         await store.saveToStorage();
 

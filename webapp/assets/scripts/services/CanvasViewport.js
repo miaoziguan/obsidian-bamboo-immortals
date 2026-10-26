@@ -82,11 +82,6 @@ export const CanvasViewport = {
     return this.toCanvas(ctrl && ctrl._canvas, ctrl && ctrl._canvasOffset, clientX, clientY);
   },
 
-  /** 画布坐标 → 屏幕坐标。 */
-  canvasToScreen(ctx, x, y) {
-    const { ctrl } = ctx;
-    return this.toScreen(ctrl && ctrl._canvas, ctrl && ctrl._canvasOffset, x, y);
-  },
 
   /** 以屏幕点 (clientX, clientY) 为焦点缩放：该点下方的画布内容保持不动。
    *  （Excalidraw / Figma 的滚轮缩放手感；不用中心缩放，否则「放大的东西跑没了」。） */
@@ -122,13 +117,6 @@ export const CanvasViewport = {
     return { x: (clientX - r.left) / s, y: (clientY - r.top) / s };
   },
 
-  /** 画布 → 屏幕坐标。 */
-  toScreen(canvas, view, x, y) {
-    if (!canvas) return { x, y };
-    const r = canvas.getBoundingClientRect();
-    const s = this.scaleOf(view);
-    return { x: r.left + x * s, y: r.top + y * s };
-  },
 
   /** 可见视口中心（屏幕坐标）：画布「布局盒」（未受 translate/scale 影响）的中心。
    *  这是 fitView / recenter / 一键排版共用的同一基准（canvas.clientWidth/Height = 布局宽高），

@@ -22,13 +22,13 @@ describe('EventBus production module', () => {
 
         expect(callback).toHaveBeenCalledWith({ date: '2026-05-17' });
         expect(results[0]).toMatchObject({ success: true });
-        expect(window.EventBus.hasListeners('review:saved')).toBe(true);
+        expect((window.EventBus.events['review:saved'] || []).length).toBe(1);
 
         unsubscribe();
 
         window.EventBus.emit('review:saved', { date: '2026-05-18' });
         expect(callback).toHaveBeenCalledTimes(1);
-        expect(window.EventBus.hasListeners('review:saved')).toBe(false);
+        expect((window.EventBus.events['review:saved'] || []).length).toBe(0);
     });
 
     test('once 监听器应只执行一次', () => {
@@ -69,7 +69,7 @@ describe('EventBus production module', () => {
             expect(result).not.toBeNull();
             callbacks.push(cb);
         }
-        expect(window.EventBus.getListenerCount('popular:event')).toBe(15);
+        expect((window.EventBus.events['popular:event'] || []).length).toBe(15);
     });
 
     test('订阅数达到上限后应返回 null 并打印警告', () => {
@@ -95,8 +95,8 @@ describe('EventBus production module', () => {
 
         window.EventBus.clear('event:a');
 
-        expect(window.EventBus.hasListeners('event:a')).toBe(false);
-        expect(window.EventBus.hasListeners('event:b')).toBe(true);
+        expect((window.EventBus.events['event:a'] || []).length).toBe(0);
+        expect((window.EventBus.events['event:b'] || []).length).toBe(1);
     });
 
     test('clear 无参数应清除所有事件', () => {
@@ -105,7 +105,7 @@ describe('EventBus production module', () => {
 
         window.EventBus.clear();
 
-        expect(window.EventBus.getEvents()).toEqual([]);
+        expect(Object.keys(window.EventBus.events)).toEqual([]);
     });
 
     test('emit 不存在的事件应返回空数组', () => {

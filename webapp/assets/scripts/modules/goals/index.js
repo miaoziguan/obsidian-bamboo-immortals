@@ -4,17 +4,3 @@ Object.defineProperty(window, 'GOAL_CATEGORIES', {
     configurable: true
 });
 
-export const Goals = {
-    Renderer: GoalsRenderer,
-    Editor: GoalsEditor,
-
-    render(data, container) {
-        GoalsRenderer.render(data, container);
-    },
-
-    openEditor() {
-        GoalsEditor.startAddInline();
-    }
-};
-
-window.Goals = Goals;

@@ -717,27 +717,6 @@ export const ThemeEffects = {
         requestAnimationFrame(step);
     },
 
-    getThemeList() {
-        const builtin = Object.keys(this.themes).map(key => ({
-            id: key,
-            name: this.themes[key].name,
-            icon: this.themes[key].icon,
-            loaded: true,
-            author: this.themes[key].author || '',
-            license: this.themes[key].license || ''
-        }));
-        const external = Object.keys(this.availableExternal)
-            .filter(name => !this.themes[name]) // 仅未注册（待加载）的外部主题
-            .map(name => ({
-                id: name,
-                name: this.availableExternal[name].name || name,
-                icon: this.availableExternal[name].icon || 'palette',
-                loaded: false,
-                author: this.availableExternal[name].author || '',
-                license: this.availableExternal[name].license || ''
-            }));
-        return builtin.concat(external);
-    },
 
     /** 登记外部自定义主题清单（仅名字 + meta，不加载代码）；代码经 switchTheme/启动恢复时按需拉取 */
     registerExternalManifest(name, meta = {}) {

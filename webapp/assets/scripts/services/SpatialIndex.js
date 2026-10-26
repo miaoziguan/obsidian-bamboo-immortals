@@ -114,27 +114,7 @@ export class SpatialIndex {
     return out;
   }
 
-  /** 点命中候选：返回覆盖该点的所有 id（不保证精确落在旋转矩形内，调用方再做精确判定）。 */
-  queryPoint(px, py) {
-    const cs = this._cell;
-    const k = Math.floor(px / cs) + ',' + Math.floor(py / cs);
-    const set = this._buckets.get(k);
-    return set ? Array.from(set) : [];
-  }
 
-  /** 全部几何包围盒（fit-all 等用）。无元素返回 null。 */
-  bounds() {
-    if (this._cells.size === 0) return null;
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    for (const r of this._rects.values()) {
-      const bb = this._aabb(r.x, r.y, r.w, r.h, r.rot);
-      if (bb.minX < minX) minX = bb.minX;
-      if (bb.minY < minY) minY = bb.minY;
-      if (bb.maxX > maxX) maxX = bb.maxX;
-      if (bb.maxY > maxY) maxY = bb.maxY;
-    }
-    return { minX, minY, maxX, maxY };
-  }
 
   clear() {
     this._buckets.clear();

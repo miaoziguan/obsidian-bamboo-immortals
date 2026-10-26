@@ -468,20 +468,6 @@ export class BridgeStorage {
     return this._send('storage:putGoals', { goals });
   }
 
-  async putGoal(goal) {
-    await this.ensureReady();
-    this._goalWriteChain = this._goalWriteChain.then(async () => {
-      const goals = (await this.getGoals()) || [];
-      const index = goals.findIndex(g => g.id === goal.id);
-      if (index >= 0) {
-        goals[index] = goal;
-      } else {
-        goals.push(goal);
-      }
-      return this.putGoals(goals);
-    });
-    return this._goalWriteChain;
-  }
 
   async deleteGoal(goalId) {
     await this.ensureReady();
@@ -829,9 +815,6 @@ export class BridgeStorage {
     }
   }
 
-  getCurrentAdapterType() {
-    return 'bridge';
-  }
 
   /** 登记插件推送的自定义主题清单（仅名字 + meta，不含代码）；代码按需经 theme:load 取回。
    *  activeTheme 为「当前已激活外部主题」的代码（随 app:ready 同步下发），用于视图重建后
@@ -1178,9 +1161,6 @@ export class BridgeStorage {
     }
   }
 
-  isFallbackMode() {
-    return this.fallbackMode;
-  }
 
   destroy() {
     window.removeEventListener('message', this._messageHandler);

@@ -493,13 +493,6 @@ export const CardInteractions = {
     document.addEventListener('pointercancel', onCancel);
     refresh();
   },
-  /** 取消进行中的框选（双指捏合接管时用） */
-  cancelMarquee(ctx) {
-    const { ctrl } = ctx;
-    ctrl._marqueeCancelled = true;
-    if (ctrl._marquee) { ctrl._marquee.remove(); ctrl._marquee = null; }
-    ctrl._marqueeRect = null;
-  },
   // (was _countInRect) 统计落在矩形内（含画布外）的卡片数，供框选实时数量提示（不挂载、不选中）
   countInRect(ctx, r) {
     const { state, ctrl } = ctx;

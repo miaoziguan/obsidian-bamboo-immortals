@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 // 回归锁：便签多组隔离。
-//  1) 切组前落盘(persistDoc)必须写「当前组独立文件」(saveNotes)，不写全局遗留 key；
+//  1) 切组前落盘(persistDoc)必须写「当前组独立文件」，不写全局遗留 key；
 //  2) loadNotes 必须按 current 组读独立文件，各组内容互不相同；
 //  3) 桥支持 per-group 时，缺文件的组应视为空，绝不串入旧全局 legacy 文档（否则切换组内容一样）。
 const { loadModule } = require('./__helpers__/testUtils');

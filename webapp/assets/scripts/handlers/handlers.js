@@ -187,26 +187,6 @@ export const Handlers = {
         }
     },
 
-    setupModalFocusTrap(e) {
-        const focusable = this._modalFocusCache;
-        if (!focusable || focusable.length === 0) return;
-
-        const first = focusable[0];
-        const last = focusable[focusable.length - 1];
-
-        if (e.key === 'Tab') {
-            if (e.shiftKey && document.activeElement === first) {
-                e.preventDefault();
-                last.focus();
-            } else if (!e.shiftKey && document.activeElement === last) {
-                e.preventDefault();
-                first.focus();
-            }
-        }
-        if (e.key === 'Escape') {
-            this.closeModal();
-        }
-    },
 
     updateModalFocusCache() {
         const modal = $('.modal-content');

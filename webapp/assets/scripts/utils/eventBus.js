@@ -57,31 +57,8 @@ export const EventBus = {
         return results;
     },
 
-    /**
-     * 检查指定事件是否有订阅者
-     * @param {string} event
-     * @returns {boolean}
-     */
-    hasListeners(event) {
-        return !!(this.events[event] && this.events[event].length > 0);
-    },
 
-    /**
-     * 获取指定事件的订阅者数量
-     * @param {string} event
-     * @returns {number}
-     */
-    getListenerCount(event) {
-        return (this.events[event] || []).length;
-    },
 
-    /**
-     * 获取所有已注册的事件名列表
-     * @returns {string[]}
-     */
-    getEvents() {
-        return Object.keys(this.events);
-    },
 
     /**
      * 订阅事件，但只执行一次（首次触发后自动取消）

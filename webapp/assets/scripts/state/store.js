@@ -569,16 +569,7 @@ export class Store {
         }
     }
 
-    /**
-     * 标记某个 setting 字段为脏，下次 saveToStorage 会写入
-     */
-    markSettingDirty(key) {
-        this._dirtySettings.add(key);
-    }
 
-    markGoalsDirty() {
-        this._goalsDirty = true;
-    }
 
     markDayDirty(dateKey) {
         this._dirtyDays.add(dateKey);
@@ -863,9 +854,6 @@ export class Store {
         }
     }
 
-    async toggleDarkMode() {
-        return this.setDarkMode();
-    }
 
     async setWeatherEnabled(enabled) {
         this.state.ui.weatherEnabled = !!enabled;

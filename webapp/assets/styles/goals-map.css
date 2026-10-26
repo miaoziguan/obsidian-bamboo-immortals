@@ -1,12 +1,12 @@
 /* ========== 目标地图 ========== */
-.goal-map-container { position: relative; padding-bottom: calc(var(--space-4) * var(--section-gap-scale)); }
+.goal-map-container { position: relative; padding-bottom: calc(var(--space-16) * var(--section-gap-scale)); }
 .goal-list {
     display: flex;
     flex-direction: column;
-    gap: calc(var(--space-5) * var(--section-gap-scale));
+    gap: calc(var(--space-20) * var(--section-gap-scale));
     contain: layout style;
 }
-.goal-row + .goal-row { margin-top: calc(var(--space-5) * var(--section-gap-scale)); }
+.goal-row + .goal-row { margin-top: calc(var(--space-20) * var(--section-gap-scale)); }
 .goal-row {
     background: 
         linear-gradient(
@@ -85,8 +85,8 @@
 .goal-row-main {
     display: flex;
     align-items: center;
-    gap: var(--space-3);
-    padding: clamp(8px, 2vw, 12px) clamp(12px, 3vw, 16px);
+    gap: var(--space-12);
+    padding: clamp(var(--space-8), 2vw, var(--space-12)) clamp(var(--space-12), 3vw, var(--space-16));
 }
 .goal-row-body {
     flex: 1;
@@ -96,7 +96,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 10px;
+    gap: var(--space-10);
     margin-bottom: var(--fluid-gap-small);
     position: relative;
     z-index: 10;
@@ -106,22 +106,22 @@
 .goal-row-actions {
     display: flex;
     align-items: center;
-    gap: var(--space-1);
+    gap: var(--space-4);
     flex-shrink: 0;
 }
 .goal-row-actions-toggle { display: none; }
 .goal-row-actions-menu {
     display: flex;
     align-items: center;
-    gap: var(--space-1);
+    gap: var(--space-4);
     position: static;
 }
 .goal-row-header {
     display: flex;
     align-items: center;
     justify-content: flex-start;
-    gap: var(--space-2);
-    padding: 0 10px;
+    gap: var(--space-8);
+    padding: 0 var(--space-10);
     height: 36px;
     border-radius: var(--radius-sm);
     cursor: pointer;
@@ -217,11 +217,11 @@
     font-size: var(--type-md);
     color: var(--text-secondary);
     flex-shrink: 0;
-    margin-left: 4px;
+    margin-left: var(--space-4);
     transition: transform var(--duration-normal), color var(--duration-fast);
     opacity: 0.7;
     cursor: pointer;
-    padding: 0 2px;
+    padding: 0 var(--space-2);
     height: 28px;
     display: inline-flex;
     align-items: center;
@@ -241,7 +241,7 @@
     white-space: nowrap;
     flex-shrink: 0;
     cursor: pointer;
-    padding: 0 4px;
+    padding: 0 var(--space-4);
     height: 28px;
     display: inline-flex;
     align-items: center;
@@ -254,7 +254,7 @@
     font-weight: 700;
     color: var(--bamboo-deep);
     cursor: pointer;
-    padding: 0 8px;
+    padding: 0 var(--space-8);
     border-radius: var(--radius-2xs);
     border: 1px solid transparent;
     flex: 1 1 auto;
@@ -284,12 +284,12 @@
     line-height: 1.4;
     max-width: min(70vw, 680px);
     border-left: 2px solid var(--bamboo-light, rgba(var(--primary-rgb), 0.4));
-    padding-left: 8px;
+    padding-left: var(--space-8);
 }
 .goal-row-progress {
     display: flex;
     align-items: center;
-    gap: var(--space-2);
+    gap: var(--space-8);
 }
 .goal-row-bar {
     flex: 1;
@@ -376,7 +376,7 @@
 
 
 .goal-item-list {
-    padding: 0 var(--space-4) var(--space-3);
+    padding: 0 var(--space-16) var(--space-12);
     max-height: 2000px;
     overflow: hidden;
     transition: max-height, opacity, transform var(--duration-slow) cubic-bezier(0.175, 0.885, 0.32, 1.275);
@@ -426,7 +426,7 @@
 }
 /* 子项目条目容器（两行布局） */
 .goal-item-entry {
-    padding: 6px 0;
+    padding: var(--space-6) 0;
     transition: transform, opacity, box-shadow, border-color, background-color var(--duration-fast) ease;
     border-radius: var(--radius-xs);
 }
@@ -439,7 +439,7 @@
 .goal-item-row {
     display: flex;
     align-items: center;
-    gap: clamp(4px, 1vw, 8px);
+    gap: clamp(var(--space-4), 1vw, var(--space-8));
 }
 .goal-item-row > .goal-item-status, .goal-item-row > .goal-item-delete-btn {
     align-self: center;
@@ -453,8 +453,8 @@
 .goal-item-meta {
     display: flex;
     align-items: center;
-    gap: clamp(6px, 2vw, 14px);
-    margin-top: 4px;
+    gap: clamp(var(--space-6), 2vw, var(--space-14));
+    margin-top: var(--space-4);
 }
 /* 覆盖编辑器上下文中被全局污染的 width，让内容自适应 */
 .goal-item-meta .goal-item-value, .goal-item-meta .goal-item-date, .goal-item-meta .goal-item-daily {
@@ -467,7 +467,7 @@
     cursor: pointer;
     border-bottom: 1px dashed transparent;
     transition: border-color var(--duration-fast), background var(--duration-fast), color var(--duration-fast);
-    padding: 1px 4px;
+    padding: var(--space-1) var(--space-4);
     border-radius: var(--radius-3);
 }
 [data-inline-edit]:hover {
@@ -542,7 +542,7 @@ input[type="number"].goal-inline-edit-input {
     text-overflow: ellipsis;
     cursor: pointer;
     transition: transform, opacity, box-shadow, border-color, background-color var(--duration-fast) ease;
-    padding: 0 6px;
+    padding: 0 var(--space-6);
     line-height: 1.5;
     border-radius: var(--radius-2xs);
     border: 1px solid transparent;
@@ -551,7 +551,7 @@ input[type="number"].goal-inline-edit-input {
 .goal-item-value {
     display: flex;
     align-items: center;
-    gap: 2px;
+    gap: var(--space-2);
     font-size: var(--type-xs);
     color: var(--text-primary);
     font-weight: 400;
@@ -578,7 +578,7 @@ input[type="number"].goal-inline-edit-input {
 .goal-item-progress {
     display: flex;
     align-items: center;
-    gap: clamp(4px, 1vw, 6px);
+    gap: clamp(var(--space-4), 1vw, var(--space-6));
     height: 16px;
 }
 .goal-item-bar {
@@ -640,18 +640,18 @@ input[type="number"].goal-inline-edit-input {
 }
 /* 已完成子项目容器 */
 .completed-items-container {
-    margin-top: 8px;
+    margin-top: var(--space-8);
     border-top: 1px dashed var(--border-light);
-    padding-top: 8px;
+    padding-top: var(--space-8);
 }
 .completed-items-toggle {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: var(--space-6);
     font-size: var(--type-xs);
     color: var(--text-secondary);
     cursor: pointer;
-    padding: 4px 8px;
+    padding: var(--space-4) var(--space-8);
     border-radius: var(--radius-2xs);
     transition: background var(--duration-fast);
     user-select: none;
@@ -666,7 +666,7 @@ input[type="number"].goal-inline-edit-input {
     transform: rotate(-90deg);
 }
 .completed-items-list {
-    margin-top: 4px;
+    margin-top: var(--space-4);
     overflow: hidden;
     max-height: 2000px;
     opacity: 1;
@@ -689,7 +689,7 @@ input[type="number"].goal-inline-edit-input {
 .goal-row-actions {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: var(--space-6);
     height: 36px;
     opacity: 0.6;
     transition: transform, opacity, box-shadow, border-color, background-color var(--duration-fast) ease;
@@ -735,7 +735,7 @@ input[type="number"].goal-inline-edit-input {
 .goal-inline-add-btn {
     width: 100%;
     min-height: 48px;
-    padding: var(--space-3) var(--space-4);
+    padding: var(--space-12) var(--space-16);
     border: 2px dashed rgba(var(--primary-rgb), 0.25);
     border-radius: var(--radius-xl);
     background: rgba(var(--primary-rgb), 0.03);
@@ -750,8 +750,8 @@ input[type="number"].goal-inline-edit-input {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: var(--space-2);
-    margin-top: 8px;
+    gap: var(--space-8);
+    margin-top: var(--space-8);
 }
 .goal-inline-add-btn:hover {
     border-color: var(--bamboo-primary);
@@ -761,8 +761,8 @@ input[type="number"].goal-inline-edit-input {
 .goal-list-footer {
     display: flex;
     flex-direction: column;
-    gap: var(--space-3);
-    margin-top: 12px;
+    gap: var(--space-12);
+    margin-top: var(--space-12);
 }
 .goal-date-range {
     font-size: var(--type-xs);
@@ -782,8 +782,8 @@ input[type="number"].goal-inline-edit-input {
     bottom: 100%;
     left: 50%;
     transform: translateX(-50%) translateY(0);
-    margin-bottom: 4px;
-    padding: 5px 10px;
+    margin-bottom: var(--space-4);
+    padding: var(--space-5) var(--space-10);
     background-color: var(--bamboo-primary);
     color: var(--text-on-accent);
     border-radius: var(--radius-2xs);
@@ -833,7 +833,7 @@ input[type="number"].goal-inline-edit-input {
     background: linear-gradient(135deg, rgba(var(--red-pale-rgb), 0.85) 0%, rgba(var(--red-pale-rgb), 0.6) 50%, rgba(var(--red-pale-rgb), 0.45) 100%);
     border-radius: var(--radius-sm);
     margin: -4px -4px 0 -4px;
-    padding: 4px 8px;
+    padding: var(--space-4) var(--space-8);
     transition: background var(--duration-normal) ease;
 }
 
@@ -846,7 +846,7 @@ input[type="number"].goal-inline-edit-input {
     background: linear-gradient(135deg, rgba(var(--jade-cream-rgb), 0.85) 0%, rgba(var(--jade-cream-mid-rgb), 0.6) 50%, rgba(var(--jade-cream-deep-rgb), 0.45) 100%);
     border-radius: var(--radius-sm);
     margin: -4px -4px 0 -4px;
-    padding: 4px 8px;
+    padding: var(--space-4) var(--space-8);
     transition: background var(--duration-normal) ease;
 }
 
@@ -897,7 +897,7 @@ input[type="number"].goal-inline-edit-input {
     font-weight: 600;
     color: var(--bamboo-primary);
     background: rgba(var(--primary-rgb), 0.1);
-    padding: 1px 6px;
+    padding: var(--space-1) var(--space-6);
     border-radius: var(--radius-4);
     white-space: nowrap;
     flex-shrink: 0;
@@ -945,7 +945,7 @@ input[type="number"].goal-inline-edit-input {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 10px 14px;
+    padding: var(--space-10) var(--space-14);
     border-bottom: 1px solid var(--border-light);
     background: var(--bamboo-background);
 }
@@ -974,18 +974,18 @@ input[type="number"].goal-inline-edit-input {
     color: var(--text-primary);
 }
 .catp-body {
-    padding: 6px;
+    padding: var(--space-6);
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: var(--space-2);
     overflow-y: auto;
     flex: 1;
 }
 .catp-item {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 8px 10px;
+    gap: var(--space-10);
+    padding: var(--space-8) var(--space-10);
     border-radius: var(--radius-xs);
     cursor: pointer;
     transition: transform, opacity, box-shadow, border-color, background-color var(--duration-instant);
@@ -1005,13 +1005,13 @@ input[type="number"].goal-inline-edit-input {
     color: var(--text-primary);
 }
 .catp-footer {
-    padding: 8px 12px;
+    padding: var(--space-8) var(--space-12);
     border-top: 1px solid var(--border-light);
     background: var(--bamboo-background);
 }
 .catp-manage-btn {
     width: 100%;
-    padding: var(--space-2);
+    padding: var(--space-8);
     border: 1px dashed var(--border-light);
     background: transparent;
     color: var(--text-secondary);
@@ -1054,7 +1054,7 @@ input[type="number"].goal-inline-edit-input {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 14px 18px;
+    padding: var(--space-14) 18px;
     border-bottom: 1px solid var(--border-light);
     background: var(--bamboo-background);
 }
@@ -1083,24 +1083,24 @@ input[type="number"].goal-inline-edit-input {
     color: var(--text-primary);
 }
 .catm-body {
-    padding: 12px 16px;
+    padding: var(--space-12) var(--space-16);
     overflow-y: auto;
     flex: 1;
 }
 .catm-list {
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    margin-bottom: 16px;
+    gap: var(--space-6);
+    margin-bottom: var(--space-16);
 }
 .catm-item {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: var(--space-10);
     /* 行高 48 → 38px：行内内容高由 28px 的操作按钮决定，故只收上下内边距（10 → 5）。
        行距 = 38 + 6(gap) = 44px，恰好等于 .catm-item-actions button 的 44px 触控热区，
        既不重叠，也不浪费空间。 */
-    padding: 5px 12px;
+    padding: var(--space-5) var(--space-12);
     border-radius: var(--radius-sm);
     background: var(--bamboo-background);
     transition: transform, opacity, box-shadow, border-color, background-color var(--duration-instant);
@@ -1116,7 +1116,7 @@ input[type="number"].goal-inline-edit-input {
 }
 .catm-item-actions {
     display: flex;
-    gap: var(--space-1);
+    gap: var(--space-4);
 }
 .catm-item-actions button {
     width: 28px;
@@ -1144,7 +1144,7 @@ input[type="number"].goal-inline-edit-input {
     min-width: auto;
 }
 .catm-inline-input {
-    padding: 4px 8px;
+    padding: var(--space-4) var(--space-8);
     border: 1px solid var(--bamboo-primary);
     border-radius: var(--radius-2xs);
     font-size: var(--type-base);
@@ -1160,16 +1160,16 @@ input[type="number"].goal-inline-edit-input {
     box-shadow: var(--focus-ring);
 }
 .catm-add-section {
-    padding-top: 12px;
+    padding-top: var(--space-12);
     border-top: 1px dashed var(--border-light);
 }
 .catm-form-row {
     display: flex;
-    gap: var(--space-2);
+    gap: var(--space-8);
     align-items: center;
 }
 .catm-input {
-    padding: 8px 10px;
+    padding: var(--space-8) var(--space-10);
     border: 1px solid var(--border-light);
     border-radius: var(--radius-xs);
     font-size: var(--type-base);
@@ -1193,7 +1193,7 @@ input[type="number"].goal-inline-edit-input {
     flex: 1;
 }
 .catm-add-btn {
-    padding: 8px 14px;
+    padding: var(--space-8) var(--space-14);
     border: none;
     background: var(--bamboo-primary);
     color: var(--text-on-accent);
@@ -1208,14 +1208,14 @@ input[type="number"].goal-inline-edit-input {
     filter: brightness(1.1);
 }
 .catm-footer {
-    padding: 12px 16px;
+    padding: var(--space-12) var(--space-16);
     border-top: 1px solid var(--border-light);
     background: var(--bamboo-background);
     display: flex;
     justify-content: flex-end;
 }
 .catm-done-btn {
-    padding: 8px 24px;
+    padding: var(--space-8) var(--space-24);
     border: none;
     background: var(--bamboo-primary);
     color: var(--text-on-accent);
@@ -1272,8 +1272,8 @@ input[type="number"].goal-inline-edit-input {
 
     /* 子项目元数据行：压缩间距，必须换行时让剩余天数徽章靠右 */
     .goal-item-meta {
-        gap: var(--space-1);
-        row-gap: var(--space-1);
+        gap: var(--space-4);
+        row-gap: var(--space-4);
         flex-wrap: wrap;
     }
     .goal-item-meta .goal-item-remaining {

@@ -26,7 +26,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 16px 20px;
+    padding: var(--space-16) var(--space-20);
     border-bottom: 1px solid var(--border-light);
     background: var(--bamboo-background);
 }
@@ -55,21 +55,21 @@
     color: var(--text-primary);
 }
 .tmpl-body {
-    padding: 16px 20px;
+    padding: var(--space-16) var(--space-20);
     overflow-y: auto;
     flex: 1;
 }
 .tmpl-list {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: var(--space-3);
+    gap: var(--space-12);
 }
 .tmpl-card {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 10px;
-    padding: 20px 16px;
+    gap: var(--space-10);
+    padding: var(--space-20) var(--space-16);
     border: 1.5px solid var(--border-light);
     border-radius: var(--radius-lg);
     background: var(--bamboo-background);
@@ -100,7 +100,7 @@
 .tmpl-card-info {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: var(--space-2);
 }
 .tmpl-card-name {
     font-size: var(--type-md);
@@ -115,14 +115,14 @@
 /* 模板选择 - 标签页 */
 .tmpl-tabs {
     display: flex;
-    gap: 4px;
-    padding: 0 20px;
+    gap: var(--space-4);
+    padding: 0 var(--space-20);
     background: var(--bamboo-background);
     border-bottom: 1px solid var(--bamboo-border, #e0e1dd);
     position: relative;
 }
 .tmpl-tab {
-    padding: 10px 16px;
+    padding: var(--space-10) var(--space-16);
     margin-bottom: -1px;
     background: transparent;
     border: none;
@@ -146,8 +146,8 @@
 }
 .tmpl-tab-count {
     display: inline-block;
-    margin-left: 4px;
-    padding: 1px 6px;
+    margin-left: var(--space-4);
+    padding: var(--space-1) var(--space-6);
     font-size: var(--type-micro);
     font-weight: 500;
     color: var(--text-secondary);
@@ -195,10 +195,10 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 48px 24px 40px;
+    padding: 48px var(--space-24) 40px;
     text-align: center;
     color: var(--text-secondary);
-    gap: 8px;
+    gap: var(--space-8);
 }
 .tmpl-empty p {
     margin: 0;
@@ -264,21 +264,21 @@
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    gap: var(--space-3);
-    padding: var(--space-4) var(--space-5);
+    gap: var(--space-12);
+    padding: var(--space-16) var(--space-20);
     border-bottom: 1px solid var(--border-light);
     background: var(--bamboo-background);
 }
 .tstd-header-text {
     display: flex;
     flex-direction: column;
-    gap: var(--space-1);
+    gap: var(--space-4);
     min-width: 0;
 }
 .tstd-title-row {
     display: flex;
     align-items: center;
-    gap: var(--space-2);
+    gap: var(--space-8);
 }
 .tstd-title-icon {
     flex: none;
@@ -306,7 +306,7 @@
     flex: none;
     width: 30px;
     height: 30px;
-    margin: calc(var(--space-1) * -1) calc(var(--space-1) * -1) 0 0;
+    margin: calc(var(--space-4) * -1) calc(var(--space-4) * -1) 0 0;
     border: none;
     background: transparent;
     color: var(--text-secondary);
@@ -329,17 +329,17 @@
 
 /* body */
 .tstd-body {
-    padding: var(--space-4) var(--space-5);
+    padding: var(--space-16) var(--space-20);
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: var(--space-4);
+    gap: var(--space-16);
     overflow-y: auto;
 }
 .tstd-field {
     display: flex;
     flex-direction: column;
-    gap: var(--space-2);
+    gap: var(--space-8);
 }
 .tstd-field-head {
     display: flex;
@@ -352,7 +352,7 @@
     color: var(--text-secondary);
 }
 .tstd-label-hint {
-    margin-left: var(--space-1);
+    margin-left: var(--space-4);
     font-weight: 400;
     font-size: var(--type-sm);
     color: var(--text-secondary);
@@ -364,14 +364,14 @@
     color: var(--bamboo-primary);
     background: rgba(var(--teal-rgb), 0.12);
     border: 1px solid rgba(var(--teal-rgb), 0.2);
-    padding: 2px var(--space-2);
+    padding: var(--space-2) var(--space-8);
     border-radius: var(--radius-pill);
     line-height: 1.5;
     transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
 }
 .tstd-input {
     width: 100%;
-    padding: var(--space-2) var(--space-3);
+    padding: var(--space-8) var(--space-12);
     border: 1px solid var(--border-light);
     border-radius: var(--radius-sm);
     background: var(--bamboo-background);
@@ -403,7 +403,7 @@
 .tstd-icons {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(36px, 1fr));
-    gap: var(--space-2);
+    gap: var(--space-8);
     min-width: 0;
 }
 .tstd-icon-btn {
@@ -445,8 +445,8 @@
 .tstd-preview {
     display: flex;
     align-items: center;
-    gap: var(--space-3);
-    padding: var(--space-3);
+    gap: var(--space-12);
+    padding: var(--space-12);
     background: var(--bamboo-background);
     border: 1px solid var(--border-light);
     border-radius: var(--radius-sm);
@@ -469,7 +469,7 @@
 .tstd-preview-text {
     display: flex;
     flex-direction: column;
-    gap: var(--space-1);
+    gap: var(--space-4);
     min-width: 0;
     flex: 1;
 }
@@ -493,16 +493,16 @@
 .tstd-footer {
     display: flex;
     justify-content: flex-end;
-    gap: var(--space-2);
-    padding: var(--space-3) var(--space-5);
+    gap: var(--space-8);
+    padding: var(--space-12) var(--space-20);
     border-top: 1px solid var(--border-light);
 }
 .tstd-cancel, .tstd-save {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: var(--space-2);
-    padding: var(--space-2) var(--space-4);
+    gap: var(--space-8);
+    padding: var(--space-8) var(--space-16);
     border-radius: var(--radius-sm);
     font-weight: 500;
     font-size: var(--type-md);

@@ -11,7 +11,7 @@
   touch-action: none;
   /* 无论侧栏多宽，左右都保留安全间距（避免设备/纸条贴边）
      随侧栏宽度自适应：窄侧栏保底 24px，宽侧栏上限 56px */
-  padding-inline: clamp(24px, 7%, 56px);
+  padding-inline: clamp(var(--space-24), 7%, 56px);
   /* 字体栈：纯系统字体，彻底不依赖 Google Fonts（离线 / 中国大陆均一致可用）。
      页面以 data: URL 加载进 iframe，本地字体在任何环境都能稳定呈现，
      不引入任何网络字体，避免不可达时的风格塌陷；
@@ -85,7 +85,7 @@
   background: #c9a24a;
   color: #1b1b1b;
   font: 11px/1.4 -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
-  padding: 1px 6px;
+  padding: var(--space-1) var(--space-6);
   border-radius: var(--radius-xs);
   pointer-events: none;
   white-space: nowrap;

@@ -21,7 +21,7 @@
     display: flex;
     align-items: stretch;
     position: relative;
-    margin-bottom: calc(var(--space-6) * var(--section-gap-scale));
+    margin-bottom: calc(var(--space-24) * var(--section-gap-scale));
     background: rgba(var(--green-pale-rgb), 0.08);
     backdrop-filter: blur(var(--glass-blur));
     -webkit-backdrop-filter: blur(var(--glass-blur));
@@ -81,13 +81,13 @@
 
 .ticket-main {
     flex: 0 0 68%;
-    padding: 24px 16px 12px;
+    padding: var(--space-24) var(--space-16) var(--space-12);
     position: relative;
     z-index: 3;
     display: flex;
     flex-direction: column;
     justify-content: center;
-    gap: var(--space-2);
+    gap: var(--space-8);
     min-width: min(90px, 25vw);
 }
 
@@ -239,8 +239,8 @@
 .stub-back-content {
     pointer-events: auto;
     justify-content: center;
-    gap: 10px;
-    padding: 14px 8px 6px;
+    gap: var(--space-10);
+    padding: var(--space-14) var(--space-8) var(--space-6);
 }
 
 .stub-back-content > * {
@@ -252,7 +252,7 @@
     background: var(--glass-card-gradient);
     /* backdrop-filter 由父 .designer-ticket 提供 */
     border-radius: var(--radius-md);
-    padding: 8px 8px;
+    padding: var(--space-8) var(--space-8);
     border: 1px solid rgba(var(--white-rgb), 0.35);
     width: min(140px, 40vw);
     box-shadow: 
@@ -266,14 +266,14 @@
 .stub-back-row {
     display: flex;
     align-items: center;
-    gap: var(--space-2);
+    gap: var(--space-8);
 }
 
 .stub-back-left {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 3px;
+    gap: var(--space-3);
     flex-shrink: 0;
 }
 
@@ -328,7 +328,7 @@
 .stub-back-right {
     display: flex;
     flex-direction: column;
-    gap: 5px;
+    gap: var(--space-5);
     flex: 1;
     min-width: 0;
 }
@@ -336,7 +336,7 @@
 .stub-back-stat {
     display: flex;
     align-items: center;
-    gap: var(--space-1);
+    gap: var(--space-4);
 }
 
 .stub-back-stat svg {
@@ -362,7 +362,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: var(--space-3);
+    gap: var(--space-12);
     width: 100%;
 }
 
@@ -375,7 +375,7 @@
     font-size: var(--type-mini);
     color: rgba(var(--bamboo-deep-rgb), 0.6);
     font-weight: 500;
-    margin-bottom: 5px;
+    margin-bottom: var(--space-5);
     letter-spacing: 1px;
 }
 
@@ -391,8 +391,8 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: var(--space-2);
-    padding: 6px 0 8px;
+    gap: var(--space-8);
+    padding: var(--space-6) 0 var(--space-8);
 }
 .ticket-dot {
     width: 5px;
@@ -416,7 +416,7 @@
     background: rgba(var(--white-rgb), 0.92);
     backdrop-filter: blur(var(--glass-blur));
     -webkit-backdrop-filter: blur(var(--glass-blur));
-    padding: 3px 8px;
+    padding: var(--space-3) var(--space-8);
     border-radius: var(--radius-2xs);
     border: 1px solid rgba(var(--bamboo-deep-rgb), 0.1);
     box-shadow: 0 2px 8px rgba(var(--bamboo-deep-rgb), 0.1);
@@ -462,7 +462,7 @@
         linear-gradient(45deg, rgba(var(--bamboo-deep-rgb),0.06) 0%, transparent 60%);
     /* backdrop-filter 由父 .designer-ticket 提供 */
     border-radius: var(--radius-lg);
-    padding: 10px 20px 10px;
+    padding: var(--space-10) var(--space-20) var(--space-10);
     border: 1px solid rgba(var(--white-rgb), 0.25);
     height: 56px;
     width: min(110px, 30vw);
@@ -530,7 +530,7 @@
     font-weight: 900;
     color: var(--bamboo-primary);
     line-height: 1;
-    margin-bottom: 3px;
+    margin-bottom: var(--space-3);
 }
 
 .ticket-highlight-label {
@@ -547,8 +547,8 @@
     flex-direction: column;
     align-items: center;
     justify-content: flex-start;
-    gap: var(--space-2);
-    padding: 20px 8px 8px;
+    gap: var(--space-8);
+    padding: var(--space-20) var(--space-8) var(--space-8);
     position: relative;
     z-index: 2;
     pointer-events: none;
@@ -564,7 +564,7 @@
     background: var(--glass-card-gradient);
     /* backdrop-filter 由父 .designer-ticket 提供 */
     border-radius: var(--radius-md);
-    padding: 14px 12px;
+    padding: var(--space-14) var(--space-12);
     text-align: center;
     border: 1px solid rgba(var(--white-rgb), 0.35);
     width: min(120px, 33vw);
@@ -642,7 +642,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: var(--space-3);
+    gap: var(--space-12);
 }
 
 .ticket-decoration {
@@ -682,14 +682,14 @@
 }
 
 .ticket-decoration.left::before {
-    margin-left: 20px;
+    margin-left: var(--space-20);
     box-shadow: 
         16px 0 0 rgba(var(--bamboo-deep-rgb), 0.15),
         32px 0 0 rgba(var(--bamboo-deep-rgb), 0.1);
 }
 
 .ticket-decoration.right::before {
-    margin-right: 20px;
+    margin-right: var(--space-20);
     box-shadow: 
         -16px 0 0 rgba(var(--bamboo-deep-rgb), 0.15),
         -32px 0 0 rgba(var(--bamboo-deep-rgb), 0.1);
@@ -893,7 +893,7 @@
 
 .bamboo-node {
     position: relative;
-    margin-bottom: var(--space-4);
+    margin-bottom: var(--space-16);
 }
 
 @media (prefers-reduced-motion: no-preference)        {
@@ -966,7 +966,7 @@
 }
 .bamboo-card:hover { transform: translateX(8px); box-shadow: var(--shadow-card); }
 .bamboo-card-header {
-    padding: var(--space-3) var(--space-4);
+    padding: var(--space-12) var(--space-16);
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -1019,14 +1019,14 @@
 .bamboo-info {
     display: flex;
     align-items: center;
-    gap: var(--space-3);
+    gap: var(--space-12);
     min-height: 36px;
 }
 
 .bamboo-right {
     display: flex;
     align-items: center;
-    gap: var(--space-3);
+    gap: var(--space-12);
     flex-shrink: 0;
 }
 
@@ -1042,7 +1042,7 @@
 .bamboo-title {
     display: flex;
     flex-direction: column;
-    gap: 1px;
+    gap: var(--space-1);
 }
 
 .bamboo-name {
@@ -1062,7 +1062,7 @@
     font-weight: 600;
     color: var(--bamboo-primary);
     background: rgba(var(--primary-rgb), 0.06);
-    padding: 2px 8px;
+    padding: var(--space-2) var(--space-8);
     border-radius: var(--radius-sm);
     border: 1px solid rgba(var(--primary-rgb), 0.15);
     min-width: min(22px, 6vw);
@@ -1276,7 +1276,7 @@
     position: fixed;
     background: var(--bamboo-primary);
     color: var(--text-on-accent);
-    padding: 5px 10px;
+    padding: var(--space-5) var(--space-10);
     border-radius: var(--radius-2xs);
     font-size: var(--type-mini);
     font-weight: 400;
@@ -1319,15 +1319,15 @@
 }
 
 .bamboo-items {
-    padding: var(--space-3) var(--space-4);
+    padding: var(--space-12) var(--space-16);
     border-top: 1px dashed var(--border-light);
 }
 
 .bamboo-item {
     display: flex;
     align-items: flex-start;
-    gap: var(--space-3);
-    padding: var(--space-2) 0;
+    gap: var(--space-12);
+    padding: var(--space-8) 0;
     border-bottom: 1px solid rgba(var(--primary-rgb), 0.08);
 }
 
@@ -1356,7 +1356,7 @@
 .bamboo-item-eval {
     font-size: var(--type-xs);
     color: var(--bamboo-primary);
-    margin-top: 3px;
+    margin-top: var(--space-3);
     font-style: italic;
 }
 
@@ -1411,7 +1411,7 @@
        排在 base.css 的移动端媒体查询之后，会反压我们的 min-height:0。
        用双倍类提升特异性（.bamboo-card.bamboo-card-header）覆盖默认规则，避免依赖 !important。 */
     .bamboo-card.bamboo-card-header {
-        padding: var(--space-1) var(--space-4);
+        padding: var(--space-4) var(--space-16);
         min-height: 0;
     }
 
@@ -1422,7 +1422,7 @@
     .ticket-main {
         flex: auto;
         width: 100%;
-        padding: 20px 14px 10px;
+        padding: var(--space-20) var(--space-14) var(--space-10);
     }
 
     .ticket-main::before {
@@ -1440,7 +1440,7 @@
     }
 
     .ticket-body {
-        gap: 10px;
+        gap: var(--space-10);
     }
 
     .ticket-time-value { font-size: var(--type-xl); }
@@ -1448,7 +1448,7 @@
     .ticket-highlight {
         width: 110px;
         height: auto;
-        padding: 8px 10px;
+        padding: var(--space-8) var(--space-10);
         border-radius: var(--radius-md);
     }
 
@@ -1476,8 +1476,8 @@
         flex-direction: row;
         align-items: center;
         justify-content: center;
-        gap: var(--space-3);
-        padding: 10px 12px;
+        gap: var(--space-12);
+        padding: var(--space-10) var(--space-12);
     }
 
     .ticket-stub-content > * { pointer-events: auto; }
@@ -1486,7 +1486,7 @@
         width: min(110px, 30vw);
         min-height: auto;
         height: auto;
-        padding: 12px 8px;
+        padding: var(--space-12) var(--space-8);
         font-size: 0;
         text-align: center;
         display: block;
@@ -1543,15 +1543,15 @@
         flex-direction: row;
         align-items: center;
         justify-content: center;
-        gap: var(--space-3);
-        padding: 10px 12px;
+        gap: var(--space-12);
+        padding: var(--space-10) var(--space-12);
     }
 
     .stub-back-title-box { width: 200px; }
 
-    .stub-back-row { gap: var(--space-3); }
+    .stub-back-row { gap: var(--space-12); }
 
-    .ticket-decorations { gap: var(--space-2); }
+    .ticket-decorations { gap: var(--space-8); }
 
     .ticket-slogan { letter-spacing: 3px; }
 }
@@ -1566,7 +1566,7 @@
 
 
     .ticket-main {
-        padding: 14px 8px 6px;
+        padding: var(--space-14) var(--space-8) var(--space-6);
     }
 
     .ticket-main::before {
@@ -1584,7 +1584,7 @@
     }
 
     .ticket-body {
-        gap: 3px;
+        gap: var(--space-3);
     }
 
     .ticket-time-block { flex: 1; }
@@ -1593,7 +1593,7 @@
         flex-direction: row;
         justify-content: center;
         align-items: baseline;
-        gap: 3px;
+        gap: var(--space-3);
     }
 
     .ticket-time-name {
@@ -1607,7 +1607,7 @@
     .ticket-highlight {
         width: auto;
         height: auto;
-        padding: 6px 10px;
+        padding: var(--space-6) var(--space-10);
         border-radius: var(--radius-sm);
         flex: 0 0 auto;
         animation: none;
@@ -1629,15 +1629,15 @@
     .ticket-flip-back { min-height: 68px; }
 
     .ticket-stub-content {
-        gap: var(--space-2);
-        padding: 6px 8px;
+        gap: var(--space-8);
+        padding: var(--space-6) var(--space-8);
     }
 
     .ticket-stub-title-box {
         width: min(96px, 28vw);
         min-height: auto;
         height: auto;
-        padding: 10px 4px;
+        padding: var(--space-10) var(--space-4);
         font-size: 0;
         text-align: center;
         display: block;
@@ -1655,16 +1655,16 @@
     .stub-nc-name { font-size: var(--type-mini); }
 
     .stub-back-content {
-        gap: var(--space-2);
-        padding: 6px 8px;
+        gap: var(--space-8);
+        padding: var(--space-6) var(--space-8);
     }
 
     .stub-back-title-box {
         width: min(170px, 50vw);
-        padding: 5px 6px;
+        padding: var(--space-5) var(--space-6);
     }
 
-    .stub-back-row { gap: var(--space-2); }
+    .stub-back-row { gap: var(--space-8); }
 
     .stub-back-ring {
         width: 28px;
@@ -1680,11 +1680,11 @@
     .stub-back-stat-value { font-size: var(--type-mini); }
 
     .ticket-period-dots {
-        gap: 6px;
-        padding: 4px 0 6px;
+        gap: var(--space-6);
+        padding: var(--space-4) 0 var(--space-6);
     }
 
-    .ticket-decorations { gap: 6px; }
+    .ticket-decorations { gap: var(--space-6); }
 
     .ticket-slogan {
         font-size: var(--type-mini);
@@ -1697,12 +1697,12 @@
     }
 
     .ticket-decoration.left::before {
-        margin-left: 14px;
+        margin-left: var(--space-14);
         box-shadow: 12px 0 0 rgba(var(--bamboo-deep-rgb),0.15), 24px 0 0 rgba(var(--bamboo-deep-rgb),0.1);
     }
 
     .ticket-decoration.right::before {
-        margin-right: 14px;
+        margin-right: var(--space-14);
         box-shadow: -12px 0 0 rgba(var(--bamboo-deep-rgb),0.15), -24px 0 0 rgba(var(--bamboo-deep-rgb),0.1);
     }
 
@@ -1757,7 +1757,7 @@
 .display-compact .ticket-main {
     flex: auto;
     width: 100%;
-    padding: 20px 14px 10px;
+    padding: var(--space-20) var(--space-14) var(--space-10);
 }
 
 .display-compact .ticket-main::before {
@@ -1775,7 +1775,7 @@
 }
 
 .display-compact .ticket-body {
-    gap: 10px;
+    gap: var(--space-10);
 }
 
 .display-compact .ticket-time-value {
@@ -1785,7 +1785,7 @@
 .display-compact .ticket-highlight {
     width: 110px;
     height: auto;
-    padding: 8px 10px;
+    padding: var(--space-8) var(--space-10);
     border-radius: var(--radius-md);
 }
 
@@ -1818,8 +1818,8 @@
     flex-direction: row;
     align-items: center;
     justify-content: center;
-    gap: var(--space-3);
-    padding: 10px 12px;
+    gap: var(--space-12);
+    padding: var(--space-10) var(--space-12);
 }
 
 .display-compact .ticket-stub-content > * {
@@ -1830,7 +1830,7 @@
     width: min(110px, 30vw);
     min-height: auto;
     height: auto;
-    padding: 12px 8px;
+    padding: var(--space-12) var(--space-8);
     font-size: 0;
     text-align: center;
     display: block;
@@ -1901,8 +1901,8 @@
     flex-direction: row;
     align-items: center;
     justify-content: center;
-    gap: var(--space-3);
-    padding: 10px 12px;
+    gap: var(--space-12);
+    padding: var(--space-10) var(--space-12);
 }
 
 .display-compact .stub-back-title-box {
@@ -1910,11 +1910,11 @@
 }
 
 .display-compact .stub-back-row {
-    gap: var(--space-3);
+    gap: var(--space-12);
 }
 
 .display-compact .ticket-decorations {
-    gap: var(--space-2);
+    gap: var(--space-8);
 }
 
 .display-compact .ticket-slogan {
@@ -1951,7 +1951,7 @@
    ============================================= */
 
 .display-ultra-compact .ticket-main {
-    padding: 14px 8px 6px;
+    padding: var(--space-14) var(--space-8) var(--space-6);
 }
 
 .display-ultra-compact .ticket-main::before {
@@ -1969,7 +1969,7 @@
 }
 
 .display-ultra-compact .ticket-body {
-    gap: 3px;
+    gap: var(--space-3);
 }
 
 .display-ultra-compact .ticket-time-block {
@@ -1980,7 +1980,7 @@
     flex-direction: row;
     justify-content: center;
     align-items: baseline;
-    gap: 3px;
+    gap: var(--space-3);
 }
 
 .display-ultra-compact .ticket-time-name {
@@ -1996,7 +1996,7 @@
 .display-ultra-compact .ticket-highlight {
     width: auto;
     height: auto;
-    padding: 6px 10px;
+    padding: var(--space-6) var(--space-10);
     border-radius: var(--radius-sm);
     flex: 0 0 auto;
     animation: none;
@@ -2028,15 +2028,15 @@
 }
 
 .display-ultra-compact .ticket-stub-content {
-    gap: var(--space-2);
-    padding: 6px 8px;
+    gap: var(--space-8);
+    padding: var(--space-6) var(--space-8);
 }
 
 .display-ultra-compact .ticket-stub-title-box {
     width: min(96px, 28vw);
     min-height: auto;
     height: auto;
-    padding: 10px 4px;
+    padding: var(--space-10) var(--space-4);
     font-size: 0;
     text-align: center;
     display: block;
@@ -2065,17 +2065,17 @@
 }
 
 .display-ultra-compact .stub-back-content {
-    gap: var(--space-2);
-    padding: 6px 8px;
+    gap: var(--space-8);
+    padding: var(--space-6) var(--space-8);
 }
 
 .display-ultra-compact .stub-back-title-box {
     width: min(170px, 50vw);
-    padding: 5px 6px;
+    padding: var(--space-5) var(--space-6);
 }
 
 .display-ultra-compact .stub-back-row {
-    gap: var(--space-2);
+    gap: var(--space-8);
 }
 
 .display-ultra-compact .stub-back-ring {
@@ -2100,12 +2100,12 @@
 }
 
 .display-ultra-compact .ticket-period-dots {
-    gap: 6px;
-    padding: 4px 0 6px;
+    gap: var(--space-6);
+    padding: var(--space-4) 0 var(--space-6);
 }
 
 .display-ultra-compact .ticket-decorations {
-    gap: 6px;
+    gap: var(--space-6);
 }
 
 .display-ultra-compact .ticket-slogan {
@@ -2119,12 +2119,12 @@
 }
 
 .display-ultra-compact .ticket-decoration.left::before {
-    margin-left: 14px;
+    margin-left: var(--space-14);
     box-shadow: 12px 0 0 rgba(var(--bamboo-deep-rgb),0.15), 24px 0 0 rgba(var(--bamboo-deep-rgb),0.1);
 }
 
 .display-ultra-compact .ticket-decoration.right::before {
-    margin-right: 14px;
+    margin-right: var(--space-14);
     box-shadow: -12px 0 0 rgba(var(--bamboo-deep-rgb),0.15), -24px 0 0 rgba(var(--bamboo-deep-rgb),0.1);
 }
 

@@ -4,8 +4,8 @@
     display: flex;
     align-items: center;
     gap: 0;
-    row-gap: calc(8px * var(--section-gap-scale));
-    padding: calc(14px * var(--section-gap-scale)) calc(18px * var(--section-gap-scale));
+    row-gap: calc(var(--space-8) * var(--section-gap-scale));
+    padding: calc(var(--space-14) * var(--section-gap-scale)) calc(18px * var(--section-gap-scale));
     background: rgba(var(--white-rgb), 0.75);
     border: 1px solid rgba(var(--primary-rgb), 0.12);
     border-radius: var(--radius-md);
@@ -34,8 +34,8 @@
 .gho-left {
     display: flex;
     align-items: center;
-    gap: 14px;
-    padding-right: 12px;
+    gap: var(--space-14);
+    padding-right: var(--space-12);
     flex-shrink: 0;
 }
 
@@ -112,7 +112,7 @@
     width: 1px;
     height: 38px;
     background: rgba(var(--primary-rgb), 0.08);
-    margin: 0 10px;
+    margin: 0 var(--space-10);
     flex-shrink: 0;
 }
 
@@ -120,7 +120,7 @@
 .gho-metrics {
     display: flex;
     align-items: center;
-    gap: var(--space-5);
+    gap: var(--space-20);
     flex: 1;
     min-width: 0;
 }
@@ -128,7 +128,7 @@
 .gho-metric {
     display: flex;
     align-items: center;
-    gap: var(--space-1);
+    gap: var(--space-4);
     min-width: 0;
 }
 
@@ -162,8 +162,8 @@
 .gho-suggestion {
     display: flex;
     align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
+    gap: var(--space-6);
+    padding: var(--space-6) var(--space-12);
     /* ↓ 允许换行并在窄屏时 ellipsis 截断 */
     white-space: normal;
     min-width: 0;
@@ -196,15 +196,15 @@
 .gho-right {
     display: flex;
     align-items: center;
-    padding-right: 8px;
+    padding-right: var(--space-8);
     min-width: 0;
 }
 
 .gho-stat {
     display: flex;
     align-items: center;
-    gap: 3px;
-    padding: 4px 8px;
+    gap: var(--space-3);
+    padding: var(--space-4) var(--space-8);
     white-space: nowrap;
     min-width: 0;
     flex-shrink: 0;
@@ -243,9 +243,9 @@
     flex-shrink: 0;
     display: inline-flex;
     align-items: center;
-    gap: var(--space-1);
-    padding: 4px 8px;
-    margin-left: 4px;
+    gap: var(--space-4);
+    padding: var(--space-4) var(--space-8);
+    margin-left: var(--space-4);
     background: transparent;
     border: none;
     border-radius: var(--radius-4);
@@ -274,8 +274,8 @@
 /* 空状态 */
 .goal-health-empty {
     justify-content: center;
-    gap: var(--space-2);
-    padding: 12px 14px;
+    gap: var(--space-8);
+    padding: var(--space-12) var(--space-14);
     background: rgba(var(--white-rgb), 0.5);
     border: 1px dashed rgba(var(--primary-rgb), 0.12);
 }
@@ -311,20 +311,20 @@
     display: none;
 }
 .rw-620 .gho-suggestion {
-    padding: 0 8px;
+    padding: 0 var(--space-8);
 }
 .rw-620 .gho-suggestion-text {
     font-size: var(--type-mini);
 }
 .rw-620 .gho-metrics {
-    gap: var(--space-3);
+    gap: var(--space-12);
 }
 .rw-620 .gho-left {
-    gap: 10px;
-    padding-right: 10px;
+    gap: var(--space-10);
+    padding-right: var(--space-10);
 }
 .rw-620 .gho-divider {
-    margin: 0 8px;
+    margin: 0 var(--space-8);
 }
 
 /* --- rw-520：容器宽度 ≤ 520px，圆环缩小 --- */
@@ -352,13 +352,13 @@
     min-width: 18px;
 }
 .rw-520 .gho-divider {
-    margin: 0 6px;
+    margin: 0 var(--space-6);
     height: 32px;
 }
 
 /* --- rw-460：容器宽度 ≤ 460px，隐藏指标名称，进一步紧凑 --- */
 .rw-460 .goal-health-overview {
-    padding: 10px 12px;
+    padding: var(--space-10) var(--space-12);
 }
 .rw-460 .gho-ring {
     width: 38px;
@@ -372,10 +372,10 @@
     max-width: 52px;
 }
 .rw-460 .gho-metrics {
-    gap: var(--space-2);
+    gap: var(--space-8);
 }
 .rw-460 .gho-metric {
-    gap: 3px;
+    gap: var(--space-3);
 }
 .rw-460 .gho-metric-name {
     display: none;
@@ -384,15 +384,15 @@
     min-width: 16px;
 }
 .rw-460 .gho-divider {
-    margin: 0 5px;
+    margin: 0 var(--space-5);
     height: 28px;
 }
 .rw-460 .gho-review-btn {
-    padding: 4px 6px;
+    padding: var(--space-4) var(--space-6);
     font-size: var(--type-mini);
 }
 .rw-460 .gho-suggestion {
-    padding: 4px 8px 0 8px;
+    padding: var(--space-4) var(--space-8) 0 var(--space-8);
 }
 
 /* --- rw-420：容器宽度 ≤ 420px，400px 档两行布局 --- */
@@ -400,7 +400,7 @@
     flex-direction: row;
     align-items: center;
     flex-wrap: nowrap;
-    padding: 10px 12px;
+    padding: var(--space-10) var(--space-12);
     gap: 0;
 }
 .rw-420 .gho-right {
@@ -410,8 +410,8 @@
 .rw-420 .gho-left {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding-right: 8px;
+    gap: var(--space-8);
+    padding-right: var(--space-8);
     flex-shrink: 0;
 }
 .rw-420 .gho-ring {
@@ -433,7 +433,7 @@
 .rw-420 .gho-divider {
     width: 1px;
     height: 24px;
-    margin: 0 8px;
+    margin: 0 var(--space-8);
     background: rgba(var(--primary-rgb), 0.08);
 }
 /* 中间：三个指标点 */
@@ -442,11 +442,11 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: var(--space-3);
+    gap: var(--space-12);
     min-width: 0;
 }
 .rw-420 .gho-metric {
-    gap: 4px;
+    gap: var(--space-4);
 }
 .rw-420 .gho-metric-name {
     display: none;
@@ -460,9 +460,9 @@
 .rw-420 .gho-review-btn {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    padding: 4px 8px;
-    margin-left: 8px;
+    gap: var(--space-4);
+    padding: var(--space-4) var(--space-8);
+    margin-left: var(--space-8);
     font-size: var(--type-sm);
     flex-shrink: 0;
     border-radius: var(--radius-sm);
@@ -478,14 +478,14 @@
     flex-direction: row;
     align-items: center;
     flex-wrap: nowrap;
-    padding: 10px 12px;
+    padding: var(--space-10) var(--space-12);
     gap: 0;
 }
 .rw-360 .gho-left {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding-right: 8px;
+    gap: var(--space-8);
+    padding-right: var(--space-8);
     flex-shrink: 0;
 }
 .rw-360 .gho-ring {
@@ -506,7 +506,7 @@
 .rw-360 .gho-divider {
     width: 1px;
     height: 22px;
-    margin: 0 6px;
+    margin: 0 var(--space-6);
     background: rgba(var(--primary-rgb), 0.08);
 }
 .rw-360 .gho-metrics {
@@ -514,7 +514,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: var(--space-2);
+    gap: var(--space-8);
     min-width: 0;
 }
 .rw-360 .gho-metric-name {
@@ -530,9 +530,9 @@
 .rw-360 .gho-review-btn {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    padding: 4px 6px;
-    margin-left: 6px;
+    gap: var(--space-4);
+    padding: var(--space-4) var(--space-6);
+    margin-left: var(--space-6);
     font-size: var(--type-mini);
     flex-shrink: 0;
     border-radius: var(--radius-sm);
@@ -541,14 +541,14 @@
 
 /* 目标行主容器：极致紧凑 */
 .rw-360 .goal-row-main {
-    padding: 8px 8px;
-    gap: 6px;
+    padding: var(--space-8) var(--space-8);
+    gap: var(--space-6);
 }
 
 /* 头部：极紧凑 */
 .rw-360 .goal-row-header {
-    padding: 3px 4px;
-    gap: 6px;
+    padding: var(--space-3) var(--space-4);
+    gap: var(--space-6);
 }
 
 /* 标题：2 行 clamp，小号 */
@@ -565,19 +565,19 @@
 
 /* 操作按钮：保留可触达面积 */
 .rw-360 .goal-row-action-btn {
-    padding: var(--space-1);
+    padding: var(--space-4);
 }
 
 /* 内联添加按钮 */
 .rw-360 .goal-inline-add-btn {
-    padding: var(--space-2);
+    padding: var(--space-8);
     font-size: var(--type-sm);
 }
 
 /* 子项行 */
 .rw-360 .goal-item-row {
-    gap: var(--space-1);
-    padding: 4px 6px;
+    gap: var(--space-4);
+    padding: var(--space-4) var(--space-6);
 }
 .rw-360 .goal-item-name {
     font-size: var(--type-sm);
@@ -598,9 +598,9 @@
 /* 健康分详情面板 - 精致光影 */
 .health-overview-large {
     display: flex;
-    gap: calc(var(--space-6) * var(--section-gap-scale));
-    margin-bottom: calc(var(--space-6) * var(--section-gap-scale));
-    padding: var(--space-5);
+    gap: calc(var(--space-24) * var(--section-gap-scale));
+    margin-bottom: calc(var(--space-24) * var(--section-gap-scale));
+    padding: var(--space-20);
     background: 
         linear-gradient(135deg, rgba(var(--white-rgb), 0.9) 0%, rgba(var(--pale-green-rgb), 0.8) 100%);
     border-radius: var(--radius-3xl);
@@ -668,7 +668,7 @@
 .health-score-label {
     font-size: var(--type-sm);
     color: var(--text-secondary);
-    margin-top: 6px;
+    margin-top: var(--space-6);
     font-weight: 500;
 }
 
@@ -676,8 +676,8 @@
     font-size: var(--type-md);
     font-weight: 700;
     color: var(--bamboo-primary);
-    margin-top: 4px;
-    padding: 4px 12px;
+    margin-top: var(--space-4);
+    padding: var(--space-4) var(--space-12);
     background: rgba(var(--primary-rgb), 0.1);
     border-radius: var(--radius-md);
 }
@@ -686,11 +686,11 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: var(--space-14);
 }
 
 .health-layer-item {
-    padding: var(--space-4);
+    padding: var(--space-16);
     background: rgba(var(--white-rgb), 0.7);
     border-radius: var(--radius-card);
     border: 1px solid rgba(var(--primary-rgb), 0.06);
@@ -711,7 +711,7 @@
 .health-layer-header {
     display: flex;
     align-items: center;
-    gap: var(--space-3);
+    gap: var(--space-12);
 }
 
 .health-layer-color {
@@ -739,18 +739,18 @@
 .health-layer-desc {
     font-size: var(--type-micro);
     color: var(--text-secondary);
-    margin-top: 8px;
+    margin-top: var(--space-8);
     line-height: 1.5;
 }
 
 .health-section-title {
     font-size: var(--type-md);
     font-weight: 700;
-    margin-bottom: 16px;
+    margin-bottom: var(--space-16);
     color: var(--bamboo-deep);
     display: flex;
     align-items: center;
-    gap: var(--space-2);
+    gap: var(--space-8);
 }
 
 .health-section-title::before {
@@ -762,14 +762,14 @@
 }
 
 .health-goals-list {
-    margin-bottom: calc(var(--space-6) * var(--section-gap-scale));
+    margin-bottom: calc(var(--space-24) * var(--section-gap-scale));
 }
 
 .health-goal-item {
-    padding: var(--space-4);
+    padding: var(--space-16);
     background: rgba(var(--white-rgb), 0.7);
     border-radius: var(--radius-card);
-    margin-bottom: 10px;
+    margin-bottom: var(--space-10);
     border: 1px solid rgba(var(--primary-rgb), 0.06);
     box-shadow: 
         0 1px 0 rgba(var(--white-rgb), 0.8) inset,
@@ -788,32 +788,32 @@
 .health-goal-title {
     font-size: var(--type-md);
     font-weight: 700;
-    margin-bottom: 6px;
+    margin-bottom: var(--space-6);
     color: var(--bamboo-deep);
 }
 
 .health-goal-score {
     font-size: var(--type-sm);
     font-weight: 700;
-    margin-bottom: 8px;
+    margin-bottom: var(--space-8);
 }
 
 .health-goal-hints {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--space-2);
+    gap: var(--space-8);
 }
 
 .health-goal-hint {
     font-size: var(--type-micro);
     color: var(--text-secondary);
-    padding: 5px 10px;
+    padding: var(--space-5) var(--space-10);
     background: rgba(var(--primary-rgb), 0.05);
     border-radius: var(--radius-xs);
     border: 1px solid rgba(var(--primary-rgb), 0.06);
     display: flex;
     align-items: center;
-    gap: 5px;
+    gap: var(--space-5);
 }
 
 .health-goal-hint svg {
@@ -822,7 +822,7 @@
 
 /* 「用 AI 改进」按钮：把该目标喂给插件侧 Agentic 编辑链路 */
 .health-goal-actions {
-    margin-top: 12px;
+    margin-top: var(--space-12);
     display: flex;
     justify-content: flex-end;
 }
@@ -831,7 +831,7 @@
     font-size: var(--type-micro);
     font-weight: 600;
     letter-spacing: 0.02em;
-    padding: 6px 14px;
+    padding: var(--space-6) var(--space-14);
     cursor: pointer;
     color: var(--bamboo-primary);
     background: rgba(var(--primary-rgb), 0.08);
@@ -856,7 +856,7 @@
 
 
 .health-tips {
-    padding: var(--space-4);
+    padding: var(--space-16);
     background: rgba(var(--primary-rgb), 0.05);
     border-radius: var(--radius-card);
     border: 1px solid rgba(var(--primary-rgb), 0.08);
@@ -866,14 +866,14 @@
 .dynamic-hints-list {
     display: flex;
     flex-direction: column;
-    gap: var(--space-4);
+    gap: var(--space-16);
 }
 
 .dynamic-hint-item {
     display: flex;
-    gap: 14px;
+    gap: var(--space-14);
     align-items: flex-start;
-    padding: var(--space-4);
+    padding: var(--space-16);
     background: rgba(var(--white-rgb), 0.65);
     backdrop-filter: blur(var(--glass-blur));
     border-radius: var(--radius-md);
@@ -894,7 +894,7 @@
 .dynamic-hint-text {
     font-size: var(--type-sm);
     font-weight: 700;
-    margin-bottom: 6px;
+    margin-bottom: var(--space-6);
     line-height: 1.4;
 }
 
@@ -910,7 +910,7 @@
     right: -28px;
     font-size: var(--type-sm);
     font-weight: 800;
-    padding: 2px 6px;
+    padding: var(--space-2) var(--space-6);
     background: rgba(var(--white-rgb), 0.8);
     border-radius: var(--radius-2xs);
     box-shadow: 0 2px 4px rgba(var(--black-rgb), 0.1);

@@ -253,8 +253,8 @@
   z-index: 50;
   display: flex;
   align-items: center;
-  gap: 2px;
-  padding: 3px 5px;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-5);
   /* 统一不透明跟随色，不再使用玻璃拟态。 */
   background: var(--bamboo-popup-bg);
   border: 1px solid var(--border-light);
@@ -289,7 +289,7 @@
 .tw-mm-tb-sep {
   width: 1px; height: 14px;
   background: var(--border-light);
-  margin: 0 2px;
+  margin: 0 var(--space-2);
   flex-shrink: 0;
 }
 
@@ -330,8 +330,8 @@
   transform: translateX(-50%) translateZ(0);
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 6px;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-6);
   /* 同 .tw-mm-toolbar：统一不透明跟随色，不再使用玻璃拟态。 */
   background: var(--bamboo-popup-bg);
   border: 1px solid var(--border-light);
@@ -372,7 +372,7 @@
   height: 16px;
   min-width: 14px;              /* 覆盖全局触控目标 44px（同 .tw-link-anchor 套路） */
   min-height: 16px;
-  margin-left: 6px;             /* 与文字留呼吸，不贴字 */
+  margin-left: var(--space-6);             /* 与文字留呼吸，不贴字 */
   padding: 0;
   border: 0;
   background: transparent;
@@ -441,7 +441,7 @@
   max-height: 260px;
   resize: none;                 /* 自动增高，无需手动拖 */
   box-sizing: border-box;
-  padding: 12px;
+  padding: var(--space-12);
   border: 0;
   background: transparent;
   color: var(--text-primary);

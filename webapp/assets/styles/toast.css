@@ -1,12 +1,12 @@
 .toast-container {
     position: fixed;
     /* 顶部安全区避让（iPhone 刘海），env() 为主、constant() 兼容旧 iOS */
-    top: calc(var(--space-5) + env(safe-area-inset-top, constant(safe-area-inset-top, 0px)));
-    right: var(--space-5);
+    top: calc(var(--space-20) + env(safe-area-inset-top, constant(safe-area-inset-top, 0px)));
+    right: var(--space-20);
     z-index: var(--z-layer-tooltip);
     display: flex;
     flex-direction: column;
-    gap: var(--space-2);
+    gap: var(--space-8);
     pointer-events: none;
     max-width: min(360px, 95vw);
 }
@@ -16,10 +16,10 @@
     border: var(--overlay-border);
     border-radius: var(--radius-sm);
     box-shadow: var(--overlay-shadow-soft);
-    padding: 2px 10px;
+    padding: var(--space-2) var(--space-10);
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: var(--space-6);
     pointer-events: auto;
     opacity: 0;
     transform: translateX(16px);
@@ -75,12 +75,12 @@
 
 .toast-actions {
     display: flex;
-    gap: var(--space-2);
-    margin-top: 8px;
+    gap: var(--space-8);
+    margin-top: var(--space-8);
 }
 
 .toast-action-btn {
-    padding: var(--space-1) var(--space-3);
+    padding: var(--space-4) var(--space-12);
     font-size: var(--type-sm);
     border-radius: var(--radius-xs);
     border: none;
@@ -161,7 +161,7 @@
     background: var(--overlay-surface);
     border: var(--overlay-border);
     border-radius: var(--radius-md);
-    padding: var(--space-6);
+    padding: var(--space-24);
     max-width: min(400px, 95vw);
     width: 90%;
     box-shadow: var(--overlay-shadow);
@@ -185,7 +185,7 @@
 }
 
 .confirm-header {
-    margin-bottom: 16px;
+    margin-bottom: var(--space-16);
 }
 
 .confirm-title {
@@ -196,7 +196,7 @@
 }
 
 .confirm-body {
-    margin-bottom: 20px;
+    margin-bottom: var(--space-20);
 }
 
 .confirm-message {
@@ -209,11 +209,11 @@
 .confirm-footer {
     display: flex;
     justify-content: flex-end;
-    gap: var(--space-2);
+    gap: var(--space-8);
 }
 
 .btn {
-    padding: var(--space-2) var(--space-4);
+    padding: var(--space-8) var(--space-16);
     font-size: var(--type-md);
     border-radius: var(--radius-sm);
     border: 1px solid var(--border-light);
@@ -235,8 +235,8 @@
 
 /* 确认弹窗 - 额外选项（分类回退等） */
 .confirm-extra {
-    margin-top: var(--space-3);
-    padding: var(--space-3);
+    margin-top: var(--space-12);
+    padding: var(--space-12);
     background: var(--bamboo-background-soft, #f6f7f4);
     border-radius: var(--radius-md);
     border: 1px solid var(--bamboo-border);
@@ -251,21 +251,21 @@
     font-size: var(--type-sm);
     font-weight: 500;
     color: var(--text-secondary);
-    margin-bottom: var(--space-2);
+    margin-bottom: var(--space-8);
     letter-spacing: 0.02em;
 }
 
 .confirm-extra-choices {
     display: flex;
     flex-direction: column;
-    gap: var(--space-2);
+    gap: var(--space-8);
 }
 
 .confirm-extra-choice {
     display: flex;
     align-items: center;
-    gap: var(--space-2);
-    padding: var(--space-2) var(--space-3);
+    gap: var(--space-8);
+    padding: var(--space-8) var(--space-12);
     border-radius: var(--radius-sm);
     cursor: pointer;
     transition: background var(--duration-fast) ease;
@@ -353,7 +353,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: var(--space-4) var(--space-4) var(--space-2);
+    padding: var(--space-16) var(--space-16) var(--space-8);
     border-bottom: 1px solid var(--bamboo-border);
 }
 
@@ -373,7 +373,7 @@
     border: none;
     color: var(--text-secondary);
     cursor: pointer;
-    padding: var(--space-1);
+    padding: var(--space-4);
     border-radius: var(--radius-2xs);
     display: flex;
     align-items: center;
@@ -389,14 +389,14 @@
 .catm-migrate-picker .cmp-body {
     flex: 1;
     overflow-y: auto;
-    padding: var(--space-2);
+    padding: var(--space-8);
 }
 
 .catm-migrate-picker .cmp-item {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 12px 14px;
+    padding: var(--space-12) var(--space-14);
     border-radius: var(--radius-sm);
     cursor: pointer;
     transition: transform, opacity, box-shadow, border-color, background-color var(--duration-fast) ease;

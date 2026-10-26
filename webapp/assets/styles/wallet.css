@@ -9,22 +9,22 @@
 .shop-balance-card {
     background: rgba(var(--primary-rgb), 0.15);
     border-radius: var(--radius-card);
-    padding: clamp(12px, 3vw, 16px);
-    margin-bottom: clamp(12px, 3vw, 20px);
+    padding: clamp(var(--space-12), 3vw, var(--space-16));
+    margin-bottom: clamp(var(--space-12), 3vw, var(--space-20));
     border: 1px solid var(--bamboo-primary-light, rgba(var(--primary-rgb), 0.2));
 }
 
 /* ---------- 余额卡片 · 顶部：可用余额（居中大号） ---------- */
 .shop-balance-amount-block--centered {
     text-align: center;
-    margin-bottom: clamp(10px, 2.5vw, 16px);
-    padding-bottom: clamp(10px, 2.5vw, 16px);
+    margin-bottom: clamp(var(--space-10), 2.5vw, var(--space-16));
+    padding-bottom: clamp(var(--space-10), 2.5vw, var(--space-16));
     border-bottom: 1px solid rgba(var(--primary-rgb), 0.15);
 }
 .shop-balance-amount-block--centered .shop-balance-label {
     font-size: var(--type-mini, 11px);
     color: var(--text-secondary, var(--ink-pale));
-    margin-bottom: 4px;
+    margin-bottom: var(--space-4);
     letter-spacing: 2px;
 }
 .shop-balance-amount-block--centered #shopBalanceValue, .shop-balance-amount-block--centered .shop-balance-value {
@@ -38,15 +38,15 @@
 .shop-balance-amount-block--centered .shop-balance-frozen {
     font-size: var(--type-mini, 10px);
     color: var(--text-tertiary, var(--ink-pale));
-    margin-top: 6px;
+    margin-top: var(--space-6);
 }
 
 /* ---------- 余额卡片 · 指标区：4 卡片横向一排，窄屏 2×2 ---------- */
 .shop-balance-metrics--row {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: clamp(6px, 1.5vw, 10px);
-    margin-bottom: clamp(8px, 2vw, 12px);
+    gap: clamp(var(--space-6), 1.5vw, var(--space-10));
+    margin-bottom: clamp(var(--space-8), 2vw, var(--space-12));
 }
 .shop-balance-metric--card {
     display: flex;
@@ -55,14 +55,14 @@
     justify-content: center;
     background: rgba(var(--white-rgb), 0.45);
     border-radius: var(--radius-control);
-    padding: clamp(8px, 2vw, 12px) clamp(4px, 1vw, 8px);
+    padding: clamp(var(--space-8), 2vw, var(--space-12)) clamp(var(--space-4), 1vw, var(--space-8));
     border: 1px solid rgba(var(--primary-rgb), 0.15);
     min-width: 0;
 }
 .shop-balance-metric--card .shop-metric-value {
     font-size: var(--type-base, clamp(13px, 3vw, 16px));
     font-weight: 800;
-    margin-bottom: 3px;
+    margin-bottom: var(--space-3);
     white-space: nowrap;
     line-height: 1.1;
 }
@@ -95,21 +95,21 @@
 
 /* 收入 / 消费明细 */
 .shop-breakdown {
-    margin-top: 10px;
-    padding-top: 10px;
+    margin-top: var(--space-10);
+    padding-top: var(--space-10);
     border-top: 1px dashed var(--border-light, rgba(var(--primary-rgb), 0.2));
 }
 .shop-breakdown-header {
     font-size: var(--type-mini, 10px);
     color: var(--text-secondary, var(--ink-pale));
-    margin-bottom: 6px;
+    margin-bottom: var(--space-6);
     font-weight: 600;
 }
 .shop-breakdown-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 3px 0;
+    padding: var(--space-3) 0;
     font-size: var(--type-micro, 11px);
     min-height: 20px;
 }
@@ -140,7 +140,7 @@
 
 /* section 标题行（含排序按钮） */
 .fab-panel-section {
-    margin-bottom: clamp(12px, 3vw, 16px);
+    margin-bottom: clamp(var(--space-12), 3vw, var(--space-16));
 }
 .fab-panel-section-title {
     display: flex;
@@ -149,8 +149,8 @@
     font-size: var(--type-base, clamp(13px, 2.8vw, 15px));
     font-weight: 700;
     color: var(--bamboo-deep);
-    margin-bottom: 8px;
-    padding-bottom: 6px;
+    margin-bottom: var(--space-8);
+    padding-bottom: var(--space-6);
     border-bottom: 1px solid var(--border-light, rgba(var(--primary-rgb), 0.1));
 }
 .fab-panel-section-title span:first-child {
@@ -161,8 +161,8 @@
 .shop-item-card {
     display: flex;
     align-items: center;
-    gap: clamp(8px, 2vw, 10px);
-    padding: clamp(8px, 2vw, 10px) clamp(12px, 3vw, 14px);
+    gap: clamp(var(--space-8), 2vw, var(--space-10));
+    padding: clamp(var(--space-8), 2vw, var(--space-10)) clamp(var(--space-12), 3vw, var(--space-14));
     border-bottom: 1px solid rgba(var(--primary-rgb), 0.1);
     transition: opacity var(--duration-instant), background var(--duration-instant);
     cursor: pointer;
@@ -200,12 +200,12 @@
 .shop-item-desc {
     font-size: var(--type-mini, 10px);
     color: var(--ink-pale);
-    margin-top: 1px;
+    margin-top: var(--space-1);
 }
 .shop-item-price-block {
     text-align: right;
     flex-shrink: 0;
-    margin-left: 8px;
+    margin-left: var(--space-8);
 }
 .shop-item-price {
     font-size: var(--type-base, clamp(13px, 2.8vw, 15px));
@@ -218,7 +218,7 @@
 }
 .shop-item-status {
     font-size: var(--type-mini, 9px);
-    margin-top: 2px;
+    margin-top: var(--space-2);
     font-weight: 500;
     letter-spacing: 0.3px;
 }
@@ -240,7 +240,7 @@
     flex-shrink: 0;
 }
 .shop-sort-btn {
-    padding: 4px 8px;
+    padding: var(--space-4) var(--space-8);
     font-size: var(--type-mini, 10px);
     border: 1px solid transparent;
     border-radius: var(--radius-xs);
@@ -250,7 +250,7 @@
     transition: transform, opacity, box-shadow, border-color, background-color var(--duration-fast);
     display: inline-flex;
     align-items: center;
-    gap: var(--space-1);
+    gap: var(--space-4);
     min-height: var(--touch-target);
     min-width: var(--touch-target);
     justify-content: center;
@@ -289,7 +289,7 @@
 .shop-sort-option {
     display: block;
     width: 100%;
-    padding: 8px 12px;
+    padding: var(--space-8) var(--space-12);
     font-size: var(--type-micro, 11px);
     border: none;
     background: transparent;
@@ -313,8 +313,8 @@
 .shop-history-nav {
     display: flex;
     align-items: center;
-    margin-bottom: 14px;
-    gap: var(--space-1);
+    margin-bottom: var(--space-14);
+    gap: var(--space-4);
 }
 .shop-history-arrow {
     width: 28px;
@@ -349,8 +349,8 @@
     letter-spacing: 0.5px;
 }
 .shop-history-all-btn {
-    margin-left: 4px;
-    padding: 3px 10px;
+    margin-left: var(--space-4);
+    padding: var(--space-3) var(--space-10);
     font-size: var(--type-mini, 10px);
     border: 1px solid var(--border-light, rgba(var(--primary-rgb), 0.2));
     border-radius: var(--radius-md);
@@ -368,19 +368,19 @@
     color: var(--bamboo-primary);
 }
 .shop-history-current-tag {
-    margin-left: 4px;
+    margin-left: var(--space-4);
     font-size: var(--type-mini, 10px);
     color: var(--bamboo-primary);
     font-weight: 600;
-    padding: 3px 0;
+    padding: var(--space-3) 0;
 }
 
 .shop-history-summary {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 8px 14px;
-    margin-bottom: 4px;
+    padding: var(--space-8) var(--space-14);
+    margin-bottom: var(--space-4);
     background: rgba(var(--primary-rgb), 0.05);
     border-radius: var(--radius-xs);
 }
@@ -402,8 +402,8 @@
 .shop-history-row {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 10px 14px;
+    gap: var(--space-10);
+    padding: var(--space-10) var(--space-14);
     border-bottom: 1px solid rgba(var(--primary-rgb), 0.1);
     transition: background var(--duration-instant);
 }
@@ -446,11 +446,11 @@
 }
 .shop-history-empty {
     text-align: center;
-    padding: clamp(24px, 6vw, 36px) 20px;
+    padding: clamp(var(--space-24), 6vw, 36px) var(--space-20);
 }
 .shop-history-empty-icon {
     font-size: var(--type-mega);
-    margin-bottom: 10px;
+    margin-bottom: var(--space-10);
     opacity: 0.4;
 }
 .shop-history-empty-text {
@@ -461,28 +461,28 @@
     font-size: var(--type-mini, 10px);
     color: var(--ink-pale);
     opacity: 0.6;
-    margin-top: 4px;
+    margin-top: var(--space-4);
 }
 
 /* 归档月份导航 */
 .shop-archive-nav {
-    margin-top: 14px;
-    padding-top: 12px;
+    margin-top: var(--space-14);
+    padding-top: var(--space-12);
     border-top: 1px dashed rgba(var(--primary-rgb), 0.2);
 }
 .shop-archive-nav-header {
     font-size: var(--type-mini, 10px);
     color: var(--ink-pale);
-    margin-bottom: 8px;
+    margin-bottom: var(--space-8);
     letter-spacing: 0.5px;
 }
 .shop-archive-nav-buttons {
     display: flex;
     flex-wrap: wrap;
-    gap: 6px;
+    gap: var(--space-6);
 }
 .shop-archive-month-btn {
-    padding: 4px 10px;
+    padding: var(--space-4) var(--space-10);
     font-size: var(--type-mini, 10px);
     border-radius: var(--radius-md);
     cursor: pointer;
@@ -507,21 +507,21 @@
 /* ---------- 设计哲学 ---------- */
 .shop-philosophy-hero {
     text-align: center;
-    margin-bottom: clamp(16px, 4vw, 20px);
-    padding: clamp(16px, 4vw, 20px) clamp(12px, 3vw, 16px);
+    margin-bottom: clamp(var(--space-16), 4vw, var(--space-20));
+    padding: clamp(var(--space-16), 4vw, var(--space-20)) clamp(var(--space-12), 3vw, var(--space-16));
     background: rgba(var(--primary-rgb), 0.08);
     border-radius: var(--radius-card);
     border: 1px solid rgba(var(--primary-rgb), 0.15);
 }
 .shop-philosophy-icon {
     font-size: var(--type-hero);
-    margin-bottom: 8px;
+    margin-bottom: var(--space-8);
 }
 .shop-philosophy-title {
     font-size: var(--type-lg, clamp(15px, 3.8vw, 20px));
     font-weight: 800;
     color: var(--bamboo-deep);
-    margin-bottom: 6px;
+    margin-bottom: var(--space-6);
 }
 .shop-philosophy-subtitle {
     font-size: var(--type-mini, 10px);
@@ -533,14 +533,14 @@
 .shop-principle-cards {
     display: flex;
     flex-direction: column;
-    gap: clamp(8px, 2vw, 10px);
-    margin-bottom: clamp(16px, 4vw, 20px);
+    gap: clamp(var(--space-8), 2vw, var(--space-10));
+    margin-bottom: clamp(var(--space-16), 4vw, var(--space-20));
 }
 .shop-principle-card {
     display: flex;
     align-items: flex-start;
-    gap: 10px;
-    padding: var(--space-3);
+    gap: var(--space-10);
+    padding: var(--space-12);
     border-radius: var(--radius-sm);
     background: rgba(var(--primary-rgb), 0.04);
 }
@@ -559,7 +559,7 @@
 .shop-principle-heading {
     font-size: var(--type-sm, clamp(12px, 2.6vw, 13px));
     font-weight: 700;
-    margin-bottom: 3px;
+    margin-bottom: var(--space-3);
     color: var(--ink-dark);
 }
 .shop-principle-text {
@@ -572,18 +572,18 @@
 .shop-price-rows {
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    margin-bottom: clamp(16px, 4vw, 20px);
+    gap: var(--space-6);
+    margin-bottom: clamp(var(--space-16), 4vw, var(--space-20));
 }
 .shop-price-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: clamp(6px, 1.5vw, 8px) 12px;
+    padding: clamp(var(--space-6), 1.5vw, var(--space-8)) var(--space-12);
     background: rgba(var(--primary-rgb), 0.03);
     border-radius: var(--radius-xs);
     font-size: var(--type-mini, 10px);
-    gap: 10px;
+    gap: var(--space-10);
 }
 .shop-price-row.is-warn {
     background: rgba(var(--danger-rgb), 0.04);
@@ -612,7 +612,7 @@
 .shop-coin-rule {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: var(--space-6);
 }
 .shop-coin-rule-mark {
     color: var(--bamboo-primary);

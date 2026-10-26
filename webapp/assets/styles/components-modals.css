@@ -4,7 +4,7 @@
 
 .empty-state-icon {
     font-size: var(--type-display-big);
-    margin-bottom: var(--space-4);
+    margin-bottom: var(--space-16);
     filter: drop-shadow(0 4px 12px rgba(var(--primary-rgb), 0.2));
     position: relative;
     z-index: 1;

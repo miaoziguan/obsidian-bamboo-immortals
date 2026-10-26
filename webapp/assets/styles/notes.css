@@ -142,7 +142,7 @@
   flex-wrap: nowrap;        
   justify-content: flex-start;
   align-items: center;
-  gap: 3px;                 
+  gap: var(--space-3);                 
   padding: 0;               
   
   --tw-tools-size: clamp(18px, calc(20px * var(--tw-scale, 1)), 24px);
@@ -1255,7 +1255,7 @@
 } */
 
 /* 【解耦·治本】便签档"至少两行高"的体量感由下方 :not(.tw-mode-write) 规则提供，
-   写作档不再继承，故此处无需再"清零"——之前那两行 min-height:0 / margin-bottom:0
+   写作档不再继承，故此处无需再"清零"——之前那两行 min-height:0 / margin-bottom: 0
    正是为抵消基础规则而堆的覆盖补丁，现已从根上消除。 */
 .tw-canvas:not(.tw-mode-write) .tw-card-text {
   min-height: calc(var(--tw-grid) * 2);
@@ -1268,7 +1268,7 @@
   bottom: -8px; left: -8px;
   z-index: 30;
   min-width: 18px; height: 18px;
-  padding: 0 5px;
+  padding: 0 var(--space-5);
   display: inline-flex; align-items: center; justify-content: center;
   font: 600 11px/1 var(--tw-font-global, sans-serif);
   color: var(--white);
@@ -1316,8 +1316,8 @@
   z-index: 999;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 6px;
+  gap: var(--space-6);
+  padding: var(--space-6);
   min-width: 128px;
   background: var(--white);
   border: 1px solid rgba(16, 24, 40, 0.12);
@@ -1327,9 +1327,9 @@
   font-size: var(--type-sm);
 }
 .tw-level-menu[hidden] { display: none; }
-.tw-level-menu-group { display: flex; flex-direction: column; gap: 2px; }
+.tw-level-menu-group { display: flex; flex-direction: column; gap: var(--space-2); }
 .tw-level-menu-cap {
-  padding: 2px 6px;
+  padding: var(--space-2) var(--space-6);
   font-size: var(--type-mini);
   letter-spacing: 0.08em;
   opacity: 0.6;
@@ -1337,9 +1337,9 @@
 .tw-level-menu-item {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: var(--space-7);
   width: 100%;
-  padding: 5px 6px;
+  padding: var(--space-5) var(--space-6);
   border: none;
   border-radius: var(--radius-2xs);
   background: transparent;
@@ -1377,8 +1377,8 @@
   z-index: 999;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 8px;
+  gap: var(--space-6);
+  padding: var(--space-8);
   min-width: 180px;
   max-width: 240px;
   background: var(--white);
@@ -1389,9 +1389,9 @@
   font-size: var(--type-sm);
 }
 .tw-doc-panel[hidden] { display: none; }
-.tw-doc-head { display: flex; justify-content: space-between; align-items: center; padding: 0 4px; font-size: var(--type-mini); letter-spacing: 0.08em; opacity: 0.6; }
+.tw-doc-head { display: flex; justify-content: space-between; align-items: center; padding: 0 var(--space-4); font-size: var(--type-mini); letter-spacing: 0.08em; opacity: 0.6; }
 .tw-doc-count { opacity: 0.7; }
-.tw-doc-list { display: flex; flex-direction: column; gap: 2px; max-height: 40vh; overflow: auto; }
+.tw-doc-list { display: flex; flex-direction: column; gap: var(--space-2); max-height: 40vh; overflow: auto; }
 .tw-doc-row { display: flex; }
 .tw-doc-row.is-on .tw-doc-name { background: rgba(16, 24, 40, 0.10); font-weight: 600; }
 .tw-doc-name {
@@ -1400,7 +1400,7 @@
   border: none;
   background: transparent;
   color: inherit;
-  padding: 6px 8px;
+  padding: var(--space-6) var(--space-8);
   border-radius: var(--radius-2xs);
   cursor: pointer;
   font-size: var(--type-sm);
@@ -1449,21 +1449,21 @@
 :host(.dark) .tw-doc-del:hover { background: rgba(255, 90, 90, 0.16); color: #FF8A8A; }
 .tw-doc-rename-input {
   flex: 1 1 auto;
-  margin: 1px 0;
-  padding: 5px 7px;
+  margin: var(--space-1) 0;
+  padding: var(--space-5) var(--space-7);
   border: 1px solid rgba(16, 24, 40, 0.25);
   border-radius: var(--radius-2xs);
   font-size: var(--type-sm);
   color: inherit;
   background: var(--white);
 }
-.tw-doc-foot { border-top: 1px solid rgba(16, 24, 40, 0.08); padding-top: 6px; }
+.tw-doc-foot { border-top: 1px solid rgba(16, 24, 40, 0.08); padding-top: var(--space-6); }
 .tw-doc-add {
   width: 100%;
   border: none;
   background: transparent;
   color: inherit;
-  padding: 6px 8px;
+  padding: var(--space-6) var(--space-8);
   border-radius: var(--radius-2xs);
   cursor: pointer;
   font-size: var(--type-sm);
@@ -1486,9 +1486,9 @@
   z-index: 60;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-4);
   max-width: 220px;
-  padding: 4px 6px;
+  padding: var(--space-4) var(--space-6);
   border: none;
   border-radius: var(--radius-2xs);
   background: transparent;
@@ -1570,8 +1570,8 @@
   z-index: 9000;
   display: none;
   align-items: center;
-  gap: 6px;
-  padding: 5px 6px;
+  gap: var(--space-6);
+  padding: var(--space-5) var(--space-6);
   border-radius: var(--radius-sm);
   background: var(--surface-solid, #fff);
   border: 1px solid rgba(16, 24, 40, 0.12);
@@ -1587,7 +1587,7 @@
   line-height: 1;
   border: none;
   border-radius: var(--radius-2xs);
-  padding: 7px 10px;
+  padding: var(--space-7) var(--space-10);
   cursor: pointer;
   color: #2f3a2c;
   background: transparent;
@@ -1636,8 +1636,8 @@
   z-index: 40;
   display: flex;
   align-items: center;
-  gap: 1px;
-  padding: 3px;
+  gap: var(--space-1);
+  padding: var(--space-3);
   border-radius: var(--radius-pill);      /* 整体胶囊（与 .tw-mm-node 同一视觉语言） */
   background: var(--card-bg);
   border: 1px solid var(--border-light);
@@ -1670,7 +1670,7 @@
 .tw-zoom-bar button.active { background: rgba(var(--primary-rgb), 0.12); color: var(--text-primary); box-shadow: inset 0 0 0 1px rgba(var(--primary-rgb), 0.35); }
 .tw-zoom-bar .tw-zoom-val {
   min-width: 38px;
-  padding: 0 8px;
+  padding: 0 var(--space-8);
   font-size: var(--type-xs);
   font-variant-numeric: tabular-nums;
   color: var(--text-secondary);
@@ -1701,13 +1701,13 @@
   display: flex; flex-direction: column;
 }
 .bm-market-drawer.is-open { transform: translateX(0); visibility: visible; }
-.bm-market-head { flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-bottom: 1px solid var(--border-light, rgba(255,255,255,.08)); }
+.bm-market-head { flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; padding: var(--space-10) var(--space-12); border-bottom: 1px solid var(--border-light, rgba(255,255,255,.08)); }
 .bm-market-title { font: 600 14px/1.2 var(--font-family); letter-spacing: .06em; }
 /* 头部动作按钮（刷新 ⟳ / 关闭 ×）：与市场标题栏 .fab-panel-close / .fab-panel-action 完全同规格
    —— 无边框透明底、圆形触摸目标、悬停淡底；关闭按钮悬停旋转 90°，语义与市场一致。 */
 .bm-market-close, .bm-market-refresh {
   display: inline-flex; align-items: center; justify-content: center;
-  padding: 6px; min-width: var(--touch-target, 32px); min-height: var(--touch-target, 32px);
+  padding: var(--space-6); min-width: var(--touch-target, 32px); min-height: var(--touch-target, 32px);
   border: 0; border-radius: 50%; background: transparent;
   color: var(--text-secondary, rgba(255,255,255,.6));
   line-height: 1; cursor: pointer;
@@ -1715,25 +1715,25 @@
 }
 /* 头部按钮内图标：与卡片按钮同走 Lucide 描边图标体系，锁定尺寸避免受全局 .icon 影响 */
 .bm-market-close .icon, .bm-market-refresh .icon { width: 16px; height: 16px; display: block; }
-/* 刷新：绕过宿主 TTL 缓存强制重拉（margin-left:auto → 标题靠左、两个按钮靠右） */
+/* 刷新：绕过宿主 TTL 缓存强制重拉（margin-left: auto → 标题靠左、两个按钮靠右） */
 .bm-market-refresh { margin-left: auto; }
 .bm-market-close:hover, .bm-market-refresh:hover { background: rgba(var(--black-rgb, 0,0,0), .06); color: var(--text-primary, #eee); }
 .bm-market-close:hover { transform: rotate(90deg); }
 .bm-market-close:focus-visible, .bm-market-refresh:focus-visible { outline: 2px solid var(--bamboo-primary, #7d9b6a); outline-offset: 2px; }
-.bm-market-body { flex: 1 1 auto; overflow-y: auto; padding: 10px; }
-.market-loading, .market-empty { padding: 24px 12px; color: rgba(var(--white-rgb),.5); font-size: var(--bm-type-fixed-13); text-align: center; }
-.bm-market-body .market-list { display: flex; flex-direction: column; gap: 10px; }
+.bm-market-body { flex: 1 1 auto; overflow-y: auto; padding: var(--space-10); }
+.market-loading, .market-empty { padding: var(--space-24) var(--space-12); color: rgba(var(--white-rgb),.5); font-size: var(--bm-type-fixed-13); text-align: center; }
+.bm-market-body .market-list { display: flex; flex-direction: column; gap: var(--space-10); }
 /* 形态筛选：细分段控件 —— 一个圆角描边框 + 竖线分隔（是「一个控件」而非三个按钮）；
    激活段＝柔绿浅底 + 竹绿字（不用实心重绿，避免过沉）；计数小一号、降透明度 */
 .bm-market-filters {
   display: inline-flex; flex-wrap: nowrap; align-items: stretch;
-  margin: 0 0 12px; max-width: 100%;
+  margin: 0 0 var(--space-12); max-width: 100%;
   border: 1px solid rgba(var(--black-rgb),.14); border-radius: var(--radius-9);
   background: rgba(var(--black-rgb),.02); overflow: hidden;
 }
 .bm-market-chip {
-  display: inline-flex; align-items: center; gap: 4px;
-  padding: 5px 12px; margin: 0; border: 0; background: transparent;
+  display: inline-flex; align-items: center; gap: var(--space-4);
+  padding: var(--space-5) var(--space-12); margin: 0; border: 0; background: transparent;
   color: rgba(var(--black-rgb),.55); font: 500 12px/1.2 var(--font-family);
   cursor: pointer; transition: background var(--duration-instant), color var(--duration-instant);
 }
@@ -1743,11 +1743,11 @@
 .bm-market-chip-count { font-size: var(--bm-type-fixed-11); opacity: .6; }
 .bm-market-chip.is-active .bm-market-chip-count { opacity: .85; }
 /* 系列分组：按 manifest 的 series 字段归拢（无 series 的归入「其他素材」），组头可折叠 */
-.bm-market-group { margin: 0 0 14px; }
+.bm-market-group { margin: 0 0 var(--space-14); }
 .bm-market-group:last-child { margin-bottom: 0; }
 .bm-market-group-head {
-  display: flex; align-items: center; gap: 7px; width: 100%;
-  margin: 0 0 8px; padding: 6px 8px;
+  display: flex; align-items: center; gap: var(--space-7); width: 100%;
+  margin: 0 0 var(--space-8); padding: var(--space-6) var(--space-8);
   background: transparent; border: 0; border-radius: var(--radius-xs);
   color: var(--text-primary, #2b2b2b); font: 600 12px/1.2 var(--font-family);
   letter-spacing: .06em; text-align: left; cursor: pointer;
@@ -1761,11 +1761,11 @@
 .bm-market-group.is-collapsed .bm-market-group-arrow { transform: rotate(0); }
 .bm-market-group-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bm-market-group-count {
-  flex: 0 0 auto; font: 500 11px/1.6 var(--font-family); padding: 0 7px;
+  flex: 0 0 auto; font: 500 11px/1.6 var(--font-family); padding: 0 var(--space-7);
   border-radius: var(--radius-pill); background: rgba(var(--black-rgb),.06); color: rgba(var(--black-rgb),.55);
 }
 .bm-market-group.is-collapsed .market-list { display: none; }
-.bm-market-body .market-card { display: flex; gap: 10px; align-items: stretch; background: rgba(var(--black-rgb),.03); border: 1px solid var(--border-light, rgba(0,0,0,.1)); border-radius: var(--radius-sm); padding: 8px; }
+.bm-market-body .market-card { display: flex; gap: var(--space-10); align-items: stretch; background: rgba(var(--black-rgb),.03); border: 1px solid var(--border-light, rgba(0,0,0,.1)); border-radius: var(--radius-sm); padding: var(--space-8); }
 .bm-market-body .market-card.installed { border-color: rgba(31,150,90,.45); cursor: grab; }
 .bm-market-body .market-card.installed:active { cursor: grabbing; }
 .bm-market-thumb { flex: 0 0 auto; width: 96px; height: 96px; border-radius: var(--radius-xs); overflow: hidden; background: rgba(var(--black-rgb),.03); display: flex; align-items: center; justify-content: center; }
@@ -1776,13 +1776,13 @@
 /* schema 预留 previewUrl 时按 URL 懒加载的缩略图（与内联 SVG 同一尺寸约束） */
 .bm-market-thumb-img { width: 100%; height: 100%; object-fit: contain; display: block; }
 .bm-market-thumb-empty { color: rgba(var(--black-rgb),.35); font-size: var(--bm-type-fixed-12); }
-.bm-market-body .market-card-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.bm-market-body .market-card-head { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.bm-market-body .market-card-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.bm-market-body .market-card-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-6); }
 .bm-market-body .market-card-name { font-weight: 600; font-size: var(--bm-type-fixed-13); }
-.bm-material-type { font-size: var(--bm-type-fixed-11); padding: 1px 6px; border-radius: var(--radius-pill); background: rgba(var(--black-rgb),.06); }
+.bm-material-type { font-size: var(--bm-type-fixed-11); padding: var(--space-1) var(--space-6); border-radius: var(--radius-pill); background: rgba(var(--black-rgb),.06); }
 .bm-market-body .market-card-author { font-size: var(--bm-type-fixed-11); color: rgba(var(--black-rgb),.5); }
-.bm-market-hint { margin-top: 6px; font-size: var(--bm-type-fixed-11); color: #1c7a4a; }
-.bm-market-body .market-card-actions { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; }
+.bm-market-hint { margin-top: var(--space-6); font-size: var(--bm-type-fixed-11); color: #1c7a4a; }
+.bm-market-body .market-card-actions { flex: 0 0 auto; display: flex; align-items: center; gap: var(--space-6); }
 /* 素材市场操作按钮：圆形图标按钮（下载/更新/删除/不可用），与画中卷整体圆钮风格统一 */
 .bm-market-body .market-btn {
   display: inline-flex; align-items: center; justify-content: center;
@@ -1912,8 +1912,8 @@
    用文字标签而非符号 —— 低频操作不该靠用户猜图标。 */
 .bm-sticker-menu {
   position: absolute; top: 30px; right: -6px; transform-origin: top right;
-  z-index: 5; width: auto; height: auto; min-width: 128px; padding: 5px;
-  display: flex; flex-direction: column; gap: 1px;
+  z-index: 5; width: auto; height: auto; min-width: 128px; padding: var(--space-5);
+  display: flex; flex-direction: column; gap: var(--space-1);
   border-radius: var(--radius-sm); border: 1px solid rgba(var(--white-rgb),.10);
   background: rgba(28,28,30,.92);
   -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
@@ -1924,12 +1924,12 @@
 .bm-sticker-menu[hidden] { display: none; }
 .bm-sticker-mi {
   appearance: none; -webkit-appearance: none; border: none; background: transparent;
-  display: flex; align-items: center; width: 100%; padding: 8px 10px;
+  display: flex; align-items: center; width: 100%; padding: var(--space-8) var(--space-10);
   border-radius: var(--radius-2xs); cursor: pointer; text-align: left; white-space: nowrap;
   font: inherit; color: inherit; transition: background var(--duration-instant) ease;
 }
 .bm-sticker-mi:hover { background: rgba(var(--white-rgb),.10); }
-.bm-sticker-menu-sep { height: 1px; margin: 4px 6px; background: rgba(var(--white-rgb),.12); }
+.bm-sticker-menu-sep { height: 1px; margin: var(--space-4) var(--space-6); background: rgba(var(--white-rgb),.12); }
 /* 破坏性操作：危险色 + 独立分隔线，与高频操作彻底分开，降低误点 */
 .bm-sticker-mi-del { color: #ff8f7a; }
 .bm-sticker-mi-del:hover { background: rgba(255,90,70,.16); color: #ffb0a0; }

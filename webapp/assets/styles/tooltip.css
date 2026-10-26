@@ -4,7 +4,7 @@
 .tw-tip {
   position: fixed;
   z-index: 9999;
-  padding: 5px 9px;
+  padding: var(--space-5) 9px;
   border-radius: var(--radius-2xs);
   background: rgba(28, 30, 26, 0.92);
   color: #f4f2ec;
@@ -27,7 +27,7 @@
   bottom: 14px;
   transform: translateX(-50%);
   display: flex;
-  gap: 5px;
+  gap: var(--space-5);
   padding: 0;
   background: transparent;
   border: none;

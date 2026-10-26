@@ -22,7 +22,7 @@
 
 /* === 基础类 === */
 .bm-btn, .btn {
-    padding: var(--space-2) var(--space-5);
+    padding: var(--space-8) var(--space-20);
     border-radius: var(--radius-sm);
     border: none;
     cursor: pointer;
@@ -33,7 +33,7 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: var(--space-1);
+    gap: var(--space-4);
     min-height: var(--touch-target);
     min-width: var(--touch-target);
     position: relative;
@@ -54,7 +54,7 @@
 
 /* === 尺寸变体 === */
 .bm-btn--sm {
-    padding: var(--space-2) var(--space-3);
+    padding: var(--space-8) var(--space-12);
     font-size: var(--type-sm);
     min-height: var(--touch-target);
     min-width: var(--touch-target);

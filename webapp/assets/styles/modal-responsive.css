@@ -20,7 +20,7 @@
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
     .shop-balance-metric--card {
-        padding: clamp(8px, 2.5vw, 12px) clamp(4px, 1.2vw, 8px);
+        padding: clamp(var(--space-8), 2.5vw, var(--space-12)) clamp(var(--space-4), 1.2vw, var(--space-8));
     }
 }
 
@@ -36,7 +36,7 @@
         font-size: var(--type-base, clamp(12px, 3vw, 15px));
     }
     .shop-item-card {
-        padding: 10px 12px;
+        padding: var(--space-10) var(--space-12);
     }
     .shop-item-icon {
         width: 28px;
@@ -44,10 +44,10 @@
         font-size: var(--type-md);
     }
     .shop-history-row {
-        padding: 8px 10px;
+        padding: var(--space-8) var(--space-10);
     }
     .shop-principle-card {
-        padding: 10px;
+        padding: var(--space-10);
     }
 }
 

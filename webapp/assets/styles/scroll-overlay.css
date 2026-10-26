@@ -20,7 +20,7 @@
     background: #fbfdf8;
     border: 1px solid rgba(96, 132, 96, 0.30);
     border-radius: var(--radius-xl);
-    padding: 14px 14px 16px;
+    padding: var(--space-14) var(--space-14) var(--space-16);
     box-shadow: 0 18px 50px rgba(31, 46, 28, 0.30);
     color: var(--text-primary, #2f3a2c);
 }
@@ -28,7 +28,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 2px;
+    margin-bottom: var(--space-2);
 }
 .scroll-pick-title { font-size: var(--type-lg); font-weight: 600; }
 .scroll-pick-close {
@@ -38,16 +38,16 @@
     line-height: 1;
     color: #7c8473;
     cursor: pointer;
-    padding: 0 4px;
+    padding: 0 var(--space-4);
 }
 .scroll-pick-close:hover { color: #3f5a3a; }
-.scroll-pick-sub { margin: 0 0 10px; font-size: var(--type-sm); opacity: 0.7; }
-.scroll-pick-list { display: flex; flex-direction: column; gap: 10px; }
+.scroll-pick-sub { margin: 0 0 var(--space-10); font-size: var(--type-sm); opacity: 0.7; }
+.scroll-pick-list { display: flex; flex-direction: column; gap: var(--space-10); }
 .scroll-pick-card {
     display: flex;
     flex-direction: row;
     align-items: center;
-    gap: 12px;
+    gap: var(--space-12);
     width: 100%;
     text-align: left;
     border: 1px solid rgba(96, 132, 96, 0.28);
@@ -56,7 +56,7 @@
     color: var(--text-primary, #2f3a2c);
     cursor: pointer;
     font: inherit;
-    padding: 10px 12px;
+    padding: var(--space-10) var(--space-12);
     transition: transform var(--duration-fast) ease, box-shadow var(--duration-fast) ease, background var(--duration-fast) ease, border-color var(--duration-fast) ease;
 }
 .scroll-pick-card:hover:not(.is-placeholder) {
@@ -68,14 +68,14 @@
 .scroll-pick-card:focus-visible { outline: 2px solid rgba(79, 115, 85, 0.6); outline-offset: 2px; }
 .scroll-pick-icon { font-size: var(--type-xl); line-height: 1; }
 .scroll-pick-icon-svg { width: 24px; height: 24px; opacity: 0.9; }
-.scroll-pick-text { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.scroll-pick-text { display: flex; flex-direction: column; gap: var(--space-2); flex: 1; min-width: 0; }
 .scroll-pick-name { font-size: var(--type-md); font-weight: 600; }
 .scroll-pick-desc { font-size: var(--type-sm); opacity: 0.7; }
 .scroll-pick-lock {
     margin-left: auto;
     font-size: var(--type-caption);
     opacity: 0.85;
-    padding: 2px 7px;
+    padding: var(--space-2) var(--space-7);
     border: 1px solid currentColor;
     border-radius: var(--radius-pill);
     white-space: nowrap;
@@ -117,7 +117,7 @@
 /* 左栏：竹影终端 · 香道番茄钟（Pip-Boy 风 × 竹林雅致） */
 .scroll-left {
     border-right: 1px solid rgba(96, 132, 96, 0.16);
-    padding: 16px;
+    padding: var(--space-16);
     display: flex;
     min-height: 0;
     /* 背景透明，透出 .scroll-workbench 的主题渐变（与主页一致） */
@@ -332,7 +332,7 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 6px 4px;
+    padding: var(--space-6) var(--space-4);
 }
 
 /* 香道视觉：屏内一炷长香（青瓷竹节香插 · SVG 青烟 · 多层余烬 · 真实焚香）

@@ -14,7 +14,7 @@
 .sm-list {
     display: flex;
     flex-direction: column;
-    gap: var(--space-2);
+    gap: var(--space-8);
 }
 
 .sm-list-hidden {
@@ -23,7 +23,7 @@
 
 .sm-empty {
     text-align: center;
-    padding: var(--space-5);
+    padding: var(--space-20);
     font-size: var(--type-sm);
     color: var(--text-secondary);
 }
@@ -31,8 +31,8 @@
 .sm-item {
     display: flex;
     align-items: center;
-    gap: var(--space-2);
-    padding: var(--space-3);
+    gap: var(--space-8);
+    padding: var(--space-12);
     background: var(--card-glass);
     backdrop-filter: blur(var(--glass-blur));
     border-radius: var(--radius-md);
@@ -90,7 +90,7 @@
     cursor: grab;
     color: var(--text-secondary);
     opacity: 0.6;
-    padding: 2px 4px;
+    padding: var(--space-2) var(--space-4);
     flex-shrink: 0;
     min-height: var(--touch-target);
     min-width: var(--touch-target);
@@ -109,7 +109,7 @@
     font-weight: 600;
     font-size: var(--type-base);
     color: var(--text-primary);
-    margin-bottom: 2px;
+    margin-bottom: var(--space-2);
 }
 
 .sm-desc {
@@ -122,7 +122,7 @@
 
 .sm-actions {
     display: flex;
-    gap: var(--space-1);
+    gap: var(--space-4);
 }
 
 .sm-btn {
@@ -166,7 +166,7 @@
 
 .sm-batch-show-btn {
     margin-left: auto;
-    padding: 3px 10px;
+    padding: var(--space-3) var(--space-10);
     border-radius: var(--radius-2xs);
     border: 1px solid var(--border-light);
     background: transparent;
@@ -176,7 +176,7 @@
     cursor: pointer;
     display: inline-flex;
     align-items: center;
-    gap: var(--space-1);
+    gap: var(--space-4);
     transition: transform, opacity, box-shadow, border-color, background-color var(--duration-fast);
     min-height: var(--touch-target);
     min-width: var(--touch-target);
@@ -193,9 +193,9 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: var(--space-3);
-    padding: 8px 12px;
-    margin: 0 -4px 12px -4px;
+    gap: var(--space-12);
+    padding: var(--space-8) var(--space-12);
+    margin: 0 -4px var(--space-12) -4px;
     border-radius: var(--radius-xs);
     background: rgba(var(--primary-rgb), 0.06);
 }
@@ -221,7 +221,7 @@
 
 .icon-picker-sm {
     display: flex;
-    gap: var(--space-2);
+    gap: var(--space-8);
     flex-wrap: wrap;
 }
 
@@ -315,18 +315,18 @@ nav .date-display-sub {
 
 
 .section-settings-container {
-    padding: var(--space-2) 0;
+    padding: var(--space-8) 0;
 }
 
 .section-settings-header {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: var(--space-2);
-    padding: var(--space-5);
+    gap: var(--space-8);
+    padding: var(--space-20);
     background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.1), rgba(var(--primary-rgb), 0.03));
     border-radius: var(--radius-xl);
-    margin-bottom: var(--space-4);
+    margin-bottom: var(--space-16);
     border: 1px solid var(--border-light);
 }
 :host(.dark) .section-settings-header {
@@ -352,12 +352,12 @@ nav .date-display-sub {
 .section-settings-actions {
     display: flex;
     flex-direction: column;
-    gap: var(--space-2);
+    gap: var(--space-8);
 }
 
 .section-settings-btn {
     width: 100%;
-    padding: var(--space-3) var(--space-4);
+    padding: var(--space-12) var(--space-16);
     border-radius: var(--radius-lg);
     border: 1px solid var(--border-light);
     background: var(--card-glass);
@@ -367,7 +367,7 @@ nav .date-display-sub {
     font-weight: 600;
     display: flex;
     align-items: center;
-    gap: var(--space-3);
+    gap: var(--space-12);
     transition: transform, opacity, box-shadow, border-color, background-color var(--duration-fast) ease;
     font-family: inherit;
     min-height: var(--touch-target);

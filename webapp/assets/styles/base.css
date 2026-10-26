@@ -81,7 +81,7 @@
 }
 
 /* 窄栏紧凑：由 JS 在 .scroll-body 宽度 ≤340px 时加 .is-narrow 触发（本环境不支持 @container） */
-.scroll-body.is-narrow .scroll-screen { flex-direction: column; align-items: center; gap: 8px; }
+.scroll-body.is-narrow .scroll-screen { flex-direction: column; align-items: center; gap: var(--space-8); }
 .scroll-body.is-narrow .scroll-firebrand { transform: scale(0.82); transform-origin: top center; }
 .scroll-body.is-narrow .scroll-incense { transform: scale(0.92); }
 
@@ -106,7 +106,7 @@
     transform: translateX(-50%);
     background: var(--bamboo-deep);
     color: var(--white);
-    padding: 12px 24px;
+    padding: var(--space-12) var(--space-24);
     border-radius: var(--radius-md);
     z-index: var(--z-layer-overlay);
     text-decoration: none;
@@ -235,7 +235,7 @@
     display: flex;
     justify-content: center;
     align-items: flex-start;
-    padding: 40px var(--space-6);
+    padding: 40px var(--space-24);
     box-sizing: border-box;
 }
 
@@ -247,8 +247,8 @@
     align-items: center;
 }
 #main-container.layout-multicol .container {
-    margin-top: var(--space-6);
-    margin-bottom: var(--space-6);
+    margin-top: var(--space-24);
+    margin-bottom: var(--space-24);
 }
 
 :host::before {
@@ -358,14 +358,14 @@ html.recoloring:not(#recoloring), html.recoloring:not(#recoloring) *, html.recol
 .container {
     width: 95%;
     max-width: min(100% - 2rem, var(--content-max-width));
-    margin: var(--space-6) auto 0;
+    margin: var(--space-24) auto 0;
     background: var(--card-glass);
     backdrop-filter: blur(var(--glass-blur));
     -webkit-backdrop-filter: blur(var(--glass-blur));
     /* translateZ(0) 强制 GPU 合成层，避免 Chromium 暗色模式 backdrop-filter 伪影 */
     transform: translateZ(0);
     border-radius: var(--radius-3xl);
-    padding: var(--space-7) var(--space-6);
+    padding: var(--space-28) var(--space-24);
     box-shadow: var(--shadow);
     position: relative;
     word-wrap: break-word;
@@ -389,8 +389,8 @@ html.recoloring:not(#recoloring), html.recoloring:not(#recoloring) *, html.recol
     backdrop-filter: blur(var(--glass-blur));
     -webkit-backdrop-filter: blur(var(--glass-blur));
     border-radius: var(--radius-2xl);
-    padding: var(--space-4);
-    margin-bottom: var(--space-4);
+    padding: var(--space-16);
+    margin-bottom: var(--space-16);
     border: 1px solid var(--border-light);
     opacity: 0;
     transform: translateY(12px);
@@ -426,8 +426,8 @@ html.recoloring:not(#recoloring), html.recoloring:not(#recoloring) *, html.recol
 .skeleton-header {
     display: flex;
     align-items: center;
-    gap: var(--space-3);
-    margin-bottom: var(--space-3);
+    gap: var(--space-12);
+    margin-bottom: var(--space-12);
 }
 
 .skeleton-icon {
@@ -443,7 +443,7 @@ html.recoloring:not(#recoloring), html.recoloring:not(#recoloring) *, html.recol
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: var(--space-6);
 }
 
 .skeleton-line {
@@ -461,15 +461,15 @@ html.recoloring:not(#recoloring), html.recoloring:not(#recoloring) *, html.recol
 .skeleton-body {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    padding-top: var(--space-2);
+    gap: var(--space-8);
+    padding-top: var(--space-8);
     border-top: 1px solid var(--border-light);
 }
 
 .skeleton-row {
     display: flex;
     align-items: center;
-    gap: var(--space-3);
+    gap: var(--space-12);
 }
 
 .skeleton-dot {
@@ -491,7 +491,7 @@ html.recoloring:not(#recoloring), html.recoloring:not(#recoloring) *, html.recol
    视觉沿用骨架屏 shimmer，保持加载态连贯。 */
 .section-placeholder {
     min-height: var(--bm-placeholder-min-h, 160px);
-    margin-bottom: var(--space-4);
+    margin-bottom: var(--space-16);
     border-radius: var(--radius-2xl);
     border: 1px solid var(--border-light);
     background: var(--card-glass);
@@ -599,9 +599,9 @@ html.recoloring:not(#recoloring), html.recoloring:not(#recoloring) *, html.recol
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: var(--space-6);
+    margin-bottom: var(--space-24);
     flex-wrap: wrap;
-    gap: var(--space-3);
+    gap: var(--space-12);
     min-height: 24px;
 }
 .header-left {
@@ -616,7 +616,7 @@ html.recoloring:not(#recoloring), html.recoloring:not(#recoloring) *, html.recol
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    gap: var(--space-3);
+    gap: var(--space-12);
 }
 
 /* 窄栏（容器实际宽度 ≤460px，由 displayManager._applyResponsiveClasses 加 .rw-460，
@@ -725,11 +725,11 @@ h1 {
 
     /* Body & container: tighter padding, smaller radii */
     :host {
-        padding: var(--space-4) var(--space-3);
+        padding: var(--space-16) var(--space-12);
     }
 
     #main-container {
-        padding: 0 var(--space-3);
+        padding: 0 var(--space-12);
     }
 
     .container {
@@ -756,7 +756,7 @@ h1 {
 
     /* Date nav: compact gap + sizing */
     .date-nav-center {
-        gap: 6px;
+        gap: var(--space-6);
     }
     .date-display-main {
         font-size: var(--type-md);
@@ -775,11 +775,11 @@ h1 {
 
     #main-container {
         /* 移动端（含普通 iframe 中央视图）移除顶部留白，避免露出白底 */
-        padding: 0 var(--space-4);
+        padding: 0 var(--space-16);
     }
 
     .bamboo-card-header {
-        padding: var(--space-1) var(--space-4);
+        padding: var(--space-4) var(--space-16);
         min-height: 0;
         --touch-target: 0; /* lint-disable: R10 局部覆写触控热区令牌（该 header 内不撑 ::before 热区） */
     }
@@ -818,11 +818,11 @@ h1 {
 
 
     :host {
-        padding: var(--space-2) var(--space-1);
+        padding: var(--space-8) var(--space-4);
     }
 
     .container {
-        padding: var(--space-3) var(--space-2);
+        padding: var(--space-12) var(--space-8);
         border-radius: var(--radius-xl);
         max-width: 100%;
         width: 100%;
@@ -830,7 +830,7 @@ h1 {
 
     /* 头部：紧凑堆叠 */
     .header {
-        gap: var(--space-2);
+        gap: var(--space-8);
     }
 
     /* 票根时间数值：再紧凑一点 */
@@ -840,10 +840,10 @@ h1 {
 
     /* 日期导航：更小的间距 */
     .date-nav {
-        gap: var(--space-1);
+        gap: var(--space-4);
     }
     .date-nav-btn {
-        padding: 6px;
+        padding: var(--space-6);
         min-height: var(--touch-comfortable);
     }
     .date-display-main {

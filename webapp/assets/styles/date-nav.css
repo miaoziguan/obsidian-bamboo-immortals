@@ -3,8 +3,8 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: var(--space-4);
-    padding: 6px var(--space-3);
+    margin-bottom: var(--space-16);
+    padding: var(--space-6) var(--space-12);
     background: 
         linear-gradient(135deg, var(--glass-highlight-subtle) 0%, var(--glass-highlight-faint) 50%, var(--glass-highlight-wash) 100%),
         linear-gradient(45deg, rgba(var(--primary-rgb), 0.05) 0%, transparent 60%);
@@ -46,7 +46,7 @@
 .date-nav-center {
     display: flex;
     align-items: center;
-    gap: var(--space-2);
+    gap: var(--space-8);
     position: relative;
     z-index: 1;
 }
@@ -54,7 +54,7 @@
 .date-nav-right {
     display: flex;
     align-items: center;
-    gap: var(--space-2);
+    gap: var(--space-8);
     position: relative;
     z-index: 1;
 }
@@ -76,7 +76,7 @@
     vertical-align: middle;
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
-    padding: 8px 12px;
+    padding: var(--space-8) var(--space-12);
     position: relative;
     z-index: 1;
 }
@@ -99,9 +99,9 @@
     display: flex;
     flex-direction: row;
     align-items: center;
-    gap: 6px;
+    gap: var(--space-6);
     min-width: 80px;
-    padding: 0 var(--space-2);
+    padding: 0 var(--space-8);
     position: relative;
     z-index: 1;
 }
@@ -121,7 +121,7 @@
 
 .date-display.clickable {
     cursor: pointer;
-    padding: 6px var(--space-3);
+    padding: var(--space-6) var(--space-12);
     border-radius: var(--radius-md);
     transition: transform, opacity, box-shadow, border-color, background-color var(--transition-smooth);
     min-height: var(--touch-target);
@@ -176,7 +176,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 8px 12px;
+    padding: var(--space-8) var(--space-12);
     position: relative;
     z-index: 1;
     box-shadow: none;
@@ -236,8 +236,8 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: var(--space-2);
-    padding: 8px 12px;
+    gap: var(--space-8);
+    padding: var(--space-8) var(--space-12);
     border-bottom: 1px solid var(--border-light);
     background: var(--bamboo-background);
 }
@@ -277,7 +277,7 @@
 }
 .drp-tab {
     flex: 1;
-    padding: 7px 8px;
+    padding: var(--space-7) var(--space-8);
     min-height: 34px;
     min-width: 0;
     border: none;
@@ -301,20 +301,20 @@
 }
 .drp-quick-area {
     flex: 0 0 auto;
-    padding: 6px 12px;
+    padding: var(--space-6) var(--space-12);
     border-bottom: 1px solid var(--border-light);
 }
 .drp-quick-row {
     display: flex;
     flex-wrap: wrap;
-    gap: 4px;
-    margin-bottom: 4px;
+    gap: var(--space-4);
+    margin-bottom: var(--space-4);
 }
 .drp-quick-row:last-child {
     margin-bottom: 0;
 }
 .drp-quick-btn {
-    padding: 3px 9px;
+    padding: var(--space-3) 9px;
     min-height: 24px;
     min-width: 0;
     line-height: 1.3;
@@ -337,7 +337,7 @@
     flex: 1 1 auto;
     min-height: 0;
     overflow-y: auto;
-    padding: 8px 12px;
+    padding: var(--space-8) var(--space-12);
 }
 .drp-calendar {
     width: 100%;
@@ -346,7 +346,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 6px;
+    margin-bottom: var(--space-6);
 }
 .drp-month-label {
     font-weight: 600;
@@ -382,19 +382,19 @@
 .drp-weekdays {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
-    gap: 1px;
-    margin-bottom: 2px;
+    gap: var(--space-1);
+    margin-bottom: var(--space-2);
 }
 .drp-weekdays span {
     text-align: center;
     font-size: var(--type-mini);
     color: var(--text-secondary);
-    padding: 2px 0;
+    padding: var(--space-2) 0;
 }
 .drp-days {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
-    gap: 1px;
+    gap: var(--space-1);
 }
 .drp-day {
     height: 32px;
@@ -445,8 +445,8 @@
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 6px 8px;
-    padding: 6px 12px;
+    gap: var(--space-6) var(--space-8);
+    padding: var(--space-6) var(--space-12);
     border-top: 1px solid var(--border-light);
     background: var(--bamboo-background);
 }
@@ -456,7 +456,7 @@
     justify-content: flex-start;
     flex: 1 1 auto;
     min-width: 0;
-    gap: 5px;
+    gap: var(--space-5);
     font-size: var(--type-xs);
 }
 .drp-arrow {
@@ -466,7 +466,7 @@
     color: var(--bamboo-primary);
     font-weight: 600;
     background: rgba(var(--teal-rgb), 0.1);
-    padding: 3px 6px;
+    padding: var(--space-3) var(--space-6);
     border-radius: var(--radius-2xs);
     border: 1px solid transparent;
     font-size: var(--type-xs);
@@ -490,13 +490,13 @@
 }
 .drp-actions {
     display: flex;
-    gap: 8px;
+    gap: var(--space-8);
     flex: 0 0 auto;
     margin-left: auto;
 }
 .drp-cancel-btn, .drp-confirm-btn {
     /* 高度与 28px 输入框对齐，底栏视觉更协调 */
-    padding: 4px 14px;
+    padding: var(--space-4) var(--space-14);
     min-height: 28px;
     min-width: 0;
     border-radius: var(--radius-2xs);
@@ -573,7 +573,7 @@
     position: relative;
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
-    padding: var(--space-2) var(--space-3);
+    padding: var(--space-8) var(--space-12);
     box-shadow: none;
     -webkit-appearance: none;
     appearance: none;

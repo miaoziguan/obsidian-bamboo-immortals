@@ -7,8 +7,8 @@
 .weather-widget {
     display: inline-flex;
     align-items: center;
-    gap: var(--space-1);
-    padding: 3px 8px;
+    gap: var(--space-4);
+    padding: var(--space-3) var(--space-8);
     border-radius: var(--radius-pill);
     background: transparent;
     cursor: pointer;
@@ -17,7 +17,7 @@
     border: 0;
     transition: background-color var(--duration-fast) ease, opacity var(--duration-fast) ease;
     user-select: none;
-    margin-right: 8px;
+    margin-right: var(--space-8);
     overflow: hidden;
     max-width: 100%;
     line-height: 1;
@@ -33,14 +33,14 @@
 .weather-core {
     display: inline-flex;
     align-items: center;
-    gap: 3px;
+    gap: var(--space-3);
     flex-shrink: 0;
 }
 
 .weather-expand {
     display: inline-flex;
     align-items: center;
-    gap: var(--space-1);
+    gap: var(--space-4);
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
@@ -81,7 +81,7 @@
     color: var(--bamboo-primary);
     font-weight: 600;
     cursor: pointer;
-    padding: 0 2px;
+    padding: 0 var(--space-2);
     border-radius: var(--radius-3);
     transition: background-color var(--duration-instant) ease, border-bottom-color var(--duration-instant) ease;
     border-bottom: 1px dotted transparent;
@@ -94,16 +94,16 @@
 .weather-sep {
     color: var(--bamboo-primary);
     font-size: var(--type-mini);
-    margin: 0 2px;
+    margin: 0 var(--space-2);
     opacity: 0.55;
 }
 
 .weather-actions {
     display: inline-flex;
     align-items: center;
-    gap: 1px;
-    margin-left: 2px;
-    padding-left: 4px;
+    gap: var(--space-1);
+    margin-left: var(--space-2);
+    padding-left: var(--space-4);
     border-left: 1px solid rgba(var(--primary-rgb), 0.35);
 }
 
@@ -137,7 +137,7 @@
 
 .weather-city-inline {
     width: 100px;
-    padding: 1px 6px;
+    padding: var(--space-1) var(--space-6);
     border: 1px solid rgba(var(--primary-rgb), 0.4);
     border-radius: var(--radius-4);
     font-size: var(--type-xs);
@@ -165,7 +165,7 @@
     animation: weather-pulse 1.2s ease-in-out infinite;
 }
 .weather-failed {
-    gap: 3px;
+    gap: var(--space-3);
 }
 @keyframes weather-pulse {
     0%, 100% { opacity: 0.35; }
@@ -204,12 +204,12 @@
     opacity: 0.75;
 }
 .quote-text {
-    margin-right: 4px;
+    margin-right: var(--space-4);
 }
 .quote-mark {
     opacity: 0.7;
     font-size: var(--type-xs);
-    margin: 0 1px;
+    margin: 0 var(--space-1);
 }
 .quote-content {
     font-weight: 500;
@@ -234,8 +234,8 @@
 
     .weather-widget {
         font-size: var(--type-xs);
-        padding: 3px 6px;
-        margin-right: 4px;
+        padding: var(--space-3) var(--space-6);
+        margin-right: var(--space-4);
     }
     .weather-widget.weather-open .weather-expand {
         max-width: 280px;
@@ -265,7 +265,7 @@
 
     .weather-widget {
         font-size: var(--type-xs);
-        padding: 3px 6px;
+        padding: var(--space-3) var(--space-6);
         margin-right: 0;
     }
     .weather-widget.weather-open .weather-expand {

@@ -5,9 +5,9 @@
 
 .todo-stats {
     display: flex;
-    gap: var(--space-3);
-    margin-bottom: var(--space-2);
-    padding: var(--space-2) var(--space-3);
+    gap: var(--space-12);
+    margin-bottom: var(--space-8);
+    padding: var(--space-8) var(--space-12);
     background: rgba(var(--primary-rgb), 0.06);
     backdrop-filter: blur(var(--glass-blur));
     border-radius: var(--radius-md);
@@ -32,7 +32,7 @@
     font-size: var(--type-xs);
     color: var(--bamboo-primary);
     opacity: 0.65;
-    margin-top: 1px;
+    margin-top: var(--space-1);
 }
 
 .todo-progress-bar {
@@ -40,7 +40,7 @@
     background: rgba(var(--primary-rgb), 0.1);
     border-radius: var(--radius-3xs);
     overflow: hidden;
-    margin-bottom: var(--space-3);
+    margin-bottom: var(--space-12);
 }
 
 .todo-progress-fill {
@@ -52,15 +52,15 @@
 }
 
 .todo-group {
-    margin-bottom: calc(var(--space-4) * var(--section-gap-scale));
+    margin-bottom: calc(var(--space-16) * var(--section-gap-scale));
 }
 
 .todo-group-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: var(--space-2);
-    padding-bottom: var(--space-1);
+    margin-bottom: var(--space-8);
+    padding-bottom: var(--space-4);
     border-bottom: 1px solid rgba(var(--primary-rgb), 0.1);
 }
 
@@ -71,7 +71,7 @@
     cursor: pointer;
     display: flex;
     align-items: center;
-    gap: var(--space-1);
+    gap: var(--space-4);
     user-select: none;
     -webkit-user-select: none;
 }
@@ -89,7 +89,7 @@
 .todo-group-actions {
     display: inline-flex;
     align-items: center;
-    gap: var(--space-2);
+    gap: var(--space-8);
     margin-left: auto;
 }
 
@@ -127,13 +127,13 @@
 .todo-item {
     display: flex;
     align-items: center;
-    gap: var(--space-2);
-    padding: var(--space-2) var(--space-3);
+    gap: var(--space-8);
+    padding: var(--space-8) var(--space-12);
     background: var(--card-bg);
     backdrop-filter: blur(var(--glass-blur));
     border: 1px solid var(--border-light);
     border-radius: var(--radius-md);
-    margin-bottom: var(--space-1);
+    margin-bottom: var(--space-4);
     transition: transform, opacity, box-shadow, border-color, background-color var(--duration-normal) ease;
     box-shadow: var(--shadow-surface);
     position: relative;
@@ -235,7 +235,7 @@
 .todo-item-goal {
     border-left: none;
     background: var(--card-bg);
-    padding: var(--space-2) var(--space-3);
+    padding: var(--space-8) var(--space-12);
     border-radius: var(--radius-lg);
     border: 1px solid rgba(var(--primary-rgb), 0.22);
 }
@@ -243,7 +243,7 @@
 .todo-item-goal .todo-content {
     flex-direction: row;
     align-items: center;
-    gap: 6px;
+    gap: var(--space-6);
 }
 
 .todo-item-goal .todo-title {
@@ -267,7 +267,7 @@
     font-size: var(--type-xs);
     color: var(--bamboo-text-muted);
     background: rgba(var(--primary-rgb), 0.07);
-    padding: 1px 6px;
+    padding: var(--space-1) var(--space-6);
     border-radius: var(--radius-xs);
     white-space: nowrap;
     max-width: 100px;
@@ -279,7 +279,7 @@
     font-size: var(--type-xs);
     color: var(--text-secondary);
     background: rgba(var(--gray-rgb), 0.1);
-    padding: 1px 6px;
+    padding: var(--space-1) var(--space-6);
     border-radius: var(--radius-xs);
     white-space: nowrap;
     flex-shrink: 0;
@@ -290,7 +290,7 @@
 }
 
 .todo-group-goal {
-    margin-bottom: var(--space-3);
+    margin-bottom: var(--space-12);
 }
 
 .todo-group-goal .todo-group-header {
@@ -310,7 +310,7 @@
     font-weight: 700;
     color: var(--bamboo-primary);
     background: rgba(var(--primary-rgb), 0.12);
-    padding: 1px 6px;
+    padding: var(--space-1) var(--space-6);
     border-radius: var(--radius-sm);
     min-width: min(18px, 5vw);
 }
@@ -323,17 +323,17 @@
     transition: transform, opacity, box-shadow, border-color, background-color var(--duration-fast) ease;
     font-weight: 600;
     flex-shrink: 0;
-    margin-right: 5px;
+    margin-right: var(--space-5);
 }
 
 .todo-goal-progress {
     font-size: var(--type-xs);
-    padding: var(--space-1) var(--space-2);
+    padding: var(--space-4) var(--space-8);
     border-radius: var(--radius-sm);
     background: rgba(var(--primary-rgb), 0.06);
     color: var(--bamboo-text-secondary);
     font-weight: 500;
-    margin-right: 4px;
+    margin-right: var(--space-4);
 }
 
 .todo-checkbox {
@@ -398,7 +398,7 @@
     display: flex;
     align-items: center;
     flex-wrap: wrap;
-    gap: var(--space-1);
+    gap: var(--space-4);
 }
 
 .todo-title {
@@ -421,7 +421,7 @@
     display: flex;
     flex-direction: column;
     align-items: flex-end;
-    gap: 2px;
+    gap: var(--space-2);
     flex-shrink: 0;
     position: relative;
     z-index: 1;
@@ -529,7 +529,7 @@
 .todo-focus-wrap {
     position: relative;
     display: inline;
-    padding: 0 14px 0 0;
+    padding: 0 var(--space-14) 0 0;
     color: var(--bamboo-primary);
     transition: color var(--duration-fast) ease;
     cursor: pointer;
@@ -575,7 +575,7 @@
     min-width: 120px;
     max-height: 240px;
     overflow-y: auto;
-    padding: var(--space-1);
+    padding: var(--space-4);
     border-radius: var(--radius-md);
     background: var(--bg-panel, #fff);
     border: 1px solid rgba(var(--primary-rgb), 0.15);
@@ -602,7 +602,7 @@
 }
 
 .todo-focus-item {
-    padding: 6px 8px;
+    padding: var(--space-6) var(--space-8);
     border-radius: var(--radius-sm);
     font-size: var(--type-xs);
     color: var(--text-primary);
@@ -883,8 +883,8 @@
 
 
     .todo-item {
-        padding: 6px 4px;
-        gap: 6px;
+        padding: var(--space-6) var(--space-4);
+        gap: var(--space-6);
     }
     
     

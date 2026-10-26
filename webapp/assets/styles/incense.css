@@ -10,7 +10,7 @@
 /* 左栏：竹影终端 · 香道番茄钟（Pip-Boy 风 × 竹林雅致） */
 .scroll-left {
     border-right: 1px solid hsla(var(--accent-hue), 20%, 50%, 0.16);
-    padding: 16px;
+    padding: var(--space-16);
     display: flex;
     min-height: 0;
     /* 背景透明，透出 .scroll-workbench 的主题渐变（与主页一致） */
@@ -233,7 +233,7 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 6px 4px;
+    padding: var(--space-6) var(--space-4);
 }
 
 /* 香道视觉：屏内一炷长香（青瓷竹节香插 · SVG 青烟 · 多层余烬 · 真实焚香）

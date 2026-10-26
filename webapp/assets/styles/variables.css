@@ -5,7 +5,7 @@
  *   语义层      --{semantic}-{variant}     例：--text-primary, --status-danger
  *   组件层      --{component}-{property}   例：--tag-execute-bg, --kpi-up-bg
  *   RGB 通道    --{name}-rgb                例：--bm-primary-rgb, --danger-rgb
- *   动效/间距/圆角/字体  --{category}-{step}  例：--space-3, --radius-md, --type-sm
+ *   动效/间距/圆角/字体  --{category}-{step}  例：--space-12, --radius-md, --type-sm
  *
  * 规范前缀（Task 8 统一命名空间）：
  *   新增自定义属性必须使用 --bm-* 或 --bamboo-* 前缀（lint R10 强制）。
@@ -308,14 +308,22 @@
     --radius-tooltip: var(--radius-xs);   /* 8px — tooltip / 徽标圆角 */
 
     /* === 间距系统（统一为 8px 网格） === */
-    --space-1: 4px;
-    --space-2: 8px;
-    --space-3: 12px;
-    --space-4: 16px;
-    --space-5: 20px;
-    --space-6: 24px;
-    --space-7: 28px;
-    --space-8: 32px;
+    --space-1: 1px;
+    --space-2: 2px;
+    --space-3: 3px;
+    --space-4: 4px;
+    --space-8: 8px;
+    --space-5: 5px;
+    --space-6: 6px;
+    --space-7: 7px;
+    --space-12: 12px;
+    --space-14: 14px;
+    --space-10: 10px;
+    --space-16: 16px;
+    --space-20: 20px;
+    --space-24: 24px;
+    --space-28: 28px;
+    --space-32: 32px;
 
     /* === 字体系统 ===
        唯一标准：流体 --type-*（带 clamp，自适应视口）。

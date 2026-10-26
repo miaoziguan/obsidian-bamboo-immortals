@@ -46,7 +46,7 @@
    目标健康度评分
    =========================== */
 .goal-health-shell {
-    margin-bottom: calc(var(--space-6) * var(--section-gap-scale));
+    margin-bottom: calc(var(--space-24) * var(--section-gap-scale));
 }
 
 /* ==========================================================================
@@ -68,7 +68,7 @@
 .stats-section {
     background: linear-gradient(145deg, rgba(var(--white-rgb), 0.96), rgba(var(--pale-green-alt-rgb), 0.92));
     border-radius: var(--radius-2xl);
-    padding: 20px 18px;
+    padding: var(--space-20) 18px;
     border: 1px solid rgba(var(--primary-rgb), 0.1);
     box-shadow: 
         0 3px 12px rgba(var(--deep-rgb), 0.05);
@@ -91,10 +91,10 @@
     font-size: var(--type-md);
     font-weight: 700;
     color: var(--bamboo-deep);
-    margin-bottom: 14px;
+    margin-bottom: var(--space-14);
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: var(--space-6);
     letter-spacing: -0.3px;
     opacity: 0.9;
 }
@@ -107,7 +107,7 @@
 .core-metrics-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: var(--space-2);
+    gap: var(--space-8);
 }
 
 .core-metric-card {
@@ -115,7 +115,7 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 12px 10px;
+    padding: var(--space-12) var(--space-10);
     background: rgba(var(--white-rgb), 0.6);
     border-radius: var(--radius-md);
     border: 1px solid rgba(var(--primary-rgb), 0.1);
@@ -136,7 +136,7 @@
     font-weight: 800;
     color: var(--bamboo-deep);
     line-height: 1;
-    margin-bottom: 4px;
+    margin-bottom: var(--space-4);
 }
 
 .stat-label {
@@ -182,11 +182,11 @@
 .progress-tiers-grid {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
-    gap: var(--space-3);
+    gap: var(--space-12);
 }
 
 .tier-card {
-    padding: 12px 10px;
+    padding: var(--space-12) var(--space-10);
     background: rgba(var(--white-rgb), 0.55);
     border-radius: var(--radius-md);
     border: 1px solid rgba(var(--primary-rgb), 0.1);
@@ -205,7 +205,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 8px;
+    margin-bottom: var(--space-8);
 }
 
 .tier-label {
@@ -387,12 +387,12 @@
 .time-alerts-cards {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: var(--space-2);
+    gap: var(--space-8);
 }
 
 .alert-card {
     position: relative;
-    padding: 14px 12px;
+    padding: var(--space-14) var(--space-12);
     border-radius: var(--radius-lg);
     border: 1px solid rgba(var(--primary-rgb), 0.1);
     overflow: clip; /* 允许 tooltip/focus ring 溢出 */
@@ -411,7 +411,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 8px;
+    margin-bottom: var(--space-8);
 }
 
 .alert-card-icon {
@@ -434,7 +434,7 @@
 .alert-card-title {
     font-size: var(--type-base);
     font-weight: 700;
-    margin-bottom: 2px;
+    margin-bottom: var(--space-2);
 }
 
 .alert-card-desc {
@@ -445,19 +445,19 @@
 }
 
 .alert-card-projects {
-    margin-top: 10px;
-    padding-top: 8px;
+    margin-top: var(--space-10);
+    padding-top: var(--space-8);
     border-top: 1px solid rgba(var(--black-rgb), 0.05);
     display: flex;
     flex-direction: column;
-    gap: var(--space-1);
+    gap: var(--space-4);
 }
 
 .alert-card-project {
     font-size: var(--type-mini);
     color: var(--text-primary);
     font-weight: 500;
-    padding: 4px 8px;
+    padding: var(--space-4) var(--space-8);
     background: rgba(var(--black-rgb), 0.03);
     border-radius: var(--radius-2xs);
     white-space: nowrap;
@@ -560,7 +560,7 @@
 /* 一切顺利卡片 */
 .all-good-card {
     grid-column: 1 / -1;
-    padding: 20px 16px;
+    padding: var(--space-20) var(--space-16);
     border-radius: var(--radius-xl);
     background: rgba(var(--health-success-rgb), 0.08);
     border: 1px solid rgba(var(--health-success-rgb), 0.18);
@@ -570,7 +570,7 @@
 .all-good-icon {
     width: 52px;
     height: 52px;
-    margin: 0 auto 10px;
+    margin: 0 auto var(--space-10);
     border-radius: var(--radius-lg);
     display: flex;
     align-items: center;
@@ -583,7 +583,7 @@
     font-size: var(--type-md);
     font-weight: 700;
     color: var(--bamboo-dark);
-    margin-bottom: 4px;
+    margin-bottom: var(--space-4);
 }
 
 .all-good-desc {

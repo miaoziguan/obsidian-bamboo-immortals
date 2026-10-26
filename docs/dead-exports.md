@@ -13,8 +13,8 @@
 
 | 导出 | 文件 | 处置 |
 |---|---|---|
-| `appendToRoot` | `webapp/assets/scripts/utils/domRef.js` | A 级，删除（见 dead-code-removal-plan.md） |
-| `fallbackQuestion` + 私有 `DISEASE_QUESTION` | `src/ai/GoalElicitor.ts` | A 级，删除（C 传递死，同逻辑单元） |
+| `appendToRoot` | `webapp/assets/scripts/utils/domRef.js` | ✅ 已删除（commit 见下） |
+| `fallbackQuestion` + 私有 `DISEASE_QUESTION` | `src/ai/GoalElicitor.ts` | ✅ 已删除（C 传递死，同逻辑单元） |
 
 ---
 
@@ -25,7 +25,7 @@
 > 扫描：webapp JS(排除 tests) + src TS(排除 __tests__) + 根 main.ts（插件入口）；排除 TS type/interface/declare。
 > 判定：生产代码零消费者（标识符 + 引号内字符串键）即记为死导出。非单词名($/$$)用专用边界。
 
-**零消费者运行时导出合计：69**
+**零消费者运行时导出合计：67**
 
 | 导出名 | 状态 | 内部/测试引用 |
 |---|---|---|
@@ -37,7 +37,6 @@
 | `buildHealthSummary` | 内部使用(冗余export) | 内部:1 测试:1 |
 | `parseDiagnosis` | 内部使用(冗余export) | 内部:1 测试:1 |
 | `buildSplitPrompt` | 内部使用(冗余export) | 内部:1 测试:1 |
-| `fallbackQuestion` | 零引用 | 内部:0 测试:0 |
 | `GOAL_KIND_RUBRIC` | 内部使用(冗余export) | 内部:2 测试:0 |
 | `parseSplit` | 内部使用(冗余export) | 内部:2 测试:1 |
 | `backfillItemDates` | 内部使用(冗余export) | 内部:2 测试:1 |
@@ -79,7 +78,6 @@
 | `computeFitScale` | 内部使用(冗余export) | 内部:1 测试:1 |
 | `MIN_FIT_SCALE` | 内部使用(冗余export) | 内部:4 测试:1 |
 | `CONSTANTS` | 仅测试引用 | 内部:0 测试:2 |
-| `appendToRoot` | 零引用 | 内部:0 测试:0 |
 | `getShadowRoot` | 内部使用(冗余export) | 内部:2 测试:0 |
 | `createFacade` | 内部使用(冗余export) | 内部:3 测试:1 |
 | `isLicenseGateActive` | 内部使用(冗余export) | 内部:1 测试:0 |

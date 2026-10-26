@@ -60,11 +60,6 @@ export function getStyleMount() {
     return getShadowRoot() || document.head;
 }
 
-// 动态创建的提示/浮层：追加到 shadow 根（或 document 模式的 body），保证样式隔离一致
-export function appendToRoot(node) {
-    return getRootMount().appendChild(node);
-}
-
 // 动态 CSS 变量（如 --content-max-width / --accent-hue 等）必须写到"正确根"：
 //  - shadow 模式：注入进 shadow 的 variables.css 里 `:root { --x }` 作用在 shadow host 上，
 //    会覆盖从 light DOM <html> 继承来的值；因此必须把变量写到 host 的 inline style 才能生效，

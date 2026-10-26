@@ -41,15 +41,6 @@ export const DISEASE_LABEL: Record<DiseaseType, string> = {
   outcome_as_input: '把结果当输入（结果由他人/市场决定）',
 };
 
-/** 每种病的默认苏格拉底追问（AI 没返回针对性问题时作为兜底） */
-const DISEASE_QUESTION: Record<DiseaseType, string> = {
-  vague: '你说的"第一 / 最好 / 神作"这类词，具体按什么口径算达成？请用一句可验证的话描述成功。',
-  non_owned: '这件事里，你个人能直接控制的那一小块是什么？其余（市场 / 他人）不在你手里，先放一边。',
-  means_as_end: '你真正想要的结果是什么？"每天读 10 页"是手段，它要服务的那个 ends 是什么？',
-  no_commit: '这件事最晚什么时候要看到结果？你愿意投入多少资源（时间 / 钱 / 精力）？',
-  outcome_as_input: '"行业第一"是市场决定的结果，你手里哪个可控抓手能撬动它？',
-};
-
 const VALID_DISEASES = new Set<DiseaseType>([
   'vague',
   'non_owned',
@@ -330,11 +321,6 @@ export function briefToPlanningText(brief: GoalBrief): string {
 
   lines.push('', '请基于以上简报进行拆解。');
   return lines.join('\n');
-}
-
-/** 兜底：给未填结构化字段的追问生成默认文案（force-skip 时常用） */
-export function fallbackQuestion(disease: DiseaseType): string {
-  return DISEASE_QUESTION[disease];
 }
 
 /** 取字符串字段（trim 为空则 undefined），供 parseSplit 复用 */

@@ -16,7 +16,7 @@
 
 ---
 
-## 单元 A1：`appendToRoot`（webapp 侧，单函数）
+## 单元 A1：`appendToRoot`（webapp 侧，单函数）　✅ 已删除（commit 9e...，见下）
 
 | 项 | 内容 |
 |---|---|
@@ -38,7 +38,7 @@
 
 ---
 
-## 单元 A2：`fallbackQuestion` + 私有 `DISEASE_QUESTION`（host 侧，同一逻辑单元）
+## 单元 A2：`fallbackQuestion` + 私有 `DISEASE_QUESTION`（host 侧，同一逻辑单元）　✅ 已删除（同 commit）
 
 | 项 | 内容 |
 |---|---|

@@ -90,7 +90,12 @@ const BLACK_KW_RE = /(?:color|background|background-color|border-color|outline-c
 // 需要检查裸色关键字的 CSS 属性列表（扩展版）
 const COLOR_PROPS_RE = /(?:color|background|background-color|border-color|outline-color|fill|stroke)\s*:\s*(white|black)\b(?!\s*-)/i;
 
-const RULE_ORDER = { R1: 1, R2: 2, R3: 3, R4: 4, R5: 5, R6: 6, R7: 7, R8: 8, R9: 9, R10: 10 };
+const RULE_ORDER = { R1: 1, R2: 2, R3: 3, R4: 4, R5: 5, R6: 6, R7: 7, R8: 8, R9: 9, R10: 10, R11: 11, R12: 12 };
+
+// —— 视觉债务冻结（ratchet）——
+// 决策记录见 docs/ui-debt-decisions.md：这些是「已知且有理由保留」的分歧，
+// 不追求清零，但**不允许增长**。基线数值下降（说明有人顺手收敛了）是允许的。
+const DEBT = JSON.parse(readFileSync(join(__dirname, 'css-debt-baseline.json'), 'utf8'));
 
 // R10 白名单 — 已存在的无前缀自定义属性，予以 grandfather 放行。
 // 新增自定义属性必须使用 --bm-* 或 --bamboo-* 前缀，否则被 R10 拦截。
@@ -222,6 +227,46 @@ for (const file of files) {
       }
     }
   });
+}
+
+// —— 以下两条跑在「所有文件遍历完之后」，只统计一次 ——
+// （初版误插在上面的 for 循环内部，导致同一违规被重复上报 36 次/文件数。）
+
+// R11 禁止新增「数字命名」圆角 token（--radius-3 / --radius-26 / --radius-2-5 这类）
+// 语义名（2xs / 2xl / pill …）不受影响。variables.css 虽整体豁免其它规则，
+// 但这里是针对「命名形态」的专项检查，故单独读该文件。
+// 理由：数字名表达的是像素值而非设计意图，且与「值命名」体系冲突（见 ui-token-proposal §3.2）。
+const varCss = readFileSync(join(STYLES_DIR, 'variables.css'), 'utf8');
+const numericRadius = new Set(
+  [...varCss.matchAll(/^\s*(--radius-\d+(?:-\d+)?)\s*:/gm)].map((m) => m[1])
+);
+for (const name of numericRadius) {
+  if (!DEBT.radiusNumericNames.includes(name)) {
+    violations.push({ file: 'variables.css', lineNo: 0, rule: 'R11 no-new-numeric-radius', text: name });
+  }
+}
+
+// R12 已知「离群间距值」不得增加（每个值单独计数，允许下降）
+const SPACING_PROP = /(?:padding|margin)(?:-[a-z]+)?|gap|row-gap|column-gap/;
+const spacingCount = {};
+for (const f of files) {
+  if (EXEMPT_FILES.has(f)) continue;
+  const text = readFileSync(join(STYLES_DIR, f), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+  for (const m of text.matchAll(new RegExp(`(?<![-\\w])(?:${SPACING_PROP.source})\\s*:\\s*([^;{}]+)`, 'g'))) {
+    for (const pm of stripVars(m[1]).matchAll(/(?<![\w.-])(\d+(?:\.\d+)?)px/g)) {
+      const key = `${pm[1]}px`;
+      if (DEBT.spacingOutliers[key] === undefined) continue; // 只监管已登记的离群值
+      spacingCount[key] = (spacingCount[key] || 0) + 1;
+    }
+  }
+}
+for (const [key, n] of Object.entries(spacingCount)) {
+  if (n > DEBT.spacingOutliers[key]) {
+    violations.push({
+      file: '(styles 汇总)', lineNo: 0, rule: 'R12 spacing-outlier-growth',
+      text: `${key} 现 ${n} 处 > 基线 ${DEBT.spacingOutliers[key]} 处`,
+    });
+  }
 }
 
 if (violations.length === 0) {

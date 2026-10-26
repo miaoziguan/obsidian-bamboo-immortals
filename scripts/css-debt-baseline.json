@@ -1,0 +1,26 @@
+{
+  "_reason": "已知视觉债务基线（2026-10-27 建立）。低于基线允许（说明已顺手收敛），高于基线视为新增债务。决策依据见 docs/ui-debt-decisions.md。",
+  "radiusNumericNames": [
+    "--radius-1",
+    "--radius-2-5",
+    "--radius-26",
+    "--radius-3",
+    "--radius-38",
+    "--radius-4",
+    "--radius-5",
+    "--radius-7",
+    "--radius-9"
+  ],
+  "spacingOutliers": {
+    "9px": 3,
+    "13px": 3,
+    "18px": 9,
+    "30px": 1,
+    "36px": 1,
+    "40px": 5,
+    "44px": 1,
+    "48px": 1,
+    "50px": 1,
+    "56px": 1
+  }
+}

@@ -85,7 +85,7 @@
     border-radius: var(--radius-xs);
     border: none;
     cursor: pointer;
-    background: var(--bamboo-background-soft, #f6f7f4);
+    background: var(--card-bg);
     color: var(--text-primary);
 }
 
@@ -237,7 +237,7 @@
 .confirm-extra {
     margin-top: var(--space-12);
     padding: var(--space-12);
-    background: var(--bamboo-background-soft, #f6f7f4);
+    background: var(--card-bg);
     border-radius: var(--radius-md);
     border: 1px solid var(--bamboo-border);
 }
@@ -405,7 +405,7 @@
 }
 
 .catm-migrate-picker .cmp-item:hover {
-    background: var(--bamboo-background-soft, rgba(var(--deep-rgb), 0.08));
+    background: var(--bamboo-background);
     color: var(--bamboo-primary);
     transform: translateX(2px);
 }

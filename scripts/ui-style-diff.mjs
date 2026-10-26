@@ -75,33 +75,50 @@ async function grab(browser, url) {
 }
 
 const browser = await chromium.launch();
-const before = await grab(browser, REFURL);
-const after = await grab(browser, CUR);
+/**
+ * 采一次样并比对。
+ *
+ * 抖动防护：项目里存在「异步应用调色」的路径，偶发会采到过渡中间态——
+ * 实测出现过「单个元素背景色差 2 个色阶（rgba(90,154,90) vs rgba(93,152,93)）」
+ * 且复跑即消失的假阳性。故首次发现差异时**复测一次**，复测归零即判为采样抖动。
+ */
+async function compareOnce() {
+  const before = await grab(browser, REFURL);
+  const after = await grab(browser, CUR);
+  let diffCount = 0;
+  const samples = [];
+  if (before.length !== after.length) {
+    samples.push(`  ⚠️ 元素数 ${before.length} → ${after.length}：可能是结构变更（也可能是数据/随机文案差异）`);
+  }
+  const n = Math.min(before.length, after.length);
+  for (let i = 0; i < n; i++) {
+    const b = before[i], a = after[i];
+    const changed = [];
+    for (let k = 0; k < PROPS.length; k++) {
+      if (b.vals[k] !== a.vals[k]) changed.push(`${PROPS[k]}: ${b.vals[k]} → ${a.vals[k]}`);
+    }
+    if (changed.length) {
+      diffCount++;
+      if (samples.length < 20) samples.push(`  #${i} ${b.tag}.${b.cls}\n     ${changed.join('\n     ')}`);
+    }
+  }
+  return { diffCount, samples, count: before.length };
+}
+
+let res = await compareOnce();
+if (res.diffCount > 0) {
+  const retry = await compareOnce();
+  if (retry.diffCount === 0) {
+    console.log(`⚠️ 首次比对出现 ${res.diffCount} 处差异，复测消失 → 判定为采样抖动，按 0 处理。`);
+  }
+  res = retry;
+}
 await browser.close();
 
 console.log(`比对 ${REF}(webapp/app.html) ↔ 工作区(webapp/app.html)`);
-console.log(`元素数: ${before.length} → ${after.length}`);
-if (before.length !== after.length) {
-  console.log('⚠️ 元素数量不同：可能是结构变更（也可能是数据/随机文案差异）');
-}
+console.log(`元素数: ${res.count}`);
+console.log(`差异元素数: ${res.diffCount}`);
+res.samples.forEach((s) => console.log(s));
+if (res.diffCount > res.samples.length) console.log(`  …另有 ${res.diffCount - res.samples.length} 个未列出`);
 
-let diffCount = 0;
-const samples = [];
-const n = Math.min(before.length, after.length);
-for (let i = 0; i < n; i++) {
-  const b = before[i], a = after[i];
-  const changed = [];
-  for (let k = 0; k < PROPS.length; k++) {
-    if (b.vals[k] !== a.vals[k]) changed.push(`${PROPS[k]}: ${b.vals[k]} → ${a.vals[k]}`);
-  }
-  if (changed.length) {
-    diffCount++;
-    if (samples.length < 20) samples.push(`  #${i} ${b.tag}.${b.cls}\n     ${changed.join('\n     ')}`);
-  }
-}
-
-console.log(`差异元素数: ${diffCount}`);
-samples.forEach((s) => console.log(s));
-if (diffCount > samples.length) console.log(`  …另有 ${diffCount - samples.length} 个未列出`);
-
-process.exit(diffCount === 0 ? 0 : 1);
+process.exit(res.diffCount === 0 ? 0 : 1);

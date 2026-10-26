@@ -443,6 +443,12 @@
   box-sizing: border-box;
   padding: var(--space-12);
   border: 0;
+  /* 继承外层 .tw-mm-note-pop 的圆角（--radius-md = 12px）。
+     ⚠️ 必须显式 inherit：暗色下 forms.css 的 `:host(.dark) textarea` 兜底规则会给
+     textarea 铺不透明底色，而 textarea 自身圆角为 0 → 方角块会吃掉外层圆角，
+     导致「亮色圆、暗色方」的不一致（2026-10-27 实测确认：pop 亮暗都是 12px，
+     差异来自这层底色）。 */
+  border-radius: inherit;
   background: transparent;
   color: var(--text-primary);
   font-size: var(--type-sm);

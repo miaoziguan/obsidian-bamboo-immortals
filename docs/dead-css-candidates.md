@@ -19,11 +19,11 @@ CSS 类名是模块/主题扩展 API 的天然契约面：外部主题、外部�
 
 | 前缀簇 | 数量 | 判定 | 证据（判定依据：源 JS 真实 class 令牌扫描；全分区类名 0 引用，除非注明） |
 |---|---|---|---|
-| `week` | 18 | **建议删（整簇真死）** | `week-*` 类名全分区 0；`week` 命中仅为 `currentWeekday`(id)、`weekdays`(数组)、`drp-weekdays`/`wn-date-weekdays`(异前缀) → 疑似已移除周视图 UI |
-| `kpi` | 10 | **建议删（整簇真死）** | `kpi-*` 类名全 0；`kpi` 命中仅 `result.kpi`(数据字段) → 疑似已移除 KPI 卡片 UI |
-| `cs` | 5 | **建议删（类名真死）** | 源 JS 89 处 `cs-` 实为 `var(--cs-1..4)` **CSS 变量**；`cs-liantai/stone/yezi/mei/bianshan` 类名 0 引用 → incense 主题类名残留 |
-| `ai`（ai-wizard*） | 28 | **建议删（整簇真死）** | 全分区 0，含打包 html 非 style 处亦 0 → 疑似未实现 AI 向导 UI 残留 |
-| `achievement(s)` | 34 | **建议删（整簇真死）** | 源 JS 仅 4 处非 class 引用；无任何 `achievement-*` 类名使用 → 疑似已移除成就系统 UI |
+| `week` | 18 | **✅ 已删除**（commit 见下） | ⚠**实为纠缠型死特性，非干净整簇死**：`week-day` 基础类被 `.week-day.today`/`.selected`/`.future` 复合选择器引用（修饰符 `today`/`selected`/`future` 为活令牌，故这些复合规则不在死名清单内）。零 JS 引用确认整特性死，已按**特性级整块删除** `date-nav.css` L587-786（含 `@media` 与 NOTE 注释），无其它文件引用 |
+| `kpi` | 10 | **纠缠型死特性（按特性级整块删）** | `kpi-card` 基础类零 JS 引用，但被 `.kpi-card.up`/`.down`/`.neutral`/`.breakthrough`/`.editable`/`.goal-kpi` 复合引用（修饰符为活令牌 → 这些复合规则不在死名清单内）。须整特性移除 `kpi-card` 全部规则（含复合/暗色/共享列表），非按名清单删 |
+| `cs` | 5 | **纠缠型死特性（按特性级整块删）** | `cs-liantai/stone/yezi/mei/bianshan` 类名 0 引用，但出现于复合 `.scroll-censer.cs-liantai`；源 JS 89 处 `cs-` 实是 `var(--cs-1..4)` 变量；`cs-` 前缀还疑似动态拼接（`cs-` 在「疑似动态 3」名单）→ 删前须解除动态疑点并整特性移除 |
+| `ai`（ai-wizard*） | 28 | **纠缠型死特性（按特性级整块删）** | 全分区 0（含打包 html 非 style 处），但与 `week` 同理可能为「死基础类 + 活修饰符」复合纠缠，须整特性移除而非按名清单删 |
+| `achievement(s)` | 34 | **纠缠型死特性（按特性级整块删）** | 源 JS 仅 4 处非 class 引用，无 `achievement-*` 类名使用；但与 `week` 同理可能为复合纠缠，须整特性移除而非按名清单删 |
 | `history` | 11 | **✅ 已删除**（commit 见下） | `history-*` 全分区 0 且全仓 classList/className/模板无动态引用；已从 `components-interaction.css` 移除整块 11 条死规则（含嵌套 `.history-modal.active`/`.history-item.active`），并从 `components-interaction.css`/`base.css` 两处共享选择器列表移除 `.history-close`/`.history-item` |
 | `status` | 10 | **✅ 已删除**（commit 见下） | `status-*` 全分区 0 且全仓 classList/className/模板无动态引用；跨 4 文件删除：`goals-stats.css`（`.status-distribution`/`.rw-460 .status-distribution`/`.status-legend`）、`goals-editor.css`（4 条 `.goal-status-indicator.status-*` 复合规则，保留基础类）、`goals-health.css`（`.rw-360 .status-distribution`）、`dark.css`（5 处暗色覆盖含 `:host(.dark) .status-distribution`） |
 | `verify` | 7 | **✅ 已删除**（commit 见下） | `verify-*` 全分区 0 且全仓 classList/className/模板无动态引用；已从 `components-interaction.css` 移除整块 7 条死规则（含嵌套 `.verify-item.ok/.warn`、`.verify-status.tag-execute/.tag-miss`） |
@@ -66,6 +66,7 @@ CSS 类名是模块/主题扩展 API 的天然契约面：外部主题、外部�
 - **前缀拼接陷阱**：`week-`/`kpi-` 为 0 是「整簇真死」；而 `goal-`/`sm-`/`gho-` 虽前缀大量出现，但活的是**其它具体类名**，死的是**特定旧名**——必须用 AUTO-GENERATED 的逐类名清单删，不能整簇删。
 - **打包 html 含 CSS 定义**：`kpi-card` 在打包 `<style>` 内出现 2 次是 CSS 定义本身，非使用；已用「剥离 `<style>` 后计数」区分。
 - **动态赋类盲区（classList / className / 模板）**：本清单初版只比对 `class="x"` / `className='x'` 字面量令牌，会漏掉通过 `el.classList.add('x')` / `el.className = '…x…'` / `` class=`…${x}…` `` 施加的类。状态类（`edit-mode-active` 等）尤其危险。删除前必须**全仓（含产物 html / host TS）用边界正则 `(?<![-\w])x(?![-\w])` 复核**，确认无动态引用。已执行的 `action`/`edit` 簇均通过此复核。
+- **复合选择器孤儿陷阱（已修正原「整簇真死」误判）**：死名清单只按 class 令牌判死，会漏掉「死基础类 + 活修饰符」的复合规则（如 `.week-day.today`——`week-day` 死、`today` 活令牌却让该规则不被标死）。**结论：本仓 `week`/`kpi`/`cs`/`ai`/`achievement` 均非干净整簇死，而是纠缠型死特性**——删前须把含死名的所有规则（含复合/暗色/共享列表）按**特性级整体**移除，并确认修饰符（`today`/`selected`/`future` 等）不是别处的活特性依赖。已执行的 `week` 即按此整块删除 `date-nav.css` L587-786。
 
 ---
 
@@ -76,7 +77,7 @@ CSS 类名是模块/主题扩展 API 的天然契约面：外部主题、外部�
 > 扫描：定义 `webapp/assets/styles/**/*.css`；使用 `webapp/assets/scripts/**/*.js`(排除 tests) + `webapp/*src*.html`/`index.html`（刻意排除 4 个打包产物 html，避免把 CSS 定义当使用）。
 > 误判防护：十六进制颜色值过滤；动态拼接类名（`prefix`+n）移至「疑似动态」列，不计入判定。
 
-**确认死类名：566　疑似动态（已剔除）：3　死 ID 选择器：3**
+**确认死类名：547　疑似动态（已剔除）：3　死 ID 选择器：3**
 
 ### 按首段聚类（确认死类名）
 
@@ -85,7 +86,6 @@ CSS 类名是模块/主题扩展 API 的天然契约面：外部主题、外部�
 | `goal` | 126 | `goal-title`, `goal-text`, `goal-row-meta-empty`, `goal-action-cancel`, `goal-action-btn`, `goal-editor-v2`, … |
 | `ai` | 28 | `ai-wizard`, `ai-wizard-steps`, `ai-wizard-dot`, `ai-wizard-line`, `ai-wizard-body`, `ai-wizard-label`, … |
 | `achievement` | 24 | `achievement-icon-wrapper`, `achievement-icon-wrapper-horizontal`, `achievement-card-full`, `achievement-icon-wrapper-full`, `achievement-content-full`, `achievement-title-full`, … |
-| `week` | 18 | `week-view`, `week-header`, `week-nav`, `week-nav-btn`, `week-title`, `week-today-btn`, … |
 | `settings` | 15 | `settings-section`, `settings-section-title`, `settings-backup-status`, `settings-theme-grid`, `settings-theme-card`, `settings-theme-preview`, … |
 | `template` | 15 | `template-tabs`, `template-tab`, `template-grid`, `template-card`, `template-card-icon`, `template-card-content`, … |
 | `scroll` | 14 | `scroll-note-title`, `scroll-note-meta`, `scroll-notes-empty`, `scroll-top-btn`, `scroll-incense-feature`, `scroll-btn`, … |
@@ -160,7 +160,6 @@ CSS 类名是模块/主题扩展 API 的天然契约面：外部主题、外部�
 | `expand` | 1 | `expand-btn` |
 | `fadeIn` | 1 | `fadeIn` |
 | `fadeInUp` | 1 | `fadeInUp` |
-| `future` | 1 | `future` |
 | `glows` | 1 | `glows-disabled` |
 | `goose` | 1 | `goose-body` |
 | `header` | 1 | `header-quick-btn` |

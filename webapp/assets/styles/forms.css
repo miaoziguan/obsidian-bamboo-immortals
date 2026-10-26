@@ -315,7 +315,6 @@
 }
 
 /* 竹林暗色模式：进度条光晕 */
-:host(.dark) .habit-progress-fill,
 :host(.dark) .goal-row-bar-fill,
 :host(.dark) .bamboo-progress-fill,
 :host(.dark) .progress-fill-green {

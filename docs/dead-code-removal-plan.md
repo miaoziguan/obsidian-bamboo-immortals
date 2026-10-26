@@ -16,7 +16,7 @@
 
 ---
 
-## 单元 A1：`appendToRoot`（webapp 侧，单函数）　✅ 已删除（commit 9e...，见下）
+## 单元 A1：`appendToRoot`（webapp 侧，单函数）　✅ 已删除（commit 53af92e）
 
 | 项 | 内容 |
 |---|---|

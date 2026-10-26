@@ -39,7 +39,7 @@
         0 1px 3px hsla(calc(var(--accent-hue) + 0), min(100%, calc(20% * var(--accent-saturation-scale, 1))), 50%, 0.04);
     contain: paint;
     /* 主题切换淡入淡出过渡 */
-    transition: opacity 0.15s ease;
+    transition: opacity var(--duration-instant) ease;
     /* 平台级内框圆角：外层 38px − padding 12px = 26px。子元素通过 var() 引用，外框改大时只需改此值和 border-radius 两处 */
     --theme-inner-radius: 26px;
 }
@@ -85,7 +85,7 @@
    现改为 ThemeEffects._applyPauseAndMotion()：用 Element.getAnimations({subtree:true}) 直接
    pause()/play() 动画对象（天然压过主题简写），并在静止档就地清除元素内联 blur。
    框架仍在 .theme-card 上写 data-motion="full|lite|static" 与 --fl-blur-scale，供主题自行配合：
-   lite 档停哪些动画由主题声明；静止档用暂停（而非 animation:none，否则靠 0% 帧隐藏的元素会僵在画面里）。 */
+   lite 档停哪些动画由主题声明；静止档用暂停（而非 animation: none，否则靠 0% 帧隐藏的元素会僵在画面里）。 */
 
 /* ===== 竹林诗词区（默认隐藏；仅看板模式以竖排书签形式显示，规则见下方 kanban 段） ===== */
 .bamboo-poem-strip {
@@ -248,7 +248,7 @@
         0 0 60px rgba(255, 234, 167, 0.2);
     opacity: 0;
     display: none;
-    transition: opacity 0.5s ease;
+    transition: opacity var(--duration-slow) ease;
     animation: moonGlow 4s ease-in-out infinite;
 }
 

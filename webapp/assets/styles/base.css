@@ -15,7 +15,7 @@
    与 body.privacy-on（__BAMBOO_NO_SHADOW__ kill-switch 回退，无 shadow 时）。 */
 :host(.privacy-on) [data-private-text], :host(.privacy-on) :is(p, [data-inline-edit], .goal-item-name, .goal-item-daily, .goal-item-date, .goal-item-status, .goal-item-entry, .section-settings-title, .section-settings-desc, .health-goal-title, .stat-value, .stat-label, .gho-score, .gho-label, .gho-metric-name, .gho-metric-val, .gho-suggestion-text, .gho-stat-val, .gho-stat-label, .gho-empty-text, .todo-focus-item, .todo-title, .todo-desc, .todo-goal-daily, .todo-goal-progress, .todo-goal-source, .todo-stat-num, .todo-stat-label, .todo-group-label, .todo-completed-count, .bamboo-name, .bamboo-time, .bamboo-count, .bamboo-item-time, .bamboo-item-task, .bamboo-item-eval, .bamboo-title, .empty-state-title, .empty-state-desc, .empty-state-hint, .quote-text, .ticket-time-name, .ticket-time-value, .ticket-highlight-value, .ticket-highlight-label, .stub-back-ring-text, .stub-back-caption, .stub-back-stat-value, .stub-back-stat, .stub-nc-name, .designer-ticket, .ticket-stub-content), body.privacy-on [data-private-text], body.privacy-on :is(p, [data-inline-edit], .goal-item-name, .goal-item-daily, .goal-item-date, .goal-item-status, .goal-item-entry, .section-settings-title, .section-settings-desc, .health-goal-title, .stat-value, .stat-label, .gho-score, .gho-label, .gho-metric-name, .gho-metric-val, .gho-suggestion-text, .gho-stat-val, .gho-stat-label, .gho-empty-text, .todo-focus-item, .todo-title, .todo-desc, .todo-goal-daily, .todo-goal-progress, .todo-goal-source, .todo-stat-num, .todo-stat-label, .todo-group-label, .todo-completed-count, .bamboo-name, .bamboo-time, .bamboo-count, .bamboo-item-time, .bamboo-item-task, .bamboo-item-eval, .bamboo-title, .empty-state-title, .empty-state-desc, .empty-state-hint, .quote-text, .ticket-time-name, .ticket-time-value, .ticket-highlight-value, .ticket-highlight-label, .stub-back-ring-text, .stub-back-caption, .stub-back-stat-value, .stub-back-stat, .stub-nc-name, .designer-ticket, .ticket-stub-content) {
     filter: blur(var(--privacy-blur));
-    transition: filter 0.18s ease;
+    transition: filter var(--duration-fast) ease;
     /* 模糊状态下仍可被点击操作（如切日期、开设置），仅视觉遮挡 */
     pointer-events: auto;
 }
@@ -115,7 +115,7 @@
     min-height: var(--touch-target);
     display: inline-flex;
     align-items: center;
-    transition: top 0.15s ease-out;
+    transition: top var(--duration-instant) ease-out;
 }
 .skip-link:focus-visible {
     top: 8px;
@@ -168,8 +168,7 @@
 
 /* === 主题切换过渡 — 限定在需要平滑过渡的组件级元素，避免 :host * 全局性能开销 === */
 .container, .header, .date-nav, .bamboo-card, .goal-row, .theme-card, .todo-item, .fab-action-btn, [class*="-card"], [class*="-section"], [class*="-panel"] {
-    transition: 
-        background-color var(--transition-smooth),
+    transition: background-color var(--transition-smooth),
         color var(--transition-smooth),
         border-color var(--transition-smooth),
         box-shadow var(--transition-smooth);
@@ -180,7 +179,7 @@
     transition: none;
 }
 .fab-actions, .fab-action-btn, .fab-main, .fab-main-icon {
-    transition: transform, opacity, box-shadow, border-color, background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: transform, opacity, box-shadow, border-color, background-color var(--duration-normal) cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* === 性能优化：全局动画控制 === */
@@ -340,7 +339,7 @@ html.recoloring:not(#recoloring), html.recoloring:not(#recoloring) *, html.recol
 }
 
 :host(.loading) .container { opacity: 0; }
-.container { transition: opacity 0.3s ease; }
+.container { transition: opacity var(--duration-normal) ease; }
 
 @media print        {
 
@@ -395,7 +394,7 @@ html.recoloring:not(#recoloring), html.recoloring:not(#recoloring) *, html.recol
     border: 1px solid var(--border-light);
     opacity: 0;
     transform: translateY(12px);
-    animation: skeletonFadeIn 0.5s ease forwards;
+    animation: skeletonFadeIn var(--duration-slow) ease forwards;
 }
 
 .skeleton-section:nth-child(1) { animation-delay: 0.05s; }
@@ -532,7 +531,7 @@ html.recoloring:not(#recoloring), html.recoloring:not(#recoloring) *, html.recol
 
 #sectionsContainer.date-transitioning section[data-section-id] {
     will-change: transform, opacity;
-    animation: sectionSlideOutLeft 0.22s ease forwards;
+    animation: sectionSlideOutLeft var(--duration-fast) ease forwards;
 }
 
 #sectionsContainer.date-transitioning.next section[data-section-id] {
@@ -560,7 +559,7 @@ html.recoloring:not(#recoloring), html.recoloring:not(#recoloring) *, html.recol
 #sectionsContainer.date-enter section[data-section-id] {
     will-change: transform, opacity;
     opacity: 0;
-    animation: sectionSlideInFromRight 0.32s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+    animation: sectionSlideInFromRight var(--duration-normal) cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
     /* 错峰延迟由 JS 内联给出：section 创建时（renderers.js）与日期切换复用/新建时
        （renderScheduler.js）都会写 style.animationDelay = index * 0.05s，
        内联优先级高于此处。原来的 --section-index 计算阶梯（含 :nth-child 赋值）因此永不生效，已移除。 */
@@ -888,5 +887,5 @@ h1 {
 
 /* 宽度调节过渡 — 仅在用户操作时添加，避免初始化闪烁 */
 .container.display-transition {
-    transition: max-width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: max-width var(--duration-fast) cubic-bezier(0.4, 0, 0.2, 1);
 }

@@ -15,7 +15,7 @@
     font-size: var(--type-sm);
     color: var(--bamboo-primary);
     border: 0;
-    transition: background-color 0.2s ease, opacity 0.2s ease;
+    transition: background-color var(--duration-fast) ease, opacity var(--duration-fast) ease;
     user-select: none;
     margin-right: 8px;
     overflow: hidden;
@@ -46,9 +46,8 @@
     text-overflow: ellipsis;
     max-width: 0;
     opacity: 0;
-    transition:
-        max-width 0.3s ease,
-        opacity 0.25s ease;
+    transition: max-width var(--duration-normal) ease,
+        opacity var(--duration-fast) ease;
     flex-shrink: 1;
     min-width: 0;
     pointer-events: none;
@@ -84,7 +83,7 @@
     cursor: pointer;
     padding: 0 2px;
     border-radius: var(--radius-3);
-    transition: background-color 0.15s ease, border-bottom-color 0.15s ease;
+    transition: background-color var(--duration-instant) ease, border-bottom-color var(--duration-instant) ease;
     border-bottom: 1px dotted transparent;
     opacity: 1;
 }
@@ -120,7 +119,7 @@
     color: var(--bamboo-primary);
     border-radius: var(--radius-4);
     cursor: pointer;
-    transition: background-color 0.15s ease, color 0.15s ease;
+    transition: background-color var(--duration-instant) ease, color var(--duration-instant) ease;
     opacity: 0.85;
 }
 .weather-btn svg {
@@ -144,7 +143,7 @@
     font-size: var(--type-xs);
     color: var(--bamboo-primary);
     background: transparent;
-    transition: border-color 0.15s ease;
+    transition: border-color var(--duration-instant) ease;
     font-family: inherit;
     height: 20px;
     box-sizing: border-box;
@@ -199,7 +198,7 @@
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
-    transition: opacity 0.2s ease;
+    transition: opacity var(--duration-fast) ease;
 }
 .quote-widget:hover {
     opacity: 0.75;

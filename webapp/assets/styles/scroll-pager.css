@@ -155,7 +155,7 @@
     /* 内部透光与底部折射 */
     inset 0 8px 24px rgba(var(--white-rgb), 0.14),
     inset 0 -14px 26px rgba(var(--white-rgb), 0.08);
-  transition: transform .3s;
+  transition: transform var(--duration-normal);
 }
 /* 栏栅玻璃（长虹玻璃）：竖向棱条，周期 9px。
    分层：外壳 backdrop-filter 负责「模糊背景（透光不透影）」，
@@ -488,7 +488,7 @@
   color: rgb(var(--green-very-bright-rgb));
   opacity: 0;
   pointer-events: none;
-  transition: opacity .2s;
+  transition: opacity var(--duration-fast);
 }
 .tw-screen-msg.on { opacity: 1; }
 
@@ -541,7 +541,7 @@
     0 0.09em 0.22em rgba(var(--black-rgb), 0.28),
     0 0 0.5em rgba(var(--primary-rgb), 0.30);
   cursor: pointer;
-  transition: color .15s, transform .08s;
+  transition: color var(--duration-instant), transform var(--duration-instant);
 }
 .tw-rbtn svg { width: 0.55em; height: 0.55em; }
 .tw-rbtn:hover { color: var(--white); }
@@ -610,7 +610,7 @@
     0 0 0 0.11em rgba(var(--deep-rgb), 0.42),
     0 0.09em 0.22em rgba(var(--black-rgb), 0.26),
     0 0 0.5em rgba(var(--gold-rgb), 0.30);
-  transition: filter .15s, transform .08s;
+  transition: filter var(--duration-instant), transform var(--duration-instant);
 }
 /* 亮色模式：绿色按钮井口压淡 */
 :host(:not(.dark)) .tw-rbtn {
@@ -773,7 +773,7 @@ body.dark .tw-print, :host(.dark) .tw-print {
   /* 裸 <button> 会命中全局 min-touch-target(48px)，必须清零，否则撑破标签行 */
   min-width: 0;
   min-height: 0;
-  transition: background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+  transition: background var(--duration-fast) ease, border-color var(--duration-fast) ease, box-shadow var(--duration-fast) ease;
   -webkit-tap-highlight-color: transparent;
   pointer-events: auto;   /* .tw-beeper 整体 pointer-events:none，开关需单独放行 */
 }
@@ -787,7 +787,7 @@ body.dark .tw-print, :host(.dark) .tw-print {
   border-radius: 50%;
   background: rgb(var(--bamboo-deep-rgb));
   box-shadow: 0 1px 2px rgba(var(--black-rgb), 0.35);
-  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), background 0.18s ease;
+  transition: transform var(--duration-fast) cubic-bezier(0.4, 0, 0.2, 1), background var(--duration-fast) ease;
 }
 /* 打开（暗色）：沿用品牌牌的凹刻深底 + 荧光绿边，knob 滑到右侧并点亮 */
 .tw-theme-switch[aria-checked="true"] {
@@ -1013,7 +1013,7 @@ body.dark .tw-print, :host(.dark) .tw-print {
     inset 0 0.05em 0.06em rgba(255, 240, 228, .45),
     inset 0 -0.06em 0.12em rgba(88, 14, 6, .45),      /* 底部收暗走饱和红 */
     0 0.025em 0.05em rgba(20, 4, 2, .5), 0 0.16em 0.3em rgba(var(--black-rgb), .42);
-  transition: box-shadow .25s, filter .18s;
+  transition: box-shadow var(--duration-fast), filter var(--duration-fast);
 }
 /* 胶木质感叠加层：① 横向收边让圆柱真正「圆」起来；② 外缘倒角高光像凸起的烤漆一圈。
    覆盖在正常态与导图点亮态之上，无需在两处各写一遍。 */
@@ -1054,7 +1054,7 @@ body.dark .tw-print, :host(.dark) .tw-print {
   left: 0; right: 0; top: -50%; height: 200%;
   background: repeating-linear-gradient(180deg,
     rgba(255, 230, 212, .38) 0 0.055em, rgba(150, 30, 14, .34) 0.055em 0.28em);
-  transition: transform .5s cubic-bezier(.34, 1.42, .5, 1);
+  transition: transform var(--duration-slow) cubic-bezier(.34, 1.42, .5, 1);
 }
 .tw-knob.is-on .tw-knob-rim { transform: translateY(0.28em); }
 /* 档位标记：作为齿轮面的静态高光/反光条，不随模式切换位移（位移会让人误以为是反光在跳）。
@@ -1069,7 +1069,7 @@ body.dark .tw-print, :host(.dark) .tw-print {
   border-radius: 0.06em;
   background: rgba(255, 246, 236, .92);
   box-shadow: 0 0 0.16em rgba(255, 224, 196, .72);
-  transition: transform .5s cubic-bezier(.34, 1.42, .5, 1), background .25s;
+  transition: transform var(--duration-slow) cubic-bezier(.34, 1.42, .5, 1), background var(--duration-fast);
 }
 .tw-knob.is-on .tw-knob-mark {
   transform: translateY(calc(-50% + 0.28em));   /* 随齿轮滚动一齿，而非左右切档 */

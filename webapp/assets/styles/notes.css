@@ -50,7 +50,7 @@
   /* 拖拽位移走 translate 变量（合成层，不触发布局）；松手时一次性提交为 left/top 并清空变量。
      translate 必须放在最前：在父坐标系里平移，不受自身 rotate/scale 影响。 */
   transform: translate(var(--tw-drag-x, 0px), var(--tw-drag-y, 0px)) rotate(var(--tw-card-rot)) scale(var(--tw-card-scale));
-  transition: transform .15s;
+  transition: transform var(--duration-instant);
   
   --tw-rule-rgb: 26, 26, 26;
 }
@@ -161,8 +161,8 @@
   transform-origin: 50% 100%;
   pointer-events: none;
   
-  transition: opacity 0.16s cubic-bezier(0.16, 1, 0.3, 1),
-              transform 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: opacity var(--duration-fast) cubic-bezier(0.16, 1, 0.3, 1),
+              transform var(--duration-fast) cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .tw-card-tools::after {
@@ -212,7 +212,7 @@
   background: transparent;
   color: #5b6257;
   cursor: pointer;
-  transition: background 0.12s ease, color 0.12s ease, transform 0.08s ease;
+  transition: background var(--duration-instant) ease, color var(--duration-instant) ease, transform var(--duration-instant) ease;
 }
 .tw-card-del svg, .tw-card-paper svg, .tw-card-font svg, .tw-card-zoom-out svg, .tw-card-zoom-in svg, .tw-card-move svg, .tw-card-lv svg, .tw-card-split svg, .tw-card-export svg {
   width: clamp(16px, calc(18px * var(--tw-scale, 1)), 22px);
@@ -243,7 +243,7 @@
   white-space: nowrap;
   cursor: pointer;
   flex: none;
-  transition: background 0.12s ease, color 0.12s ease;
+  transition: background var(--duration-instant) ease, color var(--duration-instant) ease;
 }
 /* 常驻显示：浮在卡片**上方左端**。
    必须放在卡片外部——放进卡内会压住正文（.tw-card-main 顶部只有 0.9em 内边距）；
@@ -763,7 +763,7 @@
   z-index: 40;
   cursor: nwse-resize;
   opacity: 0;
-  transition: opacity 0.15s;
+  transition: opacity var(--duration-instant);
   touch-action: none;
 }
 .tw-card:hover .tw-card-resize, .tw-card.is-resizing .tw-card-resize { opacity: 0.75; }
@@ -818,7 +818,7 @@
   opacity: 0;
   pointer-events: none;
   touch-action: none;
-  transition: opacity 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: opacity var(--duration-fast) cubic-bezier(0.16, 1, 0.3, 1);
 }
 .tw-card-rotate svg { width: clamp(15px, calc(17px * var(--tw-scale, 1)), 21px); height: clamp(15px, calc(17px * var(--tw-scale, 1)), 21px); }
 .tw-card-rotate:hover { color: #2f3a2c; }
@@ -864,7 +864,7 @@
    * 注意：不要把 dasharray 放在基础样式里，否则 solid 与 dashed 两种状态都会是虚线，
    * 导致实线切换失效。 */
   pointer-events: none;   
-  transition: stroke 0.18s ease;
+  transition: stroke var(--duration-fast) ease;
 }
 
 .tw-link-hit {
@@ -884,7 +884,7 @@
   cursor: pointer;
   transform-box: fill-box;
   transform-origin: 50% 50%;
-  transition: transform .15s ease, fill .15s ease;
+  transition: transform var(--duration-instant) ease, fill var(--duration-instant) ease;
 }
 .tw-link-ctl:hover { transform: scale(1.25); fill: var(--tw-link-stroke-hi); }
 .tw-link-bend { cursor: grab; }
@@ -903,14 +903,14 @@
   fill: rgba(var(--white-rgb), 0.92);
   stroke: rgba(46, 62, 40, 0.55);
   stroke-width: 1.5;
-  transition: fill .14s ease, stroke .14s ease;
+  transition: fill var(--duration-instant) ease, stroke var(--duration-instant) ease;
 }
 .tw-link-dash-ico {
   fill: none;
   stroke: rgba(46, 62, 40, 0.85);
   stroke-width: 1.6;
   stroke-linecap: round;
-  transition: stroke .14s ease;
+  transition: stroke var(--duration-instant) ease;
 }
 .tw-link-ctl.tw-link-dash:hover .tw-link-dash-bg { fill: rgba(46, 62, 40, 0.95); stroke: rgba(46, 62, 40, 0.95); }
 .tw-link-ctl.tw-link-dash:hover .tw-link-dash-ico { stroke: var(--white); }
@@ -928,14 +928,14 @@
   fill: rgba(var(--white-rgb), 0.92);
   stroke: rgba(178, 78, 58, 0.65);
   stroke-width: 1.5;
-  transition: fill .14s ease, stroke .14s ease;
+  transition: fill var(--duration-instant) ease, stroke var(--duration-instant) ease;
 }
 .tw-link-del-x {
   fill: none;
   stroke: rgba(178, 78, 58, 0.9);
   stroke-width: 1.8;
   stroke-linecap: round;
-  transition: stroke .14s ease;
+  transition: stroke var(--duration-instant) ease;
 }
 .tw-link-ctl.tw-link-del:hover .tw-link-del-bg { fill: rgba(178, 78, 58, 0.95); stroke: rgba(178, 78, 58, 0.95); }
 .tw-link-ctl.tw-link-del:hover .tw-link-del-x { stroke: var(--white); }
@@ -948,10 +948,10 @@
   pointer-events: none;
   transform-box: fill-box;
   transform-origin: 50% 50%;
-  transition: fill .18s ease, transform .18s ease;
+  transition: fill var(--duration-fast) ease, transform var(--duration-fast) ease;
 }
 .tw-link-dot-src { fill: var(--tw-link-stroke); stroke: none; }
-.tw-link-arrow-end { fill: var(--tw-link-stroke); stroke: none; pointer-events: none; transition: fill .18s ease; }
+.tw-link-arrow-end { fill: var(--tw-link-stroke); stroke: none; pointer-events: none; transition: fill var(--duration-fast) ease; }
 
 .tw-link.is-active { stroke: var(--tw-link-stroke-hi); }
 .tw-link-dot.is-active { transform: scale(1.3); }
@@ -1000,7 +1000,7 @@
   opacity: 0;
   pointer-events: none;
   touch-action: none;
-  transition: opacity 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: opacity var(--duration-fast) cubic-bezier(0.16, 1, 0.3, 1);
 }
 .tw-card-link svg { width: clamp(15px, calc(17px * var(--tw-scale, 1)), 21px); height: clamp(15px, calc(17px * var(--tw-scale, 1)), 21px); }
 .tw-card-link:hover { color: #2f3a2c; }
@@ -1057,14 +1057,14 @@
         （写入档卡片常驻、不做剔除）。去掉后：拖拽 LOD 的 box-shadow:none 变为 no-op，
         「起拖/松手阴影突跳」自动消失；hover 过渡也不再需要；整层栅格化成本大幅下降。
         分隔职责改由 border 承担（--tw-write-line 已相应加深）。 */
-  /* 【性能·根因】原为 transition: box-shadow .18s + hover 换成 26px 大模糊阴影。
+  /* 【性能·根因】原为 transition: box-shadow var(--duration-fast) + hover 换成 26px 大模糊阴影。
      box-shadow 无法被合成器接管：带大半径模糊的阴影在过渡的**每一帧**都要重绘并重新栅格化；
      而所有卡片同处一个 transform 画布层内 → 一次 hover 会带动**整层重新栅格化**，
      表现为「鼠标移到一张卡上，所有卡片一起闪」。写入档卡片常驻（不做剔除）后尤其明显。
      便签档没有这条 hover 阴影规则，故从未卡顿 —— 与用户观察完全吻合。
      改为只过渡 border-color（无模糊、极廉价），悬停的缩放反馈已由 .tw-card:hover 的
      transform: scale(1.01) 提供（transform 可合成，零重绘）。 */
-  transition: border-color 0.18s ease;
+  transition: border-color var(--duration-fast) ease;
 }
 .tw-canvas.tw-mode-write .tw-card:hover .tw-card-main {
   border-color: rgba(16, 24, 40, 0.22);
@@ -1591,7 +1591,7 @@
   cursor: pointer;
   color: #2f3a2c;
   background: transparent;
-  transition: background 0.12s ease, color 0.12s ease, transform 0.08s ease;
+  transition: background var(--duration-instant) ease, color var(--duration-instant) ease, transform var(--duration-instant) ease;
 }
 .tw-sel-bar .tw-sel-merge {
   font-weight: 600;
@@ -1660,7 +1660,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: background-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
+  transition: background-color var(--duration-instant) ease, color var(--duration-instant) ease, transform var(--duration-instant) ease;
 }
 .tw-zoom-bar button:hover { background: rgba(var(--primary-rgb), 0.12); color: var(--text-primary); }
 .tw-zoom-bar button:active { transform: scale(0.92); }
@@ -1697,7 +1697,7 @@
   border-left: 1px solid var(--border-light, rgba(255,255,255,.08));
   /* 不加投影：平铺贴合更干净；关闭态用 visibility 彻底隐藏，避免边缘/背景泄漏成一条「阴影」 */
   transform: translateX(101%); visibility: hidden;
-  transition: transform .28s ease, visibility .28s ease; z-index: 50;
+  transition: transform var(--duration-normal) ease, visibility var(--duration-normal) ease; z-index: 50;
   display: flex; flex-direction: column;
 }
 .bm-market-drawer.is-open { transform: translateX(0); visibility: visible; }
@@ -1711,7 +1711,7 @@
   border: 0; border-radius: 50%; background: transparent;
   color: var(--text-secondary, rgba(255,255,255,.6));
   line-height: 1; cursor: pointer;
-  transition: background-color .2s, color .2s, opacity .2s, transform .2s;
+  transition: background-color var(--duration-fast), color var(--duration-fast), opacity var(--duration-fast), transform var(--duration-fast);
 }
 /* 头部按钮内图标：与卡片按钮同走 Lucide 描边图标体系，锁定尺寸避免受全局 .icon 影响 */
 .bm-market-close .icon, .bm-market-refresh .icon { width: 16px; height: 16px; display: block; }
@@ -1735,7 +1735,7 @@
   display: inline-flex; align-items: center; gap: 4px;
   padding: 5px 12px; margin: 0; border: 0; background: transparent;
   color: rgba(var(--black-rgb),.55); font: 500 12px/1.2 var(--font-family);
-  cursor: pointer; transition: background .15s, color .15s;
+  cursor: pointer; transition: background var(--duration-instant), color var(--duration-instant);
 }
 .bm-market-chip + .bm-market-chip { border-left: 1px solid rgba(var(--black-rgb),.12); }
 .bm-market-chip:hover { background: rgba(var(--black-rgb),.05); color: rgba(var(--black-rgb),.78); }
@@ -1756,7 +1756,7 @@
 .bm-market-group-arrow {
   flex: 0 0 auto; width: 0; height: 0;
   border-left: 5px solid currentColor; border-top: 3.5px solid transparent; border-bottom: 3.5px solid transparent;
-  transform: rotate(90deg); transition: transform .16s ease; opacity: .75;
+  transform: rotate(90deg); transition: transform var(--duration-fast) ease; opacity: .75;
 }
 .bm-market-group.is-collapsed .bm-market-group-arrow { transform: rotate(0); }
 .bm-market-group-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1788,7 +1788,7 @@
   display: inline-flex; align-items: center; justify-content: center;
   width: 32px; height: 32px; padding: 0; border-radius: 50%;
   font-size: var(--type-xs, 12px); cursor: pointer; border: 1px solid transparent;
-  transition: background-color .18s ease, border-color .18s ease, color .18s ease, box-shadow .18s ease, transform .12s ease;
+  transition: background-color var(--duration-fast) ease, border-color var(--duration-fast) ease, color var(--duration-fast) ease, box-shadow var(--duration-fast) ease, transform var(--duration-instant) ease;
 }
 .bm-market-body .market-btn svg { width: 17px; height: 17px; display: block; }
 .bm-market-body .market-btn:active { transform: translateY(1px); }
@@ -1890,7 +1890,7 @@
   border-radius: 50%; border: 1px solid rgba(var(--white-rgb),.28);
   background: rgba(var(--black-rgb),.55); color: var(--white); font-size: var(--bm-type-fixed-12); line-height: 1;
   display: flex; align-items: center; justify-content: center;
-  cursor: pointer; opacity: 0; transition: opacity .15s ease; z-index: 2;
+  cursor: pointer; opacity: 0; transition: opacity var(--duration-instant) ease; z-index: 2;
 }
 .bm-sticker-rotate { top: -8px; left: -8px; cursor: grab; }
 .bm-sticker-resize { bottom: -8px; right: -8px; cursor: nwse-resize; }
@@ -1903,7 +1903,7 @@
   border-radius: 50%; border: 1px solid rgba(var(--white-rgb),.28);
   background: rgba(var(--black-rgb),.55); color: var(--white); font-size: var(--bm-type-fixed-15); font-weight: 700; line-height: 1;
   display: flex; align-items: center; justify-content: center;
-  cursor: pointer; opacity: 0; transition: opacity .15s ease; z-index: 3;
+  cursor: pointer; opacity: 0; transition: opacity var(--duration-instant) ease; z-index: 3;
 }
 .bm-sticker:hover .bm-sticker-more, .bm-sticker.selected .bm-sticker-more { opacity: 1; }
 .bm-sticker-more:hover { background: rgba(60,140,200,.9); }
@@ -1926,7 +1926,7 @@
   appearance: none; -webkit-appearance: none; border: none; background: transparent;
   display: flex; align-items: center; width: 100%; padding: 8px 10px;
   border-radius: var(--radius-2xs); cursor: pointer; text-align: left; white-space: nowrap;
-  font: inherit; color: inherit; transition: background .12s ease;
+  font: inherit; color: inherit; transition: background var(--duration-instant) ease;
 }
 .bm-sticker-mi:hover { background: rgba(var(--white-rgb),.10); }
 .bm-sticker-menu-sep { height: 1px; margin: 4px 6px; background: rgba(var(--white-rgb),.12); }

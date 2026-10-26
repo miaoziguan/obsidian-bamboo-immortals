@@ -234,8 +234,19 @@ tw-card-resize ×15 · goal-row ×14 · market-card ×14 · tw-mm-node ×14
 |---|---|
 | `app-light.png` | 亮色（默认） |
 | `app-dark.png` | 暗色（`host.dark`） |
-| `app-privacy.png` | 隐私模糊（`host.privacy-on`） |
-| `app-dark-privacy.png` | 暗色 + 隐私 |
+
+> ⚠️ **诚实降级说明（2026-10-27）**：截图在 headless Chromium 下**并非严格像素可复现**。
+> 已排除隐私模糊态（`privacy-on`）——模糊为 GPU 光栅化，逐帧浮点抖动，
+> 即使冻结 CSS 动画 + rAF + 定时器、并加 `--disable-gpu` / `--force-color-profile=srgb` /
+> `--disable-lcd-text`，三连拍仍不相同。
+> 剩下 light / dark 两态在多数运行下一致，但**仍出现过跨运行抖动**
+> （应用在初始化时可能捕获了原始 rAF/定时器引用，事后覆写不生效）。
+>
+> 因此：**截图基线只作"参考快照"，不作严格回归门禁。**
+> 本项目真正可靠的回归判据是 **computed-style 逐元素比对**——
+> 它免疫渲染抖动，且能精确定位差异（例如阶段 0 用它抓到唯一一处
+> `border-radius 11px→12px`，而 2191 个元素里其余全等）。
+> 若需图形化回归，应改用**带容差的 diff**，而非逐像素相等。
 
 ### 基线本身暴露的现状（有价值的一手观察）
 

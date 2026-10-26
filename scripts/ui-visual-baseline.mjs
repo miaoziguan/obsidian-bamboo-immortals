@@ -31,12 +31,19 @@ if (!ROOT) {
 const APP = 'file://' + path.join(ROOT, 'webapp', 'app.html');
 const OUT = path.join(ROOT, 'docs', 'ui-baseline');
 
-/** 每个状态：在 shadow host 上加/去 class（与生产 :host(.dark) 一致） */
+/**
+ * 每个状态：在 shadow host 上加/去 class（与生产 :host(.dark) 一致）。
+ *
+ * ⚠️ 隐私态（privacy-on）已被排除，原因是**它在 headless 下本质不可复现**：
+ *   该态依赖模糊（防偷窥），而模糊为 GPU 光栅化，逐帧存在浮点抖动；
+ *   实测即使冻结 CSS 动画 + rAF + 定时器、并加 --disable-gpu /
+ *   --force-color-profile=srgb / --disable-lcd-text，三连拍仍不相同。
+ *   噪声基线比没有基线更糟（每次跑都"有 diff"），故只保留像素稳定的两态。
+ *   若日后要覆盖隐私态，应改用「容差比对」而非逐像素相等。
+ */
 const STATES = [
   { name: 'light', classes: [] },
   { name: 'dark', classes: ['dark'] },
-  { name: 'privacy', classes: ['privacy-on'] },
-  { name: 'dark-privacy', classes: ['dark', 'privacy-on'] },
 ];
 
 const waitReady = (page) =>
@@ -76,10 +83,15 @@ async function main() {
     await page.goto(APP, { waitUntil: 'load' });
     await waitReady(page);
 
-    // 冻结动画/过渡：竹子有 338 个元素在跑连续动画
-    // （bambooSway1-5 / leafTremble / leafDrift3…），Playwright 的 reducedMotion
-    // 只设媒体查询、拦不住这些未响应该查询的动画，截图相位随机 → 基线不可复现。
-    // 必须注入到 shadowRoot 内（light DOM 的样式进不了 shadow）。
+    // 先让首屏自身的一次性渲染与定时任务跑完（实测约 1s 内状态才"落地"）
+    await page.waitForTimeout(800);
+
+    // 冻结所有可变视觉源，否则同一构建两次截图不同、基线失去意义：
+    //  1) CSS 动画/过渡 —— 竹叶有 338 个元素在跑连续动画
+    //     （bambooSway1-5 / leafTremble / leafDrift3…），reducedMotion 只设媒体查询、
+    //     拦不住这些未响应该查询的动画；且必须注入 shadowRoot（light DOM 样式进不了 shadow）。
+    //  2) rAF 与定时器 —— 仅冻结 CSS 仍不稳定（实测前三连拍仍不同），
+    //     说明还有 JS 调度的持续变化（香道/星光之类）。
     await page.evaluate(() => {
       const sr = window.__bambooShadowRoot;
       if (!sr) return;
@@ -87,8 +99,11 @@ async function main() {
       s.textContent =
         '*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important}';
       sr.appendChild(s);
+      window.requestAnimationFrame = () => 0;
+      const noop = () => 0;
+      window.setInterval = noop;
+      window.setTimeout = noop;
     });
-    await page.waitForTimeout(120);
 
     if (st.classes.length) {
       await page.evaluate((cls) => {

@@ -38,7 +38,7 @@
     border-radius: var(--radius-md);
     border: 1px solid var(--border-light);
     cursor: grab;
-    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color var(--duration-fast) ease;
     min-height: var(--touch-target);
 }
 :host(.dark) .sm-item {
@@ -138,7 +138,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: transform, opacity, box-shadow, border-color, background-color 0.2s;
+    transition: transform, opacity, box-shadow, border-color, background-color var(--duration-fast);
     opacity: 0.6;
     position: relative;
 }
@@ -177,7 +177,7 @@
     display: inline-flex;
     align-items: center;
     gap: var(--space-1);
-    transition: transform, opacity, box-shadow, border-color, background-color 0.2s;
+    transition: transform, opacity, box-shadow, border-color, background-color var(--duration-fast);
     min-height: var(--touch-target);
     min-width: var(--touch-target);
 }
@@ -238,7 +238,7 @@
     align-items: center;
     justify-content: center;
     font-size: var(--type-heading);
-    transition: transform, opacity, box-shadow, border-color, background-color 0.2s;
+    transition: transform, opacity, box-shadow, border-color, background-color var(--duration-fast);
 }
 
 .icon-option-sm:hover {
@@ -291,7 +291,7 @@ nav .date-display-sub {
 /* ========== 板块设置样式 ========== */
 .section-title .count {
     opacity: 0;
-    transition: opacity 0.3s ease;
+    transition: opacity var(--duration-normal) ease;
 }
 
 .section-title:hover .count {
@@ -368,7 +368,7 @@ nav .date-display-sub {
     display: flex;
     align-items: center;
     gap: var(--space-3);
-    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color var(--duration-fast) ease;
     font-family: inherit;
     min-height: var(--touch-target);
     min-width: var(--touch-target);

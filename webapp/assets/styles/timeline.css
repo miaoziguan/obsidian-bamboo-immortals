@@ -175,7 +175,7 @@
     height: 100%;
     position: relative;
     transform-style: preserve-3d;
-    transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: transform var(--duration-slow) cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .ticket-flip-container.flipped {
@@ -206,7 +206,7 @@
     border-radius: var(--radius-2xs);
     color: rgba(var(--bamboo-deep-rgb), 0.25);
     opacity: 0;
-    transition: opacity 0.2s ease, color 0.15s ease, background 0.15s ease;
+    transition: opacity var(--duration-fast) ease, color var(--duration-instant) ease, background var(--duration-instant) ease;
     cursor: pointer;
     z-index: 20;
 }
@@ -400,7 +400,7 @@
     border-radius: 50%;
     background: rgba(var(--bamboo-deep-rgb), 0.08);
     box-shadow: inset 0 1px 2px rgba(var(--black-rgb), 0.12);
-    transition: background 0.35s ease, box-shadow 0.35s ease, transform 0.25s ease;
+    transition: background var(--duration-normal) ease, box-shadow var(--duration-normal) ease, transform var(--duration-fast) ease;
     position: relative;
 }
 .ticket-dot::after {
@@ -422,7 +422,7 @@
     box-shadow: 0 2px 8px rgba(var(--bamboo-deep-rgb), 0.1);
     pointer-events: none;
     opacity: 0;
-    transition: opacity 0.2s ease, transform 0.2s ease;
+    transition: opacity var(--duration-fast) ease, transform var(--duration-fast) ease;
     z-index: 20;
 }
 .ticket-dot:hover::after {
@@ -905,7 +905,7 @@
 
 
     .bamboo-node {
-        animation: fadeInUp 0.5s ease forwards;
+        animation: fadeInUp var(--duration-slow) ease forwards;
         opacity: 0;
     }
 }
@@ -961,7 +961,7 @@
     backdrop-filter: blur(var(--glass-blur));
     border-radius: var(--radius-card);
     overflow: clip; /* 允许 tooltip/focus ring 溢出，仅裁切子元素几何溢出 */
-    transition: transform, opacity, box-shadow, border-color, background-color 0.3s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color var(--duration-normal) ease;
     box-shadow: var(--shadow-surface);
 }
 .bamboo-card:hover { transform: translateX(8px); box-shadow: var(--shadow-card); }
@@ -991,7 +991,7 @@
    定位沿用 --mouse-x / --mouse-y —— renderers.js 把这对属性写在 .bamboo-card-header 上，伪元素继承，
    故几何与改造前逐像素等价（原来这层光晕是 header background 的第一个图层）。
    独立成层的原因见下方「悬停光晕」小节：光晕若继续画在 header 的 background 上，而该背景挂着
-   transition: background 0.4s，每次 mousemove 都会重定向这段过渡，变成光标停稳后仍持续约 400ms
+   transition: background var(--duration-normal)，每次 mousemove 都会重定向这段过渡，变成光标停稳后仍持续约 var(--duration-normal)
    的渐变插值重绘（radial-gradient 插值不可合成）。 */
 .bamboo-card-header::before {
     content: '';
@@ -1083,7 +1083,7 @@
 .bamboo-chevron {
     font-size: var(--type-micro);
     color: var(--bamboo-primary);
-    transition: transform 0.3s ease;
+    transition: transform var(--duration-normal) ease;
     opacity: 0.6;
 }
 
@@ -1098,54 +1098,54 @@
 /* 深夜 0-4h — 中绿，色阶最深 */
 .bamboo-card.lateNight .bamboo-card-header {
   background: rgba(var(--primary-rgb), 0.24);
-  transition: background 0.4s ease-out;
+  transition: background var(--duration-normal) ease-out;
 }
 /* 黎明 4-5.5h — 向白绿过渡 */
 .bamboo-card.dawn .bamboo-card-header {
   background: rgba(var(--primary-rgb), 0.16);
-  transition: background 0.4s ease-out;
+  transition: background var(--duration-normal) ease-out;
 }
 /* 清晨 5.5-7h — 轻绿 */
 .bamboo-card.earlyMorning .bamboo-card-header {
   background: rgba(var(--primary-rgb), 0.10);
-  transition: background 0.4s ease-out;
+  transition: background var(--duration-normal) ease-out;
 }
 /* 上午 7-12h — 微绿 */
 .bamboo-card.morning .bamboo-card-header {
   background: rgba(var(--primary-rgb), 0.06);
-  transition: background 0.4s ease-out;
+  transition: background var(--duration-normal) ease-out;
 }
 /* 中午 12-13h — 白绿，色阶最淡 */
 .bamboo-card.midday .bamboo-card-header {
   background: rgba(var(--primary-rgb), 0.03);
-  transition: background 0.4s ease-out;
+  transition: background var(--duration-normal) ease-out;
 }
 /* 下午 13-17h — 微绿回升 */
 .bamboo-card.afternoon .bamboo-card-header {
   background: rgba(var(--primary-rgb), 0.06);
-  transition: background 0.4s ease-out;
+  transition: background var(--duration-normal) ease-out;
 }
 /* 傍晚 17-18.5h — 向中绿过渡 */
 .bamboo-card.dusk .bamboo-card-header {
   background: rgba(var(--primary-rgb), 0.13);
-  transition: background 0.4s ease-out;
+  transition: background var(--duration-normal) ease-out;
 }
 /* 晚上 18.5-22h — 渐深 */
 .bamboo-card.evening .bamboo-card-header {
   background: rgba(var(--primary-rgb), 0.18);
-  transition: background 0.4s ease-out;
+  transition: background var(--duration-normal) ease-out;
 }
 /* 深夜 22-24h — 中绿，回归最深 */
 .bamboo-card.night .bamboo-card-header {
   background: rgba(var(--primary-rgb), 0.24);
-  transition: background 0.4s ease-out;
+  transition: background var(--duration-normal) ease-out;
 }
 
 /* === 悬停光晕（亮色模式）===
    原实现是 9 条 :hover 规则，在 header 的 background 上追加一层径向渐变，并重复写一遍与基态同值的
    底色层（实测两处底色 α 逐条完全一致，故删除它们对底色零影响）。
    代价是：--mouse-x/y 每条 mousemove 都会改变 header 的 background-image 计算值，而基态挂着
-   transition: background 0.4s → 这段过渡被反复重定向 → 光标停稳后仍继续插值约 400ms。
+   transition: background var(--duration-normal) → 这段过渡被反复重定向 → 光标停稳后仍继续插值约 var(--duration-normal)。
    现由 .bamboo-card-header::before 独立承载光晕（定位属性不变，几何等价），此处只留强度表。 */
 .bamboo-card.lateNight { --bamboo-halo-alpha: 0.32; }
 .bamboo-card.dawn { --bamboo-halo-alpha: 0.24; }
@@ -1161,47 +1161,47 @@
 :host(.dark) .bamboo-card.lateNight .bamboo-card-header {
   background: rgba(var(--primary-rgb), 0.22);
   color: rgba(var(--white-rgb), 0.88);
-  transition: background 0.4s ease-out;
+  transition: background var(--duration-normal) ease-out;
 }
 :host(.dark) .bamboo-card.dawn .bamboo-card-header {
   background: rgba(var(--primary-rgb), 0.14);
   color: rgba(var(--white-rgb), 0.88);
-  transition: background 0.4s ease-out;
+  transition: background var(--duration-normal) ease-out;
 }
 :host(.dark) .bamboo-card.earlyMorning .bamboo-card-header {
   background: rgba(var(--primary-rgb), 0.08);
   color: rgba(var(--white-rgb), 0.90);
-  transition: background 0.4s ease-out;
+  transition: background var(--duration-normal) ease-out;
 }
 :host(.dark) .bamboo-card.morning .bamboo-card-header {
   background: rgba(var(--primary-rgb), 0.04);
   color: rgba(var(--white-rgb), 0.90);
-  transition: background 0.4s ease-out;
+  transition: background var(--duration-normal) ease-out;
 }
 :host(.dark) .bamboo-card.midday .bamboo-card-header {
   background: rgba(var(--primary-rgb), 0.02);
   color: rgba(var(--white-rgb), 0.92);
-  transition: background 0.4s ease-out;
+  transition: background var(--duration-normal) ease-out;
 }
 :host(.dark) .bamboo-card.afternoon .bamboo-card-header {
   background: rgba(var(--primary-rgb), 0.04);
   color: rgba(var(--white-rgb), 0.88);
-  transition: background 0.4s ease-out;
+  transition: background var(--duration-normal) ease-out;
 }
 :host(.dark) .bamboo-card.dusk .bamboo-card-header {
   background: rgba(var(--primary-rgb), 0.11);
   color: rgba(var(--white-rgb), 0.88);
-  transition: background 0.4s ease-out;
+  transition: background var(--duration-normal) ease-out;
 }
 :host(.dark) .bamboo-card.evening .bamboo-card-header {
   background: rgba(var(--primary-rgb), 0.16);
   color: rgba(var(--white-rgb), 0.88);
-  transition: background 0.4s ease-out;
+  transition: background var(--duration-normal) ease-out;
 }
 :host(.dark) .bamboo-card.night .bamboo-card-header {
   background: rgba(var(--primary-rgb), 0.22);
   color: rgba(var(--white-rgb), 0.88);
-  transition: background 0.4s ease-out;
+  transition: background var(--duration-normal) ease-out;
 }
 
 /* === 悬停光晕（暗色模式）===
@@ -1286,7 +1286,7 @@
     line-height: 1.3;
     box-shadow: 0 3px 8px rgba(var(--black-rgb), 0.12), 0 1px 4px rgba(var(--black-rgb), 0.06);
     opacity: 0;
-    transition: opacity 0.1s ease;
+    transition: opacity var(--duration-instant) ease;
 }
 
 .bamboo-tooltip::after {
@@ -1310,7 +1310,7 @@
 .bamboo-card-content {
     max-height: 500px;
     overflow: hidden;
-    transition: max-height 0.4s ease, opacity 0.3s ease;
+    transition: max-height var(--duration-normal) ease, opacity var(--duration-normal) ease;
 }
 
 .bamboo-card-content.collapsed {
@@ -1377,7 +1377,7 @@
     transform: translateY(-50%);
     font-size: var(--type-md);
     opacity: 0;
-    transition: opacity 0.3s;
+    transition: opacity var(--duration-normal);
 }
 
 .bamboo-card:hover .bamboo-leaf {
@@ -1526,7 +1526,7 @@
         transform: none;
         opacity: 0;
         pointer-events: none;
-        transition: opacity 0.3s ease;
+        transition: opacity var(--duration-normal) ease;
     }
 
     .ticket-flip-container.flipped .ticket-flip-front {
@@ -1884,7 +1884,7 @@
     transform: none;
     opacity: 0;
     pointer-events: none;
-    transition: opacity 0.3s ease;
+    transition: opacity var(--duration-normal) ease;
 }
 
 .display-compact .ticket-flip-container.flipped .ticket-flip-front {

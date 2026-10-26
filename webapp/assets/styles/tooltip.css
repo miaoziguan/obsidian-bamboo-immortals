@@ -15,7 +15,7 @@
   pointer-events: none;
   opacity: 0;
   transform: translateY(6px);
-  transition: opacity 0.12s ease, transform 0.12s ease;
+  transition: opacity var(--duration-instant) ease, transform var(--duration-instant) ease;
   box-shadow: 0 4px 14px -4px rgba(var(--black-rgb), 0.45);
 }
 .tw-tip.on { opacity: 1; transform: translateY(0); }
@@ -34,7 +34,7 @@
   box-shadow: none;
   z-index: 9999;
   opacity: 0.6;
-  transition: opacity 120ms ease;
+  transition: opacity var(--duration-instant) ease;
 }
 .tw-scroll-locdots:hover { opacity: 1; }
 .tw-scroll-dot {
@@ -49,7 +49,7 @@
   border-radius: 50%;
   background: var(--text-tertiary);
   cursor: pointer;
-  transition: background-color 120ms ease;
+  transition: background-color var(--duration-instant) ease;
 }
 /* 透明扩展点击区：视觉点不变，命中范围扩大到约 16px，提升点击灵敏度 */
 .tw-scroll-dot::before {

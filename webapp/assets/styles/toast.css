@@ -23,7 +23,7 @@
     pointer-events: auto;
     opacity: 0;
     transform: translateX(16px);
-    transition: opacity 0.32s var(--ease-cn), transform 0.32s var(--ease-cn);
+    transition: opacity var(--duration-normal) var(--ease-cn), transform var(--duration-normal) var(--ease-cn);
 }
 
 .toast-visible {
@@ -146,7 +146,7 @@
     justify-content: center;
     z-index: var(--z-layer-toast);
     opacity: 0;
-    transition: opacity 0.2s ease;
+    transition: opacity var(--duration-fast) ease;
 }
 
 .confirm-visible {
@@ -166,7 +166,7 @@
     width: 90%;
     box-shadow: var(--overlay-shadow);
     transform: scale(0.96);
-    transition: transform 0.2s var(--ease-cn);
+    transition: transform var(--duration-fast) var(--ease-cn);
 }
 
 .confirm-visible .confirm-dialog {
@@ -218,7 +218,7 @@
     border-radius: var(--radius-sm);
     border: 1px solid var(--border-light);
     cursor: pointer;
-    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color var(--duration-fast) ease;
 }
 
 
@@ -268,7 +268,7 @@
     padding: var(--space-2) var(--space-3);
     border-radius: var(--radius-sm);
     cursor: pointer;
-    transition: background 0.18s ease;
+    transition: background var(--duration-fast) ease;
     font-size: var(--type-base);
     color: var(--text-primary);
 }
@@ -293,7 +293,7 @@
     cursor: pointer;
     margin: 0;
     flex-shrink: 0;
-    transition: transform, opacity, box-shadow, border-color, background-color 0.18s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color var(--duration-fast) ease;
 }
 
 .confirm-extra-choice input[type="radio"]:checked {
@@ -324,7 +324,7 @@
     background: rgba(var(--black-rgb), 0.45);
     backdrop-filter: blur(var(--glass-blur));
     -webkit-backdrop-filter: blur(var(--glass-blur));
-    animation: cmp-fade-in 0.18s ease;
+    animation: cmp-fade-in var(--duration-fast) ease;
 }
 
 .catm-migrate-picker .cmp-container {
@@ -340,7 +340,7 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    animation: cmp-scale-in 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+    animation: cmp-scale-in var(--duration-fast) cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .theme-dark .catm-migrate-picker .cmp-container, :host(.dark) .catm-migrate-picker .cmp-container {
@@ -378,7 +378,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: transform, opacity, box-shadow, border-color, background-color 0.18s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color var(--duration-fast) ease;
 }
 
 .catm-migrate-picker .cmp-close-btn:hover {
@@ -399,7 +399,7 @@
     padding: 12px 14px;
     border-radius: var(--radius-sm);
     cursor: pointer;
-    transition: transform, opacity, box-shadow, border-color, background-color 0.18s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color var(--duration-fast) ease;
     color: var(--text-primary);
     font-size: var(--type-md);
 }

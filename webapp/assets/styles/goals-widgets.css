@@ -47,7 +47,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: transform, opacity, box-shadow, border-color, background-color 0.2s;
+    transition: transform, opacity, box-shadow, border-color, background-color var(--duration-fast);
     line-height: 1;
 }
 .tmpl-close-btn:hover {
@@ -74,7 +74,7 @@
     border-radius: var(--radius-lg);
     background: var(--bamboo-background);
     cursor: pointer;
-    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color var(--duration-fast) ease;
     text-align: center;
 }
 .tmpl-card:hover {
@@ -132,7 +132,7 @@
     font-weight: 500;
     color: var(--text-secondary);
     cursor: pointer;
-    transition: color .18s ease, border-color .18s ease;
+    transition: color var(--duration-fast) ease, border-color var(--duration-fast) ease;
     line-height: 1.4;
 }
 .tmpl-tab:hover {
@@ -180,7 +180,7 @@
     align-items: center;
     justify-content: center;
     opacity: 0;
-    transition: opacity .18s ease, background .18s ease, color .18s ease;
+    transition: opacity var(--duration-fast) ease, background var(--duration-fast) ease, color var(--duration-fast) ease;
 }
 .tmpl-card:hover .tmpl-card-delete {
     opacity: 1;

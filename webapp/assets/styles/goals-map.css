@@ -22,13 +22,13 @@
     box-shadow: 0 2px 8px rgba(var(--primary-rgb), 0.15);
     cursor: pointer;
     position: relative;
-    /* 此处原有 transition: background 0.4s ease-out，仅服务 .goal-row:hover 的光晕（见下方说明）。
+    /* 此处原有 transition: background var(--duration-normal) ease-out，仅服务 .goal-row:hover 的光晕（见下方说明）。
        已实测：行自身的 background 在运行期只被 :hover 改变——goal-complete / goal-overdue / goal-soon
        三个状态类只出现在 renderer.js:314 的模板串里（构建期决定，插入后不再切类），且列表刷新走
        container.innerHTML 整段重建（新节点不会触发过渡）。而基态 2 层 → :hover 3 层，层数不同不可插值，
-       过渡降级为离散：值在 50%（即 200ms）处才翻转。删掉它 = 光晕进出各少 200ms 延迟，且彻底消除
+       过渡降级为离散：值在 50%（即 var(--duration-fast)）处才翻转。删掉它 = 光晕进出各少 var(--duration-fast) 延迟，且彻底消除
        这段待机过渡。代价（已知并接受）：亮暗主题切换是同 DOM 切类（state/store.js:833、
-       storage/bridge.js:1101），本行背景不再参与那 0.4s 渐隐，与其余绝大多数元素一样瞬时切换。 */
+       storage/bridge.js:1101），本行背景不再参与那 var(--duration-normal) 渐隐，与其余绝大多数元素一样瞬时切换。 */
     contain: layout style paint;
 }
 
@@ -139,8 +139,8 @@
         inset 0 1px 3px rgba(var(--deep-rgb), 0.08),
         inset 0 -1px 0 rgba(var(--white-rgb), 0.15),
         0 0 0 1px rgba(var(--primary-rgb), 0.08);
-    transition: background 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-                box-shadow 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: background var(--duration-normal) cubic-bezier(0.4, 0, 0.2, 1),
+                box-shadow var(--duration-normal) cubic-bezier(0.4, 0, 0.2, 1);
     z-index: 11;
     overflow: hidden;
 }
@@ -159,7 +159,7 @@
         transparent 100%
     );
     opacity: 0;
-    transition: opacity 0.3s ease;
+    transition: opacity var(--duration-normal) ease;
     pointer-events: none;
     z-index: 2;
 }
@@ -218,7 +218,7 @@
     color: var(--text-secondary);
     flex-shrink: 0;
     margin-left: 4px;
-    transition: transform 0.3s, color 0.2s;
+    transition: transform var(--duration-normal), color var(--duration-fast);
     opacity: 0.7;
     cursor: pointer;
     padding: 0 2px;
@@ -310,7 +310,7 @@
 .goal-row-bar-fill {
     height: 100%;
     border-radius: var(--radius-4);
-    transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: width var(--duration-slower) cubic-bezier(0.4, 0, 0.2, 1);
     background: linear-gradient(
         90deg,
         rgba(var(--primary-rgb), 1),
@@ -379,7 +379,7 @@
     padding: 0 var(--space-4) var(--space-3);
     max-height: 2000px;
     overflow: hidden;
-    transition: max-height, opacity, transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    transition: max-height, opacity, transform var(--duration-slow) cubic-bezier(0.175, 0.885, 0.32, 1.275);
     opacity: 1;
     position: relative;
     z-index: 5;
@@ -407,7 +407,7 @@
 
 /* 相机吐相片动画：当展开时触发 */
 .goal-row:not(.collapsed) .goal-item-list:not(.collapsed) {
-    animation: camera-eject 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    animation: camera-eject var(--duration-slow) cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
 }
 
 @keyframes camera-eject {
@@ -427,7 +427,7 @@
 /* 子项目条目容器（两行布局） */
 .goal-item-entry {
     padding: 6px 0;
-    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color var(--duration-fast) ease;
     border-radius: var(--radius-xs);
 }
 .goal-item-entry:hover {
@@ -466,7 +466,7 @@
 [data-inline-edit] {
     cursor: pointer;
     border-bottom: 1px dashed transparent;
-    transition: border-color 0.2s, background 0.2s, color 0.2s;
+    transition: border-color var(--duration-fast), background var(--duration-fast), color var(--duration-fast);
     padding: 1px 4px;
     border-radius: var(--radius-3);
 }
@@ -503,7 +503,7 @@ input[type="number"].goal-inline-edit-input {
     font-size: var(--type-sm);
     color: var(--bamboo-primary);
     flex-shrink: 0;
-    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color var(--duration-fast) ease;
     cursor: pointer;
 }
 .goal-item-status:hover {
@@ -541,7 +541,7 @@ input[type="number"].goal-inline-edit-input {
     overflow: hidden;
     text-overflow: ellipsis;
     cursor: pointer;
-    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color var(--duration-fast) ease;
     padding: 0 6px;
     line-height: 1.5;
     border-radius: var(--radius-2xs);
@@ -594,7 +594,7 @@ input[type="number"].goal-inline-edit-input {
 .goal-item-bar-fill {
     height: 100%;
     border-radius: var(--radius-3);
-    transition: width 0.5s ease;
+    transition: width var(--duration-slow) ease;
     background: linear-gradient(90deg, var(--bamboo-light), var(--bamboo-primary));
 }
 .goal-item-percent {
@@ -630,7 +630,7 @@ input[type="number"].goal-inline-edit-input {
 }
 .goal-item-complete {
     opacity: 0.5;
-    transition: opacity 0.3s ease;
+    transition: opacity var(--duration-normal) ease;
 }
 .goal-item-complete:hover {
     opacity: 0.8;
@@ -653,14 +653,14 @@ input[type="number"].goal-inline-edit-input {
     cursor: pointer;
     padding: 4px 8px;
     border-radius: var(--radius-2xs);
-    transition: background 0.2s;
+    transition: background var(--duration-fast);
     user-select: none;
 }
 .completed-items-toggle:hover {
     background: rgba(var(--primary-rgb), 0.1);
 }
 .completed-items-toggle-icon {
-    transition: transform 0.2s ease;
+    transition: transform var(--duration-fast) ease;
 }
 .completed-items-container.collapsed .completed-items-toggle-icon {
     transform: rotate(-90deg);
@@ -670,7 +670,7 @@ input[type="number"].goal-inline-edit-input {
     overflow: hidden;
     max-height: 2000px;
     opacity: 1;
-    transition: max-height 0.3s ease, opacity 0.3s ease;
+    transition: max-height var(--duration-normal) ease, opacity var(--duration-normal) ease;
 }
 .completed-items-container.collapsed .completed-items-list {
     max-height: 0;
@@ -692,7 +692,7 @@ input[type="number"].goal-inline-edit-input {
     gap: 6px;
     height: 36px;
     opacity: 0.6;
-    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color var(--duration-fast) ease;
     flex-shrink: 0;
 }
 .goal-row:hover .goal-row-actions, .goal-row.is-hovered .goal-row-actions {
@@ -706,7 +706,7 @@ input[type="number"].goal-inline-edit-input {
     width: 28px;
     padding: 0;
     border-radius: var(--radius-xs);
-    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color var(--duration-fast) ease;
     color: var(--bamboo-primary);
     display: inline-flex;
     align-items: center;
@@ -746,7 +746,7 @@ input[type="number"].goal-inline-edit-input {
     white-space: nowrap;
     overflow: visible;
     cursor: pointer;
-    transition: transform, opacity, box-shadow, border-color, background-color 0.3s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color var(--duration-normal) ease;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -770,7 +770,7 @@ input[type="number"].goal-inline-edit-input {
     white-space: nowrap;
     flex-shrink: 0;
     cursor: pointer;
-    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color var(--duration-fast) ease;
     font-weight: 500;
     position: relative;
 }
@@ -794,7 +794,7 @@ input[type="number"].goal-inline-edit-input {
     line-height: 1.3;
     opacity: 0;
     visibility: hidden;
-    transition: opacity 0.2s ease, visibility 0.2s ease, transform 0.2s ease;
+    transition: opacity var(--duration-fast) ease, visibility var(--duration-fast) ease, transform var(--duration-fast) ease;
     pointer-events: none;
     backdrop-filter: none;
 }
@@ -834,7 +834,7 @@ input[type="number"].goal-inline-edit-input {
     border-radius: var(--radius-sm);
     margin: -4px -4px 0 -4px;
     padding: 4px 8px;
-    transition: background 0.3s ease;
+    transition: background var(--duration-normal) ease;
 }
 
 .goal-overdue:hover .goal-row-header {
@@ -847,7 +847,7 @@ input[type="number"].goal-inline-edit-input {
     border-radius: var(--radius-sm);
     margin: -4px -4px 0 -4px;
     padding: 4px 8px;
-    transition: background 0.3s ease;
+    transition: background var(--duration-normal) ease;
 }
 
 .goal-soon:hover .goal-row-header {
@@ -863,7 +863,7 @@ input[type="number"].goal-inline-edit-input {
     white-space: nowrap;
     flex-shrink: 0;
     cursor: pointer;
-    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color var(--duration-fast) ease;
 }
 .goal-item-date:hover {
     opacity: 0.8;
@@ -881,7 +881,7 @@ input[type="number"].goal-inline-edit-input {
     color: var(--bamboo-warning);
     white-space: nowrap;
     cursor: pointer;
-    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color var(--duration-fast) ease;
     font-weight: 600;
     flex-shrink: 0;
 }
@@ -966,7 +966,7 @@ input[type="number"].goal-inline-edit-input {
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: transform, opacity, box-shadow, border-color, background-color 0.2s;
+    transition: transform, opacity, box-shadow, border-color, background-color var(--duration-fast);
     line-height: 1;
 }
 .catp-close-btn:hover {
@@ -988,7 +988,7 @@ input[type="number"].goal-inline-edit-input {
     padding: 8px 10px;
     border-radius: var(--radius-xs);
     cursor: pointer;
-    transition: transform, opacity, box-shadow, border-color, background-color 0.15s;
+    transition: transform, opacity, box-shadow, border-color, background-color var(--duration-instant);
 }
 .catp-item:hover {
     background: rgba(var(--teal-rgb), 0.08);
@@ -1018,7 +1018,7 @@ input[type="number"].goal-inline-edit-input {
     font-size: var(--type-sm);
     border-radius: var(--radius-xs);
     cursor: pointer;
-    transition: transform, opacity, box-shadow, border-color, background-color 0.2s;
+    transition: transform, opacity, box-shadow, border-color, background-color var(--duration-fast);
 }
 .catp-manage-btn:hover {
     border-color: var(--bamboo-primary);
@@ -1075,7 +1075,7 @@ input[type="number"].goal-inline-edit-input {
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: transform, opacity, box-shadow, border-color, background-color 0.2s;
+    transition: transform, opacity, box-shadow, border-color, background-color var(--duration-fast);
     line-height: 1;
 }
 .catm-close-btn:hover {
@@ -1103,7 +1103,7 @@ input[type="number"].goal-inline-edit-input {
     padding: 5px 12px;
     border-radius: var(--radius-sm);
     background: var(--bamboo-background);
-    transition: transform, opacity, box-shadow, border-color, background-color 0.15s;
+    transition: transform, opacity, box-shadow, border-color, background-color var(--duration-instant);
 }
 .catm-item:hover {
     background: rgba(var(--teal-rgb), 0.06);
@@ -1129,7 +1129,7 @@ input[type="number"].goal-inline-edit-input {
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: transform, opacity, box-shadow, border-color, background-color 0.2s;
+    transition: transform, opacity, box-shadow, border-color, background-color var(--duration-fast);
 }
 .catm-item-actions button:hover {
     background: var(--border-light);
@@ -1175,7 +1175,7 @@ input[type="number"].goal-inline-edit-input {
     font-size: var(--type-base);
     background: var(--bamboo-background);
     color: var(--text-primary);
-    transition: border-color 0.2s;
+    transition: border-color var(--duration-fast);
 }
 
 .catm-input:focus {
@@ -1201,7 +1201,7 @@ input[type="number"].goal-inline-edit-input {
     font-weight: 500;
     border-radius: var(--radius-xs);
     cursor: pointer;
-    transition: transform, opacity, box-shadow, border-color, background-color 0.2s;
+    transition: transform, opacity, box-shadow, border-color, background-color var(--duration-fast);
     white-space: nowrap;
 }
 .catm-add-btn:hover {
@@ -1223,7 +1223,7 @@ input[type="number"].goal-inline-edit-input {
     font-weight: 500;
     border-radius: var(--radius-xs);
     cursor: pointer;
-    transition: transform, opacity, box-shadow, border-color, background-color 0.2s;
+    transition: transform, opacity, box-shadow, border-color, background-color var(--duration-fast);
 }
 .catm-done-btn:hover {
     filter: brightness(1.1);

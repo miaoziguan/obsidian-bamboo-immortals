@@ -164,7 +164,7 @@
     gap: clamp(8px, 2vw, 10px);
     padding: clamp(8px, 2vw, 10px) clamp(12px, 3vw, 14px);
     border-bottom: 1px solid rgba(var(--primary-rgb), 0.1);
-    transition: opacity 0.15s, background 0.15s;
+    transition: opacity var(--duration-instant), background var(--duration-instant);
     cursor: pointer;
 }
 .shop-item-card:not(.is-locked):hover {
@@ -247,7 +247,7 @@
     background: transparent;
     color: var(--ink-light);
     cursor: pointer;
-    transition: transform, opacity, box-shadow, border-color, background-color 0.2s;
+    transition: transform, opacity, box-shadow, border-color, background-color var(--duration-fast);
     display: inline-flex;
     align-items: center;
     gap: var(--space-1);
@@ -296,7 +296,7 @@
     color: var(--ink-light);
     cursor: pointer;
     text-align: right;
-    transition: transform, opacity, box-shadow, border-color, background-color 0.15s;
+    transition: transform, opacity, box-shadow, border-color, background-color var(--duration-instant);
     min-height: var(--touch-target);
 }
 .shop-sort-option:hover {
@@ -325,7 +325,7 @@
     border: none;
     border-radius: 50%;
     cursor: pointer;
-    transition: transform, opacity, box-shadow, border-color, background-color 0.15s;
+    transition: transform, opacity, box-shadow, border-color, background-color var(--duration-instant);
     line-height: 1;
     background: transparent;
     color: var(--ink-light);
@@ -357,7 +357,7 @@
     background: transparent;
     color: var(--ink-light);
     cursor: pointer;
-    transition: transform, opacity, box-shadow, border-color, background-color 0.15s;
+    transition: transform, opacity, box-shadow, border-color, background-color var(--duration-instant);
     font-weight: 500;
     flex-shrink: 0;
     min-height: var(--touch-target);
@@ -405,7 +405,7 @@
     gap: 10px;
     padding: 10px 14px;
     border-bottom: 1px solid rgba(var(--primary-rgb), 0.1);
-    transition: background 0.15s;
+    transition: background var(--duration-instant);
 }
 .shop-history-row:last-child {
     border-bottom: none;
@@ -490,7 +490,7 @@
     background: transparent;
     color: var(--ink-light);
     font-weight: 400;
-    transition: transform, opacity, box-shadow, border-color, background-color 0.15s;
+    transition: transform, opacity, box-shadow, border-color, background-color var(--duration-instant);
     min-height: var(--touch-target);
     min-width: var(--touch-target);
 }

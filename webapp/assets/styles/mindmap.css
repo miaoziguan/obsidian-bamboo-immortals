@@ -60,7 +60,7 @@
   user-select: none;
   pointer-events: auto;          /* 打开事件（父层 .tw-mm-nodes 关了） */
   overflow: visible;             /* 连线圆点 protrude 出去也不能被节点自身裁掉 */
-  transition: box-shadow 0.16s ease, border-color 0.16s ease, opacity 0.16s ease;
+  transition: box-shadow var(--duration-fast) ease, border-color var(--duration-fast) ease, opacity var(--duration-fast) ease;
 }
 
 /* 文本框：换行不撑破节点（max-width 由 JS 写 inline，保持单一来源） */
@@ -104,7 +104,7 @@
   z-index: 6;                   /* 压在文本之上，确保一定可点 */
   opacity: 0;
   pointer-events: none;
-  transition: transform 0.12s ease, background 0.12s ease, border-color 0.12s ease, opacity 0.16s ease;
+  transition: transform var(--duration-instant) ease, background var(--duration-instant) ease, border-color var(--duration-instant) ease, opacity var(--duration-fast) ease;
 }
 /* 透明命中扩展：填补胶囊→锚点的死区 + 加高竖直命中带，小圆点也好抓 */
 .tw-mm-node .tw-link-anchor::before {
@@ -304,7 +304,7 @@
   padding: 0;
   cursor: pointer;
   flex-shrink: 0;
-  transition: transform 0.1s ease, box-shadow 0.1s ease;
+  transition: transform var(--duration-instant) ease, box-shadow var(--duration-instant) ease;
 }
 .tw-mm-swatch:hover { transform: scale(1.3); box-shadow: 0 0 0 2px color-mix(in srgb, rgb(var(--primary-rgb)) 25%, transparent); }
 /* 默认色 = 圆圈加斜杠（∅）：设计工具通用的「无颜色 / 清除」符号，避免「×」被误读为删除 */
@@ -382,7 +382,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: transform .15s ease, color .15s ease, opacity .15s ease;
+  transition: transform var(--duration-instant) ease, color var(--duration-instant) ease, opacity var(--duration-instant) ease;
 }
 .tw-mm-note-mark:hover { color: var(--bamboo-primary); opacity: 1; }
 .tw-mm-note-mark.is-open { transform: rotate(180deg); color: var(--bamboo-primary); }

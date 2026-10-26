@@ -28,7 +28,7 @@
     border: 1px solid var(--border-light);
     border-left: none;
     box-shadow: var(--shadow);
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: transform var(--duration-normal) cubic-bezier(0.4, 0, 0.2, 1);
 }
 .quick-nav:hover, .quick-nav.expanded {
     will-change: transform;
@@ -44,7 +44,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: transform, opacity, box-shadow, border-color, background-color 0.2s;
+    transition: transform, opacity, box-shadow, border-color, background-color var(--duration-fast);
     border: 1px solid var(--border-light);
     margin-bottom: var(--space-2);
 }
@@ -58,7 +58,7 @@
     font-size: var(--type-md);
     color: var(--bamboo-primary);
     opacity: 0;
-    transition: opacity 0.2s;
+    transition: opacity var(--duration-fast);
 }
 .quick-nav:hover .quick-nav-toggle::after, .quick-nav.expanded .quick-nav-toggle::after {
     opacity: 1;
@@ -73,7 +73,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: transform, opacity, box-shadow, border-color, background-color 0.2s;
+    transition: transform, opacity, box-shadow, border-color, background-color var(--duration-fast);
     border: 1px solid var(--border-light);
     position: relative;
 }
@@ -113,7 +113,7 @@
     border-radius: var(--radius-md);
     opacity: 0;
     pointer-events: none;
-    transition: opacity 0.2s, transform 0.2s;
+    transition: opacity var(--duration-fast), transform var(--duration-fast);
     z-index: var(--z-layer-keyboard-hint);
 }
 .quick-nav-btn:hover .quick-nav-btn-tooltip {
@@ -267,7 +267,7 @@
    这里只动 opacity / transform（走合成层，不触发重排），成本极低。
    layout-switching 类由 LayoutMode 在切换后临时添加，动画结束自行移除。 */
 .sections-container.layout-switching {
-    animation: layoutSwitchIn 0.26s cubic-bezier(0.2, 0.8, 0.2, 1);
+    animation: layoutSwitchIn var(--duration-normal) cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 @keyframes layoutSwitchIn {
@@ -317,7 +317,7 @@ button, .btn, .date-nav-btn, .view-toggle-btn, .modal-close {
 }
 .goal-row.goal-complete {
     opacity: 0.75;
-    transition: opacity 0.2s;
+    transition: opacity var(--duration-fast);
 }
 .goal-row.goal-complete:hover {
     opacity: 1;
@@ -388,7 +388,7 @@ button, .btn, .date-nav-btn, .view-toggle-btn, .modal-close {
     border: 2px dashed rgba(var(--primary-rgb), 0.2);
     border-radius: var(--radius-card);
     cursor: pointer;
-    transition: transform, opacity, box-shadow, border-color, background-color 0.3s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color var(--duration-normal) ease;
     text-align: center;
 }
 .empty-state-card:hover {
@@ -400,7 +400,7 @@ button, .btn, .date-nav-btn, .view-toggle-btn, .modal-close {
 .empty-state-icon {
     font-size: var(--type-display-big);
     margin-bottom: var(--space-4);
-    transition: transform 0.3s ease;
+    transition: transform var(--duration-normal) ease;
 }
 .empty-state-card:hover .empty-state-icon {
     transform: scale(1.1);
@@ -433,7 +433,7 @@ button, .btn, .date-nav-btn, .view-toggle-btn, .modal-close {
     display: flex;
     align-items: center;
     gap: var(--space-1);
-    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color var(--duration-fast) ease;
 }
 .empty-state-card:hover .empty-state-action {
     gap: var(--space-2);

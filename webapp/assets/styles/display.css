@@ -18,7 +18,7 @@
     --bamboo-ctl-h: 32px;
     opacity: 0;
     transform: scale(0.95) translateY(4px);
-    transition: opacity 0.2s ease, transform 0.2s ease;
+    transition: opacity var(--duration-fast) ease, transform var(--duration-fast) ease;
     pointer-events: none;
 }
 
@@ -111,7 +111,7 @@
     display: grid;
     grid-template-rows: 1fr;
     opacity: 1;
-    transition: grid-template-rows 0.26s ease, opacity 0.26s ease;
+    transition: grid-template-rows var(--duration-normal) ease, opacity var(--duration-normal) ease;
 }
 
 .display-color-group.is-collapsed {
@@ -463,7 +463,7 @@
     height: 22px;
     border-radius: var(--radius-md);
     background: var(--btn-secondary-bg, rgba(0, 0, 0, 0.10));
-    transition: background 0.2s ease;
+    transition: background var(--duration-fast) ease;
 }
 
 .display-follow-theme-switch::after {
@@ -476,7 +476,7 @@
     border-radius: 50%;
     background: var(--white);
     box-shadow: 0 1px 2px rgba(var(--black-rgb), 0.18);
-    transition: transform 0.2s ease;
+    transition: transform var(--duration-fast) ease;
 }
 
 .display-follow-theme-input:checked ~ .display-follow-theme-switch {

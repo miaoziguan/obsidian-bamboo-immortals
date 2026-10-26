@@ -93,7 +93,7 @@
 .tier-bar {
     height: 100%;
     border-radius: var(--radius-sm);
-    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: width var(--duration-slow) cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 
@@ -146,7 +146,7 @@
 .category-bar {
     height: 100%;
     border-radius: var(--radius-2-5);
-    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: width var(--duration-slow) cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .category-value {
@@ -248,7 +248,7 @@
     background: rgba(var(--white-rgb), 0.95);
     border-radius: var(--radius-lg);
     border: 1px solid rgba(var(--primary-rgb),0.08);
-    transition: transform, opacity, box-shadow, border-color, background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: transform, opacity, box-shadow, border-color, background-color var(--duration-fast) cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
     min-width: 0;
     position: relative;
@@ -453,7 +453,7 @@
 .comparison-bar-fill {
     height: 100%;
     border-radius: var(--radius-2-5);
-    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: width var(--duration-slow) cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .comparison-bar-fill.completed {
@@ -497,7 +497,7 @@
     backdrop-filter: blur(var(--glass-blur));
     border-radius: var(--radius-md);
     border: 1px solid rgba(var(--primary-rgb), 0.1);
-    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color var(--duration-fast) ease;
     align-items: flex-start;
 }
 
@@ -549,7 +549,7 @@
     background: rgba(var(--white-rgb), 0.8);
     border-radius: var(--radius-md);
     border: 1px solid rgba(var(--primary-rgb), 0.06);
-    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color var(--duration-fast) ease;
 }
 
 .rating-tier:last-child {
@@ -622,7 +622,7 @@
     background: rgba(var(--white-rgb), 0.8);
     border-radius: var(--radius-md);
     border: 1px solid rgba(var(--primary-rgb), 0.06);
-    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color var(--duration-fast) ease;
 }
 
 .layer-detail-item:last-child {

@@ -24,7 +24,7 @@
     height: 12px;
     color: rgba(var(--deep-rgb), 0.6);
     cursor: pointer;
-    transition: transform, opacity, box-shadow, border-color, background-color 0.15s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color var(--duration-instant) ease;
     flex-shrink: 0;
 }
 
@@ -46,7 +46,7 @@
     text-align: center;
     line-height: 1;
     cursor: pointer;
-    transition: color 0.2s;
+    transition: color var(--duration-fast);
 }
 .stub-nc-name:hover {
     color: rgba(var(--deep-rgb), 1);
@@ -170,7 +170,7 @@
     align-items: center;
     justify-content: center;
     box-shadow: 0 4px 16px rgba(var(--deep-rgb), 0.3), inset 0 1px 0 rgba(var(--white-rgb), 0.2);
-    transition: transform, opacity, box-shadow, border-color, background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: transform, opacity, box-shadow, border-color, background-color var(--duration-normal) cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
     line-height: 1;
     user-select: none;
@@ -200,7 +200,7 @@
 .fab-main-icon {
     width: var(--bm-icon-xxl);
     height: var(--bm-icon-xxl);
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: transform var(--duration-normal) cubic-bezier(0.4, 0, 0.2, 1);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -234,7 +234,7 @@
     flex-direction: column;
     gap: var(--space-2);
     transform: translateY(8px);
-    transition: transform, opacity, box-shadow, border-color, background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: transform, opacity, box-shadow, border-color, background-color var(--duration-normal) cubic-bezier(0.4, 0, 0.2, 1);
     opacity: 0;
     pointer-events: none;
     padding: var(--space-3);
@@ -287,7 +287,7 @@
     font-weight: 500;
     color: var(--text-primary);
     cursor: pointer;
-    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
+    transition: transform, opacity, box-shadow, border-color, background-color var(--duration-fast) ease;
     text-align: center;
     position: relative;
     overflow: hidden;

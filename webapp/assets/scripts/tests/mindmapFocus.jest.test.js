@@ -64,33 +64,7 @@ test('导图工具条 dup/del 图标：鼠标点击后交还焦点（否则空�
   expect(document.activeElement).not.toBe(del);
 });
 
-test('导图搜索栏：鼠标点击翻页/关闭按钮后交还焦点（否则空格重翻/重关）', () => {
-  const layer = document.createElement('div');
-  document.body.appendChild(layer);
-  let steps = 0, closed = 0;
-  MindmapFeature._searchStep = () => { steps++; };
-  MindmapFeature._closeSearch = () => { closed++; };
-  MindmapFeature._initSearch(layer);
-
-  const prev = layer.querySelector('.tw-mm-search-prev');
-  const next = layer.querySelector('.tw-mm-search-next');
-  const close = layer.querySelector('.tw-mm-search-close');
-  expect(prev && next && close).toBeTruthy();
-
-  click(prev, 1);
-  expect(steps).toBe(1);
-  expect(document.activeElement).not.toBe(prev);
-
-  click(next, 1);
-  expect(steps).toBe(2);
-  expect(document.activeElement).not.toBe(next);
-
-  click(close, 1);
-  expect(closed).toBe(1);
-  expect(document.activeElement).not.toBe(close);
-});
-
-test('回归：导图工具条与搜索栏点击必须交还焦点', () => {
+test('回归：导图工具条点击必须交还焦点', () => {
   const fs = require('fs');
   const path = require('path');
   const src = fs.readFileSync(
@@ -98,5 +72,4 @@ test('回归：导图工具条与搜索栏点击必须交还焦点', () => {
   );
   expect(src).toContain('swatch.blur()');   // 色块
   expect(src).toContain('b.blur()');        // dup/del 图标
-  expect(src).toContain('e.currentTarget.blur()'); // 搜索翻页/关闭
 });

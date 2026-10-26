@@ -243,9 +243,6 @@
   border-color: color-mix(in srgb, var(--mm-accent, rgb(var(--primary-rgb))) 55%, transparent);
   color: var(--mm-accent, var(--text-secondary));
 }
-/* ===== 搜索高亮 ===== */
-.tw-mm-node.is-search-hit { outline: 2px solid rgba(var(--primary-rgb), 0.35); outline-offset: 2px; }
-.tw-mm-node.is-search-cur { outline: 2px solid #c9a24a; outline-offset: 2px; box-shadow: var(--shadow-card); z-index: 22; }
 
 /* ===== 选中浮动工具条（图标按钮 + 一级内联色盘） ===== */
 .tw-mm-toolbar {
@@ -320,38 +317,6 @@
   border-radius: var(--radius-1);
   transform: translate(-50%, -50%) rotate(-45deg);
 }
-
-/* ===== 搜索框 ===== */
-.tw-mm-search {
-  position: absolute;
-  z-index: 50;
-  top: 10px; left: 50%;
-  /* 追加 translateZ(0) 触发合成层，保留原有居中位移 */
-  transform: translateX(-50%) translateZ(0);
-  display: flex;
-  align-items: center;
-  gap: var(--space-4);
-  padding: var(--space-4) var(--space-6);
-  /* 同 .tw-mm-toolbar：统一不透明跟随色，不再使用玻璃拟态。 */
-  background: var(--bamboo-popup-bg);
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-control);
-  box-shadow: var(--shadow-card);
-  pointer-events: auto;
-}
-.tw-mm-search[hidden] { display: none; }
-.tw-mm-search-input {
-  border: none; background: transparent; color: var(--text-primary);
-  font-size: var(--type-sm); width: 12em; outline: none;
-}
-.tw-mm-search-count { font-size: var(--type-xs); color: var(--text-tertiary); min-width: 2.5em; text-align: center; }
-.tw-mm-search button {
-  border: none; background: transparent; color: var(--text-secondary);
-  cursor: pointer; font-size: var(--type-xs); padding: 0.2em 0.45em; border-radius: var(--radius-2xs);
-}
-.tw-mm-search button:hover { background: rgba(var(--primary-rgb), 0.12); }
-
-
 
 /* 抓手态（空格按下 / H 工具）：此刻拖动 = 平移，而非框选 */
 .tw-mm.is-hand { cursor: grab; }

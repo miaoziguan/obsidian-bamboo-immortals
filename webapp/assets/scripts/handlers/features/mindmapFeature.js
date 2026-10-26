@@ -177,7 +177,6 @@ export const MindmapFeature = {
     this._cullRaf = 0;
     this._initToolbar(layer);
     this._initNoteEditor(layer);
-    this._initSearch(layer);
     this._initUndo();
     this._bindLayer();
     this._mountZoomUI();
@@ -491,33 +490,6 @@ export const MindmapFeature = {
     const card = { box, input };
     this._noteCards.set(id, card);
     return card;
-  },
-
-  /** 搜索框（Cmd/Ctrl+F 唤起：匹配子弹文本、回车跳转居中、高亮命中） */
-  _initSearch(layer) {
-    const sb = document.createElement('div');
-    sb.className = 'tw-mm-search';
-    sb.hidden = true;
-    sb.innerHTML = `
-      <input type="text" class="tw-mm-search-input" placeholder="搜索子弹…" />
-      <span class="tw-mm-search-count"></span>
-      <button type="button" class="tw-mm-search-prev" title="上一个">上</button>
-      <button type="button" class="tw-mm-search-next" title="下一个">下</button>
-      <button type="button" class="tw-mm-search-close" title="关闭">关</button>`;
-    layer.appendChild(sb);
-    this._searchBox = sb;
-    this._searchInput = sb.querySelector('.tw-mm-search-input');
-    this._searchCount = sb.querySelector('.tw-mm-search-count');
-    sb.addEventListener('pointerdown', (e) => e.stopPropagation());
-    this._searchInput.addEventListener('input', () => this._runSearch(this._searchInput.value));
-    this._searchInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') { e.preventDefault(); this._searchStep(e.shiftKey ? -1 : 1); }
-      else if (e.key === 'Escape') { e.preventDefault(); this._closeSearch(); }
-    });
-    // 鼠标点击后交还焦点：否则按钮持焦，之后按空格会再次翻页 / 关闭搜索
-    sb.querySelector('.tw-mm-search-prev').addEventListener('click', (e) => { this._searchStep(-1); if (e.detail > 0) e.currentTarget.blur(); });
-    sb.querySelector('.tw-mm-search-next').addEventListener('click', (e) => { this._searchStep(1); if (e.detail > 0) e.currentTarget.blur(); });
-    sb.querySelector('.tw-mm-search-close').addEventListener('click', (e) => { this._closeSearch(); if (e.detail > 0) e.currentTarget.blur(); });
   },
 
   async activate() {
@@ -1256,7 +1228,7 @@ export const MindmapFeature = {
   // 节点拖拽、连线起手、框选）。共享层已过滤：控件元素、右键、以及空格/中键/抓手意图的平移。
   _onEmptyPointerDown(e) {
     if (e.target.closest('.tw-links, .tw-links-ctl')) return;   // 点连线或控件不触发平移（交给 LinkLayer）
-    if (e.target.closest('button, .tw-mm-search, .tw-mm-toolbar')) return;
+    if (e.target.closest('button, .tw-mm-toolbar')) return;
     // 双击检测：pointerdown 上的 preventDefault（平移/拖拽）会抑制原生 dblclick（兼容性鼠标事件），
     // 故在此手动判定。命中则走「双击」语义并直接返回，不再启动平移/拖拽。
     const now = (typeof performance !== 'undefined') ? performance.now() : Date.now();
@@ -1570,8 +1542,6 @@ export const MindmapFeature = {
 
     // ⌘±/0、Shift+1/2、H 等「画布缩放/适应/抓手」键已统一收口到 CanvasKeys（C2）：导图与便签共用同一份逻辑，
     // 命中且导图激活时 stopImmediatePropagation，杜绝双响。以下仅处理导图专属键（搜索/撤销/删除/新建等）。
-    // Cmd/Ctrl+F：唤起子弹搜索（与便签模式的查找一致）
-    if ((e.metaKey || e.ctrlKey) && (e.key === 'f' || e.key === 'F')) { e.preventDefault(); this._openSearch(); return; }
     // 撤销 / 重做：Cmd/Ctrl+Z、Cmd/Ctrl+Shift+Z（不要求有选中，空画布也能撤）
     if ((e.metaKey || e.ctrlKey) && (e.key === 'z' || e.key === 'Z')) {
       e.preventDefault();
@@ -1892,76 +1862,6 @@ export const MindmapFeature = {
       newIds.forEach((id) => { const el = this._els.get(id); if (el) el.classList.add('is-multi-sel'); });
       this._updateToolbar();
     }
-  },
-
-  // ===== 搜索（Cmd/Ctrl+F） =====
-
-  _openSearch() {
-    if (!this._active || !this._searchBox) return;
-    this._searchBox.hidden = false;
-    this._searchInput.value = '';
-    this._searchHits = [];
-    this._searchIdx = -1;
-    this._searchInput.focus();
-    this._searchInput.select();
-    this._msg('搜索子弹：回车跳转，Shift+回车上一个');
-  },
-
-  _runSearch(q) {
-    const term = (q || '').trim().toLowerCase();
-    this._searchHits = term
-      ? this._nodes.filter((n) => (n.text || '').toLowerCase().includes(term)).map((n) => n.id)
-      : [];
-    this._searchIdx = this._searchHits.length ? 0 : -1;
-    this._paintSearchHits();
-    this._updateSearchCount();
-    // 输入时只高亮，不跳转：否则每敲一个字画布都会被猛拉到第一个命中（边打字边"抽风"）。
-    // 跳转（居中 + 选中）只在回车 / 上下翻时由 _searchStep 触发。
-  },
-
-  _paintSearchHits() {
-    this._els.forEach((el) => el.classList.remove('is-search-hit', 'is-search-cur'));
-    this._searchHits.forEach((id, i) => {
-      const el = this._els.get(id);
-      if (el) el.classList.add(i === this._searchIdx ? 'is-search-cur' : 'is-search-hit');
-    });
-  },
-
-  _updateSearchCount() {
-    if (!this._searchCount) return;
-    const n = this._searchHits.length;
-    this._searchCount.textContent = n ? (this._searchIdx + 1) + '/' + n : '0';
-  },
-
-  _searchStep(dir) {
-    if (!this._searchHits.length) return;
-    this._searchIdx = (this._searchIdx + dir + this._searchHits.length) % this._searchHits.length;
-    this._paintSearchHits();
-    this._updateSearchCount();
-    this._focusHit(this._searchHits[this._searchIdx]);
-  },
-
-  /** 把视野平移到命中子弹居中，并选中它 */
-  _focusHit(id) {
-    if (!id) return;
-    this._select(id);
-    const el = this._els.get(id);
-    if (!el) return;
-    const cx = parseFloat(el.style.left) + (el.offsetWidth || 0) / 2;
-    const cy = parseFloat(el.style.top) + (el.offsetHeight || 0) / 2;
-    const vw = this._canvas.clientWidth || 0, vh = this._canvas.clientHeight || 0;
-    // 缩放后：平移量在 scale 之前生效 → 乘 s，缩放比原样保留
-    const s = CanvasViewport.scaleOf(this._view);
-    this._view = { x: Math.round(vw / 2 - s * cx), y: Math.round(vh / 2 - s * cy), scale: s };
-    this._applyView();
-    this._scheduleSave();
-  },
-
-  _closeSearch() {
-    if (this._searchBox) this._searchBox.hidden = true;
-    this._els.forEach((el) => el.classList.remove('is-search-hit', 'is-search-cur'));
-    this._searchHits = [];
-    this._searchIdx = -1;
   },
 
   /** 命中测试：优先走 shadowRoot.elementFromPoint（画中卷运行在 Shadow DOM 内，
@@ -2304,9 +2204,6 @@ export const MindmapFeature = {
     this._toolbar = null;
     this._tbNoteBtn = null;
     this._tbSize = null;
-    this._searchBox = null;
-    this._searchInput = null;
-    this._searchCount = null;
     if (this._cullRaf) { cancelAnimationFrame(this._cullRaf); this._cullRaf = 0; }
     this._els = new Map();
     this._nodeGeo = new Map();      // 剔除几何缓存随文档丢弃

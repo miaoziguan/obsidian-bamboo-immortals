@@ -14,7 +14,7 @@
 
 
 .stat-value {
-    font-size: var(--type-mega);
+    font-size: var(--type-display);
     font-weight: 800;
     color: var(--bamboo-deep);
     line-height: 1;
@@ -223,7 +223,7 @@
 }
 
 .time-span-value {
-    font-size: var(--type-hero);
+    font-size: var(--type-2xl);
     font-weight: 800;
 }
 
@@ -305,7 +305,7 @@
 }
 
 .time-span-card .time-span-value {
-    font-size: var(--type-mega);
+    font-size: var(--type-display);
     font-weight: 800;
     line-height: 1.2;
     margin-bottom: var(--space-4);
@@ -351,7 +351,7 @@
 }
 
 .rw-460 .time-span-card .time-span-value {
-    font-size: var(--type-hero);
+    font-size: var(--type-2xl);
     margin-bottom: 0;
 }
 

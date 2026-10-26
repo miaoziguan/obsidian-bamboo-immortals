@@ -426,7 +426,7 @@
 }
 
 .alert-card-count {
-    font-size: var(--type-hero);
+    font-size: var(--type-2xl);
     font-weight: 800;
     line-height: 1;
 }

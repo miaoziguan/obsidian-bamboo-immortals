@@ -658,7 +658,7 @@
 }
 
 .health-score-number {
-    font-size: var(--type-mega);
+    font-size: var(--type-display);
     font-weight: 800;
     color: var(--bamboo-deep);
     line-height: 1;

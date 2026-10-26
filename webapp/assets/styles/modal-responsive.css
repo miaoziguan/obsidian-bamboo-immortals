@@ -60,7 +60,7 @@
 
 
     .shop-balance-amount-block--centered .shop-balance-value {
-        font-size: var(--type-hero, clamp(22px, 10vw, 32px));
+        font-size: var(--type-2xl);
     }
     .shop-balance-metric--card .shop-metric-value {
         font-size: var(--type-sm, clamp(11px, 3vw, 13px));

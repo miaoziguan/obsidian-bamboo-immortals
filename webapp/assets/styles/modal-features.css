@@ -39,7 +39,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: var(--type-hero);
+    font-size: var(--type-2xl);
     border-radius: var(--radius-md);
     cursor: pointer;
     border: 2px solid transparent;

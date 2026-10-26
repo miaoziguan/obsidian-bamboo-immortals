@@ -250,7 +250,7 @@
 
 /* 目标标题：统一高度 + 居中 + 单行截断 */
 .goal-row-title {
-    font-size: var(--type-lead);
+    font-size: var(--type-md);
     font-weight: 700;
     color: var(--bamboo-deep);
     cursor: pointer;

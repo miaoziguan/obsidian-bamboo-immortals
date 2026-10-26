@@ -449,7 +449,7 @@
     padding: clamp(var(--space-24), 6vw, 36px) var(--space-20);
 }
 .shop-history-empty-icon {
-    font-size: var(--type-mega);
+    font-size: var(--type-display);
     margin-bottom: var(--space-10);
     opacity: 0.4;
 }
@@ -514,7 +514,7 @@
     border: 1px solid rgba(var(--primary-rgb), 0.15);
 }
 .shop-philosophy-icon {
-    font-size: var(--type-hero);
+    font-size: var(--type-2xl);
     margin-bottom: var(--space-8);
 }
 .shop-philosophy-title {

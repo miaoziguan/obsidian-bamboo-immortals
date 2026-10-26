@@ -272,7 +272,9 @@
        映射约定（代码禁止再写裸 px 圆角）：
          2px→--radius-3xs   6px→--radius-2xs   8px→--radius-xs   10px→--radius-sm
          12px→--radius-md   14px→--radius-lg   16px→--radius-xl   18px→--radius-2xl
-         20px→--radius-3xl  24px→--radius-4xl  28px→--radius-5xl
+         20px→--radius-3xl
+       （--radius-4xl(24px) / --radius-5xl(28px) 已于 2026-10-27 删除：引用为 0。
+         需要 24/28px 圆角时复用 --radius-3xl 或 --radius-pill，勿再新增数字名。）
     */
     --radius-3xs: 2px;
     --radius-2xs: 6px;
@@ -283,8 +285,6 @@
     --radius-xl: 16px;
     --radius-2xl: 18px;
     --radius-3xl: 20px;
-    --radius-4xl: 24px;
-    --radius-5xl: 28px;
     /* 补充散落档位（代码禁止再用裸 px 圆角） */
     --radius-1: 1px;
     --radius-2-5: 2.5px;
@@ -723,12 +723,8 @@
     --type-mini:    calc(clamp(8px, 1.8vw, 10px) * var(--font-size-scale));
     --type-micro:   calc(clamp(9px, 2.0vw, 11px) * var(--font-size-scale));
     --type-caption: calc(clamp(11px, 2.4vw, 13px) * var(--font-size-scale));
-    --type-body:    calc(clamp(13px, 2.8vw, 15px) * var(--font-size-scale));
-    --type-lead:    calc(clamp(14px, 3.2vw, 17px) * var(--font-size-scale));
     --type-heading: calc(clamp(16px, 3.8vw, 20px) * var(--font-size-scale));
     --type-large:   calc(clamp(18px, 4.5vw, 24px) * var(--font-size-scale));
-    --type-hero:    calc(clamp(20px, 5.5vw, 28px) * var(--font-size-scale));
-    --type-mega:    calc(clamp(24px, 7vw, 36px) * var(--font-size-scale));
     --type-display-big: calc(clamp(32px, 9vw, 48px) * var(--font-size-scale));
 
     /* 固定字号（紧凑面板专用，故意不响应视口）

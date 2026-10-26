@@ -1414,7 +1414,7 @@
   background: transparent;
   color: inherit;
   opacity: 0.4;
-  border-radius: var(--radius-5);
+  border-radius: var(--radius-2xs);
   cursor: pointer;
   font-size: var(--type-sm);
   line-height: 1;
@@ -1433,7 +1433,7 @@
   background: transparent;
   color: inherit;
   opacity: 0.35;
-  border-radius: var(--radius-5);
+  border-radius: var(--radius-2xs);
   cursor: pointer;
   font-size: var(--type-sm);
   line-height: 1;

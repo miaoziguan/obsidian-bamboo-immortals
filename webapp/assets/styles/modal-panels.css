@@ -609,7 +609,7 @@
     color: var(--text-secondary);
     background: transparent;
     border: 1px solid var(--border-light);
-    border-radius: var(--radius-5);
+    border-radius: var(--radius-2xs);
     cursor: pointer;
     transition: transform, opacity, box-shadow, border-color, background-color var(--duration-instant);
     text-align: center;
@@ -639,7 +639,7 @@
     color: var(--text-tertiary);
     background: transparent;
     border: 1px solid var(--border-light);
-    border-radius: var(--radius-5);
+    border-radius: var(--radius-2xs);
     cursor: pointer;
     transition: transform, opacity, box-shadow, border-color, background-color var(--duration-instant);
     display: flex;

@@ -275,7 +275,7 @@
   width: 24px; height: 24px;
   min-width: 24px; min-height: 24px;   /* 覆盖 base-foundation 全局触控目标 44px */
   border: none;
-  border-radius: var(--radius-5);
+  border-radius: var(--radius-2xs);
   background: transparent;
   color: var(--text-secondary);
   padding: 0;
@@ -347,7 +347,7 @@
 .tw-mm-search-count { font-size: var(--type-xs); color: var(--text-tertiary); min-width: 2.5em; text-align: center; }
 .tw-mm-search button {
   border: none; background: transparent; color: var(--text-secondary);
-  cursor: pointer; font-size: var(--type-xs); padding: 0.2em 0.45em; border-radius: var(--radius-5);
+  cursor: pointer; font-size: var(--type-xs); padding: 0.2em 0.45em; border-radius: var(--radius-2xs);
 }
 .tw-mm-search button:hover { background: rgba(var(--primary-rgb), 0.12); }
 

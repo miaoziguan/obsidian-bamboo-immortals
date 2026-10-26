@@ -257,7 +257,7 @@
     color: var(--text-secondary);
     font-size: var(--type-heading);
     cursor: pointer;
-    border-radius: var(--radius-5);
+    border-radius: var(--radius-2xs);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -363,7 +363,7 @@
     border: none;
     background: var(--bamboo-background);
     color: var(--text-secondary);
-    border-radius: var(--radius-5);
+    border-radius: var(--radius-2xs);
     cursor: pointer;
     font-size: var(--type-sm);
     transition: transform, opacity, box-shadow, border-color, background-color var(--duration-fast);
@@ -404,7 +404,7 @@
     justify-content: center;
     font-size: var(--type-xs);
     color: var(--text-primary);
-    border-radius: var(--radius-5);
+    border-radius: var(--radius-2xs);
     cursor: pointer;
     transition: transform, opacity, box-shadow, border-color, background-color var(--duration-instant);
     user-select: none;
@@ -432,13 +432,13 @@
     border-radius: 0;
 }
 .drp-day-start {
-    border-radius: var(--radius-5) 0 0 var(--radius-5);
+    border-radius: var(--radius-2xs) 0 0 var(--radius-2xs);
 }
 .drp-day-end {
-    border-radius: 0 var(--radius-5) var(--radius-5) 0;
+    border-radius: 0 var(--radius-2xs) var(--radius-2xs) 0;
 }
 .drp-day-start.drp-day-end {
-    border-radius: var(--radius-5);
+    border-radius: var(--radius-2xs);
 }
 .drp-footer {
     flex: 0 0 auto;

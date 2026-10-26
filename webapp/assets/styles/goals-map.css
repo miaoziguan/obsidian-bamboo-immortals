@@ -962,7 +962,7 @@ input[type="number"].goal-inline-edit-input {
     color: var(--text-secondary);
     font-size: var(--type-heading);
     cursor: pointer;
-    border-radius: var(--radius-5);
+    border-radius: var(--radius-2xs);
     display: flex;
     align-items: center;
     justify-content: center;

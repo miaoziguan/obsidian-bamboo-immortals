@@ -93,7 +93,6 @@
 
 
     :host {
-        --glow-width: 2px;
         --glow-opacity: 0.25;
         --glow-duration: 20s;
     }

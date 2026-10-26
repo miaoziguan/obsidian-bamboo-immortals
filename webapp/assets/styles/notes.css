@@ -24,16 +24,12 @@
   --tw-fs-xs:   max(calc(12px * var(--tw-fs-floor)), calc(var(--tw-type-fs) * 0.75));  
   --tw-fs-sm:   max(calc(14px * var(--tw-fs-floor)), calc(var(--tw-type-fs) * 0.875)); 
   --tw-fs-base: max(calc(16px * var(--tw-fs-floor)), var(--tw-type-fs));               
-  --tw-fs-lg:   max(calc(20px * var(--tw-fs-floor)), calc(var(--tw-type-fs) * 1.25));  
-  --tw-fs-xl:   max(calc(24px * var(--tw-fs-floor)), calc(var(--tw-type-fs) * 1.5));   
 
   
-  --tw-sp-1: calc(var(--tw-card-fs) * 0.25);  
   --tw-sp-2: calc(var(--tw-card-fs) * 0.5);   
   --tw-sp-3: calc(var(--tw-card-fs) * 0.75);  
   --tw-sp-4: calc(var(--tw-card-fs) * 1);     
   --tw-sp-6: calc(var(--tw-card-fs) * 1.5);   
-  --tw-sp-8: calc(var(--tw-card-fs) * 2);     
 
   
   --tw-line: 1.6;

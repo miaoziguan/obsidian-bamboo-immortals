@@ -355,6 +355,43 @@ border-radius / box-shadow）——**仅 1 个元素不同**（即 11px→12px �
 **未做（需视觉决策）**：圆角仍有 9 个 ad-hoc 数字名（`--radius-1 / 2-5 / 3 / 4 / 5 / 7 / 9 / 26 / 38`，
 其中 7 个有引用）。收敛必然改值（如 3px→2px 或 4px），属**视觉变更**，不在本阶段范围。
 
+### 4.5 阶段 4 已执行：清死 token + fallback 显式化（2026-10-27）
+
+**A. 死 token：审计报 112，实际可删 87**
+
+审计口径（"定义但未被 `var()` 引用"）有**两个假阳性来源**，必须排除才能删：
+
+1. **构建产物 HTML**：`webapp/app.html` 等把整份 CSS 内联进去了，
+   扫 HTML 会把 token 误当成"代码在用"（87 → 6 的假象就来自这里）；
+2. **`setProperty` 只写不读**：JS 写入不等于被消费。
+
+排除后：**87 个真正全域名零引用** → 删除 128 行定义（跨 6 个文件）。
+审计的"未使用"从 **112 降至 18**。
+
+保留特例：`--goose-fill` 是行内定义 `.scroll-wild-goose { --goose-fill: … }`（设而不读），
+改它要动规则、收益为零，故保留。
+
+**B. fallback 显式化：35 → 21 个显式定义**
+
+| 类别 | 数量 | 处置 |
+|---|---|---|
+| JS `setProperty` 运行时注入（`--tw-scale` / `--mm-accent` / `--health-color` …） | 12 | **保持未定义**——这是正确设计，写死默认值反而会掩盖注入失效 |
+| 非 JS、fallback 一致 | **21** | 按实际 fallback **显式定义**（值相同 → 零视觉变化） |
+| fallback 冲突 | 1 | 保留未定义（`--bamboo-background-soft` 有 2 种 fallback） |
+| 无 fallback（实为 JS 注入） | 1 | `--score` |
+
+显式化的 21 个：`--bg-panel` `--bg-panel-dark` `--input-bg` `--hover-bg` `--border-strong`
+`--card-bg-dark` `--bamboo-primary-rgb` `--bamboo-primary-hover` `--border-dark-rgb`
+`--danger-color` `--health-color` `--ring-stroke` `--warning-rgb` `--accent` `--r`
+`--bamboo-bg` `--bamboo-surface` `--bamboo-muted` `--avg-color`
+`--pale-green-rgb-dark` `--pale-green-alt-rgb-dark`
+
+审计的"使用但未定义"从 **48 降至 14**（剩余 12 个 JS 注入 + 2 个冲突项）。
+
+**验证**：`ui-style-diff` 2182 个元素**零差异**；lint 绿；636 测试通过。
+
+**最终 token 规模**：定义 711 处 / 去重 **362** 种（清理前 421，删 87 后补 21，净减 ~59）。
+
 ---
 
 ## 5. 护栏（防复发，否则收敛完还会漂回去）

@@ -14,19 +14,18 @@
  *     --primary-alt-rgb      → 用 --bm-primary-alt-rgb
  *     --bamboo-primary       → 用 --bm-primary
  *     --bamboo-primary-light → 用 --bm-primary-light
- *     --bamboo-primary-dark  → 用 --bamboo-dark（已废弃）
  *
  * 禁止：裸写 #fff / #000 / white / black / rgb(255,255,255) — 必须走令牌
  * 禁止：裸写 px 圆角 / px 字号 — 必须走 --radius-* / --type-*
- * 废弃别名（保留兼容，新代码禁止使用）：
+ * 废弃别名（仍保留定义、兼容旧代码；新代码禁止使用）：
  *   --font-size-* → 用 --type-*
  *   --bamboo-text-muted → 用 --text-tertiary
  *   --bamboo-text-secondary → 用 --text-secondary
- *   --bamboo-primary-dark → 用 --bamboo-dark
- *   --tag-execute-bg → 用 --bamboo-primary（亮色）/ --bamboo-light（暗色）
- *   --tag-miss-bg → 用 --ink-pale
  *   --bamboo-success → 用 --bamboo-primary（当前同值）
- *   --status-success → 用 --bamboo-primary（当前同值）
+ *
+ * 已于 2026-10-27 删除（全域名零引用，勿再引用；详见 docs/ui-token-proposal.md §4.5）：
+ *   --bamboo-primary-dark / --tag-execute-bg / --tag-miss-bg / --status-success
+ *   / --kpi-up-bg / --bamboo-card / --bamboo-pale-active … 共 87 个死 token
  * ======================================================== */
 :host, :root {
     /* === 隐私模糊强度（防偷窥模式，可变）===
@@ -41,12 +40,6 @@
     --accent-lightness-offset: 0%;  /* 默认 0%，可通过 DisplayManager 明度滑块调整（范围 ~-15% ~ +15%）*/
 
     /* === z-index 层级体系（全局统一，禁止再写裸数字）=== */
-    --z-layer-below: -2;       /* 装饰层/背景装饰 */
-    --z-layer-behind: -1;      /* 背景伪元素/装饰 */
-    --z-layer-base: 0;         /* 正常流 */
-    --z-layer-raised: 1;       /* 轻微抬起（card hover 等）*/
-    --z-layer-floating: 2;     /* 浮动（日期悬浮、toolbar）*/
-    --z-layer-dropdown: 100;   /* 下拉菜单/颜色面板 */
     --z-layer-keyboard-hint: 900;     /* 键盘快捷键提示 */
     --z-layer-tooltip: 9999;          /* tooltip / 悬浮预览 / KPI 悬浮 */
     --z-layer-overlay: 10000;         /* 通用遮罩层（FAB 背景 / skip-link / modal-overlay / 弹层底部）*/
@@ -82,38 +75,29 @@
     --sky-azure-rgb: 135, 206, 235;
     --health-success-rgb: 126, 211, 33;
     --ticket-stub-bg-rgb: 148, 198, 148;
-    --dark-surface-mid-rgb: 30, 50, 32;
-    --dark-surface-rgb: 20, 38, 22;
     --gray-rgb: 149, 165, 166;
     --danger-alt-rgb: 231, 76, 60;
-    --warning-yellow-rgb: 251, 191, 36;
     --warning-orange-rgb: 245, 166, 35;
-    --info-blue-rgb: 66, 133, 244;
     --teal-rgb: 26, 167, 106;
     --danger-bright-rgb: 239, 68, 68;
     --amber-rgb: 230, 162, 60;
     --purple-rgb: 154, 90, 154;
     --purple-pale-rgb: 196, 138, 196;
     --mint-rgb: 168, 230, 207;
-    --gold-bright-rgb: 255, 215, 0;
     --pale-green-rgb: 245, 250, 245;
     --pale-green-alt-rgb: 248, 252, 248;
     --surface-deep-rgb: 20, 35, 20;
     --surface-deep-alt-rgb: 25, 40, 25;
     --bm-primary-alt-rgb: 107, 174, 107;
     --primary-alt-rgb: var(--bm-primary-alt-rgb); /* alias — 新代码请用 --bm-primary-alt-rgb */
-    --danger-soft-rgb: 220, 100, 100;
     --red-pale-rgb: 255, 240, 240;
-    --amber-brown-rgb: 180, 140, 100;
     --gray-mid-rgb: 90, 90, 90;
     --green-pale-rgb: 200, 224, 200;
     --green-bright-rgb: 143, 216, 143;
     --amber-deep-rgb: 245, 158, 11;
     --orange-pale-rgb: 252, 191, 73;
-    --blue-alt-rgb: 74, 144, 217;
     --danger-deep-rgb: 220, 38, 38;
     --gray-alt-rgb: 107, 114, 128;
-    --red-bright-rgb: 200, 80, 80;
     --green-alt-rgb: 180, 220, 165;
     --green-very-bright-rgb: 200, 255, 150;
     --overdue-bg-rgb: 255, 240, 240;
@@ -126,24 +110,15 @@
     --jade-cream-deep-rgb: 255, 240, 220;
     --jade-warm-rgb: 255, 235, 210;
 
-    --ticket-gold: #B8860B;
     --bamboo-text-muted: var(--ink-pale); /* DEPRECATED: 用 --text-tertiary */
     --bamboo-text-secondary: var(--ink-light); /* DEPRECATED: 用 --text-secondary */
     --bamboo-border: rgba(var(--primary-rgb), 0.25);
     --bamboo-background: rgba(var(--primary-rgb), 0.06);
-    --bamboo-primary-dark: var(--bamboo-dark); /* DEPRECATED: 用 --bamboo-dark */
     --bamboo-success: var(--bamboo-primary); /* DEPRECATED: 用 --bamboo-primary */
     --bamboo-warning: #c9a227;
-    --bamboo-warning-pale: #fff59d;
     --bamboo-error: #dc3545;
-    --bamboo-card: var(--card-bg);
     --sky-azure: #87CEEB;
-    --sky-pale: #B8E2F8;
-    --sky-mist: #E8F6FC;
-    --leaf-green: #6B8E23;
-    --leaf-light: #8FBC3A;
     --rice-paper: #FAF8F0;
-    --ivory: #FFFFF0;
     --cinnabar: #C9483B;
     --gold: #D4AF37;
 
@@ -151,11 +126,7 @@
     --health-danger: #EF4444;
     --health-warning: #F59E23;
     --health-success-clr: #7ED321;
-    --health-info: #4A90D9;
     --health-neutral: #95A5A6;
-    --health-pink: #E91E63;
-    --health-purple: #9C27B0;
-    --health-orange: #FF9800;
     --health-gold-clr: #D97706;
 
     /* === 文字色彩系统 === */
@@ -200,7 +171,6 @@
     --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
     --transition-normal: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     --transition-smooth: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    --transition-bounce: 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
     
     /* === 点击反馈缩放比例 === */
     --scale-click: scale(0.96);
@@ -218,46 +188,27 @@
     --btn-primary-hover: linear-gradient(135deg, var(--bamboo-primary) 0%, var(--bamboo-light) 100%);
     --btn-secondary-bg: rgba(var(--primary-rgb), 0.1);
     --btn-secondary-hover: rgba(var(--primary-rgb), 0.2);
-    --btn-outline-border: 2px solid var(--bamboo-primary);
-    --btn-outline-hover: rgba(var(--primary-rgb), 0.1);
 
     /* === 渐变变量 === */
     --section-title-gradient: linear-gradient(135deg, rgba(var(--deep-rgb), 0.45) 0%, rgba(var(--primary-rgb), 0.4) 50%, rgba(var(--primary-rgb), 0.35) 100%);
     --action-bg: linear-gradient(135deg, rgba(var(--primary-rgb), 0.55) 0%, rgba(var(--primary-rgb), 0.5) 100%);
 
     /* === 表格样式 === */
-    --table-header-bg: rgba(var(--primary-rgb), 0.1);
-    --table-border: rgba(var(--primary-rgb), 0.1);
 
     /* === 诊断卡片样式 === */
-    --diagnosis-bg: rgba(var(--rice-paper-rgb), 0.8);
-    --diagnosis-border: rgba(var(--primary-rgb), 0.1);
-    --diagnosis-text: var(--ink-dark);
-    --diagnosis-card-good-bg: rgba(var(--primary-rgb), 0.08);
-    --diagnosis-card-warn-bg: rgba(var(--gold-rgb), 0.08);
 
     /* === 时间线样式 === */
-    --timeline-stat-bg: rgba(var(--primary-rgb), 0.1);
-    --progress-bg: rgba(var(--primary-rgb), 0.1);
 
     /* === KPI 卡片样式 === */
-    --kpi-up-bg: linear-gradient(180deg, var(--card-bg) 0%, rgba(var(--danger-rgb), 0.1) 100%);
     --kpi-down-bg: linear-gradient(180deg, var(--card-bg) 0%, rgba(var(--primary-rgb), 0.1) 100%);
-    --kpi-neutral-bg: linear-gradient(180deg, var(--card-bg) 0%, rgba(var(--gold-rgb), 0.1) 100%);
-    --kpi-break-bg: linear-gradient(180deg, var(--card-bg) 0%, rgba(var(--sky-azure-rgb), 0.1) 100%);
-    --kpi-up-border: rgba(var(--danger-rgb), 0.3);
     --kpi-up-delta-color: var(--cinnabar);
 
     /* === 呼吸动画 === */
-    --breath-color: rgba(var(--primary-rgb), 0.4);
 
     /* === 标签样式 === */
-    --tag-execute-bg: var(--bamboo-primary);
-    --tag-miss-bg: var(--ink-pale);
     --tag-text-light: white;
 
     /* === 波浪与毛玻璃 === */
-    --wave-color: rgba(var(--primary-rgb), 0.5);
     --glass-blur: 20px;
     --glass-highlight-strong: rgba(var(--white-rgb), 0.6);
     --glass-highlight-medium: rgba(var(--white-rgb), 0.4);
@@ -334,14 +285,8 @@
     --section-gap-scale: 0.8;
     --font-size-xs: var(--type-xs);
     --font-size-sm: var(--type-sm);
-    --font-size-base: var(--type-base);
-    --font-size-md: var(--type-md);
-    --font-size-lg: var(--type-lg);
-    --font-size-xl: var(--type-xl);
-    --font-size-2xl: var(--type-2xl);
     --line-height-tight: 1.3;
     --line-height-base: 1.5;
-    --line-height-relaxed: 1.75;
 
     /* === 触控尺寸系统 === */
     --touch-min: 44px;
@@ -351,18 +296,10 @@
     /* === Focus 样式系统（统一使用 box-shadow 格式） === */
     --focus-ring: 0 0 0 2px var(--bamboo-primary);
     --focus-ring-offset: 0 0 0 4px rgba(var(--primary-rgb), 0.25);
-    --focus-ring-danger: 0 0 0 2px var(--cinnabar);
     --focus-transition: box-shadow 0.15s ease;
 
     /* === 状态色系统 === */
-    --status-success: var(--bamboo-primary); /* DEPRECATED: 用 --bamboo-primary */
-    --status-warning: var(--gold);
     --status-danger: var(--cinnabar);
-    --status-info: #4FC3F7;
-    --status-success-bg: rgba(var(--primary-rgb), 0.1);
-    --status-warning-bg: rgba(var(--gold-rgb), 0.1);
-    --status-danger-bg: rgba(var(--danger-rgb), 0.1);
-    --status-info-bg: rgba(var(--info-rgb), 0.1);
     --info-rgb: 79, 195, 247;
     /* === 竹林绿辉光阴影（自适应暗色模式） === */
     --bamboo-glow-sm: 0 2px 8px rgba(var(--primary-rgb), 0.4);
@@ -390,6 +327,33 @@
     --duration-normal: 300ms;
     --duration-slow: 500ms;
     --duration-slower: 800ms;
+
+
+    /* === 补充定义（2026-10-27）===
+       下列 token 此前被引用但未定义，长期依赖各使用点的 var() fallback。
+       现按实际 fallback 显式定义，使解析可预测（值与原 fallback 相同 → 零视觉变化）。
+       注：由 JS setProperty 运行时注入的 12 个 token 仍保持未定义（那是正确设计）。 */
+    --accent: #6fae8f;
+    --avg-color: #5A9A5A;
+    --bamboo-bg: var(--white);
+    --bamboo-muted: #8a8f98;
+    --bamboo-primary-hover: #369e63;
+    --bamboo-primary-rgb: 62, 179, 112;
+    --bamboo-surface: var(--bamboo-background, rgba(0,0,0,0.55));
+    --bg-panel: #fff;
+    --bg-panel-dark: #1e1e1e;
+    --border-dark-rgb: 60, 70, 60;
+    --border-strong: var(--border-light);
+    --card-bg-dark: #1e2e1e;
+    --danger-color: #d9534f;
+    --health-color: #5A9A5A;
+    --hover-bg: rgba(var(--black-rgb), 0.05);
+    --input-bg: var(--white);
+    --pale-green-alt-rgb-dark: 25, 45, 27;
+    --pale-green-rgb-dark: 30, 50, 32;
+    --r: 0deg;
+    --ring-stroke: #5A9A5A;
+    --warning-rgb: 230, 138, 0;
 }
 
 /* ========== 暗色模式（竹林星光暗色，完整覆盖所有变量） ========== */
@@ -416,7 +380,6 @@
     --purple-rgb: 154, 90, 154;
     --purple-pale-rgb: 196, 138, 196;
     --mint-rgb: 168, 230, 207;
-    --gold-bright-rgb: 255, 215, 0;
     --pale-green-rgb: var(--pale-green-rgb-dark, 30, 50, 32);
     --pale-green-alt-rgb: var(--pale-green-alt-rgb-dark, 25, 45, 27);
     --surface-deep-rgb: 15, 25, 15;
@@ -428,16 +391,13 @@
     --surface-dark-rgb-end: 30, 55, 32;
     --bm-primary-alt-rgb: 130, 195, 130;
     --primary-alt-rgb: var(--bm-primary-alt-rgb); /* alias */
-    --danger-soft-rgb: 255, 120, 120;
     --red-pale-rgb: 40, 20, 20;
     --gray-mid-rgb: 120, 120, 120;
     --green-pale-rgb: 25, 45, 27;
     --amber-deep-rgb: 245, 158, 11;
     --orange-pale-rgb: 180, 120, 50;
-    --blue-alt-rgb: 74, 144, 217;
     --danger-deep-rgb: 255, 107, 107;
     --gray-alt-rgb: 149, 165, 166;
-    --red-bright-rgb: 255, 120, 120;
     --green-alt-rgb: 130, 195, 130;
     --green-very-bright-rgb: 150, 230, 100;
     --jade-cream-rgb: 255, 250, 240;
@@ -476,12 +436,9 @@
     --bm-primary-light: rgba(var(--bm-primary-rgb), 0.6);
     --bamboo-primary-light: var(--bm-primary-light); /* alias */
     --bamboo-warning: #ffe082;
-    --bamboo-warning-pale: #fffde7;
     --bamboo-error: #ef5350;
     --bamboo-success: var(--bamboo-primary);
     --bamboo-background: rgba(var(--primary-rgb), 0.1);
-    --bamboo-primary-dark: var(--bamboo-dark);
-    --bamboo-card: var(--card-bg);
     
     /* 背景层次：深邃午夜绿渐变 —— 明度跨度拉大（7%→16%），中段加一道柔光带，
        让暗色下的整页页面级渐变清晰可辨，而非近乎平涂的深色 */
@@ -534,74 +491,41 @@
     --btn-primary-hover: linear-gradient(135deg, var(--bamboo-primary) 0%, var(--bamboo-light) 100%);
     --btn-secondary-bg: rgba(var(--primary-rgb), 0.12);
     --btn-secondary-hover: rgba(var(--primary-rgb), 0.22);
-    --btn-outline-border: 2px solid var(--bamboo-primary);
-    --btn-outline-hover: rgba(var(--primary-rgb), 0.18);
     
     /* 表格 */
-    --table-header-bg: rgba(var(--primary-rgb), 0.12);
-    --table-border: rgba(var(--primary-rgb), 0.18);
     
     /* 诊断卡片 */
-    --diagnosis-bg: hsla(calc(var(--accent-hue) + 5), min(100%, calc(30% * var(--accent-saturation-ui, 1))), calc(8% + var(--accent-lightness-offset)), 0.92);
-    --diagnosis-border: rgba(var(--primary-rgb), 0.2);
-    --diagnosis-text: hsl(var(--accent-hue), min(100%, calc(22% * var(--accent-saturation-ui, 1))), calc(87% + var(--accent-lightness-offset)));
-    --diagnosis-card-good-bg: rgba(var(--primary-rgb), 0.12);
-    --diagnosis-card-warn-bg: rgba(180, 140, 60, 0.12);
     
     /* 时间线与进度 */
-    --timeline-stat-bg: rgba(var(--primary-rgb), 0.1);
-    --progress-bg: rgba(var(--primary-rgb), 0.15);
-    --breath-color: hsla(calc(var(--accent-hue) + 0), min(100%, calc(35% * var(--accent-saturation-ui, 1))), calc(64% + var(--accent-lightness-offset)), 0.4);
     
     /* KPI 卡片 */
-    --kpi-up-bg: linear-gradient(180deg, var(--card-bg) 0%, rgba(180, 60, 50, 0.18) 100%);
     --kpi-down-bg: linear-gradient(180deg, var(--card-bg) 0%, rgba(var(--primary-rgb), 0.18) 100%);
-    --kpi-neutral-bg: linear-gradient(180deg, var(--card-bg) 0%, rgba(180, 150, 60, 0.18) 100%);
-    --kpi-break-bg: linear-gradient(180deg, var(--card-bg) 0%, rgba(100, 180, 200, 0.18) 100%);
-    --kpi-up-border: rgba(180, 60, 50, 0.35);
-    --kpi-down-border: rgba(var(--primary-rgb), 0.35);
-    --kpi-neutral-border: rgba(180, 150, 60, 0.35);
-    --kpi-break-border: rgba(100, 180, 200, 0.35);
     --kpi-up-delta-color: #E87070;
     
     /* 标签 */
-    --tag-execute-bg: var(--bamboo-light);
-    --tag-miss-bg: hsl(var(--accent-hue), min(100%, calc(12% * var(--accent-saturation-ui, 1))), calc(26% + var(--accent-lightness-offset)));
     --tag-text-light: hsl(var(--accent-hue), min(100%, calc(15% * var(--accent-saturation-ui, 1))), calc(89% + var(--accent-lightness-offset)));
     
     /* 波浪与毛玻璃 */
-    --wave-color: rgba(var(--primary-rgb), 0.5);
     /* 暗色模式降低模糊半径，避免 Chromium backdrop-filter 渲染伪影 */
     --glass-blur: 12px;
     /* 暗色 pre-rendered 卡片渐变 — 降低白色分量适配深色背景 */
     --glass-card-gradient: linear-gradient(135deg, rgba(var(--white-rgb), 0.12) 0%, rgba(var(--white-rgb), 0.04) 50%, rgba(var(--white-rgb), 0.08) 100%), linear-gradient(45deg, rgba(var(--bamboo-deep-rgb), 0.10) 0%, transparent 60%);
     
     /* 星空点缀色 */
-    --star-glow: hsla(calc(var(--accent-hue) + 0), min(100%, calc(36% * var(--accent-saturation-ui, 1))), calc(78% + var(--accent-lightness-offset)), 0.6);
-    --star-accent: hsl(var(--accent-hue), min(100%, calc(38% * var(--accent-saturation-ui, 1))), calc(75% + var(--accent-lightness-offset)));
 
     /* 暗色模式：竹林浅色交互态 */
     --bamboo-pale-hover: hsl(var(--accent-hue), min(100%, calc(28% * var(--accent-saturation-ui, 1))), calc(88% + var(--accent-lightness-offset)));
     --bamboo-pale-hover-rgb: 208, 232, 208;
-    --bamboo-pale-active: hsl(var(--accent-hue), min(100%, calc(25% * var(--accent-saturation-ui, 1))), calc(82% + var(--accent-lightness-offset)));
     --bamboo-pale-highlight: hsl(calc(var(--accent-hue) - 33), min(100%, calc(78% * var(--accent-saturation-ui, 1))), calc(68% + var(--accent-lightness-offset)));
     --bamboo-pale-highlight-rgb: 160, 216, 120;
     
     /* Focus */
     --focus-ring: 0 0 0 2px var(--bamboo-primary);
     --focus-ring-offset: 0 0 0 4px rgba(var(--primary-rgb), 0.25);
-    --focus-ring-danger: 0 0 0 2px var(--cinnabar);
     --focus-transition: box-shadow 0.15s ease;
     
     /* 状态色 */
-    --status-success: var(--bamboo-primary);
-    --status-warning: #ffe082;
     --status-danger: #ef5350;
-    --status-info: #4FC3F7;
-    --status-success-bg: rgba(var(--primary-rgb), 0.15);
-    --status-warning-bg: rgba(var(--gold-rgb), 0.12);
-    --status-danger-bg: rgba(var(--danger-rgb), 0.15);
-    --status-info-bg: rgba(var(--info-rgb, 79, 195, 247), 0.12);
 
     /* === 浮层设计令牌（Toast / Confirm / 选择器统一语言：留白素笺 → 统一不透明跟随色，不再用玻璃） === */
     --overlay-surface: var(--bamboo-popup-bg);
@@ -618,17 +542,12 @@
     --gold: #FFD93D;
     --sky-azure: #74C0FC;
     --sky-azure-rgb: 116, 192, 252;
-    --leaf-green: hsl(var(--accent-hue), min(100%, calc(23% * var(--accent-saturation-ui, 1))), calc(65% + var(--accent-lightness-offset)));
 
     /* === 健康评分色彩系统（暗色同值） === */
     --health-danger: #EF4444;
     --health-warning: #F59E23;
     --health-success-clr: #7ED321;
-    --health-info: #4A90D9;
     --health-neutral: #95A5A6;
-    --health-pink: #E91E63;
-    --health-purple: #9C27B0;
-    --health-orange: #FF9800;
     --health-gold-clr: #D97706;
 
     /* 玉石纹理 — 暗色模式 */
@@ -647,7 +566,6 @@
     /* 暗色流光效果（fab.css glow 动画依赖，缺定义导致 GPU 空跑） */
     --glow-color-start: hsla(calc(var(--accent-hue) + 0), min(100%, calc(45% * var(--accent-saturation-ui, 1))), calc(60% + var(--accent-lightness-offset)), 0.25);
     --glow-color-end: hsla(calc(var(--accent-hue) + 0), min(100%, calc(35% * var(--accent-saturation-ui, 1))), calc(75% + var(--accent-lightness-offset)), 0.08);
-    --glow-width: 2px;
     --glow-opacity: 0.2;
     --glow-duration: 20s;
 }
@@ -689,17 +607,8 @@
     /* Breakpoint reference values (for documentation only — CSS @media
        cannot use custom properties, so use the literal pixel values above
        in @media conditions consistently across all files). */
-    --bp-xxs: 360px;       /* tiny phone: < iPhone SE 1st gen */
-    --bp-sm: 480px;        /* PRIMARY mobile breakpoint */
-    --bp-md-narrow: 600px; /* wallet/shop modal only — do NOT use for general layout */
-    --bp-md: 768px;        /* PRIMARY tablet breakpoint */
-    --bp-lg: 1024px;       /* standard desktop breakpoint */
-    --bp-xl-min: 1025px;   /* min for wide desktop */
 
     /* Canonical breakpoint aliases — Task 6 responsive breakpoint system */
-    --bm-bp-sm: 480px;     /* mobile */
-    --bm-bp-md: 768px;     /* tablet / narrow Obsidian sidebar */
-    --bm-bp-lg: 1024px;    /* desktop */
 
     /* Progressive-render placeholder min-height — UI Audit 4.5.1 CLS mitigation */
     --bm-placeholder-min-h: 160px;
@@ -737,15 +646,12 @@
     --bm-type-fixed-15: 15px;
 
     /* Fluid spacing additions (used inside padding/gap declarations) */
-    --fluid-card-padding: clamp(10px, 2.5vw, 16px);
     --fluid-gap-small: clamp(6px, 1.5vw, 10px);
-    --fluid-gap-med: clamp(8px, 2vw, 14px);
 
     /* Fluid spacing — for layout-level padding and gaps.
        Keep component-level small spacing fixed (e.g., 4px inside a button). */
     --fluid-gutter: clamp(12px, 3vw, 24px);
     --fluid-stack: clamp(8px, 2vw, 16px);
-    --fluid-section-gap: clamp(16px, 4vw, 32px);
 
     /* Touch target — minimum interactive area (WCAG 2.5.8).
        Enforced globally in base.css on button, [role=button], etc. */

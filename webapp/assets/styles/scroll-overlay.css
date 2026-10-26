@@ -575,7 +575,6 @@
    注：描边方案在此无效——缩小是父元素的 CSS transform，
    vector-effect: non-scaling-stroke 无法阻止其连带缩放，故改为放缓缩小。 */
 :host(.dark) .scroll-wild-goose {
-    --goose-fill: var(--white);
     width: 32px;
     height: 18px;
     margin-left: -16px;

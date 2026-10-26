@@ -15,7 +15,6 @@
     /* 面板内按钮的统一紧凑高度：44px 触摸令牌在桌面上偏占空间，
        32px 与 iOS 分段控件同高；宽度仍由 flex 撑开，热区照旧宽裕。
        （滑块保留较宽热区，见 .display-slider） */
-    --bamboo-ctl-h: 32px;
     opacity: 0;
     transform: scale(0.95) translateY(4px);
     transition: opacity var(--duration-fast) ease, transform var(--duration-fast) ease;

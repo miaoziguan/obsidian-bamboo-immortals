@@ -142,9 +142,7 @@
   padding: 0;               
   
   --tw-tools-size: clamp(18px, calc(20px * var(--tw-scale, 1)), 24px);
-  
-  --tw-tools-icon: calc(var(--tw-tools-size) - 2px);
-  
+
   background: transparent;
   border: none;
   box-shadow: none;

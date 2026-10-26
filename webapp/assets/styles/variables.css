@@ -300,7 +300,6 @@
 
     /* === 状态色系统 === */
     --status-danger: var(--cinnabar);
-    --info-rgb: 79, 195, 247;
     /* === 竹林绿辉光阴影（自适应暗色模式） === */
     --bamboo-glow-sm: 0 2px 8px rgba(var(--primary-rgb), 0.4);
     --bamboo-glow-xs: 0 1px 4px rgba(var(--primary-rgb), 0.3);

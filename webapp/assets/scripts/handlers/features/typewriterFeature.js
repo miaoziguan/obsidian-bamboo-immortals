@@ -480,7 +480,7 @@ export const TypewriterFeature = {
       }
       // 卡片悬浮工具条按钮/图标同样内联像素，绕开 calc(var()) 在本环境的兼容问题
       // （与设备圆钮同策略）：否则 --tw-tools-size 整体失效 → 按钮 width 退回 auto、
-      // SVG 拿不到 --tw-tools-icon，相邻图标间距/点击区会被撑乱。
+      // 图标尺寸也无从继承，相邻图标间距/点击区会被撑乱。
       const toolBtns = this._el.querySelectorAll('.tw-card-tools button');
       toolBtns.forEach((b) => {
         b.style.width = (20 * scale).toFixed(2) + 'px';

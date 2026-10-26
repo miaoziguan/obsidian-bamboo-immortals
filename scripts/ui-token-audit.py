@@ -105,9 +105,38 @@ def to_rgb(literal):
     return None
 
 
+def code_corpus():
+    """收集 JS/TS/HTML 源码文本（排除构建产物，它们内联了整份 CSS 会造成假阳性）。
+
+    为什么必须扫代码：本项目的部分 token 只在 **JS 注入的 CSS** 里被使用——
+      · SVG 渐变/描边：`stop-color="var(--cs-1)"`（censerStyles.js）
+      · 内联样式：`input.style.cssText='...font-size:var(--font-size-sm)...'`
+    只扫 CSS 文件会把它们误报成「定义但未使用」（初版即如此，误报 15 个）。
+    注意只认 `var(--x)` 形式：JS 里出现的裸字面量（注释、对象键）不算使用。
+    """
+    BUILT = {'app.html', 'archive.html', 'scroll.html', 'module.html'}
+    chunks = []
+    for p in glob.glob(os.path.join(ROOT, 'webapp', '**', '*.js'), recursive=True):
+        if 'tests' in p:
+            continue
+        chunks.append(open(p, encoding='utf-8', errors='ignore').read())
+    for p in glob.glob(os.path.join(ROOT, 'webapp', '**', '*.html'), recursive=True):
+        if os.path.basename(p) in BUILT:
+            continue
+        chunks.append(open(p, encoding='utf-8', errors='ignore').read())
+    for p in glob.glob(os.path.join(ROOT, 'src', '**', '*.ts'), recursive=True):
+        chunks.append(open(p, encoding='utf-8', errors='ignore').read())
+    return '\n'.join(chunks)
+
+
 def audit():
     definitions = defaultdict(list)   # token -> [(file, line, value)]
     usages = defaultdict(list)        # token -> [(file, line)]
+
+    # 代码里注入的 CSS 同样算「使用」
+    code = code_corpus()
+    for m in VAR_RE.finditer(code):
+        usages[m.group(1)].append(('<code>', 0))
     magic = defaultdict(list)         # category -> [(file, line, prop, value)]
     color_counter = Counter()         # 归一化 rgb -> 出现次数
     color_examples = {}               # 归一化 rgb -> 原始字面量样例

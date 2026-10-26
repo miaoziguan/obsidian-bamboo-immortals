@@ -263,3 +263,105 @@
     
 }
 
+
+/* ===== BambooSelect：竹林自定义下拉 =====
+   原生 <select> 的展开列表由系统绘制（macOS 蓝高亮 + 系统字体），CSS 无法美化，
+   与竹·水墨风格割裂。此处为自绘下拉的样式；原生 select 仍留在 DOM 中作值容器。 */
+
+.bs-select {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    min-width: 0;
+}
+
+/* 原生 select：视觉隐藏，仅保留值与 change 事件 */
+.bs-native {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: 0;
+    border: 0;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.bs-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-6);
+    height: 32px;
+    padding: 0 var(--space-10);
+    font: inherit;
+    font-size: var(--type-xs);
+    font-weight: 500;
+    color: var(--text-primary);
+    background: rgba(var(--white-rgb), 0.55);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background var(--duration-instant);
+}
+.bs-trigger:hover { background: rgba(var(--white-rgb), 0.8); }
+.bs-trigger:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.bs-trigger:disabled { opacity: 0.5; cursor: default; }
+
+.bs-chevron {
+    flex-shrink: 0;
+    opacity: 0.6;
+    transition: transform var(--duration-instant);
+}
+.bs-select.is-open .bs-chevron { transform: rotate(180deg); }
+
+.bs-popup {
+    position: absolute;
+    z-index: 200;
+    top: calc(100% + 4px);
+    left: 0;
+    min-width: 100%;
+    max-height: 240px;
+    overflow-y: auto;
+    padding: var(--space-4);
+    background: var(--surface-solid);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-floating);
+    outline: none;
+}
+
+.bs-opt {
+    padding: var(--space-6) var(--space-10);
+    font-size: var(--type-xs);
+    color: var(--text-primary);
+    border-radius: var(--radius-tight);
+    cursor: pointer;
+    white-space: nowrap;
+}
+.bs-opt.is-active { background: rgba(var(--primary-rgb), 0.12); }
+.bs-opt.is-sel { color: var(--bamboo-primary); font-weight: 600; }
+.bs-opt.is-disabled { opacity: 0.45; cursor: default; }
+
+/* 紧凑变体：嵌在有底色的胶囊容器里（如归档筛选栏 .arch-filter-field） */
+.bs-select--compact .bs-trigger {
+    height: 100%;
+    padding: 0 var(--space-14) 0 0;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+}
+.bs-select--compact .bs-trigger:hover { background: transparent; }
+
+/* 暗色：与筛选栏同款「提亮」而非压暗 */
+:host(.dark) .bs-trigger {
+    background: rgba(var(--white-rgb), 0.07);
+    border-color: rgba(var(--border-dark-rgb, 60, 70, 60), 0.35);
+    color: var(--text-primary);
+}
+:host(.dark) .bs-trigger:hover { background: rgba(var(--white-rgb), 0.12); }
+:host(.dark) .bs-popup {
+    background: var(--surface-solid);
+    border-color: rgba(var(--border-dark-rgb, 60, 70, 60), 0.35);
+}
+:host(.dark) .bs-select--compact .bs-trigger { background: transparent; border: none; }

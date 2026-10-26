@@ -415,6 +415,10 @@ export const GoalsArchiver = {
      * 这些节点会被 innerHTML 重建，旧监听随旧节点一起消失。
      */
     _bindContentEvents(body) {
+        // 原生 <select> 的展开列表由系统绘制（macOS 蓝高亮 + 系统字体），无法用 CSS 美化，
+        // 与竹·水墨风格割裂 → 升级为自绘下拉（原生 select 保留为值容器与 change 事件源）。
+        if (window.BambooSelect) window.BambooSelect.enhanceAll(body);
+
         // 搜索输入 — 防抖
         const searchInput = body.querySelector('.arch-filter-input');
         if (searchInput) {

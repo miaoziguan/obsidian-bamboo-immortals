@@ -746,6 +746,8 @@ export const SettingsModal = {
         const newContent = temp.querySelector(`#tab-content-${tabId}`);
         if (newContent) {
             container.replaceWith(newContent);
+            // 原生 select 的展开列表由系统绘制，无法美化 → 升级为自绘下拉
+            if (window.BambooSelect) window.BambooSelect.enhanceAll(newContent);
             // 旧节点连同其监听器一起被丢弃，新节点是裸的。
             // 「通用」Tab 的输入框不走事件委托，必须在此重新绑定，
             // 否则切走再回来（或点过任一开关触发本方法）后这些设置项静默失效。

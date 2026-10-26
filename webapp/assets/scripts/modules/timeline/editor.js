@@ -120,6 +120,8 @@ export const TimelineEditor = {
             </div>
         `;
         byId('modalBody').innerHTML = content;
+        // 原生 select 的展开列表由系统绘制，无法美化 → 升级为自绘下拉
+        if (window.BambooSelect) window.BambooSelect.enhanceAll(byId('modalBody'));
         $('.modal-title').textContent = this.editingIndex >= 0 ? '编辑时段' : '添加时段';
     },
 

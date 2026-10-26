@@ -950,6 +950,8 @@ export const WhiteNoiseManager = {
                 '</div>';
 
             overlay.appendChild(dialog);
+            // 原生 select 的展开列表由系统绘制，无法美化 → 升级为自绘下拉
+            if (window.BambooSelect) window.BambooSelect.enhanceAll(dialog);
             modalMount().appendChild(overlay);
 
             requestAnimationFrame(() => overlay.classList.add('confirm-visible'));

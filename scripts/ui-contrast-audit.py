@@ -82,12 +82,16 @@ def split_args(s):
 
 
 def eval_num(expr):
-    """求值 calc()/min() 包裹的数值表达式，返回 (数值, 是否百分比)。"""
+    """求值 calc()/min()/max() 包裹的数值表达式，返回 (数值, 是否百分比)。
+    支持通用的 min(a, b) / max(a, b)（用于明度上下限钳制）。"""
     s = expr.strip()
-    s = re.sub(r'^calc\((.*)\)$', r'\1', s, flags=re.S).strip()
-    m = re.match(r'^min\(100%,\s*(.*)\)$', s, flags=re.S)
+    m = re.match(r'^(min|max)\((.*)\)$', s, flags=re.S)
     if m:
-        s = re.sub(r'^calc\((.*)\)$', r'\1', m.group(1).strip(), flags=re.S).strip()
+        op, args = m.group(1), split_args(m.group(2))
+        if len(args) >= 2:
+            vals = [eval_num(a)[0] for a in args]
+            return (min(vals) if op == 'min' else max(vals)), ('%' in s)
+    s = re.sub(r'^calc\((.*)\)$', r'\1', s, flags=re.S).strip()
     has_pct = '%' in s
     s2 = s.replace('%', '')
     if not re.fullmatch(r'[\d\.\s\+\-\*/()]+', s2):

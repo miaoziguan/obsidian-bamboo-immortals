@@ -154,12 +154,6 @@
 .scroll-screen::before, .scroll-screen-glass, .scroll-scanlines {
     display: none;
 }
-@keyframes scroll-flicker {
-    0%, 100% { opacity: 0.85; }
-    48% { opacity: 1; }
-    50% { opacity: 0.7; }
-    52% { opacity: 1; }
-}
 
 /* 番茄钟配色变量（青瓷竹节体系，供 SVG 引用）
    清理（R10 治理）：此处原重复定义了 --bamboo / --bamboo-deep / --ink / --ink-light / --jade。
@@ -238,18 +232,6 @@
   --fb-flame-inner: hsl(calc(var(--accent-hue) + -75), min(100%, calc(100% * var(--accent-saturation-ui, 1))), calc(70% + var(--accent-lightness-offset)));
   --fb-spark: hsl(calc(var(--accent-hue) + -84), min(100%, calc(100% * var(--accent-saturation-ui, 1))), calc(75% + var(--accent-lightness-offset)));
 }
-@keyframes scroll-flame-outer {
-    0%, 100% { transform: scale(1) scaleX(1); }
-    50%      { transform: scale(1.05) scaleX(0.92); }
-}
-@keyframes scroll-flame-inner {
-    0%, 100% { transform: scale(1) scaleX(1); }
-    50%      { transform: scale(0.94) scaleX(1.06); }
-}
-@keyframes scroll-spark-rise {
-    0%   { transform: translateY(0); opacity: 0.8; }
-    100% { transform: translateY(-11px); opacity: 0; }
-}
 /* 拔帽后火折子本体自动斜举 45°（更合点燃常理）；停 idle 动画使 transform 生效。
    支点取竹身中下部（约 65%），斜举时整支火折子（含底端）都离开画面底部，避免在底边缘拖出一条斜线 */
 .scroll-firebrand.cap-off {
@@ -285,50 +267,6 @@
 /* 去掉 drop-shadow：烟缕在跑 drift 动画（transform），带滤镜会让每帧重新计算滤镜，
    这是点燃后长期运行中的一项持续开销。烟缕本身有描边色，去掉投影视觉几乎无差别。 */
 .scroll-smoke-wisp { fill: none; }
-/* 姿态：7 个关键帧的连续变形——上飘的同时左右摆、扭腰、纵向拉伸并微微旋转，
-   避免单股烟看起来是「一个固定姿势在平移」 */
-@keyframes scroll-smoke-drift {
-    0%   { transform: translateY(0)     scaleX(1)    scaleY(1)    skewX(0deg)    rotate(0deg); }
-    15%  { transform: translateY(-2px)  scaleX(1.09) scaleY(1.03) skewX(3.5deg)  rotate(1.5deg); }
-    30%  { transform: translateY(-5px)  scaleX(0.92) scaleY(1.06) skewX(-2deg)   rotate(-1deg); }
-    45%  { transform: translateY(-7px)  scaleX(1.07) scaleY(1.02) skewX(2.8deg)  rotate(2deg); }
-    60%  { transform: translateY(-9px)  scaleX(0.95) scaleY(1.08) skewX(-3deg)   rotate(-1.8deg); }
-    80%  { transform: translateY(-12px) scaleX(1.04) scaleY(1.04) skewX(2deg)    rotate(1.2deg); }
-    100% { transform: translateY(-15px) scaleX(0.97) scaleY(1.06) skewX(-1.5deg) rotate(-0.8deg); }
-}
-/* 浓淡起伏：烟团边升边散，明暗交替强化流动错觉（幅度按各自的 --wisp-o 缩放，保留主次） */
-@keyframes scroll-smoke-fade {
-    0%, 100% { opacity: calc(var(--wisp-o, 0.6) * 0.5); }
-    50%      { opacity: var(--wisp-o, 0.6); }
-}
-/* 余烬呼吸只改 opacity、不再改 scale：余烬带固定 blur，缩放会迫使模糊每帧重新
-   光栅化（点燃后长期运行中的一项隐性开销）。仅明暗涨落，视觉差异极小。 */
-@keyframes scroll-ember-sleep {
-    0%, 100% { transform: translate(-50%,-50%); opacity: 0.85; }
-    50%      { transform: translate(-50%,-50%); opacity: 1; }
-}
-@keyframes scroll-ember-breath {
-    0%, 100% { transform: translate(-50%,-50%); opacity: 0.45; }
-    50%      { transform: translate(-50%,-50%); opacity: 0.8; }
-}
-@keyframes scroll-flare-flicker {
-    0%, 100% { opacity: 1;   transform: translateX(-50%) scale(1); }
-    50%      { opacity: 0.72; transform: translateX(-50%) scale(1.1); }
-}
-@keyframes scroll-flare-kiss {
-    0%   { transform: translateX(-50%) scale(1.35); opacity: 0.35; }
-    35%  { transform: translateX(-50%) scale(1.05); opacity: 1; }
-    100% { transform: translateX(-50%) scale(0.85); opacity: 0.6; }
-}
-@keyframes scroll-ember-kindle {
-    0%   { transform: translate(-50%,-50%) scale(0.3); opacity: 0.2; }
-    45%  { transform: translate(-50%,-50%) scale(1.15); opacity: 1; }
-    100% { transform: translate(-50%,-50%) scale(1); opacity: 0.9; }
-}
-@keyframes scroll-front-flicker {
-    0%, 100% { opacity: 0.9;  transform: scaleY(1); }
-    50%      { opacity: 1;    transform: scaleY(1.18); }
-}
 /* 青瓷竹节香插（SVG 渲染，见 DOM） */
 .scroll-censer {
     position: absolute;

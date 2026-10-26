@@ -1,11 +1,4 @@
-/* 香道功能根：接管原单栏布局，撑满舞台 */
 
-.scroll-body {
-    flex: 1;
-    display: grid;
-    grid-template-columns: 1fr;
-    min-height: 0;
-}
 
 /* 左栏：竹影终端 · 香道番茄钟（Pip-Boy 风 × 竹林雅致） */
 .scroll-left {
@@ -15,18 +8,6 @@
     min-height: 0;
     /* 背景透明，透出 .scroll-workbench 的主题渐变（与主页一致） */
     background: transparent;
-}
-
-/* 火折子可自由拖动画面，拖到边缘外必然产生横向溢出。若任其冒泡到可滚动的祖先，
-   底部就会长出一条横向滚动条（拖得越远、内容越宽，滑块越短）。
-   这里统一用 overflow-x: clip —— 裁掉溢出，但**不创建滚动容器**，因此不会有滚动条；
-   与 overflow-y: visible 共存也不会像 hidden 那样把另一方向隐式变成 auto。
-   overflow-clip-margin 留出 120px 余量，让化雁飞出、火折子拖出一段距离仍完整可见，
-   超出该余量才被裁掉。 */
-.scroll-body, .scroll-left, .scroll-screen, .scroll-screen-inner {
-    overflow-x: clip;
-    overflow-y: visible;
-    overflow-clip-margin: 120px;
 }
 
 /* 终端屏：无卡片背景，番茄钟直接融入左栏（撑满左栏） */
@@ -40,17 +21,6 @@
        统一规则设为 clip，裁掉火折子拖出画面产生的横向溢出且不生成滚动条 */
     display: flex;
 }
-/* 以下装饰层在去掉卡片背景后隐藏，保留 DOM 结构兼容 */
-.scroll-screen::before, .scroll-screen-glass, .scroll-scanlines {
-    display: none;
-}
-@keyframes scroll-flicker {
-    0%, 100% { opacity: 0.85; }
-    48% { opacity: 1; }
-    50% { opacity: 0.7; }
-    52% { opacity: 1; }
-}
-
 
 /* 番茄钟配色变量（青瓷竹节体系，供 SVG 引用） */
 .scroll-screen {
@@ -83,14 +53,6 @@
     /* 拖拽内联 transform = translate(...) rotate(-45deg) 的支点（竹身中下部），
        与火焰根部 +45° 反向旋转互抵，使火焰保持竖直、贴合倾斜后的筒口。 */
     transform-origin: 50% 65%;
-}
-/* 拖拽火折子期间全局禁用文本选择：杜绝原生选区高亮在画面中拖出多余色带
-   （mousedown 已 preventDefault，但 mousemove 仍可能扩展残留选区） */
-.scroll-workbench.scroll-dragging, .scroll-workbench.scroll-dragging * {
-    /* 无需 !important：shadow root 内只有本样式表，且本选择器优先级
-       高于任何元素级 / 继承来的 user-select 声明 */
-    user-select: none;
-    -webkit-user-select: none;
 }
 .scroll-firebrand.lit {
     opacity: 0;
@@ -221,19 +183,6 @@
 @keyframes scroll-firebrand-idle {
     0%, 100% { transform: translateY(0) rotate(-1deg); }
     50% { transform: translateY(-3px) rotate(1deg); }
-}
-
-.scroll-screen-inner {
-    position: relative;
-    z-index: 1;
-    flex: 1;
-    width: 100%;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: var(--space-6) var(--space-4);
 }
 
 /* 香道视觉：屏内一炷长香（青瓷竹节香插 · SVG 青烟 · 多层余烬 · 真实焚香）
@@ -777,11 +726,7 @@
 .scroll-censer-svg-back { z-index: 2; }
 .scroll-censer-svg-front { z-index: 4; }
 
-
 /* 终端屏内按钮：竹青描边 + 浅米底 + 微浮雕 */
-
-
-
 
 /* 暗色模式（shadow host .dark 注入）—— 深墨绿竹林 + 暖光香道 */
 :host(.dark) .scroll-left {
@@ -831,10 +776,4 @@
 }
 
 /* 通用按钮 */
-
-
-
-
-
-
 

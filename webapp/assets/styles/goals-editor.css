@@ -621,6 +621,14 @@
     outline: none;
 }
 
+/* 暗色下 input 会被 forms.css 的 `:host(.dark) input:not([type="range"])` 铺上
+   rgba(surface-dark, .8) 的**不透明深底**，比玻璃面板更暗 → 搜索框内部成为黑块
+   （用户反馈「黑色长条」的最后一层）。这里让输入框保持透明，底色交给外层容器。 */
+:host(.dark) .arch-filter-search input.arch-filter-input,
+:host(.dark) .arch-filter-field select.arch-select {
+    background-color: transparent;
+}
+
 /* 日期范围：紧凑输入 */
 .arch-date-range {
     display: flex;

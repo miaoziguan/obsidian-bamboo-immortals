@@ -1516,18 +1516,22 @@
    归档管理面板 — 暗色模式
    ========================================================================== */
 
+/* ⚠️ 2026-10-27 修正方向：亮色下这一整组用的是「淡色叠加」= 把卡片**提亮**；
+   暗色原实现却用 surface-dark 叠加 = 把玻璃面板**压暗**，于是筛选栏成了
+   面板上的一条近黑色长条（用户反馈「黑色长条覆盖在搜索框上方」）。
+   现改为与亮色同向：用白色低透明度**提亮**。 */
 :host(.dark) .arch-filter-bar {
-    background: rgba(var(--surface-dark-rgb, 20, 30, 24), 0.25);
+    background: rgba(var(--white-rgb), 0.05);
     border-color: rgba(var(--border-dark-rgb, 60, 70, 60), 0.25);
 }
 
 :host(.dark) .arch-filter-search {
     border-color: rgba(var(--border-dark-rgb, 60, 70, 60), 0.35);
-    background: rgba(var(--surface-dark-rgb, 20, 30, 24), 0.3);
+    background: rgba(var(--white-rgb), 0.07);
 }
 :host(.dark) .arch-filter-search:focus-within {
     /* 与亮色一致：只提亮背景，不画激活框 */
-    background: rgba(var(--surface-dark-rgb, 20, 30, 24), 0.5);
+    background: rgba(var(--white-rgb), 0.12);
 }
 
 :host(.dark) .arch-icon-btn:hover {
@@ -1536,11 +1540,11 @@
 
 :host(.dark) .arch-filter-field {
     border-color: rgba(var(--border-dark-rgb, 60, 70, 60), 0.35);
-    background: rgba(var(--surface-dark-rgb, 20, 30, 24), 0.55);
+    background: rgba(var(--white-rgb), 0.07);
 }
 :host(.dark) .arch-filter-field:focus-within {
     /* 与亮色一致：只提亮背景，不画激活框 */
-    background: rgba(var(--surface-dark-rgb, 20, 30, 24), 0.75);
+    background: rgba(var(--white-rgb), 0.12);
 }
 :host(.dark) .arch-date-trigger:hover {
     border-color: rgba(var(--primary-rgb), 0.5);

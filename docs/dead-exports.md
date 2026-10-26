@@ -25,7 +25,7 @@
 > 扫描：webapp JS(排除 tests) + src TS(排除 __tests__) + 根 main.ts（插件入口）；排除 TS type/interface/declare。
 > 判定：生产代码零消费者（标识符 + 引号内字符串键）即记为死导出。非单词名($/$$)用专用边界。
 
-**零消费者运行时导出合计：67**
+**零消费者运行时导出合计：66**
 
 | 导出名 | 状态 | 内部/测试引用 |
 |---|---|---|
@@ -57,7 +57,6 @@
 | `buildStubBackHTML` | 内部使用(冗余export) | 内部:2 测试:0 |
 | `buildTicketHTML` | 内部使用(冗余export) | 内部:2 测试:1 |
 | `computeActiveDuration` | 内部使用(冗余export) | 内部:2 测试:0 |
-| `createDefaultSection` | 内部使用(冗余export) | 内部:2 测试:0 |
 | `getActivePeriod` | 内部使用(冗余export) | 内部:2 测试:0 |
 | `getPeriodDotStates` | 内部使用(冗余export) | 内部:2 测试:1 |
 | `isCurrentPeriod` | 内部使用(冗余export) | 内部:2 测试:1 |
@@ -65,8 +64,8 @@
 | `PERIOD_LABELS` | 内部使用(冗余export) | 内部:1 测试:0 |
 | `PERIOD_ORDER` | 内部使用(冗余export) | 内部:1 测试:0 |
 | `renderGoalsSection` | 内部使用(冗余export) | 内部:3 测试:0 |
-| `renderTimelineSection` | 内部使用(冗余export) | 内部:4 测试:0 |
 | `renderTodoSection` | 内部使用(冗余export) | 内部:3 测试:0 |
+| `setupBambooTooltips` | 内部使用(冗余export) | 内部:3 测试:0 |
 | `setupTimelineHoverEffects` | 内部使用(冗余export) | 内部:4 测试:0 |
 | `stubIconClock` | 内部使用(冗余export) | 内部:1 测试:0 |
 | `stubIconFlip` | 内部使用(冗余export) | 内部:1 测试:0 |

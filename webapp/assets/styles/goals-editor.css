@@ -600,6 +600,27 @@
     outline: none;
 }
 
+/* 归档筛选栏：输入框与下拉**不画聚焦环**。
+   焦点提示改由外层 .arch-filter-search / .arch-filter-field 的背景提亮承担。
+   为什么需要两组选择器：
+   - 亮色环来自 base.css 的 `:where(input,select:focus-visible){ box-shadow: var(--focus-ring) }`
+     （:where 权重为 0，普通类选择器即可压过）；
+   - 暗色环来自 forms.css 的 `:host(.dark) input/select:focus`，带 3px 环 + 12px 外发光，
+     权重 (0,2,1)，必须用 `:host(.dark) .类名:focus`（(0,4,0)）才压得住。
+   背景仍会变化，键盘用户不会完全失去焦点感知。 */
+.arch-filter-input:focus,
+.arch-filter-input:focus-visible,
+.arch-select:focus,
+.arch-select:focus-visible,
+/* 暗色：forms.css 用的是 `:host(.dark) input:not([type="range"]):focus`，
+   权重 (0,4,1)。这里用「父类 + 元素 + 类 + :focus」= (0,5,1) 才压得住，
+   否则暗色下输入框仍会冒出 3px 环 + 12px 光晕。 */
+:host(.dark) .arch-filter-search input.arch-filter-input:focus,
+:host(.dark) .arch-filter-field select.arch-select:focus {
+    box-shadow: none;
+    outline: none;
+}
+
 /* 日期范围：紧凑输入 */
 .arch-date-range {
     display: flex;

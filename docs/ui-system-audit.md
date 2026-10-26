@@ -2,7 +2,10 @@
 
 > 目标：为 webapp UI 系统重塑提供「现状地图 + token 架构 + 护栏」。
 > **深度优先于广度**——本报告只做客观盘点，不做改版/美化。
-> 配套工具：`scripts/ui-token-audit.py`（token 审计）、`scripts/ui-component-inventory.py`（组件盘点）。
+> 配套工具：`scripts/ui-token-audit.py`（token 审计）、`scripts/ui-component-inventory.py`（组件盘点）、
+> `scripts/ui-contrast-audit.py`（对比度）、`scripts/ui-visual-baseline.mjs`（视觉基线）。
+> 收敛方案（交付物 ④）见 [`docs/ui-token-proposal.md`](ui-token-proposal.md)；
+> 活体样式指南见 `docs/ui-styleguide.html`。
 
 ---
 

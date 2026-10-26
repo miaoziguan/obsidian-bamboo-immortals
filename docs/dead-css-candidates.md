@@ -26,8 +26,8 @@ CSS 类名是模块/主题扩展 API 的天然契约面：外部主题、外部�
 | `achievement(s)` | 34 | **建议删（整簇真死）** | 源 JS 仅 4 处非 class 引用；无任何 `achievement-*` 类名使用 → 疑似已移除成就系统 UI |
 | `history` | 11 | **建议删（整簇真死）** | `history-*` 无任 class 令牌使用 → 疑似已移除历史视图 UI |
 | `status` | 10 | **建议删（整簇真死）** | `status-*` 无任 class 令牌（注意：状态徽标若真需保留须在源码补 class 引用，否则视为残留） |
-| `verify` | 7 | **建议删（整簇真死）** | `verify-*` 全分区 0 → 疑似已移除校验 UI |
-| `habit` | 6 | **建议删（整簇真死）** | `habit-*` 全分区 0 |
+| `verify` | 7 | **✅ 已删除**（commit 见下） | `verify-*` 全分区 0 且全仓 classList/className/模板无动态引用；已从 `components-interaction.css` 移除整块 7 条死规则（含嵌套 `.verify-item.ok/.warn`、`.verify-status.tag-execute/.tag-miss`） |
+| `habit` | 6 | **✅ 已删除**（commit 见下） | `habit-*` 全仓 classList/className/模板无动态引用；已从 `section-manager.css` 移除整块死规则、从 `forms.css` 暗色模式共享列表移除 `.habit-progress-fill` |
 | `edit` | 6 | **✅ 已删除**（commit 见下） | `edit-*` 全分区 0 且全仓 classList/className/模板无动态引用；已从 `components-interaction.css`/`forms.css`/`base.css` 移除 6 条死规则（含共享选择器列表中的 `.edit-btn` 与 `@keyframes slideDownFromTop`），保留异名活规则 `.catm-edit-btn`/`.card-edit-hint`/`.goal-inline-edit-hint` |
 | `action` | 5 | **✅ 已删除**（commit f0f03cf） | `action-*` 全分区 0；已从 `components-interaction.css` 移除 5 条死规则，保留同区段活规则 `.normal-row`/`.normal-label`/`.normal-content`/`.focus-box` |
 | `theme-guide` | (theme 内) | **建议删（子簇真死）** | `theme-guide*` 全 0；theme 簇整体 MIXED |
@@ -76,7 +76,7 @@ CSS 类名是模块/主题扩展 API 的天然契约面：外部主题、外部�
 > 扫描：定义 `webapp/assets/styles/**/*.css`；使用 `webapp/assets/scripts/**/*.js`(排除 tests) + `webapp/*src*.html`/`index.html`（刻意排除 4 个打包产物 html，避免把 CSS 定义当使用）。
 > 误判防护：十六进制颜色值过滤；动态拼接类名（`prefix`+n）移至「疑似动态」列，不计入判定。
 
-**确认死类名：602　疑似动态（已剔除）：3　死 ID 选择器：3**
+**确认死类名：587　疑似动态（已剔除）：3　死 ID 选择器：3**
 
 ### 按首段聚类（确认死类名）
 
@@ -104,10 +104,8 @@ CSS 类名是模块/主题扩展 API 的天然契约面：外部主题、外部�
 | `bm` | 8 | `bm-btn--md`, `bm-btn--lg`, `bm-btn--outline`, `bm-btn--ghost`, `bm-btn--success`, `bm-btn--loading`, … |
 | `completed` | 7 | `completed-legend`, `completed-horizontal`, `completed-item`, `completed-icon`, `completed-title`, `completed-more`, … |
 | `todo` | 7 | `todo-item-text`, `todo-item-action`, `todo-item-row`, `todo-item-name`, `todo-item-hint`, `todo-section-title`, … |
-| `verify` | 7 | `verify-list`, `verify-item`, `verify-badge`, `verify-content`, `verify-title`, `verify-detail`, … |
 | `btn` | 6 | `btn-sm`, `btn-primary`, `btn-secondary`, `btn-outline`, `btn-danger`, `btn-success` |
 | `empty` | 6 | `empty-state`, `empty-state-text`, `empty-state-btn`, `empty-icon`, `empty-text`, `empty-desc` |
-| `habit` | 6 | `habit-progress-fill`, `habit-actions`, `habit-btn`, `habit-btn-complete`, `habit-btn-reset`, `habit-btn-manage` |
 | `time` | 6 | `time-alerts-grid`, `time-alert`, `time-span-item`, `time-alert-list`, `time-span-stats`, `time-input` |
 | `arch` | 5 | `arch-date-input`, `arch-sep`, `arch-select-progress`, `arch-date-range`, `arch-date-err` |
 | `cs` | 5 | `cs-liantai`, `cs-stone`, `cs-bianshan`, `cs-yezi`, `cs-mei` |
@@ -143,7 +141,6 @@ CSS 类名是模块/主题扩展 API 的天然契约面：外部主题、外部�
 | `item` | 2 | `item-complete`, `item-action-btn` |
 | `modal` | 2 | `modal-hero-big-number`, `modal-actions` |
 | `notstarted` | 2 | `notstarted-legend`, `notstarted-horizontal` |
-| `tag` | 2 | `tag-execute`, `tag-miss` |
 | `tier` | 2 | `tier-bar-wrapper`, `tier-info` |
 | `animations` | 1 | `animations-paused` |
 | `bad` | 1 | `bad` |

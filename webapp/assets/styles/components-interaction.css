@@ -415,55 +415,6 @@ button, .btn, .date-nav-btn, .view-toggle-btn, .history-close, .modal-close, .to
     width: var(--min-touch-target);
     height: var(--min-touch-target);
 }
-
-/* ========== 验证清单 ========== */
-.verify-list { margin: var(--space-4) 0; display: flex; flex-direction: column; gap: var(--space-2); }
-.verify-item {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    padding: var(--space-3) var(--space-4);
-    border-radius: var(--radius-lg);
-    border: 1px solid var(--border-light);
-    background: var(--card-bg);
-    transition: transform, opacity, box-shadow, border-color, background-color 0.3s ease;
-    box-shadow: var(--shadow-surface);
-}
-.verify-item:hover {
-    transform: translateX(4px);
-    box-shadow: var(--shadow-card);
-    border-color: rgba(var(--primary-rgb), 0.2);
-}
-.verify-item.ok { background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.04) 0%, var(--card-bg) 100%); }
-.verify-item.warn { background: linear-gradient(135deg, rgba(var(--gold-rgb), 0.04) 0%, var(--card-bg) 100%); }
-.verify-badge {
-    width: var(--min-touch-target);
-    height: var(--min-touch-target);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: var(--type-lead);
-    flex-shrink: 0;
-    background: rgba(var(--primary-rgb), 0.08);
-    border-radius: var(--radius-md);
-}
-.verify-item.ok .verify-badge { background: rgba(var(--primary-rgb), 0.12); }
-.verify-item.warn .verify-badge { background: rgba(var(--gold-rgb), 0.12); }
-.verify-content { flex: 1; min-width: 0; }
-.verify-title { font-size: var(--type-base); font-weight: 600; color: var(--text-primary); margin-bottom: var(--space-1); }
-.verify-detail { font-size: var(--type-sm); color: var(--text-secondary); line-height: 1.4; }
-.verify-status {
-    font-size: var(--type-xs);
-    font-weight: 600;
-    padding: var(--space-1) var(--space-3);
-    border-radius: var(--radius-3xl);
-    white-space: nowrap;
-    margin-left: auto;
-    flex-shrink: 0;
-}
-.verify-status.tag-execute { background: rgba(var(--primary-rgb), 0.12); color: var(--bamboo-primary); }
-.verify-status.tag-miss { background: rgba(138, 138, 138, 0.12); color: var(--ink-pale); }
-
 /* ========== 诊断分析 ========== */
 .diagnosis-group { margin-bottom: var(--space-4); }
 .diagnosis-tag {

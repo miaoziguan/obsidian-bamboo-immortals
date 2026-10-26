@@ -1,11 +1,5 @@
 /* ========== 画中卷·复古打字机 ========== */
 
-.scroll-feature-tab.is-active {
-  background: var(--scroll-tab-active, #6b5640);
-  color: #f4ecd8;
-  box-shadow: 0 2px 6px rgba(80,60,30,0.25);
-}
-
 /* ===== 画中卷 · 复古寻呼机打字 feature（移植 Vintage Pager 视觉） ===== */
 .scroll-typewriter-feature {
   flex: 1;
@@ -283,7 +277,7 @@
   vertical-align: middle;
 }
 .tw-case-right { display: inline-flex; align-items: center; gap: 0.27em; margin-left: auto; }
-.tw-signal { letter-spacing: -0.07em; }
+
 
 /* 屏幕（深色玻璃盖板，荧光绿透出） */
 .tw-screen {
@@ -414,7 +408,7 @@
 .tw-screen-top > span, .tw-screen-font { white-space: nowrap; }
 .tw-screen-font { color: rgb(var(--bamboo-deep-rgb)); opacity: 0.85; }
 .theme-dark .tw-screen-font, :host(.dark) .tw-screen-font { color: rgb(var(--green-very-bright-rgb)); opacity: 0.8; }
-.tw-batt { opacity: 0.6; }
+
 
 /* 窄栏（.scroll-body ≤340px，由 scrollManager 的 ResizeObserver 加 .is-narrow）：
    顶栏由「两端对齐」改为「居中」，并允许两块之间折行。
@@ -567,7 +561,8 @@
 
 .tw-grill { display: none; flex-direction: column; gap: 0.27em; opacity: 0.2; }
 .tw-grill i { display: block; width: 3.2em; height: 0.13em; border-radius: 0.13em; background: var(--black); }
-@media (min-width: 768px)       {
+@media (min-width: 768px)        {
+
 
 
 
@@ -723,12 +718,7 @@ body.dark .tw-print, :host(.dark) .tw-print {
   line-height: 1;
   box-shadow: inset 0 1px 2px rgba(var(--black-rgb),0.12);
 }
-.tw-auto {
-  display: inline-flex;
-  align-items: center;
-  vertical-align: middle;
-  margin-left: 0.4em;
-}
+
 /* 暗色模式：品牌牌改深底荧光绿字 */
 .theme-dark .tw-brand, :host(.dark) .tw-brand {
   /* 凹刻药丸：渐变背景让"上深下浅"在小尺寸下也能被肉眼读出，
@@ -1246,4 +1236,3 @@ body.dark .tw-print, :host(.dark) .tw-print {
 
 
 /* 移植自 base.css：画中卷暗色模式 canvas 提示文字配色（typewriter 域，原 base.css:2531） */
-:host(.dark) .tw-canvas-hint { color: var(--ink-light); }

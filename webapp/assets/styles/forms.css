@@ -122,15 +122,12 @@
 
 
 /* 浅色背景变体用主色 spinner，保证对比度 */
-.bm-btn--secondary.bm-btn--loading::after {
-    border-color: rgba(var(--primary-rgb), 0.3);
-    border-top-color: var(--bamboo-primary);
-}
 @keyframes bm-btn-spin {
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
 }
-@media (prefers-reduced-motion: reduce)       {
+@media (prefers-reduced-motion: reduce)        {
+
 
 
 
@@ -145,68 +142,17 @@
  * 此处将 border/animation 放到 ::before 伪元素上，与 base.css 的 reduced-motion
  * 覆写（.loading-spinner::before { animation: none; ... }）对齐，使其不再是死代码。
  * 复用 bm-btn-spin 动画，供独立 spinner 元素使用。 */
-.loading-spinner {
-    display: inline-block;
-    width: 1.2em;
-    height: 1.2em;
-    position: relative;
-    vertical-align: middle;
-}
-.loading-spinner::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border: 2px solid rgba(var(--primary-rgb), 0.2);
-    border-top-color: var(--bamboo-primary);
-    border-radius: 50%;
-    animation: bm-btn-spin 0.6s linear infinite;
-    box-sizing: border-box;
-}
+
 
 
 /* ========== 触摸友好的通用类 ========== */
-.touch-target {
-    min-height: var(--min-touch-target);
-    min-width: var(--min-touch-target);
-}
 
 
 /* ========== Header Quick Buttons ========== */
-.header-right .header-quick-btn {
-    width: 44px;
-    height: 44px;
-    min-width: 44px;
-    min-height: 44px;
-    border-radius: var(--radius-xl);
-    border: 1px solid var(--border-light);
-    background: var(--card-bg);
-    color: var(--bamboo-primary);
-    cursor: pointer;
-    transition: transform, opacity, box-shadow, border-color, background-color var(--transition-smooth);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
-    position: relative;
-    z-index: 1;
-    line-height: 1;
-    vertical-align: middle;
-    touch-action: manipulation;
-    -webkit-tap-highlight-color: transparent;
-    box-shadow: 0 2px 8px rgba(var(--deep-rgb), 0.08);
-}
 
-.header-right .header-quick-btn:hover {
-    background: var(--action-bg);
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(var(--deep-rgb), 0.15);
-    border-color: var(--bamboo-primary);
-}
 
-.header-right .header-quick-btn:active {
-    transform: translateY(0);
-    box-shadow: 0 2px 8px rgba(var(--deep-rgb), 0.08);
-}
+
+
 
 
 /* ========== 星光竹林暗色模式优化 ========== */
@@ -219,21 +165,15 @@
    且 host 在暗色下需要 --surface-solid 兜底，不能设为透明。 */
 
 /* 竹林暗色模式：标题渐变 */
-:host(.dark) .section-title {
-    background: var(--section-title-gradient);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-}
 
 /* 竹林暗色模式：卡片微光边框 */
-:host(.dark) .bamboo-card, :host(.dark) .goal-row, :host(.dark) .kpi-card {
+:host(.dark) .bamboo-card, :host(.dark) .goal-row {
     background: var(--card-bg);
     border-color: rgba(var(--primary-rgb), 0.25);
 }
 
 /* 竹林暗色模式：进度条光晕 */
-:host(.dark) .goal-row-bar-fill, :host(.dark) .bamboo-progress-fill, :host(.dark) .progress-fill-green {
+:host(.dark) .goal-row-bar-fill {
     box-shadow: 0 0 8px rgba(var(--primary-rgb), 0.4);
 }
 
@@ -286,9 +226,7 @@
     box-shadow: 0 0 20px rgba(var(--primary-rgb), 0.3);
 }
 
-:host(.dark) .header-quick-btn:hover {
-    box-shadow: 0 0 16px rgba(var(--primary-rgb), 0.25);
-}
+
 
 /* 竹林暗色模式：Toast 通知微光 */
 :host(.dark) .toast {
@@ -314,18 +252,14 @@
     background: rgba(var(--primary-rgb), 0.1);
 }
 
-@media (max-width: 480px)       {
+@media (max-width: 480px)        {
 
 
 
 
 
 
-    .header-right .header-quick-btn {
-        width: var(--touch-target);
-        height: var(--touch-target);
-        min-width: var(--touch-target);
-        min-height: var(--touch-target);
-    }
+
+    
 }
 

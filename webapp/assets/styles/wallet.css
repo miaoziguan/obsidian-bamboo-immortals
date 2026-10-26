@@ -34,12 +34,7 @@
     line-height: 1.05;
     display: inline-block;
 }
-.shop-balance-amount-block--centered .shop-balance-value .shop-currency {
-    font-size: var(--type-xl, clamp(16px, 4vw, 22px));
-    margin-right: 4px;
-    font-weight: 700;
-    vertical-align: 0.3em;
-}
+
 .shop-balance-amount-block--centered .shop-balance-frozen {
     font-size: var(--type-mini, 10px);
     color: var(--text-tertiary, var(--ink-pale));

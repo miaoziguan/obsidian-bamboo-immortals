@@ -236,9 +236,7 @@
 
 
 
-.gho-stat-today .gho-stat-icon, .gho-stat-today .gho-stat-val, .gho-stat-today .gho-stat-label {
-    color: var(--gold);
-}
+
 
 /* 战略复盘按钮 */
 .gho-review-btn {
@@ -586,25 +584,15 @@
     word-break: break-word;
     overflow-wrap: anywhere;
 }
-.rw-360 .goal-item-date, .rw-360 .goal-item-check {
+.rw-360 .goal-item-date {
     font-size: var(--type-mini);
 }
 
 /* 饼图：最小 */
-.rw-360 .pie-chart-wrapper {
-    width: 90px;
-    height: 90px;
-}
 
 /* KPI 卡片 */
-.rw-360 .kpi-card.goal-kpi {
-    padding: var(--space-2);
-}
 
 /* 统计大数字：略小 */
-.rw-360 .stats-card-value, .rw-360 .stat-number {
-    font-size: var(--type-lg);
-}
 
 
 /* 健康分详情面板 - 精致光影 */
@@ -863,17 +851,9 @@
     transform: translateY(0);
 }
 
-.health-tips-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-}
 
-.health-tips-list li {
-    font-size: var(--type-sm);
-    color: var(--text-secondary);
-    padding: 6px 0;
-}
+
+
 
 .health-tips {
     padding: var(--space-4);

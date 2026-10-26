@@ -99,21 +99,9 @@
     opacity: 0.9;
 }
 
-.stats-section-primary .stats-section-title {
-    font-size: var(--type-md);
-    font-weight: 900;
-    color: var(--bamboo-primary);
-    padding-left: 12px;
-    border-left: 3px solid var(--bamboo-primary);
-}
 
-.stats-section-warning .stats-section-title {
-    font-size: var(--type-md);
-    font-weight: 800;
-    color: var(--health-warning);
-    padding-left: 12px;
-    border-left: 3px solid var(--health-warning);
-}
+
+
 
 /* 核心指标 */
 .core-metrics-grid {
@@ -173,11 +161,7 @@
     box-shadow: 0 2px 10px rgba(var(--danger-bright-rgb), 0.12);
 }
 
-.alert-icon-wrapper.warning {
-    background: linear-gradient(145deg, rgba(var(--warning-orange-rgb), 0.18), rgba(var(--warning-orange-rgb), 0.12));
-    border: 1px solid rgba(var(--warning-orange-rgb), 0.25);
-    box-shadow: 0 2px 10px rgba(var(--warning-orange-rgb), 0.12);
-}
+
 
 
 
@@ -192,10 +176,7 @@
     color: var(--health-danger);
 }
 
-.alert-item.warning .alert-days {
-    background: rgba(var(--warning-orange-rgb), 0.12);
-    color: var(--health-warning);
-}
+
 
 /* 进度梯队 */
 .progress-tiers-grid {
@@ -282,385 +263,125 @@
 
 
 
-.priority-card.high:hover {
-    border-color: rgba(var(--danger-bright-rgb), 0.2);
-}
-
-.priority-card.medium:hover {
-    border-color: rgba(var(--warning-orange-rgb), 0.2);
-}
-
-.priority-card.low:hover {
-    border-color: rgba(var(--gray-rgb), 0.2);
-}
 
 
 
 
 
-.priority-card.high .priority-indicator {
-    background: var(--health-danger);
-    box-shadow: 0 0 0 5px rgba(var(--danger-bright-rgb), 0.18);
-}
-
-.priority-card.medium .priority-indicator {
-    background: var(--health-warning);
-    box-shadow: 0 0 0 5px rgba(var(--warning-orange-rgb), 0.18);
-}
-
-.priority-card.low .priority-indicator {
-    background: var(--health-neutral);
-    box-shadow: 0 0 0 5px rgba(var(--gray-rgb), 0.18);
-}
 
 
 
 
 
-.priority-card.high .priority-value {
-    color: var(--health-danger);
-}
 
-.priority-card.medium .priority-value {
-    color: var(--health-warning);
-}
 
-.priority-card.low .priority-value {
-    color: var(--health-neutral);
-}
+
+
+
+
+
+
+
 
 /* 成就卡片 */
-.achievement-icon-wrapper {
-    width: 48px;
-    height: 48px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: linear-gradient(145deg, rgba(var(--warning-orange-rgb), 0.15), rgba(var(--warning-orange-rgb), 0.1));
-    border-radius: var(--radius-md);
-    border: 1px solid rgba(var(--warning-orange-rgb), 0.2);
-}
 
-.achievement-icon-wrapper-horizontal {
-    width: 40px;
-    height: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: linear-gradient(145deg, rgba(var(--warning-orange-rgb), 0.15), rgba(var(--warning-orange-rgb), 0.1));
-    border-radius: var(--radius-sm);
-    border: 1px solid rgba(var(--warning-orange-rgb), 0.2);
-    flex-shrink: 0;
-    margin-bottom: 10px;
-}
+
 
 /* 成就页面样式 */
-.achievements-container {
-    padding: var(--space-2) 0;
-}
 
-.achievements-grid-full {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: var(--space-4);
-}
 
-.achievement-card-full {
-    display: flex;
-    align-items: flex-start;
-    gap: var(--space-3);
-    padding: 18px;
-    background: linear-gradient(135deg, rgba(var(--warning-orange-rgb), 0.08), rgba(255, 250, 205, 0.06));
-    border: 1px solid rgba(var(--warning-orange-rgb), 0.2);
-    border-radius: var(--radius-lg);
-    position: relative;
-    transition: transform 0.3s ease, box-shadow 0.3s ease, background 0.3s ease;
-}
 
-.achievement-card-full:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 12px 32px rgba(var(--warning-orange-rgb), 0.18);
-    background: linear-gradient(135deg, rgba(var(--warning-orange-rgb), 0.12), rgba(255, 250, 205, 0.09));
-}
 
-.achievement-icon-wrapper-full {
-    width: 52px;
-    height: 52px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: linear-gradient(145deg, rgba(var(--warning-orange-rgb), 0.2), rgba(var(--warning-orange-rgb), 0.12));
-    border-radius: var(--radius-lg);
-    border: 1px solid rgba(var(--warning-orange-rgb), 0.25);
-    flex-shrink: 0;
-}
 
-.achievement-content-full {
-    flex: 1;
-    min-width: 0;
-}
 
-.achievement-title-full {
-    font-size: var(--type-md);
-    font-weight: 700;
-    color: var(--text-primary);
-    margin-bottom: 6px;
-    display: block;
-}
 
-.achievement-desc-full {
-    font-size: var(--type-sm);
-    color: var(--text-secondary);
-    line-height: 1.5;
-    display: block;
-}
 
-.achievement-unlock-badge {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    width: 24px;
-    height: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.15), rgba(var(--primary-rgb), 0.1));
-    border-radius: 50%;
-    color: var(--bamboo-primary);
-}
 
-.achievements-summary-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: var(--space-3);
-}
 
-.achievement-summary-card {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 16px 12px;
-    background: var(--card-bg);
-    border-radius: var(--radius-md);
-    border: 1px solid var(--border-light);
-    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
-}
 
-.achievement-summary-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(var(--black-rgb), 0.08);
-    border-color: rgba(var(--warning-orange-rgb), 0.25);
-}
 
-.achievement-summary-icon {
-    width: 40px;
-    height: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 10px;
-    background: linear-gradient(145deg, rgba(var(--warning-orange-rgb), 0.15), rgba(var(--warning-orange-rgb), 0.08));
-    border-radius: var(--radius-sm);
-}
 
-.achievement-summary-value {
-    font-size: var(--type-hero);
-    font-weight: 700;
-    color: var(--text-primary);
-    margin-bottom: 4px;
-}
 
-.achievement-summary-label {
-    font-size: var(--type-sm);
-    color: var(--text-secondary);
-}
 
-.achievements-empty-state {
-    text-align: center;
-    padding: 48px 24px;
-}
 
-.achievements-empty-icon {
-    width: 80px;
-    height: 80px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0 auto 20px;
-    background: linear-gradient(145deg, rgba(var(--warning-orange-rgb), 0.08), rgba(var(--warning-orange-rgb), 0.04));
-    border-radius: var(--radius-3xl);
-    border: 1px dashed rgba(var(--warning-orange-rgb), 0.2);
-}
 
-.achievements-empty-title {
-    font-size: var(--type-heading);
-    font-weight: 700;
-    color: var(--text-primary);
-    margin-bottom: 10px;
-}
 
-.achievements-empty-desc {
-    font-size: var(--type-base);
-    color: var(--text-secondary);
-    margin-bottom: 16px;
-}
 
-.achievements-empty-hint {
-    font-size: var(--type-sm);
-    color: var(--text-tertiary);
-    padding: 8px 16px;
-    background: rgba(var(--warning-orange-rgb), 0.06);
-    border-radius: var(--radius-3xl);
-    display: inline-block;
-}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 /* 暗色模式成就页面适配 */
-:host(.dark) .achievement-card-full {
-    background: linear-gradient(135deg, rgba(var(--warning-orange-rgb), 0.12), rgba(var(--warning-orange-rgb), 0.06));
-    border-color: rgba(var(--warning-orange-rgb), 0.3);
-}
 
-:host(.dark) .achievement-card-full:hover {
-    background: linear-gradient(135deg, rgba(var(--warning-orange-rgb), 0.18), rgba(var(--warning-orange-rgb), 0.1));
-}
 
-:host(.dark) .achievement-icon-wrapper-full {
-    background: linear-gradient(145deg, rgba(var(--warning-orange-rgb), 0.25), rgba(var(--warning-orange-rgb), 0.15));
-    border-color: rgba(var(--warning-orange-rgb), 0.35);
-}
 
-:host(.dark) .achievement-title-full {
-    color: var(--bamboo-pale);
-}
 
-:host(.dark) .achievement-summary-card {
-    background: rgba(var(--surface-deep-rgb), 0.9);
-    border-color: rgba(var(--primary-rgb), 0.15);
-}
 
-:host(.dark) .achievement-summary-icon {
-    background: linear-gradient(145deg, rgba(var(--warning-orange-rgb), 0.2), rgba(var(--warning-orange-rgb), 0.1));
-}
 
-:host(.dark) .achievement-summary-value {
-    color: var(--bamboo-pale);
-}
 
-:host(.dark) .achievements-empty-title {
-    color: var(--bamboo-pale);
-}
 
-:host(.dark) .achievements-empty-icon {
-    background: linear-gradient(145deg, rgba(var(--warning-orange-rgb), 0.12), rgba(var(--warning-orange-rgb), 0.06));
-    border-color: rgba(var(--warning-orange-rgb), 0.25);
-}
 
-:host(.dark) .achievements-empty-hint {
-    background: rgba(var(--warning-orange-rgb), 0.1);
-}
+
+
+
+
+
+
+
+
+
 
 /* 成就规则样式 */
-.achievement-rules-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: var(--space-3);
-}
 
-.achievement-rule-card {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    padding: 14px;
-    background: var(--card-bg);
-    border: 1px solid var(--border-light);
-    border-radius: var(--radius-md);
-    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
-}
 
-.achievement-rule-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(var(--black-rgb), 0.08);
-    border-color: rgba(var(--warning-orange-rgb), 0.25);
-}
 
-.achievement-rule-icon {
-    width: 40px;
-    height: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: linear-gradient(145deg, rgba(var(--warning-orange-rgb), 0.15), rgba(var(--warning-orange-rgb), 0.08));
-    border-radius: var(--radius-sm);
-    color: var(--health-warning);
-    flex-shrink: 0;
-}
 
-.achievement-rule-content {
-    flex: 1;
-    min-width: 0;
-}
 
-.achievement-rule-title {
-    font-size: var(--type-md);
-    font-weight: 600;
-    color: var(--text-primary);
-    margin-bottom: 4px;
-}
 
-.achievement-rule-desc {
-    font-size: var(--type-sm);
-    color: var(--text-secondary);
-    line-height: 1.4;
-}
+
+
+
+
+
+
 
 /* 暗色模式成就规则适配 */
-:host(.dark) .achievement-rule-card {
-    background: rgba(var(--surface-deep-rgb), 0.9);
-    border-color: rgba(var(--primary-rgb), 0.15);
-}
 
-:host(.dark) .achievement-rule-icon {
-    background: linear-gradient(145deg, rgba(var(--warning-orange-rgb), 0.2), rgba(var(--warning-orange-rgb), 0.1));
-}
 
-:host(.dark) .achievement-rule-title {
-    color: var(--bamboo-pale);
-}
+
+
 
 /* 成就规则响应式适配 - rw-768 */
-.rw-768 .achievement-rules-grid {
-    grid-template-columns: 1fr;
-}
 
 /* 成就页面响应式适配 - rw-768 */
-.rw-768 .achievements-grid-full {
-    grid-template-columns: 1fr;
-}
 
-.rw-768 .achievements-summary-grid {
-    grid-template-columns: 1fr;
-}
+
 
 /* 响应式适配 - rw-768 */
-.rw-768 .stats-two-col-grid {
-    grid-template-columns: 1fr;
-}
 
-.rw-768 .core-metrics-grid {
-    grid-template-columns: repeat(2, 1fr);
-}
 
-.rw-768 .progress-tiers-grid, .rw-768 .priority-grid {
-    grid-template-columns: 1fr;
-}
 
-.rw-768 .time-alerts-cards {
-    grid-template-columns: 1fr;
-}
 
-.rw-768 .priority-cards {
-    grid-template-columns: 1fr;
-}
+
+
+
+
 
 /* === 新设计：时间预警卡片 === */
 .time-alerts-cards {
@@ -870,33 +591,9 @@
     color: var(--text-secondary);
 }
 
-.pie-container {
-    width: 160px;
-    flex-shrink: 0;
-    position: relative;
-    border-radius: var(--radius-3xl);
-    background: linear-gradient(145deg, 
-        rgba(var(--white-rgb), 0.95), 
-        rgba(var(--pale-green-alt-rgb), 0.9)
-    );
-    padding: 14px;
-    border: 1px solid rgba(var(--primary-rgb), 0.12);
-    box-shadow: 0 4px 16px rgba(var(--deep-rgb), 0.06);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
 
-.pie-container::before {
-    content: '';
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    width: 24px;
-    height: 24px;
-    background: radial-gradient(circle, rgba(var(--health-success-rgb), 0.15), transparent);
-    border-radius: 50%;
-}
+
+
 
 
 
@@ -927,40 +624,20 @@
 
 
 /* 进行中图例 */
-.legend-item-new.inprogress-legend {
-    border-color: rgba(var(--warning-orange-rgb), 0.2);
-}
 
-.legend-item-new.inprogress-legend::before {
-    background: linear-gradient(180deg, var(--health-warning), var(--health-gold-clr));
-}
 
-.legend-item-new.inprogress-legend .legend-dot-new {
-    background: linear-gradient(145deg, var(--health-warning), var(--health-gold-clr));
-    box-shadow: 0 0 0 6px rgba(var(--warning-orange-rgb), 0.18);
-}
 
-.legend-item-new.inprogress-legend .legend-value-new {
-    color: var(--health-warning);
-}
+
+
+
 
 /* 未开始图例 */
-.legend-item-new.notstarted-legend {
-    border-color: rgba(var(--gray-rgb), 0.2);
-}
 
-.legend-item-new.notstarted-legend::before {
-    background: linear-gradient(180deg, var(--health-neutral), var(--health-neutral));
-}
 
-.legend-item-new.notstarted-legend .legend-dot-new {
-    background: linear-gradient(145deg, var(--health-neutral), var(--health-neutral));
-    box-shadow: 0 0 0 6px rgba(var(--gray-rgb), 0.18);
-}
 
-.legend-item-new.notstarted-legend .legend-value-new {
-    color: var(--health-neutral);
-}
+
+
+
 
 /* === 新设计：优先级分布 === */
 
@@ -983,98 +660,32 @@
 
 
 /* 高优先级卡片 */
-.priority-card-new.high-priority {
-    border-color: rgba(var(--danger-bright-rgb), 0.25);
-}
 
-.priority-card-new.high-priority .priority-card-icon {
-    background: linear-gradient(145deg, 
-        rgba(var(--danger-bright-rgb), 0.22), 
-        rgba(var(--danger-bright-rgb), 0.14)
-    );
-    color: var(--health-danger);
-    box-shadow: 0 6px 20px rgba(var(--danger-bright-rgb), 0.22);
-}
 
-.priority-card-new.high-priority .priority-card-number {
-    color: var(--health-danger);
-}
 
-.priority-card-new.high-priority .priority-card-label {
-    color: var(--health-danger);
-}
+
+
+
 
 /* 中优先级卡片 */
-.priority-card-new.medium-priority {
-    border-color: rgba(var(--warning-orange-rgb), 0.25);
-}
 
-.priority-card-new.medium-priority .priority-card-icon {
-    background: linear-gradient(145deg, 
-        rgba(var(--warning-orange-rgb), 0.22), 
-        rgba(var(--warning-orange-rgb), 0.14)
-    );
-    color: var(--health-warning);
-    box-shadow: 0 6px 20px rgba(var(--warning-orange-rgb), 0.2);
-}
 
-.priority-card-new.medium-priority .priority-card-number {
-    color: var(--health-warning);
-}
 
-.priority-card-new.medium-priority .priority-card-label {
-    color: var(--health-gold-clr);
-}
+
+
+
 
 /* 低优先级卡片 */
-.priority-card-new.low-priority {
-    border-color: rgba(var(--gray-rgb), 0.25);
-}
 
-.priority-card-new.low-priority .priority-card-icon {
-    background: linear-gradient(145deg, 
-        rgba(var(--gray-rgb), 0.22), 
-        rgba(var(--gray-rgb), 0.14)
-    );
-    color: var(--health-neutral);
-    box-shadow: 0 6px 20px rgba(var(--gray-rgb), 0.18);
-}
 
-.priority-card-new.low-priority .priority-card-number {
-    color: var(--health-neutral);
-}
 
-.priority-card-new.low-priority .priority-card-label {
-    color: #4B5563;
-}
 
-.pie-container-vertical {
-    width: 100%;
-    max-width: 200px;
-    position: relative;
-    border-radius: var(--radius-3xl);
-    background: linear-gradient(145deg, 
-        rgba(var(--white-rgb), 0.95), 
-        rgba(var(--pale-green-alt-rgb), 0.9)
-    );
-    padding: 18px;
-    border: 1px solid rgba(var(--primary-rgb), 0.12);
-    box-shadow: 0 4px 16px rgba(var(--deep-rgb), 0.06);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
 
-.pie-container-vertical::before {
-    content: '';
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    width: 24px;
-    height: 24px;
-    background: radial-gradient(circle, rgba(var(--health-success-rgb), 0.15), transparent);
-    border-radius: 50%;
-}
+
+
+
+
+
 
 
 
@@ -1099,52 +710,20 @@
 
 
 /* 进行中图例 */
-.legend-item-horizontal.inprogress-horizontal {
-    border-color: rgba(var(--warning-orange-rgb), 0.25);
-}
 
-.legend-item-horizontal.inprogress-horizontal::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: 4px;
-    background: linear-gradient(180deg, var(--health-warning), var(--health-gold-clr));
-}
 
-.legend-item-horizontal.inprogress-horizontal .legend-dot-horizontal {
-    background: linear-gradient(145deg, var(--health-warning), var(--health-gold-clr));
-    box-shadow: 0 0 0 6px rgba(var(--warning-orange-rgb), 0.18);
-}
 
-.legend-item-horizontal.inprogress-horizontal .legend-value-horizontal {
-    color: var(--health-warning);
-}
+
+
+
 
 /* 未开始图例 */
-.legend-item-horizontal.notstarted-horizontal {
-    border-color: rgba(var(--gray-rgb), 0.25);
-}
 
-.legend-item-horizontal.notstarted-horizontal::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: 4px;
-    background: linear-gradient(180deg, var(--health-neutral), var(--health-neutral));
-}
 
-.legend-item-horizontal.notstarted-horizontal .legend-dot-horizontal {
-    background: linear-gradient(145deg, var(--health-neutral), var(--health-neutral));
-    box-shadow: 0 0 0 6px rgba(var(--gray-rgb), 0.18);
-}
 
-.legend-item-horizontal.notstarted-horizontal .legend-value-horizontal {
-    color: var(--health-neutral);
-}
+
+
+
 
 
 :host(.dark) .goal-priority-dot.high { background: rgba(var(--danger-bright-rgb), 0.75); } /* 柔和红色 */
@@ -1211,7 +790,7 @@
 :host(.dark) .goal-date-range { color: var(--bamboo-light); }
 :host(.dark) .goal-date-overdue { color: rgba(var(--danger-bright-rgb), 0.85); } /* 柔和红色 */
 :host(.dark) .goal-date-soon { color: var(--bamboo-warning); }
-:host(.dark) .goal-row-meta-empty { color: var(--bamboo-pale); }
+
 :host(.dark) .goal-row-remaining { color: var(--bamboo-light); }
 
 :host(.dark) .goal-item-list:not(.collapsed) {
@@ -1310,13 +889,9 @@
     color: var(--ink-light);
 }
 
-:host(.dark) .gho-stat-today {
-    background: rgba(var(--warning-yellow-rgb), 0.12);
-}
 
-:host(.dark) .gho-stat-today .gho-stat-icon, :host(.dark) .gho-stat-today .gho-stat-val, :host(.dark) .gho-stat-today .gho-stat-label {
-    color: var(--gold);
-}
+
+
 
 :host(.dark) .gho-review-btn {
     background: transparent;
@@ -1363,32 +938,12 @@
 }
 
 /* 暗色模式适配 SVG 圆环 */
-:host(.dark) .gho-svg-bg {
-    stroke: rgba(var(--primary-rgb), 0.15);
-    filter: drop-shadow(0 1px 0 rgba(var(--primary-rgb), 0.1));
-}
 
-:host(.dark) .gho-hero-inner {
-    background: 
-        radial-gradient(circle at 30% 30%, rgba(var(--surface-dark-rgb-mid), 0.9), rgba(var(--surface-deep-rgb), 0.6)),
-        linear-gradient(135deg, rgba(var(--primary-rgb), 0.06), rgba(var(--primary-rgb), 0.03));
-    box-shadow: 
-        0 4px 12px rgba(var(--black-rgb), 0.35) inset,
-        0 -2px 0 rgba(var(--primary-rgb), 0.15) inset,
-        0 2px 6px rgba(var(--black-rgb), 0.2);
-}
 
-:host(.dark) .gho-hero-ring:hover .gho-hero-inner {
-    box-shadow: 
-        0 5px 15px rgba(var(--black-rgb), 0.4) inset,
-        0 -2px 0 rgba(var(--primary-rgb), 0.18) inset,
-        0 3px 10px rgba(var(--black-rgb), 0.25);
-}
 
-:host(.dark) .gho-hero-score {
-    color: var(--bamboo-pale);
-    text-shadow: 0 1px 0 rgba(var(--black-rgb), 0.3);
-}
+
+
+
 
 :host(.dark) .health-score-number {
     color: var(--bamboo-pale);
@@ -1497,11 +1052,6 @@
 /* ========== goals-stats.css 暗色模式 ========== */
 
 /* 暗色模式适配 */
-:host(.dark) .stat-card {
-    background: linear-gradient(135deg, rgba(var(--surface-dark-rgb-mid), 0.95), rgba(var(--surface-deep-rgb), 0.9));
-    border-color: rgba(var(--primary-rgb),0.2);
-    box-shadow: 0 1px 0 rgba(var(--primary-rgb), 0.1) inset, 0 4px 16px rgba(var(--black-rgb), 0.3);
-}
 
 :host(.dark) .stat-value {
     color: var(--bamboo-pale);
@@ -1524,7 +1074,7 @@
         0 0 0 1px rgba(var(--primary-rgb), 0.1);
 }
 
-:host(.dark) .core-metric-card, :host(.dark) .tier-card, :host(.dark) .priority-card, :host(.dark) .alert-item {
+:host(.dark) .core-metric-card, :host(.dark) .tier-card {
     background: linear-gradient(145deg, rgba(var(--surface-deep-rgb), 0.95), rgba(var(--surface-deep-alt-rgb), 0.92));
     border-color: rgba(var(--primary-rgb), 0.15);
 }
@@ -1536,27 +1086,20 @@
     border-color: rgba(var(--primary-rgb), 0.25);
 }
 
-:host(.dark) .alert-item:hover {
-    box-shadow: 0 4px 16px rgba(var(--black-rgb), 0.3);
-    border-color: rgba(var(--primary-rgb), 0.25);
-}
+
 
 /* 暗色模式：统计页预警卡片 — 替换全局 rule 的裸 RGBA 亮色背景 */
-:host(.dark) .stats-section-warning {
-    background: linear-gradient(145deg, rgba(var(--warning-orange-rgb), 0.12), rgba(var(--warning-orange-rgb), 0.06));
-    border-color: rgba(var(--warning-orange-rgb), 0.2);
-}
 
-:host(.dark) .time-alert, :host(.dark) .progress-tier, :host(.dark) .category-item, :host(.dark) .priority-item, :host(.dark) .heatmap-container {
+:host(.dark) .category-item {
     background: rgba(var(--surface-dark-rgb-mid), 0.8);
     border-color: rgba(var(--primary-rgb),0.15);
 }
 
-:host(.dark) .tier-label, :host(.dark) .legend-label, :host(.dark) .category-value, :host(.dark) .priority-label {
+:host(.dark) .tier-label, :host(.dark) .category-value {
     color: var(--text-secondary);
 }
 
-:host(.dark) .tier-count, :host(.dark) .legend-value {
+:host(.dark) .tier-count {
     color: var(--bamboo-pale);
 }
 
@@ -1603,31 +1146,15 @@
 }
 
 /* 已完成目标暗色模式 */
-:host(.dark) .completed-item {
-    background: linear-gradient(135deg, rgba(var(--health-success-rgb), 0.1), rgba(var(--mint-rgb), 0.06));
-    border-color: rgba(var(--health-success-rgb), 0.2);
-}
 
 /* 暗色模式：成就卡片 — 替换全局规则中的裸 RGB 字面量 */
-:host(.dark) .achievement-card-full {
-    background: linear-gradient(135deg, rgba(var(--warning-orange-rgb), 0.08), rgba(var(--surface-dark-rgb), 0.3));
-}
-:host(.dark) .achievement-card-full:hover {
-    background: linear-gradient(135deg, rgba(var(--warning-orange-rgb), 0.14), rgba(var(--surface-dark-rgb-mid), 0.4));
-    box-shadow: 0 12px 32px rgba(var(--warning-orange-rgb), 0.14);
-}
 
-:host(.dark) .completed-icon {
-    color: var(--bamboo-light);
-}
 
-:host(.dark) .completed-title {
-    color: var(--text-primary);
-}
 
-:host(.dark) .completed-more {
-    color: var(--text-secondary);
-}
+
+
+
+
 
 /* 活跃指标暗色模式 */
 :host(.dark) .activity-item {
@@ -1663,17 +1190,10 @@
 
 
 /* 暗色模式适配 */
-:host(.dark) .completed-item {
-    background: linear-gradient(135deg, rgba(var(--health-success-rgb), 0.1), rgba(var(--primary-rgb), 0.06));
-}
 
-:host(.dark) .completed-title {
-    color: var(--bamboo-pale);
-}
 
-:host(.dark) .time-span-item {
-    background: rgba(var(--surface-dark-rgb-mid), 0.8);
-}
+
+
 
 :host(.dark) .time-span-label {
     color: var(--bamboo-pale);
@@ -1699,27 +1219,14 @@
 
 
 /* 暗色模式适配 */
-:host(.dark) .achievement-card {
-    background: linear-gradient(135deg, rgba(var(--gold-bright-rgb), 0.15), rgba(var(--gold-bright-rgb), 0.06));
-}
 
-:host(.dark) .achievement-card-horizontal {
-    background: linear-gradient(135deg, rgba(var(--gold-bright-rgb), 0.15), rgba(var(--gold-bright-rgb), 0.06));
-    border-color: rgba(var(--warning-orange-rgb), 0.3);
-}
 
-:host(.dark) .achievement-card-horizontal:hover {
-    background: linear-gradient(135deg, rgba(var(--gold-bright-rgb), 0.2), rgba(var(--gold-bright-rgb), 0.1));
-}
 
-:host(.dark) .achievement-icon-wrapper-horizontal {
-    background: linear-gradient(145deg, rgba(var(--warning-orange-rgb), 0.2), rgba(var(--warning-orange-rgb), 0.15));
-    border-color: rgba(var(--warning-orange-rgb), 0.3);
-}
 
-:host(.dark) .achievement-title {
-    color: var(--bamboo-pale);
-}
+
+
+
+
 
 :host(.dark) .activity-item {
     background: rgba(var(--surface-dark-rgb-mid), 0.8);
@@ -1767,26 +1274,10 @@
 /* ========== goals-editor.css 暗色模式 ========== */
 
 /* 暗色模式下操作按钮可见性修复 */
-:host(.dark) .goal-action-cancel {
-    background: rgba(var(--primary-rgb), 0.12);
-    border-color: rgba(var(--primary-rgb), 0.3);
-    color: var(--ink-medium);
-}
-:host(.dark) .goal-action-cancel:hover {
-    background: rgba(var(--primary-rgb), 0.2);
-    border-color: var(--bamboo-pale-hover);
-    color: var(--text-primary);
-}
+
 
 /* 暗色模式：所有操作按钮基础可见性 */
-:host(.dark) .goal-action-btn {
-    background: rgba(var(--primary-rgb), 0.08);
-    border: 1px solid rgba(var(--primary-rgb), 0.2);
-}
-:host(.dark) .goal-action-btn:hover {
-    background: rgba(var(--primary-rgb), 0.15);
-    border-color: rgba(var(--primary-rgb), 0.35);
-}
+
 
 
 :host(.dark) .cultivation-realm-row.is-current { box-shadow: 0 0 16px rgba(var(--primary-rgb), .08); }
@@ -2077,20 +1568,10 @@
 }
 
 /* 日期输入暗色 */
-:host(.dark) .arch-date-input {
-    border-color: rgba(var(--border-dark-rgb, 60, 70, 60), 0.35);
-    background: rgba(var(--surface-dark-rgb, 20, 30, 24), 0.35);
-    color-scheme: dark;
-}
-:host(.dark) .arch-date-input:hover, :host(.dark) .arch-date-input:focus {
-    border-color: rgba(var(--text-secondary-rgb, 140, 150, 140), 0.5);
-    background: rgba(var(--surface-dark-rgb, 20, 30, 24), 0.55);
-}
-:host(.dark) .arch-date-input:focus {
-    box-shadow: 0 0 0 2px rgba(var(--bamboo-primary-rgb, 62, 179, 112), 0.12);
-}
 
-:host(.dark) .arch-sep { color: var(--text-tertiary); }
+
+
+
 
 /* 卡片暗色 */
 :host(.dark) .arch-card {
@@ -2189,11 +1670,6 @@
    =========================== */
 
 /* 滑动提示：暗色下改为深色表面 + 亮色文字 */
-:host(.dark) .swipe-hint {
-    background: rgba(var(--surface-dark-rgb-mid), 0.95);
-    color: var(--text-primary);
-    box-shadow: 0 2px 8px rgba(var(--black-rgb), 0.3);
-}
 
 /* FAB 操作按钮 tooltip：同 .swipe-hint 的反色问题 */
 :host(.dark) .fab-action-btn .tooltip {

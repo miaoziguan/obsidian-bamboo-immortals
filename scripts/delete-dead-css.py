@@ -119,20 +119,29 @@ def process_pseudo_inner(inner, dead):
             kept.append(a2)
     return ', '.join(kept)
 
-def process_selector(sel, dead):
-    """处理单个顶层选择器（无顶层逗号）。保守模式：
-    返回新选择器，或 None（整条删除）。
-    - 无 .class 令牌的结构性选择器（:host / :root / body / * 等）→ 一律保留（绝不删全局块）。
-    - 含 .class 且全部为死类（零活类令牌）→ 整条删除（None）。
-    - 含任一活类令牌（top-level .alive，或 :is()/:where() 剔死参后仍有活参）→ 整体保留
-      （死类令牌一并保留，绝不剥落/扩大）。
-    - :not()/:has()/:host() 括号内的类原样保留（不触发删）。"""
+def process_selector(sel, dead, covered=None, aggressive=False):
+    """处理单个顶层选择器（无顶层逗号）。返回新选择器，或 None（整条删除）。
+
+    保守模式（aggressive=False）：
+    - 无 .class 令牌的结构性选择器（:host / :root / body / * 等）→ 一律保留。
+    - 含 .class 且全部为死类（零活类令牌）→ 整条删除。
+    - 含任一活类令牌 → 整体保留（死类令牌一并保留，绝不剥落/扩大）。
+    - :not()/:has()/:host() 括号内的类原样保留（不触发删）。
+
+    激进模式（aggressive=True，需传 covered）：
+    - 在保守行为基础上，额外删掉「顶层含死令牌」的复合/后代选择器，
+      但【仅当】该选择器内所有活类令牌都出现在某条「零死令牌的干净规则」里
+      （covered 集合）——保证删掉这条不会让任何活类失去全部样式（不孤立活类）。
+    - 若会孤立某活类 → 保留整条（安全阀，杜绝 .urgent 被连坐删除的旧事故）。"""
     i = 0
     n = len(sel)
     out = []
     depth = 0
     has_alive = False
-    has_class = False  # 输出中是否含 .class 令牌
+    has_class = False   # 输出中是否含 .class 令牌
+    empty_is = False    # :is()/:where() 剔死参后为空 → 该选择器无法匹配
+    top_dead = False    # 顶层（depth 0）是否含死类令牌
+    alive_tokens = set()
     while i < n:
         c = sel[i]
         if c == '(':
@@ -159,6 +168,11 @@ def process_selector(sel, dead):
                         out.append(':' + hit + '(' + inner2 + ')')
                         has_alive = True
                         has_class = True
+                        for mm in CLASS_RE.finditer(inner2):
+                            if mm.group(1) not in dead:
+                                alive_tokens.add(mm.group(1))
+                    else:
+                        empty_is = True
                 else:
                     out.append(':' + hit + '(' + inner + ')')  # not/has 原样保留
                 i = k
@@ -170,22 +184,31 @@ def process_selector(sel, dead):
             has_class = True
             if cls not in dead:
                 has_alive = True
+                alive_tokens.add(cls)
+            elif depth == 0:
+                top_dead = True
             i = m.end()
             continue
         out.append(c)
         i += 1
     if not has_class:
         return ''.join(out)  # 结构性选择器（无 .class）→ 原样保留
+    if empty_is:
+        return None  # :is()/:where() 剔死参后为空 → 无法匹配 → 整条删除
+    if aggressive and covered is not None and top_dead:
+        if alive_tokens <= covered:
+            return None  # 顶层死令牌 + 活类均有干净规则兜底 → 整条删除（激进）
+        return ''.join(out)  # 会孤立活类 → 保留整条（安全阀）
     if not has_alive:
         return None  # 含 .class 但全死 → 整条删除
     return ''.join(out)
 
-def process_preamble(preamble, dead):
+def process_preamble(preamble, dead, covered=None, aggressive=False):
     sels = split_selectors(preamble)
     dropped = []
     kept = []
     for s in sels:
-        ns = process_selector(s, dead)
+        ns = process_selector(s, dead, covered, aggressive)
         if ns is None or ns == '':
             dropped.append(s)
         else:
@@ -230,7 +253,7 @@ def find_blocks(text):
         i += 1
     return blocks
 
-def process_css(text, dead):
+def process_css(text, dead, covered=None, aggressive=False):
     """返回 (new_text, drops_list, removed_blocks_count)。注释感知扫描 + 保留前导注释。"""
     blocks = find_blocks(text)
     result = []
@@ -259,13 +282,13 @@ def process_css(text, dead):
             result.append(lead + comment_part + block); cursor = e; continue
         gap = real[:len(real) - len(real.lstrip())]   # 注释与选择器间的原空白（换行等）
         if real_sel.startswith('@media') or real_sel.startswith('@supports') or real_sel.startswith('@container'):
-            processed, sub_drops, _ = process_css(inner, dead)
+            processed, sub_drops, _ = process_css(inner, dead, covered, aggressive)
             drops.extend(sub_drops)
             result.append(lead + comment_part + real + ' {\n' + processed + '}')
         elif real_sel.startswith('@'):
             result.append(lead + comment_part + real + block)   # @keyframes / @font-face 等原样保留
         else:
-            new_actual, dropped = process_preamble(real_sel, dead)
+            new_actual, dropped = process_preamble(real_sel, dead, covered, aggressive)
             if new_actual is None:
                 drops.extend(dropped)
                 removed += 1
@@ -280,10 +303,38 @@ def process_css(text, dead):
 def cluster_head(name):
     return name.split('-')[0] if '-' in name else name
 
+def iter_rule_selectors(text):
+    """遍历 CSS 文本中每条规则，产出原始选择器字符串（递归进入 @media/@supports/@container）。"""
+    blocks = find_blocks(text)
+    cursor = 0
+    for (s, e) in blocks:
+        pre = text[cursor:s]
+        cursor = e
+        rest = pre.lstrip()
+        if not rest:
+            continue
+        if '*/' in rest:
+            real = rest[rest.rindex('*/') + 2:]
+        else:
+            real = rest
+        real_sel = real.strip()
+        if not real_sel:
+            continue
+        if real_sel.startswith('@media') or real_sel.startswith('@supports') or real_sel.startswith('@container'):
+            inner = text[s + 1:e - 1]
+            yield from iter_rule_selectors(inner)
+        elif real_sel.startswith('@'):
+            continue
+        else:
+            yield from split_selectors(real_sel)
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--cluster', nargs='*')
     ap.add_argument('--all-mixed', action='store_true')
+    ap.add_argument('--all', action='store_true')
+    ap.add_argument('--aggressive', action='store_true')
+    ap.add_argument('--exclude', nargs='*', default=[])
     ap.add_argument('--apply', action='store_true')
     args = ap.parse_args()
 
@@ -294,16 +345,33 @@ def main():
     elif args.all_mixed:
         exclude = {'kpi', 'cs', 'ai', 'achievement', 'achievements'}
         dead_in_scope = [c for c in dead if '-' in c and cluster_head(c) not in exclude]
+    elif args.all:
+        dead_in_scope = [c for c in dead if '-' in c]
     else:
-        print('请指定 --cluster 或 --all-mixed'); sys.exit(1)
+        print('请指定 --cluster / --all-mixed / --all'); sys.exit(1)
 
+    ex = set(args.exclude)
+    if ex:
+        dead_in_scope = [c for c in dead_in_scope if c not in ex]
     dead_set = set(dead_in_scope)
-    print(f'范围内死名（{len(dead_in_scope)}）：{dead_in_scope}')
+    print(f'范围内死名（{len(dead_in_scope)}）' + ('  [AGGRESSIVE]' if args.aggressive else ''))
+
+    css_files = sorted(set(glob.glob(os.path.join(STYLES, '*.css')) + glob.glob(os.path.join(STYLES, '**', '*.css'), recursive=True)))
+
+    covered = None
+    if args.aggressive:
+        covered = set()
+        for p in css_files:
+            for sel in iter_rule_selectors(open(p, encoding='utf-8', errors='ignore').read()):
+                toks = set(CLASS_RE.findall(sel))
+                if not (toks & dead_set):
+                    covered |= toks
+        print(f'covered（干净规则覆盖的活类数）={len(covered)}')
 
     changed = []
-    for p in glob.glob(os.path.join(STYLES, '*.css')) + glob.glob(os.path.join(STYLES, '**', '*.css'), recursive=True):
+    for p in css_files:
         text = open(p, encoding='utf-8', errors='ignore').read()
-        new_text, drops, removed = process_css(text, dead_set)
+        new_text, drops, removed = process_css(text, dead_set, covered, args.aggressive)
         if new_text != text:
             changed.append((p, drops, removed, len(text) - len(new_text)))
     if not changed:
@@ -316,7 +384,7 @@ def main():
         print('\n[DRY-RUN] 未写入。加 --apply 执行。'); return
     for p, drops, removed, delta in changed:
         text = open(p, encoding='utf-8', errors='ignore').read()
-        new_text, _, _ = process_css(text, dead_set)
+        new_text, _, _ = process_css(text, dead_set, covered, args.aggressive)
         open(p, 'w', encoding='utf-8').write(new_text)
         print(f'已写入 {os.path.relpath(p)}')
     print('完成。请 git diff 复核 + npm run build:webapp + preflight 核验。')

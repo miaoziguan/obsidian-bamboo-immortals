@@ -225,7 +225,8 @@
 /* === 天气 + 语录 — 响应式（与项目既有断点对齐） === */
 
 /* TABLET / NARROW OBSIDIAN SIDEBAR (≤768px) */
-@media (max-width: 768px)       {
+@media (max-width: 768px)        {
+
 
 
 
@@ -255,7 +256,8 @@
 }
 
 /* MOBILE (≤480px) — 头部已在 base.css 堆叠，这里做内容压缩 */
-@media (max-width: 480px)       {
+@media (max-width: 480px)        {
+
 
 
 
@@ -285,7 +287,8 @@
 }
 
 /* TINY (≤360px) — 极限压缩 */
-@media (max-width: 360px)       {
+@media (max-width: 360px)        {
+
 
 
 

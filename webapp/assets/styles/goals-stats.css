@@ -1,39 +1,17 @@
 /* ============== 统计概览样式 ============== */
 
-.stat-card {
-    background: linear-gradient(135deg, rgba(var(--white-rgb), 0.95), rgba(var(--pale-green-rgb), 0.9));
-    border: 1px solid rgba(var(--primary-rgb),0.1);
-    border-radius: var(--radius-lg);
-    padding: var(--space-4);
-    text-align: center;
-    box-shadow: 0 1px 0 rgba(var(--white-rgb), 0.8) inset, 0 4px 12px rgba(var(--deep-rgb),0.06);
-    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
-}
 
-.stat-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(var(--deep-rgb),0.1);
-}
 
-.stat-card.primary {
-    background: linear-gradient(135deg, rgba(var(--primary-rgb),0.08), rgba(var(--primary-rgb), 0.05));
-    border-color: rgba(var(--primary-rgb),0.2);
-}
+
 
 .stat-card.success {
     background: linear-gradient(135deg, rgba(var(--health-success-rgb), 0.08), rgba(var(--mint-rgb), 0.05));
     border-color: rgba(var(--health-success-rgb), 0.2);
 }
 
-.stat-card.warning {
-    background: linear-gradient(135deg, rgba(var(--warning-orange-rgb), 0.08), rgba(var(--warning-orange-rgb), 0.05));
-    border-color: rgba(var(--warning-orange-rgb), 0.2);
-}
 
-.stat-icon {
-    font-size: var(--type-mega);
-    margin-bottom: 8px;
-}
+
+
 
 .stat-value {
     font-size: var(--type-mega);
@@ -60,10 +38,7 @@
     background: linear-gradient(135deg, rgba(var(--warning-orange-rgb), 0.08), rgba(var(--warning-orange-rgb), 0.05));
 }
 
-.time-alert.warning {
-    border-color: rgba(var(--warning-orange-rgb), 0.2);
-    background: linear-gradient(135deg, rgba(var(--warning-orange-rgb), 0.05), rgba(var(--warning-orange-rgb), 0.03));
-}
+
 
 .time-alert.error {
     border-color: rgba(var(--danger-alt-rgb), 0.3);
@@ -90,11 +65,7 @@
     color: rgb(var(--danger-alt-rgb));
 }
 
-.pie-chart-wrapper {
-    flex-shrink: 0;
-    width: clamp(100px, 32vw, 140px);
-    height: clamp(100px, 32vw, 140px);
-}
+
 
 
 
@@ -114,18 +85,8 @@
 
 
 /* 进度梯队 */
-.progress-tiers {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
 
-.progress-tier {
-    background: rgba(var(--white-rgb), 0.8);
-    border: 1px solid rgba(var(--primary-rgb),0.08);
-    border-radius: var(--radius-md);
-    padding: 12px 14px;
-}
+
 
 
 
@@ -204,64 +165,23 @@
 
 
 
-.priority-item.high {
-    border-color: rgba(var(--danger-alt-rgb), 0.2);
-    background: linear-gradient(135deg, rgba(var(--danger-alt-rgb), 0.06), rgba(var(--danger-alt-rgb), 0.03));
-}
-
-.priority-item.medium {
-    border-color: rgba(var(--warning-orange-rgb), 0.2);
-    background: linear-gradient(135deg, rgba(var(--warning-orange-rgb), 0.06), rgba(var(--warning-orange-rgb), 0.03));
-}
-
-.priority-item.low {
-    border-color: rgba(var(--gray-rgb), 0.2);
-    background: linear-gradient(135deg, rgba(var(--gray-rgb), 0.06), rgba(var(--gray-rgb), 0.03));
-}
 
 
 
 
 
-.priority-item.high .priority-value {
-    color: rgb(var(--danger-alt-rgb));
-}
 
-.priority-item.medium .priority-value {
-    color: var(--health-warning);
-}
 
-.priority-item.low .priority-value {
-    color: var(--health-neutral);
-}
+
+
+
+
 
 /* 热力图 */
-.heatmap-container {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    padding: 14px;
-    background: rgba(var(--white-rgb), 0.8);
-    border: 1px solid rgba(var(--primary-rgb),0.08);
-    border-radius: var(--radius-md);
-}
 
-.heatmap-day {
-    width: clamp(22px, 7vw, 28px);
-    height: clamp(22px, 7vw, 28px);
-    border-radius: var(--radius-2xs);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: var(--type-micro);
-    color: var(--text-tertiary);
-    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
-}
 
-.heatmap-day:hover {
-    transform: scale(1.15);
-    box-shadow: 0 4px 12px rgba(var(--black-rgb), 0.1);
-}
+
+
 
 /* 空状态 */
 
@@ -288,20 +208,7 @@
 
 
 
-.time-span-item.short {
-    border-color: rgba(var(--primary-rgb),0.2);
-    background: linear-gradient(135deg, rgba(var(--primary-rgb),0.08), rgba(var(--primary-rgb), 0.05));
-}
 
-.time-span-item.medium {
-    border-color: rgba(var(--warning-orange-rgb), 0.2);
-    background: linear-gradient(135deg, rgba(var(--warning-orange-rgb), 0.08), rgba(var(--warning-orange-rgb), 0.05));
-}
-
-.time-span-item.long {
-    border-color: rgba(var(--purple-rgb), 0.2);
-    background: linear-gradient(135deg, rgba(var(--purple-rgb), 0.08), rgba(var(--purple-pale-rgb), 0.05));
-}
 
 .time-span-label {
     font-size: var(--type-base);
@@ -320,17 +227,11 @@
     font-weight: 800;
 }
 
-.time-span-item.short .time-span-value {
-    color: var(--bamboo-primary);
-}
 
-.time-span-item.medium .time-span-value {
-    color: var(--health-warning);
-}
 
-.time-span-item.long .time-span-value {
-    color: rgb(var(--purple-rgb));
-}
+
+
+
 
 /* 时间跨度分布 - 横版布局 */
 .time-span-horizontal {
@@ -429,12 +330,7 @@
 }
 
 /* 响应式布局 - 统计网格窄屏降级 */
-.rw-460 .stats-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-.rw-360 .stats-grid {
-    grid-template-columns: 1fr;
-}
+
 
 /* 响应式布局 - rw-460 */
 .rw-460 .time-span-horizontal {
@@ -464,87 +360,28 @@
 }
 
 /* 成就展示 */
-.achievements-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    gap: var(--space-3);
-}
 
-.achievements-horizontal {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-}
 
-.achievement-card {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 16px 12px;
-    background: linear-gradient(135deg, rgba(var(--gold-bright-rgb), 0.1), rgba(255,250,205,0.08));
-    border: 1px solid rgba(var(--warning-orange-rgb), 0.2);
-    border-radius: var(--radius-lg);
-    text-align: center;
-    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
-}
 
-.achievement-card-horizontal {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    padding: 12px 16px;
-    background: linear-gradient(135deg, rgba(var(--gold-bright-rgb), 0.1), rgba(255,250,205,0.08));
-    border: 1px solid rgba(var(--warning-orange-rgb), 0.2);
-    border-radius: var(--radius-md);
-    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
-}
 
-.achievement-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 8px 24px rgba(var(--warning-orange-rgb), 0.15);
-}
 
-.achievement-card-horizontal:hover {
-    transform: translateX(4px);
-    box-shadow: 0 4px 16px rgba(var(--warning-orange-rgb), 0.15);
-    background: linear-gradient(135deg, rgba(var(--gold-bright-rgb), 0.15), rgba(255,250,205,0.12));
-}
 
-.achievement-content-horizontal {
-    flex: 1;
-    min-width: 0;
-}
 
-.achievement-content-horizontal .achievement-title {
-    display: block;
-    font-size: var(--type-base);
-    font-weight: 600;
-    color: var(--text-primary);
-    margin-bottom: 2px;
-}
 
-.achievement-content-horizontal .achievement-desc {
-    display: block;
-    font-size: var(--type-micro);
-    color: var(--text-secondary);
-}
 
-.achievement-icon {
-    font-size: var(--type-mega);
-    margin-bottom: 8px;
-}
 
-.achievement-title {
-    font-size: var(--type-base);
-    font-weight: 700;
-    color: var(--bamboo-deep);
-    margin-bottom: 4px;
-}
 
-.achievement-desc {
-    font-size: var(--type-micro);
-    color: var(--text-secondary);
-}
+
+
+
+
+
+
+
+
+
+
+
 
 /* 活跃指标 */
 .activity-metrics {
@@ -673,17 +510,9 @@
     box-shadow: 0 4px 12px rgba(var(--deep-rgb), 0.08);
 }
 
-.philosophy-icon {
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding-top: 2px;
-}
 
-.philosophy-icon svg {
-    flex-shrink: 0;
-}
+
+
 
 .philosophy-content {
     flex: 1;

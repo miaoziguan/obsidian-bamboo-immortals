@@ -429,14 +429,7 @@
 }
 
 
-.tw-card-text.is-typing::after {
-  content: "";
-  display: inline-block;
-  width: 0.33em; height: 1.11em;
-  vertical-align: text-bottom;
-  background: rgba(var(--tw-rule-rgb), 0.5);
-  animation: tw-pulse 1s infinite;
-}
+
 
 
 @keyframes tw-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
@@ -454,8 +447,8 @@
 }
 
 
-:host(.dark) .scroll-feature-bar { background: rgba(40,36,30,0.5); }
-:host(.dark) .scroll-feature-tab { background: rgba(60,54,46,0.5); color: #cdbf9f; border-color: rgba(160,140,100,0.25); }
+
+
 
 :host(.dark) .tw-card-main { background: var(--rice-paper); color: var(--ink-dark); }
 :host(.dark) .tw-card-edge { background: var(--rice-paper); }
@@ -1890,7 +1883,6 @@
   content-visibility: auto;
 }
 /* 贴纸删除钮：默认隐藏，悬停贴纸时显现（贴纸会持久化，必须能删） */
-.bm-sticker:hover .bm-sticker-del { opacity: 1; }
 
 /* 旋转（左上）/ 缩放（右下）手柄：同删除钮，悬停贴纸时显现 */
 .bm-sticker-rotate, .bm-sticker-resize {
@@ -1942,7 +1934,6 @@
 .bm-sticker-mi-del { color: #ff8f7a; }
 .bm-sticker-mi-del:hover { background: rgba(255,90,70,.16); color: #ffb0a0; }
 /* 翻转（左下）手柄：切换水平/垂直镜像，仅作用于内容层，不波及旋转与四角手柄 */
-.bm-sticker:hover .bm-sticker-flip { opacity: 1; }
 
 /* 缩放条「素材市场」入口：区别于缩放按钮的强调色 */
 .tw-zoom-bar .tw-zoom-market { color: var(--accent, #6fae8f); }

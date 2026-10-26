@@ -57,12 +57,6 @@
 
 
 
-.goal-item-card.item-complete {
-    opacity: 0.7;
-}
-
-
-
 .goal-item-status {
     width: 20px;
     height: 20px;
@@ -94,9 +88,7 @@
 
 
 
-.goal-item-bar-fill-mini.bar-complete {
-    background: var(--bamboo-success);
-}
+
 
 
 
@@ -150,18 +142,9 @@
 
 
 
-.goal-item-expand-btn.has-advanced {
-    color: var(--bamboo-primary);
-}
+
 
 /* 卡片展开内容 */
-
-.goal-editor-items .goal-item-row {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    margin-bottom: var(--space-1);
-}
 
 
 
@@ -176,18 +159,11 @@
 
 
 
-.goal-editor-v2 .goal-item-date {
-    width: 100px;
-    font-size: var(--type-xs);
-}
+
 
 
 
 /* 高级选项折叠 */
-
-.goal-item-advanced.collapsed {
-    display: none;
-}
 
 
 
@@ -206,23 +182,9 @@
 
 
 
-.goal-day-btn.selected {
-    background: var(--bamboo-primary);
-    border-color: var(--bamboo-primary);
-    color: var(--text-on-accent);
-}
+
 
 /* 内联依赖按钮 */
-
-
-
-
-
-.goal-dep-inline-btn.selected {
-    background: rgba(var(--primary-rgb), 0.2);
-    border-color: var(--bamboo-primary);
-    color: var(--bamboo-primary);
-}
 
 /* 空状态 */
 
@@ -347,47 +309,23 @@
 
 
 
-:host(.dark) .goal-progress-slider::-webkit-slider-thumb, :host(.dark) .goal-progress-slider::-moz-range-thumb {
-    box-shadow: var(--bamboo-glow-xs);
-}
-
-
-
-
-
-
-
-
-
-
-
 /* 移动端适配 - rw-460 */
-.rw-460 .goal-progress-visual {
-    flex-direction: column;
-}
 
-.rw-460 .goal-progress-chart-container {
-    width: 80px;
-    height: 80px;
-}
+
 
 .rw-460 #goalProgressChart {
     width: 80px;
     height: 80px;
 }
 
-.rw-460 .goal-progress-chart-value {
-    font-size: var(--type-base);
-}
+
 
 .rw-460 .goal-row-main {
     padding: var(--space-2) var(--space-3);
     gap: var(--space-2);
 }
 
-.rw-460 .goal-row-icon {
-    font-size: var(--type-heading);
-}
+
 
 .rw-460 .goal-row-header {
     gap: var(--space-1);
@@ -418,53 +356,21 @@
     font-size: var(--type-xs);
 }
 
-.rw-460 .goal-editor-v2 {
-    max-height: 85vh;
-    padding: var(--space-3);
-}
 
-.rw-460 .goal-editor-section {
-    padding: var(--space-3);
-}
 
-.rw-460 .goal-field-input, .rw-460 .goal-field-select {
-    font-size: var(--type-md);
-}
 
-.rw-460 .goal-progress-quick-btns {
-    flex-wrap: wrap;
-}
 
-.rw-460 .goal-progress-btn {
-    padding: var(--space-1) var(--space-2);
-    font-size: var(--type-xs);
-}
 
-.rw-460 .goal-icon-grid {
-    grid-template-columns: repeat(5, 1fr);
-}
 
-.rw-460 .goal-icon-option {
-    width: 36px;
-    height: 36px;
-    font-size: var(--type-md);
-}
+
+
+
+
+
+
+
 
 /* 任务日配置样式 */
-
-
-
-
-
-
-
-
-
-.goal-day-btn.selected {
-    background: var(--bamboo-primary);
-    border-color: var(--bamboo-primary);
-    color: var(--text-on-accent);
-}
 
 /* 建议每日完成量说明 */
 
@@ -493,15 +399,6 @@
 /* 子项目卡片 - 增强版 */
 
 
-
-.goal-item-card.item-complete {
-    opacity: 0.75;
-    background: linear-gradient(135deg, var(--bamboo-card) 0%, rgba(var(--health-success-rgb), 0.08) 100%);
-}
-
-.goal-item-card.in-progress {
-    border-left: 3px solid var(--bamboo-primary);
-}
 
 
 
@@ -541,14 +438,6 @@
 }
 
 /* 迷你进度条 */
-
-
-
-
-
-.goal-item-bar-fill-mini.bar-complete {
-    background: var(--bamboo-success);
-}
 
 
 
@@ -727,7 +616,8 @@
     user-select: none;
     min-width: 140px;
 }
-@media (max-width: 360px)       {
+@media (max-width: 360px)        {
+
 
 
 
@@ -753,11 +643,7 @@
 }
 
 
-.arch-filter-field-date .arch-date-input::-webkit-calendar-picker-indicator {
-    margin-left: 2px;
-    opacity: 0.55;
-    cursor: pointer;
-}
+
 
 
 /* 重置按钮：紧凑 */
@@ -1167,53 +1053,31 @@
 
 
 /* 响应式调整 - rw-460 */
-.rw-460 .goal-editor-v2 {
-    padding: var(--space-3);
-}
 
-.rw-460 .goal-editor-section {
-    padding: var(--space-3);
-}
 
-.rw-460 .goal-icon-grid {
-    grid-template-columns: repeat(6, 1fr);
-}
 
-.rw-460 .goal-item-body {
-    padding-left: 0;
-}
 
-.rw-460 .goal-progress-quick-btns {
-    flex-wrap: wrap;
-}
 
-.rw-460 .goal-progress-btn {
-    flex: 0 0 calc(33.33% - var(--space-2));
-}
+
+
+
+
+
 
 /* 暗色模式 */
-:host(.dark) .arch-date-input {
-    border-color: rgba(var(--border-dark-rgb, 60, 70, 60), 0.35);
-}
 
-:host(.dark) .arch-date-input::placeholder {
-    color: var(--text-tertiary);
-}
 
-:host(.dark) .arch-date-input:hover, :host(.dark) .arch-date-input:focus {
-    border-color: rgba(var(--text-secondary-rgb, 140, 150, 140), 0.5);
-}
 
-:host(.dark) .arch-date-err {
-    border-color: var(--bamboo-error, #e74c3c);
-}
+
+
+
 
 /* ==========================================================
    触控目标扩展：保证所有交互元素热区 ≥ 44×44px
    视觉尺寸尽量保持不变，小尺寸图标/复选框使用 ::before 伪元素扩展
    ========================================================== */
 
-.goal-item-percent, .goal-editor-v2 .goal-item-date, .goal-item-value, .goal-item-add-btn, .arch-select, .arch-reset-btn, .arch-card, .arch-act-btn, .arch-bar-btn, .arch-sel-all {
+.goal-item-percent, .goal-item-value, .goal-item-add-btn, .arch-select, .arch-reset-btn, .arch-card, .arch-act-btn, .arch-bar-btn, .arch-sel-all {
     min-height: var(--touch-target);
 }
 
@@ -1313,7 +1177,8 @@
 }
 
 /* 减弱动效偏好：关闭闪烁与抖动 */
-@media (prefers-reduced-motion: reduce)       {
+@media (prefers-reduced-motion: reduce)        {
+
 
 
 
@@ -1426,18 +1291,11 @@
 }
 
 /* 暗色模式覆盖 */
-:host(.dark) .goal-section-header, :host(.dark) .archive-standalone-header, :host(.dark) .archive-standalone-root .arch-list {
+:host(.dark) .archive-standalone-header, :host(.dark) .archive-standalone-root .arch-list {
     background: rgba(var(--surface-dark-rgb, 20, 30, 24), 0.35);
     border-color: rgba(var(--border-dark-rgb, 60, 70, 60), 0.25);
 }
 
-:host(.dark) .goal-section-action {
-    background: rgba(var(--bamboo-primary-rgb), 0.1);
-    border-color: rgba(var(--bamboo-primary-rgb), 0.35);
-    color: var(--bamboo-primary);
-}
 
-:host(.dark) .goal-section-action:hover {
-    background: rgba(var(--bamboo-primary-rgb), 0.18);
-    border-color: rgba(var(--bamboo-primary-rgb), 0.5);
-}
+
+

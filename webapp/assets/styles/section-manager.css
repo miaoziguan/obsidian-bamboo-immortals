@@ -2,9 +2,7 @@
 
 
 
-:host(.dark) .sm-section {
-    background: rgba(var(--primary-rgb), 0.12);
-}
+
 
 
 
@@ -212,10 +210,7 @@
 
 
 
-.sm-apply-btn.has-pending {
-    background: var(--bamboo-primary);
-    box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.18);
-}
+
 
 
 
@@ -258,15 +253,9 @@
     box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.2);
 }
 
-.list-item-row {
-    display: flex;
-    gap: var(--space-2);
-    margin-bottom: 8px;
-}
 
-.list-item-row .form-input {
-    flex: 1;
-}
+
+
 
 /* 强制调整导航栏按钮 */
 nav .date-nav-btn {
@@ -428,12 +417,10 @@ nav .date-display-sub {
 }
 
 /* ========== 调整KPI网格板块标题位置 ========== */
-.kpi-grid .section-title {
-    margin: 0 0 12px 0;
-}
 
 /* === TINY VIEWPORT (≤360px): 板块管理弹窗紧凑布局 === */
-@media (max-width: 360px)       {
+@media (max-width: 360px)        {
+
 
 
 

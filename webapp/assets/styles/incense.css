@@ -1,8 +1,4 @@
 /* 香道功能根：接管原单栏布局，撑满舞台 */
-.scroll-incense-feature > .scroll-body {
-    flex: 1;
-    min-height: 0;
-}
 
 .scroll-body {
     flex: 1;
@@ -474,7 +470,7 @@
 /* 雁身填充：亮色下为深灰褐（如远处剪影）；暗色模式提亮为浅色，
    否则深底上的深色雁几乎不可见（化雁看不清）。 */
 .scroll-wild-goose { --goose-fill: rgba(86,80,74,0.82); }
-.scroll-wild-goose .goose-body { fill: var(--goose-fill); }
+
 /* 暗色模式：填充提亮到近乎实心，并把雁身放大一号（26×14 → 32×18），
    配合 JS 里更缓的缩小与更晚的淡出，让雁在深底上全程可辨。
    注：描边方案在此无效——缩小是父元素的 CSS transform，
@@ -487,11 +483,6 @@
 }
 /* 再给雁身描一圈白边把轮廓加粗，让它在深底上更跳。
    这里刻意不用 filter 做发光：滤镜会随振翅动画每帧重算，代价高于加粗描边。 */
-:host(.dark) .scroll-wild-goose .goose-body {
-    stroke: rgba(var(--white-rgb), 0.92);
-    stroke-width: 1.6;
-    paint-order: stroke fill;
-}
 /* 扇翅：双翼随振翅轻微上下压扁，赋予远去大雁生命感（#2） */
 .scroll-wild-goose svg { animation: scroll-goose-flap 0.5s ease-in-out infinite; }
 @keyframes scroll-goose-flap {
@@ -783,39 +774,9 @@
 
 
 /* 终端屏内按钮：竹青描边 + 浅米底 + 微浮雕 */
-.scroll-screen .scroll-btn {
-    border: 1px solid rgba(96, 132, 96, 0.35);
-    background:
-        linear-gradient(180deg, rgba(var(--white-rgb), 0.85) 0%, rgba(248, 246, 236, 0.7) 100%);
-    color: #3a5a3e;
-    border-radius: var(--radius-7);
-    padding: 5px 12px;
-    font-size: var(--type-caption);
-    letter-spacing: 2px;
-    text-shadow: none;
-    box-shadow:
-        inset 0 1px 0 rgba(var(--white-rgb), 0.9),
-        0 1px 2px rgba(45, 70, 45, 0.12);
-    /* 原 transition: all 会监听所有属性（含不可插值的渐变 background），既浪费重绘
-       又掩盖真实过渡意图；hover 实际变化的是边框色 / 阴影 / 位移，故显式列出。 */
-    transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
-}
-.scroll-screen .scroll-btn:hover {
-    background: linear-gradient(180deg, #f4f8ec 0%, #e8efdd 100%);
-    border-color: rgba(96, 132, 96, 0.55);
-}
-.scroll-screen .scroll-btn-primary {
-    background: linear-gradient(180deg, #5d8e54 0%, #4a7340 100%);
-    color: #f7fff0;
-    border-color: rgba(80, 110, 70, 0.6);
-    box-shadow:
-        inset 0 1px 0 rgba(var(--white-rgb), 0.35),
-        inset 0 -1px 0 rgba(30, 50, 28, 0.3),
-        0 2px 5px rgba(45, 90, 50, 0.28);
-}
-.scroll-screen .scroll-btn-primary:hover {
-    background: linear-gradient(180deg, #679a5d 0%, #527e47 100%);
-}
+
+
+
 
 /* 暗色模式（shadow host .dark 注入）—— 深墨绿竹林 + 暖光香道 */
 :host(.dark) .scroll-left {
@@ -855,13 +816,7 @@
     --smoke-b: rgba(234,242,236,0.2);
     --smoke-c: rgba(240,246,242,0);
 }
-:host(.dark) .scroll-timer {
-    background: linear-gradient(180deg, #c8e8c0 0%, #9ed09a 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-    text-shadow: 0 0 12px rgba(140, 220, 160, 0.35);
-}
+
 :host(.dark) .scroll-incense-unburnt {
     /* 用 background-image 而非 background 简写：简写会重置上面为「整支香锚定」
        设置的 background-size / background-position，导致暗色下颜色分布回退成压缩态。

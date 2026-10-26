@@ -410,7 +410,8 @@
 }
 
 /* ===== 响应式 ===== */
-@media (max-width: 480px)       {
+@media (max-width: 480px)        {
+
 
 
 
@@ -429,9 +430,6 @@
 }
 
 /* ===== 跟随主题动效配色（自定义 pill 开关，与面板风格一致） ===== */
-.display-follow-theme-section {
-    padding-top: 2px;
-}
 
 .display-follow-theme {
     display: flex;

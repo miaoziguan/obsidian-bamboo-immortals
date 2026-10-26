@@ -84,7 +84,8 @@
 }
 
 /* 响应式适配 — Canonical breakpoints: 480px (mobile), 768px (tablet), 1024px (desktop) */
-@media (max-width: 768px)       {
+@media (max-width: 768px)        {
+
 
 
 
@@ -208,7 +209,8 @@
     width: var(--bm-icon-xxl);
     height: var(--bm-icon-xxl);
 }
-@media (prefers-reduced-motion: no-preference)       {
+@media (prefers-reduced-motion: no-preference)        {
+
 
 
 
@@ -401,13 +403,8 @@
     height: 8px;
     background: var(--text-primary);
 }
-.fab-container.fab-left .fab-actions {
-    right: auto;
-    left: 0;
-    flex-direction: column;
-    align-items: flex-start;
-}
-.fab-container.fab-top .fab-actions, .fab-container.fab-below .fab-actions {
+
+.fab-container.fab-below .fab-actions {
     bottom: auto;
     top: calc(100% + 10px);
 }
@@ -415,9 +412,7 @@
     right: auto;
     left: 0;
 }
-.fab-container.touch-active {
-    transform: scale(0.95);
-}
+
 
 /* === 隐私强度调节面板（FAB 菜单内，不进设置面板）===
    形态：单行式紧凑步进器 —— 左侧「标签 + 数值徽标」读数区，右侧「− / 滑杆 / +」控制区。

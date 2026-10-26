@@ -1,40 +1,16 @@
-.stats-modal .modal-content {
-    max-width: min(600px, 92vw);
-    width: 100%;
-}
-
-
-
-.stats-period-btn.active {
-    background: var(--btn-primary-bg);
-    color: var(--white);
-    border-color: transparent;
-    box-shadow: var(--shadow-surface);
-}
 
 
 
 
 
-.chart-container {
-    height: 200px;
-    margin-top: var(--space-4);
-    background: var(--card-bg);
-    /* backdrop-filter 由 .modal-overlay 提供 */
-    border-radius: var(--radius-lg);
-    border: 1px solid var(--border-light);
-    padding: var(--space-4);
-    box-shadow: var(--shadow-surface);
-}
+
+
+
+
+
+
 
 /* ========== 模板中心样式 ========== */
-
-
-.template-tab.active {
-    background: var(--btn-primary-bg);
-    color: var(--white);
-    box-shadow: var(--shadow-surface);
-}
 
 
 
@@ -171,7 +147,8 @@
 }
 
 /* === TINY VIEWPORT (≤360px): 模态框极端压缩，防止水平溢出 */
-@media (max-width: 360px)       {
+@media (max-width: 360px)        {
+
 
 
 
@@ -185,9 +162,7 @@
         margin: 0;
     }
 
-    .editor-modal .modal-content {
-        padding: var(--space-3) var(--space-2);
-    }
+    
 
     /* 统计模态框：KPI 网格单列 */
 
@@ -195,23 +170,14 @@
     
 
     /* 庆祝数字上限 */
-    .modal-hero-big-number, .big-display-number {
-        font-size: var(--type-mega);
-    }
 
     /* 表单输入更紧凑 */
-    .form-input, .form-textarea, .form-select {
+    .form-input, .form-select {
         padding: 8px 10px;
         font-size: var(--type-sm);
     }
 
     /* 按钮组 */
-    .modal-actions, .form-actions {
-        flex-direction: column;
-        gap: var(--space-2);
-    }
-    .modal-actions .btn, .form-actions .btn {
-        width: 100%;
-    }
+    
 }
 

@@ -1,49 +1,14 @@
 
 /* ========== Keyboard Hint ========== */
-.keyboard-hint {
-    position: fixed;
-    /* 底部安全区避让（iPhone Home 条），env() 为主、constant() 兼容旧 iOS */
-    bottom: calc(var(--space-5) + env(safe-area-inset-bottom, constant(safe-area-inset-bottom, 0px)));
-    right: var(--space-5);
-    background: var(--card-bg);
-    backdrop-filter: blur(var(--glass-blur));
-    /* will-change 仅在一次性的 slideInUp 动画中需要，由 @keyframes 触发 */
-    border-radius: var(--radius-xl);
-    padding: var(--space-3) var(--space-4);
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    box-shadow: var(--shadow);
-    border: 1px solid var(--border-light);
-    z-index: var(--z-layer-tooltip);
-    animation: slideInUp 0.4s ease;
-}
 @keyframes slideInUp {
     from { opacity: 0; transform: translateY(20px); }
     to { opacity: 1; transform: translateY(0); }
 }
-.keyboard-hint-icon { font-size: var(--type-lg); }
-.keyboard-hint-text { font-size: var(--type-base); color: var(--text-secondary); }
-.keyboard-hint-text kbd {
-    background: var(--bamboo-primary);
-    color: var(--white);
-    padding: var(--space-1) var(--space-2);
-    border-radius: var(--radius-sm);
-    font-family: inherit;
-    font-weight: 600;
-}
-.keyboard-hint-close {
-    background: none;
-    border: none;
-    cursor: pointer;
-    font-size: var(--type-sm);
-    color: var(--text-secondary);
-    padding: var(--space-1);
-    transition: color 0.2s;
-    min-height: var(--touch-target);
-    min-width: var(--touch-target);
-}
-.keyboard-hint-close:hover { color: var(--cinnabar); }
+
+
+
+
+
 
 /* ========== Quick Navigation ========== */
 .quick-nav {
@@ -167,7 +132,8 @@
 .quick-nav-action-btn:hover {
     background: rgba(var(--primary-rgb), 0.18);
 }
-@media (max-width: 768px)       {
+@media (max-width: 768px)        {
+
 
 
 
@@ -180,49 +146,18 @@
 }
 
 /* ========== KPI Grid ========== */
-.kpi-grid {
-    position: relative;
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: var(--space-3);
-    margin-bottom: calc(var(--space-6) * var(--section-gap-scale));
-}
-.kpi-card {
-    background: var(--card-bg);
-    backdrop-filter: blur(var(--glass-blur));
-    border-radius: var(--radius-xl);
-    padding: var(--space-4) var(--space-2);
-    text-align: center;
-    border: 1px solid var(--border-light);
-    position: relative;
-    transition: transform var(--transition-normal), box-shadow var(--transition-normal);
-    word-break: break-word;
-    cursor: default;
-    box-shadow: var(--shadow-surface);
-}
-.kpi-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-card); }
-.kpi-card:active { transform: var(--scale-click); }
-.kpi-card.editable { cursor: pointer; }
-.kpi-card.editable:hover { border-color: var(--bamboo-primary); }
-.card-edit-hint {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    font-size: var(--type-xs);
-    color: var(--bamboo-primary);
-    background: var(--card-bg);
-    padding: 4px 8px;
-    border-radius: var(--radius-xs);
-    opacity: 0;
-    transition: opacity 0.2s;
-    pointer-events: none;
-    z-index: 10;
-}
-.bamboo-card.editable:hover .card-edit-hint, .goal-row.editable:hover .card-edit-hint { opacity: 0.9; }
+
+
+
+
+
+
+
 .bamboo-card.editable, .goal-row.editable { cursor: pointer; }
 .bamboo-card.editable:hover, .goal-row.editable:hover { border-color: var(--bamboo-primary); }
 
-@media (prefers-reduced-motion: no-preference)       {
+@media (prefers-reduced-motion: no-preference)        {
+
 
 
 
@@ -246,48 +181,19 @@
     100% { box-shadow: 0 0 0 0 rgba(var(--sky-azure-rgb), 0); }
 }
 
-.kpi-icon {
-    font-size: var(--type-large);
-    margin-bottom: var(--space-1);
-    transition: transform 0.3s ease;
-}
-.kpi-card:hover .kpi-icon { transform: scale(1.15) rotate(-5deg); }
-.kpi-label {
-    font-size: var(--type-sm);
-    color: var(--text-secondary);
-    margin-bottom: var(--space-1);
-}
-.kpi-value {
-    font-size: var(--type-2xl);
-    font-weight: 700;
-    color: var(--bamboo-deep);
-    transition: color 0.2s;
-}
+
+
+
+
 .kpi-card.up .kpi-value { color: var(--cinnabar); }
-.kpi-delta {
-    font-size: var(--type-xs);
-    margin-top: var(--space-1);
-}
+
 .kpi-card.up .kpi-delta { color: var(--kpi-up-delta-color); }
 .kpi-card.down .kpi-delta { color: var(--bamboo-primary); }
 
 /* ========== KPI Semantic States ========== */
-.kpi-card--positive {
-    --kpi-value-color: var(--bamboo-primary);
-    --kpi-accent-bg: var(--kpi-down-bg);
-}
-.kpi-card--negative {
-    --kpi-value-color: var(--cinnabar);
-    --kpi-accent-bg: var(--kpi-up-bg);
-}
-.kpi-card--neutral {
-    --kpi-value-color: var(--gold);
-    --kpi-accent-bg: var(--kpi-neutral-bg);
-}
-.kpi-card--breakthrough {
-    --kpi-value-color: var(--sky-azure);
-    --kpi-accent-bg: var(--kpi-break-bg);
-}
+
+
+
 
 /* 已拆分到 timeline.css */
 /* 已拆分到 goals.css */
@@ -304,7 +210,8 @@
 .desktop-only {
     display: none;
 }
-@media (min-width: 600px)       {
+@media (min-width: 600px)        {
+
 
 
 
@@ -377,7 +284,8 @@
 }
 
 /* 尊重系统「减少动效」设置 */
-@media (prefers-reduced-motion: reduce)       {
+@media (prefers-reduced-motion: reduce)        {
+
 
 
 
@@ -390,7 +298,7 @@
 }
 
 /* ========== 触控区域优化 ========== */
-.touch-friendly, button, .btn, .date-nav-btn, .view-toggle-btn, .modal-close {
+button, .btn, .date-nav-btn, .view-toggle-btn, .modal-close {
     min-height: var(--min-touch-target);
     min-width: var(--min-touch-target);
 }
@@ -401,15 +309,7 @@
 }
 
 /* 归档管理 - 顶部突出入口 */
-.fab-archive-top {
-    background: rgba(var(--health-success-rgb), 0.12);
-    border: 1px solid rgba(var(--health-success-rgb), 0.3);
-    font-weight: 600;
-}
-.fab-archive-top:hover {
-    background: rgba(var(--health-success-rgb), 0.22);
-    border-color: rgba(var(--health-success-rgb), 0.5);
-}
+
 
 /* 已完成目标 - 操作按钮始终可见 */
 .goal-row.goal-complete .goal-row-actions {
@@ -428,63 +328,28 @@
     height: var(--min-touch-target);
 }
 /* ========== 诊断分析 ========== */
-.diagnosis-group { margin-bottom: var(--space-4); }
-.diagnosis-tag {
-    font-size: var(--type-base);
-    font-weight: 700;
-    margin-bottom: var(--space-2);
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    padding: var(--space-2) var(--space-3);
-    border-radius: var(--radius-sm);
-}
-.diagnosis-tag.warning { background: rgba(var(--gold-rgb), 0.1); color: var(--gold); }
-.diagnosis-card {
-    padding: var(--space-3);
-    border-radius: var(--radius-md);
-    margin-bottom: var(--space-2);
-    line-height: 1.6;
-    color: var(--diagnosis-text);
-    font-size: var(--type-base);
-    transition: transform, opacity, box-shadow, border-color, background-color 0.3s ease;
-    box-shadow: var(--shadow-surface);
-}
-.diagnosis-card:hover { transform: translateX(4px); }
-.diagnosis-card.good {
-    background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.05) 0%, var(--card-bg) 100%);
-    border: 1px solid rgba(var(--primary-rgb), 0.15);
-}
-.diagnosis-card.good:hover { box-shadow: var(--shadow-card); }
-.diagnosis-card.warn {
-    background: linear-gradient(135deg, rgba(var(--gold-rgb), 0.05) 0%, var(--card-bg) 100%);
-    border: 1px solid rgba(var(--gold-rgb), 0.15);
-}
-.diagnosis-card.warn:hover { box-shadow: var(--shadow-card); }
-.diagnosis-card strong { font-weight: 600; }
+
+
+
+
+
+
+
+
+
 
 /* ========== 行动卡片 ========== */
-.normal-row {
-    display: flex;
-    margin-bottom: var(--space-2);
-    font-size: var(--type-base);
-    flex-wrap: wrap;
-    gap: var(--space-1);
-}
-.normal-row:last-child { margin-bottom: 0; }
-.normal-label { width: 80px; min-width: 60px; color: var(--text-secondary); flex-shrink: 1; font-weight: 500; }
-.normal-content { color: var(--text-primary); flex: 1; min-width: 0; word-break: break-word; }
-.focus-box {
-    border-radius: var(--radius-md);
-    padding: var(--space-3);
-    margin-bottom: var(--space-2);
-}
-.focus-box:last-child { margin-bottom: 0; }
+
+
+
+
+
 .focus-box.result {
     background: linear-gradient(135deg, rgba(var(--sky-azure-rgb), 0.2) 0%, rgba(var(--sky-azure-rgb), 0.1) 100%);
     border: 1px solid rgba(var(--sky-azure-rgb), 0.3);
 }
-@media (prefers-reduced-motion: no-preference)       {
+@media (prefers-reduced-motion: no-preference)        {
+
 
 
 
@@ -505,26 +370,11 @@
     100% { background-color: rgba(var(--gold-rgb), 0.06); }
 }
 
-.focus-label { font-size: var(--type-xs); font-weight: 700; letter-spacing: 1px; margin-bottom: var(--space-1); text-transform: uppercase; }
+
 .focus-label.result { color: var(--sky-azure); }
-.focus-text { font-size: var(--type-base); font-weight: 500; color: var(--text-primary); line-height: 1.5; }
-.expand-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-    text-align: center;
-    padding: var(--space-3);
-    background: rgba(var(--primary-rgb), 0.1);
-    border: none;
-    border-top: 1px solid rgba(var(--primary-rgb), 0.08);
-    font-size: var(--type-base);
-    font-weight: 500;
-    color: var(--text-secondary);
-    cursor: pointer;
-    min-height: 50px;
-}
-.expand-btn:hover { background: rgba(var(--primary-rgb), 0.08); }
+
+
+
 
 /* ========== 空状态卡片样式 ========== */
 .empty-state-card {

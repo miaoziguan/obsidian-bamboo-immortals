@@ -1,52 +1,11 @@
 /* ========== 今日活动时间线 ========== */
 .timeline-wrapper { position: relative; width: 100%; }
-.timeline-stats-row {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: var(--space-3);
-    margin-bottom: calc(var(--space-6) * var(--section-gap-scale));
-}
-.timeline-stat {
-    background: var(--card-bg);
-    backdrop-filter: blur(var(--glass-blur));
-    border-radius: var(--radius-card);
-    padding: var(--space-4) var(--space-3);
-    text-align: center;
-    border: 1px solid var(--border-light);
-    transition: transform, opacity, box-shadow, border-color, background-color 0.3s ease;
-    position: relative;
-    overflow: hidden;
-    box-shadow: var(--shadow-surface);
-}
-.timeline-stat::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 3px;
-    background: linear-gradient(90deg, var(--bamboo-primary), var(--bamboo-light));
-    opacity: 0;
-    transition: opacity 0.3s;
-}
-.timeline-stat:hover {
-    transform: translateY(-3px);
-    box-shadow: var(--shadow-card);
-}
-.timeline-stat-label {
-    font-size: var(--type-xs);
-    color: var(--text-secondary);
-    margin-bottom: var(--space-1);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--space-1);
-}
-.timeline-stat-value {
-    font-size: var(--type-large);
-    font-weight: 700;
-    color: var(--bamboo-deep);
-}
+
+
+
+
+
+
 
 @keyframes heartbeatPink {
     0% { transform: scale(1); background: linear-gradient(180deg, var(--card-bg) 0%, rgba(var(--danger-rgb), 0.1) 100%); }
@@ -263,7 +222,8 @@
 }
 
 /* 移动端始终可见 */
-@media (hover: none) and (pointer: coarse)       {
+@media (hover: none) and (pointer: coarse)        {
+
 
 
 
@@ -396,9 +356,7 @@
     display: none;
 }
 
-.ticket-notch {
-    display: none;
-}
+
 
 .ticket-body {
     display: flex;
@@ -479,7 +437,8 @@
     background: var(--bamboo-light);
     box-shadow: inset 0 1px 2px rgba(var(--black-rgb), 0.08), 0 0 4px rgba(var(--primary-rgb), 0.3);
 }
-@media (prefers-reduced-motion: no-preference)       {
+@media (prefers-reduced-motion: no-preference)        {
+
 
 
 
@@ -580,21 +539,7 @@
     letter-spacing: 2px;
 }
 
-.ticket-pattern {
-    position: absolute;
-    top: 0;
-    right: 0;
-    width: min(80px, 22vw);
-    height: 100%;
-    background: repeating-linear-gradient(
-        45deg,
-        transparent,
-        transparent 10px,
-        rgba(var(--white-rgb), 0.02) 10px,
-        rgba(var(--white-rgb), 0.02) 20px
-    );
-    pointer-events: none;
-}
+
 
 .ticket-stub-content {
     height: 100%;
@@ -675,13 +620,7 @@
     line-height: 1.3;
 }
 
-.stub-title-en {
-    font-size: var(--type-mini);
-    color: rgba(var(--bamboo-deep-rgb), 0.55);
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    margin-top: 4px;
-}
+
 
 .ticket-stub-date {
     font-size: var(--type-mini);
@@ -756,7 +695,8 @@
         -32px 0 0 rgba(var(--bamboo-deep-rgb), 0.1);
 }
 
-@media (prefers-reduced-motion: no-preference)       {
+@media (prefers-reduced-motion: no-preference)        {
+
 
 
 
@@ -786,7 +726,7 @@
 :host(.dark) .ticket-highlight-label { color: var(--ink-medium); }
 :host(.dark) .ticket-highlight-value { color: var(--bamboo-light); text-shadow: 0 0 12px rgba(var(--primary-rgb), 0.3); }
 :host(.dark) .stub-title-cn { color: var(--bamboo-pale-hover); }
-:host(.dark) .stub-title-en { color: var(--ink-light); }
+
 :host(.dark) .ticket-slogan { color: var(--ink-light); }
 :host(.dark) .ticket-stub-date { color: var(--ink-light); }
 
@@ -925,7 +865,8 @@
 /* ========== 暗色模式 — 动画 ========== */
 
 /* 减少动画偏好适配 */
-@media (prefers-reduced-motion: reduce)       {
+@media (prefers-reduced-motion: reduce)        {
+
 
 
 
@@ -955,7 +896,8 @@
     margin-bottom: var(--space-4);
 }
 
-@media (prefers-reduced-motion: no-preference)       {
+@media (prefers-reduced-motion: no-preference)        {
+
 
 
 
@@ -996,7 +938,8 @@
     box-shadow: 0 0 0 2px var(--bamboo-primary), 0 0 16px rgba(var(--primary-rgb), 0.5);
 }
 
-@media (prefers-reduced-motion: no-preference)       {
+@media (prefers-reduced-motion: no-preference)        {
+
 
 
 
@@ -1278,17 +1221,9 @@
 
 
 
-.bamboo-eval.good {
-    background: rgba(var(--primary-rgb), 0.15);
-    color: var(--bamboo-primary);
-    border: 1px solid rgba(var(--primary-rgb), 0.3);
-}
 
-.bamboo-eval.warn {
-    background: rgba(var(--warning-orange-rgb), 0.12);
-    color: var(--bamboo-warning);
-    border: 1px solid rgba(var(--warning-orange-rgb), 0.3);
-}
+
+
 
 .bamboo-eval.bad {
     background: rgba(var(--danger-rgb), 0.12);
@@ -1296,17 +1231,9 @@
     border: 1px solid rgba(var(--danger-rgb), 0.3);
 }
 
-:host(.dark) .bamboo-eval.good {
-    color: var(--bamboo-light);
-    background: rgba(var(--primary-rgb), 0.2);
-    border-color: rgba(var(--primary-rgb), 0.4);
-}
 
-:host(.dark) .bamboo-eval.warn {
-    color: rgba(var(--amber-rgb), 0.9);
-    background: rgba(var(--warning-orange-rgb), 0.2);
-    border-color: rgba(var(--warning-orange-rgb), 0.4);
-}
+
+
 
 :host(.dark) .bamboo-eval.bad {
     color: rgba(var(--danger-bright-rgb), 0.85);
@@ -1463,7 +1390,8 @@
    ============================================= */
 
 /* ≤768px: 票体+票根上下堆叠，票根内容横向排列 */
-@media (max-width: 768px)       {
+@media (max-width: 768px)        {
+
 
 
 
@@ -1629,7 +1557,8 @@
 }
 
 /* ≤480px: 三块一行横排，紧凑字号 */
-@media (max-width: 480px)       {
+@media (max-width: 480px)        {
+
 
 
 
@@ -1789,7 +1718,8 @@
    响应式 — 暗色模式覆盖
    ============================================= */
 
-@media (max-width: 768px)       {
+@media (max-width: 768px)        {
+
 
 
 
@@ -2212,35 +2142,28 @@
     用户手动调窄"内容宽度"时两者互补，防止统计行残留 4 列挤压）
    ============================================= */
 
-@media (max-width: 768px)       {
+@media (max-width: 768px)        {
 
 
 
 
 
 
-    .timeline-stats-row {
-        grid-template-columns: repeat(2, 1fr);
-    }
+
+    
 }
 
-@media (max-width: 480px)       {
+@media (max-width: 480px)        {
 
 
 
 
 
 
-    .timeline-stats-row {
-        grid-template-columns: 1fr;
-    }
+
+    
 }
 
 /* 容器紧凑模式：用户把"内容宽度"调窄到 ≤600px / ≤480px 时，统计行同步降级 */
-.display-compact .timeline-stats-row {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-.display-ultra-compact .timeline-stats-row {
-    grid-template-columns: 1fr;
-}
+
 

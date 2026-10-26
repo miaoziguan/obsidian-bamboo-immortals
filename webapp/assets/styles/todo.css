@@ -224,9 +224,7 @@
     border-color: var(--bamboo-primary);
 }
 
-.todo-item.just-completed {
-    animation: todoCompletePulse 0.5s ease;
-}
+
 
 @keyframes todoCompletePulse {
     0% { transform: scale(1); box-shadow: var(--shadow-surface); }
@@ -876,7 +874,8 @@
 
 
 /* === TINY VIEWPORT (≤360px): 待办紧凑布局 === */
-@media (max-width: 360px)       {
+@media (max-width: 360px)        {
+
 
 
 

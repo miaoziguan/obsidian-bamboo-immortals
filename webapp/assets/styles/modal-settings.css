@@ -1,33 +1,10 @@
-.editor-modal .modal-content {
-    max-width: min(500px, 92vw);
-    width: 100%;
-}
-.editor-title-input {
-    font-size: var(--type-lg);
-    font-weight: 600;
-}
-.editor-content-textarea {
-    min-height: 200px;
-}
-.color-picker {
-    display: flex;
-    gap: var(--space-2);
-    flex-wrap: wrap;
-}
-.color-option {
-    min-width: var(--touch-target);
-    min-height: var(--touch-target);
-    border-radius: 50%;
-    cursor: pointer;
-    border: 2px solid transparent;
-    transition: transform, opacity, box-shadow, border-color, background-color var(--transition-fast);
-}
-.color-option:hover {
-    transform: scale(1.1);
-}
-.color-option.selected {
-    border-color: var(--bamboo-primary);
-}
+
+
+
+
+
+
+
 
 /* ========== 设置模态框样式 ========== */
 
@@ -161,10 +138,7 @@
 
 
 
-.settings-theme-card.active {
-    border-color: var(--bamboo-primary);
-    box-shadow: 0 0 0 1px var(--bamboo-primary);
-}
+
 
 
 
@@ -232,7 +206,8 @@
 
 
 /* 窄屏降级（设置模态框内部，@media 度量模态框所在视口） */
-@media (max-width: 480px)       {
+@media (max-width: 480px)        {
+
 
 
 
@@ -241,7 +216,8 @@
 
     
 }
-@media (max-width: 360px)       {
+@media (max-width: 360px)        {
+
 
 
 
@@ -255,43 +231,9 @@
 
 
 /* ========== 快捷键列表 ========== */
-.shortcuts-list {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: var(--space-2);
-}
-.shortcut-item {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    padding: var(--space-3) var(--space-4);
-    background: var(--card-bg);
-    /* backdrop-filter 由 .modal-overlay 提供 */
-    border-radius: var(--radius-md);
-    border: 1px solid var(--border-light);
-    font-size: var(--type-sm);
-    box-shadow: var(--shadow-surface);
-}
-.shortcut-key {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 28px;
-    height: 28px;
-    padding: 0 var(--space-2);
-    background: var(--section-title-gradient);
-    color: var(--white);
-    border-radius: var(--radius-sm);
-    font-size: var(--type-xs);
-    font-weight: 700;
-    font-family: inherit;
-    box-shadow: 0 4px 10px rgba(var(--deep-rgb), 0.15);
-}
-.shortcut-desc {
-    color: var(--text-secondary);
-    margin-left: auto;
-    font-size: var(--type-xs);
-}
+
+
+
 
 /* ========== 时间输入 ========== */
 

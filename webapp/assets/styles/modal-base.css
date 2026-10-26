@@ -146,7 +146,7 @@
     color: var(--text-secondary);
     margin-bottom: var(--space-2);
 }
-.form-input, .form-textarea, .form-select {
+.form-input, .form-select {
     width: 100%;
     padding: var(--space-3) var(--space-4);
     min-height: var(--touch-target);
@@ -161,19 +161,13 @@
     font-family: inherit;
     box-shadow: var(--shadow-surface);
 }
-.form-input:focus, .form-textarea:focus, .form-select:focus {
+.form-input:focus, .form-select:focus {
     outline: none;
     border-color: var(--bamboo-primary);
     box-shadow: var(--shadow-card), 0 0 0 3px rgba(var(--primary-rgb), 0.12);
 }
-.form-input.input-error, .form-textarea.input-error {
-    border-color: var(--status-danger);
-    box-shadow: 0 0 0 3px rgba(var(--danger-rgb), 0.15);
-}
-.form-textarea {
-    resize: vertical;
-    min-height: 100px;
-}
+
+
 
 /* ========== 按钮样式 - 匹配主题按钮系统 ========== */
 .btn {
@@ -292,21 +286,8 @@
     display: flex;
     gap: var(--space-2);
 }
-.item-action-btn {
-    min-width: var(--touch-target);
-    min-height: var(--touch-target);
-    border: none;
-    border-radius: var(--radius-md);
-    background: transparent;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: transform, opacity, box-shadow, border-color, background-color var(--transition-fast);
-}
-.item-action-btn:hover {
-    background: rgba(var(--primary-rgb), 0.1);
-}
+
+
 
 /* ========== 进度条样式 ========== */
 .progress-bar {
@@ -316,28 +297,9 @@
     overflow: hidden;
     position: relative;
 }
-.progress-fill {
-    height: 100%;
-    background: var(--btn-primary-bg);
-    border-radius: var(--radius-4);
-    transition: width var(--transition-smooth);
-}
+
 
 /* ========== 滑动提示 ========== */
-.swipe-hint {
-    position: fixed;
-    top: var(--space-4);
-    left: 50%;
-    transform: translateX(-50%);
-    background: var(--text-primary);
-    color: var(--white);
-    padding: var(--space-2) var(--space-4);
-    border-radius: var(--radius-lg);
-    font-size: var(--type-sm);
-    font-weight: 600;
-    z-index: var(--z-layer-keyboard-hint);
-    animation: slideDown 0.3s ease;
-}
 @keyframes slideDown {
     from { opacity: 0; transform: translateX(-50%) translateY(-20px); }
     to { opacity: 1; transform: translateX(-50%) translateY(0); }

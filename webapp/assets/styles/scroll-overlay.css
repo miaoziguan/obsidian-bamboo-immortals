@@ -106,10 +106,6 @@
   flex-direction: column;
 }
 /* 香道功能根：接管原单栏布局，撑满舞台 */
-.scroll-incense-feature > .scroll-body {
-    flex: 1;
-    min-height: 0;
-}
 
 .scroll-body {
     flex: 1;
@@ -573,7 +569,7 @@
 /* 雁身填充：亮色下为深灰褐（如远处剪影）；暗色模式提亮为浅色，
    否则深底上的深色雁几乎不可见（化雁看不清）。 */
 .scroll-wild-goose { --goose-fill: rgba(86,80,74,0.82); }
-.scroll-wild-goose .goose-body { fill: var(--goose-fill); }
+
 /* 暗色模式：填充提亮到近乎实心，并把雁身放大一号（26×14 → 32×18），
    配合 JS 里更缓的缩小与更晚的淡出，让雁在深底上全程可辨。
    注：描边方案在此无效——缩小是父元素的 CSS transform，
@@ -586,11 +582,6 @@
 }
 /* 再给雁身描一圈白边把轮廓加粗，让它在深底上更跳。
    这里刻意不用 filter 做发光：滤镜会随振翅动画每帧重算，代价高于加粗描边。 */
-:host(.dark) .scroll-wild-goose .goose-body {
-    stroke: rgba(var(--white-rgb), 0.92);
-    stroke-width: 1.6;
-    paint-order: stroke fill;
-}
 /* 扇翅：双翼随振翅轻微上下压扁，赋予远去大雁生命感（#2） */
 .scroll-wild-goose svg { animation: scroll-goose-flap 0.5s ease-in-out infinite; }
 @keyframes scroll-goose-flap {

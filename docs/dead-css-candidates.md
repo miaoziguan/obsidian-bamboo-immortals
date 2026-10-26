@@ -61,7 +61,9 @@ CSS 类名是模块/主题扩展 API 的天然契约面：外部主题、外部�
 >
 > **✅ MIXED 第二批 15 簇已执行**（settings/template/legend/sm/priority/section/stats/alert/todo/completed/time/empty/bm/arch/gho）：经保守模式工具删 93 个精确死名（范围 145，余 ~52 为「死类与活类复合纠缠」规则被保守保留）。工具升级为**保守模式**——顶层选择器只要含任一活类令牌（或 `:is()/:where()` 剔死参后仍有活参）即**整体保留**（死类令牌一并保留、绝不剥落/扩大）；仅当「零活类令牌」或「无 `.class` 令牌的结构性选择器」(`:host`/`:root`/`body`/`*`) 才保留时才删除。关键安全核验：① `:host,:root` 全局变量块**零误删**（曾因「无 .class 即当死」bug 被整体删除，已修）；② 曾误删的 4 个活类 `.urgent/.error/.danger/.count` 全部保留；③ 全改动 diff 净删除类全属死名集合、零活类误删；④ 解包产物死名选择器 0、括号平衡、无 `,,`/`:is((` 伪影；⑤ webapp jest 121 套件 / host vitest 57 文件全绿。
 >
-> **✅ MIXED 第三批 4 簇已执行**（goal/scroll/theme/bamboo）：保守模式工具删 ~120 个精确死名（范围 167，余 ~47 为「死类与活类复合纠缠」规则被保守保留），涉及 56 个 css 文件、478 规则块。安全核验：① diff 零 `.urgent/.error/.danger/.count` 删除行（活类规则完整保留）；② 全改动 diff 净删除类全属死名集合、零活类误删；③ `:host,:root` 全局块零误删；④ 解包产物死名选择器 0、括号平衡、无伪影；⑤ webapp jest 121 套件 / host vitest 57 文件全绿。至此 **MIXED 簇（非纠缠型特性）已全部执行完毕**，仅余 `kpi/cs/ai/achievement` 4 个「死类与活类深度纠缠」特性簇，按协议留作**功能下线决策**（需先确认对应 UI 是否已废弃，再整体 takedown 其死类）。
+> **✅ MIXED 第三批 4 簇已执行**（goal/scroll/theme/bamboo）：保守模式工具删 ~120 个精确死名（范围 167，余 ~47 为「死类与活类复合纠缠」规则被保守保留），涉及 56 个 css 文件、478 规则块。安全核验：① diff 零 `.urgent/.error/.danger/.count` 删除行（活类规则完整保留）；② 全改动 diff 净删除类全属死名集合、零活类误删；③ `:host,:root` 全局块零误删；④ 解包产物死名选择器 0、括号平衡、无伪影；⑤ webapp jest 121 套件 / host vitest 57 文件全绿。至此 **MIXED 簇（非纠缠型特性）已全部执行完毕**。原余 `kpi/cs/ai/achievement` 4 个「死类与活类深度纠缠」特性簇，经核查（`cs-*` 为 `censer.classList.add(\`cs-${style.key}\`)` 动态活类须保留；`achievement-*`/`ai-wizard-*`/`kpi-*` 全仓 + host TS 零 JS 产出→真死）后，已在**第四批受控激进清理**中处理（见下）。
+>
+> **✅ 第四批 受控激进清理（覆盖 215 残留 + 4 纠缠簇死名）**：`scripts/delete-dead-css.py` 升级「受控激进模式」（`--aggressive`），并加【不孤立活类】安全阀——顶层选择器含死令牌即整体删，**仅当该选择器内所有活类令牌都出现在某条「零死令牌的干净规则」里（covered 集合）才删**，否则整条保留（杜绝 `.urgent` 被连坐的旧事故）。动态拼接种子经全前缀扫描识别（`cs-`/`icon-`/`theme-panel-card` 等 10 个族）并 `--exclude`，绝不误删。核查结论：① `cs-*`(5) 动态活类 → 保留；② `achievement-*`(34)/`ai-wizard-*`(28)/`kpi-*`(10) 真死 → 整批 takedown；③ 剩余 29 死名（含 `cs-*`/`icon-*` 动态保护族 + 安全阀保留的复利残留）按协议保留。安全核验：零活类孤立（净删除类全属死名 / 语料在用类零消失）、`:host,:root` 全局块零误删、括号平衡、无 `,,`/`:is((` 伪影；webapp jest 121 套件 / host vitest 57 文件全绿、preflight 全绿。死类从 ~293 降至 29。
 
 #### 单名死类长尾（无连字符）—— ✅ 已全部执行完毕（commit 见下）
 
@@ -90,100 +92,31 @@ CSS 类名是模块/主题扩展 API 的天然契约面：外部主题、外部�
 > 扫描：定义 `webapp/assets/styles/**/*.css`；使用 `webapp/assets/scripts/**/*.js`(排除 tests) + `webapp/*src*.html`/`index.html`（刻意排除 4 个打包产物 html，避免把 CSS 定义当使用）。
 > 误判防护：十六进制颜色值过滤；动态拼接类名（`prefix`+n）移至「疑似动态」列，不计入判定。
 
-**确认死类名：293　疑似动态（已剔除）：3　死 ID 选择器：3**
+**确认死类名：29　疑似动态（已剔除）：2　死 ID 选择器：3**
 
 ### 按首段聚类（确认死类名）
 
 | 前缀簇 | 数量 | 样例 |
 |---|---|---|
-| `goal` | 34 | `goal-row-meta-empty`, `goal-action-cancel`, `goal-action-btn`, `goal-item-card`, `goal-item-bar-fill-mini`, `goal-item-expand-btn`, … |
-| `ai` | 28 | `ai-wizard`, `ai-wizard-steps`, `ai-wizard-dot`, `ai-wizard-line`, `ai-wizard-body`, `ai-wizard-label`, … |
-| `achievement` | 24 | `achievement-icon-wrapper`, `achievement-icon-wrapper-horizontal`, `achievement-card-full`, `achievement-icon-wrapper-full`, `achievement-content-full`, `achievement-title-full`, … |
-| `priority` | 11 | `priority-card`, `priority-indicator`, `priority-value`, `priority-grid`, `priority-cards`, `priority-card-new`, … |
-| `achievements` | 10 | `achievements-container`, `achievements-grid-full`, `achievements-summary-grid`, `achievements-empty-state`, `achievements-empty-icon`, `achievements-empty-title`, … |
-| `kpi` | 10 | `kpi-card`, `kpi-grid`, `kpi-icon`, `kpi-label`, `kpi-value`, `kpi-delta`, … |
-| `legend` | 8 | `legend-item-new`, `legend-dot-new`, `legend-value-new`, `legend-item-horizontal`, `legend-dot-horizontal`, `legend-value-horizontal`, … |
-| `scroll` | 8 | `scroll-top-btn`, `scroll-incense-feature`, `scroll-btn`, `scroll-btn-primary`, `scroll-timer`, `scroll-feature-bar`, … |
-| `stats` | 6 | `stats-section-primary`, `stats-section-warning`, `stats-card-value`, `stats-grid`, `stats-modal`, `stats-period-btn` |
 | `cs` | 5 | `cs-liantai`, `cs-stone`, `cs-bianshan`, `cs-yezi`, `cs-mei` |
-| `gho` | 5 | `gho-stat-today`, `gho-svg-bg`, `gho-hero-inner`, `gho-hero-ring`, `gho-hero-score` |
-| `stub` | 5 | `stub-back-title`, `stub-name`, `stub-caption`, `stub-value`, `stub-title-en` |
-| `ticket` | 5 | `ticket-sub-label`, `ticket-body-text`, `ticket-text`, `ticket-notch`, `ticket-pattern` |
-| `timeline` | 5 | `timeline-entry`, `timeline-stats-row`, `timeline-stat`, `timeline-stat-label`, `timeline-stat-value` |
 | `alert` | 4 | `alert-icon-wrapper`, `alert-item`, `alert-days`, `alert-badge` |
-| `arch` | 4 | `arch-date-input`, `arch-sep`, `arch-date-err`, `arch-select-progress` |
-| `bamboo` | 4 | `bamboo-garden-btn`, `bamboo-progress-fill`, `bamboo-glow-subtle`, `bamboo-eval` |
-| `completed` | 4 | `completed-item`, `completed-icon`, `completed-title`, `completed-more` |
 | `icon` | 4 | `icon-option`, `icon-picker`, `icon-picker-sm`, `icon-option-sm` |
-| `keyboard` | 4 | `keyboard-hint`, `keyboard-hint-icon`, `keyboard-hint-text`, `keyboard-hint-close` |
-| `progress` | 4 | `progress-tier`, `progress-fill-green`, `progress-tiers`, `progress-fill` |
-| `touch` | 4 | `touch-target-sm`, `touch-friendly`, `touch-active`, `touch-target` |
-| `tw` | 4 | `tw-signal`, `tw-batt`, `tw-auto`, `tw-canvas-hint` |
-| `bm` | 3 | `bm-btn--loading`, `bm-sticker-del`, `bm-sticker-flip` |
-| `card` | 3 | `card-title`, `card-desc`, `card-edit-hint` |
-| `diagnosis` | 3 | `diagnosis-group`, `diagnosis-tag`, `diagnosis-card` |
-| `editor` | 3 | `editor-modal`, `editor-title-input`, `editor-content-textarea` |
-| `fab` | 3 | `fab-archive-top`, `fab-left`, `fab-top` |
-| `focus` | 3 | `focus-box`, `focus-label`, `focus-text` |
-| `normal` | 3 | `normal-row`, `normal-label`, `normal-content` |
-| `pie` | 3 | `pie-container`, `pie-container-vertical`, `pie-chart-wrapper` |
-| `shortcut` | 3 | `shortcut-item`, `shortcut-key`, `shortcut-desc` |
-| `stat` | 3 | `stat-card`, `stat-number`, `stat-icon` |
-| `chart` | 2 | `chart-canvas`, `chart-container` |
-| `color` | 2 | `color-picker`, `color-option` |
-| `form` | 2 | `form-textarea`, `form-actions` |
-| `glow` | 2 | `glow-pulse`, `glow-pulse-fade` |
-| `has` | 2 | `has-advanced`, `has-pending` |
-| `heatmap` | 2 | `heatmap-container`, `heatmap-day` |
-| `inprogress` | 2 | `inprogress-legend`, `inprogress-horizontal` |
-| `item` | 2 | `item-complete`, `item-action-btn` |
-| `modal` | 2 | `modal-hero-big-number`, `modal-actions` |
-| `notstarted` | 2 | `notstarted-legend`, `notstarted-horizontal` |
-| `sm` | 2 | `sm-section`, `sm-apply-btn` |
-| `time` | 2 | `time-alert`, `time-span-item` |
-| `animations` | 1 | `animations-paused` |
+| `kpi` | 3 | `kpi-card`, `kpi-value`, `kpi-delta` |
+| `focus` | 2 | `focus-box`, `focus-label` |
+| `scroll` | 2 | `scroll-top-btn`, `scroll-workbench-host` |
 | `bad` | 1 | `bad` |
-| `balance` | 1 | `balance-jump` |
-| `bar` | 1 | `bar-complete` |
-| `big` | 1 | `big-display-number` |
-| `date` | 1 | `date-picker-btn` |
-| `detail` | 1 | `detail-complete` |
-| `display` | 1 | `display-follow-theme-section` |
-| `dropdown` | 1 | `dropdown-arrow` |
-| `effect` | 1 | `effect-offscreen` |
-| `emoji` | 1 | `emoji-decorative` |
-| `expand` | 1 | `expand-btn` |
+| `bamboo` | 1 | `bamboo-eval` |
 | `glows` | 1 | `glows-disabled` |
-| `goose` | 1 | `goose-body` |
-| `header` | 1 | `header-quick-btn` |
-| `health` | 1 | `health-tips-list` |
-| `high` | 1 | `high-priority` |
-| `highlight` | 1 | `highlight-subitem` |
-| `input` | 1 | `input-error` |
-| `is` | 1 | `is-typing` |
-| `just` | 1 | `just-completed` |
-| `list` | 1 | `list-item-row` |
-| `loading` | 1 | `loading-spinner` |
-| `low` | 1 | `low-priority` |
-| `medium` | 1 | `medium-priority` |
-| `onboarding` | 1 | `onboarding-highlight` |
-| `period` | 1 | `period-content` |
-| `philosophy` | 1 | `philosophy-icon` |
-| `pulse` | 1 | `pulse-glow` |
+| `goal` | 1 | `goal-item-status-icon` |
 | `section` | 1 | `section-title` |
-| `settings` | 1 | `settings-theme-card` |
-| `shop` | 1 | `shop-currency` |
-| `shortcuts` | 1 | `shortcuts-list` |
-| `swipe` | 1 | `swipe-hint` |
-| `template` | 1 | `template-tab` |
-| `text` | 1 | `text-block` |
+| `stat` | 1 | `stat-card` |
 | `theme` | 1 | `theme-panel-card` |
+| `time` | 1 | `time-alert` |
 | `urgent` | 1 | `urgent` |
-| `wallet` | 1 | `wallet-action` |
 
 ### 疑似动态拼接（已从判定剔除，待人工确认）
 
-`rw-768` `tw-mm-style-1` `tw-mm-style-3`
+`tw-mm-style-1` `tw-mm-style-3`
 
 ### 死 ID 选择器
 

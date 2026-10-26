@@ -234,10 +234,7 @@
     font-size: var(--type-xs);
     border-radius: var(--radius-md);
 }
-.rw-460 .goal-view-archived-btn {
-    padding: 6px 12px;
-    font-size: var(--type-mini);
-}
+
 .rw-460 .completed-items-toggle {
     font-size: var(--type-mini);
     padding: 3px 6px;
@@ -290,7 +287,8 @@
 
 
 /* ===== 触控设备优化 (hover: none) ===== */
-@media (hover: none) and (pointer: coarse)       {
+@media (hover: none) and (pointer: coarse)        {
+
 
 
 
@@ -339,7 +337,8 @@
 
 /* ===== 窄屏终极兜底：无论哪个 rw-* 类，宽度 ≤768px 一律收扁 ===== */
 /* 用 :host 前缀提升特异性以覆盖默认 .goal-row-header 规则，避免依赖 !important */
-@media (max-width: 768px)       {
+@media (max-width: 768px)        {
+
 
 
 
@@ -366,7 +365,8 @@
 }
 
 /* ===== 高对比度 / 减少动画偏好 ===== */
-@media (prefers-reduced-motion: reduce)       {
+@media (prefers-reduced-motion: reduce)        {
+
 
 
 
@@ -382,7 +382,7 @@
 /* ==========================================================
    触控目标扩展：响应式断点补充，保证窄屏交互元素热区 ≥ 44px
    ========================================================== */
-.rw-460 .goal-inline-add-btn, .rw-460 .goal-view-archived-btn, .rw-460 .completed-items-toggle, .rw-460 .goal-inline-edit-input, .rw-460 .goal-row-title, .rw-460 .goal-row-category, .rw-460 .goal-row-toggle, .rw-460 .goal-item-name {
+.rw-460 .goal-inline-add-btn, .rw-460 .completed-items-toggle, .rw-460 .goal-inline-edit-input, .rw-460 .goal-row-title, .rw-460 .goal-row-category, .rw-460 .goal-row-toggle, .rw-460 .goal-item-name {
     min-height: var(--touch-target);
 }
 
@@ -410,7 +410,7 @@
     flex: 1 1 auto;
     min-width: 0;
 }
-.rw-460 .arch-select-progress, .rw-460 .arch-select-category {
+.rw-460 .arch-select-category {
     width: 100%;
     max-width: none;
 }

@@ -353,7 +353,8 @@
 }
 
 /* At wide widths (≥769px), keep .goal-row-title single-line and fully flexible */
-@media (min-width: 769px)       {
+@media (min-width: 769px)        {
+
 
 
 
@@ -432,9 +433,7 @@
 .goal-item-entry:hover {
     background: rgba(var(--primary-rgb), 0.04);
 }
-.goal-item-entry:hover .goal-item-edit-btn {
-    opacity: 1;
-}
+
 
 /* 第一行：名称 + 进度条 */
 .goal-item-row {
@@ -513,27 +512,19 @@ input[type="number"].goal-inline-edit-input {
 .goal-item-status.goal-item-status-complete {
     color: var(--bamboo-success);
 }
-.goal-item-status.goal-item-status-paused {
-    color: var(--text-secondary);
-}
+
 
 .goal-item-status-icon.complete {
     color: var(--bamboo-success);
 }
-.goal-item-status-icon.paused {
-    color: var(--text-secondary);
-}
+
 .goal-item-name:hover {
     background: rgba(var(--primary-rgb), 0.1);
     border-color: rgba(var(--primary-rgb), 0.2);
 }
 
 
-.highlight-subitem {
-    animation: highlightPulse 1s ease-in-out 3;
-    background: rgba(var(--primary-rgb), 0.1);
-    border-radius: var(--radius-xs);
-}
+
 @keyframes highlightPulse {
     0%, 100% { background: rgba(var(--primary-rgb), 0.1); }
     50% { background: rgba(var(--primary-rgb), 0.25); }
@@ -691,14 +682,9 @@ input[type="number"].goal-inline-edit-input {
 .goal-item-percent-complete {
     color: var(--bamboo-primary);
 }
-.detail-complete {
-    color: var(--bamboo-primary);
-    font-weight: 600;
-}
 
-.goal-row:hover .goal-row-edit-btn {
-    opacity: 0.6;
-}
+
+
 
 .goal-row-actions {
     display: flex;
@@ -888,18 +874,8 @@ input[type="number"].goal-inline-edit-input {
 
 
 
-.goal-editor-v2 .goal-item-value {
-    font-size: var(--type-micro);
-    font-weight: 600;
-    color: var(--bamboo-primary);
-    margin: 0 4px;
-    white-space: nowrap;
-    cursor: pointer;
-    transition: transform, opacity, box-shadow, border-color, background-color 0.2s ease;
-}
-.goal-editor-v2 .goal-item-value:hover {
-    opacity: 0.8;
-}
+
+
 .goal-item-daily {
     font-size: var(--type-xs);
     color: var(--bamboo-warning);
@@ -1271,20 +1247,6 @@ input[type="number"].goal-inline-edit-input {
 
 
 
-.goal-item-daily-mini.goal-item-daily-complete {
-    color: var(--bamboo-primary);
-}
-
-
-
-
-
-
-
-.goal-item-bar-fill-mini.goal-item-bar-complete {
-    background: var(--bamboo-success);
-}
-
 
 
 /* ============================================================
@@ -1292,7 +1254,8 @@ input[type="number"].goal-inline-edit-input {
    Canonical breakpoints: 480px / 768px
    ============================================================ */
 
-@media (max-width: 768px)       {
+@media (max-width: 768px)        {
+
 
 
 
@@ -1326,7 +1289,8 @@ input[type="number"].goal-inline-edit-input {
     }
 }
 
-@media (max-width: 480px)       {
+@media (max-width: 480px)        {
+
 
 
 

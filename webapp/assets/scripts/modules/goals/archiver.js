@@ -107,7 +107,7 @@ export const GoalsArchiver = {
                             ${categories.map(c => `<option value="${HTMLUtils.escapeHtmlAttr(c.name)}" ${filter.category === c.name ? 'selected' : ''}>${escapeHtml(c.name)}</option>`).join('')}
                         </select>
                     </div>
-                    <div class="arch-filter-field arch-filter-field-date arch-date-trigger" data-action="arch-open-date-picker" title="选择归档日期范围">
+                    <div class="arch-filter-field arch-filter-field-date arch-date-trigger" title="选择归档日期范围">
                         ${LucideUtils.createIcon('calendar', { size: 14 })}
                         <span class="arch-date-label">${filter.dateStart || filter.dateEnd ? `${escapeHtml(filter.dateStart || '开始')} ~ ${escapeHtml(filter.dateEnd || '结束')}` : '选择日期范围'}</span>
                         ${filter.dateStart || filter.dateEnd ? `<button class="arch-icon-btn" data-action="arch-clear-date" title="清除日期">${LucideUtils.createIcon('x', { size: 12 })}</button>` : ''}

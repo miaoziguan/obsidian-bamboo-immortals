@@ -228,19 +228,6 @@ export const Handlers = {
         DatePicker.goToToday();
     },
 
-    selectHistoryDate(dateStr) {
-        const newDate = dateStr instanceof Date ? dateStr : new Date(dateStr);
-        const { currentDate } = store.getState();
-        const direction = newDate >= currentDate ? 1 : -1;
-        RenderScheduler.startDateTransition(direction, () => {
-            store.goToDate(dateStr);
-            renderDate();
-            markSectionDirty('timeline');
-            markSectionDirty('todo');
-        });
-        this.closeModal();
-    },
-
     openSettingsModal() {
         SettingsModal.open();
     },
@@ -295,11 +282,7 @@ export const Handlers = {
 ActionDispatcher.registerMany({
     'close-modal': () => Handlers.closeModal(),
     'close-modal-overlay': (data, target, e) => Handlers.closeModal(e),
-    'export-data': () => DataIO.exportData(),
     'open-date-picker': () => Handlers.openDatePicker(),
-    'open-archive-page': () => {
-        if (typeof openArchivePage === 'function') openArchivePage();
-    },
     'fab-strategy': () => { 
         if (typeof GoalsRenderer !== 'undefined') GoalsRenderer.openHealthScoreDetail(); 
         if (typeof FABManager !== 'undefined') FABManager.close();

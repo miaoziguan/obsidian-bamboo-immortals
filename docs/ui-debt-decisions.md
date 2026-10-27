@@ -193,5 +193,11 @@
 - `npm run check:dead-exports` —— 零消费者导出（既有）
 - `npm run check:dead-methods` —— 零引用对象方法（本次新增；52 个存量候选
   见 docs/dead-methods.md，快照 + 漂移即失败，强制评审新增项）
-- 盲区（同名方法共享判定、属性键、传递性调用图）记录在脚本头注释——
-  宁可漏报，不误伤。
+- `npm run check:actions` —— `data-action` 双向接线：渲染了但没人接（点了没反应）
+  / 注册了但永不渲染（白登记）。名字「全仓只出现这一处」才算证据
+- `npm run check:architecture` —— 模块图：循环依赖 / import 指向不存在的文件 /
+  从入口（源 HTML 的 `<script src>` + `main.ts`）走不到的模块
+- 盲区（同名方法共享判定、属性键、传递性调用图、动态拼接的 action 名、运行时
+  注册的脚本）记录在各脚本头注释——宁可漏报，不误伤。
+- 上述四个都是「名字层」的静态证据，看不见可达性与动态派发。运行时执行证据由
+  `scripts/scan-runtime-coverage.mjs` 提供（非门禁，见 docs/runtime-coverage.md）。

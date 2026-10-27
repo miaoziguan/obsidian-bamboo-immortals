@@ -9,13 +9,6 @@ window.DataIO = {
     },
 
     /**
-     * 仅导出商店数据（余额+历史）
-     */
-    async exportShopData() {
-        await this._doExport('daily-review-shop', 'shopOnly');
-    },
-
-    /**
      * 静默自动备份（导入/重置前兜底）
      */
     async silentExport() {

@@ -691,8 +691,7 @@ ActionDispatcher.registerMany({
         if (wrap) wrap.classList.remove('open');
     },
     'todo-lottery-start': () => { console.log('[抽签] 骰子按钮被点击(r2)'); Todo.startLottery(); },
-    'todo-lottery-start-task': (data) => Todo.startLotteryTask(data.todoId),
-    'select-history-date': (data) => Handlers.selectHistoryDate(data.date)
+    'todo-lottery-start-task': (data) => Todo.startLotteryTask(data.todoId)
 });
 window.renderSkeleton = renderSkeleton;
 window.renderAll = renderAll;

@@ -224,7 +224,7 @@ const ScrollManager = {
 
 
               <!-- 火折子：竹制吹筒 + 可拔竹帽，拔帽方显火绒，拖到香头点燃 -->
-              <div class="scroll-firebrand" data-action="scroll-firebrand" aria-label="火折子">
+              <div class="scroll-firebrand" aria-label="火折子">
                 <svg viewBox="0 0 48 96" fill="none">
                   <!-- 竹身（吹筒）：颜色由 incense.css 的 .scroll-firebrand .fb-* 规则驱动（--fb-* 主题变量，跟随色相）。
                        原 SVG 写死绿/橙，且那套 CSS 因缺 class 而从未生效——现挂上 fb-* 类即自动主题化。 -->

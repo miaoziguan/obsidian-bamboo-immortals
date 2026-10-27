@@ -435,7 +435,7 @@ export const ShopManager = {
             : 'is-available';
         return `
             <div class="shop-item-card ${locked ? 'is-locked' : ''}"
-                 data-action="shop-buy" data-item-id="${HTMLUtils.escapeHtmlAttr(item.id)}" data-item-price="${num(item.price)}" data-item-name="${HTMLUtils.escapeHtmlAttr(item.name)}" data-item-icon="${HTMLUtils.escapeHtmlAttr(item.icon)}">
+                 data-item-id="${HTMLUtils.escapeHtmlAttr(item.id)}" data-item-price="${num(item.price)}" data-item-name="${HTMLUtils.escapeHtmlAttr(item.name)}" data-item-icon="${HTMLUtils.escapeHtmlAttr(item.icon)}">
                 <div class="shop-item-icon">${item.icon}</div>
                 <div class="shop-item-info">
                     <div class="shop-item-name">${item.name}</div>

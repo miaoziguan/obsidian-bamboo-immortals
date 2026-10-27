@@ -1288,12 +1288,12 @@ export const ThemeEffects = {
             if (!row.installed) {
                 // 目录不可用（catalog=null）时不会有 url → 自然不渲染安装按钮
                 if (row.url) {
-                    btn = '<button class="market-btn install" ' + act + ' data-action="install" data-url="' +
+                    btn = '<button class="market-btn install" ' + act + ' data-url="' +
                         HTMLUtils.escapeHtmlAttr(row.url) + '" data-version="' + HTMLUtils.escapeHtmlAttr(ver) +
                         '" title="安装" aria-label="安装">' + ICON.download + '</button>';
                 }
             } else if (row.hasUpdate) {
-                btn = '<button class="market-btn install" ' + act + ' data-action="update" data-url="' +
+                btn = '<button class="market-btn install" ' + act + ' data-url="' +
                     HTMLUtils.escapeHtmlAttr(row.url) + '" data-version="' + HTMLUtils.escapeHtmlAttr(ver) +
                     '" title="更新" aria-label="更新">' + ICON.download + '</button>' +
                     '<button class="market-btn uninstall" ' + act + ' title="卸载" aria-label="卸载">' + ICON.trash + '</button>';

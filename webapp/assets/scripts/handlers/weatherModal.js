@@ -227,28 +227,7 @@ export const WeatherRenderer = {
         }
     },
 
-    closeDetail() {
-        const widget = byId('weatherWidget');
-        if (widget) widget.classList.remove('weather-open');
-        this._expanded = false;
-    }
 };
-
-// 外部仍可通过 ActionDispatcher 触发刷新/切换
-ActionDispatcher.registerMany({
-    'toggle-weather': async function() {
-        const next = !(store.state.ui.weatherEnabled);
-        await store.setWeatherEnabled(next);
-        WeatherRenderer.refresh();
-        if (typeof Toast !== 'undefined' && typeof Toast.showToast === 'function') {
-            Toast.showToast(next ? '已打开天气显示' : '已关闭天气显示', 'success');
-        }
-    },
-    'refresh-weather': async function() {
-        WeatherRenderer.closeDetail();
-        WeatherRenderer.refresh(true);
-    }
-});
 
 window.WeatherRenderer = WeatherRenderer;
 

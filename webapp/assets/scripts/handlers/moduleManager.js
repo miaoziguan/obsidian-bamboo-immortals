@@ -251,10 +251,10 @@ export const ModuleManager = {
             };
             let btn;
             if (!isInstalled) {
-                btn = '<button class="market-btn install" ' + act + ' data-action="install" data-url="' +
+                btn = '<button class="market-btn install" ' + act + ' data-url="' +
                     (t.url || '') + '" data-version="' + ver + '" title="安装" aria-label="安装">' + ICON.download + '</button>';
             } else if (hasUpdate) {
-                btn = '<button class="market-btn install" ' + act + ' data-action="update" data-url="' +
+                btn = '<button class="market-btn install" ' + act + ' data-url="' +
                     (t.url || '') + '" data-version="' + ver + '" title="更新" aria-label="更新">' + ICON.download + '</button>' +
                     '<button class="market-btn uninstall" ' + act + ' title="卸载" aria-label="卸载">' + ICON.trash + '</button>';
             } else {

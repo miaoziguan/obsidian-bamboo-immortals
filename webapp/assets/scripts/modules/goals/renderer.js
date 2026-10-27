@@ -364,16 +364,6 @@ export const GoalsRenderer = {
         GoalsArchiver.openArchiveManager();
     },
 
-    /** 单项恢复（供 ActionDispatcher 调用） */
-    unarchiveGoal(goalId) {
-        GoalsArchiver.unarchiveGoal(goalId);
-    },
-
-    /** 单项永久删除（供 ActionDispatcher 调用） */
-    async deleteArchivedGoal(goalId) {
-        return GoalsArchiver.deleteArchivedGoal(goalId);
-    },
-
     // ────────────────────────────────────────────────────────────
     //  健康分单一数据源：优先消费插件 app:getHealthOverview 的权威套件
     // ────────────────────────────────────────────────────────────
@@ -1038,8 +1028,6 @@ ActionDispatcher.registerMany({
     'goal-add-inline': () => GoalsEditor.startAddInline(),
     'goal-archive': (data) => GoalsRenderer.archiveGoal(data.goalId),
     'goal-delete': (data) => GoalsEditor.deleteGoal(data.goalId),
-    'goal-unarchive': (data) => GoalsRenderer.unarchiveGoal(data.goalId),
-    'goal-delete-archived': (data) => GoalsRenderer.deleteArchivedGoal(data.goalId),
     'goal-remove-subitem': (data) => GoalsEditor.removeSubItem(data.goalId, parseInt(data.subIdx)),
     'goal-quick-add-subitem': (data) => GoalsEditor.quickAddSubItem(data.goalId),
     'goal-save-template': (data) => GoalsEditor.saveAsTemplate(data.goalId)

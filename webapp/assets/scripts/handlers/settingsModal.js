@@ -427,10 +427,6 @@ export const SettingsModal = {
         DataIO.exportData();
     },
 
-    exportShopData() {
-        DataIO.exportShopData();
-    },
-
     // ---- 文件级导出 ----
     exportGoals() { DataIO.exportGoals(); },
     exportSettings() { DataIO.exportSettings(); },
@@ -767,7 +763,6 @@ ActionDispatcher.registerMany({
     'settings-toggle-weather-expanded': (_ds, target) => SettingsModal.toggleWeatherExpanded(target.checked),
     'settings-toggle-quote': (_ds, target) => SettingsModal.toggleQuoteEnabled(target.checked),
     'settings-export-data': () => SettingsModal.exportData(),
-    'settings-export-shop-data': () => SettingsModal.exportShopData(),
     'settings-export-goals': () => SettingsModal.exportGoals(),
     'settings-export-settings': () => SettingsModal.exportSettings(),
     'settings-export-purchase': () => SettingsModal.exportPurchaseHistory(),

@@ -318,7 +318,6 @@ document.addEventListener('keydown', (e) => DatePicker._onCalendarKeydown(e));
 
 ActionDispatcher.registerMany({
     'quick-select-date': (data) => DatePicker.quickSelect(data.date, data.label),
-    'goto-today': () => DatePicker.goToToday(),
     'calendar-prev-month': () => DatePicker._updateCalendar('prev'),
     'calendar-next-month': () => DatePicker._updateCalendar('next')
 });

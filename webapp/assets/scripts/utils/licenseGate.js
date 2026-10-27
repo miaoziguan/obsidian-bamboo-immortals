@@ -29,8 +29,11 @@ export function isLicenseGateActive() {
  */
 export function mountLicenseGate(opts) {
   const { root, activate, importBackup } = opts;
-  const parent = root || document;
-  if (parent.getElementById(GATE_ID)) return;
+  // root 可能是 ShadowRoot、Document（kill-switch / 不支持 attachShadow 时 bridge 会传
+  // document），或空。Document 上 appendChild 会抛 HierarchyRequestError，必须落到 body。
+  const parent = root && root !== document ? root : document.body;
+  if (!parent) return;
+  if (parent.querySelector('#' + GATE_ID)) return;
 
   gateActive = true;
 

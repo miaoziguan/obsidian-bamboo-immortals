@@ -80,13 +80,13 @@
 | `CONSTANTS` | 仅测试引用 | 内部:0 测试:2 |
 | `getShadowRoot` | 内部使用(冗余export) | 内部:2 测试:0 |
 | `createFacade` | 内部使用(冗余export) | 内部:3 测试:1 |
-| `isLicenseGateActive` | 内部使用(冗余export) | 内部:1 测试:0 |
-| `mountLicenseGate` | 内部使用(冗余export) | 内部:2 测试:0 |
+| `isLicenseGateActive` | 内部使用(冗余export) | 内部:1 测试:1 |
+| `mountLicenseGate` | 内部使用(冗余export) | 内部:2 测试:1 |
 | `APP_MESSAGE_TYPES` | 内部使用(冗余export) | 内部:3 测试:1 |
 | `isKnownType` | 内部使用(冗余export) | 内部:2 测试:1 |
 | `compareSemver` | 内部使用(冗余export) | 内部:1 测试:1 |
 | `parseSemver` | 内部使用(冗余export) | 内部:4 测试:1 |
-| `initShadow` | 内部使用(冗余export) | 内部:3 测试:0 | 重导出
+| `initShadow` | 内部使用(冗余export) | 内部:3 测试:1 | 重导出
 | `ToastManager` | 内部使用(冗余export) | 内部:1 测试:0 |
 | `CACHE_KEY` | 内部使用(冗余export) | 内部:3 测试:0 |
 | `CACHE_TTL` | 内部使用(冗余export) | 内部:1 测试:0 |

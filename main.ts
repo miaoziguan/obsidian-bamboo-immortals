@@ -106,6 +106,11 @@ export default class BambooReviewPlugin extends Plugin {
     // 用户输入激活码 → 宿主侧校验 → 写盘 → 移除遮罩即时解锁。无需重启插件。
     this.license = new LicenseStore(this);
 
+    // 激活态异步复验：isActive() 读的是持久化布尔，data.json 明文翻一位即可解锁，
+    // 因此这里用已存 key 重新验签，失败则清除激活态。故意不 await —— 密钥还原与
+    // Web Crypto 计算不进启动关键路径；失败效果落在下次打开视图（遮罩重新出现）。
+    void this.license.revalidate();
+
     const pluginDir = this.manifest.dir || '';
     const version = this.manifest.version || '';
     // 注入插件版本：随 app:ready 下发 webapp，用于素材 minAppVersion 门控

@@ -110,6 +110,33 @@ export function getLicenseTag(key: string): string | null {
 }
 
 /**
+ * 激活码「形状」检查（同步、无副作用、不接触密钥）。
+ *
+ * 用于把持久化的激活布尔与真实 key 绑定：data.json 是明文，翻转 licenseActive
+ * 一位即可让 isActive() 返回 true，因此任一未附带合法 key 的激活态都应视为无效。
+ * 这里只校验结构（BRI + 24 位十六进制载荷），不验签——验签是异步且含防调试逻辑，
+ * 放进同步查询路径会误伤正版用户，故另有 revalidate() 承担。
+ */
+export function isLicenseKeyShape(key: string): boolean {
+  if (!key) return false;
+  const parts = key.trim().toUpperCase().split(SEP);
+  if (parts[0] !== 'BRI') return false;
+  const payload = parts.slice(1).join('');
+  if (payload.length !== 24) return false;
+  return /^[0-9A-F]+$/.test(payload);
+}
+
+/**
+ * 当前是否处于会导致 verifyLicenseKey 恒判假的调试态。
+ *
+ * verifyLicenseKey 内置 isBeingDebugged()：用户打开 devtools 时它返回 false。
+ * 异步复验必须先问这一句，否则「开控制台的正版用户」会被误判成盗版并清除激活态。
+ */
+export function isVerifyBlockedByDebugger(): boolean {
+  return isBeingDebugged();
+}
+
+/**
  * 校验激活码是否合法（插件侧使用，浏览器 Web Crypto 异步）
  *
  * 接受的展示形态（TAG4+SIG20 共 24 位十六进制，大小写不敏感）：

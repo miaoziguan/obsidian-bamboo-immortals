@@ -153,9 +153,9 @@
 >
 > 扫描范围：`webapp/assets/scripts/**/*.js`（排除 `tests/`）；打包产物 html 不计入。
 
-**合计 130 个挂载点 / 84 个文件**（其中 `__` 开头的内部标记 11 个）。
+**合计 128 个挂载点 / 82 个文件**（其中 `__` 开头的内部标记 11 个）。
 
-### 公共挂载点（119）
+### 公共挂载点（117）
 
 | 文件 | 挂载点 |
 |---|---|
@@ -187,7 +187,6 @@
 | `modules/goals/dateRangePicker.js` | `window.DateRangePicker` |
 | `modules/goals/editor.js` | `window.GoalsEditor` |
 | `modules/goals/healthScore.js` | `window.GoalHealthScore` |
-| `modules/goals/index.js` | `window.Goals` |
 | `modules/goals/inlineEditService.js` | `window.GoalInlineEditService` |
 | `modules/goals/priorityPicker.js` | `window.PriorityPicker` |
 | `modules/goals/renderer.js` | `window.GoalsRenderer` |
@@ -198,9 +197,7 @@
 | `modules/sections/sectionDragDrop.js` | `window.SectionDragDrop` |
 | `modules/sections/sectionSettings.js` | `window.SectionSettings` |
 | `modules/theme-effects.js` | `window.ThemeEffects` |
-| `modules/timeline/editor.js` | `window.TimelineEditor` |
 | `modules/timeline/index.js` | `window.Timeline` |
-| `modules/timeline/renderer.js` | `window.TimelineRenderer` |
 | `modules/todo/index.js` | `window.Todo` |
 | `modules/todo/renderer.js` | `window.TodoRenderer` |
 | `renderers/renderers.js` | `window.RenderScheduler`<br>`window.buildBambooNodeHTML`<br>`window.buildBambooPathHTML`<br>`window.buildPeriodDotsHTML`<br>`window.buildStubBackHTML`<br>`window.buildTicketHTML`<br>`window.computeActiveDuration`<br>`window.createDefaultSection`<br>`window.escapeHtml`<br>`window.getActivePeriod`<br>`window.getPeriodDotStates`<br>`window.isCurrentPeriod`<br>`window.markSectionDirty`<br>`window.renderAll`<br>`window.renderDate`<br>`window.renderGoalsSection`<br>`window.renderSkeleton`<br>`window.renderTimelineSection`<br>`window.renderTodoSection`<br>`window.setupBambooTooltips`<br>`window.setupTimelineHoverEffects` |
@@ -219,6 +216,7 @@
 | `state/store.js` | `window.Store`<br>`window.store` |
 | `storage/bridge.js` | `window.storageManager` |
 | `utils/actionDispatcher.js` | `window.ActionDispatcher` |
+| `utils/bambooSelect.js` | `window.BambooSelect` |
 | `utils/confirmDialog.js` | `window.ConfirmDialog` |
 | `utils/cultivationData.js` | `window.CultivationData` |
 | `utils/eventBus.js` | `window.EventBus` |

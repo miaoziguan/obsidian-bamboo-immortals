@@ -92,20 +92,21 @@ CSS 类名是模块/主题扩展 API 的天然契约面：外部主题、外部�
 > 扫描：定义 `webapp/assets/styles/**/*.css`；使用 `webapp/assets/scripts/**/*.js`(排除 tests) + `webapp/*src*.html`/`index.html`（刻意排除 4 个打包产物 html，避免把 CSS 定义当使用）。
 > 误判防护：十六进制颜色值过滤；动态拼接类名（`prefix`+n）移至「疑似动态」列，不计入判定。
 
-**确认死类名：29　疑似动态（已剔除）：2　死 ID 选择器：3**
+**确认死类名：35　疑似动态（已剔除）：2　死 ID 选择器：3**
 
 ### 按首段聚类（确认死类名）
 
 | 前缀簇 | 数量 | 样例 |
 |---|---|---|
+| `item` | 6 | `item-card`, `item-list`, `item-card-content`, `item-card-title`, `item-card-subtitle`, `item-card-actions` |
 | `cs` | 5 | `cs-liantai`, `cs-stone`, `cs-bianshan`, `cs-yezi`, `cs-mei` |
 | `alert` | 4 | `alert-icon-wrapper`, `alert-item`, `alert-days`, `alert-badge` |
 | `icon` | 4 | `icon-option`, `icon-picker`, `icon-picker-sm`, `icon-option-sm` |
 | `kpi` | 3 | `kpi-card`, `kpi-value`, `kpi-delta` |
 | `focus` | 2 | `focus-box`, `focus-label` |
 | `scroll` | 2 | `scroll-top-btn`, `scroll-workbench-host` |
-| `bad` | 1 | `bad` |
-| `bamboo` | 1 | `bamboo-eval` |
+| `arch` | 1 | `arch-date-range` |
+| `form` | 1 | `form-select` |
 | `glows` | 1 | `glows-disabled` |
 | `goal` | 1 | `goal-item-status-icon` |
 | `section` | 1 | `section-title` |

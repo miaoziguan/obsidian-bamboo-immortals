@@ -228,5 +228,7 @@ export function bootstrapLicenseGate(licenseActive, root, activate, importBackup
 if (typeof window !== 'undefined') {
   window.bootstrapLicenseGate = bootstrapLicenseGate;
   window.mountLicenseGate = mountLicenseGate;
-  window.isLicenseGateActive = isLicenseGateActive;
+  // isLicenseGateActive 不再挂 window：全仓零消费（唯一调用方是单元测试，
+  // 走模块导出即可）。保留死全局只会让 check:window-globals 的挂载点清单
+  // 多一条永远绿、永远没人用的记录。
 }

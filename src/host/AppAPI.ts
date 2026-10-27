@@ -8,7 +8,7 @@ import { ALLOWED_AUDIO_EXTENSIONS, MIME_TYPES } from '../constants/audio';
 import type { DayData, CustomTemplate } from '../types/data';
 import type { StrategyOverview } from '../ai/strategyOverview';
 import type { CultivationRealm } from '../cultivation';
-import { INBOUND_PREFIXES } from './protocol';
+import { INBOUND_PREFIXES, PROTOCOL_VERSION } from './protocol';
 import { LicenseStore } from '../license/licenseStore';
 import { marketUrlCandidates, isGithubApiUrl, GITHUB_RAW_ACCEPT } from './marketSources';
 import { createManifestCache } from './manifestCache';
@@ -1054,7 +1054,19 @@ export class AppAPI {
     // （app:getSettings 已迁入 ./handlers/settingsHandlers.ts，由上方路由表分发）
     // ---- 生命周期 ----
     if (type === 'app:ready') {
-      // 阶段3 · 契约化：版本协商 — 插件升级但 webapp 缓存旧版时，用户重新加载视图即可获取最新 webapp
+      // 版本协商：webapp 是独立下发的资产（webapp.zip + .webapp-version 戳），与 main.js
+      // 不是同一个构建产物，PROTOCOL_VERSION 是判断二者是否配套的唯一依据。
+      // 此前这里只有这句说明、没有实际比较（routing.test 甚至断言「不匹配不告警」），
+      // 于是「老 webapp + 新 main.js」组合零防护，用户侧只表现为某个功能点了没反应。
+      // 只告警、不阻断：握手抛错会把用户锁进空白界面，比功能降级更糟。
+      const remote = (payload as Record<string, unknown> | undefined)?.protocolVersion;
+      if (typeof remote !== 'number' || remote !== PROTOCOL_VERSION) {
+        console.warn(
+          `[Bamboo] webapp 协议版本 ${typeof remote === 'number' ? `v${remote}` : '未上报'} ` +
+            `与宿主 v${PROTOCOL_VERSION} 不一致：该组合未经验证，部分操作可能无响应。` +
+            '升级后首次使用请重开面板或重载视图以重新握手。',
+        );
+      }
       this.themeBridge.pushTheme(this.settings.followObsidianTheme);
       this.respond(id, {
         ok: true,

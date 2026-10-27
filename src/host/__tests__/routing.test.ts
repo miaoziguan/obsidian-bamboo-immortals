@@ -70,7 +70,11 @@ describe('AppAPI 消息路由与来源校验', () => {
   it('app:ready 回传配置（含自定义主题清单/音源，主题仅下发清单不含代码）', async () => {
     api.setCustomThemes([{ name: 't', code: 'x' }]);
     (api as any).settings = { noiseItems: [{ name: 'n' }] };
-    await send(iframeContentWindow, { type: 'app:ready', id: 'x5', payload: {} });
+    await send(iframeContentWindow, {
+      type: 'app:ready',
+      id: 'x5',
+      payload: { protocolVersion: PROTOCOL_VERSION },
+    });
     expect(captured!.error).toBeUndefined();
     const p = captured!.payload as any;
     expect(p.customThemes).toEqual([{ name: 't' }]); // 仅清单，不含代码
@@ -80,7 +84,11 @@ describe('AppAPI 消息路由与来源校验', () => {
   it('app:ready 随激活外部主题代码下发 activeTheme', async () => {
     api.setCustomThemes([{ name: 't', code: 'x' }]);
     (api as any).settings = { noiseItems: [], sectionConfig: { themes: { themeEffect: 't' } } };
-    await send(iframeContentWindow, { type: 'app:ready', id: 'xActive', payload: {} });
+    await send(iframeContentWindow, {
+      type: 'app:ready',
+      id: 'xActive',
+      payload: { protocolVersion: PROTOCOL_VERSION },
+    });
     expect(captured!.error).toBeUndefined();
     const p = captured!.payload as any;
     expect(p.activeTheme).toEqual({ name: 't', code: 'x' });
@@ -89,7 +97,11 @@ describe('AppAPI 消息路由与来源校验', () => {
   it('app:ready 激活主题为默认/无时不下发 activeTheme', async () => {
     api.setCustomThemes([{ name: 't', code: 'x' }]);
     (api as any).settings = { noiseItems: [], sectionConfig: { themeEffect: { theme: 'bamboo' } } };
-    await send(iframeContentWindow, { type: 'app:ready', id: 'xNoActive', payload: {} });
+    await send(iframeContentWindow, {
+      type: 'app:ready',
+      id: 'xNoActive',
+      payload: { protocolVersion: PROTOCOL_VERSION },
+    });
     const p = captured!.payload as any;
     expect(p.activeTheme).toBeNull();
   });
@@ -126,7 +138,7 @@ describe('AppAPI 消息路由与来源校验', () => {
     }
   });
 
-  it('app:ready 协议版本不匹配时不告警（由 webapp 自愈，重新加载视图即可）', async () => {
+  it('app:ready 协议版本不匹配时告警，但不阻断握手', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     try {
       await send(iframeContentWindow, {
@@ -134,14 +146,17 @@ describe('AppAPI 消息路由与来源校验', () => {
         id: 'x7',
         payload: { protocolVersion: 999 },
       });
+      // 告警必须发生：否则「老 webapp + 新 main.js」只能表现为功能无响应，无从定位
+      expect(warn).toHaveBeenCalledTimes(1);
+      expect(String(warn.mock.calls[0][0])).toContain('v999');
+      // 但握手本身不能失败 —— 阻断会把用户锁进空白界面
       expect(captured!.error).toBeUndefined();
-      expect(warn).not.toHaveBeenCalled();
     } finally {
       warn.mockRestore();
     }
   });
 
-  it('app:ready 无 protocolVersion（老版 webapp）不告警', async () => {
+  it('app:ready 无 protocolVersion（老版 webapp）时告警', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     try {
       await send(iframeContentWindow, {
@@ -149,8 +164,10 @@ describe('AppAPI 消息路由与来源校验', () => {
         id: 'x8',
         payload: {},
       });
+      // 老 webapp 根本不发这个字段 —— 正是「宿主已升级、资产没跟上」的形态，必须提示
+      expect(warn).toHaveBeenCalledTimes(1);
+      expect(String(warn.mock.calls[0][0])).toContain('未上报');
       expect(captured!.error).toBeUndefined();
-      expect(warn).not.toHaveBeenCalled();
     } finally {
       warn.mockRestore();
     }

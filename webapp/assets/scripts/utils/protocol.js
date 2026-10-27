@@ -88,6 +88,13 @@ export const APP_MESSAGE_TYPES = [
   'file:get',
   'file:write',
   'file:delete',
+  // 备份 / 授权 / 设置：与宿主侧协议数组保持镜像
+  'app:activateLicense',
+  'app:exportBackup',
+  'app:importBackup',
+  'app:getSettings',
+  'storage:putSettings',
+  'theme:load',
   // host → webapp
   'goals:changed',
   // 【防丢数据】宿主即将销毁本 iframe（关闭视图 / 插件重载）→ 通知 webapp 立即落盘。
@@ -106,6 +113,8 @@ export const APP_MESSAGE_TYPES = [
   'nav:today',
   'action:openStats',
   'action:openSettings',
+  'app:revealed',
+  'storage:response',
   // ---- 主题市场（webapp → host）----
   'market:manifest',
   'market:install',

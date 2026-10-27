@@ -109,6 +109,15 @@ export const ALL_MESSAGE_TYPES = [
   'file:get',
   'file:write',
   'file:delete',
+  // 备份 / 授权 / 设置：此前未登记，仅靠 INBOUND_PREFIXES 的前缀放行才跑通。
+  // app:* 没有前缀兜底（webapp 侧的已知类型判定只对 storage/file/market/module/material
+  // 前缀放行），因此这些类型必须精确登记 —— 漏登记时 host → webapp 方向会被静默丢弃。
+  'app:activateLicense', // 激活码校验（用户输入码）
+  'app:exportBackup',    // 导出备份码
+  'app:importBackup',    // 导入备份码解锁
+  'app:getSettings',     // 按需读取全量设置（app:ready 之外的补读路径）
+  'storage:putSettings', // 批量写设置（前缀兜底可放行，登记以保证契约完整）
+  'theme:load',          // 按名取回外部主题代码（懒加载）
 
   // ---- host → webapp ----
   'app:beforeDetach', // 视图销毁前的最后通牒：webapp 收到后立即落盘（防丢防抖窗口内的编辑）
@@ -126,6 +135,8 @@ export const ALL_MESSAGE_TYPES = [
   'nav:today',
   'action:openStats',
   'action:openSettings',
+  'app:revealed',     // 视图已移到中央并绘制完成（webapp 据此折叠右栏，避免空白闪烁）
+  'storage:response', // 存储请求的统一响应（payload 与 error 二选一）
   // ---- 主题市场（webapp → host）----
   'market:manifest',
   'market:install',

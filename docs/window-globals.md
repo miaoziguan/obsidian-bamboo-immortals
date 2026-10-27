@@ -153,9 +153,9 @@
 >
 > 扫描范围：`webapp/assets/scripts/**/*.js`（排除 `tests/`）；打包产物 html 不计入。
 
-**合计 128 个挂载点 / 82 个文件**（其中 `__` 开头的内部标记 11 个）。
+**合计 127 个挂载点 / 82 个文件**（其中 `__` 开头的内部标记 11 个）。
 
-### 公共挂载点（117）
+### 公共挂载点（116）
 
 | 文件 | 挂载点 |
 |---|---|
@@ -224,7 +224,7 @@
 | `utils/goalCalculations.js` | `window.GoalCalculations` |
 | `utils/helpers.js` | `window.calculateCheckInTimes`<br>`window.formatDate`<br>`window.getChineseDateDisplay`<br>`window.getChineseWeekday`<br>`window.parseTime`<br>`window.scrollToSection` |
 | `utils/htmlUtils.js` | `window.HTMLUtils`<br>`window.escapeHtml`<br>`window.num` |
-| `utils/licenseGate.js` | `window.bootstrapLicenseGate`<br>`window.isLicenseGateActive`<br>`window.mountLicenseGate` |
+| `utils/licenseGate.js` | `window.bootstrapLicenseGate`<br>`window.mountLicenseGate` |
 | `utils/lucideUtils.js` | `window.LucideUtils` |
 | `utils/NoiseGenerator.js` | `window.NoiseGenerator` |
 | `utils/NoisePanel.js` | `window.NoisePanel` |

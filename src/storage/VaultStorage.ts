@@ -91,6 +91,14 @@ export class VaultStorage {
   private _mindmapFolder: string;
   /** 写守卫：已警告过的路径，第二次写入放行（用户确认意图） */
   private _warnedPaths = new Set<string>();
+  /**
+   * 「存在但读不出来」的路径集合。推广自 18199922 画中卷的 docFailed 范式：
+   * adapter.read 抛错而 exists 为 true 时置位，读成功自动解除（不会永久锁死保存）。
+   * 置位期间禁止写入该文件 —— 读不出内容就无法留档，此时写入即不可逆覆盖。
+   */
+  private _ioFailedPaths = new Set<string>();
+  /** 上一条的 Notice 去重：状态未变时不重复打扰（守卫仍生效，只是不再弹） */
+  private _ioNoticed = new Set<string>();
 
   constructor(
     app: App,
@@ -146,13 +154,33 @@ export class VaultStorage {
    * - 新文件 → vault.create（同时写入磁盘和 Obsidian 缓存）
    * - 历史遗留（磁盘有但缓存无）→ adapter.remove + vault.create（迁移进缓存）
    */
-  private async vaultWrite(path: string, content: string): Promise<void> {
+  /**
+   * 唯一的写入汇聚点。返回 false = 本次写入被守卫拦截（未落盘）。
+   *
+   * 守卫 ⓪（读失败保护）：文件存在、但上一次读取抛错 —— 内容无法确认，且读不出来所以无法留档，
+   * 此时写入就是不可逆覆盖。旧实现把「读失败」与「不存在/空白」一视同仁当成「可安全写入」，
+   * 于是读盘失败（权限 / 并发删除 / 同步冲突）后的任意一次自动保存都会抹掉真实数据。
+   * 与 18199922 的 docFailed 一致：读成功即解除，不会永久锁死保存。
+   */
+  private async vaultWrite(path: string, content: string): Promise<boolean> {
     const normalized = normalizePath(path);
+
+    if (this._ioFailedPaths.has(normalized)) {
+      if (!this._ioNoticed.has(normalized)) {
+        this._ioNoticed.add(normalized);
+        new Notice(
+          `⚠️ 无法读取 ${normalized.slice(normalized.lastIndexOf('/') + 1)}，已暂停写入以防覆盖。` +
+            '\n请检查文件权限或是否被其它程序占用，恢复后会自动继续保存。',
+        );
+      }
+      return false;
+    }
+
     const abstract = this.app.vault.getAbstractFileByPath(normalized);
 
     if (abstract instanceof TFile) {
       await this.app.vault.process(abstract, () => content);
-      return;
+      return true;
     }
 
     const parentPath = normalized.substring(0, normalized.lastIndexOf('/'));
@@ -174,6 +202,7 @@ export class VaultStorage {
       }
       throw e;
     }
+    return true;
   }
 
   // ---- 每日数据 (days) ----
@@ -521,9 +550,12 @@ export class VaultStorage {
     try {
       content = await this.app.vault.adapter.read(path);
     } catch {
-      // 读盘失败（权限/并发删除）：按空处理，读取侧不把上层拖垮
+      // 读盘失败（权限 / 并发删除）：按空返回以免拖垮上层，但**必须标记该文件不可写入** ——
+      // 调用方（runDiagnosis 的合并写入就会）拿空数组做基底后回写，等于覆盖读不出来的真实数据。
+      this._ioFailedPaths.add(normalizePath(path));
       return [];
     }
+    this._ioFailedPaths.delete(normalizePath(path));
 
     let parsed: unknown;
     try {
@@ -580,8 +612,13 @@ export class VaultStorage {
     try {
       if (!(await this.app.vault.adapter.exists(path))) return null;
       const raw = await this.app.vault.adapter.read(path);
+      // 读成功：解除标记（不会永久锁死保存）
+      this._ioFailedPaths.delete(normalizePath(path));
       return raw.trim() === '' ? null : raw;
     } catch {
+      // 与「不存在 / 空白」区分开：那两种可以安全写入，读失败不行 ——
+      // 内容无法确认，且读不出来所以连隔离留档都做不了，写入即不可逆覆盖。
+      this._ioFailedPaths.add(normalizePath(path));
       return null;
     }
   }
@@ -631,8 +668,16 @@ export class VaultStorage {
     try {
       content = await this.app.vault.adapter.read(path);
     } catch {
-      return null; // 读失败（权限 / 并发删除）：按无数据处理
+      // 读失败分两种：「文件不存在」可安全写入；「存在但读不出来」绝不可覆盖。
+      // 诚实标注：当前 7 个调用方在调用本方法前都已先查 exists，所以这条 catch
+      // 实际只会遇到后者，下面的 exists 判断属于防御未来 —— 一旦有人新增调用方时漏查
+      // exists，无条件标记就会让「首次写入」被守卫⓪ 静默拦下（用户第一次保存凭空消失）。
+      // 该防御分支因此无法被测试覆盖（不可达），不要误以为它有回归保护。
+      const stillExists = await this.app.vault.adapter.exists(path).catch(() => false);
+      if (stillExists) this._ioFailedPaths.add(normalizePath(path));
+      return null;
     }
+    this._ioFailedPaths.delete(normalizePath(path));
     try {
       return JSON.parse(content) as unknown;
     } catch {
@@ -667,8 +712,11 @@ export class VaultStorage {
     try {
       const content = await this.app.vault.adapter.read(path);
       const parsed: unknown = content ? JSON.parse(content) : [];
+      this._ioFailedPaths.delete(normalizePath(path));
       return Array.isArray(parsed) ? (parsed as Record<string, unknown>[]) : [];
     } catch {
+      // exists 已确认（上面有短路），所以这里是「存在但读/解析失败」：标记不可写入
+      this._ioFailedPaths.add(normalizePath(path));
       return [];
     }
   }

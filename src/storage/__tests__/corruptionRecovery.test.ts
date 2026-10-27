@@ -107,4 +107,87 @@ describe('损坏文件的可恢复性', () => {
     expect(await storage.getGoals()).toEqual([]);
     expect(Object.keys(mock.adapter.snapshot()).some((k) => k.includes('goals.json.corrupt-'))).toBe(true);
   });
+
+  // ---- 读失败（IO 错误）与解析损坏是两条不同的路径 ----
+  // 解析损坏读得到内容 → 可隔离留档；读失败读不出内容 → 唯一能做的是拒绝写入。
+  // 旧实现把「读失败」与「不存在 / 空白」一视同仁当成「可安全写入」（readExistingGoalsText
+  // 的注释就是这么写的），于是读盘失败后的任意一次自动保存都会抹掉真实数据。
+
+  it('goals 读失败：putGoals 不覆盖原文件（读不出内容 → 无法留档 → 必须拒绝写入）', async () => {
+    const mock = createMockApp();
+    const storage = new VaultStorage(mock.app as any, 'bamboo-review');
+    const realRead = mock.adapter.read.bind(mock.adapter);
+    await mock.adapter.write('bamboo-review/goals.json', JSON.stringify([{ id: 'g1', title: '真实目标' }]));
+
+    // 模拟：文件存在但读不出来（权限 / 被其它程序占用 / 同步冲突）
+    mock.adapter.read = async (p: string) => {
+      if (p.includes('goals.json')) throw new Error('EACCES');
+      return realRead(p);
+    };
+
+    expect(await storage.getGoals()).toEqual([]); // 读失败按空返回，不拖垮上层
+    await storage.putGoals([{ id: 'g9', title: '内存里的新目标' }] as any);
+
+    // 关键断言：原文件一字未改 —— 否则 10 条目标会被内存里的这 1 条抹掉，且无任何留档
+    expect(JSON.parse(await realRead('bamboo-review/goals.json'))).toEqual([
+      { id: 'g1', title: '真实目标' },
+    ]);
+  });
+
+  it('读失败恢复后自动解除拦截（不会永久锁死保存）', async () => {
+    const mock = createMockApp();
+    const storage = new VaultStorage(mock.app as any, 'bamboo-review');
+    const realRead = mock.adapter.read.bind(mock.adapter);
+    await mock.adapter.write('bamboo-review/goals.json', JSON.stringify([{ id: 'g1', title: '真实目标' }]));
+
+    mock.adapter.read = async (p: string) => {
+      if (p.includes('goals.json')) throw new Error('EACCES');
+      return realRead(p);
+    };
+    await storage.getGoals();
+    await storage.putGoals([{ id: 'g9' }] as any);
+    expect(JSON.parse(await realRead('bamboo-review/goals.json'))[0].id).toBe('g1'); // 被拦下
+
+    mock.adapter.read = realRead; // 读恢复
+    await storage.getGoals(); // 读成功 → 标记解除
+    await storage.putGoals([{ id: 'g2', title: '恢复后写入' }] as any);
+
+    expect(JSON.parse(await realRead('bamboo-review/goals.json'))).toEqual([
+      { id: 'g2', title: '恢复后写入' },
+    ]);
+  });
+
+  it('画中卷文档存在但读不出来：readJsonFile 标记后拒绝写入', async () => {
+    const mock = createMockApp();
+    const storage = new VaultStorage(mock.app as any, 'bamboo-review');
+    const realRead = mock.adapter.read.bind(mock.adapter);
+
+    // 先正常建立文件（此时读写都正常）
+    await storage.putTypewriterNotesDoc('doc-x', {
+      version: 1,
+      notes: [],
+      links: [],
+      canvasOffset: null,
+    });
+    // 用 snapshot 定位真实路径，避免与 path 生成规则耦合
+    const key = Object.keys(mock.adapter.snapshot()).find((k) => k.includes('doc-x'))!;
+    const before = await realRead(key);
+
+    // 文件存在，但读不出来（权限 / 被占用 / 同步冲突）
+    mock.adapter.read = async (p: string) => {
+      if (p.includes('doc-x')) throw new Error('EACCES');
+      return realRead(p);
+    };
+
+    expect(await storage.getTypewriterNotesDoc('doc-x')).toBeNull(); // 读失败按无数据返回
+    await storage.putTypewriterNotesDoc('doc-x', {
+      version: 1,
+      notes: [{ id: 'new' }],
+      links: [],
+      canvasOffset: null,
+    });
+
+    // 原内容一字未改：读不出内容就无法留档，此时写入即不可逆覆盖
+    expect(await realRead(key)).toBe(before);
+  });
 });

@@ -197,7 +197,10 @@
   / 注册了但永不渲染（白登记）。名字「全仓只出现这一处」才算证据
 - `npm run check:architecture` —— 模块图：循环依赖 / import 指向不存在的文件 /
   从入口（源 HTML 的 `<script src>` + `main.ts`）走不到的模块
+- `npm run check:release-drift` —— 发布物 ≠ HEAD。按两个产物分别统计「最新 tag
+  到 HEAD」的领先量：`main.js` ← `main.ts`+`src/`，`webapp.zip` ← `webapp/`。
+  默认只提示不阻断；npm script 用 `--strict`，供发版流程阻断
 - 盲区（同名方法共享判定、属性键、传递性调用图、动态拼接的 action 名、运行时
   注册的脚本）记录在各脚本头注释——宁可漏报，不误伤。
-- 上述四个都是「名字层」的静态证据，看不见可达性与动态派发。运行时执行证据由
+- 上述五个都是「名字层」的静态证据，看不见可达性与动态派发。运行时执行证据由
   `scripts/scan-runtime-coverage.mjs` 提供（非门禁，见 docs/runtime-coverage.md）。

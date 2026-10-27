@@ -233,3 +233,44 @@ describe('主题市场：本地已安装优先（离线可切换）', () => {
     expect(b.querySelector('.market-btn.install')).not.toBeNull();     // 可安装
   });
 });
+
+describe('更新正在显示的主题 —— 重新加载结果的结算', () => {
+  afterEach(() => { delete global.Toast; });
+
+  it('重新加载失败：回滚到内置竹林，且不谎报「已更新」', () => {
+    global.Toast = { showToast: jest.fn() };
+    const mount = jest.spyOn(ThemeEffects, '_mountTheme').mockImplementation(() => {});
+    const sw = jest.spyOn(ThemeEffects, 'switchTheme').mockImplementation(() => {});
+    try {
+      const ok = ThemeEffects._settleThemeUpdate('t1', '测试主题', false);
+
+      expect(ok).toBe(false);
+      // 回滚：旧实例的 DOM 与动画会被 _mountTheme(bamboo) 的清空带走
+      expect(sw).toHaveBeenCalledWith('bamboo');
+      expect(mount).not.toHaveBeenCalled(); // 失败的主题绝不能挂载
+      expect(global.Toast.showToast).toHaveBeenCalledTimes(1);
+      expect(String(global.Toast.showToast.mock.calls[0][0])).toContain('失败');
+      expect(global.Toast.showToast.mock.calls[0][1]).toBe('error');
+    } finally {
+      mount.mockRestore();
+      sw.mockRestore();
+    }
+  });
+
+  it('重新加载成功：挂载新版本、不回滚、提示成功', () => {
+    global.Toast = { showToast: jest.fn() };
+    const mount = jest.spyOn(ThemeEffects, '_mountTheme').mockImplementation(() => {});
+    const sw = jest.spyOn(ThemeEffects, 'switchTheme').mockImplementation(() => {});
+    try {
+      const ok = ThemeEffects._settleThemeUpdate('t1', '测试主题', true);
+
+      expect(ok).toBe(true);
+      expect(mount).toHaveBeenCalledWith('t1');
+      expect(sw).not.toHaveBeenCalled(); // 成功就不该回滚
+      expect(global.Toast.showToast.mock.calls[0][1]).toBe('success');
+    } finally {
+      mount.mockRestore();
+      sw.mockRestore();
+    }
+  });
+});

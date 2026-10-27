@@ -157,6 +157,33 @@ export const ThemeEffects = {
         this.init(themeName);
     },
 
+    /**
+     * 结算「更新了正在显示的主题」这一步的结果（抽出以便单测）。
+     *
+     * 重新加载失败必须回到确定状态：旧实例的 DOM 与动画仍留在容器里
+     * （destroy 只是通知钩子，不做清理），而它在注册表里已被删除 ——
+     * 不回滚的话，画面会一直显示一个「注册表里已不存在」的主题，
+     * 一直跑到用户手动切换为止，且期间面板状态与画面不一致。
+     * 返回是否成功（false = 已回滚）。
+     */
+    _settleThemeUpdate(id, name, ok) {
+        var toast = function (msg, kind) {
+            try {
+                if (typeof Toast !== 'undefined' && Toast && typeof Toast.showToast === 'function') {
+                    Toast.showToast(msg, kind);
+                }
+            } catch (e) { /* 提示失败不影响主流程 */ }
+        };
+        if (ok) {
+            this._mountTheme(id);
+            toast('「' + name + '」已更新', 'success');
+            return true;
+        }
+        try { this.switchTheme('bamboo'); } catch (e) { /* 回滚失败不阻塞 */ }
+        toast('「' + name + '」更新后重新加载失败，已回到默认主题', 'error');
+        return false;
+    },
+
     /** 设计画布缩放：把固定尺寸的 .theme-canvas 等比缩放到视觉盒宽度。
      *  主题只需声明 design 并按该尺寸绘制，无需自己处理任何尺寸变化。
      *
@@ -1363,13 +1390,15 @@ export const ThemeEffects = {
                         if (installedIdsArr.indexOf(id) === -1) installedIdsArr.push(id);
                         // 更新且该主题正在显示：内存里注册的还是旧代码 → 注销后重新拉取并挂载，让新版本立即生效
                         if (isUpdate && el.currentTheme === id) {
+                            const name = entry ? entry.name : id;
                             const oldT = el.themes[id];
                             if (oldT && typeof oldT.destroy === 'function') {
                                 try { oldT.destroy(); } catch (e) { /* 旧主题清理失败不阻塞更新 */ }
                             }
                             delete el.themes[id];
+                            // 成败（成功挂载 / 失败回滚到内置）由 _settleThemeUpdate 统一结算
                             el._ensureLoaded(id).then(function (ok2) {
-                                if (ok2) el._mountTheme(id);
+                                el._settleThemeUpdate(id, name, ok2);
                             });
                         }
                         rerender();
@@ -1377,8 +1406,12 @@ export const ThemeEffects = {
                             // 安装即使用：新装主题直接切上来（面板保持打开，「使用中」由 _syncThemeMode 刷新）
                             el.switchTheme(id);
                         }
-                        Toast.showToast('「' + (entry ? entry.name : id) + '」' +
-                            (isUpdate ? '已更新' : '已安装并切换'), 'success');
+                        // 更新且正在显示时，成败由上面 _ensureLoaded 的 then 提示（可能成功也可能失败），
+                        // 此处不能再无条件报「已更新」——重新加载失败时会与回滚后的画面矛盾。
+                        if (!isUpdate || el.currentTheme !== id) {
+                            Toast.showToast('「' + (entry ? entry.name : id) + '」' +
+                                (isUpdate ? '已更新' : '已安装并切换'), 'success');
+                        }
                     } else {
                         btn.disabled = false;
                         btn.textContent = isUpdate ? '更新失败，重试' : '安装失败，重试';

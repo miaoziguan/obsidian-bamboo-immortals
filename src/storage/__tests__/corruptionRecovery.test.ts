@@ -52,6 +52,30 @@ describe('损坏文件的可恢复性', () => {
     expect(JSON.parse(await mock.adapter.read('bamboo-review/settings.json'))).toEqual({ themePath: 'x' });
   });
 
+  it('缓存未命中（非 TFile）时 putSetting 保留盘上其它键', async () => {
+    const mock = createMockApp();
+    const storage = new VaultStorage(mock.app as any, 'bamboo-review');
+    const full = {
+      themeEffect: '荷塘鱼影',
+      displayFollowThemePalette: true,
+      marketInstalled: { a: { version: '1.0.0' } },
+      unknownKey: 'keep-me',
+    };
+    await mock.adapter.write('bamboo-review/settings.json', JSON.stringify(full));
+
+    // 模拟「磁盘有文件，但 Obsidian 索引里没有对应 TFile」：
+    // 同步工具刚替换文件、或冷启动索引未完成时就是这个状态。
+    (mock.app.vault as any).getAbstractFileByPath = () => null;
+
+    await storage.putSetting('themeEffect', '枫林晚照');
+
+    // 只改一个键，其余全部保留 —— 此前这里会被覆盖成 {"themeEffect":"枫林晚照"}
+    expect(JSON.parse(await mock.adapter.read('bamboo-review/settings.json'))).toEqual({
+      ...full,
+      themeEffect: '枫林晚照',
+    });
+  });
+
   it('settings.json 完好时 putSetting 行为不变（原子合并）', async () => {
     const mock = createMockApp();
     const storage = new VaultStorage(mock.app as any, 'bamboo-review');

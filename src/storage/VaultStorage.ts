@@ -948,7 +948,22 @@ export class VaultStorage {
         return JSON.stringify(settings, null, 2);
       });
     } else {
-      await this.vaultWrite(path, JSON.stringify({ [key]: value }, null, 2));
+      // 非 TFile（缓存未命中：同步工具刚替换文件 / 冷启动索引未完成 / 外部覆盖）：
+      // 盘上内容其实已经读在 cur 里，必须基于它合并，而不是只写这一个键 ——
+      // 否则整个 settings.json（主题动效、显示调色、市场安装记录、年度目标…）
+      // 会被这一条覆盖成一个键，且此处没有隔离留档可捞。
+      // 与 putSettings 的非 TFile 分支保持一致（59572ba 修了那一处，漏了这一处）。
+      let base: Record<string, unknown> = {};
+      if (cur && cur.trim()) {
+        try {
+          const parsed: unknown = JSON.parse(cur);
+          if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+            base = parsed as Record<string, unknown>;
+          }
+        } catch { base = {}; }
+      }
+      base[key] = value;
+      await this.vaultWrite(path, JSON.stringify(base, null, 2));
     }
   }
 

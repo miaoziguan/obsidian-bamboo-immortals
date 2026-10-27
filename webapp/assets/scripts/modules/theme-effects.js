@@ -1320,7 +1320,10 @@ export const ThemeEffects = {
                         '" title="安装" aria-label="安装">' + ICON.download + '</button>';
                 }
             } else if (row.hasUpdate) {
-                btn = '<button class="market-btn install" ' + act + ' data-url="' +
+                // data-action="update" 是点击处理里 isUpdate 的唯一来源。此前这里没写该属性，
+                // isUpdate 恒为 false → 更新被当成「安装」：跳过重新加载、Toast 误报
+                // 「已安装并切换」，且 switchTheme 会用内存里的旧实例重新渲染 —— 新版本根本不生效。
+                btn = '<button class="market-btn install" ' + act + ' data-action="update" data-url="' +
                     HTMLUtils.escapeHtmlAttr(row.url) + '" data-version="' + HTMLUtils.escapeHtmlAttr(ver) +
                     '" title="更新" aria-label="更新">' + ICON.download + '</button>' +
                     '<button class="market-btn uninstall" ' + act + ' title="卸载" aria-label="卸载">' + ICON.trash + '</button>';

@@ -234,6 +234,63 @@ describe('主题市场：本地已安装优先（离线可切换）', () => {
   });
 });
 
+describe('市场面板「更新」按钮 —— 走更新分支，而不是被当成安装', () => {
+  let savedAE, savedThemes, savedCur;
+  beforeEach(() => {
+    savedAE = ThemeEffects.availableExternal;
+    savedThemes = ThemeEffects.themes;
+    savedCur = ThemeEffects.currentTheme;
+  });
+  afterEach(() => {
+    ThemeEffects.availableExternal = savedAE;
+    ThemeEffects.themes = savedThemes;
+    ThemeEffects.currentTheme = savedCur;
+    delete global.Toast;
+    delete window.storageManager;
+  });
+
+  // 渲染一张「正在显示且可更新」的卡片，返回其 install 按钮
+  function renderUpdateButton(body) {
+    ThemeEffects.availableExternal = { a: { name: 'A' } };
+    ThemeEffects.themes = Object.assign({}, ThemeEffects.themes, {
+      a: { name: 'A', render: function () { return ''; }, destroy: function () {} },
+    });
+    ThemeEffects.currentTheme = 'a'; // 正在显示 → 才进入更新分支
+    ThemeEffects._renderMarketBody(body, {
+      catalog: [{ id: 'a', name: 'A', version: '2.0.0', url: 'https://x/a.js' }],
+      installed: { a: { version: '1.0.0' } },
+      installedIds: ['a'],
+    });
+    return body.querySelector('.market-card[data-market-theme="a"] .market-btn.install');
+  }
+
+  it('可更新卡片的按钮带 data-action="update"（isUpdate 的唯一来源）', () => {
+    const body = document.createElement('div');
+    const btn = renderUpdateButton(body);
+    expect(btn).not.toBeNull();
+    expect(btn.getAttribute('data-action')).toBe('update');
+  });
+
+  it('点击更新：重新加载并交由 _settleThemeUpdate 结算，不再走安装分支', async () => {
+    global.Toast = { showToast: jest.fn() };
+    window.storageManager = { installMarketTheme: () => Promise.resolve(true) };
+    const settle = jest.spyOn(ThemeEffects, '_settleThemeUpdate').mockImplementation(() => {});
+    const ensure = jest.spyOn(ThemeEffects, '_ensureLoaded').mockImplementation(() => Promise.resolve(true));
+    try {
+      const body = document.createElement('div');
+      const btn = renderUpdateButton(body);
+      btn.click();
+      await new Promise((r) => setTimeout(r, 0)); // 等 installMarketTheme → _ensureLoaded 的 then 链
+
+      expect(ensure).toHaveBeenCalledWith('a');            // 重新拉新代码
+      expect(settle).toHaveBeenCalledWith('a', 'A', true); // 结果交给统一结算
+    } finally {
+      settle.mockRestore();
+      ensure.mockRestore();
+    }
+  });
+});
+
 describe('更新正在显示的主题 —— 重新加载结果的结算', () => {
   afterEach(() => { delete global.Toast; });
 

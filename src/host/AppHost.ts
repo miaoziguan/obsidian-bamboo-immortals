@@ -262,6 +262,8 @@ export class AppHost {
       // 半截文件必然缺失 </script> / </html> 其一或全部，据此识别并触发重下。
       return html.includes('<script') && html.includes('</script>') && html.includes('</html>');
     } catch {
+      // 可安全返回空：读不到就当「不健康」→ 触发重新下载。宁可重下，也不能把
+      // 半截/缺失的产物当成健康而让用户停在空白视图
       return false;
     }
   }
@@ -419,6 +421,8 @@ export class AppHost {
     try {
       return await adapter.exists(path);
     } catch {
+      // 可安全返回空：判断不了存在性时按「不存在」处理 → 触发下载/重建。
+      // 代价是多下一次文件，收益是不会把不可判断误当成「已存在」而跳过修复
       return false;
     }
   }

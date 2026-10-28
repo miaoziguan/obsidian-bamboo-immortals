@@ -1303,6 +1303,8 @@ export class VaultStorage {
     try {
       return parseYaml(m[1]) as Partial<CustomTemplate>;
     } catch {
+      // 可安全返回空：frontmatter 语法损坏时视为「没有元数据」，模板正文仍在文件里，
+      // 这里只影响元数据解析，不会触发回写覆盖
       return null;
     }
   }

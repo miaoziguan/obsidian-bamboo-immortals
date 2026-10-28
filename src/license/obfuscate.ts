@@ -50,6 +50,8 @@ export function isBeingDebugged(): boolean {
     }
     return false;
   } catch {
+    // 可安全返回空：探测本身失败时按「未开启」处理（fail-open）——
+    // 宁可少一层探测，也不误伤正版用户导致误判环境异常而无法激活
     return false;
   }
 }
@@ -88,6 +90,8 @@ export function isFunctionTampered(fn: (...args: never[]) => unknown, _marker?: 
     const hasProbe = src.includes('__bamboo_probe__');
     return !hasProbe;
   } catch {
+    // 可安全返回空：取不到函数源码时按「未篡改」处理（fail-open）——
+    // 同上，避免把探测异常误判成用户篡改
     return false;
   }
 }

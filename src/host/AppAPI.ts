@@ -80,6 +80,7 @@ export function isValidAudioUrl(url: string): boolean {
   try {
     parsed = new URL(url);
   } catch {
+    // 可安全返回空：URL 语法非法属于「输入本来就不合法」，不是读取失败，没有数据会丢
     return false;
   }
   return parsed.protocol === 'http:' || parsed.protocol === 'https:';
@@ -873,13 +874,24 @@ export class AppAPI {
     return normalizePath(this._usingDefaultModulePath() ? this._defaultModulePath() : this.settings.modulePath);
   }
 
-  /** 目标文件是否存在（迁移时避免覆盖已重装的新版本） */
+  /**
+   * 目标文件是否存在（迁移时避免覆盖已重装的新版本）。
+   *
+   * 别再用 read 探测存在性：read 抛错既可能是「不存在」也可能是「存在但读不出来」，
+   * 二者都返回 false 会让三个调用点把「读不出来」当成「不存在」——
+   *   · removeVaultFileIfExists：跳过删除（安全，但会留垃圾）
+   *   · readVaultTextIfExists：返回 null → 调用方按「没有内容」处理 → 回写覆盖
+   *   · 模块迁移：覆盖已重装的新版本文件（注释明写要避免的就是这件事）
+   * 所以改为 exists，且 exists 本身失败时**抛错**而不是给一个假的 false。
+   */
   private async _fileExists(p: string): Promise<boolean> {
     try {
-      await this.vaultAdapter.read(p);
-      return true;
-    } catch {
-      return false;
+      return await this.vaultAdapter.exists(p);
+    } catch (e) {
+      throw new Error(
+        `无法判断文件是否存在：${p}（${e instanceof Error ? e.message : String(e)}）；` +
+          '为避免把「判断不了」当成「不存在」而覆盖真实文件，此处直接失败。',
+      );
     }
   }
 

@@ -820,9 +820,30 @@ export const CardInteractions = {
     };
     // 供「第二指落下 / 捏合开始」取消：复用收尾路径（在当前位置定住），让位给捏合
     const cancel = () => { if (rotating) onUp({ type: 'pointercancel', pointerId: rotatePointerId }); };
+    // 双击归零：**不能用原生 dblclick**。
+    // 下面 pointerdown 里的 setPointerCapture 会把后续 pointer 事件的 target 定向到 canvas，
+    // 而 dblclick 是由 pointer 事件序列合成的 —— 于是 handle 上的原生 dblclick 永远收不到。
+    // 实测（Chromium）：仅 preventDefault 时 dblclick=1；再加上 setPointerCapture 后 dblclick=0。
+    // 故在 pointerdown 里手动判定双击，与 mindmapFeature._handleDoubleTap 同一范式。
+    const ZERO_TAP_MS = 320;
+    let lastTapAt = 0;
     handle.addEventListener('pointerdown', (e) => {
       e.preventDefault();
       e.stopPropagation();
+
+      const nowTap = Date.now();
+      if (nowTap - lastTapAt < ZERO_TAP_MS) {
+        lastTapAt = 0;
+        // 双击语义：归零并落盘，且不启动这次旋转手势
+        if (rotating) onUp({ type: 'pointerup', pointerId: rotatePointerId });
+        ctrl._applyRot(card, 0);
+        ctrl._measureCard(card);
+        ctrl._scheduleRenderLinks();
+        ctrl._scheduleSave();
+        return;
+      }
+      lastTapAt = nowTap;
+
       if (typeof ctrl._cardGestureCancel === 'function') ctrl._cardGestureCancel();   // 取消其他进行中的手势
       const captureEl = ctrl._canvas || card;
       rotatePointerId = e.pointerId;
@@ -842,13 +863,8 @@ export const CardInteractions = {
       document.addEventListener('pointerup', onUp);
       document.addEventListener('pointercancel', onUp);   // 系统取消指针时同样收尾，避免监听残留
     });
-    // 双击握柄归零（stopPropagation 避免冒泡到卡片/画布触发编辑或 fit-all）
-    handle.addEventListener('dblclick', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      ctrl._applyRot(card, 0);
-      ctrl._scheduleSave();
-    });
+    // 这里曾监听原生 dblclick 做「双击归零」，但它从未生效（setPointerCapture 吞掉了 dblclick，
+    // 见上方 pointerdown 里的说明）。归零逻辑已并入 pointerdown 的手动双击判定，此处不再重复绑定。
   
   },
   // (was _bindEdit)

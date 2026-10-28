@@ -482,3 +482,78 @@ describe('双击进入编辑（绕开被抑制的原生 dblclick）', () => {
     expect(ctrl._lastCardTap).toBeUndefined();   // 证明手动判定路径未被执行（让位给原生 dblclick）
   });
 });
+
+// 旋转手柄双击归零：必须走手动判定
+// —— pointerdown 里的 setPointerCapture 会把后续 pointer 事件的 target 定向到 canvas，
+//    而 dblclick 由 pointer 事件序列合成，导致 handle 上的原生 dblclick 永不触发。
+//    实测（Chromium）：仅 preventDefault 时 dblclick=1；加 setPointerCapture 后 dblclick=0。
+describe('旋转手柄双击归零（原生 dblclick 被 setPointerCapture 吞掉的回归）', () => {
+  function makeRotCtrl(card, calls) {
+    const canvas = document.createElement('div');
+    canvas.setPointerCapture = () => {};
+    canvas.releasePointerCapture = () => {};
+    canvas.hasPointerCapture = () => false;
+    return {
+      _canvas: canvas,
+      _zTop: 1,
+      _applyRot: (c, d) => { calls.push(d); card.dataset.rot = String(d); },
+      _measureCard: () => {},
+      _scheduleRenderLinks: () => {},
+      _scheduleSave: () => {},
+      _applyKnobSize: () => {},
+      _cardGestureCancel: null,
+      _cards: new Map(),
+    };
+  }
+
+  function fireDown(handle, x = 40, y = 40) {
+    const e = new MouseEvent('pointerdown', { bubbles: true, cancelable: true, clientX: x, clientY: y });
+    Object.defineProperty(e, 'pointerId', { value: 1 });
+    handle.dispatchEvent(e);
+  }
+
+  it('两次 pointerdown 间隔 <320ms → 归零（rot=0）', () => {
+    const card = document.createElement('div');
+    card.className = 'tw-card';
+    card.dataset.id = 'c1';
+    card.dataset.rot = '-7.00';
+    document.body.appendChild(card);
+
+    const calls = [];
+    const ctrl = makeRotCtrl(card, calls);
+    CardInteractions.makeRotatable({ state: {}, ctrl }, card);
+
+    const handle = card.querySelector('.tw-card-rotate');
+    expect(handle).not.toBeNull();
+
+    fireDown(handle);
+    fireDown(handle);          // 立即第二次 → 双击语义
+
+    expect(calls).toContain(0);           // 归零被调用
+    expect(card.dataset.rot).toBe('0');   // 角度回到 0
+  });
+
+  it('两次 pointerdown 间隔 >320ms → 不归零（单击/慢点两次不该触发）', () => {
+    jest.useFakeTimers();
+    try {
+      const card = document.createElement('div');
+      card.className = 'tw-card';
+      card.dataset.id = 'c2';
+      card.dataset.rot = '-7.00';
+      document.body.appendChild(card);
+
+      const calls = [];
+      const ctrl = makeRotCtrl(card, calls);
+      CardInteractions.makeRotatable({ state: {}, ctrl }, card);
+      const handle = card.querySelector('.tw-card-rotate');
+
+      fireDown(handle);
+      jest.advanceTimersByTime(500);   // 超过 320ms
+      fireDown(handle);
+
+      expect(calls).not.toContain(0);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+});

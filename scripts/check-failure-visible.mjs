@@ -1,26 +1,23 @@
 /**
  * 失败可见性门禁（failure visible）：catch 里「返回空值」必须有交代。
  *
- * 为什么需要它：本仓最高频的缺陷模式是「失败被当成空值/不存在」，
- * 而且它会复发 —— 近两周内同一模式被修过两次，每次都只修被报告的那一处：
- *   · 18199922 修了画中卷三档的 docFailed，goals 路径没跟着修
- *   · 59572ba 修了 putSettings 的非 TFile 分支，putSetting 没跟着修（dc80ae1 才补）
- * 结果：每修一次，下一次换个文件以同样形态再出现一次。
+ * 背景：本仓最高频的缺陷模式是「失败被当成空值/不存在」，且会复发 ——
+ * 近两周同一模式被修过两次，每次都只修被报告的那一处：
+ *   · 18199922 修画中卷三档的 docFailed，goals 路径没跟
+ *   · 59572ba 修 putSettings 的非 TFile 分支，putSetting 没跟（dc80ae1 才补）
  *
- * 规则：catch 块内出现 `return null/[]/false/undefined` 时，必须满足其一——
- *   ① 块内有注释（任意说明即可，本仓历史写法多为「/* 已存在则忽略 *\/」）
- *   ② 块内调用了失败标记（白名单见 MARKERS）
- * 否则视为「静默吞没」，红。
+ * 规则：catch 块内 `return null/[]/false/undefined` 时，必须满足其一——
+ *   ① 块内调用了失败标记（MARKERS 白名单）
+ *   ② 在 docs/failure-exemptions.md 中按「文件 + 所在函数」登记
+ * 否则红。
  *
- * 为什么只要求「有注释」而不要求固定句式：本仓 51 处 catch-return-空值里，
- * 46 处早就有说明，只有 5 处是彻底静默的。强制统一句式会把 46 处无关代码
- * 卷进来，那不是治理质量，是制造 diff。
+ * 为什么豁免必须登记、不能只写注释：写注释的成本趋近于零，等于没有约束。
+ * 本仓已有先例——为了让闸门变绿而补的理由并不可靠。登记要求同时说明
+ * 「触发条件与后果」，并把维护成本抬高到「要动第二个文件」。
  *
- * 盲区（宁可漏报，不误伤）：
- * - 只认 `catch {` 块内的 return；链式 `.catch(() => [])`、`?? []` 兜底、
- *   `if (!x) return` 早退都不在覆盖范围（这三类是本机制的已知逃逸口）
- * - 注释只要存在即通过，不判断理由是否成立 —— 这是刻意的，理由的审查
- *   属于 code review，不属于静态闸门
+ * 已知逃逸口（不假装穷尽）：
+ *   · 链式 `.catch(() => [])`、`?? []` 兜底、`if (!x) return` 早退 —— 不在扫描范围
+ *   · 函数名靠「向上找最近的单行签名」推断，跨行签名或多层嵌套可能认错
  */
 
 import fs from 'node:fs';
@@ -28,10 +25,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const SCAN_DIRS = ['src'];
+const EXEMPTION_DOC = path.join(ROOT, 'docs/failure-exemptions.md');
 const SKIP = /(__tests__|\.test\.ts$|node_modules)/;
 
-/** 标记函数：调用它们等于「失败已被记录，不会静默」 */
 const MARKERS = [
   '_ioFailedPaths.add',
   'markDocFailed',
@@ -53,7 +49,34 @@ function walk(dir, out = []) {
   return out;
 }
 
-/** 提取所有 catch { ... } 块（大括号配平） */
+/** 解析登记表：| `文件` | `函数` | ... | */
+function loadExemptions() {
+  if (!fs.existsSync(EXEMPTION_DOC)) return new Set();
+  const set = new Set();
+  for (const line of fs.readFileSync(EXEMPTION_DOC, 'utf8').split('\n')) {
+    const m = line.match(/^\|\s*`([^`]+)`\s*\|\s*`([^`]+)`\s*\|/);
+    if (m) set.add(`${m[1]}::${m[2]}`);
+  }
+  return set;
+}
+
+/** 向上找最近的单行函数签名 */
+function enclosingFunction(lines, startLine) {
+  // 修饰符顺序不定（`private async` / `async private` 都可能），统一按无序处理。
+  // 必须以 `{` 结尾 —— 否则会把「跨行调用里的某一行」当成函数定义
+  // （实际踩过：把 `normalizePath(\`...\`)` 认成了所在函数）。
+  const re =
+    /^\s{0,8}(?:export\s+)?(?:(?:async|private|public|protected|static)\s+)*(?:function\s+)?([A-Za-z_$][\w$]*)\s*\(.*\)\s*(?::\s*[^{]+)?\{\s*$/;
+  for (let i = startLine - 1; i >= 0; i--) {
+    const m = lines[i].match(re);
+    if (!m) continue;
+    const name = m[1];
+    if (['if', 'for', 'while', 'switch', 'catch', 'return', 'else', 'do'].includes(name)) continue;
+    return name;
+  }
+  return null;
+}
+
 function catchBlocks(src) {
   const out = [];
   const re = /catch\s*(?:\([^)]*\))?\s*\{/g;
@@ -78,27 +101,38 @@ function catchBlocks(src) {
   return out;
 }
 
+const exemptions = loadExemptions();
 const failures = [];
+
 for (const file of walk(path.join(ROOT, 'src'))) {
+  const rel = path.relative(ROOT, file);
   const src = fs.readFileSync(file, 'utf8');
+  const lines = src.split('\n');
+
   for (const { line, body } of catchBlocks(src)) {
-    const returnsEmpty = /return\s+(null|\[\]|false|undefined|0|'')\b/.test(body);
-    if (!returnsEmpty) continue;
+    if (!/return\s+(null|\[\]|false|undefined|0|'')\b/.test(body)) continue;
+    if (MARKERS.some((k) => body.includes(k))) continue; // ① 已标记
 
-    const hasComment = /\/\/|\/\*/.test(body);
-    const hasMarker = MARKERS.some((k) => body.includes(k));
-    if (hasComment || hasMarker) continue;
+    const fn = enclosingFunction(lines, line);
+    const key = `${rel}::${fn}`;
+    if (fn && exemptions.has(key)) continue; // ② 已登记
 
-    failures.push(`${path.relative(ROOT, file)}:${line}`);
+    failures.push({ where: `${rel}:${line}`, fn });
   }
 }
 
 if (failures.length) {
-  console.error('[failure-visible] ❌ catch 里返回了空值，但没有交代原因：');
-  for (const f of failures) console.error(`  ${f}`);
-  console.error('  修复：加失败标记（_ioFailedPaths.add / markDocFailed 等），或写一行注释说明');
-  console.error('        为什么「返回空」在此处是安全的（例如「已存在则忽略」）。');
+  console.error('[failure-visible] ❌ catch 里返回了空值，但没有交代：');
+  for (const f of failures) {
+    console.error(`  ${f.where}${f.fn ? `（函数 ${f.fn}）` : '（未能识别所在函数）'}`);
+  }
+  console.error('  修复二选一：');
+  console.error('    · 加失败标记（_ioFailedPaths.add / markDocFailed / respondError …）');
+  console.error('    · 在 docs/failure-exemptions.md 登记，并写清「触发条件与后果」');
+  console.error('  注意：仅在代码里写注释**不能**通过本闸门。');
   process.exit(1);
 }
 
-console.log('[failure-visible] ✅ catch 的「返回空」均已显式交代（标记或注释）。');
+console.log(
+  `[failure-visible] ✅ catch 的「返回空」均已交代（标记或登记，登记 ${exemptions.size} 条）。`,
+);

@@ -330,7 +330,8 @@ export const ModeController = {
     const { state, ctrl } = ctx;
     if (ctrl._mode !== 'write' || ctrl._docBusy || ctrl._switching) return;
     const cur = (await TypewriterStore.getCurrentWritingGroup()).id;
-    ctrl._hideDocPanel();
+    // 切换后**不关闭**菜单：用户常需要在同一张列表里连续比对/切换几组，
+    // 每切一次就收起等于逼他重开。选中态由本方法末尾的 _renderDocPanel() 重渲刷新。
     if (id === cur) return;
     ctrl._docBusy = true;
     ctrl._switching = true;   // 切组窗口挡防抖落盘/剔除重挂载（同 setMode 语义），防旧组内容写进新组文件
@@ -448,7 +449,7 @@ export const ModeController = {
     const { state, ctrl } = ctx;
     if (ctrl._mode !== 'notes' || ctrl._docBusy || ctrl._switching) return;
     const cur = (await TypewriterStore.getCurrentNotesGroup()).id;
-    ctrl._hideDocPanel();
+    // 切换后不关闭菜单（同上：便于连续切换，选中态由 _renderDocPanel 刷新）
     if (id === cur) return;
     ctrl._docBusy = true;
     ctrl._switching = true;   // 切便签组窗口挡防抖落盘（同 setMode 语义）
@@ -546,7 +547,7 @@ export const ModeController = {
       // 此时切档 → deactivate() → _saveNow() 会把旧组内容落进新组文件。
       ctrl._switching = true;
       try {
-        ctrl._hideDocPanel();
+        // 切换后不关闭菜单（同 notes/write：便于连续切换，选中态由 _renderDocPanel 刷新）
         const cur = (await TypewriterStore.getCurrentMindmapGroup()).id;
         if (id !== cur) {
           await MindmapFeature.switchGroup(id);

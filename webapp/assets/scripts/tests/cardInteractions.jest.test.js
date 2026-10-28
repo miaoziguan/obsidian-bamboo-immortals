@@ -533,6 +533,104 @@ describe('旋转手柄双击归零（原生 dblclick 被 setPointerCapture 吞�
     expect(card.dataset.rot).toBe('0');   // 角度回到 0
   });
 
+  it('双击 A 的手柄只归零 A，不影响 B（双卡隔离）', () => {
+    // ctrl._applyRot 用与 CardViewManager.applyRot 相同的语义：按 dataset.id 命中单篇文档
+    const notes = [
+      { id: 'a', rot: -10 },
+      { id: 'b', rot: -20 },
+    ];
+    const cardA = document.createElement('div');
+    cardA.className = 'tw-card'; cardA.dataset.id = 'a'; cardA.dataset.rot = '-10';
+    const cardB = document.createElement('div');
+    cardB.className = 'tw-card'; cardB.dataset.id = 'b'; cardB.dataset.rot = '-20';
+    document.body.appendChild(cardA); document.body.appendChild(cardB);
+
+    const ctrl = {
+      _canvas: (() => { const c = document.createElement('div'); c.setPointerCapture = () => {}; c.releasePointerCapture = () => {}; c.hasPointerCapture = () => false; return c; })(),
+      _zTop: 1,
+      _notes: notes,
+      _applyRot: (c, d) => {
+        const id = c && c.dataset && c.dataset.id;
+        ctrl._notes = ctrl._notes.map((n) => (n.id === id ? Object.assign({}, n, { rot: d }) : n));
+        c.dataset.rot = String(d);
+        return d;
+      },
+      _measureCard: () => {}, _scheduleRenderLinks: () => {}, _scheduleSave: () => {},
+      _applyKnobSize: () => {}, _cardGestureCancel: null,
+    };
+
+    CardInteractions.makeRotatable({ state: {}, ctrl }, cardA);
+    CardInteractions.makeRotatable({ state: {}, ctrl }, cardB);
+
+    const hA = cardA.querySelector('.tw-card-rotate');
+    fireDown(hA); fireDown(hA);   // 双击 A
+
+    expect(ctrl._notes.find((n) => n.id === 'a').rot).toBe(0);     // A 归零
+    expect(ctrl._notes.find((n) => n.id === 'b').rot).toBe(-20);   // B 必须保持原角度
+    expect(cardB.dataset.rot).toBe('-20');
+  });
+
+  // setPointerCapture 让 dblclick 的 target 变成 canvas → 绕过 makeCanvasDraggable 的守卫
+  // （守卫用 e.target.closest('.tw-card, button, .tw-card-resize, input, textarea') 判定，
+  //  既漏了 .tw-card-rotate，又因 target 已是 canvas 而根本匹配不到卡片）
+  // → 每次双击手柄都会连带触发 _recenterNotes，把全部便签归位到视野中心。
+  it('双击手柄后，泄漏到画布的 dblclick 被拦截（不触发归位）', () => {
+    const root = document.createElement('div');
+    const canvas = document.createElement('div');
+    const card = document.createElement('div');
+    card.className = 'tw-card'; card.dataset.id = 'c3'; card.dataset.rot = '12';
+    root.appendChild(canvas); root.appendChild(card);
+    document.body.appendChild(root);
+
+    let recenter = 0;
+    const ctrl = makeRotCtrl(card, []);
+    ctrl._el = root;
+    ctrl._canvas = canvas;
+    ctrl._recenterNotes = () => { recenter++; };
+
+    // 复刻 makeCanvasDraggable 的双击守卫（冒泡阶段）
+    root.addEventListener('dblclick', (e) => {
+      if (e.target.closest('.tw-card, button, .tw-card-resize, input, textarea')) return;
+      recenter++;
+    });
+
+    CardInteractions.makeRotatable({ state: {}, ctrl }, card);
+    const handle = card.querySelector('.tw-card-rotate');
+    fireDown(handle);
+    fireDown(handle);            // 手柄的双击归零
+
+    // 浏览器随后合成的 dblclick：target 已被 setPointerCapture 重定向到 canvas
+    canvas.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, cancelable: true }));
+
+    expect(recenter).toBe(0);    // 被捕获阶段吞掉，画布不再响应
+  });
+
+  it('对照组：非手柄触发的画布 dblclick 仍然归位（拦截不是永久的）', () => {
+    const root = document.createElement('div');
+    const canvas = document.createElement('div');
+    const card = document.createElement('div');
+    card.className = 'tw-card'; card.dataset.id = 'c4';
+    root.appendChild(canvas); root.appendChild(card);
+    document.body.appendChild(root);
+
+    let recenter = 0;
+    const ctrl = makeRotCtrl(card, []);
+    ctrl._el = root;
+    ctrl._canvas = canvas;
+    ctrl._recenterNotes = () => { recenter++; };
+    root.addEventListener('dblclick', (e) => {
+      if (e.target.closest('.tw-card, button, .tw-card-resize, input, textarea')) return;
+      recenter++;
+    });
+
+    CardInteractions.makeRotatable({ state: {}, ctrl }, card);
+
+    // 未发生手柄双击：直接双击画布空白 → 应正常归位
+    canvas.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, cancelable: true }));
+
+    expect(recenter).toBe(1);
+  });
+
   it('两次 pointerdown 间隔 >320ms → 不归零（单击/慢点两次不该触发）', () => {
     jest.useFakeTimers();
     try {

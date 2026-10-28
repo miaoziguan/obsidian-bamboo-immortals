@@ -827,6 +827,11 @@ export const CardInteractions = {
     // 故在 pointerdown 里手动判定双击，与 mindmapFeature._handleDoubleTap 同一范式。
     const ZERO_TAP_MS = 320;
     let lastTapAt = 0;
+    // 本次双击「已被旋转手柄消费」的时刻。用于阻止该次原生 dblclick 泄漏到画布：
+    // setPointerCapture 会把 dblclick 的 target 定向到 canvas，从而绕过
+    // makeCanvasDraggable 里的守卫（e.target.closest('.tw-card, ...') 判定不到手柄），
+    // 于是每次双击手柄都会连带触发 _recenterNotes —— 把全部便签归位到视野中心。
+    let lastZeroAt = 0;
     handle.addEventListener('pointerdown', (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -834,6 +839,7 @@ export const CardInteractions = {
       const nowTap = Date.now();
       if (nowTap - lastTapAt < ZERO_TAP_MS) {
         lastTapAt = 0;
+        lastZeroAt = nowTap;
         // 双击语义：归零并落盘，且不启动这次旋转手势
         if (rotating) onUp({ type: 'pointerup', pointerId: rotatePointerId });
         ctrl._applyRot(card, 0);
@@ -865,6 +871,16 @@ export const CardInteractions = {
     });
     // 这里曾监听原生 dblclick 做「双击归零」，但它从未生效（setPointerCapture 吞掉了 dblclick，
     // 见上方 pointerdown 里的说明）。归零逻辑已并入 pointerdown 的手动双击判定，此处不再重复绑定。
+
+    // 但那次 dblclick 并不会消失 —— 它只是换了 target（canvas）继续冒泡，于是绕过画布守卫
+    // 触发 _recenterNotes，把全部便签归位。捕获阶段吞掉它：归零已由手动判定完成，
+    // 这一次 dblclick 不应再产生任何全局副作用。
+    const rootEl = ctrl._el || ctrl._canvas;
+    if (rootEl) {
+      rootEl.addEventListener('dblclick', (e) => {
+        if (Date.now() - lastZeroAt < 400) { e.stopPropagation(); e.preventDefault(); }
+      }, true);   // 捕获阶段：赶在画布的 dblclick（冒泡阶段）之前拦截
+    }
   
   },
   // (was _bindEdit)

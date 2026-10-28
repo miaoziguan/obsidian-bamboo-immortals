@@ -60,19 +60,40 @@ function loadExemptions() {
   return set;
 }
 
-/** 向上找最近的单行函数签名 */
+/**
+ * 向上找最近的函数签名（支持单行与跨行签名）。
+ *
+ * 两个已踩过的坑，都靠这里的判据排掉：
+ *   · 修饰符顺序不定（`private async` / `async private`），必须按无序处理，
+ *     否则会一路向上找到同文件更早的函数；
+ *   · 跨行调用里的某一行（如 `normalizePath(\`...\`)`）看着也像定义，
+ *     所以要求「以 } 开头的行不存在、且该行以 `{` 结尾」。
+ */
+const KEYWORDS = new Set(['if', 'for', 'while', 'switch', 'catch', 'return', 'else', 'do', 'try']);
+
 function enclosingFunction(lines, startLine) {
-  // 修饰符顺序不定（`private async` / `async private` 都可能），统一按无序处理。
-  // 必须以 `{` 结尾 —— 否则会把「跨行调用里的某一行」当成函数定义
-  // （实际踩过：把 `normalizePath(\`...\`)` 认成了所在函数）。
-  const re =
-    /^\s{0,8}(?:export\s+)?(?:(?:async|private|public|protected|static)\s+)*(?:function\s+)?([A-Za-z_$][\w$]*)\s*\(.*\)\s*(?::\s*[^{]+)?\{\s*$/;
+  const nameRe =
+    /^\s{0,8}(?:export\s+)?(?:(?:async|private|public|protected|static)\s+)*(?:function\s+)?([A-Za-z_$][\w$]*)\s*\(/;
+
   for (let i = startLine - 1; i >= 0; i--) {
-    const m = lines[i].match(re);
-    if (!m) continue;
-    const name = m[1];
-    if (['if', 'for', 'while', 'switch', 'catch', 'return', 'else', 'do'].includes(name)) continue;
-    return name;
+    const line = lines[i];
+
+    // ① 单行签名：同一行里既有 `(`…`)`，又以 `{` 结尾
+    if (/\(.*\)\s*(?::\s*[^{]+)?\{\s*$/.test(line)) {
+      const m = line.match(nameRe);
+      if (m && !KEYWORDS.has(m[1])) return m[1];
+      continue;
+    }
+
+    // ② 跨行签名的收尾行：只有 `): Type {` 或 `) {`
+    if (/^\s*\)\s*(?::\s*[^{]+)?\{\s*$/.test(line)) {
+      for (let j = i - 1; j >= Math.max(0, i - 40); j--) {
+        const m = lines[j].match(nameRe);
+        if (m && !KEYWORDS.has(m[1])) return m[1];
+        // 撞到上一条语句的收尾就说明不是一个签名，停止回溯
+        if (/^\s*\}\s*;?\s*$/.test(lines[j])) break;
+      }
+    }
   }
   return null;
 }

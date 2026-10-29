@@ -190,7 +190,10 @@
 .scroll-incense {
     position: relative;
     width: 72px;
-    height: 620px;
+    /* 香身全长：单一真源在 scrollManager.js 的 STICK_H（渲染时以 --tw-stick-h 注入这里）。
+       下面的 640px 只是 JS 未注入时的兜底，改长度请改 STICK_H。 */
+    --tw-stick-h: 640px;
+    height: calc(var(--tw-stick-h) + 60px);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -203,7 +206,7 @@
        原用 top 跟随 --burn，每次写入都会触发一次重排与重绘。 */
     top: 22px;
     left: 50%;
-    transform: translateX(-50%) translateY(calc((1 - var(--burn)) * 560px));
+    transform: translateX(-50%) translateY(calc((1 - var(--burn)) * var(--tw-stick-h)));
     width: 44px;
     height: 150px;
     z-index: 2;
@@ -260,7 +263,7 @@
        余烬呼吸动画在内部 span 上，不占用本元素的 transform。 */
     top: 22px;
     left: 50%;
-    transform: translateX(-50%) translateY(calc((1 - var(--burn)) * 560px));
+    transform: translateX(-50%) translateY(calc((1 - var(--burn)) * var(--tw-stick-h)));
     width: 16px;
     height: 16px;
     display: flex;
@@ -305,7 +308,7 @@
 /* 点燃演化：大火光 → 微光闪烁 → 静态暗红余烬，青烟全程持续 */
 .scroll-incense-flare {
     position: absolute;
-    top: calc(12px + (1 - var(--burn)) * 560px);
+    top: calc(12px + (1 - var(--burn)) * var(--tw-stick-h));
     left: 50%;
     transform: translateX(-50%);
     width: 42px;
@@ -355,7 +358,7 @@
     left: 50%;
     transform: translateX(-50%);
     width: 3px;
-    height: 560px;
+    height: var(--tw-stick-h);
     border-radius: var(--radius-3xs);
     overflow: hidden;
     z-index: 3;
@@ -382,8 +385,8 @@
        本元素高度随 --ash-top / --burn 变化，若让渐变按元素自身高度铺开，
        灰段伸缩时颜色分布会被反复重新压缩。固定成 560px + 反向偏移后，
        颜色始终锚在整支香的绝对位置上，与原「整支香上裁一段」的观感一致。 */
-    background-size: 100% 560px;
-    background-position: 0 calc(var(--ash-top, 0) * -560px);
+    background-size: 100% var(--tw-stick-h);
+    background-position: 0 calc(var(--ash-top, 0) * -1 * var(--tw-stick-h));
     border-radius: var(--radius-1) var(--radius-1) 0 0;
     box-shadow: inset 0 0 1px rgba(90,82,74,0.4);
     transition: height var(--duration-slower) linear, top var(--duration-slower) linear;
@@ -469,8 +472,8 @@
     background: linear-gradient(180deg, rgba(148,118,88,0.85) 0%, rgba(135,105,75,0.9) 30%, rgba(125,98,70,0.85) 60%, rgba(118,92,65,0.9) 100%);
     /* 同 .scroll-incense-ash：把渐变锚在整支香（560px）上，元素底边固定、
        高度随 --burn 收缩时，颜色不会被重新压缩。顶边即燃点位置 (1 - --burn)。 */
-    background-size: 100% 560px;
-    background-position: 0 calc((1 - var(--burn)) * -560px);
+    background-size: 100% var(--tw-stick-h);
+    background-position: 0 calc((1 - var(--burn)) * -1 * var(--tw-stick-h));
     border-radius: 0 0 var(--radius-3xs) var(--radius-3xs);
     transition: height var(--duration-slower) linear;
 }

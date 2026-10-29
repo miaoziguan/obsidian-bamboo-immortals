@@ -132,6 +132,8 @@ const R10_ALLOWLIST = new Set([
   // --bamboo-deep / --ink-light 的同名遮蔽，已在本轮治理中直接删除，故不在此列。
   '--ash-1', '--ash-2', '--ash-3', '--ash-4', '--ash-tex-1', '--ash-tex-2',
   '--burn',
+  // 香身全长：由 scrollManager 的 STICK_H 注入，是香道组件的私有尺寸（与 --burn 同族）
+  '--tw-stick-h',
   '--cs-1', '--cs-2', '--cs-3', '--cs-4', '--cs-accent', '--cs-accent-2',
   '--cs-hole', '--cs-line', '--cs-pool-a', '--cs-pool-b', '--cs-rim',
   '--fb-bamboo-1', '--fb-bamboo-2', '--fb-bamboo-3', '--fb-bamboo-stroke',

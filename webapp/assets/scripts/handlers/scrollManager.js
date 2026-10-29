@@ -15,7 +15,7 @@ import { CENSER_STYLES, DEFAULT_CENSER, censerSvg } from './censerStyles.js';
 const POMODORO_MS = 60 * 60 * 1000; // 一炷香默认燃烧 1 小时
 const SEG_MS = 10 * 60 * 1000;       // 每燃烧 10 分钟，一段香灰随风化雁
 const STICK_TOP = 30;                // 香身顶距 incense 顶（px）
-const STICK_H = 560;                 // 香身全长（px，对应 60 分钟）
+const STICK_H = 640;                 // 香身全长（px，对应 60 分钟）；改这里即可，CSS 由 --tw-stick-h 跟随
 const DUR_KEY = 'incenseDuration';    // 设置项：香总时长（分钟）
 const GOOSE_KEY = 'incenseGooseInterval'; // 设置项：化雁间隔（分钟）
 const CENSER_KEY = 'incenseCenserStyle';  // 设置项：香插样式（画中卷内切换，存 localStorage）
@@ -191,7 +191,7 @@ const ScrollManager = {
             <div class="scroll-scanlines"></div>
             <div class="scroll-screen-inner">
               <!-- 主视觉：青瓷竹节香插 -->
-              <div class="scroll-incense">
+              <div class="scroll-incense" style="--tw-stick-h:${HTMLUtils.escapeHtmlAttr(HTMLUtils.num(STICK_H))}px">
                 <!-- SVG 青烟：单缕锚定香头，靠路径 d 持续扭动（原地翻卷流动）营造上飘错觉，连续描边非虚线 -->
                 <div class="scroll-incense-smoke">
                   <svg viewBox="0 0 32 64" fill="none" preserveAspectRatio="none">
@@ -781,7 +781,7 @@ const ScrollManager = {
     const ratio = Math.max(0, Math.min(1, this._remaining / this._durationMs));
     // 与 CSS 保持一致：余烬 top = 22px + (1 - burn) * 560px，自身高 16 → 中心再 +8
     const ex = geo.cx;
-    const ey = geo.top + 22 + (1 - ratio) * 560 + 8;
+    const ey = geo.top + 22 + (1 - ratio) * STICK_H + 8;
     return Math.hypot(anchor.x + dx - ex, anchor.y + dy - ey) < 80;
   },
 

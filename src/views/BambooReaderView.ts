@@ -153,6 +153,8 @@ export class BambooReaderView extends ItemView {
 
   private _contentEl: HTMLElement | null = null;
   private _bodyEl: HTMLElement | null = null;
+  /** 兜底观察器：MarkdownRenderer 分段插入 HTML 块时，用于后续补做 iframe 归一化 */
+  private _iframeMo: MutationObserver | null = null;
   private _index: IndexEntry[] | null = null;
   /** 本次索引实际生效的范围键（rootFolder，或未配置时的当前文章所在目录）：变化即重建 */
   private _indexRoot = '';
@@ -239,6 +241,8 @@ export class BambooReaderView extends ItemView {
   async onClose(): Promise<void> {
     this._renderComp?.unload();
     this._renderComp = null;
+    this._iframeMo?.disconnect();
+    this._iframeMo = null;
     if (this._scrollSaveTimer !== null) {
       window.clearTimeout(this._scrollSaveTimer);
       this._scrollSaveTimer = null;
@@ -826,7 +830,8 @@ export class BambooReaderView extends ItemView {
    *    后为 632×1120，比例保持。
    */
   private normalizeIframes(root: HTMLElement): void {
-    root.querySelectorAll('iframe').forEach((f) => {
+    const apply = (f: HTMLIFrameElement): void => {
+      if (f.classList.contains('bm-iframe')) return;   // 幂等：观察器可能重复命中
       const plan = planIframe(f.getAttribute('src'), f.getAttribute('width'), f.getAttribute('height'));
       if (plan.src) f.setAttribute('src', plan.src);
       if (plan.aspectRatio) {
@@ -835,7 +840,23 @@ export class BambooReaderView extends ItemView {
         f.style.height = 'auto';
       }
       f.classList.add('bm-iframe');
+    };
+
+    root.querySelectorAll('iframe').forEach((f) => apply(f));
+
+    // MarkdownRenderer 对裸 HTML 块是分段插入的：`await render()` 返回后 iframe 可能还没进 DOM，
+    // 此时上面的同步查询取不到任何节点，修复等于没做（表现为「改了但画面没变」）。
+    // 故挂一次 MutationObserver 兜底后续插入；1.5s 后自动断开，不长期占用。
+    this._iframeMo?.disconnect();
+    const mo = new MutationObserver(() => {
+      root.querySelectorAll('iframe:not(.bm-iframe)').forEach((f) => apply(f as HTMLIFrameElement));
     });
+    mo.observe(root, { childList: true, subtree: true });
+    this._iframeMo = mo;
+    window.setTimeout(() => {
+      mo.disconnect();
+      if (this._iframeMo === mo) this._iframeMo = null;
+    }, 1500);
   }
 
   private interceptLinks(body: HTMLElement): void {

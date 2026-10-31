@@ -1674,6 +1674,9 @@ html body .workspace-leaf-content[data-type="bamboo-immortals"] .view-header-tit
 .bamboo-reader-view .bm-reader-body a{color:var(--bm-bamboo);text-decoration:none;}
 .bamboo-reader-view .bm-reader-body a:hover{text-decoration:underline;}
 .bamboo-reader-view .bm-reader-body img{display:block;max-width:100%;height:auto;margin:1.4em auto;border-radius:6px;box-shadow:0 1px 3px rgba(0,0,0,.12);cursor:zoom-in;}
+/* 嵌入视频/iframe：宽度不超出正文列。高度由 JS 按属性宽高转出的 aspect-ratio 决定
+   （只压宽度不压高度会让竖屏视频纵向拉伸变形，实测比例 0.564 → 0.492）。 */
+.bamboo-reader-view .bm-reader-body iframe{display:block;max-width:100%;border:none;border-radius:6px;margin:1.4em 0;background:transparent;}
 .bamboo-reader-view .bm-reader-body hr{border:none;height:20px;margin:2em 0;background:none;position:relative;}
 .bamboo-reader-view .bm-reader-body hr::after{content:"";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:40px;height:2px;background:var(--bm-bamboo-pale);border-radius:1px;}
 .bamboo-reader-view .bm-reader-body table th{background:color-mix(in srgb,var(--bm-bamboo-pale) 16%,transparent);font-weight:600;}

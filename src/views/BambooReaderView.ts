@@ -2,6 +2,7 @@ import { ItemView, WorkspaceLeaf, MarkdownRenderer, Component, TFile, TFolder, n
 import type BambooReviewPlugin from '../../main';
 import { diffLocalDays } from '../utils/dateUtils';
 import { preprocessMarkdown } from '../utils/markdownPreprocess';
+import { planIframe } from '../utils/iframeNormalize';
 
 export const VIEW_TYPE_BAMBOO_READER = 'bamboo-reader';
 
@@ -317,6 +318,9 @@ export class BambooReaderView extends ItemView {
         if (img.complete) onLoad();
         img.addEventListener('click', () => this.showLightbox(img.src, img.alt));
       });
+
+      // 嵌入媒体归一化：协议相对 URL 补 https、属性宽高转 aspect-ratio
+      this.normalizeIframes(body);
 
       // 代码块增强（语言标签 + 复制 + 行号）
       body.querySelectorAll('pre').forEach((pre) => this.enhanceCode(pre));
@@ -811,6 +815,29 @@ export class BambooReaderView extends ItemView {
   }
 
   /* ── 内部链接拦截 ── */
+  /**
+   * 嵌入媒体归一化（两件事，都有实测依据）：
+   *
+   * ① 协议相对 URL：`src="//player.xxx"` 在 `app://` 下会被解析成 `app://player.xxx`，
+   *    域名不存在 → 必然加载失败，表现为黑框。补成 `https://`。
+   * ② 写死的大尺寸：竖屏视频常见 `width="720" height="1280"`，而正文列宽约 668px。
+   *    宿主全局样式里的 `max-width:100%` 只压宽度、不动高度 → 实测 632×1284，
+   *    宽高比从 0.564 变成 0.492（纵向拉伸变形）。改成 aspect-ratio + width:100% + height:auto
+   *    后为 632×1120，比例保持。
+   */
+  private normalizeIframes(root: HTMLElement): void {
+    root.querySelectorAll('iframe').forEach((f) => {
+      const plan = planIframe(f.getAttribute('src'), f.getAttribute('width'), f.getAttribute('height'));
+      if (plan.src) f.setAttribute('src', plan.src);
+      if (plan.aspectRatio) {
+        f.style.aspectRatio = plan.aspectRatio;
+        f.style.width = '100%';
+        f.style.height = 'auto';
+      }
+      f.classList.add('bm-iframe');
+    });
+  }
+
   private interceptLinks(body: HTMLElement): void {
     body.querySelectorAll('a').forEach((a) => {
       const href = a.getAttribute('href') ?? a.dataset.href ?? '';

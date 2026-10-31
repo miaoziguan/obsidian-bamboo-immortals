@@ -20,9 +20,13 @@
 interface IframePlan {
   /** 需要改写的 src（仅协议相对 URL 时给出） */
   src?: string;
-  /** 形如 "720 / 1280"；无有效数值宽高时不给 */
+  /** 形如 "720 / 1280"，或视频源无宽高时的 "16 / 9" */
   aspectRatio?: string;
 }
+
+/** 识别视频平台播放器地址（分享代码常不带宽高，需要给默认比例） */
+const VIDEO_SRC_HINT =
+  /(player\.|bilibili|youtube|youtu\.be|vimeo|youku|ixigua|douyin|qq\.com\/x\/page)/i;
 
 /** 解析 src：把 `//host/path` 补成 `https://host/path`，其余原样返回 undefined */
 function fixProtocolRelative(src: string | null | undefined): string | undefined {
@@ -44,6 +48,12 @@ export function planIframe(
   const h = Number(height);
   if (Number.isFinite(w) && Number.isFinite(h) && w > 0 && h > 0) {
     plan.aspectRatio = `${w} / ${h}`;
+    return plan;
   }
+
+  // 无宽高属性：视频平台的「分享代码」常常干脆不带宽高（例：B 站新版 iframe 只有 src），
+  // 浏览器会退化成 300x150 —— 视频播放器在这个尺寸下几乎不可用。
+  // 仅对识别为视频源的地址补 16:9，普通网页 iframe 不擅自改比例。
+  if (VIDEO_SRC_HINT.test(src || '')) plan.aspectRatio = '16 / 9';
   return plan;
 }

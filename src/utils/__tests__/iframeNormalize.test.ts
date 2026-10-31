@@ -60,3 +60,34 @@ describe('把属性宽高转成 aspect-ratio，避免压窄后纵向拉伸', () 
     expect(planIframe(null, '-560', '315')).toEqual({});
   });
 });
+
+describe('视频平台分享代码不带宽高时补 16:9（实战样本：B 站新版 embed）', () => {
+  // 真实样本：B 站分享面板复制出来的 iframe 只有 src，没有 width/height
+  const BILI =
+    'https://player.bilibili.com/player.html?isOutside=true&aid=117529716462011&bvid=BV1Pnxq6yEov&cid=43181605861&p=1';
+
+  it('B 站无宽高 → 16:9（否则浏览器退化成 300x150，播放器不可用）', () => {
+    expect(planIframe(BILI, null, null)).toEqual({ aspectRatio: '16 / 9' });
+  });
+
+  it('B 站协议相对 + 无宽高 → 同时补 https 与 16:9', () => {
+    expect(planIframe('//player.bilibili.com/player.html?bvid=X', null, null)).toEqual({
+      src: 'https://player.bilibili.com/player.html?bvid=X',
+      aspectRatio: '16 / 9',
+    });
+  });
+
+  it('YouTube / Vimeo 同样识别', () => {
+    expect(planIframe('https://www.youtube.com/embed/abc', null, null)).toEqual({ aspectRatio: '16 / 9' });
+    expect(planIframe('https://player.vimeo.com/video/123', null, null)).toEqual({ aspectRatio: '16 / 9' });
+  });
+
+  it('普通网页 iframe 不擅自改比例', () => {
+    expect(planIframe('https://example.com/form', null, null)).toEqual({});
+    expect(planIframe('https://map.example.com/embed', null, null)).toEqual({});
+  });
+
+  it('视频源若自带宽高，以属性为准而不是 16:9', () => {
+    expect(planIframe(BILI, '720', '1280')).toEqual({ aspectRatio: '720 / 1280' });
+  });
+});

@@ -1,6 +1,7 @@
 import { ItemView, WorkspaceLeaf, MarkdownRenderer, Component, TFile, TFolder, normalizePath, setIcon } from 'obsidian';
 import type BambooReviewPlugin from '../../main';
 import { diffLocalDays } from '../utils/dateUtils';
+import { preprocessMarkdown } from '../utils/markdownPreprocess';
 
 export const VIEW_TYPE_BAMBOO_READER = 'bamboo-reader';
 
@@ -101,30 +102,9 @@ function stripFrontmatter(raw: string): string {
     .replace(/^---\r?\n[\s\S]*?\r?\n---$/, '');
 }
 
-/** 中英混排窄空格预处理（用 \x00 占位符保护代码块/行内码，避免误伤） */
-function preprocessMarkdown(md: string): string {
-  const codeBlocks: string[] = [];
-  const inlineCodes: string[] = [];
-  let processed = md.replace(/```[\s\S]*?```/g, (m) => {
-    codeBlocks.push(m);
-    return '\x00CODE' + (codeBlocks.length - 1) + '\x00';
-  });
-  processed = processed.replace(/`[^`]*`/g, (m) => {
-    inlineCodes.push(m);
-    return '\x00INL' + (inlineCodes.length - 1) + '\x00';
-  });
-  const cjk = '[一-鿿]';
-  const latin = '[a-zA-Z0-9@&%$#]';
-  const NARROW = String.fromCharCode(0x2009);
-  processed = processed
-    .replace(new RegExp('(' + cjk + ')(' + latin + ')', 'g'), '$1' + NARROW + '$2')
-    .replace(new RegExp('(' + latin + ')(' + cjk + ')', 'g'), '$1' + NARROW + '$2');
-  // eslint-disable-next-line no-control-regex -- \x00 为有意占位符分隔符
-  processed = processed.replace(/\x00INL(\d+)\x00/g, (_, i) => inlineCodes[+i] || '');
-  // eslint-disable-next-line no-control-regex -- \x00 为有意占位符分隔符
-  processed = processed.replace(/\x00CODE(\d+)\x00/g, (_, i) => codeBlocks[+i] || '');
-  return processed;
-}
+// preprocessMarkdown 已移到 utils/markdownPreprocess（纯函数，便于单测）。
+// 修复记录：窄空格曾穿透 ![[文件]] 与 <iframe src> 内部，把文件名/URL 改写掉，
+// 表现为「引用的 md 文本块不显示」「嵌入资源加载失败」。
 
 /** 字数统计：中文按字、拉丁按词（剥离 frontmatter/代码/图片/HTML） */
 function countWords(md: string): number {

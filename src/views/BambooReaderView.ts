@@ -831,25 +831,26 @@ export class BambooReaderView extends ItemView {
    */
   private normalizeIframes(root: HTMLElement): void {
     const apply = (f: HTMLIFrameElement): void => {
-      if (f.classList.contains('bm-iframe')) return;   // 幂等：观察器可能重复命中
+      if (f.dataset.bmIframe) return;   // 幂等：观察器可能重复命中（标记与样式类分开，见下）
+      f.dataset.bmIframe = '1';
       const plan = planIframe(f.getAttribute('src'), f.getAttribute('width'), f.getAttribute('height'));
       if (plan.src) f.setAttribute('src', plan.src);
       if (plan.aspectRatio) {
-        f.style.aspectRatio = plan.aspectRatio;
-        f.style.width = '100%';
-        f.style.height = 'auto';
+        // 静态部分（width/height）进 CSS 类；比例是逐元素的动态值，只能用 setCssStyles。
+        // 不直接写 f.style.*：obsidianmd/no-static-styles-assignment 会拦（同 ScrollView.ts:178 的做法）。
+        f.classList.add('bm-iframe');
+        f.setCssStyles({ aspectRatio: plan.aspectRatio });
       }
-      f.classList.add('bm-iframe');
     };
 
-    root.querySelectorAll('iframe').forEach((f) => apply(f));
+    root.querySelectorAll('iframe:not([data-bm-iframe])').forEach((f) => apply(f as HTMLIFrameElement));
 
     // MarkdownRenderer 对裸 HTML 块是分段插入的：`await render()` 返回后 iframe 可能还没进 DOM，
     // 此时上面的同步查询取不到任何节点，修复等于没做（表现为「改了但画面没变」）。
     // 故挂一次 MutationObserver 兜底后续插入；1.5s 后自动断开，不长期占用。
     this._iframeMo?.disconnect();
     const mo = new MutationObserver(() => {
-      root.querySelectorAll('iframe:not(.bm-iframe)').forEach((f) => apply(f as HTMLIFrameElement));
+      root.querySelectorAll('iframe:not([data-bm-iframe])').forEach((f) => apply(f as HTMLIFrameElement));
     });
     mo.observe(root, { childList: true, subtree: true });
     this._iframeMo = mo;
@@ -933,8 +934,9 @@ export class BambooReaderView extends ItemView {
   private applyFontSize(): void {
     const size = this.loadFontSize();
     if (this._bodyEl) {
+      // 只设变量：CSS 里已有 .bm-reader-body{font-size:var(--bm-base-size,16px)}，
+      // 再直接写一次 style.fontSize 既冗余，也会触发 obsidianmd/no-static-styles-assignment。
       this._bodyEl.setCssProps({ '--bm-base-size': size + 'px' });
-      this._bodyEl.style.fontSize = size + 'px';
     }
   }
 

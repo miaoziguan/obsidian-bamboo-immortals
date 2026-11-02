@@ -1,5 +1,18 @@
 # Changelog
 
+## [3.33.8] — 2026-11-02
+
+> 纯发布合规修正，无行为变化。
+
+### Fixed
+- **obsidian-releases CSS lint：`Unexpected duplicate "overflow"`（mindmap.css:19）**：
+  3.33.7 为兼容老内核把画布裁剪写成 `overflow: hidden` + `overflow: clip` 两行回退，
+  功能正确（后者覆盖前者），但 `declaration-block-no-duplicate-properties` 只看
+  「同名属性出现两次」就会告警。本仓库 timeline / dark / goals-stats / components-kpi
+  四处本来就直接单写 `overflow: clip`（Electron/Chromium 与 iOS16+ WKWebView 均支持），
+  故删掉被覆盖的 `hidden` 行，只留 `overflow: clip`，行为零变化。
+- 回归锁 `mindmapNodeWidth` 的第三条断言继续守住「`.tw-mm` 必须是 `overflow: clip`」。
+
 ## [3.33.7] — 2026-11-02
 
 > 修掉移动端思维子弹「把子弹拖到画布边缘后整排变形」：有的变成竖排（一字一行）、

@@ -15,8 +15,10 @@
      撑大 scrollWidth/scrollHeight，随后 contenteditable 的 focus（_enterEdit）/ 移动端
      软键盘的 scrollIntoView 会把容器滚出 scrollLeft/scrollTop ≠ 0，整个画布随之视觉偏移
      且用户无法用手势滚回，表现就是「拖到边缘后所有子弹被重新排版」。
-     clip 只裁切、不产生滚动机制（scrollLeft/Top 恒 0）。hidden 留作老内核回退。 */
-  overflow: hidden;
+     clip 只裁切、不产生滚动机制（scrollLeft/Top 恒 0）。
+     写单行 clip、不写 hidden 回退：本仓库 timeline / dark / goals-stats / components-kpi
+     四处已直接使用 overflow: clip（基线 Chromium / iOS16+ WKWebView 均支持），
+     重复声明反而会被 obsidian-releases 的 CSS lint 报 duplicate-properties。 */
   overflow: clip;
   cursor: grab;
   touch-action: none;

@@ -467,7 +467,10 @@ export const MaterialMarket = {
         }
       }
       const ids = Object.keys(this._installed);
-      console.log('[MaterialMarket] 已恢复素材 ' + ids.length + ' 个: ' + (ids.join(', ') || '(无)'));
+      // 只留极短摘要，且降到 debug 级（默认 Verbose 关时不可见）。
+      // 曾把全部素材名 join 出来打印 —— 装了几十个素材时是启动期几十行噪声，
+      // 对排查无增益（真出问题看的是下面逐条的 warn）。
+      console.debug('[MaterialMarket] 已恢复素材 ' + ids.length + ' 个');
     } catch (e) {
       console.warn('[MaterialMarket] 读取已安装素材失败:', e && e.message);
     }

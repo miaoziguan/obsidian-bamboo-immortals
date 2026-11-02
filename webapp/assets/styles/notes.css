@@ -1861,6 +1861,10 @@
    拖动期临时去掉投影换流畅，静止态外观不变。 */
 .bm-sticker.dragging { filter: none; }
 :host(.dark) .bm-sticker.dragging { filter: none; }
+/* 注：曾试过在拖动态把 .bm-sticker-content 的 content-visibility 由 auto 切成 visible
+   并补 contain（想削掉「相关性判定随位移翻转」的开销）。同场景 A/B 实测否证：
+   拖动期 style 重算 63~77ms（切 visible 反而升到 82~85ms），p90 无变化（17ms 量级）。
+   结论：该判定不是每帧成本来源，故不引入该规则。别再重复这个实验。 */
 /* 选中态：贴纸被点选后给金色描边（对齐 .tw-card.selected 的选中视觉）。
    此前 .bm-sticker.selected 无任何样式 → 点选贴纸后界面毫无反馈，用户误以为没选中。
    用 outline 而非 box-shadow：贴纸自带 filter:drop-shadow，box-shadow 会被再次投影发糊。 */

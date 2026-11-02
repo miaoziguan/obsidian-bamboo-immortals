@@ -331,8 +331,9 @@ export class Store {
             };
             runIdleSync();
             
-            // [诊断] 数据加载完成，记录状态
-            console.log('[Store] init complete: balance=' + this.state.balance +
+            // [诊断] 数据加载完成，记录状态。走 debug 级：每次启动都会打，
+            // 而它只对「排查数据是否加载成功」有价值，不该常驻在控制台（Verbose 开时仍可见）。
+            console.debug('[Store] init complete: balance=' + this.state.balance +
                 ' ph_records=' + (this.state.purchaseHistory.records || []).length +
                 ' ih_records=' + (this.state.incomeHistory.records || []).length);
         } catch (e) {

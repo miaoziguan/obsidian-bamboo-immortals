@@ -1,5 +1,33 @@
 # Changelog
 
+## [3.33.3] — 2026-11-02
+
+> 便签档「拖动卡顿」排查收口：新增拖拽帧率探针，把「顺不顺」变成可报数的分位数；并清掉启动期刷屏的诊断日志。
+
+### Added
+- **拖拽帧率探针**（`webapp/assets/scripts/utils/dragPerf.js`）：卡片与贴纸共用的
+  `CardInteractions.startGroupDrag` 在按下时起一个 rAF 采样循环、松手汇总
+  `p50 / p90 / max / 掉帧数`。超出阈值（p90 > 24ms 或掉帧率 > 20%）才出声——
+  console 每次记录、Toast 每会话只一次，不刷屏。现场入口
+  `__twDragPerf.report() / last() / off()`，用于排查「跑一阵就卡、重启才恢复」这类
+  只有长会话才能复现的退化（干净会话测不出来）。
+  安全约束：环形缓冲只留最近 20 次、单次采样上限 600 帧、连续零间隔（rAF 被同步实现）
+  自动停，绝不把测量本身变成故障源。
+
+### Changed
+- **启动期诊断日志降噪**：`[MaterialMarket] 已恢复素材` 不再把全部素材名 join 出来
+  （装几十个素材时会一次刷出几十行），只保留数量摘要；它与 `[Store] init complete`
+  一并降为 `console.debug`（DevTools 默认 Verbose 关闭时不可见，需要时仍可查看）。
+
+### 说明
+- 同轮用真实代码 + 真实素材做的 A/B 否证了两条原计划方案：拖动期给内容层加
+  `content-visibility: visible` + `contain`、以及 `CSS.registerProperty(inherits:false)`
+  改造 `--tw-drag-*`——实测均无收益甚至更差（style 重算 63~77ms → 82~85ms），故未引入，
+  并在 `notes.css` 与 `stickerDragPerf` 单测里留下「别再重复该实验」的反向锁。
+  实测结论：正常环境下拖动每帧总成本约 0.5ms（占 16.7ms 预算的 3%），
+  掉帧必然来自宿主环境（同进程其他视图抢主线程 / GPU 加速降级 / 内存压力），
+  后续定位依赖上面的探针取现场数据。
+
 ## [3.32.5] — 2026-10-27
 
 > 死代码系统性清理收官（JS 与 CSS 全线），并修掉「开启 AI 但 Key 为空」时只报看不懂 401 的体验问题。

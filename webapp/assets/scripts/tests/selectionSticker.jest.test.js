@@ -126,17 +126,45 @@ describe('便签模式统一选区：贴纸纳入', () => {
     rec.el.classList.add('selected');
     const rAF = global.requestAnimationFrame;
     global.requestAnimationFrame = (cb) => { cb(); return 0; };   // 同步执行 apply，便于断言
+    // 本用例只验坐标落盘：同步 rAF 会让帧间隔探针在同一栈内无限重排，这里用空桩隔离
+    const realDragPerf = global.DragPerf;
+    global.DragPerf = { begin() {}, end() {} };
     try {
       CardInteractions.startGroupDrag({ state: {}, ctrl }, new MouseEvent('pointerdown', { clientX: 100, clientY: 100 }), rec.el);
       document.dispatchEvent(new MouseEvent('pointermove', { clientX: 160, clientY: 120 }));  // 位移 (60,20)
       document.dispatchEvent(new MouseEvent('pointerup', { clientX: 160, clientY: 120 }));
     } finally {
       global.requestAnimationFrame = rAF;
+      global.DragPerf = realDragPerf;
     }
     // 缩放比为 1：贴纸 left/top = 起点(50,50) + 位移(60,20)
     expect(parseFloat(rec.el.style.left)).toBeCloseTo(110);
     expect(parseFloat(rec.el.style.top)).toBeCloseTo(70);
     expect(rec.x).toBeCloseTo(110);
     expect(rec.y).toBeCloseTo(70);
+  });
+
+  // 现场诊断：拖拽起止必须驱动帧间隔探针，否则「跑一阵就卡」永远拿不到数字。
+  // 卡片与贴纸共用 startGroupDrag —— 这里用贴纸路径验证接线即可覆盖两者。
+  test('拖拽起止驱动帧间隔探针（DragPerf.begin / end 各一次）', () => {
+    const ctrl = buildCtrl([]);
+    const rec = buildSticker(50, 50, 30, 30);
+    ctrl._materialMarket._canvasStickers.push(rec);
+    document.body.appendChild(rec.el);
+    ctrl._selected.add(rec.el);
+    const begin = jest.fn();
+    const end = jest.fn();
+    global.DragPerf = { begin, end };
+    try {
+      CardInteractions.startGroupDrag({ state: {}, ctrl }, new MouseEvent('pointerdown', { clientX: 100, clientY: 100 }), rec.el);
+      expect(begin).toHaveBeenCalledTimes(1);
+      document.dispatchEvent(new MouseEvent('pointermove', { clientX: 160, clientY: 120 }));
+      expect(end).not.toHaveBeenCalled();          // 手势未结束不汇总
+      document.dispatchEvent(new MouseEvent('pointerup', { clientX: 160, clientY: 120 }));
+      expect(end).toHaveBeenCalledTimes(1);
+    } finally {
+      delete global.DragPerf;
+      document.body.innerHTML = '';
+    }
   });
 });

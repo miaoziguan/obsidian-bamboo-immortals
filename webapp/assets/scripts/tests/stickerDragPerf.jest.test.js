@@ -60,4 +60,14 @@ describe('贴纸拖动性能契约', () => {
     const outer = rulesMatching('.bm-sticker').map((r) => decl(r.body, 'content-visibility')).filter(Boolean);
     expect(outer).toEqual([]);
   });
+
+  // 反契约：拖动态**不要**给内容层加 containment / 改 content-visibility。
+  // 该方案（visible + contain）同场景 A/B 实测无收益（style 反而 63~77ms → 82~85ms），
+  // 已回退。这里钉死「别再加回来」，避免后人重复同一个无效实验。
+  test('拖动态不给内容层加 contain（该方案已被 A/B 否证）', () => {
+    const rules = rulesMatching('.bm-sticker.dragging .bm-sticker-content');
+    expect(rules).toEqual([]);
+    const dragging = rulesMatching('.bm-sticker.dragging').map((r) => decl(r.body, 'contain')).filter(Boolean);
+    expect(dragging).toEqual([]);
+  });
 });

@@ -21,6 +21,8 @@ import { CanvasGestures } from '../../services/CanvasGestures.js';
 import { CanvasKeys } from '../../services/CanvasKeys.js';
 // 三档差异真源（P2 · A 类）：卡片交互归属 / 连线定序，一律查表
 import { ModePolicy } from './modePolicy.js';
+// 拖拽期帧间隔探针：把「卡不卡」变成 p50/p90/max 的可报数样本（现场诊断用，见 utils/dragPerf.js）
+import { DragPerf } from '../../utils/dragPerf.js';
 
 /** 【连线定序】连线是文章顺序的输入之一：增 / 删连线后按 orderIds（连线优先 → 回退阅读序）
  *  重算一次 seq，并显式刷徽标。真值仍落在 seq 上（读取方 O(1)、不每帧现推），
@@ -100,6 +102,9 @@ export const CardInteractions = {
       d.el.style.willChange = 'transform';
     });
     primaryEl.style.zIndex = String(++ctrl._zTop);
+    // 拖拽期帧间隔采样（p50/p90/max）。只挂一个 rAF，手势结束即收，零常驻成本；
+    // 现场"跑一阵就卡"的反馈靠它取证，而不是靠"感觉顺不顺"。
+    if (typeof DragPerf !== 'undefined' && DragPerf) DragPerf.begin();
     const apply = () => {
       raf = 0;
       // 【性能】拖拽期只写 translate 变量：transform 走合成，不触发布局；
@@ -134,6 +139,8 @@ export const CardInteractions = {
       const cancelled = !!(ev && ev.type === 'pointercancel');
       dragging = false;
       if (raf) { cancelAnimationFrame(raf); raf = 0; }
+      // 收采样并汇总（无有效帧时静默返回 null；超阈值才出声，每会话一次）
+      if (typeof DragPerf !== 'undefined' && DragPerf) DragPerf.end();
       if (moved && dragSet) {
         let stickerMoved = false;
         dragSet.forEach((d) => {

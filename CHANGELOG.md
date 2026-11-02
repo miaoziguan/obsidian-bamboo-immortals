@@ -1,5 +1,24 @@
 # Changelog
 
+## [3.33.5] — 2026-11-02
+
+> 修掉「贴纸旋转过之后，拖动不跟手（全程不动、松手瞬移），要重启 Obsidian 才恢复」。
+> 这不是性能问题，是旋转手势把拖动所依赖的 transform 覆盖掉了。
+
+### Fixed
+- **自由贴纸旋转后拖动失效**：自由态贴纸的拖动依赖 transform 里的
+  `translate(var(--tw-drag-x), var(--tw-drag-y))`（拖动期每帧只改这两个 CSS 变量，
+  由合成器位移、不触发布局）。而旋转手势与「双击 ↻ 归零」此前直接写
+  `transform = 'rotate(Ndeg)'`，把 translate 整段抹掉 —— 之后拖动再写变量也不产生位移，
+  表现为「贴纸一帧不动、松手才瞬移」，且会一直坏到 DOM 重建（重启）为止。
+  现收敛出唯一真源 `MaterialMarket._stickerTransform(rec, deg)`：自由态带 translate、
+  依附态只 `rotate`（父卡片已有位移，叠加会二次位移），`_applyStickerBox` / 旋转手势 /
+  双击归零三处共用，杜绝同类漂移。
+  实测（真实画中卷 + 观鱼素材）：旋转一次后拖动跟手位移 0px → 84px；连续 5 轮
+  「旋转 → 拖动」位移恒为 84px，transform 始终保留拖动变量。
+- 回归锁：`stickerGesturePerf` 新增 4 例（旋转后仍带拖动变量 / 双击归零后仍带 /
+  依附态不得带 translate / `_stickerTransform` 两态断言）。
+
 ## [3.33.4] — 2026-11-02
 
 > 便签档「拖动卡顿」排查收口：新增拖拽帧率探针，把「顺不顺」变成可报数的分位数；并清掉启动期刷屏的诊断日志。

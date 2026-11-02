@@ -774,6 +774,20 @@ export const MaterialMarket = {
     return true;
   },
 
+  /** 贴纸自身 transform 的唯一真源：定位样式 / 旋转手势 / 双击归零三处共用。
+   *
+   *  自由态**必须**带 `translate(var(--tw-drag-x…), …)`：拖动就是用每帧写这两个 CSS 变量
+   *  产生位移的（见 CardInteractions.startGroupDrag）。任何调用方若只写 `rotate(...)`，
+   *  拖动期变量再变也不产生位移 —— 表现为「拖不跟手、松手瞬间瞬移」，且会一直坏到
+   *  下次重建 DOM（重启）为止。2026-11 实锤：旋转手柄转一次即必现。
+   *  依附态不能带 translate：父卡片已有位移，再加一层会二次位移。 */
+  _stickerTransform(rec, deg) {
+    const rot = Number(deg == null ? (rec && rec.rot) : deg) || 0;
+    return rec && rec.parentId
+      ? 'rotate(' + rot + 'deg)'
+      : 'translate(var(--tw-drag-x, 0px), var(--tw-drag-y, 0px)) rotate(' + rot + 'deg)';
+  },
+
   /** 按依附 / 自由态写出贴纸的定位与尺寸样式（唯一出口，避免两处漂移） */
   _applyStickerBox(rec) {
     const el = rec && rec.el;
@@ -806,12 +820,8 @@ export const MaterialMarket = {
       el.classList.remove('bm-sticker-behind');
     }
     // 「半藏 / 从便签取下」已收进 ⋯ 菜单，其显隐在开菜单时按依附态判定，这里无需再管控件。
-    // 自由态：贴纸在装饰层（非卡片子级），需自带画布拖拽位移（与卡片同套 _startGroupDrag）。
-    // 依附态：贴纸已是卡片子元素，父级 transform 已含画布拖拽位移；子级若再加 translate 会「二次位移」
-    //         —— 拖动卡片时贴纸相对卡片漂移，松手后 --tw-drag-x/y 清零才归位。故依附态仅保留自身 rotate。
-    el.style.transform = rec.parentId
-      ? 'rotate(' + (Number(rec.rot) || 0) + 'deg)'
-      : 'translate(var(--tw-drag-x, 0px), var(--tw-drag-y, 0px)) rotate(' + (Number(rec.rot) || 0) + 'deg)';
+    // 形态差异（自由态带拖动位移变量 / 依附态只旋转）统一由 _stickerTransform 负责。
+    el.style.transform = this._stickerTransform(rec);
   },
 
   /** 便签被删除时连带删除挂在它下面的贴纸（依附关系随宿主消失） */
@@ -1032,7 +1042,9 @@ export const MaterialMarket = {
     const apply = () => {
       raf = 0;
       rec.rot = pendingDeg;
-      el.style.transform = 'rotate(' + pendingDeg + 'deg)';
+      // 必须走唯一真源：只写 rotate(...) 会把自由态的 translate 变量抹掉，
+      // 拖动随即变成「不动 / 松手瞬移」（旋转一次即必现，重启才恢复）。
+      el.style.transform = this._stickerTransform(rec, pendingDeg);
     };
     const onMove = (e) => {
       if (!rotating) return;
@@ -1076,7 +1088,8 @@ export const MaterialMarket = {
     });
     handle.addEventListener('dblclick', (e) => {
       e.preventDefault(); e.stopPropagation();
-      rec.rot = 0; el.style.transform = 'rotate(0deg)';
+      rec.rot = 0;
+      el.style.transform = this._stickerTransform(rec, 0);   // 同上：不可写成裸 rotate(0deg)
       this._saveStickers();
     });
   },

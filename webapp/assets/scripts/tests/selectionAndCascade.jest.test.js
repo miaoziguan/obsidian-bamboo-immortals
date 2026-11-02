@@ -39,12 +39,16 @@ describe('贴纸级联删除（MaterialMarket.removeAttachedStickers）', () => 
 });
 
 describe('依附贴纸层叠（_applyStickerBox）：浮在纸纹之上、半藏仍在纸后', () => {
-  // _applyStickerBox 只用到 this._ctrl / _cardElById / _stickerAspect / _installed，
+  // _applyStickerBox 只用到 this._ctrl / _cardElById / _stickerAspect / _installed / _stickerTransform，
   // 用一个假 this 调用，避免改动 MaterialMarket 单例。
   function boxFor(behind) {
     const el = document.createElement('div');
     const rec = { el, parentId: 'c1', behind, rx: 0, ry: 0, rw: 35, rh: 35, material: 'm' };
-    const fakeThis = { _ctrl: {}, _cardElById: () => ({}), _stickerAspect: () => null, _installed: {} };
+    const fakeThis = {
+      _ctrl: {}, _cardElById: () => ({}), _stickerAspect: () => null, _installed: {},
+      // transform 唯一真源（自由态带拖动位移变量 / 依附态只旋转），假 this 需显式代理
+      _stickerTransform: MaterialMarket._stickerTransform,
+    };
     MaterialMarket._applyStickerBox.call(fakeThis, rec);
     return el;
   }

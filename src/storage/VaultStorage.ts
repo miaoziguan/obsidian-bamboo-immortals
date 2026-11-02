@@ -165,15 +165,34 @@ export class VaultStorage {
   private async vaultWrite(path: string, content: string): Promise<boolean> {
     const normalized = normalizePath(path);
 
+    // 守卫 ⓐ（空内容拒写）：内容不是「非空字符串」→ 直接抛，绝不落盘。
+    // 0 字节文件不是「空档」，而是「一次没写完的写入」：读侧会把它判成损坏并隔离
+    // （备份同样是 0 字节，等于没有任何可恢复内容），用户看到的是「数据损坏」，
+    // 而真实数据在写入失败那一刻就已经没了。历史事故链：
+    //   putTypewriterNotesDoc(id, undefined) → JSON.stringify(undefined) 返回 undefined →
+    //   vault.create(path, undefined) 建出 0 字节占位 → 下次读取 JSON.parse('') 抛错 → 判损坏。
+    if (typeof content !== 'string' || !content.trim()) {
+      console.error('[VaultStorage] 拒绝写入空内容（上游数据异常）：', normalized, typeof content);
+      throw new Error('拒绝写入空内容：' + normalized);
+    }
+
     if (this._ioFailedPaths.has(normalized)) {
-      if (!this._ioNoticed.has(normalized)) {
-        this._ioNoticed.add(normalized);
-        new Notice(
-          `⚠️ 无法读取 ${normalized.slice(normalized.lastIndexOf('/') + 1)}，已暂停写入以防覆盖。` +
-            '\n请检查文件权限或是否被其它程序占用，恢复后会自动继续保存。',
-        );
+      // 【可解除】文件已被用户按提示删掉（或读失败后消失）→ 解除暂停，本次按「新建」处理。
+      // 少了这一步，用户删掉 0 字节空文件后仍会被内存里的标记永久挡住，只能重启插件才恢复保存。
+      const stillThere = await this.app.vault.adapter.exists(normalized).catch(() => true);
+      if (!stillThere) {
+        this._ioFailedPaths.delete(normalized);
+        this._ioNoticed.delete(normalized);
+      } else {
+        if (!this._ioNoticed.has(normalized)) {
+          this._ioNoticed.add(normalized);
+          new Notice(
+            `⚠️ 无法读取 ${normalized.slice(normalized.lastIndexOf('/') + 1)}，已暂停写入以防覆盖。` +
+              '\n请检查文件权限或是否被其它程序占用，恢复后会自动继续保存。',
+          );
+        }
+        return false;
       }
-      return false;
     }
 
     const abstract = this.app.vault.getAbstractFileByPath(normalized);
@@ -199,10 +218,47 @@ export class VaultStorage {
     } catch (e) {
       if (prev !== null) {
         try { await this.app.vault.adapter.write(normalized, prev); } catch { /* 恢复也失败：只能抛给上层 */ }
+      } else {
+        // 首次创建失败：Obsidian 的 create 是「先建文件、再写内容」，中途失败/中断会留下
+        // 0 字节残件。不清掉的话，下次读取会被误判成「文件损坏」——把「保存失败」
+        // 讲成「数据损坏」，还顺带把真正的失败原因藏起来。
+        await this.removeIfEmpty(normalized);
       }
       throw e;
     }
+    // 写后校验（仅新建分支）：create 成功但内容没落地（进程中断 / 磁盘异常）时，
+    // 盘上同样是 0 字节或半截。校验不过就清残件再抛，保证「要么完整写入，要么不留痕」。
+    // 已存在文件走 vault.process（Obsidian 的读改写出口），不再重复读回，避免每次保存多一次 IO。
+    const back = await this.app.vault.adapter.read(normalized).catch(() => null);
+    if (back !== content) {
+      await this.removeIfEmpty(normalized);
+      throw new Error('写入校验失败（内容与预期不一致）：' + normalized);
+    }
     return true;
+  }
+
+  /** 删除「存在但内容为空」的残件 —— 写入失败留下的占位文件。
+   *  只删空文件：有内容说明是真实数据（哪怕不完整），绝不在这里碰。
+   *  读失败（null）同样删：读都读不出来、又没有可用内容，留着只会干扰后续判断。 */
+  private async removeIfEmpty(path: string): Promise<void> {
+    try {
+      const normalized = normalizePath(path);
+      if (!(await this.app.vault.adapter.exists(normalized))) return;
+      const cur = await this.app.vault.adapter.read(normalized).catch(() => null);
+      if (cur === null || cur === '') await this.app.vault.adapter.remove(normalized);
+    } catch { /* 清理失败不能掩盖原始异常 */ }
+  }
+
+  /** 文档写入前的参数硬校验：doc 必须是普通对象。
+   *  历史事故：doc 为 undefined 时 `JSON.stringify` 返回 undefined（不是字符串），
+   *  写入层拿到非字符串就会建出 0 字节文件，下次读取被判「损坏」。
+   *  这里提前抛错，把「静默产出一个坏文件」变成「当次保存显式失败」（走 saveErrorSurface 提示）。 */
+  private assertDocObject(kind: string, doc: unknown): void {
+    if (!doc || typeof doc !== 'object' || Array.isArray(doc)) {
+      const t = Array.isArray(doc) ? 'array' : (doc === null ? 'null' : typeof doc);
+      console.error(`[VaultStorage] ${kind}写入参数非法（doc 类型 ${t}），已拒绝：`, doc);
+      throw new Error(`refuse-to-write-invalid-doc: ${kind} (${t})`);
+    }
   }
 
   // ---- 每日数据 (days) ----
@@ -677,6 +733,26 @@ export class VaultStorage {
       if (stillExists) this._ioFailedPaths.add(normalizePath(path));
       return null;
     }
+    // 空文件 ≠ 损坏：它是「上次写入没写完」留下的占位（写入失败 / 进程中断 / 磁盘异常）。
+    // 此前把它当损坏隔离，会同时犯两个错：
+    //   ① 备份 0 字节毫无可恢复内容，却对用户宣称「已损坏、已备份」—— 把「保存失败」
+    //      讲成「文件损坏」，真正原因被藏起来；
+    //   ② 原文件被删后，Obsidian 的「文件恢复」快照也就失去了对照路径。
+    // 现在的处理：不隔离、不删原文件，只标记「读不可用」阻止写入（否则加载出的空档
+    // 会在下一次自动保存时被写成「看起来正常的空组」，用户再也分不清是丢了还是本来就空）。
+    if (!content || !content.trim()) {
+      const normalized = normalizePath(path);
+      this._ioFailedPaths.add(normalized);
+      if (!this._ioNoticed.has(normalized)) {
+        this._ioNoticed.add(normalized);
+        const name = path.slice(path.lastIndexOf('/') + 1);
+        new Notice(
+          `⚠️ ${label}「${name}」内容为空（上次保存可能被中断），已暂停写入以防覆盖。` +
+            '\n可在 Obsidian「设置 → 文件恢复」里找回历史版本；或确认后删除该空文件再重新保存。',
+        );
+      }
+      return null;
+    }
     this._ioFailedPaths.delete(normalizePath(path));
     try {
       return JSON.parse(content) as unknown;
@@ -817,6 +893,7 @@ export class VaultStorage {
   }
 
   async putTypewriterWritingDoc(id: string, doc: unknown): Promise<void> {
+    this.assertDocObject('写作档', doc);
     // vaultWrite 会自动创建不存在的父目录（可配置目录），无需预先 mkdir
     await this.ensureWritingFolderMigrated();
     await this.vaultWrite(await this.typewriterWritingDocPath(id), JSON.stringify(doc, null, 2));
@@ -847,6 +924,7 @@ export class VaultStorage {
   }
 
   async putTypewriterMindmapDoc(id: string, doc: unknown): Promise<void> {
+    this.assertDocObject('思维子弹档', doc);
     // vaultWrite 会自动创建不存在的父目录（mindmapStoreFolder 目录），无需预先 mkdir
     await this.vaultWrite(this.typewriterMindmapDocPath(id), JSON.stringify(doc, null, 2));
   }
@@ -872,6 +950,7 @@ export class VaultStorage {
     return parsed as { version: number; notes: unknown[]; links: unknown[]; canvasOffset: { x: number; y: number; scale?: number } | null };
   }
   async putTypewriterNotesDoc(id: string, doc: unknown): Promise<void> {
+    this.assertDocObject('便签档', doc);
     await this.vaultWrite(this.typewriterNotesDocPath(id), JSON.stringify(doc, null, 2));
   }
   async deleteTypewriterNotesDoc(id: string): Promise<void> {

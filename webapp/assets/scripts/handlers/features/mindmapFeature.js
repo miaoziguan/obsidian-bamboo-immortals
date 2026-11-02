@@ -1273,6 +1273,11 @@ export const MindmapFeature = {
     if (e.target.closest('.tw-link-anchor')) return;
     if (e.target.closest('button')) return;
     if (e.shiftKey) { this._createBulletAt(e.clientX, e.clientY); return; }  // Shift+双击空白：落点新建子弹
+    // 触屏不做「双击空白 = 全图归位」：手指连点/拖动收尾极易误判成双击，一命中就把所有子弹
+    // 重新居中（= 用户看到的「子弹被重新排版」）。桌面鼠标语义保持不变；移动端仍有缩放条上的
+    // 「适应内容」按钮可手动归位，能力不减。
+    const pt = e && e.pointerType;
+    if (pt === 'touch' || pt === 'pen') return;
     this._centerView();   // 双击空白：归位/适配全部子弹到视口中心（与便签模式一致）
   },
 
@@ -1343,6 +1348,10 @@ export const MindmapFeature = {
       const dx = (ev.clientX - x0) / s, dy = (ev.clientY - y0) / s;
       if (!moved && Math.abs(dx) + Math.abs(dy) < 3) return;
       moved = true;
+      // 一旦真的拖动过，本次按下的双击基准作废：否则「拖到边缘松手 → 立刻在附近再按一下」
+      // 会被 _onEmptyPointerDown 的 450ms / 12px 双击判定命中（触屏连点与手指抖动极易满足），
+      // 接着走 _handleDoubleTap → _centerView 把全部子弹重新居中 = 用户眼中的「重新排版」。
+      this._lastDown = null;
       curDx = dx; curDy = dy;   // 只记录位移；位置写入 + 连线重绘都落到 flush 同一帧（节点与连线同步，无滞后）
       lastEv = ev;
       if (!raf) raf = requestAnimationFrame(flush);
@@ -1406,6 +1415,22 @@ export const MindmapFeature = {
       this._noteDragKeep = false;
       if (raf) { cancelAnimationFrame(raf); raf = 0; }
       if (moved) flush();   // 提交当前拖到的位置（不回弹），让位给捏合后节点停在原地
+      // 【位置即数据】被打断的拖拽也必须把 DOM 终态写回模型：
+      // flush() 只写 el.style.left/top，若不在模型里落位，之后任何 _placeNode
+      // （剔除后重挂载 / render / 撤销重放）都会按旧坐标把子弹摆回，用户看到的就是
+      // 「拖到边缘一放手，子弹自己弹回原位 / 整图重新排版」。
+      // 触屏拖到画布边缘时第二指（掌根）落下会走这条路径，桌面端（无第二指针）基本不可达。
+      if (moved) {
+        this._mutate(() => {
+          starts.forEach((s, nid) => {
+            s.el.classList.remove('is-dragging');
+            this._nodes = MindmapDoc.setPos(this._nodes, nid,
+              parseFloat(s.el.style.left) || 0, parseFloat(s.el.style.top) || 0);
+          });
+        });
+        this._scheduleSave();
+        this.renderNodes(Array.from(starts.keys()));
+      }
       if (dropTargetEl) { dropTargetEl.classList.remove('is-drop-target'); dropTargetEl = null; }
       if (!dragSet) nodeEl.style.pointerEvents = '';
       if (captureEl && captureEl.releasePointerCapture && dragPointerId != null && captureEl.hasPointerCapture && captureEl.hasPointerCapture(dragPointerId)) {

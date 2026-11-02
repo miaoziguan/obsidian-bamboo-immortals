@@ -1,5 +1,35 @@
 # Changelog
 
+## [3.33.7] — 2026-11-02
+
+> 修掉移动端思维子弹「把子弹拖到画布边缘后整排变形」：有的变成竖排（一字一行）、
+> 有的位置被弹回、有的整张图突然重新居中。桌面端不复现，因为三条根因都需要触屏。
+> 三条全部按代码证据定位，并用回归测试钉住。
+
+### Fixed
+- **子弹突然变成竖排（宽度塌陷）**：`.tw-mm-node` 是绝对定位且没有 `width`，宽度走
+  shrink-to-fit = `min(max-content, max(min-content, 可用宽度))`，而「可用宽度」=
+  画布宽 − `left`。`left` 是**画布坐标**（屏幕位置由 `.tw-mm-canvas` 的 transform 承担），
+  移动端画布仅 ~390px，把子弹拖到右缘（或先平移视口再拖）`left` 就会超过画布宽 →
+  可用宽度 ≤ 0 → 宽度退化到 `min-content`（一个汉字宽）→ `word-break` 逐字断行 → 竖排。
+  现显式 `width: max-content`（只由内容决定，与 `left` 无关），`max-width: 220px`
+  仍负责超长换行。**不能用 `fit-content`**：其公式同样含「可用宽度」，照样会塌。
+- **拖拽被捏合抢走后位置不落库**：触屏拖到边缘时第二指（掌根）落下会起捏合，
+  `onPinchWillStart` 取消节点拖拽，但取消路径只 `flush()` 写 DOM 的 `left/top`，
+  没有写回 `_nodes` 模型 —— 之后任何一次 `_placeNode`（剔除后重挂载 / render / 撤销）
+  都会按旧坐标把子弹摆回去，表现为「一放手自己弹回原位」。现取消路径同样写回模型并落盘。
+- **触屏误触「双击空白 = 全图归位」**：双击判定只有 450ms / 12px，且拖完不重置基准；
+  手指连点/抖动极易命中 → `_centerView()` 把全部子弹重新居中（= 用户眼中的「重新排版」）。
+  现真正拖动过即作废双击基准，且触屏（`pointerType` 为 `touch`/`pen`）不再触发全图归位；
+  桌面鼠标语义不变，移动端仍可用缩放条上的「适应内容」手动归位。
+- **画布用 `overflow: hidden` 当裁剪的副作用**：hidden 会让 `.tw-mm` 成为「可滚动容器」，
+  子弹拖出边界撑大 `scrollWidth/Height` 后，`contenteditable` 的 `focus` / 移动端软键盘的
+  `scrollIntoView` 会把容器滚出 `scrollLeft/Top ≠ 0`，整块画布视觉偏移且无法滚回。
+  改用 `overflow: clip`（只裁切、不产生滚动机制），`hidden` 留作老内核回退。
+- 回归锁：新增 `mindmapNodeWidth`（3 例：必须 `width: max-content`、禁用
+  `fit-content/stretch/auto`、`.tw-mm` 必须 `overflow: clip`）；`mindmapNodeDrag`
+  新增 3 例（取消拖拽写回模型、拖动作废双击基准、触屏不归位 / 鼠标仍归位）。
+
 ## [3.33.6] — 2026-11-02
 
 > 修掉目标卡里「每日」那枚每日量徽章**点不动、打不进字**：点开后输入框既看不见、也没拿到焦点。

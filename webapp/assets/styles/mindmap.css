@@ -10,7 +10,14 @@
      机身(.tw-beeper z-index:30)浮在上方，交互不受影响；节点可布满全视口。 */
   position: absolute;
   inset: 0;
-  overflow: hidden;              /* 画布视口：节点/连线超出部分裁掉 */
+  /* 画布视口：节点/连线超出部分裁掉。
+     必须是 clip 而非 hidden —— hidden 会把它变成「可滚动容器」：子弹被拖出边界后
+     撑大 scrollWidth/scrollHeight，随后 contenteditable 的 focus（_enterEdit）/ 移动端
+     软键盘的 scrollIntoView 会把容器滚出 scrollLeft/scrollTop ≠ 0，整个画布随之视觉偏移
+     且用户无法用手势滚回，表现就是「拖到边缘后所有子弹被重新排版」。
+     clip 只裁切、不产生滚动机制（scrollLeft/Top 恒 0）。hidden 留作老内核回退。 */
+  overflow: hidden;
+  overflow: clip;
   cursor: grab;
   touch-action: none;
   /* 与便签画布同一套字号基准：导图节点用 em 随容器缩放 */
@@ -47,6 +54,15 @@
   box-sizing: border-box;
   display: flex;
   align-items: center;
+  /* 【必须是 max-content，不能用默认的 shrink-to-fit / fit-content】绝对定位元素没有 width 时
+     宽度 = shrink-to-fit = min(max-content, max(min-content, 可用宽度))，而「可用宽度」=
+     包含块宽(.tw-mm-nodes) − left。子弹的 left 是**画布坐标**，与它在屏幕上看起来的位置无关
+     （视口平移由 .tw-mm-canvas 的 transform 承担）：一旦 left 逼近/超过画布宽度——移动端画布仅
+     ~390px，把子弹拖到右缘、或平移视口后再拖，left 很容易超过——可用宽度就 ≤ 0，宽度退化到
+     min-content（一个汉字宽），文本逐字换行 → 子弹「突然变成竖排」。
+     max-content 只由内容决定，与 left 无关；上方/JS 侧的 max-width:220px 仍负责超长换行。
+     ⚠️ 换成 fit-content 无效：其公式同样含「可用宽度」，left 越大越窄，照样塌成竖排。 */
+  width: max-content;
   padding: 0.5em 0.95em;
   border: 1px solid var(--border-light);
   /* 子弹框：两端全圆（胶囊），视觉上比「左侧色条」更干净 */

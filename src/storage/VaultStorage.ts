@@ -199,6 +199,20 @@ export class VaultStorage {
 
     if (abstract instanceof TFile) {
       await this.app.vault.process(abstract, () => content);
+      // 【写后校验】process 内部是「读 → 回调 → 截断重写」，进程在重写阶段被杀会留下
+      // 半截或空文件；半截 JSON 下次读取照样判损坏（进而被隔离），所以这里当场确认内容落地。
+      // 不一致先原样重写一次（瞬时故障多半可恢复），仍不一致就抛错交给上层提示，
+      // 绝不把「没写完整」当成功返回。代价是每次保存多一次读（文档档 2–50 KB，可忽略）。
+      let back = await this.app.vault.adapter.read(normalized).catch(() => null);
+      if (back !== content) {
+        console.warn('[VaultStorage] 写后校验不一致，重试一次：', normalized,
+          (back === null ? 'null' : back.length), 'vs', content.length);
+        await this.app.vault.process(abstract, () => content);
+        back = await this.app.vault.adapter.read(normalized).catch(() => null);
+      }
+      if (back !== content) {
+        throw new Error('写入校验失败（内容与预期不一致）：' + normalized);
+      }
       return true;
     }
 
@@ -247,6 +261,16 @@ export class VaultStorage {
       const cur = await this.app.vault.adapter.read(normalized).catch(() => null);
       if (cur === null || cur === '') await this.app.vault.adapter.remove(normalized);
     } catch { /* 清理失败不能掩盖原始异常 */ }
+  }
+
+  /** `vaultWrite` 返回 false = 被守卫拦截（此前读取失败 / 内容异常，已暂停落盘）。
+   *  必须抛错而不是静默返回：`put*Doc` 的签名是 `Promise<void>`，把 false 吞掉会让
+   *  `_saveCardDoc` 认为「已保存」（wroteDoc = true），用户继续编辑、每次都被拦，
+   *  直到重启才发现这一档根本没落盘 —— 「守卫保护数据」反而变成了「静默丢编辑」。 */
+  private assertWritten(ok: boolean, kind: string, path: string): void {
+    if (ok) return;
+    console.error(`[VaultStorage] ${kind}写入被拦截（已暂停落盘）：`, path);
+    throw new Error(`写入被暂停（该文件此前读取失败，为防止覆盖已暂停落盘）：${kind} ${path}`);
   }
 
   /** 文档写入前的参数硬校验：doc 必须是普通对象。
@@ -701,16 +725,37 @@ export class VaultStorage {
    * 规范路径腾空后，读取不再反复报错、写入也不再冒险覆盖。
    *
    * 备份失败时**不删原文件**（宁可重复留一份，也不冒险丢内容）。
+   *
+   * @param keepOriginal 文档档（便签/写作/思维子弹）专用：**保留原文件**，不删。
+   *   这些档由 `_ioFailedPaths` 暂停写入兜底（用户删掉/修好文件即恢复），保留原文件能让
+   *   Obsidian「文件恢复」与人工修复都有对照物；最坏结果是「这一档卡住待处理」，
+   *   而不是「文件凭空消失」。而 goals / settings / 日数据是**单一全局文件**，损坏后必须能
+   *   继续重建（否则整个插件瘫掉），且备份已留档，故仍维持「备份 + 移除原文件」以解除阻塞。
    */
-  private async quarantineCorruptFile(path: string, content: string, label: string): Promise<void> {
-    const backup = normalizePath(`${path}.corrupt-${this.corruptStamp(new Date())}`);
+  private async quarantineCorruptFile(
+    path: string, content: string, label: string, keepOriginal = false,
+  ): Promise<void> {
+    const normalized = normalizePath(path);
+    const backup = normalizePath(`${normalized}.corrupt-${this.corruptStamp(new Date())}`);
     const name = backup.slice(backup.lastIndexOf('/') + 1);
+    const originalName = normalized.slice(normalized.lastIndexOf('/') + 1);
     try {
-      await this.app.vault.adapter.write(backup, content);
-      await this.app.vault.adapter.remove(path);
-      new Notice(`⚠️ ${label}文件已损坏（无法解析），原文件已备份为 ${name}。`);
+      // 同一原文件只留一份现场：文档档保留原文件后，每次启动都会再读到损坏，
+      // 若每次都写新备份就会无限堆积 .corrupt-* 文件。
+      let already = false;
+      try {
+        const dir = normalized.slice(0, normalized.lastIndexOf('/'));
+        const list = await this.app.vault.adapter.list(dir);
+        already = list.files.some((f) => f.includes(originalName + '.corrupt-'));
+      } catch { /* 列目录失败：按「没有备份」处理，宁可多写一份 */ }
+      if (!already) await this.app.vault.adapter.write(backup, content);
+      if (!keepOriginal) await this.app.vault.adapter.remove(normalized);
+      new Notice(keepOriginal
+        ? `⚠️ ${label}「${originalName}」无法解析，已留档备份为 ${name}。` +
+          '\n原文件**保留在原处**（未做任何改动），该档写入已暂停以免覆盖，请核对后再处理。'
+        : `⚠️ ${label}文件已损坏（无法解析），原文件已备份为 ${name}。`);
     } catch {
-      new Notice(`⚠️ ${label}文件已损坏（无法解析），且自动备份失败，请手动检查 ${name.replace(/\.corrupt-.*$/, '')}。`);
+      new Notice(`⚠️ ${label}文件已损坏（无法解析），且自动备份失败，请手动检查 ${originalName}。`);
     }
   }
 
@@ -719,7 +764,7 @@ export class VaultStorage {
    * 与裸 read+JSON.parse 的关键区别：**解析失败会先把原文件隔离留档**，
    * 否则调用方按「无数据」处理后，下一次写入会把损坏内容静默覆盖 → 永久丢失且无从恢复。
    */
-  private async readJsonFile(path: string, label: string): Promise<unknown> {
+  private async readJsonFile(path: string, label: string, pauseOnCorrupt = false): Promise<unknown> {
     let content: string;
     try {
       content = await this.app.vault.adapter.read(path);
@@ -757,7 +802,10 @@ export class VaultStorage {
     try {
       return JSON.parse(content) as unknown;
     } catch {
-      await this.quarantineCorruptFile(path, content, label);
+      await this.quarantineCorruptFile(path, content, label, pauseOnCorrupt);
+      // 文档档：保留原文件的同时必须暂停写入 —— 否则「加载成空档」的模型会在下一次自动保存时
+      // 把刚保留下来的那份损坏内容覆盖掉，等于换了种方式丢数据（只是死得更安静）。
+      if (pauseOnCorrupt) this._ioFailedPaths.add(normalizePath(path));
       return null;
     }
   }
@@ -887,7 +935,7 @@ export class VaultStorage {
     const path = await this.typewriterWritingDocPath(id);
     if (!(await this.app.vault.adapter.exists(path))) return null;
     // 解析失败先隔离留档：否则 webapp 会按「无此档」新建并覆盖，损坏内容永久丢失
-    const parsed = await this.readJsonFile(path, '写作档');
+    const parsed = await this.readJsonFile(path, '写作档', true);
     if (!parsed || typeof parsed !== 'object' || !Array.isArray((parsed as Record<string, unknown>).notes)) return null;
     return parsed as { version: number; notes: unknown[]; links: unknown[]; canvasOffset: { x: number; y: number } | null };
   }
@@ -896,7 +944,8 @@ export class VaultStorage {
     this.assertDocObject('写作档', doc);
     // vaultWrite 会自动创建不存在的父目录（可配置目录），无需预先 mkdir
     await this.ensureWritingFolderMigrated();
-    await this.vaultWrite(await this.typewriterWritingDocPath(id), JSON.stringify(doc, null, 2));
+    const path = await this.typewriterWritingDocPath(id);
+    this.assertWritten(await this.vaultWrite(path, JSON.stringify(doc, null, 2)), '写作档', path);
   }
 
   async deleteTypewriterWritingDoc(id: string): Promise<void> {
@@ -918,7 +967,7 @@ export class VaultStorage {
     const path = this.typewriterMindmapDocPath(id);
     if (!(await this.app.vault.adapter.exists(path))) return null;
     // 解析失败先隔离留档（与写作档一致）
-    const parsed = await this.readJsonFile(path, '思维子弹档');
+    const parsed = await this.readJsonFile(path, '思维子弹档', true);
     if (!parsed || typeof parsed !== 'object' || !Array.isArray((parsed as Record<string, unknown>).nodes)) return null;
     return parsed as { version: number; nodes: unknown[]; links: unknown[]; view: { x: number; y: number } | null; style: number };
   }
@@ -926,7 +975,8 @@ export class VaultStorage {
   async putTypewriterMindmapDoc(id: string, doc: unknown): Promise<void> {
     this.assertDocObject('思维子弹档', doc);
     // vaultWrite 会自动创建不存在的父目录（mindmapStoreFolder 目录），无需预先 mkdir
-    await this.vaultWrite(this.typewriterMindmapDocPath(id), JSON.stringify(doc, null, 2));
+    const path = this.typewriterMindmapDocPath(id);
+    this.assertWritten(await this.vaultWrite(path, JSON.stringify(doc, null, 2)), '思维子弹档', path);
   }
 
   async deleteTypewriterMindmapDoc(id: string): Promise<void> {
@@ -945,13 +995,14 @@ export class VaultStorage {
     const path = this.typewriterNotesDocPath(id);
     if (!(await this.app.vault.adapter.exists(path))) return null;
     // 解析失败先隔离留档（与写作档一致）
-    const parsed = await this.readJsonFile(path, '便签档');
+    const parsed = await this.readJsonFile(path, '便签档', true);
     if (!parsed || typeof parsed !== 'object' || !Array.isArray((parsed as Record<string, unknown>).notes)) return null;
     return parsed as { version: number; notes: unknown[]; links: unknown[]; canvasOffset: { x: number; y: number; scale?: number } | null };
   }
   async putTypewriterNotesDoc(id: string, doc: unknown): Promise<void> {
     this.assertDocObject('便签档', doc);
-    await this.vaultWrite(this.typewriterNotesDocPath(id), JSON.stringify(doc, null, 2));
+    const path = this.typewriterNotesDocPath(id);
+    this.assertWritten(await this.vaultWrite(path, JSON.stringify(doc, null, 2)), '便签档', path);
   }
   async deleteTypewriterNotesDoc(id: string): Promise<void> {
     const path = this.typewriterNotesDocPath(id);

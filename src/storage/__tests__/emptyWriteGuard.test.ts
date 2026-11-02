@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { createMockApp, MemoryAdapter } from '../../../test/mocks/obsidian';
+import { createMockApp, MemoryAdapter, TFile } from '../../../test/mocks/obsidian';
 import { VaultStorage } from '../VaultStorage';
 
 /**
@@ -87,7 +87,10 @@ describe('画中卷文档：空文件按「上次保存未完成」处理，不�
     await mock.adapter.write(NOTES_PATH, '');
 
     await storage.getTypewriterNotesDoc('g1');                       // 读一次 → 进入「暂停写入」态
-    await storage.putTypewriterNotesDoc('g1', { version: 2, notes: [], links: [] });
+    // 写入被拦，而且必须让上层看见（抛错 → 保存失败提示），不能安静返回「成功」
+    await expect(
+      storage.putTypewriterNotesDoc('g1', { version: 2, notes: [], links: [] }),
+    ).rejects.toThrow(/写入被暂停/);
 
     expect(await mock.adapter.read(NOTES_PATH)).toBe('');            // 未被覆盖
   });
@@ -106,7 +109,7 @@ describe('画中卷文档：空文件按「上次保存未完成」处理，不�
     expect(JSON.parse(await mock.adapter.read(NOTES_PATH)).notes).toEqual([]);
   });
 
-  it('真正的损坏（非空又解析不出）仍然隔离留档，一个字节都不改', async () => {
+  it('真正的损坏（非空又解析不出）：留档备份，但**原文件保留不删**，且该档写入被暂停', async () => {
     const mock = createMockApp();
     const storage = new VaultStorage(mock.app as any, 'bamboo-review');
     await mock.adapter.mkdir('bamboo-review/typewriter-notes');
@@ -117,7 +120,62 @@ describe('画中卷文档：空文件按「上次保存未完成」处理，不�
 
     const backup = Object.keys(mock.adapter.snapshot()).find((k) => k.includes('.corrupt-'));
     expect(backup).toBeTruthy();
-    expect(await mock.adapter.read(backup!)).toBe(broken);           // 内容一字不改
-    expect(await mock.adapter.exists(NOTES_PATH)).toBe(false);       // 规范路径腾空
+    expect(await mock.adapter.read(backup!)).toBe(broken);            // 备份内容一字不改
+    expect(await mock.adapter.exists(NOTES_PATH)).toBe(true);         // 原文件保留（文件恢复/人工修复都有对照物）
+    expect(await mock.adapter.read(NOTES_PATH)).toBe(broken);         // 且未被改动
+
+    // 保留原文件的同时必须暂停写入：否则「加载成空档」的模型会把它覆盖掉
+    await expect(
+      storage.putTypewriterNotesDoc('g1', { version: 2, notes: [], links: [] }),
+    ).rejects.toThrow(/写入被暂停/);
+    expect(await mock.adapter.read(NOTES_PATH)).toBe(broken);
+  });
+
+  it('重复读到同一份损坏不会堆出多份 .corrupt- 备份', async () => {
+    const mock = createMockApp();
+    const storage = new VaultStorage(mock.app as any, 'bamboo-review');
+    await mock.adapter.mkdir('bamboo-review/typewriter-notes');
+    await mock.adapter.write(NOTES_PATH, '{ 坏');
+
+    await storage.getTypewriterNotesDoc('g1');
+    await storage.getTypewriterNotesDoc('g1');   // 模拟下次启动再读一次
+
+    const backups = Object.keys(mock.adapter.snapshot()).filter((k) => k.includes('.corrupt-'));
+    expect(backups.length).toBe(1);
+  });
+});
+
+describe('写入被拦截时必须显式失败（不再静默谎报成功）', () => {
+  it('读取失败后的暂停态：put*Doc 抛错而不是安静返回', async () => {
+    const mock = createMockApp();
+    const storage = new VaultStorage(mock.app as any, 'bamboo-review');
+    await mock.adapter.mkdir('bamboo-review/typewriter-notes');
+    await mock.adapter.write(NOTES_PATH, '');            // 空文件 → 读时进入暂停态
+    await storage.getTypewriterNotesDoc('g1');
+
+    await expect(
+      storage.putTypewriterNotesDoc('g1', { version: 2, notes: [], links: [] }),
+    ).rejects.toThrow(/写入被暂停/);
+    expect(await mock.adapter.read(NOTES_PATH)).toBe('');   // 原文件未被覆盖
+  });
+
+  it('已存在文件：写后校验不一致 → 抛错（不把半截写入当成功）', async () => {
+    const adapter = new MemoryAdapter();
+    await adapter.mkdir('bamboo-review/typewriter-notes');
+    await adapter.write(NOTES_PATH, '{"version":2,"notes":[],"links":[]}');
+    const app = {
+      vault: {
+        adapter,
+        getAbstractFileByPath: (p: string) => new TFile(p),        // 视为已缓存 → 走 process 分支
+        process: async (f: any, fn: (s: string) => string) => {
+          await adapter.write(f.path, String(fn('')).slice(0, 5));  // 模拟只写进半截
+        },
+      },
+    };
+    const storage = new VaultStorage(app as any, 'bamboo-review');
+
+    await expect(
+      storage.putTypewriterNotesDoc('g1', { version: 2, notes: [], links: [] }),
+    ).rejects.toThrow(/写入校验失败/);
   });
 });

@@ -340,15 +340,21 @@ export const TypewriterStore = {
     const wires = this._sanitizeLinks(links);
     const doc = { version: desc.version, notes: clean, links: wires, canvasOffset };
     let wroteDoc = false;
+    let writeFailed = null;
     if (sm[desc.putBridge]) {
       try { await sm[desc.putBridge](gid, doc); wroteDoc = true; }
-      catch (e) { console.warn('[TypewriterStore] 卡片档写入失败：', e); }
+      catch (e) { writeFailed = e; console.warn('[TypewriterStore] 卡片档写入失败：', e); }
     } else {
       // 【防静默丢数据】宿主未提供该桥（webapp 版本新于宿主 / 宿主较旧）时，
       // 原先连一行 warn 都没有就正常返回，调用方以为「已保存」，实际每次落盘都是空操作。
       console.error('[TypewriterStore] 卡片档写入桥缺失，本次未落盘：', desc.putBridge);
       if (typeof Toast !== 'undefined' && Toast.showToast) Toast.showToast('卡片档保存失败（宿主桥缺失）', 'warning');
     }
+    // 【绝不降级到旧 key】桥存在、但写入被拒或失败（含「读取失败已暂停落盘」「拒绝写空内容」）：
+    // 直接向上抛。旧 fallback 的定位只服务「宿主没有这个桥」（webapp 比宿主新 / 宿主过旧），
+    // 若把「写入失败」也一并降级，就会把本组数据塞进 typewriter:notes 这套另一格式的旧单文档里 ——
+    // 用户下次仍读新文件、仍是空的，表现为「数据丢了」，而没人知道它躺在旧 key 里。
+    if (writeFailed) throw writeFailed;
     if (!wroteDoc && desc.legacyFallback) {
       try {
         await this._writeNotes(clean, desc.version);

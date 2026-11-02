@@ -204,12 +204,13 @@ describe('损坏文件的可恢复性', () => {
     };
 
     expect(await storage.getTypewriterNotesDoc('doc-x')).toBeNull(); // 读失败按无数据返回
-    await storage.putTypewriterNotesDoc('doc-x', {
+    // 写入被拦时必须显式失败（抛错 → 上层弹「保存失败」），不能安静返回让调用方以为保存成功
+    await expect(storage.putTypewriterNotesDoc('doc-x', {
       version: 1,
       notes: [{ id: 'new' }],
       links: [],
       canvasOffset: null,
-    });
+    })).rejects.toThrow(/写入被暂停/);
 
     // 原内容一字未改：读不出内容就无法留档，此时写入即不可逆覆盖
     expect(await realRead(key)).toBe(before);

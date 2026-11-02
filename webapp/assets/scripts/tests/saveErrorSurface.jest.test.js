@@ -77,7 +77,8 @@ describe('便签/写作档保存错误面', () => {
       STORE.saveDoc.mockRejectedValue(new Error('boom'));
       PersistenceCoordinator.scheduleSave({ state: {}, ctrl });
       jest.runOnlyPendingTimers();       // 触发防抖回调
-      await Promise.resolve();           // 让微任务链跑完
+      // 落盘现在要过串行链（_saveChain.then → saveNow → catch），微任务不止一层
+      for (let i = 0; i < 8 && !ctrl._showSaveFailed.mock.calls.length; i++) await Promise.resolve();
       expect(ctrl._showSaveFailed).toHaveBeenCalledWith('便签');
     } finally {
       jest.useRealTimers();

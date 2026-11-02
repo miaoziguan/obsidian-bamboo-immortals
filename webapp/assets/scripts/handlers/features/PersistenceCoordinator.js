@@ -29,9 +29,26 @@ function convertRatioCoords(notes, version, w, h) {
 }
 
 export const PersistenceCoordinator = {
+  /** 落盘串行链：防抖保存 / 结构性立即保存 / 切档前持久化都可能撞在一起，
+   *  并发写同一个文档文件会让「后完成的旧内容」覆盖「先完成的新内容」。所有出口统一排队。 */
+  _saveChain: Promise.resolve(),
+  /** 把一次落盘任务排进串行链（失败不阻断后续任务） */
+  _enqueue(task) {
+    const p = PersistenceCoordinator._saveChain.then(task, task);
+    PersistenceCoordinator._saveChain = p.catch(() => {});
+    return p;
+  },
+  /** 排队执行一次「当前档」落盘，带错误面 */
+  _enqueueSave(ctx) {
+    const { ctrl } = ctx;
+    return PersistenceCoordinator._enqueue(() => Promise.resolve(ctrl._saveNow()).catch((e) => {
+      console.error('[Typewriter] 落盘失败', e);
+      ctrl._showSaveFailed(PersistenceCoordinator.modeLabel(ctrl._mode));
+    }));
+  },
   // (was _scheduleSave)
   scheduleSave(ctx) {
-    const { state, ctrl } = ctx;
+    const { ctrl } = ctx;
     // 切档窗口内丢弃落盘：_setMode 先把 _mode 翻成新档、_loadDoc 的 await 才把 _notes 换成新档，
     // 这段窗口内触发的 save 会用「新档 key + 旧档数据」盖写新档（档位串味）。
     // 旧档已在 _persistDoc(prev) 完整落盘，故直接丢弃窗口内的 save 安全。
@@ -41,12 +58,19 @@ export const PersistenceCoordinator = {
       ctrl._saveTimer = null;
       // 【防丢数据】防抖回调同样要有错误面：saveNow 内部的 catch 只覆盖落盘本身，
       // 这里的 .catch 兜住 _collectNotes 等前置步骤抛错的情况，避免 unhandled rejection。
-      Promise.resolve(ctrl._saveNow()).catch((e) => {
-        console.error('[Typewriter] 防抖落盘失败', e);
-        ctrl._showSaveFailed(PersistenceCoordinator.modeLabel(ctrl._mode));
-      });
+      PersistenceCoordinator._enqueueSave(ctx);
     }, SAVE_DEBOUNCE);
 
+  },
+  /** 结构性变更立即落盘（跳过防抖）。
+   *  新增/删除卡片、拖拽落位这类「一次操作就改变数据集合」的改动，若压在 350ms 防抖窗口里，
+   *  恰好被硬杀/断电就是永久丢失；而这类操作频率远低于打字，立即写盘的成本可以忽略。
+   *  （只缩小窗口，不可能归零 —— 硬杀那一刻正在写的字节仍然会丢。） */
+  flushSave(ctx) {
+    const { ctrl } = ctx;
+    if (ctrl._switching) return Promise.resolve();   // 切档窗口内仍丢弃（旧档已由 persistDoc 落盘）
+    if (ctrl._saveTimer) { clearTimeout(ctrl._saveTimer); ctrl._saveTimer = null; }
+    return PersistenceCoordinator._enqueueSave(ctx);
   },
   // (was _saveNow)
   async saveNow(ctx) {
@@ -80,8 +104,19 @@ export const PersistenceCoordinator = {
     const notes = ctrl._collectNotes();
     if (!notes) return;   // 画布未布局：跳过，绝不写入失真数据
     const off = ctrl._canvasOffset || { x: 0, y: 0 };
-    await TypewriterStore.saveDoc(mode, notes, off, ctrl._links); // write/notes 两档（mindmap 不走 persistDoc）
-  
+    // 【错误面】saveDoc 现在会在「写入被暂停 / 拒绝写空内容 / 写后校验不一致」时抛错
+    // （不再静默降级到旧 key）。这条路服务于切组/切档/关闭前落盘，若不在这里接住，
+    // 异常会以 unhandled rejection 形式消失在事件回调里 —— 用户既没提示也不知道没落盘。
+    try {
+      // 入队：切组/切档前的这次持久化必须排在所有进行中的自动保存之后，
+      // 否则两次写入并发，后完成的可能是旧内容（把刚写好的新内容盖回去）。
+      await PersistenceCoordinator._enqueue(
+        () => TypewriterStore.saveDoc(mode, notes, off, ctrl._links),
+      ); // write/notes 两档（mindmap 不走 persistDoc）
+    } catch (e) {
+      console.error('[Typewriter] 便签/写作落盘失败（persistDoc）', e);
+      ctrl._showSaveFailed(PersistenceCoordinator.modeLabel(mode));
+    }
   },
   /** 档位中文短名（提示文案用）。此前 saveNow / 防抖回调一律传「便签」，
    *  而这两个出口同时服务 write 与 notes → 写作档保存失败却提示「便签保存失败」。 */

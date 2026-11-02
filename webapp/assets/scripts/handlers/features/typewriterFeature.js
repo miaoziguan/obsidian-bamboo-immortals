@@ -1050,7 +1050,8 @@ export const TypewriterFeature = {
     // pendingText / 计时器 / 钉屏状态机，已作为过度工程移除。
     // 刻意保留吐纸入场 .tw-feed（上方）：它不是逐字累进、不拖慢阅读，让新卡有「落到画布上」的存在感。
     textEl.textContent = text;
-    this._scheduleSave();
+    // 新增卡片是结构性变更：跳过防抖立即落盘，避免「打完字立刻硬杀」丢掉整张新卡。
+    if (typeof this._flushSave === 'function') this._flushSave(); else this._scheduleSave();
     // 追加到文末的新卡多半在视野之外，且此刻文本刚落定、卡片才是最终高度 ——
     // 必须等到这里再校正，否则按空卡高度算是白校正一次（成文流会看着是断的）。
     // 批量导入时由调用方统一校正首块，避免逐张校正导致画布乱跳，故可跳过此处。
@@ -1376,7 +1377,8 @@ export const TypewriterFeature = {
       this._syncLayoutGeo();
       this._updateCulling();                        // 便签档：新卡以级联位置进屏
       this._refreshWriteOrder();
-      this._scheduleSave();
+      // 拆分/合并一次可增删多张卡：结构性变更，跳过防抖立即落盘
+      if (typeof this._flushSave === 'function') this._flushSave(); else this._scheduleSave();
     }
     this._showScreenMsg('已按段落拆分为 ' + (added.length + 1) + ' 张卡', 1500);
   },
@@ -1428,7 +1430,8 @@ export const TypewriterFeature = {
       this._syncLayoutGeo();
       this._updateCulling();                        // 便签档：移除后重排进屏
       this._refreshWriteOrder();
-      this._scheduleSave();
+      // 拆分/合并一次可增删多张卡：结构性变更，跳过防抖立即落盘
+      if (typeof this._flushSave === 'function') this._flushSave(); else this._scheduleSave();
     }
     this._scheduleRenderLinks();
     this._showScreenMsg('已合并 ' + cards.length + ' 张为 1 张', 1400);
@@ -2068,8 +2071,12 @@ export const TypewriterFeature = {
     this._applyLod();
   },
 
-  /** 防抖写盘：合并拖拽/删除/新增等连续操作 */
+  /** 防抖写盘：合并连续输入 */
     _scheduleSave() { return PersistenceCoordinator.scheduleSave({ state: this._state, ctrl: this }); },
+
+  /** 结构性变更立即写盘（跳过防抖）：新增/删除卡片、拖拽落位。
+   *  这些操作一次就改变数据集合，压在防抖窗口里被硬杀即永久丢失；频率远低于打字，成本可忽略。 */
+    _flushSave() { return PersistenceCoordinator.flushSave({ state: this._state, ctrl: this }); },
 
   /** 立即写盘（fire-and-forget）。
    *  【按档分流】便签写便签的 key、MD可视化写作写作的 key，两份文档永远不互相覆盖。

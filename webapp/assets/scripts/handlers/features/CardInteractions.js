@@ -175,7 +175,11 @@ export const CardInteractions = {
       document.removeEventListener('pointermove', onMove);
       document.removeEventListener('pointerup', onUp);
       document.removeEventListener('pointercancel', onUp);
-      if (moved) ctrl._scheduleSave();
+      // 拖拽落位：结构性变更（位置即数据），跳过防抖立即写盘，避免松手即硬杀丢掉这次移动
+      if (moved) {
+        if (typeof ctrl._flushSave === 'function') ctrl._flushSave();
+        else if (typeof ctrl._scheduleSave === 'function') ctrl._scheduleSave();
+      }
       else if (!cancelled && primaryEl.classList.contains('tw-card')) ctrl._pinOnly(primaryEl);   // 轻点：钉住工具条（触屏无 hover 入口）；指针被取消时不钉
       ctrl._draggingSet = null;     // 拖拽结束：解除钉屏
       ctrl._scheduleCull();         // 重算挂载：被拖出视野的卡卸载
@@ -364,6 +368,10 @@ export const CardInteractions = {
     if (ctrl._undoStack) ctrl._undoStack.push();   // 单卡删除同样可撤销（与批量删除一致）
     ctrl._removeNoteById(card.dataset.id);
     if (ctrl._updateSelBar) ctrl._updateSelBar();   // 删后刷新浮动条计数，避免残留「合并 N 张」
+    // 删除卡片是结构性变更：此前这里完全不落盘，要等下一次任意保存才把「删除」写进去，
+    // 期间硬杀就会让被删的卡片「复活」。改为跳过防抖立即写盘。
+    if (typeof ctrl._flushSave === 'function') ctrl._flushSave();
+    else if (typeof ctrl._scheduleSave === 'function') ctrl._scheduleSave();
   },
   // (was _deleteSelected)
   deleteSelected(ctx) {
@@ -381,7 +389,8 @@ export const CardInteractions = {
       }
     });
     ctrl._clearSelection();
-    ctrl._scheduleSave();
+    if (typeof ctrl._flushSave === 'function') ctrl._flushSave();
+    else if (typeof ctrl._scheduleSave === 'function') ctrl._scheduleSave();
     return true;
 
   },

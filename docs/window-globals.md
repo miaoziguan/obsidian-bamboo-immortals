@@ -153,7 +153,7 @@
 >
 > 扫描范围：`webapp/assets/scripts/**/*.js`（排除 `tests/`）；打包产物 html 不计入。
 
-**合计 127 个挂载点 / 82 个文件**（其中 `__` 开头的内部标记 11 个）。
+**合计 128 个挂载点 / 83 个文件**（其中 `__` 开头的内部标记 12 个）。
 
 ### 公共挂载点（116）
 
@@ -240,7 +240,7 @@
 | `utils/weatherService.js` | `window.WeatherService` |
 | `utils/whiteNoiseManager.js` | `window.WhiteNoiseManager` |
 
-### 内部标记（11）
+### 内部标记（12）
 
 > `__bamboo*` 等内部标记用于宿主↔webapp 传参/状态透传，不属于对外 API。
 
@@ -249,6 +249,7 @@
 | `handlers/features/typewriterFeature.js` | `window.__twPerf` |
 | `modules/layout/layoutMode.js` | `window.__bambooDebugLayout`<br>`window.__bambooPendingLayoutMode` |
 | `storage/bridge.js` | `window.__bambooAppVersion`<br>`window.__bambooCameFromSidebar`<br>`window.__bambooIsMainLeaf`<br>`window.__bambooIsMobile`<br>`window.__bambooPendingLayoutMode` |
+| `utils/dragPerf.js` | `window.__twDragPerf` |
 | `utils/focusTrap.js` | `window.__bambooFocusTrap` |
 | `utils/shadowBootstrap.js` | `window.__BAMBOO_NO_SHADOW__`<br>`window.__bambooShadowRoot` |
 <!-- AUTO-GENERATED:window-globals END -->

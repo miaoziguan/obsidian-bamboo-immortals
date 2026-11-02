@@ -183,3 +183,76 @@ describe('_startInlineEdit picker 类分支', () => {
         expect(toasts.join()).toContain('自动计算');
     });
 });
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   dailyMin（「每日」每日量）编辑态回归锁。
+   背景：用户反馈目标卡里「每日」那枚小徽章「点不动、打不进字」，实际是三处根因叠加：
+     ① 建议浮层会给输入框套一层 wrapper（replaceChild + appendChild = 把节点摘下再插回去），
+        焦点随之丢失 —— 点了没反应、直接打字打不进去（本文件第一、四个用例锁住）；
+     ② 每日量未设置时输入框是 20px 宽、无边框、透明背景的空盒子，「每日」消失后看不出可输入处
+        （第二个用例锁住：placeholder / 最小 44px / 可见下划线）；
+     ③ 关闭浮层用了 eventInTargets 却没 import —— 真实浏览器点空白处抛 ReferenceError
+        （见文末静态断言：loadModule 会剥离 import，所以这类漏依赖只能由源码断言锁住）。
+   ───────────────────────────────────────────────────────────────────────────── */
+describe('dailyMin（每日量）编辑态', () => {
+    const dailyGoal = (over = {}) => goalFixture({
+        items: [{ name: '贴纸设计', currentValue: '1.2', targetValue: '100', startValue: '0', endDate: '2027-01-31', ...over }],
+    });
+
+    test('空值点击 → 输入框有 placeholder / 44px 最小宽度 / 可见下划线（不是透明空盒子）', () => {
+        const { GoalsRenderer, mount } = setup({ goals: [dailyGoal()] });
+        const el = mount({ inlineEdit: 'dailyMin', goalId: 'g1', subIdx: '0' }, '每日');
+        GoalsRenderer._startInlineEdit(el);
+
+        const input = document.querySelector('#host input');
+        expect(input).not.toBeNull();
+        expect(input.type).toBe('number');
+        expect(input.value).toBe('');
+        expect(input.placeholder).toBe('每日');
+        expect(input.style.minWidth).toBe('44px');
+        expect(parseFloat(input.style.width)).toBeGreaterThanOrEqual(44);
+        // 下划线必须是一条真实的可见边框（jsdom 会丢弃含 var() 的简写，故源码里用长写）
+        expect(input.style.borderBottomStyle).toBe('solid');
+        expect(input.style.borderBottomWidth).toBe('1px');
+        // 全局 :where(input){min-height:44px} 会把行高顶起来，这里必须显式压回去
+        expect(input.style.minHeight).toBe('16px');
+    });
+
+    test('焦点落在输入框上（浮层包 wrapper 后不能丢焦点，否则打字无效）', () => {
+        const { GoalsRenderer, mount } = setup({ goals: [dailyGoal()] });
+        // 走「有建议值 → 建 wrapper + 浮层」这条最容易丢焦点的分支
+        global.GoalService = { calcSuggestedDaily: () => 1.1, calcDaysRemaining: () => 90 };
+
+        const el = mount({ inlineEdit: 'dailyMin', goalId: 'g1', subIdx: '0' }, '每日');
+        GoalsRenderer._startInlineEdit(el);
+
+        const input = document.querySelector('#host input');
+        expect(input.parentElement.tagName).toBe('DIV');           // 确实被 wrapper 包过
+        expect(document.activeElement).toBe(input);
+        expect(document.querySelector('.goal-daily-hint')).not.toBeNull();
+    });
+
+    test('打字 + 回车 → 以新每日量提交（点开即可输入，不用再点一次）', async () => {
+        const { GoalsRenderer, commits, mount } = setup({ goals: [dailyGoal()] });
+        const el = mount({ inlineEdit: 'dailyMin', goalId: 'g1', subIdx: '0' }, '每日');
+        GoalsRenderer._startInlineEdit(el);
+
+        const input = document.querySelector('#host input');
+        input.value = '2';
+        input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+        await tick();
+
+        expect(commits[0]).toEqual(['g1', 0, 'dailyMin', '2']);
+    });
+});
+
+describe('inlineEditStarter 依赖声明（静态）', () => {
+    test('eventInTargets 必须 import —— 漏了只在真实浏览器里 ReferenceError', () => {
+        // loadModule 会把 import 剥离、改用注入的全局名，所以「忘 import」在单测里永远不会报错；
+        // 真实事故：点空白处关闭「每日」建议浮层时抛 eventInTargets is not defined。
+        const fs = require('fs');
+        const path = require('path');
+        const src = fs.readFileSync(path.join(__dirname, '../modules/goals/inlineEditStarter.js'), 'utf8');
+        expect(src).toMatch(/import\s*\{[^}]*\beventInTargets\b[^}]*\}\s*from\s*'\.\.\/\.\.\/utils\/domRef\.js'/);
+    });
+});

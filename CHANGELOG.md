@@ -1,5 +1,32 @@
 # Changelog
 
+## [3.33.6] — 2026-11-02
+
+> 修掉目标卡里「每日」那枚每日量徽章**点不动、打不进字**：点开后输入框既看不见、也没拿到焦点。
+> 三层根因叠加，全部在真实浏览器里复现验证（不是推断）。
+
+### Fixed
+- **「每日」无法设置 · 焦点丢失（直接原因）**：`startInlineEdit` 先在
+  `el.replaceWith(input)` 后 `input.focus()`，而 `dailyMin` 分支随后为了挂
+  「💡 点击填入 1.1/天」建议浮层，把输入框重新挂进新 wrapper
+  （`replaceChild(wrapper, input)` + `wrapper.appendChild(input)`）—— 节点重新挂载即失焦。
+  后果不止「打字打不进框」：回车分支走 `input.blur()`，对无焦点元素是空操作，
+  所以**回车也保存不了**，整枚徽章等于不可用。
+  现改为在函数末尾统一补焦点（`input.isConnected && document.activeElement !== input`
+  → `focus({preventScroll}) + select()`）；title / name / currentValue 等被「提示 anchor」
+  重挂载的分支同时受益。
+- **每日量编辑态不可见**：未设置每日量时输入框是 `width:20px / border:none /
+  background:transparent / 无 placeholder`，还被全局 `:where(input){min-height:var(--touch-target)}`
+  顶成 45px 高 ——「每日」占位符消失后原地只剩一个透明空盒子，看不出哪里可以输入。
+  现补 `placeholder="每日"` + 44px 最小宽度 + 下划线 + 8% 底色，并显式 `min-height:16px`
+  压回单行高度（否则编辑时整行跳到 44px）。
+- **关闭建议浮层抛异常**：`inlineEditStarter.js` 用了 `eventInTargets` 却漏掉 import
+  （从 renderer.js 搬出时漏的），真实浏览器点空白处抛
+  `Uncaught ReferenceError: eventInTargets is not defined`，浮层关不掉。已补 import。
+- 回归锁：`goalsInlineEdit` 新增 4 例（编辑态可见性 / 浮层包 wrapper 后焦点不丢 /
+  打字+回车提交 / `eventInTargets` 依赖声明静态断言 —— loadModule 会剥离 import，
+  这类漏依赖只能由源码断言锁住）。回退源码实测这 4 例全红。
+
 ## [3.33.5] — 2026-11-02
 
 > 修掉「贴纸旋转过之后，拖动不跟手（全程不动、松手瞬移），要重启 Obsidian 才恢复」。

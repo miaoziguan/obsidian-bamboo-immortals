@@ -15,6 +15,8 @@
  *                      _showDateRangePicker 与 _pendingEditPromise 状态）
  * @param {HTMLElement} el 带 data-inline-edit / data-goal-id [/ data-sub-idx] 的元素
  */
+import { eventInTargets } from '../../utils/domRef.js';
+
 export function startInlineEdit(ctx, el) {
         const editType = el.dataset.inlineEdit;
         const goalId = el.dataset.goalId;
@@ -136,12 +138,15 @@ export function startInlineEdit(ctx, el) {
                 input.type = 'number';
                 input.value = current;
                 input.step = 'any';
-                input.placeholder = '';
+                /* 每日量未设置时这里曾经是个 20px 宽、无边框、透明背景的空盒子：
+                   点一下「每日」占位符消失、又看不出哪里能输入，等于「这里无法设置」。
+                   现在空值也带 placeholder（每日）+ 下划线 + 44px 最小宽度 —— 编辑态永远看得见、点得到。 */
+                input.placeholder = '每日';
                 input.className = 'goal-inline-edit-input';
-                input.style.cssText = 'font:inherit;font-size:var(--font-size-xs);color:var(--bamboo-warning);border:none;border-radius:0;padding:0;outline:none;background:transparent;min-width:20px;max-width:90px;text-align:left;box-sizing:border-box;font-weight:600;';
+                input.style.cssText = 'font:inherit;font-size:var(--font-size-xs);color:var(--bamboo-warning);border:none;border-bottom-width:1px;border-bottom-style:solid;border-bottom-color:var(--bamboo-warning);border-radius:0;padding:0 2px;height:16px;min-height:16px;line-height:16px;outline:none;background:rgba(var(--primary-rgb), 0.08);min-width:44px;max-width:90px;text-align:left;box-sizing:border-box;font-weight:600;align-self:center;';
                 const updateDMWidth = () => {
-                    const len = input.value.length || 1;
-                    input.style.width = Math.max(20, Math.min(90, len * 10)) + 'px';
+                    const len = (input.value || input.placeholder || '').length || 1;
+                    input.style.width = Math.max(44, Math.min(90, len * 10 + 8)) + 'px';
                 };
                 input.addEventListener('input', updateDMWidth);
                 updateDMWidth();
@@ -244,8 +249,6 @@ export function startInlineEdit(ctx, el) {
         }
 
         el.replaceWith(input);
-        input.focus();
-        input.select();
 
         // 如果是编辑每日值，显示建议提示
         if (editType === 'dailyMin' && subIdx !== null && goal.items && goal.items[subIdx]) {
@@ -318,7 +321,7 @@ export function startInlineEdit(ctx, el) {
                     
                     // 给 input 添加包装器
                     const wrapper = document.createElement('div');
-                    wrapper.style.cssText = 'position:relative;display:inline-flex;';
+                    wrapper.style.cssText = 'position:relative;display:inline-flex;align-items:center;';
                     input.parentNode.replaceChild(wrapper, input);
                     wrapper.appendChild(input);
                     wrapper.appendChild(hint);
@@ -374,6 +377,15 @@ export function startInlineEdit(ctx, el) {
                 input.blur();
             }
         });
+
+        /* 焦点必须最后补：上面两条会把 input 从文档里摘下来再插回去
+           （dailyMin 的建议浮层包出 wrapper；其它类型包出 anchor），
+           节点重新挂载会丢焦点 —— 表现为「点了没反应、直接打字打不进去」。
+           统一在这里补一次，任何分支都能真正开始输入。 */
+        if (input.isConnected && document.activeElement !== input) {
+            try { input.focus({ preventScroll: true }); input.select(); }
+            catch (e) { input.focus(); }   // 老引擎不认 preventScroll
+        }
 }
 
 // 测试加载器（loadModule）会剥离 import/export，调用方按**全局名**解析依赖

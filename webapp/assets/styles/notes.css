@@ -2,6 +2,15 @@
 .tw-card {
   position: absolute;
   z-index: 20;
+  /* 【卡片交互控件统一层级】必须高于「挂到便签」的贴纸。
+     贴纸挂靠时是 card.appendChild(...) 插到卡片末尾（materialMarket._attachSticker），
+     而旋转/连线握柄也是卡片内的普通绝对定位兄弟节点 —— 同为 z-index:auto 时按 DOM 顺序，
+     后插入的贴纸会整张压在握柄之上（贴纸的 filter:drop-shadow 还会创建独立堆叠上下文，
+     让它作为一个整体参与卡片内排序），握柄收不到 pointerdown → 表现为「便签难以旋转」。
+     贴纸本身不设 z-index（auto≈0）；这里给所有卡片交互控件 40，hover/选中时才 pointer-events:auto，
+     所以只在需要操作的那一刻压住贴纸一小块，静止态观感与贴纸拖拽完全不受影响。
+     新增卡片交互控件一律引用此变量，别再漏配。 */
+  --bm-card-control-z: 40;
   /* 高度不设 → 由内容与 padding 撑开。
      宽度**不在此处声明**：便签是定宽、写作档是贴合内容，两者语义不同。
      若写在基类上，它就会成为写作档的默认值（3.28.21 定宽事故即由此而来）。
@@ -754,7 +763,7 @@
   bottom: 0.15em;
   width: 1.5em;
   height: 1.5em;
-  z-index: 40;
+  z-index: var(--bm-card-control-z);   /* 原先硬编码 40，改为与旋转/连线握柄同口径 */
   cursor: nwse-resize;
   opacity: 0;
   transition: opacity var(--duration-instant);
@@ -776,6 +785,9 @@
 
 .tw-card-rotate {
   position: absolute;
+  /* 【必须提权】挂靠贴纸是后插入的兄弟节点，不提权就会被整张压住、pointerdown 收不到。
+     见 .tw-card 上 --bm-card-control-z 的完整 rationale。 */
+  z-index: var(--bm-card-control-z);
   /* 【布局】原在「下方正中」(left:50%)，与翻到卡片下方的工具条 (.tw-tools-below) 重叠打架。
      现移到「左侧中部」，与右侧中部的连线锚点 (.tw-card-link) 严格对称（同一套写法）：
      下方正中整条通道让给工具条，二者纵向完全不重叠，任何缩放档位都不会再相遇。 */
@@ -961,6 +973,8 @@
 
 .tw-card-link {
   position: absolute;
+  /* 与旋转握柄对称（卡片右侧外部），同样会被挂靠贴纸盖住 —— 统一提权，避免同类问题只修一半 */
+  z-index: var(--bm-card-control-z);
   top: 50%;
   right: calc(-0.9em - 12px);
   width: clamp(26px, calc(30px * var(--tw-scale, 1)), 38px);

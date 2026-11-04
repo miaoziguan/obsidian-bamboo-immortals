@@ -1,5 +1,29 @@
 # Changelog
 
+## [3.33.11] — 2026-11-05
+
+> 便签模式交互修复：贴纸挂到便签上、恰好盖住左侧旋转握柄时，便签几乎无法旋转。
+> 这是层级漏配，不是手势逻辑问题——缩放手柄早有 `z-index:40`，旋转与连线握柄漏了。
+
+### Fixed
+- **挂靠贴纸压住卡片交互控件**：`materialMarket._attachSticker` 用
+  `card.appendChild(rec.el)` 把贴纸插到便签卡片**末尾**，而 `.tw-card-rotate` /
+  `.tw-card-link` 也是卡片内的绝对定位兄弟节点；同为 `z-index:auto` 时按 DOM 顺序
+  **后插入者在上**。贴纸的 `filter: drop-shadow` 还会创建独立堆叠上下文，令它作为
+  一整块参与卡片内排序 → 握柄收不到绑在自身上的 `pointerdown`，表现为「难以旋转」。
+  `.tw-card` 不做 `overflow:hidden`（否则外部控件会被裁），贴纸可溢出到卡片左外侧，
+  正好覆盖 `left: calc(-0.9em - 12px)` 的旋转握柄。
+- **统一控件层级**：新增 `--bm-card-control-z: 40`（`--bm-` 前缀以满足
+  `lint-css-tokens` R10），`.tw-card-rotate` / `.tw-card-link` 补上引用，
+  `.tw-card-resize` 由硬编码 40 改为同一变量；工具条 `.tw-card-tools` 的 60 保持不变。
+  握柄只在 hover / 选中 / 旋转中 `pointer-events:auto`，因此提权只在需要操作时生效，
+  静止态贴纸的拖拽、缩放、菜单完全不受影响。
+- 说明：`40 > 2`（贴纸内部手柄），即使拖动期 `.dragging` 临时去掉 filter、堆叠上下文
+  消失，握柄仍稳在上层。贴纸自身保持不设 z-index（auto≈0）。
+- 回归锁：新增 `noteCardControlZ.jest.test.js` 5 例 —— 根因锁（挂靠确实 append 到卡片）、
+  变量定义与取值、三个握柄统一引用、贴纸自身不设 z-index、工具条层级未误改。
+  测试里的 `ruleOf` 只匹配顶格规则定义，避免误命中后代选择器。
+
 ## [3.33.10] — 2026-11-03
 
 > 3.33.9 关掉了「0 字节文件 → 判损坏 → 删原文件」这条链之后，继续补掉剩余三类窗口：

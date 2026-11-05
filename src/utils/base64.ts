@@ -17,3 +17,17 @@ export function arrayBufferToBase64(buffer: ArrayBuffer): string {
   }
   return btoa(binary);
 }
+
+/**
+ * base64 字符串 → ArrayBuffer（arrayBufferToBase64 的逆操作）。
+ * 用浏览器标准 atob，不依赖 Node 的 Buffer（移动端 Obsidian 无 Buffer）。
+ * 供「便签导出 PNG」把 webapp 侧 canvas 产出的 data URL 还原成二进制写盘。
+ */
+export function base64ToArrayBuffer(base64: string): ArrayBuffer {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes.buffer;
+}

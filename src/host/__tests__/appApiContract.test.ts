@@ -81,6 +81,7 @@ const CONTRACT: string[] = [
     'app:expandRightSidebar',
     'app:exportBackup',
     'app:exportMindmap',
+    'app:exportPng',
     'app:getBambooCoinAvailableBalance',
     'app:getBambooCoinBalance',
     'app:getCultivationRealm',

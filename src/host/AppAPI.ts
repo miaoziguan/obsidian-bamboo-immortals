@@ -1,5 +1,5 @@
 import { App, TFile, DataAdapter, normalizePath, requestUrl, Platform, MarkdownRenderer, Component } from 'obsidian';
-import { arrayBufferToBase64 } from '../utils/base64';
+import { arrayBufferToBase64, base64ToArrayBuffer } from '../utils/base64';
 import { assertSafeAssetId } from '../utils/assetId';
 import { VaultStorage } from '../storage/VaultStorage';
 import { ThemeBridge } from '../bridge/ThemeBridge';
@@ -515,6 +515,14 @@ export class AppAPI {
         const parent = full.substring(0, full.lastIndexOf('/'));
         if (parent) await self.mkdirP(parent);   // 逐级建目录，支持嵌套导出目录
         await self.vaultAdapter.write(full, content);
+        return full;
+      },
+      writeVaultBinary: async (path, base64) => {
+        const full = normalizePath(path);
+        const parent = full.substring(0, full.lastIndexOf('/'));
+        if (parent) await self.mkdirP(parent);
+        // 运行时解码（移动端无 Node Buffer）；handler 已校验 base64 字符集与大小
+        await self.vaultAdapter.writeBinary(full, base64ToArrayBuffer(base64));
         return full;
       },
       // 视图层注入的回调：用 getter 延迟读取，避免构造时快照成 undefined

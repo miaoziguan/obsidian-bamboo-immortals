@@ -35,6 +35,8 @@ import { CardViewManager } from './CardViewManager.js';
 import { CardInteractions } from './CardInteractions.js';
 import { ModeController } from './ModeController.js';
 import { PersistenceCoordinator } from './PersistenceCoordinator.js';
+// 单张便签 → PNG（零依赖 SVG foreignObject；落盘由 bridge app:exportPng 完成）
+import { exportCardPng } from './exportPng.js';
 // 思维子弹（产品名，即原「思维导图」）是**独立文档**（自己的节点树 + 自己的视野），
 // 只在旋钮拨到子弹位时挂载显示。便签侧因此彻底不用再管它：
 // 不再有「进入导图前的自由布局快照」，也不再改写便签坐标。
@@ -785,6 +787,44 @@ export const TypewriterFeature = {
       }).catch(() => this._downloadMarkdown(path, content));
     } else {
       this._downloadMarkdown(path, content);
+    }
+  },
+
+  /** 单张便签 → PNG 图片，落库到 Vault 的「便签」目录。
+   *  入口：卡片 hover 工具条的「导出为 PNG 图片」按钮。
+   *  截图用零依赖 SVG foreignObject（见 exportPng.js）；2x 用真机验证过的
+   *  transform:scale 写法（viewBox 缩放在 iOS WKWebView 上会失效）。
+   *  桥不可用 / 写盘失败 → 回退浏览器下载，任何失败都给可见提示。 */
+  async _exportCardPng(card) {
+    if (!card) { this._showScreenMsg('没有可导出的便签', 1200); return; }
+    const sm = window.storageManager;
+    let base64;
+    try {
+      const out = await exportCardPng(card, { scale: 2 });
+      base64 = out.base64;
+    } catch (e) {
+      this._showScreenMsg('PNG 生成失败：' + ((e && e.message) || e), 2200);
+      return;
+    }
+    const note = (this._notes || []).find((n) => n.id === card.dataset.id);
+    const base = this._safeName(note && note.text ? note.text : '');
+    const ts = this._stamp(new Date());
+    const folder = (sm && typeof sm.getExportFolder === 'function')
+      ? await sm.getExportFolder('noteExportFolder', '便签')
+      : ((window.SettingsModal && window.SettingsModal.noteExportFolder) || '便签').replace(/^\/+/, '');
+    const path = folder + '/' + base + ' ' + ts + '.png';
+    const done = (p) => { this._showScreenMsg('已导出到：' + p, 1800); };
+    const fallback = () => {
+      ModeController.downloadPng(path, base64);
+      this._showScreenMsg('已通过浏览器下载保存 PNG', 1800);
+    };
+    if (sm && typeof sm.exportPng === 'function') {
+      Promise.resolve(sm.exportPng(path, base64)).then((r) => {
+        if (r && r.ok) done(path);
+        else fallback();
+      }).catch(() => fallback());
+    } else {
+      fallback();
     }
   },
 

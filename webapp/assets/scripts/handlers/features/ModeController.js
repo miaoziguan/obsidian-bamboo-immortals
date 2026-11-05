@@ -814,6 +814,23 @@ export const ModeController = {
     return blocks.join('\n\n') + '\n';
   
   },
+  /** PNG 导出兜底：桥不可用 / 写盘失败时把 base64 还原成 Blob 触发浏览器下载。 */
+  downloadPng(filename, base64) {
+    try {
+      const bin = atob(base64);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      const blob = new Blob([bytes], { type: 'image/png' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = (filename.split('/').pop() || '便签.png');
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (_) { /* 兜底也失败则静默 */ }
+  },
   // (was _downloadMarkdown)
   downloadMarkdown(ctx, filename, content) {
     const { state, ctrl } = ctx;

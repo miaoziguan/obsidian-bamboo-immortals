@@ -21,6 +21,7 @@ export const ICON_ZOOM_OUT = `<svg viewBox="0 0 24 24" fill="none" stroke="curre
 export const ICON_ZOOM_IN = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="6.5"/><line x1="15.2" y1="15.2" x2="20" y2="20"/><line x1="10.5" y1="7.5" x2="10.5" y2="13.5"/><line x1="7.5" y1="10.5" x2="13.5" y2="10.5"/></svg>`;
 export const ICON_PAPER = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3.5" width="11" height="11" rx="2"/><path d="M15 8.5H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h7"/></svg>`;
 export const ICON_EXPORT = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>`;
+export const ICON_EXPORT_PNG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9" r="1.5"/><path d="m4 17 5-5 3.5 3.5L16 12l4 4"/></svg>`;
 export const ICON_PREVIEW = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>`;
 // 连线形态（直线 / 曲线）：上直下弯，一眼读出「切换的是线的走向」
 export const ICON_LINK_ROUTE = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h18"/><path d="M3 16q9-8 18 0"/></svg>`;
@@ -141,6 +142,7 @@ if (typeof globalThis !== 'undefined') {
   globalThis.ICON_ZOOM_IN = ICON_ZOOM_IN;
   globalThis.ICON_PAPER = ICON_PAPER;
   globalThis.ICON_EXPORT = ICON_EXPORT;
+  globalThis.ICON_EXPORT_PNG = ICON_EXPORT_PNG;
   globalThis.ICON_PREVIEW = ICON_PREVIEW;
   globalThis.ICON_LINK_ROUTE = ICON_LINK_ROUTE;
   globalThis.ICON_MOVE_UP = ICON_MOVE_UP;

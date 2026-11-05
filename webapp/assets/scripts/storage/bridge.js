@@ -732,6 +732,20 @@ export class BridgeStorage {
     }
   }
 
+  /** 便签导出 PNG：把 canvas 产出的纯 base64 交给宿主还原成二进制写进 Vault。
+   *  @returns {Promise<{ok:boolean,path?:string}|null>} 桥不可用/超时返回 null（调用方兜底下载）。 */
+  async exportPng(path, base64) {
+    const p = (path || '').trim();
+    if (!p || !base64) return null;
+    await this.ensureReady();
+    try {
+      return await this._send('app:exportPng', { path: p, base64: String(base64) });
+    } catch (e) {
+      console.warn('[Bridge] exportPng 不可用:', e && e.message);
+      return null;
+    }
+  }
+
   /**
    * 取「导出目录」：以**原生设置**（app:getSettings）为唯一真源。
    *

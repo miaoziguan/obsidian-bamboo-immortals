@@ -17,6 +17,7 @@ export type ViewFileHost = Pick<HostContext,
     | 'openModule'
     | 'openVaultFileByPath'
     | 'writeVaultText'
+    | 'writeVaultBinary'
     >;
 
 /** 目标归档：打开独立归档页 */
@@ -89,6 +90,25 @@ const handleExportMindmap: RouteHandler<ViewFileHost> = async (ctx, id, payload)
     }
 };
 
+/** 便签导出 PNG：把 webapp 侧 canvas 产出的 base64 还原成二进制写入 Vault */
+const handleExportPng: RouteHandler<ViewFileHost> = async (ctx, id, payload) => {
+    try {
+        const raw = typeof payload.path === 'string' ? payload.path.trim() : '';
+        if (!raw) throw new Error('未提供文件路径');
+        if (raw.includes('..')) throw new Error('路径遍历禁止');
+        if (!raw.toLowerCase().endsWith('.png')) throw new Error('导出文件必须是 .png');
+        const base64 = typeof payload.base64 === 'string' ? payload.base64 : '';
+        if (!base64) throw new Error('图片数据为空');
+        // 上限 8MB：防止异常 payload 打满内存 / 移动端大 buffer 写入挂起
+        if (base64.length > 8 * 1024 * 1024) throw new Error('图片数据过大');
+        if (!/^[A-Za-z0-9+/=]+$/.test(base64)) throw new Error('图片数据格式非法');
+        const full = await ctx.writeVaultBinary(raw, base64);
+        ctx.respond(id, { ok: true, path: full });
+    } catch (e) {
+        ctx.respondError(id, e instanceof Error ? e.message : '导出 PNG 失败');
+    }
+};
+
 export const viewFileRoutes: Record<string, RouteHandler<ViewFileHost>> = {
     'app:openArchive': handleOpenArchive,
     'app:openScroll': handleOpenScroll,
@@ -97,4 +117,5 @@ export const viewFileRoutes: Record<string, RouteHandler<ViewFileHost>> = {
     'app:openModule': handleOpenModule,
     'app:openFile': handleOpenFile,
     'app:exportMindmap': handleExportMindmap,
+    'app:exportPng': handleExportPng,
 };

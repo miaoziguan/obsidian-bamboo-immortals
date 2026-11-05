@@ -112,7 +112,11 @@ function cloneForExport(card) {
   if (!w || !h) throw new Error('便签尺寸不可用');
   const clone = card.cloneNode(true);
   REMOVE_SELECTORS.forEach((sel) => clone.querySelectorAll(sel).forEach((el) => el.remove()));
-  REMOVE_CLASSES.forEach((c) => clone.classList.remove(c));
+  // 状态类可能挂在卡片内的贴纸上（.bm-sticker.selected 会画金色描边），
+  // 只清根节点会把选中框带进 PNG；这里对整棵克隆树统一清理。
+  [clone].concat(Array.from(clone.querySelectorAll('*'))).forEach((el) => {
+    REMOVE_CLASSES.forEach((c) => el.classList.remove(c));
+  });
   // 扶正导出：归零位移与旋转，避免包围盒裁切
   clone.style.left = '0px';
   clone.style.top = '0px';
@@ -160,9 +164,11 @@ export const exportCardPng = async (card, opts) => {
 
   // iOS WKWebView 上 viewBox 缩放 foreignObject 失效；改用「SVG/foreignObject
   // 均为放大后具体 px + 内层 1x 容器 transform:scale(S)」（真机探针 H 方案，已验证）。
+  // 透明底：皮肤设计稿本身是透明 + 柔边晕染（素材 css() 明写 background:transparent
+  // 「必须透明：背景交给设计图，别盖掉它」），铺白底会盖掉设计意图。
   const inner =
     '<div xmlns="http://www.w3.org/1999/xhtml" class="bm-export-host ' + esc(hostCls) + '" ' +
-    'style="width:' + cw + 'px;height:' + ch + 'px;position:relative;background:#fff;overflow:hidden">' +
+    'style="width:' + cw + 'px;height:' + ch + 'px;position:relative;background:transparent;overflow:hidden">' +
     '<div style="width:' + width + 'px;height:' + height + 'px;position:absolute;left:0;top:0;' +
     'transform:scale(' + scale + ');transform-origin:0 0">' +
     '<style>' + esc(cssText) + '</style>' + xhtml +
@@ -178,8 +184,7 @@ export const exportCardPng = async (card, opts) => {
   canvas.height = ch;
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('canvas 2D 不可用');
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, cw, ch);
+  // 不铺白底：canvas 初始即全透明，皮肤柔边外的区域应保持 alpha=0
   ctx.drawImage(img, 0, 0, cw, ch);
   const dataUrl = canvas.toDataURL('image/png');
   const comma = dataUrl.indexOf(',');

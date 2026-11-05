@@ -29,7 +29,7 @@ function makeCard() {
     '<div class="tw-card-edge tw-card-edge-bottom"></div>' +
     '<div class="tw-card-tools"><button class="tw-card-export">MD</button></div>' +
     '<div class="tw-card-resize"></div><div class="tw-card-rotate"></div>' +
-    '<div class="bm-sticker"><div class="bm-sticker-content"><svg viewBox="0 0 10 10"></svg></div>' +
+    '<div class="bm-sticker selected"><div class="bm-sticker-content"><svg viewBox="0 0 10 10"></svg></div>' +
     '<button class="bm-sticker-rotate">↻</button></div>';
   // jsdom 无布局引擎：给 offsetWidth/offsetHeight 兜底，模拟真实卡片尺寸
   Object.defineProperty(card, 'offsetWidth', { value: 340, configurable: true });
@@ -130,6 +130,14 @@ describe('cloneForExport —— 剔除交互控件、扶正、保留内容', () 
     expect(wrap.querySelector('.bm-sticker-content svg')).not.toBeNull();
   });
 
+  test('整棵克隆树的状态类都被清理（贴纸选中描边不进 PNG）', () => {
+    const { wrap } = cloneForExport(makeCard());
+    const sticker = wrap.querySelector('.bm-sticker');
+    expect(sticker).not.toBeNull();
+    expect(sticker.classList.contains('selected')).toBe(false);
+    expect(wrap.querySelector('.selected')).toBeNull();
+  });
+
   test('扶正：位移归零、旋转归零、去掉选中态', () => {
     const { wrap } = cloneForExport(makeCard());
     const card = wrap.querySelector('.tw-card');
@@ -148,10 +156,11 @@ describe('cloneForExport —— 剔除交互控件、扶正、保留内容', () 
 });
 
 describe('exportCardPng —— SVG 结构（H 2x 写法）', () => {
-  let origImage, origToDataURL, origGetContext, capturedSrc;
+  let origImage, origToDataURL, origGetContext, capturedSrc, canvasOps;
 
   beforeEach(() => {
     capturedSrc = null;
+    canvasOps = [];
     origImage = global.Image;
     origToDataURL = HTMLCanvasElement.prototype.toDataURL;
     origGetContext = HTMLCanvasElement.prototype.getContext;
@@ -160,7 +169,9 @@ describe('exportCardPng —— SVG 结构（H 2x 写法）', () => {
       set src(v) { capturedSrc = v; if (this.onload) setTimeout(() => this.onload(), 0); }
     };
     HTMLCanvasElement.prototype.getContext = () => ({
-      fillRect() {}, drawImage() {}, set fillStyle(v) {},
+      fillRect() { canvasOps.push('fillRect'); },
+      drawImage() { canvasOps.push('drawImage'); },
+      set fillStyle(v) { canvasOps.push('fillStyle:' + v); },
     });
     HTMLCanvasElement.prototype.toDataURL = () => 'data:image/png;base64,QUJD';
   });
@@ -183,6 +194,19 @@ describe('exportCardPng —— SVG 结构（H 2x 写法）', () => {
     expect(svg).toContain('height="682"');
     expect(svg).toContain('<foreignObject x="0" y="0" width="680" height="682">');
     expect(out).toEqual({ base64: 'QUJD', width: 680, height: 682 });
+  });
+
+  test('透明底：容器不铺白、canvas 不 fillRect，贴纸选中态不进 SVG', async () => {
+    const { exportCardPng } = load();
+    await exportCardPng(makeCard(), { scale: 2 });
+    const svg = decodeURIComponent(capturedSrc.replace(/^data:image\/svg\+xml;charset=utf-8,/, ''));
+    expect(svg).toContain('background:transparent');
+    expect(svg).not.toContain('background:#fff');
+    expect(canvasOps).not.toContain('fillRect');
+    expect(canvasOps).toContain('drawImage');
+    // .bm-sticker.selected 的金色描边不应被带进导出图
+    expect(svg).not.toContain('bm-sticker selected');
+    expect(svg).toContain('bm-sticker');
   });
 
   test('1x 不放大但仍无 viewBox', async () => {

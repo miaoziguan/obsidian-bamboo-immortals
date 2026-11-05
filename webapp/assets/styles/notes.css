@@ -1862,10 +1862,10 @@
      贴纸是透明切割图，box-shadow 会在透明区域后面露出矩形影。
      单层（原为两层）已够用且成本明显更低。
      素材若自带阴影可声明 shadow:'none'（应用会把它写成 --bm-sticker-shadow:none 关掉默认投影）。 */
-  filter: var(--bm-sticker-shadow, drop-shadow(0 3px 8px rgba(var(--deep-rgb), 0.12)));
+  filter: var(--bm-sticker-shadow, drop-shadow(0 1px 2px rgba(var(--deep-rgb), 0.10)));
 }
 :host(.dark) .bm-sticker {
-  filter: var(--bm-sticker-shadow, drop-shadow(0 3px 8px rgba(var(--black-rgb), 0.34)));
+  filter: var(--bm-sticker-shadow, drop-shadow(0 1px 2px rgba(var(--black-rgb), 0.22)));
 }
 /* 【拖动性能】filter 与 transform 同在一个元素上时，拖动每帧改 transform 会迫使浏览器
    重新栅格化两层 drop-shadow 模糊（模糊按元素绘制区域的 alpha 计算）。内容复杂的贴纸

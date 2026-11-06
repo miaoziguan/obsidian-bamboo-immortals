@@ -7,6 +7,7 @@ export const SettingsModal = {
     noteExportFolder: '便签',  // 便签导出为 Markdown 的落库目录（Vault 相对路径，默认落到 vault 根）
     writeExportFolder: 'MD可视化写作', // 写作模式（MD可视化写作）整篇快照导出为 Markdown 的落库目录（Vault 相对路径）
     pngExportFolder: '便签', // 便签导出为 PNG 图片的落库目录（Vault 相对路径，默认落到 vault 根）
+    pngExportAction: 'both', // 便签 PNG 导出的默认方式：save | copy | both（真源在原生设置页）
 
     // ---- Tab 内容渲染 ----
 

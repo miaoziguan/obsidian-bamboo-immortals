@@ -790,14 +790,24 @@ export const TypewriterFeature = {
     }
   },
 
-  /** 单张便签 → PNG 图片，落库到 Vault 的「便签」目录。
-   *  入口：卡片 hover 工具条的「导出为 PNG 图片」按钮。
+  /** 单张便签 → PNG 图片。
+   *  入口：卡片 hover 工具条的 PNG 按钮弹出的三项菜单（见 CardViewManager.ensurePngMenu）。
+   *  action: 'save' 仅落盘 | 'copy' 仅复制剪贴板 | 'both' 两者；不传时读原生设置 pngExportAction。
+   *  截图只做一次；落盘与复制并行，任一失败都不影响另一路，提示必须如实说明。
    *  截图用零依赖 SVG foreignObject（见 exportPng.js）；2x 用真机验证过的
-   *  transform:scale 写法（viewBox 缩放在 iOS WKWebView 上会失效）。
-   *  桥不可用 / 写盘失败 → 回退浏览器下载，任何失败都给可见提示。 */
-  async _exportCardPng(card) {
+   *  transform:scale 写法（viewBox 缩放在 iOS WKWebView 上会失效）。 */
+  async _exportCardPng(card, action) {
     if (!card) { this._showScreenMsg('没有可导出的便签', 1200); return; }
     const sm = window.storageManager;
+    const valid = (v) => (v === 'save' || v === 'copy' || v === 'both') ? v : null;
+    let act = valid(action);
+    if (!act) {
+      // 兼容旧调用方：菜单未传动作时以原生设置为准，桥不可用则沿用历史行为 both
+      act = (sm && typeof sm.getExportAction === 'function')
+        ? valid(await sm.getExportAction('pngExportAction', 'both'))
+        : valid(window.SettingsModal && window.SettingsModal.pngExportAction);
+      act = act || 'both';
+    }
     let base64;
     try {
       const out = await exportCardPng(card, { scale: 2 });
@@ -806,31 +816,42 @@ export const TypewriterFeature = {
       this._showScreenMsg('PNG 生成失败：' + ((e && e.message) || e), 2200);
       return;
     }
+    const wantSave = act !== 'copy';
+    const wantCopy = act !== 'save';
     // 立刻发起剪贴板复制（与落盘并行）：宿主通道不依赖 user activation，
     // 但越早发送越能保住手势窗口；失败只影响提示文案，不影响已落盘的 PNG。
-    const copyPromise = (sm && typeof sm.copyPng === 'function')
+    const copyPromise = (wantCopy && sm && typeof sm.copyPng === 'function')
       ? Promise.resolve(sm.copyPng(base64)).catch(() => null)
       : Promise.resolve(null);
-    const note = (this._notes || []).find((n) => n.id === card.dataset.id);
-    const base = this._safeName(note && note.text ? note.text : '');
-    const ts = this._stamp(new Date());
-    const folder = (sm && typeof sm.getExportFolder === 'function')
-      ? await sm.getExportFolder('pngExportFolder', '便签')
-      : ((window.SettingsModal && window.SettingsModal.pngExportFolder) || '便签').replace(/^\/+/, '');
-    const path = folder + '/' + base + ' ' + ts + '.png';
-    // 落盘与复制并行推进：剪贴板慢/超时不应拖慢保存
-    const savePromise = (sm && typeof sm.exportPng === 'function')
-      ? Promise.resolve(sm.exportPng(path, base64)).catch(() => null)
-      : Promise.resolve(null);
+    let savePromise = Promise.resolve(null);
+    let path = '';
+    if (wantSave) {
+      const note = (this._notes || []).find((n) => n.id === card.dataset.id);
+      const base = this._safeName(note && note.text ? note.text : '');
+      const ts = this._stamp(new Date());
+      const folder = (sm && typeof sm.getExportFolder === 'function')
+        ? await sm.getExportFolder('pngExportFolder', '便签')
+        : ((window.SettingsModal && window.SettingsModal.pngExportFolder) || '便签').replace(/^\/+/, '');
+      path = folder + '/' + base + ' ' + ts + '.png';
+      // 落盘与复制并行推进：剪贴板慢/超时不应拖慢保存
+      savePromise = (sm && typeof sm.exportPng === 'function')
+        ? Promise.resolve(sm.exportPng(path, base64)).catch(() => null)
+        : Promise.resolve(null);
+    }
     const [saved, copied] = await Promise.all([savePromise, copyPromise]);
     const copiedOk = !!(copied && copied.ok);
-    // 复制失败要明说，避免用户以为剪贴板里已有图
-    const hint = copiedOk ? '，已复制到剪贴板' : '（剪贴板不可用，可手动复制）';
+    // 只复制时不落盘，失败要给一条可执行的替代建议
+    if (!wantSave) {
+      this._showScreenMsg(copiedOk ? '已复制到剪贴板' : '剪贴板不可用，可改用「导出到指定位置」', 2200);
+      return;
+    }
+    // 复制失败要明说，避免用户以为剪贴板里已有图；仅落盘时不提剪贴板
+    const tail = wantCopy ? (copiedOk ? '，已复制到剪贴板' : '（剪贴板不可用，可手动复制）') : '';
     if (saved && saved.ok) {
-      this._showScreenMsg('已导出到：' + path + hint, 2200);
+      this._showScreenMsg('已导出到：' + path + tail, 2200);
     } else {
       ModeController.downloadPng(path, base64);
-      this._showScreenMsg('已通过浏览器下载保存 PNG' + hint, 2200);
+      this._showScreenMsg('已通过浏览器下载保存 PNG' + tail, 2200);
     }
   },
 
@@ -1857,6 +1878,14 @@ export const TypewriterFeature = {
    *  故必须用 composedPath() —— 它保留影子内部的真实节点链路。
    *  徽章一并纳入：让「再点徽章收起」由徽章自己的 click 处理，不被这里提前清掉。 */
     _isInLevelMenu(ev) { return CardViewManager.isInLevelMenu({ state: this._state, ctrl: this }, ev); },
+
+  /** 便签 PNG 导出方式菜单：三项选择 + 默认项标注，浮层范式同 level-menu。 */
+    _ensurePngMenu() { return CardViewManager.ensurePngMenu({ state: this._state, ctrl: this }); },
+    _markPngDefault(act) { return CardViewManager.markPngDefault({ state: this._state, ctrl: this }, act); },
+    _updatePngFolder() { return CardViewManager.updatePngFolder({ state: this._state, ctrl: this }); },
+    _showPngMenu(card, btn) { return CardViewManager.showPngMenu({ state: this._state, ctrl: this }, card, btn); },
+    _hidePngMenu() { return CardViewManager.hidePngMenu({ state: this._state, ctrl: this }); },
+    _isInPngMenu(ev) { return CardViewManager.isInPngMenu({ state: this._state, ctrl: this }, ev); },
 
   /** 写作档的专属外观开关：画布上挂一个类，切档时无需重建任何卡片 DOM。
    *  这个类同时管两件事：① 显示结构级别钮；② 启用写作档自己的国际化卡片体系

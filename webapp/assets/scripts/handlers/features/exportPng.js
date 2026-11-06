@@ -15,6 +15,8 @@ const REMOVE_SELECTORS = [
   '.tw-card-tools', '.tw-card-level', '.tw-card-resize', '.tw-card-rotate',
   '.tw-card-link', '.tw-links', '.tw-links-ctl',
   '.bm-sticker-rotate', '.bm-sticker-resize', '.bm-sticker-more', '.bm-sticker-menu',
+  // 导出方式菜单平时挂在功能根元素，但万一将来移进卡片，截图里也不能留下它
+  '.tw-png-menu',
 ];
 const REMOVE_CLASSES = [
   'selected', 'editing', 'is-pinned', 'is-rotating', 'is-resizing',

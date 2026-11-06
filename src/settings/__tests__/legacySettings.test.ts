@@ -135,3 +135,23 @@ describe('导出目录默认值一致性', () => {
     expect('noteExportFolder' in EXPORT_FOLDER_DEFAULTS).toBe(true);
   });
 });
+
+describe('便签 PNG 默认导出方式', () => {
+  it('DEFAULT_SETTINGS 默认 both，设置页三项与宿主契约一致', async () => {
+    const { readFileSync } = await import('node:fs');
+    const src = readFileSync(new URL('../PluginSettings.ts', import.meta.url), 'utf8');
+    expect(src).toContain("pngExportAction: 'both'");
+    expect(src).toContain("pngExportAction: 'save' | 'copy' | 'both'");
+    // 三个选项必须都在下拉里，少一个用户就选不到对应动作
+    expect(src).toContain("addOption('both'");
+    expect(src).toContain("addOption('save'");
+    expect(src).toContain("addOption('copy'");
+  });
+
+  it('迁移不覆盖用户已配置的默认导出方式', async () => {
+    const s = { ...baseSettings(), pngExportAction: 'copy' };
+    const changed = await normalizeLegacySettings(makeApp(JSON.stringify({ noteExportFolder: '旧便签目录' })), s);
+    expect(s.pngExportAction).toBe('copy');
+    expect(changed).toBe(true); // 其它键仍照常迁移
+  });
+});

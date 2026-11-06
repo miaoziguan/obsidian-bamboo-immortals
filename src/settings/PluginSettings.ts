@@ -149,6 +149,9 @@ export interface BambooReviewSettings {
   noteExportFolder: string;
   /** 便签导出为 PNG 图片的落库目录（Vault 相对路径，默认 便签；与 Markdown 导出目录独立） */
   pngExportFolder: string;
+  /** 便签 PNG 导出按钮的默认动作：菜单里标注「默认」的一项，长按/右键按钮可直接执行。
+   *  'save' 仅落盘 | 'copy' 仅复制剪贴板 | 'both' 落盘并复制（默认，与旧行为一致） */
+  pngExportAction: 'save' | 'copy' | 'both';
   /** 写作模式整篇快照导出为 Markdown 的落库目录（Vault 相对路径，默认 MD可视化写作） */
   writeExportFolder: string;
 }
@@ -193,6 +196,7 @@ export const DEFAULT_SETTINGS: BambooReviewSettings = {
   noteExportFolder: '便签',
   writeExportFolder: 'MD可视化写作',
   pngExportFolder: '便签',
+  pngExportAction: 'both',
 };
 
 /**
@@ -917,7 +921,7 @@ class ExportPage extends SettingPage {
     new Setting(containerEl).setName('便签 PNG 导出').setHeading();
     new Setting(containerEl)
       .setName('便签图片导出目录')
-      .setDesc('便签导出为 PNG 图片的落库位置（Vault 相对路径，如 画中卷/便签图片 或 便签）。与上面的 Markdown 目录相互独立；导出后会自动把图片复制到系统剪贴板。')
+      .setDesc('便签导出为 PNG 图片的落库位置（Vault 相对路径，如 画中卷/便签图片 或 便签）。与上面的 Markdown 目录相互独立；仅在「导出到指定位置」时生效。')
       .addText((text) =>
         text
           .setPlaceholder('如 便签')
@@ -929,6 +933,21 @@ class ExportPage extends SettingPage {
             scheduleSaveSettings(this.plugin);
           })
         );
+
+    new Setting(containerEl)
+      .setName('默认导出方式')
+      .setDesc('点击便签上的 PNG 按钮会弹出三项菜单：导出到指定位置 / 复制 PNG 到剪贴板 / 两者都要。这里选择菜单里标注「默认」的一项（按 Enter 即执行），长按或右键该按钮可直接按默认方式执行。')
+      .addDropdown((dropdown) =>
+        dropdown
+          .addOption('both', '两者都要（默认）')
+          .addOption('save', '仅导出到指定位置')
+          .addOption('copy', '仅复制 PNG 到剪贴板')
+          .setValue(this.plugin.settings.pngExportAction || 'both')
+          .onChange(async (value) => {
+            this.plugin.settings.pngExportAction = value === 'save' || value === 'copy' ? value : 'both';
+            scheduleSaveSettings(this.plugin);
+          })
+      );
   }
 }
 

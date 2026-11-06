@@ -77,7 +77,7 @@ export const CardViewManager = {
         <button type="button" class="tw-card-zoom-in" aria-label="放大便签">${ICON_ZOOM_IN}</button>
         <button type="button" class="tw-card-split" aria-label="按段落拆分">${ICON_SPLIT}</button>
         <button type="button" class="tw-card-export" aria-label="导出为 Markdown">${ICON_EXPORT}</button>
-        <button type="button" class="tw-card-export-png" aria-label="导出为 PNG 图片" title="导出为 PNG 图片">${ICON_EXPORT_PNG}</button>
+        <button type="button" class="tw-card-export-png" aria-label="导出为 PNG 图片" title="导出为 PNG 图片（点击选择方式 · 长按/右键按默认执行）">${ICON_EXPORT_PNG}</button>
         <button type="button" class="tw-card-del" aria-label="移除卡片">${ICON_X}</button>
       </div>`;
 
@@ -145,11 +145,30 @@ export const CardViewManager = {
       ctrl._exportCard(card);
     });
     const pngBtn = card.querySelector('.tw-card-export-png');
-    if (pngBtn) pngBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      // 单张便签 → PNG 图片，落库 Vault（失败时回退浏览器下载）
-      ctrl._exportCardPng(card);
-    });
+    if (pngBtn) {
+      let pressTimer = null;
+      let longPressed = false;
+      const clearPress = () => { if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; } };
+      // 长按 / 右键：跳过菜单直接按「默认导出方式」执行（动作留空，由 _exportCardPng 读原生设置）
+      const runDefault = () => { ctrl._hidePngMenu(); ctrl._exportCardPng(card); };
+      pngBtn.addEventListener('pointerdown', (e) => {
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
+        longPressed = false;
+        clearPress();
+        pressTimer = setTimeout(() => { longPressed = true; clearPress(); runDefault(); }, 450);
+      });
+      ['pointerup', 'pointercancel', 'pointerleave'].forEach((t) => pngBtn.addEventListener(t, clearPress));
+      pngBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (longPressed) { longPressed = false; return; }   // 长按已执行，别再弹菜单
+        // 再点同一个按钮收起；否则展开三项选择菜单
+        if (ctrl._pngMenu && !ctrl._pngMenu.hidden && ctrl._pngMenuCard === card) ctrl._hidePngMenu();
+        else ctrl._showPngMenu(card, pngBtn);
+      });
+      pngBtn.addEventListener('contextmenu', (e) => {
+        e.preventDefault(); e.stopPropagation(); clearPress(); runDefault();
+      });
+    }
     ctrl._makeDraggable(card);
     ctrl._makeResizable(card);
     if (!isWrite) ctrl._makeRotatable(card);   // 【P4】写入档不提供旋转手柄
@@ -476,6 +495,159 @@ export const CardViewManager = {
     // 兜底：无 composedPath 的老环境退回 target
     return !!(ev.target && ev.target.closest && ev.target.closest('.tw-level-menu'));
   
+  },
+
+  // ===== 便签 PNG 导出方式菜单 =====
+  // 与 level-menu 同范式：挂在功能根元素上的单个浮层（不塞进卡片，避免被
+  // .tw-card-main 的 overflow:hidden 裁掉、被邻卡盖住、以及 hover 工具条移开即消失）。
+  // 三项互斥动作：save 仅落盘 / copy 仅复制 / both 两者；默认项来自原生设置 pngExportAction。
+  ensurePngMenu(ctx) {
+    const { ctrl } = ctx;
+    if (ctrl._pngMenu || !ctrl._el) return;
+    if (getComputedStyle(ctrl._el).position === 'static') ctrl._el.style.position = 'relative';
+    const menu = document.createElement('div');
+    menu.className = 'tw-png-menu';
+    menu.setAttribute('role', 'menu');
+    menu.setAttribute('aria-label', '便签 PNG 导出方式');
+    menu.hidden = true;
+    [
+      { act: 'save', label: '导出到指定位置', sub: true },
+      { act: 'copy', label: '复制 PNG 到剪贴板', sub: false },
+      { act: 'both', label: '两者都要', sub: false },
+    ].forEach((it) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'tw-png-menu-item';
+      b.setAttribute('role', 'menuitem');
+      b.dataset.pngAct = it.act;
+      const label = document.createElement('span');
+      label.className = 'tw-png-menu-label';
+      label.textContent = it.label;
+      b.appendChild(label);
+      const badge = document.createElement('em');
+      badge.className = 'tw-png-menu-default';
+      badge.textContent = '默认';
+      badge.hidden = true;
+      b.appendChild(badge);
+      if (it.sub) {
+        const sub = document.createElement('small');
+        sub.className = 'tw-png-menu-sub';
+        b.appendChild(sub);
+      }
+      menu.appendChild(b);
+    });
+    // 浮层内交互不冒泡到画布，避免触发平移 / 框选
+    menu.addEventListener('pointerdown', (e) => e.stopPropagation());
+    menu.addEventListener('click', (e) => {
+      const item = e.target.closest('.tw-png-menu-item');
+      const card = ctrl._pngMenuCard;
+      if (!item || !card) return;
+      e.stopPropagation();
+      ctrl._hidePngMenu();
+      ctrl._exportCardPng(card, item.dataset.pngAct);
+    });
+    menu.addEventListener('keydown', (e) => {
+      if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+      e.preventDefault();
+      const items = Array.from(menu.querySelectorAll('.tw-png-menu-item'));
+      const root = menu.getRootNode();
+      const cur = (root && root.activeElement) || document.activeElement;
+      const i = items.indexOf(cur);
+      const next = items[(i + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length];
+      if (next) next.focus({ preventScroll: true });
+    });
+    ctrl._el.appendChild(menu);
+    ctrl._pngMenu = menu;
+  },
+
+  /** 给「默认导出方式」对应项打标（打开时先取同步快照，随后由异步校正） */
+  markPngDefault(ctx, act) {
+    const { ctrl } = ctx;
+    const menu = ctrl._pngMenu;
+    if (!menu) return;
+    menu.querySelectorAll('.tw-png-menu-item').forEach((it) => {
+      const on = it.dataset.pngAct === act;
+      it.classList.toggle('is-default', on);
+      const badge = it.querySelector('.tw-png-menu-default');
+      if (badge) badge.hidden = !on;
+    });
+  },
+
+  /** 「导出到指定位置」项显示当前目录，便于发现原生设置里的目录配置 */
+  async updatePngFolder(ctx) {
+    const { ctrl } = ctx;
+    const menu = ctrl._pngMenu;
+    const sub = menu && menu.querySelector('.tw-png-menu-sub');
+    if (!sub) return;
+    const sm = window.storageManager;
+    let folder = (window.SettingsModal && window.SettingsModal.pngExportFolder) || '便签';
+    try {
+      if (sm && typeof sm.getExportFolder === 'function') folder = await sm.getExportFolder('pngExportFolder', folder);
+    } catch (e) { /* 桥不可用：保留本地回退目录 */ }
+    if (menu.isConnected) sub.textContent = '目录：' + (folder || '便签');
+  },
+
+  showPngMenu(ctx, card, btn) {
+    const { ctrl } = ctx;
+    ctrl._ensurePngMenu();
+    const menu = ctrl._pngMenu;
+    if (!menu) return;
+    ctrl._pngMenuCard = card;
+    const sm = window.storageManager;
+    const syncAct = (sm && typeof sm.getExportActionSync === 'function')
+      ? sm.getExportActionSync('pngExportAction', 'both')
+      : ((window.SettingsModal && window.SettingsModal.pngExportAction) || 'both');
+    ctrl._markPngDefault(syncAct);
+    ctrl._updatePngFolder();
+    // 原生设置可能在握手后被改动，用一次异步读取校正「默认」标注
+    if (sm && typeof sm.getExportAction === 'function') {
+      Promise.resolve(sm.getExportAction('pngExportAction', 'both'))
+        .then((a) => { if (!menu.hidden) ctrl._markPngDefault(a); })
+        .catch(() => { /* 桥不可用：沿用同步快照的标注 */ });
+    }
+    menu.hidden = false;                       // 先显示再量：隐藏元素量不到尺寸
+    const r = btn.getBoundingClientRect();
+    const mr = menu.getBoundingClientRect();
+    const host = ctrl._el.getBoundingClientRect();
+    const M = 8;                               // 视口安全边距
+    let vt = r.bottom + 4;
+    if (vt + mr.height > window.innerHeight - M) vt = Math.max(M, r.top - mr.height - 4);
+    let vl = r.left;
+    if (vl + mr.width > window.innerWidth - M) vl = Math.max(M, window.innerWidth - mr.width - M);
+    menu.style.top = (vt - host.top) + 'px';
+    menu.style.left = (vl - host.left) + 'px';
+    if (!ctrl._pngMenuDocHandler) {
+      ctrl._pngMenuDocHandler = (ev) => {
+        if (ev.type === 'keydown' && ev.key !== 'Escape') return;
+        if (ctrl._isInPngMenu(ev)) return;
+        ctrl._hidePngMenu();
+      };
+    }
+    document.addEventListener('pointerdown', ctrl._pngMenuDocHandler, true);
+    document.addEventListener('keydown', ctrl._pngMenuDocHandler, true);
+    const def = menu.querySelector('.tw-png-menu-item.is-default');
+    if (def) def.focus({ preventScroll: true });
+  },
+
+  hidePngMenu(ctx) {
+    const { ctrl } = ctx;
+    if (ctrl._pngMenu) ctrl._pngMenu.hidden = true;
+    ctrl._pngMenuCard = null;
+    if (ctrl._pngMenuDocHandler) {
+      document.removeEventListener('pointerdown', ctrl._pngMenuDocHandler, true);
+      document.removeEventListener('keydown', ctrl._pngMenuDocHandler, true);
+    }
+  },
+
+  /** 事件是否发生在 PNG 菜单或它的触发按钮内部（Shadow DOM 必须用 composedPath） */
+  isInPngMenu(ctx, ev) {
+    const path = (typeof ev.composedPath === 'function') ? ev.composedPath() : [];
+    for (let i = 0; i < path.length; i += 1) {
+      const n = path[i];
+      if (!n || n.nodeType !== 1 || !n.classList) continue;
+      if (n.classList.contains('tw-png-menu') || n.classList.contains('tw-card-export-png')) return true;
+    }
+    return !!(ev.target && ev.target.closest && ev.target.closest('.tw-png-menu'));
   },
   // (was _maxFontIdx)
   maxFontIdx(ctx, paper) {

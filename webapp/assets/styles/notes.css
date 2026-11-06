@@ -1379,6 +1379,52 @@
 :host(.dark) .tw-level-menu-item:hover { background: rgba(var(--white-rgb), 0.08); }
 :host(.dark) .tw-level-menu-item.is-on { background: rgba(var(--white-rgb), 0.12); }
 
+/* ---- 便签 PNG 导出方式菜单（复用 level-menu 浮层范式）---- */
+.tw-png-menu {
+  position: absolute;
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-6);
+  min-width: 176px;
+  background: var(--white);
+  border: 1px solid rgba(16, 24, 40, 0.12);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 8px 24px -6px rgba(16, 24, 40, 0.28), 0 2px 6px rgba(16, 24, 40, 0.10);
+  color: #1F2430;
+  font-size: var(--type-sm);
+}
+.tw-png-menu[hidden] { display: none; }
+.tw-png-menu-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-6);
+  width: 100%;
+  padding: var(--space-5) var(--space-6);
+  border: none;
+  border-radius: var(--radius-2xs);
+  background: transparent;
+  color: inherit;
+  font-size: var(--type-sm);
+  text-align: left;
+  cursor: pointer;
+}
+.tw-png-menu-item:hover { background: rgba(16, 24, 40, 0.06); }
+.tw-png-menu-item.is-default { background: rgba(16, 24, 40, 0.10); font-weight: 600; }
+.tw-png-menu-item:focus-visible { outline: 2px solid rgba(16, 24, 40, 0.35); outline-offset: -2px; }
+.tw-png-menu-label { flex: 1 1 auto; white-space: nowrap; }
+.tw-png-menu-default { flex: none; font-style: normal; font-size: var(--type-mini); opacity: 0.62; }
+.tw-png-menu-sub { flex: 1 0 100%; font-size: var(--type-mini); opacity: 0.6; }
+:host(.dark) .tw-png-menu {
+  background: #232A33;
+  border-color: rgba(var(--white-rgb), 0.14);
+  color: #E6EAF2;
+}
+:host(.dark) .tw-png-menu-item:hover { background: rgba(var(--white-rgb), 0.08); }
+:host(.dark) .tw-png-menu-item.is-default { background: rgba(var(--white-rgb), 0.12); }
+
 /* ---- 写作卡片组切换面板（复用 level-menu 的浮层范式：挂在功能根、absolute 定位）---- */
 .tw-doc-panel {
   position: absolute;

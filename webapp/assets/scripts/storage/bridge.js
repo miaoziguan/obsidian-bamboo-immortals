@@ -780,6 +780,27 @@ export class BridgeStorage {
     return String(local || fallback || '').replace(/^\/+/, '');
   }
 
+  /** 取「便签 PNG 默认导出方式」（save | copy | both），真源同为原生设置 app:getSettings。
+   *  非法/缺失值一律回退 'both'，避免旧配置里的脏值让导出按钮变成空操作。 */
+  async getExportAction(key, fallback) {
+    const valid = (v) => (v === 'save' || v === 'copy' || v === 'both') ? v : null;
+    try {
+      const r = await this.getAppSettings();
+      const s = (r && r.settings) ? r.settings : null;
+      const v = valid(s ? s[key] : null);
+      if (v) return v;
+    } catch (e) { /* 桥不可用 → 走下面的本地回退 */ }
+    return valid(window.SettingsModal && window.SettingsModal[key]) || valid(fallback) || 'both';
+  }
+
+  /** 同步版：菜单展开瞬间先用启动期快照给「默认」项打标，避免等一次 IPC 才显示。
+   *  打开菜单后再用 getExportAction 异步校正（原生设置可能在握手后被改动）。 */
+  getExportActionSync(key, fallback) {
+    const valid = (v) => (v === 'save' || v === 'copy' || v === 'both') ? v : null;
+    const s = this.getAppSettingsSync();
+    return valid(s && s[key]) || valid(window.SettingsModal && window.SettingsModal[key]) || valid(fallback) || 'both';
+  }
+
   /** 画中卷·打字机「一键全屏」：折叠/恢复 Obsidian 左右侧栏（宿主记录进入前状态，退出按原状恢复）。
    *  @returns {Promise<boolean>} 切换后是否处于全屏态 */
   async toggleZen() {

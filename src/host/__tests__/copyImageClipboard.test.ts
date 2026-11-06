@@ -31,17 +31,29 @@ function makeApi() {
 
 describe('AppAPI.copyImageToClipboard', () => {
   const g = globalThis as Record<string, unknown>;
-  const saved = { window: g.window, navigator: g.navigator, Blob: g.Blob };
+  const saved = new Map<string, PropertyDescriptor | undefined>();
+
+  /**
+   * Node 21+ 把 globalThis.navigator 定义成只读 getter（CI 用 Node 24），
+   * 直接 `g.navigator = {}` 会抛 TypeError: only a getter。
+   * 统一走 defineProperty 覆盖，并在 afterEach 还原原始描述符。
+   */
+  function setGlobal(name: string, value: unknown) {
+    if (!saved.has(name)) saved.set(name, Object.getOwnPropertyDescriptor(g, name));
+    Object.defineProperty(g, name, { value, configurable: true, writable: true, enumerable: true });
+  }
 
   beforeEach(() => {
-    g.window = {};
-    g.navigator = {};
+    setGlobal('window', {});
+    setGlobal('navigator', {});
   });
 
   afterEach(() => {
-    g.window = saved.window;
-    g.navigator = saved.navigator;
-    g.Blob = saved.Blob;
+    saved.forEach((desc, name) => {
+      if (desc) Object.defineProperty(g, name, desc);
+      else Reflect.deleteProperty(g, name);
+    });
+    saved.clear();
     vi.restoreAllMocks();
   });
 
@@ -61,15 +73,15 @@ describe('AppAPI.copyImageToClipboard', () => {
 
   it('Electron 模块缺失时退回 ClipboardItem', async () => {
     const write = vi.fn(async () => {});
-    g.navigator = { clipboard: { write } };
-    g.window = {
+    setGlobal('navigator', { clipboard: { write } });
+    setGlobal('window', {
       require: () => {
         throw new Error('require is not available');
       },
       ClipboardItem: class {
         constructor(public items: Record<string, Blob>) {}
       },
-    };
+    });
     const ctx = makeApi();
     await expect(ctx.copyImageToClipboard(B64)).resolves.toBe('clipboard-item');
     expect(write).toHaveBeenCalledTimes(1);
@@ -91,7 +103,7 @@ describe('AppAPI.copyImageToClipboard', () => {
       nativeImage: { createFromBuffer: (buf: Uint8Array) => ({ buf }) },
     });
     const write = vi.fn(async () => {});
-    g.navigator = { clipboard: { write } };
+    setGlobal('navigator', { clipboard: { write } });
     (g.window as Record<string, unknown>).ClipboardItem = class {
       constructor(public items: Record<string, Blob>) {}
     };

@@ -539,10 +539,10 @@ export class AppAPI {
         const bytes = base64ToArrayBuffer(base64);
         const win = typeof window !== 'undefined' ? window as unknown as Record<string, unknown> : undefined;
         // 1) Electron：Obsidian 桌面端可通过 require('electron') 取到 clipboard / nativeImage。
-        //    优先 window.require；部分版本只暴露全局 require，一并兜住。
+        //    桌面渲染进程里 window.require 即全局 require（同一对象），故只用 window：
+        //    审查规则禁止 globalThis，弹窗（popout）场景下也必须取当前窗口的全局。
         type RequireFn = (id: string) => unknown;
-        const globalReq = (globalThis as { require?: RequireFn }).require;
-        const req = (win?.require ?? globalReq) as RequireFn | undefined;
+        const req = win?.require as RequireFn | undefined;
         if (typeof req === 'function') {
           try {
             const electron = req('electron') as {
@@ -552,7 +552,7 @@ export class AppAPI {
             if (electron?.clipboard?.writeImage && electron?.nativeImage?.createFromBuffer) {
               // Electron 签名要求 Buffer；桌面端可用 Node Buffer，缺失时退回 Uint8Array
               type BufferLike = { from: (b: Uint8Array) => Uint8Array };
-              const NodeBuffer = (win?.Buffer ?? (globalThis as { Buffer?: BufferLike }).Buffer) as BufferLike | undefined;
+              const NodeBuffer = win?.Buffer as BufferLike | undefined;
               const buf = NodeBuffer ? NodeBuffer.from(new Uint8Array(bytes)) : new Uint8Array(bytes);
               const image = electron.nativeImage.createFromBuffer(buf) as {
                 isEmpty?: () => boolean;

@@ -18,6 +18,7 @@ export type ViewFileHost = Pick<HostContext,
     | 'openVaultFileByPath'
     | 'writeVaultText'
     | 'writeVaultBinary'
+    | 'copyImageToClipboard'
     >;
 
 /** 目标归档：打开独立归档页 */
@@ -109,6 +110,21 @@ const handleExportPng: RouteHandler<ViewFileHost> = async (ctx, id, payload) => 
     }
 };
 
+/** 便签 PNG 复制到系统剪贴板：校验同 exportPng，成功后回传实际通道 */
+const handleCopyPng: RouteHandler<ViewFileHost> = async (ctx, id, payload) => {
+    try {
+        const base64 = typeof payload.base64 === 'string' ? payload.base64 : '';
+        if (!base64) throw new Error('图片数据为空');
+        // 与 exportPng 同一上限，防止异常 payload 打满内存
+        if (base64.length > 8 * 1024 * 1024) throw new Error('图片数据过大');
+        if (!/^[A-Za-z0-9+/=]+$/.test(base64)) throw new Error('图片数据格式非法');
+        const via = await ctx.copyImageToClipboard(base64);
+        ctx.respond(id, { ok: true, via });
+    } catch (e) {
+        ctx.respondError(id, e instanceof Error ? e.message : '复制到剪贴板失败');
+    }
+};
+
 export const viewFileRoutes: Record<string, RouteHandler<ViewFileHost>> = {
     'app:openArchive': handleOpenArchive,
     'app:openScroll': handleOpenScroll,
@@ -118,4 +134,5 @@ export const viewFileRoutes: Record<string, RouteHandler<ViewFileHost>> = {
     'app:openFile': handleOpenFile,
     'app:exportMindmap': handleExportMindmap,
     'app:exportPng': handleExportPng,
+    'app:copyPng': handleCopyPng,
 };

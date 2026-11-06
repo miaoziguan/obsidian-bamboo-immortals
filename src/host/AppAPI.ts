@@ -525,6 +525,60 @@ export class AppAPI {
         await self.vaultAdapter.writeBinary(full, base64ToArrayBuffer(base64));
         return full;
       },
+      /**
+       * 把 base64 PNG 写入系统剪贴板。
+       *
+       * 分层降级（webapp 在 data: opaque origin 里 navigator.clipboard 不可用，
+       * 且异步 postMessage 到宿主后 user activation 可能已失效）：
+       *   1) Electron 主进程 clipboard.writeImage：不依赖 user activation，桌面端最稳；
+       *   2) 浏览器 ClipboardItem + navigator.clipboard.write：移动端/受限环境兜底。
+       * 全部不可用时抛错，由调用方给出可见提示，绝不静默失败。
+       * @returns 实际生效的通道名（electron / clipboard-item）
+       */
+      copyImageToClipboard: async (base64) => {
+        const bytes = base64ToArrayBuffer(base64);
+        const win = typeof window !== 'undefined' ? window as unknown as Record<string, unknown> : undefined;
+        // 1) Electron：Obsidian 桌面端可通过 require('electron') 取到 clipboard / nativeImage。
+        //    优先 window.require；部分版本只暴露全局 require，一并兜住。
+        type RequireFn = (id: string) => unknown;
+        const globalReq = (globalThis as { require?: RequireFn }).require;
+        const req = (win?.require ?? globalReq) as RequireFn | undefined;
+        if (typeof req === 'function') {
+          try {
+            const electron = req('electron') as {
+              clipboard?: { writeImage: (img: unknown) => void };
+              nativeImage?: { createFromBuffer: (buf: Uint8Array) => unknown };
+            };
+            if (electron?.clipboard?.writeImage && electron?.nativeImage?.createFromBuffer) {
+              // Electron 签名要求 Buffer；桌面端可用 Node Buffer，缺失时退回 Uint8Array
+              type BufferLike = { from: (b: Uint8Array) => Uint8Array };
+              const NodeBuffer = (win?.Buffer ?? (globalThis as { Buffer?: BufferLike }).Buffer) as BufferLike | undefined;
+              const buf = NodeBuffer ? NodeBuffer.from(new Uint8Array(bytes)) : new Uint8Array(bytes);
+              const image = electron.nativeImage.createFromBuffer(buf) as {
+                isEmpty?: () => boolean;
+              };
+              // 空图写进去等于静默失败，宁可降级也不写坏剪贴板
+              if (image && typeof image.isEmpty === 'function' && image.isEmpty()) {
+                throw new Error('图片解码为空');
+              }
+              electron.clipboard.writeImage(image);
+              return 'electron';
+            }
+          } catch {
+            // 桌面端 require 被限制 / 模块缺失 → 继续走浏览器通道
+          }
+        }
+        // 2) 标准 ClipboardItem（需 ClipboardItem 构造器 + clipboard.write）
+        const ClipboardItemCtor = win?.ClipboardItem as (new (items: Record<string, Blob>) => unknown) | undefined;
+        const clip = (typeof navigator !== 'undefined' ? navigator.clipboard : undefined) as
+          { write?: (items: unknown[]) => Promise<void> } | undefined;
+        if (!ClipboardItemCtor || typeof clip?.write !== 'function') {
+          throw new Error('当前环境不支持图片剪贴板');
+        }
+        const blob = new Blob([bytes], { type: 'image/png' });
+        await clip.write([new ClipboardItemCtor({ 'image/png': blob })]);
+        return 'clipboard-item';
+      },
       // 视图层注入的回调：用 getter 延迟读取，避免构造时快照成 undefined
       get moveToCenter() { return self.moveToCenter; },
       get moveToSidebar() { return self.moveToSidebar; },

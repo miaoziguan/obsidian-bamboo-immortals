@@ -11,12 +11,13 @@
  * 抽出本模块后两边都指向中立常量，依赖图为无环，方向也恢复自然。
  */
 
-/** 三类 Markdown 导出的默认目录（须与 DEFAULT_SETTINGS 保持一致） */
+/** 导出目录的默认值（三类 Markdown + 便签 PNG，须与 DEFAULT_SETTINGS 保持一致） */
 export const EXPORT_FOLDER_DEFAULTS: Record<
-  'mmExportFolder' | 'noteExportFolder' | 'writeExportFolder',
+  'mmExportFolder' | 'noteExportFolder' | 'writeExportFolder' | 'pngExportFolder',
   string
 > = {
   mmExportFolder: '思维子弹',
   noteExportFolder: '便签',
   writeExportFolder: 'MD可视化写作',
+  pngExportFolder: '便签',
 };

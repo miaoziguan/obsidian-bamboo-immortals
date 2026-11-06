@@ -158,6 +158,8 @@ export interface HostContext {
     writeVaultText(path: string, content: string): Promise<string>;
     /** 写入 vault 二进制（base64 解码后 writeBinary，自动逐级建目录），返回归一化后的完整路径 */
     writeVaultBinary(path: string, base64: string): Promise<string>;
+    /** 把 base64 PNG 复制到系统剪贴板；返回实际通道（electron / clipboard-item），全部不可用则抛错 */
+    copyImageToClipboard(base64: string): Promise<string>;
 
     // ---- 布局 / 视图移动（由视图层注入，可能未注入）----
     moveToCenter?: (mode?: string) => void | Promise<void>;

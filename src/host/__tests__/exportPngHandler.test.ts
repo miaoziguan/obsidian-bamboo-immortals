@@ -8,18 +8,20 @@ import { base64ToArrayBuffer, arrayBufferToBase64 } from '../../utils/base64';
  *  - base64 → ArrayBuffer 必须与正向编码互为逆操作（移动端无 Node Buffer）。
  */
 
-type Resp = { ok?: boolean; path?: string } | { error?: string };
+type Resp = { ok?: boolean; path?: string; via?: string } | { error?: string };
 
 function makeCtx() {
   const responses: { id: string; payload?: Resp }[] = [];
   const errors: { id: string; msg: string }[] = [];
   const writeVaultBinary = vi.fn(async (path: string) => path);
+  const copyImageToClipboard = vi.fn(async () => 'electron');
   const ctx = {
     respond: (id: string, payload: Resp) => responses.push({ id, payload }),
     respondError: (id: string, msg: string) => errors.push({ id, msg }),
     writeVaultBinary,
+    copyImageToClipboard,
   };
-  return { ctx, responses, errors, writeVaultBinary };
+  return { ctx, responses, errors, writeVaultBinary, copyImageToClipboard };
 }
 
 const call = (ctx: ReturnType<typeof makeCtx>['ctx'], payload: unknown) =>
@@ -95,6 +97,49 @@ describe('app:exportPng handler 校验', () => {
     c.writeVaultBinary.mockRejectedValueOnce(new Error('磁盘已满'));
     await call(c.ctx, { path: 'a.png', base64: VALID_B64 });
     expect(c.errors[0].msg).toBe('磁盘已满');
+  });
+});
+
+const callCopy = (ctx: ReturnType<typeof makeCtx>['ctx'], payload: unknown) =>
+  viewFileRoutes['app:copyPng'](ctx as never, 'req_1', payload as never);
+
+describe('app:copyPng handler', () => {
+  it('正常复制并回执实际通道', async () => {
+    const c = makeCtx();
+    await callCopy(c.ctx, { base64: VALID_B64 });
+    expect(c.errors).toHaveLength(0);
+    expect(c.copyImageToClipboard).toHaveBeenCalledWith(VALID_B64);
+    expect(c.responses[0].payload).toEqual({ ok: true, via: 'electron' });
+  });
+
+  it('base64 为空 / 非字符串 → 报错，不触碰剪贴板', async () => {
+    for (const b of [undefined, '', null, 123]) {
+      const c = makeCtx();
+      await callCopy(c.ctx, { base64: b });
+      expect(c.errors[0].msg).toBe('图片数据为空');
+      expect(c.copyImageToClipboard).not.toHaveBeenCalled();
+    }
+  });
+
+  it('base64 含非法字符 → 报错，不触碰剪贴板', async () => {
+    const c = makeCtx();
+    await callCopy(c.ctx, { base64: 'AAAA<script>' });
+    expect(c.errors[0].msg).toBe('图片数据格式非法');
+    expect(c.copyImageToClipboard).not.toHaveBeenCalled();
+  });
+
+  it('base64 超过 8MB → 报错', async () => {
+    const c = makeCtx();
+    await callCopy(c.ctx, { base64: 'A'.repeat(8 * 1024 * 1024 + 1) });
+    expect(c.errors[0].msg).toBe('图片数据过大');
+  });
+
+  it('剪贴板不可用时转成 respondError（不得静默成功）', async () => {
+    const c = makeCtx();
+    c.copyImageToClipboard.mockRejectedValueOnce(new Error('当前环境不支持图片剪贴板'));
+    await callCopy(c.ctx, { base64: VALID_B64 });
+    expect(c.responses).toHaveLength(0);
+    expect(c.errors[0].msg).toBe('当前环境不支持图片剪贴板');
   });
 });
 

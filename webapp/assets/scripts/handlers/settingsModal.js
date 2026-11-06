@@ -6,6 +6,7 @@ export const SettingsModal = {
     mmExportFolder: '思维子弹', // 思维子弹导出为 Markdown 的落库目录（Vault 相对路径，默认落到 vault 根）
     noteExportFolder: '便签',  // 便签导出为 Markdown 的落库目录（Vault 相对路径，默认落到 vault 根）
     writeExportFolder: 'MD可视化写作', // 写作模式（MD可视化写作）整篇快照导出为 Markdown 的落库目录（Vault 相对路径）
+    pngExportFolder: '便签', // 便签导出为 PNG 图片的落库目录（Vault 相对路径，默认落到 vault 根）
 
     // ---- Tab 内容渲染 ----
 

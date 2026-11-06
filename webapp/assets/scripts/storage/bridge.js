@@ -746,13 +746,28 @@ export class BridgeStorage {
     }
   }
 
+  /** 便签 PNG 复制到系统剪贴板：交由宿主写入（webapp 处于 data: opaque origin，
+   *  navigator.clipboard 不可用，且宿主可用 Electron 通道，不受 user activation 限制）。
+   *  @returns {Promise<{ok:boolean,via?:string}|null>} 桥不可用/超时返回 null（调用方提示手动复制）。 */
+  async copyPng(base64) {
+    const b = String(base64 || '');
+    if (!b) return null;
+    await this.ensureReady();
+    try {
+      return await this._send('app:copyPng', { base64: b });
+    } catch (e) {
+      console.warn('[Bridge] copyPng 不可用:', e && e.message);
+      return null;
+    }
+  }
+
   /**
    * 取「导出目录」：以**原生设置**（app:getSettings）为唯一真源。
    *
    * 背景（断链修复）：原生「导出」页是用户改目录的地方，但 webapp 侧的
    * window.SettingsModal.*ExportFolder 只在设置面板里被赋值才会更新（且其 init() 从未被调用），
    * 直接用该字段会永远停在硬编码默认值，导致改了原生设置、导出却仍落到默认目录。
-   * @param key 'mmExportFolder' | 'noteExportFolder' | 'writeExportFolder'
+   * @param key 'mmExportFolder' | 'noteExportFolder' | 'writeExportFolder' | 'pngExportFolder'
    */
   async getExportFolder(key, fallback) {
     try {

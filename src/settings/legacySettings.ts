@@ -48,7 +48,7 @@ export async function normalizeLegacySettings(app: App, settings: BambooReviewSe
     if (v && v !== 'typewriter-writing') { settings.writeStoreFolder = v; dirty = true; }
   }
 
-  // 2) 三个导出目录（Vault 相对路径）
+  // 2) 导出目录（Vault 相对路径，含便签 PNG）
   (Object.keys(EXPORT_FOLDER_DEFAULTS) as Array<keyof typeof EXPORT_FOLDER_DEFAULTS>).forEach((k) => {
     const cur = settings[k];
     if (cur && cur !== EXPORT_FOLDER_DEFAULTS[k]) return; // 已配置，跳过

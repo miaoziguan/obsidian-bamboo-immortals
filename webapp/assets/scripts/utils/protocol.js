@@ -44,6 +44,7 @@ export const APP_MESSAGE_TYPES = [
   'app:openFile',
   'app:exportMindmap',
   'app:exportPng',
+  'app:copyPng',
   'app:getHealthOverview',
   'app:getCultivationRealm',
   'app:getBambooCoinBalance',

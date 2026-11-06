@@ -147,6 +147,8 @@ export interface BambooReviewSettings {
   mmExportFolder: string;
   /** 便签导出为 Markdown 的落库目录（Vault 相对路径，默认 便签） */
   noteExportFolder: string;
+  /** 便签导出为 PNG 图片的落库目录（Vault 相对路径，默认 便签；与 Markdown 导出目录独立） */
+  pngExportFolder: string;
   /** 写作模式整篇快照导出为 Markdown 的落库目录（Vault 相对路径，默认 MD可视化写作） */
   writeExportFolder: string;
 }
@@ -190,6 +192,7 @@ export const DEFAULT_SETTINGS: BambooReviewSettings = {
   mmExportFolder: '思维子弹',
   noteExportFolder: '便签',
   writeExportFolder: 'MD可视化写作',
+  pngExportFolder: '便签',
 };
 
 /**
@@ -910,8 +913,23 @@ class ExportPage extends SettingPage {
             })
         );
     }
-  }
 
+    new Setting(containerEl).setName('便签 PNG 导出').setHeading();
+    new Setting(containerEl)
+      .setName('便签图片导出目录')
+      .setDesc('便签导出为 PNG 图片的落库位置（Vault 相对路径，如 画中卷/便签图片 或 便签）。与上面的 Markdown 目录相互独立；导出后会自动把图片复制到系统剪贴板。')
+      .addText((text) =>
+        text
+          .setPlaceholder('如 便签')
+          .setValue(this.plugin.settings.pngExportFolder || EXPORT_FOLDER_DEFAULTS.pngExportFolder)
+          .onChange(async (value) => {
+            const norm = (value || '').trim().replace(/\\/g, '/').replace(/^\/+/, '').replace(/\/+$/, '');
+            if (norm.includes('..')) return; // 禁止路径遍历，忽略非法输入
+            this.plugin.settings.pngExportFolder = norm || EXPORT_FOLDER_DEFAULTS.pngExportFolder;
+            scheduleSaveSettings(this.plugin);
+          })
+        );
+  }
 }
 
 /** 竹林咨询页（零依赖、独立隔离渲染） */

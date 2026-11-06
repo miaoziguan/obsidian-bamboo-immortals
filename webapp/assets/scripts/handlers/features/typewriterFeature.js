@@ -806,25 +806,31 @@ export const TypewriterFeature = {
       this._showScreenMsg('PNG 生成失败：' + ((e && e.message) || e), 2200);
       return;
     }
+    // 立刻发起剪贴板复制（与落盘并行）：宿主通道不依赖 user activation，
+    // 但越早发送越能保住手势窗口；失败只影响提示文案，不影响已落盘的 PNG。
+    const copyPromise = (sm && typeof sm.copyPng === 'function')
+      ? Promise.resolve(sm.copyPng(base64)).catch(() => null)
+      : Promise.resolve(null);
     const note = (this._notes || []).find((n) => n.id === card.dataset.id);
     const base = this._safeName(note && note.text ? note.text : '');
     const ts = this._stamp(new Date());
     const folder = (sm && typeof sm.getExportFolder === 'function')
-      ? await sm.getExportFolder('noteExportFolder', '便签')
-      : ((window.SettingsModal && window.SettingsModal.noteExportFolder) || '便签').replace(/^\/+/, '');
+      ? await sm.getExportFolder('pngExportFolder', '便签')
+      : ((window.SettingsModal && window.SettingsModal.pngExportFolder) || '便签').replace(/^\/+/, '');
     const path = folder + '/' + base + ' ' + ts + '.png';
-    const done = (p) => { this._showScreenMsg('已导出到：' + p, 1800); };
-    const fallback = () => {
-      ModeController.downloadPng(path, base64);
-      this._showScreenMsg('已通过浏览器下载保存 PNG', 1800);
-    };
-    if (sm && typeof sm.exportPng === 'function') {
-      Promise.resolve(sm.exportPng(path, base64)).then((r) => {
-        if (r && r.ok) done(path);
-        else fallback();
-      }).catch(() => fallback());
+    // 落盘与复制并行推进：剪贴板慢/超时不应拖慢保存
+    const savePromise = (sm && typeof sm.exportPng === 'function')
+      ? Promise.resolve(sm.exportPng(path, base64)).catch(() => null)
+      : Promise.resolve(null);
+    const [saved, copied] = await Promise.all([savePromise, copyPromise]);
+    const copiedOk = !!(copied && copied.ok);
+    // 复制失败要明说，避免用户以为剪贴板里已有图
+    const hint = copiedOk ? '，已复制到剪贴板' : '（剪贴板不可用，可手动复制）';
+    if (saved && saved.ok) {
+      this._showScreenMsg('已导出到：' + path + hint, 2200);
     } else {
-      fallback();
+      ModeController.downloadPng(path, base64);
+      this._showScreenMsg('已通过浏览器下载保存 PNG' + hint, 2200);
     }
   },
 

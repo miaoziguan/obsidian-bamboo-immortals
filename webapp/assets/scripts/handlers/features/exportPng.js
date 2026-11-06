@@ -138,6 +138,47 @@ function hostClasses() {
   return Array.from(host.classList).filter((c) => c !== 'bamboo-shadow-host').join(' ');
 }
 
+/**
+ * 测量附着贴纸溢出卡片边界的量。
+ *
+ * 贴纸是卡片子节点，用 left:%/top:em/width:% 本地定位，且可带旋转/翻转 transform，
+ * 因此允许合法溢出卡片四周（notes.css 明确不给 .tw-card 加 overflow:hidden）。
+ * 导出画布原先固定为卡片尺寸，会把溢出的贴纸切掉；这里用实测包围盒算出四边扩展量。
+ *
+ * 测量必须把克隆树挂进 shadowRoot（样式在 shadowRoot 内才生效），且用
+ * getBoundingClientRect 才能包含贴纸自身的 transform。临时容器 visibility:hidden
+ * 仍参与布局、不影响真实画布。
+ */
+function measureStickerOverflow(wrap, clone) {
+  const stickers = clone.querySelectorAll('.bm-sticker');
+  const zero = { left: 0, top: 0, right: 0, bottom: 0 };
+  if (!stickers.length) return zero;
+  const mount = getShadowRoot() || document.body;
+  const probe = document.createElement('div');
+  probe.style.cssText = 'position:fixed;left:-99999px;top:0;visibility:hidden;pointer-events:none;';
+  probe.appendChild(wrap);
+  mount.appendChild(probe);
+  try {
+    const base = clone.getBoundingClientRect();
+    let l = 0, t = 0, r = 0, b = 0;
+    stickers.forEach((el) => {
+      const q = el.getBoundingClientRect();
+      if (!q.width && !q.height) return;   // 未布局（如测试环境）→ 跳过
+      l = Math.max(l, base.left - q.left);
+      t = Math.max(t, base.top - q.top);
+      r = Math.max(r, q.right - base.right);
+      b = Math.max(b, q.bottom - base.bottom);
+    });
+    // 仅在确有溢出时扩展，另留 8px 容纳 drop-shadow / 抗锯齿
+    const pad = (v) => (v > 0 ? Math.ceil(v) + 8 : 0);
+    return { left: pad(l), top: pad(t), right: pad(r), bottom: pad(b) };
+  } catch (e) {
+    return zero;   // 测量不可用则退回原尺寸，不阻断导出
+  } finally {
+    probe.remove();
+  }
+}
+
 function cloneForExport(card) {
   const w = card.offsetWidth || Math.round(card.getBoundingClientRect().width);
   const h = card.offsetHeight || Math.round(card.getBoundingClientRect().height);
@@ -150,8 +191,6 @@ function cloneForExport(card) {
     REMOVE_CLASSES.forEach((c) => el.classList.remove(c));
   });
   // 扶正导出：归零位移与旋转，避免包围盒裁切
-  clone.style.left = '0px';
-  clone.style.top = '0px';
   clone.style.removeProperty('--tw-drag-x');
   clone.style.removeProperty('--tw-drag-y');
   clone.style.setProperty('--tw-card-rot', '0deg');
@@ -159,9 +198,18 @@ function cloneForExport(card) {
   // 宽度规则挂在 :where(.tw-canvas.tw-mode-notes) 上，容器不可省
   const wrap = document.createElement('div');
   wrap.className = 'tw-canvas tw-mode-notes';
-  wrap.style.cssText = 'position:relative;width:' + w + 'px;height:' + h + 'px;overflow:hidden;--tw-scale:1;';
+  wrap.style.cssText = 'position:relative;width:' + w + 'px;height:' + h + 'px;overflow:visible;--tw-scale:1;';
   wrap.appendChild(clone);
-  return { wrap, width: w, height: h };
+
+  // 先以卡片尺寸布局一次，测出贴纸溢出量，再扩展画布并平移卡片
+  const pad = measureStickerOverflow(wrap, clone);
+  const width = w + pad.left + pad.right;
+  const height = h + pad.top + pad.bottom;
+  clone.style.left = pad.left + 'px';
+  clone.style.top = pad.top + 'px';
+  wrap.style.width = width + 'px';
+  wrap.style.height = height + 'px';
+  return { wrap, width, height, pad };
 }
 
 /** data: SVG → Image（用 onload + 超时，不依赖 Image.decode，老 WebView 可能没有） */
@@ -201,7 +249,7 @@ export const exportCardPng = async (card, opts) => {
   // 「必须透明：背景交给设计图，别盖掉它」），铺白底会盖掉设计意图。
   const inner =
     '<div xmlns="http://www.w3.org/1999/xhtml" class="bm-export-host ' + esc(hostCls) + '" ' +
-    'style="width:' + cw + 'px;height:' + ch + 'px;position:relative;background:transparent;overflow:hidden">' +
+    'style="width:' + cw + 'px;height:' + ch + 'px;position:relative;background:transparent;overflow:visible">' +
     '<div style="width:' + width + 'px;height:' + height + 'px;position:absolute;left:0;top:0;' +
     'transform:scale(' + scale + ');transform-origin:0 0">' +
     '<style>' + esc(cssText) + '</style>' + xhtml +

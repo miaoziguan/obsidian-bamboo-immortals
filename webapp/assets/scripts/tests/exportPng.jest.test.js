@@ -153,6 +153,45 @@ describe('cloneForExport —— 剔除交互控件、扶正、保留内容', () 
     expect(width).toBe(340);
     expect(height).toBe(341);
   });
+
+  test('无贴纸时不扩展画布（普通便签导出尺寸不变）', () => {
+    const card = document.createElement('div');
+    card.className = 'tw-card';
+    Object.defineProperty(card, 'offsetWidth', { value: 340, configurable: true });
+    Object.defineProperty(card, 'offsetHeight', { value: 341, configurable: true });
+    card.innerHTML = '<div class="tw-card-main"><div class="tw-card-text">文字</div></div>';
+    const { width, height, pad } = cloneForExport(card);
+    expect(width).toBe(340);
+    expect(height).toBe(341);
+    expect(pad).toEqual({ left: 0, top: 0, right: 0, bottom: 0 });
+  });
+
+  test('贴纸溢出边界时按实测包围盒扩展画布并平移卡片', () => {
+    const orig = HTMLElement.prototype.getBoundingClientRect;
+    // 卡片 340x341 位于原点；贴纸右边界 420（溢出 80px）、上边界 -30（溢出 30px）
+    HTMLElement.prototype.getBoundingClientRect = function () {
+      if (this.classList.contains('bm-sticker')) {
+        return { left: 260, top: -30, right: 420, bottom: 200, width: 160, height: 230, x: 260, y: -30 };
+      }
+      if (this.classList.contains('tw-card')) {
+        return { left: 0, top: 0, right: 340, bottom: 341, width: 340, height: 341, x: 0, y: 0 };
+      }
+      return { left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0, x: 0, y: 0 };
+    };
+    try {
+      const { wrap, width, height, pad } = cloneForExport(makeCard());
+      // 溢出量 + 8px 余量：右 80+8=88，上 30+8=38
+      expect(pad).toEqual({ left: 0, top: 38, right: 88, bottom: 0 });
+      expect(width).toBe(428);
+      expect(height).toBe(379);
+      const card = wrap.querySelector('.tw-card');
+      expect(card.style.left).toBe('0px');
+      expect(card.style.top).toBe('38px');
+      expect(wrap.style.overflow).toBe('visible');
+    } finally {
+      HTMLElement.prototype.getBoundingClientRect = orig;
+    }
+  });
 });
 
 describe('exportCardPng —— SVG 结构（H 2x 写法）', () => {

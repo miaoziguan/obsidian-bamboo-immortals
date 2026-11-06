@@ -209,6 +209,44 @@ describe('exportCardPng —— SVG 结构（H 2x 写法）', () => {
     expect(svg).toContain('bm-sticker');
   });
 
+  test('宿主页级背景被隔离（:host 改写后不带进画布底色）', async () => {
+    // 复现真实环境：base.css 有 :host::after 整页渐变、:host::before 光影、
+    // :host{background:var(--surface-solid)}，改写后都会命中 .bm-export-host
+    const hostCss = [
+      ':host::after{content:"";position:fixed;inset:0;background:linear-gradient(165deg,#1c311f,#101e12)}',
+      ':host::before{content:"";position:fixed;inset:0;background:radial-gradient(circle,#fff,transparent)}',
+      ':host{background:#1c2a1e}',
+    ].join('\n');
+    const prev = window.__bambooShadowRoot;
+    const host = document.createElement('div');
+    host.id = 'bamboo-shadow-host';
+    host.className = 'bamboo-shadow-host dark';
+    document.body.appendChild(host);
+    const sr = host.attachShadow({ mode: 'open' });
+    const st = document.createElement('style');
+    st.textContent = hostCss;
+    sr.appendChild(st);
+    window.__bambooShadowRoot = sr;
+    try {
+      const { exportCardPng } = load({ getShadowRoot: () => sr });
+      await exportCardPng(makeCard(), { scale: 2 });
+      const svg = decodeURIComponent(capturedSrc.replace(/^data:image\/svg\+xml;charset=utf-8,/, ''));
+      // :host 必须被改写（否则暗色文字色失效），且末尾有隔离规则压过页级背景
+      expect(svg).not.toContain(':host::after');
+      expect(svg).toContain('.bm-export-host::after{content');
+      const isolate = svg.indexOf('.bm-export-host::before, .bm-export-host::after');
+      const rewritten = svg.indexOf('.bm-export-host::after{content');
+      expect(isolate).toBeGreaterThan(-1);
+      // 隔离规则在收集到的 CSS 之后，保证层叠优先
+      expect(isolate).toBeGreaterThan(rewritten);
+      expect(svg).toContain('content: none !important');
+      expect(svg).toContain('background: transparent !important');
+    } finally {
+      window.__bambooShadowRoot = prev;
+      host.remove();
+    }
+  });
+
   test('1x 不放大但仍无 viewBox', async () => {
     const { exportCardPng } = load();
     const out = await exportCardPng(makeCard(), { scale: 1 });

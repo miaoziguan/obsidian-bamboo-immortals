@@ -21,6 +21,38 @@ const REMOVE_CLASSES = [
   'tw-tools-below', 'tw-tools-raised', 'is-link-target',
 ];
 
+/**
+ * 导出容器隔离规则（追加在收集到的 CSS 末尾）。
+ *
+ * 背景：base.css 有宿主页级背景 —— `:host::after` 整页主题渐变、
+ * `:host::before` 光影渐变、`:host { background: var(--surface-solid) }`。
+ * rewriteHostSelectors 会把它们改写成 `.bm-export-host::after / ::before /
+ * .bm-export-host`，而导出容器正好带这个 class，于是画布的深绿底色被画进 PNG。
+ * 这里只清「导出容器自身」的背景与伪元素，不碰后代，卡片/皮肤样式完全不受影响。
+ * !important 用于压过 `.bm-export-host.dark` 这类更高特异性的宿主规则。
+ */
+const EXPORT_ISOLATE_CSS = [
+  '.bm-export-host {',
+  '  background: transparent !important;',
+  '  background-image: none !important;',
+  '  box-shadow: none !important;',
+  '  border: 0 !important;',
+  '  outline: none !important;',
+  '  min-height: 0 !important;',
+  '  padding: 0 !important;',
+  '  margin: 0 !important;',
+  '}',
+  '.bm-export-host::before, .bm-export-host::after {',
+  '  content: none !important;',
+  '  display: none !important;',
+  '  background: transparent !important;',
+  '  background-image: none !important;',
+  '  box-shadow: none !important;',
+  '  border: 0 !important;',
+  '  opacity: 0 !important;',
+  '}',
+].join('\n');
+
 /** XML 文本里只需转义这三个字符（CSS 里的 > 子选择器不能被吃掉） */
 function esc(s) {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -156,7 +188,8 @@ export const exportCardPng = async (card, opts) => {
   if (!card) throw new Error('未找到便签');
   const scale = (opts && opts.scale) || 2;
   const { wrap, width, height } = cloneForExport(card);
-  const cssText = rewriteHostSelectors(collectStyles());
+  // 隔离规则必须追加在末尾：压过 :host 改写后落在导出容器上的页级背景
+  const cssText = rewriteHostSelectors(collectStyles()) + '\n' + EXPORT_ISOLATE_CSS;
   const hostCls = hostClasses();
   const xhtml = new XMLSerializer().serializeToString(wrap);
   const cw = Math.round(width * scale);

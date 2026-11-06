@@ -106,4 +106,32 @@ describe('normalizeLegacySettings：旧散装键 → 原生设置', () => {
     expect(changed).toBe(false);
     expect(s.writeStoreFolder).toBe('typewriter-writing');
   });
+
+  it('迁移不覆盖用户已配置的 PNG 导出目录', async () => {
+    const s = { ...baseSettings(), pngExportFolder: '画中卷/便签图片' };
+    const legacy = JSON.stringify({ noteExportFolder: '旧便签目录' });
+    await normalizeLegacySettings(makeApp(legacy), s);
+    // 其它键照常迁移，PNG 目录保持用户值
+    expect(s.noteExportFolder).toBe('旧便签目录');
+    expect(s.pngExportFolder).toBe('画中卷/便签图片');
+  });
+});
+
+describe('导出目录默认值一致性', () => {
+  it('EXPORT_FOLDER_DEFAULTS 与 DEFAULT_SETTINGS 逐项一致（含 pngExportFolder）', async () => {
+    // DEFAULT_SETTINGS 所在模块依赖 obsidian 运行时，这里只读源码文本做漂移比对，
+    // 因为两处默认值分居两个文件、仅靠注释约定「须保持一致」。
+    const { readFileSync } = await import('node:fs');
+    const src = readFileSync(new URL('../PluginSettings.ts', import.meta.url), 'utf8');
+    const entries = Object.entries(EXPORT_FOLDER_DEFAULTS);
+    expect(entries.map(([k]) => k)).toContain('pngExportFolder');
+    for (const [key, value] of entries) {
+      expect(src).toContain(`${key}: '${value}'`);
+    }
+  });
+
+  it('便签 PNG 目录与 Markdown 目录是两个独立键', () => {
+    expect(EXPORT_FOLDER_DEFAULTS.pngExportFolder).toBe('便签');
+    expect('noteExportFolder' in EXPORT_FOLDER_DEFAULTS).toBe(true);
+  });
 });

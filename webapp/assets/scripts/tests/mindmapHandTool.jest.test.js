@@ -147,6 +147,11 @@ describe('备注卡片：多实例（可同时展开多个节点笔记）', () =
       _makeNoteCard: MindmapFeature._makeNoteCard,
       _isNoteOpen: MindmapFeature._isNoteOpen,
       _openNoteEditor: MindmapFeature._openNoteEditor,
+      // _openNoteEditor 现在把「建卡+显示」下沉到 _showNoteCard（供「一键展开全部」复用），
+      // 后者会重挂被剔除的节点、并回头同步缩放条高亮，故这里一并挂上。
+      _showNoteCard: MindmapFeature._showNoteCard,
+      _mountNode: jest.fn(),
+      _syncZoom: MindmapFeature._syncZoom,
     };
   }
 

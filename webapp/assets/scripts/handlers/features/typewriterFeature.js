@@ -87,6 +87,9 @@ export const TypewriterFeature = {
     this._paperIdx = 0;
     this._mode = 'notes';              // 红色齿轮旋钮三档权威状态（见 _setMode）
     this._layoutMode = 'flow';         // 写作档排版档位：'flow' 顺流竖排 / 'acts' 分幕（点 #twArrange 轮换）
+    // 写作档「层级配色」开关：默认关（新增观感需用户显式打开，与博客模块的流光/竖纹同策略）。
+    // 只影响呈现（canvas 上的 .tw-lv-tint class），不动卡片数据模型 —— level 本就在模型里。
+    this._levelTint = false;
     this._switching = false;           // 切档重入锁
     this._pendingModeDir = 0;          // 切档期间连拨的累积净步数：切完后接续，避免快速拨动丢档
     this._levelMenu = null;            // 类型选择浮层（全画布共用一个，按需创建）
@@ -265,6 +268,9 @@ export const TypewriterFeature = {
       this._cullRo.observe(this._canvas);
     }
     this._mountZoomUI();
+    // 层级配色开关：异步读回用户上次的选择（默认关，失败静默）。
+    // 放在 _mountZoomUI 之后：读回后会调 _zoomUI.sync() 点亮按钮高亮。
+    this._loadLevelTint();
     this._initMaterialMarket();   // 素材市场：挂抽屉 + 画布 drop 落卡 + 绑定缩放条市场按钮
   },
 
@@ -345,6 +351,10 @@ export const TypewriterFeature = {
       // 开启后单指拖空白/拖卡片都=平移（CanvasGestures 的 panIntent），关闭恢复框选/拖卡。
       onHand: () => ctrl._toggleHand(),
       isHandActive: () => !!(ctrl._hand && ctrl._hand.state && ctrl._hand.state.handTool),
+      // 层级配色开关（写作档专属）：按卡片级别铺不同底色。
+      // 与抓手键同一套 adapter 协议 —— onTint 存在才生成按钮，isTintActive 供 sync 高亮。
+      onTint: () => ctrl._toggleLevelTint(),
+      isTintActive: () => !!ctrl._levelTint,
     });
   },
 
@@ -354,6 +364,40 @@ export const TypewriterFeature = {
     const on = this._hand.toggleHand();
     if (this._zoomUI && typeof this._zoomUI.sync === 'function') this._zoomUI.sync();
     this._showScreenMsg(on ? '抓手：单指拖动画布平移' : '已退出抓手（单指拖空白恢复框选）', 1200);
+  },
+
+  /** 层级配色开关（写作档专属）：切换 canvas 上的 .tw-lv-tint，持久化到设置。 */
+  _toggleLevelTint() {
+    this._levelTint = !this._levelTint;
+    this._applyLevelTint();
+    this._persistLevelTint();
+    if (this._zoomUI && typeof this._zoomUI.sync === 'function') this._zoomUI.sync();
+    this._showScreenMsg(this._levelTint ? '层级配色：已按卡片级别铺底色' : '层级配色：已关闭', 1200);
+  },
+
+  /** 把开关状态落到 canvas 上（只呈现，不动模型）。幂等：状态未变也安全。 */
+  _applyLevelTint() {
+    if (!this._canvas) return;
+    this._canvas.classList.toggle('tw-lv-tint', !!this._levelTint);
+  },
+
+  /** 持久化：沿用 typewriter:mode 的同一条通道，best-effort，失败静默不影响切换。 */
+  async _persistLevelTint() {
+    const sm = (typeof window !== 'undefined') ? window.storageManager : null;
+    if (!sm || typeof sm.putSetting !== 'function') return;
+    try { await sm.putSetting('typewriter:levelTint', !!this._levelTint); } catch (_) { /* 忽略 */ }
+  },
+
+  /** 读回开关状态（mount 时调用）：默认关，只有显式 true 才打开。 */
+  async _loadLevelTint() {
+    const sm = (typeof window !== 'undefined') ? window.storageManager : null;
+    if (!sm || typeof sm.getSetting !== 'function') return;
+    try {
+      const v = await sm.getSetting('typewriter:levelTint');
+      this._levelTint = v === true;
+      this._applyLevelTint();
+      if (this._zoomUI && typeof this._zoomUI.sync === 'function') this._zoomUI.sync();
+    } catch (_) { /* 忽略 */ }
   },
 
   /** 缩放变化后刷新外围圆钮尺寸（圆钮不应随画布一起变大变小） */

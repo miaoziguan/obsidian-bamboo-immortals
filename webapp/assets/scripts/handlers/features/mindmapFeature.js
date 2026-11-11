@@ -206,6 +206,9 @@ export const MindmapFeature = {
       // 抓手（对齐 Excalidraw 手工具，移动端替代双指捏合）：复用桌面端已有的 handTool 机制
       onHand: () => mm._toggleHand(),
       isHandActive: () => !!(mm._hand && mm._hand.state && mm._hand.state.handTool),
+      // 全部节点笔记：一键展开/收起（见 _toggleAllNoteEditors）
+      onToggleAllNotes: () => mm._toggleAllNoteEditors(),
+      isAllNotesOpen: () => mm._isAllNotesOpen(),
     });
   },
 
@@ -348,12 +351,20 @@ export const MindmapFeature = {
    *  所有坐标都相对画布层（this._el）换算，平移/缩放/拖动后重算即跟随。 */
   _positionNoteCard(id) {
     const card = this._noteCards && this._noteCards.get(id);
-    if (!card || !card.box || card.box.hidden) return;
+    if (!card || !card.box) return;
     const box = card.box;
     const el = this._els.get(id);
     if (!el) return;
     const lr = this._el.getBoundingClientRect();
     const r = el.getBoundingClientRect();
+    // 节点整颗在视野外 → 卡片只隐藏、不卸载：逻辑上仍算「已展开」（_isNoteOpen 看 card.open），
+    // 平移回来立刻重现。不能只在 x 上夹紧 —— 那会把视野外的卡片按到画布左右边缘，
+    // 看起来像一堆无主笔记贴在边框上（「一键展开全部」时的典型观感问题）。
+    if (r.right < lr.left || r.left > lr.right || r.bottom < lr.top || r.top > lr.bottom) {
+      box.hidden = true;
+      return;
+    }
+    box.hidden = false;
     const lw = this._el.clientWidth || 0;
     const lh = this._el.clientHeight || 0;
     // 卡片宽度：跟随节点宽度（不随缩放过小），夹在 240~320，且不超过画布
@@ -381,22 +392,41 @@ export const MindmapFeature = {
   _openNoteEditor(id) {
     const nid = id || this._selId;
     if (!this._noteCards || !nid) return;
-    const el = this._els.get(nid);
-    if (!el) return;
     if (this._isNoteOpen(nid)) { this._closeNoteEditor(nid); return; }   // toggle
+    this._showNoteCard(nid, { focus: true });
+  },
+
+  /** 真正建卡并显示（不做 toggle）。
+   *  focus=false 专给「一键展开全部」用：批量打开时逐张抢焦点会让光标来回跳，
+   *  最后落点还会变成随机某个节点的末尾 —— 那不是用户想要的。 */
+  _showNoteCard(nid, opts) {
+    if (!this._noteCards || !nid) return false;
+    // 被视口剔除的节点 DOM 不在 _els 里：先重挂，否则卡片无处定位（会落在 0,0）
+    if (!this._els.get(nid)) {
+      const node = this._nodeById(nid);
+      if (!node) return false;                 // 节点已被删除
+      this._mountNode(node, true);
+    }
+    const el = this._els.get(nid);
+    if (!el) return false;
     let card = this._noteCards.get(nid);
     if (!card) card = this._makeNoteCard(nid);
     const n = this._nodeById(nid);
     card.input.value = (n && n.note) || '';
+    card.open = true;
     card.box.hidden = false;
     if (el._noteMark) { el._noteMark.classList.add('is-open'); el._noteMark.title = '收起节点笔记'; }
     this._autoGrowNote(card.input);
     this._positionNoteCard(nid);
-    card.input.focus();
-    try {
-      const len = card.input.value.length;
-      card.input.setSelectionRange(len, len);   // 光标放到末尾（编辑已有备注不覆盖）
-    } catch (_) { /* 选区失败不影响编辑 */ }
+    if (opts && opts.focus) {
+      card.input.focus();
+      try {
+        const len = card.input.value.length;
+        card.input.setSelectionRange(len, len);   // 光标放到末尾（编辑已有备注不覆盖）
+      } catch (_) { /* 选区失败不影响编辑 */ }
+    }
+    this._syncZoom();          // 缩放条上的「全部笔记」键高亮要跟着变
+    return true;
   },
 
   /** 收起某个节点的备注卡片：有改动则写回（可撤销），并刷新节点标记 / 工具条。
@@ -408,6 +438,9 @@ export const MindmapFeature = {
     const next = card.input ? card.input.value : '';
     this._noteCards.delete(id);
     if (box && box.parentNode) box.parentNode.removeChild(box);
+    // 开合状态已变（单张收起也要让缩放条的「全部笔记」键灭掉）：
+    // 放在 delete 之后、各 early return 之前，撤销/删节点等丢弃路径同样能同步到。
+    this._syncZoom();
     if (this._noteCards.size === 0) this._noteDragKeep = false;
     const markEl = this._els.get(id);
     if (markEl && markEl._noteMark) { markEl._noteMark.classList.remove('is-open'); markEl._noteMark.title = '展开节点笔记'; }
@@ -430,7 +463,7 @@ export const MindmapFeature = {
    *  与 _closeNoteEditor 的写回逻辑一致，仅不隐藏卡片。 */
   _persistNote(id) {
     const card = this._noteCards && this._noteCards.get(id);
-    if (!card || !card.box || card.box.hidden) return;
+    if (!card || !card.open) return;     // 逻辑态判定：视野外隐藏中的卡片也要能兜底保存
     const next = card.input ? card.input.value : '';
     const n = this._nodeById(id);
     if (!n) return;                       // 节点已被删除：不写回
@@ -449,7 +482,7 @@ export const MindmapFeature = {
   /** 是否已展开某节点的备注卡片 */
   _isNoteOpen(id) {
     const card = this._noteCards && this._noteCards.get(id);
-    return !!(card && card.box && !card.box.hidden);
+    return !!(card && card.open);     // 逻辑态：视野外被临时隐藏的卡片仍算展开
   },
 
   /** 关闭全部备注卡片（切组/撤销/卸载前调用，避免卡片指向已消失的节点） */
@@ -462,6 +495,77 @@ export const MindmapFeature = {
   _persistAllNotes() {
     if (!this._noteCards || !this._noteCards.size) return;
     Array.from(this._noteCards.keys()).forEach((id) => this._persistNote(id));
+  },
+
+  /** 「全部节点笔记」一次最多展开的卡片数。
+   *  每张卡都是 textarea + 绝对定位，且平移/缩放时逐张重定位（_applyView 里 O(张数) 次 rect 读），
+   *  一次上百张会明显拖慢平移。超限时按「从上到下、从左到右」取前 N 张，行为可预期。 */
+  NOTE_BULK_MAX: 40,
+
+  /** 可展开的笔记目标：有笔记的节点，按画布坐标从上到下、从左到右，并受上限截断。
+   *  「展开」与「是否已全部展开」共用这一份口径，避免两边对不上导致按钮永远不亮。 */
+  _noteTargets() {
+    return (this._nodes || [])
+      .filter((n) => n && n.note && String(n.note).trim())
+      .sort((a, b) => (a.y - b.y) || (a.x - b.x))
+      .slice(0, this.NOTE_BULK_MAX);
+  },
+
+  /** 一键展开/收起全部节点笔记（缩放条上的入口）。
+   *  有关着的卡片 → 全收；一张没开 → 全部展开。语义取「再点一次就是关」，
+   *  不做「补齐剩下的」这种半开半合的状态 —— 开关类按钮必须一眼能预测结果。 */
+  _toggleAllNoteEditors() {
+    if (!this._noteCards) return;
+    if (this._noteCards.size) {
+      this._closeAllNoteEditors();
+      this._msg('已收起全部节点笔记');
+      this._syncZoom();
+      return;
+    }
+    const opened = this._openAllNoteEditors();
+    if (!opened) { this._msg('还没有节点笔记：选中子弹后按工具条的「备注」键即可写'); return; }
+    // 超上限时不能只说「已展开 40 张」—— 用户会以为剩下的笔记是空的
+    const total = this._countNodesWithNote();
+    this._msg(total > this.NOTE_BULK_MAX
+      ? '已展开 ' + opened + ' 张（共 ' + total + ' 张，上限 ' + this.NOTE_BULK_MAX + ' 张）'
+      : '已展开 ' + opened + ' 张节点笔记');
+    this._syncZoom();
+  },
+
+  /** 展开所有带笔记的节点（不抢焦点）。返回实际展开张数。 */
+  _openAllNoteEditors() {
+    if (!this._noteCards) return 0;
+    let opened = 0;
+    this._noteTargets().forEach((n) => {
+      if (this._isNoteOpen(n.id)) return;
+      if (this._showNoteCard(n.id, { focus: false })) opened++;
+    });
+    return opened;
+  },
+
+  /** 是否「全部笔记都已展开」——缩放条按钮的高亮依据。
+   *  用「已开张数 ≥ min(有笔记的节点数, 上限)」判定：不排序、不建数组，
+   *  因为这个函数会被 sync() 在平移的每一帧调用。 */
+  _isAllNotesOpen() {
+    const open = this._noteCards ? this._noteCards.size : 0;
+    if (!open) return false;
+    return open >= Math.min(this._countNodesWithNote(), this.NOTE_BULK_MAX);
+  },
+
+  /** 有笔记的节点数（不排序、不建数组：sync() 每帧都会问一次） */
+  _countNodesWithNote() {
+    let c = 0;
+    const nodes = this._nodes || [];
+    for (let i = 0; i < nodes.length; i++) {
+      const n = nodes[i];
+      if (n && n.note && String(n.note).trim()) c++;
+    }
+    return c;
+  },
+
+  /** 缩放条高亮同步（缩放条可能还没挂载，故处处判空） */
+  _syncZoom() {
+    if (this._zoomUI && typeof this._zoomUI.sync === 'function') this._zoomUI.sync();
   },
 
   /** 创建某个节点的备注卡片 DOM（按需；关闭时移除） */
@@ -487,7 +591,10 @@ export const MindmapFeature = {
       if (this._noteDragKeep) return;   // 正在拖动这张卡片所属的节点：保持展开，卡片跟手移动
       this._persistNote(id);
     });
-    const card = { box, input };
+    // open 是「逻辑上已展开」，box.hidden 只表示「节点暂时不在视野内」（_positionNoteCard 控制）。
+    // 两者必须分开：只用一个 hidden 的话，视野外被隐藏的卡片会连「是否展开」一起丢掉 ——
+    // 平移回来不重现、pin 集也不钉它，节点被剔除后卡片就永远定位到 0,0。
+    const card = { box, input, open: true };
     this._noteCards.set(id, card);
     return card;
   },

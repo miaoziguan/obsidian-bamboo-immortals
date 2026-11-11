@@ -666,6 +666,10 @@ export const ModeController = {
     // 素材市场按钮：仅「拥有装饰物（贴纸）」的档位可见 —— 目前只有便签档
     const mktBtn = root.querySelector('.tw-zoom-market');
     if (mktBtn) mktBtn.hidden = !P.ownsStickers;
+    // 层级配色按钮：只有写作档有意义（level 是写作档的结构字段）。
+    // 便签档虽也存 level，但卡片不按级别读；导图根本没有 level —— 一律隐藏，避免误点无反馈。
+    const tintBtn = root.querySelector('.tw-zoom-tint');
+    if (tintBtn) tintBtn.hidden = P.id !== 'write';
     // 档位专属装饰层（贴纸属于便签档）：非便签档整层隐藏 ——
     // 从渲染树上保证不串档，而不是只靠「逐个摘除」（P1）。
     if (typeof ctrl._syncDecoLayer === 'function') ctrl._syncDecoLayer();

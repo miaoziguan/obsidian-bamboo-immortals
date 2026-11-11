@@ -43,7 +43,26 @@ export const CanvasZoomUI = {
     const handBtn = (typeof adapter.onHand === 'function')
       ? '<button type="button" class="tw-zoom-btn tw-zoom-hand" data-act="hand" title="抓手：拖动画布平移（移动端替代双指捏合）" aria-label="抓手 / 平移画布"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/><path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"/><path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/></svg></button>'
       : '';
-    bar.innerHTML = handBtn + `
+    // 层级配色开关（写作档专属）：所有层级卡按 data-level 铺低饱和底色。
+    // 只有 adapter 提供 onTint 时才生成 —— 便签/导图不传 → 不出现；即便出现，
+    // applyModeChrome 也会按档位 hidden（写作档才露出），避免「模式开关混在缩放组里」。
+    // 图标：六段色环 —— 六段分别是色板里的 h1/h3/h4/h5/h6/quote 色相，直接用业务色板绘制。
+    // 为什么不是「三条递减横线」：那读起来是「列表/对齐」，说不到「颜色」上；用户明确要求图标
+    // 要跟配色对得上。色环的六段就是卡面实际会出现的色相，图标即功能预览。
+    // 描边 2（其余图标 1.7）——色环是多段共圆，笔画太细会在 18px 上被切成虚线。
+    // stroke 用 var(--bm-tint-*) 而非 currentColor：暗色块换了提亮版色板，图标自动跟随。
+    const tintBtn = (typeof adapter.onTint === 'function')
+      ? '<button type="button" class="tw-zoom-btn tw-zoom-tint" data-act="tint" title="层级配色：按卡片级别（H1–H6 / 引用 / 列表）铺不同底色（默认关）" aria-label="层级配色开关"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke-width="2" stroke-linecap="round"><path d="M19.78 12.54A7.8 7.8 0 0 1 16.36 18.47" stroke="var(--bm-tint-h1)"/><path d="M15.42 19.01A7.8 7.8 0 0 1 8.58 19.01" stroke="var(--bm-tint-h3)"/><path d="M7.64 18.47A7.8 7.8 0 0 1 4.22 12.54" stroke="var(--bm-tint-h4)"/><path d="M4.22 11.46A7.8 7.8 0 0 1 7.64 5.53" stroke="var(--bm-tint-h5)"/><path d="M8.58 4.99A7.8 7.8 0 0 1 15.42 4.99" stroke="var(--bm-tint-h6)"/><path d="M16.36 5.53A7.8 7.8 0 0 1 19.78 11.46" stroke="var(--bm-tint-quote)"/></svg></button>'
+      : '';
+    // 全部节点笔记（思维子弹专属）：一键展开/收起所有带笔记的节点卡片。
+    // 只有导图 adapter 传 onToggleAllNotes → 其它档不生成（便签/写作没有节点笔记）。
+    // 图标用「带折角的文稿」，刻意不同于工具条那枚纯横线的「节点笔记」键：
+    // 工具条管「当前选中的这一个」，这里管「全部一起」，文稿轮廓表示「一批」。
+    // 位置放在最左（与写作档的层级配色键同槽）——两个键互斥出现，视觉位置一致。
+    const notesBtn = (typeof adapter.onToggleAllNotes === 'function')
+      ? '<button type="button" class="tw-zoom-btn tw-zoom-notes" data-act="notes" title="全部节点笔记：一键展开 / 收起（只含有笔记的节点）" aria-label="展开或收起全部节点笔记"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 3.5H7a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9.2z"/><path d="M13.5 3.5v4.2a1.5 1.5 0 0 0 1.5 1.5h4.2"/><path d="M8.8 13h6.4M8.8 16.4h4.2"/></svg></button>'
+      : '';
+    bar.innerHTML = notesBtn + tintBtn + handBtn + `
       <button type="button" class="tw-zoom-btn" data-act="out"  title="缩小" aria-label="缩小">−</button>
       <button type="button" class="tw-zoom-val" data-act="reset" title="点击重置为 100%" aria-label="重置缩放为 100%">100%</button>
       <button type="button" class="tw-zoom-btn" data-act="in"   title="放大" aria-label="放大">+</button>
@@ -52,6 +71,8 @@ export const CanvasZoomUI = {
 
     const valEl = bar.querySelector('.tw-zoom-val');
     const handEl = bar.querySelector('.tw-zoom-hand');
+    const tintEl = bar.querySelector('.tw-zoom-tint');
+    const notesEl = bar.querySelector('.tw-zoom-notes');
     const sync = () => {
       const s = CanvasViewport.scaleOf(adapter.getView());
       const txt = Math.round(s * 100) + '%';
@@ -59,6 +80,14 @@ export const CanvasZoomUI = {
       // 抓手开启态：由 adapter 提供 isHandActive（导图传 handTool 真值），复用同一 sync 刷新
       if (handEl && typeof adapter.isHandActive === 'function') {
         handEl.classList.toggle('active', !!adapter.isHandActive());
+      }
+      // 层级配色开启态：与抓手同一套 .active 高亮（notes.css 的 .tw-zoom-bar button.active）
+      if (tintEl && typeof adapter.isTintActive === 'function') {
+        tintEl.classList.toggle('active', !!adapter.isTintActive());
+      }
+      // 全部笔记开启态：「所有带笔记的节点都展开着」才算开（局部展开不亮，避免误读）
+      if (notesEl && typeof adapter.isAllNotesOpen === 'function') {
+        notesEl.classList.toggle('active', !!adapter.isAllNotesOpen());
       }
     };
 
@@ -76,6 +105,8 @@ export const CanvasZoomUI = {
         else if (act === 'fit') adapter.fit();
         else if (act === 'market' && typeof adapter.onMarket === 'function') adapter.onMarket();
         else if (act === 'hand' && typeof adapter.onHand === 'function') adapter.onHand();
+        else if (act === 'tint' && typeof adapter.onTint === 'function') adapter.onTint();
+        else if (act === 'notes' && typeof adapter.onToggleAllNotes === 'function') adapter.onToggleAllNotes();
       } catch (err) { /* 缩放控件失败不应影响画布 */ }
       sync();
     });

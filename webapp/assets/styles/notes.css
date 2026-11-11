@@ -1085,6 +1085,16 @@
 .tw-canvas.tw-mode-write .tw-card[data-act="1"] .tw-card-main {
   background: color-mix(in srgb, var(--surface-solid) 95%, var(--tw-write-ink));
 }
+/* 铺色档下分幕不再改底色（会与层级色叠加算出第三种颜色、幕边界反而读不出），
+   改用一条内嵌左边线表达「幕」边界。线比底色更弱，不与层级主信号竞争。 */
+.tw-canvas.tw-mode-write.tw-lv-tint .tw-card[data-act="1"] .tw-card-main {
+  background-color: var(--surface-solid);
+  background-image: linear-gradient(
+    color-mix(in oklch, var(--bm-tint, var(--surface-solid)) var(--bm-tint-mix, 14%), transparent),
+    color-mix(in oklch, var(--bm-tint, var(--surface-solid)) var(--bm-tint-mix, 14%), transparent)
+  );
+  box-shadow: inset 2px 0 0 0 color-mix(in srgb, var(--tw-write-ink) 22%, transparent);
+}
 
 /* 卸掉便签的装饰资产：上下齿边与纸纹 */
 .tw-canvas.tw-mode-write .tw-card-edge, .tw-canvas.tw-mode-write .tw-card-noise { display: none; }
@@ -1139,38 +1149,62 @@
   font-weight: 400; line-height: 1.75; opacity: 0.82;
 }
 /* ---- 层级配色 ----
-   H1–H6 走靛蓝「有序色阶」：越深层级越高，扫一眼就能看出文档骨架（层级本质是序数，
-   若用 6 个无关色相会丢掉这份顺序信息）。
-   其余类型各给一个独立色相；正文例外——它是「无结构」的基底，保持中性，不参与配色竞争。
+   H1–H6 走彩虹（红→橙→黄→绿→青→蓝）：色相即类型，扫一眼就能把标题卡彼此分开。
+   顺序线索只剩在色相本身的冷暖前后（红在前、蓝在后），比同色相明度阶弱 —— 这是用户
+   明确要彩虹之后的取舍，不是遗漏；若哪天想要强顺序，得先改产品口径再动色板。
+   其余类型各给一个独立色相；正文取「近白淡绿」（有颜色但不抢戏：彩度仅 3.6，
+   其余 10 级最低 65）。
    【颜色由层级派生】用户只能改类型、不能单独调色，避免出现「这卡是 H1 但我刷成了正文灰」
    这种颜色与结构两个真值打架的情况。 */
 /* 色板只在 :host 定义一次：卡片（--lv-color）与菜单圆点都引用这些变量。
    刻意不在 JS 里再存一份色值 —— 两处各存一份迟早改漏一处，颜色就开始说谎。 */
 :host {
-  /* --lv-src-* 是色阶【唯一真源】：只在这里定义一次，且永不覆盖。
-     亮/暗两套 --lv-* 都从它派生。必须多这一层间接，是因为暗色要取亮色阶的「倒序」，
-     若照直觉写 var(--lv-h6)，它指向的是同元素上被暗色块自己重写的 --lv-h6 ——
-     h2↔h6、h3↔h5 立刻自引用成环，按 CSS 变量规范整组解析为 invalid，
-     暗色下 H1–H3/H5/H6 的徽章底、描边、文字色与菜单圆点会一起失效。 */
-  --lv-src-1: #3730A3;
-  --lv-src-2: #4338CA;
-  --lv-src-3: #4F46E5;
-  --lv-src-4: #6366F1;
-  --lv-src-5: #818CF8;
-  --lv-src-6: #A5B4FC;
-  --lv-h1: var(--lv-src-1);
-  --lv-h2: var(--lv-src-2);
-  --lv-h3: var(--lv-src-3);
-  --lv-h4: var(--lv-src-4);
-  --lv-h5: var(--lv-src-5);
-  --lv-h6: var(--lv-src-6);
-  --lv-p: #94A3B8;
-  --lv-quote: #D97706;
-  --lv-ul: #0D9488;
-  --lv-ol: #0284C7;
-  --lv-task: #16A34A;
+  /* 【色相唯一真源】11 个色相只在这里定义一次；徽章、类型菜单圆点、卡面铺色、
+     描边全部派生自这一批，不再各持一套。
+     历史教训：曾并行维护「徽章 = 有序靛蓝阶」与「卡面 = 彩虹」两套色板，结果同一张卡上
+     徽章和底色是两个毫不相干的颜色，读起来像两套体系（用户原话「各自为政」）。
+     现收敛为一批色相 —— 彩虹与序数本来不可兼得，那就统一成彩虹，靠色相本身的
+     冷暖顺序（红→橙→黄→绿→青→蓝）保留一条隐含的「由重到轻」线索。 */
+  --bm-tint-src-h1: #E11D48;
+  --bm-tint-src-h2: #EA580C;
+  --bm-tint-src-h3: #CA8A04;
+  --bm-tint-src-h4: #16A34A;
+  --bm-tint-src-h5: #0891B2;
+  --bm-tint-src-h6: #2563EB;
+  --bm-tint-src-quote: #7C3AED;
+  --bm-tint-src-ul: #DB2777;
+  --bm-tint-src-ol: #0D9488;
+  --bm-tint-src-task: #65A30D;
+  --bm-tint-src-p: #CFE7D7;   /* 近白的淡绿：14% 叠在白底上得 248,252,249（与纯白差 −7），只留一丝绿意 */
+  --bm-tint-h1: var(--bm-tint-src-h1);
+  --bm-tint-h2: var(--bm-tint-src-h2);
+  --bm-tint-h3: var(--bm-tint-src-h3);
+  --bm-tint-h4: var(--bm-tint-src-h4);
+  --bm-tint-h5: var(--bm-tint-src-h5);
+  --bm-tint-h6: var(--bm-tint-src-h6);
+  --bm-tint-quote: var(--bm-tint-src-quote);
+  --bm-tint-ul: var(--bm-tint-src-ul);
+  --bm-tint-ol: var(--bm-tint-src-ol);
+  --bm-tint-task: var(--bm-tint-src-task);
+  --bm-tint-p: var(--bm-tint-src-p);
+  /* 徽章 / 类型菜单圆点 / 描边：指向同一批色相。
+     这里引用 --bm-tint-* 而不是 --bm-tint-src-*，暗色块把 --bm-tint-* 换成提亮版时，
+     徽章与圆点会一起跟着变，不会出现「卡面已提亮、徽章还是暗版」的错位。 */
+  --lv-h1: var(--bm-tint-h1);
+  --lv-h2: var(--bm-tint-h2);
+  --lv-h3: var(--bm-tint-h3);
+  --lv-h4: var(--bm-tint-h4);
+  --lv-h5: var(--bm-tint-h5);
+  --lv-h6: var(--bm-tint-h6);
+  --lv-quote: var(--bm-tint-quote);
+  --lv-ul: var(--bm-tint-ul);
+  --lv-ol: var(--bm-tint-ol);
+  --lv-task: var(--bm-tint-task);
+  /* 正文是唯一例外：卡面被刻意做成近白绿（#CFE7D7），直接拿它当徽章文字等于没有字。
+     故徽章取同色相族的中绿 —— 是「同族的深浅差异」，不是另起一套配色。 */
+  --lv-p: #4E7A5E;
 }
-.tw-canvas.tw-mode-write .tw-card { --lv-color: var(--lv-p); }   /* 兜底 = 正文的中性灰 */
+.tw-canvas.tw-mode-write .tw-card { --lv-color: var(--lv-p); }   /* 兜底 = 正文的中绿 */
 .tw-canvas.tw-mode-write .tw-card[data-level="h1"] { --lv-color: var(--lv-h1); }
 .tw-canvas.tw-mode-write .tw-card[data-level="h2"] { --lv-color: var(--lv-h2); }
 .tw-canvas.tw-mode-write .tw-card[data-level="h3"] { --lv-color: var(--lv-h3); }
@@ -1181,17 +1215,104 @@
 .tw-canvas.tw-mode-write .tw-card[data-level="ul"] { --lv-color: var(--lv-ul); }
 .tw-canvas.tw-mode-write .tw-card[data-level="ol"] { --lv-color: var(--lv-ol); }
 .tw-canvas.tw-mode-write .tw-card[data-level="task"] { --lv-color: var(--lv-task); }
-/* 【已废弃·勿再加回】原先这里是「左侧 3px 色条 + 整卡 8% 同色底纹」。
+
+/* ---- 卡面层级铺色（可选开关 tw-lv-tint，默认关）----
+   【色板】与徽章/类型圆点共用同一批色相（--bm-tint-*；--lv-color 也指向它）。
+   曾经是两套 —— 徽章/描边走「有序靛蓝阶」、卡面走彩虹 —— 用户反馈「各自为政」：
+   同一张卡上徽章一个颜色、底子另一个颜色，像两套体系。现统一到彩虹这一批。
+   【为什么用 oklch 而非 srgb 混色】oklch 是感知均匀空间，混底色时明度与色相不互相污染；
+   srgb 混会同时压暗并偏色，11 个色相叠在一起就成一片灰。
+   （注意：这条只适用于「与透明混」的铺色层；徽章文字与墨色混色时反而必须用 srgb，
+   因为 oklch 会沿色相环的较短弧插值，把色相一起转走 —— 详见 .tw-card-level 处注释。）
+   【强度】此前 5%–12% 实测在白底上几乎不可见（H6 混完是 249,251,255，与纯白 255 无差别）。
+   现提到 18%–28%，保证「一眼能分出」；暗色因深底吃色再高一档（26%–40%）。
+   上限不是随手定的：暗色 task 原为 40%，实测浅墨字对比度仅 4.44（低于正文 AA 的 4.5），
+   降到 33% 后为 5.31 —— 底越亮、浅色字越糊，所以「更亮」并非「更清楚」。
+   【正文 p 参与】用户明确要求「正文也得有颜色」，故给最低一档「近白的淡绿」（不抢标题，
+   且与竹主题同源而非另起一个石板灰蓝色相；用户两次反馈「不够白」，故取到近白档），
+   但不再是 0% —— 0% 会让正文卡在满屏彩色里显成一张白纸。
+   【ul / ol / task 明度错开】三者在暗绿底上色相容易趋同，故除色相外再用不同强度
+   把最终明度拉开（task 最亮、ul 最暗）。 */
+
+.tw-canvas.tw-mode-write.tw-lv-tint .tw-card { --bm-tint-mix: 14%; }
+.tw-canvas.tw-mode-write.tw-lv-tint .tw-card[data-level="h1"] { --bm-tint-mix: 28%; }
+.tw-canvas.tw-mode-write.tw-lv-tint .tw-card[data-level="h2"] { --bm-tint-mix: 26%; }
+.tw-canvas.tw-mode-write.tw-lv-tint .tw-card[data-level="h3"] { --bm-tint-mix: 24%; }
+.tw-canvas.tw-mode-write.tw-lv-tint .tw-card[data-level="h4"] { --bm-tint-mix: 22%; }
+.tw-canvas.tw-mode-write.tw-lv-tint .tw-card[data-level="h5"] { --bm-tint-mix: 21%; }
+.tw-canvas.tw-mode-write.tw-lv-tint .tw-card[data-level="h6"] { --bm-tint-mix: 20%; }
+.tw-canvas.tw-mode-write.tw-lv-tint .tw-card[data-level="quote"] { --bm-tint-mix: 18%; }
+.tw-canvas.tw-mode-write.tw-lv-tint .tw-card[data-level="ul"] { --bm-tint-mix: 20%; }
+.tw-canvas.tw-mode-write.tw-lv-tint .tw-card[data-level="ol"] { --bm-tint-mix: 24%; }
+.tw-canvas.tw-mode-write.tw-lv-tint .tw-card[data-level="task"] { --bm-tint-mix: 28%; }
+.tw-canvas.tw-mode-write.tw-lv-tint .tw-card[data-level="p"] { --bm-tint-mix: 14%; }
+
+/* 层级 → 彩虹色相的映射（与 --lv-color 那条链完全平行，互不干扰） */
+.tw-canvas.tw-mode-write.tw-lv-tint .tw-card { --bm-tint: var(--bm-tint-p); }
+.tw-canvas.tw-mode-write.tw-lv-tint .tw-card[data-level="h1"] { --bm-tint: var(--bm-tint-h1); }
+.tw-canvas.tw-mode-write.tw-lv-tint .tw-card[data-level="h2"] { --bm-tint: var(--bm-tint-h2); }
+.tw-canvas.tw-mode-write.tw-lv-tint .tw-card[data-level="h3"] { --bm-tint: var(--bm-tint-h3); }
+.tw-canvas.tw-mode-write.tw-lv-tint .tw-card[data-level="h4"] { --bm-tint: var(--bm-tint-h4); }
+.tw-canvas.tw-mode-write.tw-lv-tint .tw-card[data-level="h5"] { --bm-tint: var(--bm-tint-h5); }
+.tw-canvas.tw-mode-write.tw-lv-tint .tw-card[data-level="h6"] { --bm-tint: var(--bm-tint-h6); }
+.tw-canvas.tw-mode-write.tw-lv-tint .tw-card[data-level="quote"] { --bm-tint: var(--bm-tint-quote); }
+.tw-canvas.tw-mode-write.tw-lv-tint .tw-card[data-level="ul"] { --bm-tint: var(--bm-tint-ul); }
+.tw-canvas.tw-mode-write.tw-lv-tint .tw-card[data-level="ol"] { --bm-tint: var(--bm-tint-ol); }
+.tw-canvas.tw-mode-write.tw-lv-tint .tw-card[data-level="task"] { --bm-tint: var(--bm-tint-task); }
+.tw-canvas.tw-mode-write.tw-lv-tint .tw-card[data-level="p"] { --bm-tint: var(--bm-tint-p); }
+
+/* 通用铺色：用「半透明层叠在表面色上」而不是「两色混合」。
+   【为什么不用 color-mix 混 --surface-solid】oklch 混色会取两色的色相中间值：
+   暗色表面是深绿（hue≈145），与粉红(hue≈15)混 40% 后得到 hue≈93 的黄褐 ——
+   11 个色相全被绿相拉成一片黄绿，彩虹彻底失效（实测 h1 变 100,84,15）。
+   改为把 tint 以 alpha 叠在表面色之上：色相只由 tint 决定，明度仍随主题。 */
+.tw-canvas.tw-mode-write.tw-lv-tint .tw-card-main {
+  background-color: var(--surface-solid);
+  background-image: linear-gradient(
+    color-mix(in oklch, var(--bm-tint, var(--surface-solid)) var(--bm-tint-mix, 14%), transparent),
+    color-mix(in oklch, var(--bm-tint, var(--surface-solid)) var(--bm-tint-mix, 14%), transparent)
+  );
+}
+
+/* 暗色：深底吃色，整体再提一档，并把 ul/ol/task 的明度差拉到最大 */
+:host(.dark) .tw-canvas.tw-mode-write.tw-lv-tint .tw-card[data-level="h1"] { --bm-tint-mix: 40%; }
+:host(.dark) .tw-canvas.tw-mode-write.tw-lv-tint .tw-card[data-level="h2"] { --bm-tint-mix: 38%; }
+:host(.dark) .tw-canvas.tw-mode-write.tw-lv-tint .tw-card[data-level="h3"] { --bm-tint-mix: 36%; }
+:host(.dark) .tw-canvas.tw-mode-write.tw-lv-tint .tw-card[data-level="h4"] { --bm-tint-mix: 34%; }
+:host(.dark) .tw-canvas.tw-mode-write.tw-lv-tint .tw-card[data-level="h5"] { --bm-tint-mix: 32%; }
+:host(.dark) .tw-canvas.tw-mode-write.tw-lv-tint .tw-card[data-level="h6"] { --bm-tint-mix: 30%; }
+:host(.dark) .tw-canvas.tw-mode-write.tw-lv-tint .tw-card[data-level="quote"] { --bm-tint-mix: 28%; }
+:host(.dark) .tw-canvas.tw-mode-write.tw-lv-tint .tw-card[data-level="ul"] { --bm-tint-mix: 30%; }
+:host(.dark) .tw-canvas.tw-mode-write.tw-lv-tint .tw-card[data-level="ol"] { --bm-tint-mix: 35%; }
+:host(.dark) .tw-canvas.tw-mode-write.tw-lv-tint .tw-card[data-level="task"] { --bm-tint-mix: 33%; }
+:host(.dark) .tw-canvas.tw-mode-write.tw-lv-tint .tw-card[data-level="p"] { --bm-tint-mix: 26%; }
+
+/* 铺色档下的标题卡：底色已带层级色，描边要相应减弱，否则「深色边框 + 深色底」发闷 */
+.tw-canvas.tw-mode-write.tw-lv-tint .tw-card[data-level^="h"] .tw-card-main {
+  border-color: color-mix(in srgb, var(--lv-color) 32%, transparent);
+}
+/* 【废弃的是『无条件铺色』，不是铺色本身】原先这里是「左侧 3px 色条 + 整卡 8% 同色底纹」。
    实测观感廉价：3px 边框渲染在 14px 圆角上会变成一段孤立的弯条，像贴上去的异物；
-   8% 整卡铺色又把白卡糊成淡紫。层级色的表达方式改为只落在小范围元素上，
-   卡片本体保持纯净白面（见下方 .tw-card-level 与类型菜单圆点）。 */
+   8% 整卡铺色又把白卡糊成淡紫。故层级色默认只落在小范围元素上（见 .tw-card-level
+   与类型菜单圆点），卡片本体保持纯净白面。
+   【现以可选开关重做】上方「卡面层级铺色」段提供 .tw-lv-tint 开关（默认关）：
+   改用 oklch 低饱和派生 --bm-tint、按层级递减比例、正文不参与 —— 与当年那条被否决的
+   朴素 8% 平涂不是同一方案，勿据本注释直接删掉它。 */
 .tw-canvas.tw-mode-write .tw-card-level {
-  color: var(--lv-color);
+  /* 色相与卡面完全同源（--lv-color 已指向卡面彩虹），但文字不能直接用满饱和色相：
+     它坐在「同色淡底」上，琥珀/黄绿/青这几个色相会糊（实测黄字压黄底对比度仅 2.8）。
+     故往本模式墨色方向压一点 —— 亮色往墨黑压、暗色往亮灰提（--tw-write-ink 自带模式切换），
+     一条公式两套主题都读得清。这是「同族内的深浅差」，不是又开一套配色。
+     【为什么是 srgb 而不是 oklch】oklch 是极坐标，两色相不同时会沿色相环走「较短弧」
+     插值，等于顺手把色相转了向：实测亮色 h2 的橙字偏了 61°、h3 的黄字偏成红棕（62°），
+     徽章与卡面又变成两个颜色 —— 正是要修的那个毛病。srgb 是直角坐标线性插值，
+     只削彩度不转色相：同一批级别色相偏差从平均 39.3° 降到 4.5°（暗色 1.6°→4.4°），
+     对比度反而更高（亮色最低 4.76、暗色 5.26，均过 AA）。 */
+  color: color-mix(in srgb, var(--lv-color) var(--lv-badge-mix, 62%), var(--tw-write-ink));
   border-color: color-mix(in srgb, var(--lv-color) 45%, transparent);
 }
 .tw-canvas.tw-mode-write .tw-card-level:hover {
   background: color-mix(in srgb, var(--lv-color) 26%, var(--surface-solid));
-  color: var(--lv-color);
 }
 
 /* 写作档：H1 徽章常驻浮在卡片上方左端，工具条浮在上方居中。
@@ -1212,8 +1333,8 @@
   box-shadow: var(--shadow-surface);   /* 主题自适应：暗色版自动切 --black-rgb */
 }
 :host(.dark) .tw-canvas.tw-mode-write .tw-card-level:hover {
-  background: color-mix(in srgb, var(--lv-color) 38%, var(--surface-solid));
-  color: var(--lv-color);
+  /* 只提亮底、不再把文字改回满饱和色相 —— 那会让 hover 瞬间掉对比度 */
+  background: color-mix(in srgb, var(--lv-color) 32%, var(--surface-solid));
 }
 
 /* ===== 写作档：卡片宽度贴合内容（不按级别一刀切）=====
@@ -1233,7 +1354,8 @@
 /* ===== 标题卡（H1–H6）：更像「标签」=====
    宽度：上限比正文更窄（300 vs 400），长标题也不铺开。
    视觉：更小圆角 + 层级色描边 + 收紧内边距 + 卸掉抬升阴影 —— 与正文的「纸片」明确区分。
-   刻意不改底色：「整卡同色底纹」此前实测观感廉价，已废弃（见上方注释，勿加回）。
+   底色默认不改：「整卡同色底纹」在无条件铺色下实测廉价，故默认关；
+   打开 .tw-lv-tint 时由「卡面层级铺色」段统一接管（此处不重复写）。
    层级的主信号仍然是字号/字重（见「字阶」段），这里只做形状上的辅助区分。 */
 .tw-canvas.tw-mode-write .tw-card[data-level^="h"] {
   max-width: min(calc(300px * var(--tw-card-zoom, 1)), calc(100% - 16px));
@@ -1242,7 +1364,7 @@
   /* 对称内边距即可保证上下等距：之前"上下不等距"的真凶是 plain 纸样给文本加了
      margin-bottom(≈16px)，现已在根上解耦（写作档不进该纸样规则），无需兜底。
      标题卡做成"标签"而非又一张白卡：更实的层级色描边（加粗 + 提高色量），
-     与纯白正文卡拉开身份。刻意不铺整卡底纹（此前实测廉价，已废弃，勿加回）。 */
+     与纯白正文卡拉开身份。底色交给 .tw-lv-tint 开关统一处理，此处不写死。 */
   padding: 0.6em 0.85em;
   min-height: 0;
   border-radius: var(--radius-9);
@@ -1297,23 +1419,23 @@
    且这层是纯黑 24px 模糊、alpha .45 —— 在暗底上既是最贵的绘制、也是最"跳"的一种。
    写入档统一不要投影（理由见亮色处注释：语义上卡是文章块而非浮起的便签纸；
    性能上 box-shadow 无法被合成器接管）。暗底下的分隔同样交给 border。 */
-/* 暗色色板【唯一真源 = --lv-src-* 亮色阶】：标题色阶在暗底上「越亮 = 越重」，故取亮色阶的
-   【倒序】派生（H1←src6 · H2←src6 · H3←src5 · H4←src4 · H5←src3 · H6←src2），改亮色一处即亮暗
-   同步，不再两份字面量各写各的、改漏一处就脱节。
-   【必须引用 --lv-src-*，不能引用 --lv-h*】后者的胜出声明就是本块自己，会自引用成环
-   （h2↔h6 / h3↔h5）→ 整组 invalid。非标题色是暗底上手挑的亮色相（与亮色不同族、
-   无法推导），保留显式；--lv-p 沿用亮色灰，无需重设（不声明即继承）。 */
+/* 暗色色板：只把卡面彩虹换成本模式的提亮版（深底吃色，暗色相混进去会闷成一团黑绿）。
+   徽章 / 类型菜单圆点 / 描边不在这里重设 —— 它们引用的是 --bm-tint-*，会自动跟着变。
+   这正是不再「各自为政」的关键：暗色只需维护这一处，不会再出现「卡面换了、徽章没换」。
+   唯一例外 --lv-p：正文徽章用的中绿，深底上要提亮才读得出，故单独提一档。 */
 :host(.dark) {
-  --lv-h1: color-mix(in srgb, var(--lv-src-6) 72%, white);  /* 最亮 = 最醒目 */
-  --lv-h2: var(--lv-src-6);
-  --lv-h3: var(--lv-src-5);
-  /* --lv-h4 不声明 → 继承亮色 #6366F1（暗底上恰为中等权重，与亮色 H4 同值） */
-  --lv-h5: var(--lv-src-3);
-  --lv-h6: var(--lv-src-2);
-  --lv-quote: #F59E0B;
-  --lv-ul: #2DD4BF;
-  --lv-ol: #38BDF8;
-  --lv-task: #4ADE80;
+  --bm-tint-h1: #FB7185;
+  --bm-tint-h2: #FB923C;
+  --bm-tint-h3: #FBBF24;
+  --bm-tint-h4: #4ADE80;
+  --bm-tint-h5: #22D3EE;
+  --bm-tint-h6: #60A5FA;
+  --bm-tint-quote: #A78BFA;
+  --bm-tint-ul: #F472B6;
+  --bm-tint-ol: #2DD4BF;
+  --bm-tint-task: #A3E635;
+  --bm-tint-p: #DCEFE3;   /* 暗色同源近白绿：深绿底上「更浅的同族绿」，正文自然后退 */
+  --lv-p: #9FD0AE;
 }
 
 /* ---- 类型选择弹出菜单 ----
@@ -1741,6 +1863,9 @@
 /* 同类兜底：市场按钮也是 button（display:inline-flex），需显式规则才能被 hidden 真正隐藏
    —— 否则写作模式（bar 可见）里市场按钮会一直露出来。 */
 .tw-zoom-bar .tw-zoom-market[hidden] { display: none; }
+/* 层级配色键：只有写作档露出。.tw-zoom-bar button 显式写了 display:inline-flex，
+   会压过 UA 对 [hidden] 的默认 display:none，故必须同款补一条（与 market 键同理）。 */
+.tw-zoom-bar .tw-zoom-tint[hidden] { display: none; }
 
 /* ===== 便签模式·素材市场（右侧抽屉 + 素材卡 + 贴纸落卡）=====
    抽屉定位于 .scroll-typewriter-feature 右侧（黄区），展开时 translateX(0)。 */

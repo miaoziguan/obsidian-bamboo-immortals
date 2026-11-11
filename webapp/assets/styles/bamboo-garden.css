@@ -234,18 +234,21 @@
 }
 
 /* 月亮 - 仅在暗色模式显示 */
+/* 尺寸 60 → 88px：在整幅夜色背景（容器 100%×100%）里 60px 偏小、像一颗亮点而不是月亮。
+   光晕三层按同一比例（1.4×）放大，否则月盘变大了、光还是原来那圈，会显得发硬。
+   top/right 锚点不动 —— 右上角有面板控件，挪位置容易撞车。 */
 .moon {
     position: absolute;
     top: 72px;
     right: 70px;
-    width: 60px;
-    height: 60px;
+    width: 88px;
+    height: 88px;
     border-radius: 50%;
     background: radial-gradient(circle at 30% 30%, #fff9e6 0%, #ffeaa7 50%, #fdcb6e 100%);
     box-shadow: 
-        0 0 20px rgba(255, 234, 167, 0.6),
-        0 0 40px rgba(255, 234, 167, 0.4),
-        0 0 60px rgba(255, 234, 167, 0.2);
+        0 0 28px rgba(255, 234, 167, 0.6),
+        0 0 56px rgba(255, 234, 167, 0.4),
+        0 0 84px rgba(255, 234, 167, 0.2);
     opacity: 0;
     display: none;
     transition: opacity var(--duration-slow) ease;
@@ -255,15 +258,15 @@
 @keyframes moonGlow {
     0%, 100% {
         box-shadow: 
-            0 0 20px rgba(255, 234, 167, 0.6),
-            0 0 40px rgba(255, 234, 167, 0.4),
-            0 0 60px rgba(255, 234, 167, 0.2);
+            0 0 28px rgba(255, 234, 167, 0.6),
+            0 0 56px rgba(255, 234, 167, 0.4),
+            0 0 84px rgba(255, 234, 167, 0.2);
     }
     50% {
         box-shadow: 
-            0 0 30px rgba(255, 234, 167, 0.8),
-            0 0 50px rgba(255, 234, 167, 0.5),
-            0 0 80px rgba(255, 234, 167, 0.3);
+            0 0 42px rgba(255, 234, 167, 0.8),
+            0 0 70px rgba(255, 234, 167, 0.5),
+            0 0 112px rgba(255, 234, 167, 0.3);
     }
 }
 

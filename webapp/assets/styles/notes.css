@@ -393,7 +393,10 @@
   display: table;
   width: 100%;
   border-collapse: collapse;
-  table-layout: fixed;
+  /* 按内容分配列宽：fixed 会均分，「检测点」这种短列与「本文所在位置」这种长列一样宽，
+     长列只能靠折行硬塞。auto 让短列收窄、长列放宽，同样的卡宽能多读半行。
+     表格仍是 width:100%，所以只改分配方式，不会撑出卡片。 */
+  table-layout: auto;
   margin: 0.4em 0;
   font-size: 0.88em;
   line-height: var(--tw-line);
@@ -405,6 +408,16 @@
   text-align: left;
   vertical-align: top;
   overflow-wrap: break-word;
+  /* 空单元格撑出最小行高：`+行` / Tab 补出来的 <td> 没有内容，只按 padding 计算就塌成
+     一条几像素的线，点不进、也看不见光标。表格模型里 height 是最小高度语义 ——
+     有内容的行会被内容撑高，不受这条影响。 */
+  height: 1.8em;
+}
+/* 空单元格再补一个行盒：部分环境下单靠最小高度不产生可落光标的行盒。
+   伪元素不进 textContent，序列化仍是 `|  |`，不污染 md。 */
+.tw-card-text .tw-md-table td:empty::after,
+.tw-card-text .tw-md-table th:empty::after {
+  content: '\00a0';
 }
 .tw-card-text .tw-md-table th {
   background: color-mix(in srgb, currentColor 7%, transparent);
@@ -647,6 +660,43 @@
   background: rgba(var(--primary-rgb), 0.14);
 }
 .tw-edit-tool:focus-visible { outline: 0.12em solid rgb(var(--primary-rgb)); outline-offset: 0.1em; }
+/* 插入表格的行列选择器：贴在「插入表格」键下方。
+   格子必须显式 min-width/min-height: 0 —— 全局 button 触控地板会把每个 1.35em 的格子
+   撑成 48px，6×6 网格直接变成 288px 的大方块。 */
+.tw-table-picker {
+  position: absolute;
+  z-index: 9999;
+  padding: 0.45em;
+  border-radius: 0.5em;
+  background: var(--surface-solid, #fff);
+  border: 1px solid var(--border-light);
+  box-shadow: 0 8px 24px -6px rgba(var(--deep-rgb), 0.28);
+}
+.tw-table-picker[hidden] { display: none; }
+.tw-table-picker-label {
+  margin: 0 0 0.35em;
+  font-size: 0.78em;
+  line-height: 1.2;
+  color: var(--text-tertiary);
+  text-align: center;
+}
+.tw-table-picker-grid { display: grid; grid-template-columns: repeat(6, 1.35em); gap: 2px; }
+.tw-table-picker-cell {
+  width: 1.35em;
+  height: 1.35em;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-2xs);
+  background: transparent;
+  cursor: pointer;
+}
+.tw-table-picker-cell.is-on {
+  background: rgba(var(--primary-rgb), 0.26);
+  border-color: rgb(var(--primary-rgb));
+}
+:host(.dark) .tw-table-picker { background: #1c1f1a; }
 /* 单卡源码视图：格式/结构按钮在纯 md 文本上没有意义（按投影语义理解会改坏文本），
    只留 `md` 自己作为出口。 */
 .tw-edit-tools.tw-src-on .tw-edit-tool:not(.tw-edit-src) { display: none; }
@@ -1396,6 +1446,12 @@
      没有上限时，max-content 会让卡片按「最长一行」无限撑宽并相互压叠。
      此处只补回上限；便签档的定宽不受影响。 */
   max-width: calc(400px * var(--tw-card-zoom, 1));
+}
+/* 表格卡单独放宽宽度上限：GFM 表格是列式结构，正文的 400px 上限会把 4 列以上压成
+   每列几十像素、内容无限折行。仍保留封顶（880px 且不超过 92vw），不会回到
+   「max-content 按最长一行无限撑宽」的老问题。 */
+.tw-canvas.tw-mode-write .tw-card[data-level="table"] {
+  max-width: min(calc(880px * var(--tw-card-zoom, 1)), 92vw);
 }
 .tw-canvas.tw-mode-write .tw-card-main {
   background: var(--surface-solid);      /* 主题自适应纯色（亮色纯白 / 暗色深表面） */

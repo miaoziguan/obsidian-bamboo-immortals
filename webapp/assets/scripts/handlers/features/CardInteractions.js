@@ -237,32 +237,267 @@ function tableEnterNextRow(card, textEl) {
   let next = rows[rows.indexOf(tr) + 1] || null;
   let added = false;
   if (!next) {
-    const inHead = !!cell.closest('thead');
-    next = document.createElement('tr');
-    Array.from(tr.children).forEach(() => {
-      const c = document.createElement('td');
-      c.textContent = '';
-      next.appendChild(c);
-    });
-    if (inHead) {
-      let body = table.querySelector('tbody');
-      if (!body) { body = document.createElement('tbody'); table.appendChild(body); }
-      body.appendChild(next);
-    } else {
-      tr.parentNode.appendChild(next);
-    }
+    next = appendTableRow(table, tr);
     added = true;
   }
   const target = next.children[idx];
   if (!target) return added;
+  placeCaretAtEnd(textEl, target, card);
+  return added;
+}
+
+/** 在 modelRow 之后补一行空单元格；modelRow 属表头时补进 tbody（表格必须有数据行）。
+ *  回车与 Tab 共用：两处都要「末行自动补行」，各写一份会漂。 */
+function appendTableRow(table, modelRow) {
+  const next = document.createElement('tr');
+  Array.from(modelRow.children).forEach(() => {
+    const c = document.createElement('td');
+    c.textContent = '';
+    next.appendChild(c);
+  });
+  if (modelRow.closest('thead')) {
+    let body = table.querySelector('tbody');
+    if (!body) { body = document.createElement('tbody'); table.appendChild(body); }
+    body.appendChild(next);
+  } else {
+    modelRow.parentNode.appendChild(next);
+  }
+  return next;
+}
+
+/** 把光标落到某个单元格末尾并记进 card._caretRange（序列化与结构操作都读它）。 */
+function placeCaretAtEnd(textEl, target, card) {
+  if (!target) return false;
   try {
     const r = document.createRange();
     r.setStart(target, target.childNodes.length);
     r.collapse(true);
     const sel = getSel(textEl);
     if (sel) { sel.removeAllRanges(); sel.addRange(r); card._caretRange = r.cloneRange(); }
-  } catch (_) { /* 光标定位失败不影响已补的行 */ }
-  return added;
+    return true;
+  } catch (_) {
+    return false;   // 光标定位失败不影响已完成的跳格/补行
+  }
+}
+
+/** 表格内 Tab：跳下一格；末格（非反向）补一行并落到新行首格。
+ *  必须在 onKey 的 `if (!row) return` 之前处理 —— 表格里没有列表行，
+ *  漏拦 Tab 会被浏览器当成焦点切换，直接 blur 退出编辑（旧行为即如此）。
+ *  @returns {'moved'|'added'|false} */
+function tableTabMove(card, textEl, reverse) {
+  const cell = currentCellOf(card, textEl);
+  if (!cell) return false;
+  const tr = cell.parentNode;
+  const table = cell.closest('table');
+  if (!table || !tr) return false;
+  const rows = Array.from(table.querySelectorAll('tr'));
+  const rowIdx = rows.indexOf(tr);
+  const colIdx = Array.prototype.indexOf.call(tr.children, cell);
+  if (rowIdx < 0 || colIdx < 0) return false;
+
+  if (reverse) {
+    // 反向：同一行左一格；行首则落到上一行末格；已是第一格则原地不动
+    let target = null;
+    if (colIdx > 0) target = tr.children[colIdx - 1];
+    else if (rowIdx > 0) {
+      const prev = rows[rowIdx - 1];
+      target = prev.children[prev.children.length - 1];
+    }
+    if (!target) return false;
+    placeCaretAtEnd(textEl, target, card);
+    return 'moved';
+  }
+
+  // 正向：同一行右一格；行末则落到下一行首格；最后一格则补行
+  if (colIdx < tr.children.length - 1) {
+    placeCaretAtEnd(textEl, tr.children[colIdx + 1], card);
+    return 'moved';
+  }
+  if (rowIdx < rows.length - 1) {
+    placeCaretAtEnd(textEl, rows[rowIdx + 1].children[0], card);
+    return 'moved';
+  }
+  const next = appendTableRow(table, tr);
+  placeCaretAtEnd(textEl, next.children[0], card);
+  return 'added';
+}
+
+/** GFM 表格分隔行（与渲染层同源判定）：决定「哪一行是分隔行」才能改对齐。 */
+const TABLE_DELIM_ROW_RE = /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)*\|?\s*$/;
+const isTableDelimRow = (s) => String(s).indexOf('|') >= 0 && TABLE_DELIM_ROW_RE.test(s);
+const splitTableCells = (s) => String(s).trim().replace(/^\|/, '').replace(/\|$/, '')
+  .split('|').map((x) => x.trim());
+
+/** 切换光标所在列的对齐：默认左 → 中 → 右 → 左。写回 GFM 分隔行（语义可表达，安全）。
+ *  与行列按钮同一套入口（忽略 range，直接读 card._caretRange 里的单元格）。 */
+function cycleColumnAlign(ctrl, card, textEl) {
+  const cell = currentCellOf(card, textEl);
+  if (!cell) return 'no-cell';
+  const tr = cell.parentNode;
+  const table = cell.closest('table');
+  const note = (ctrl._notes || []).find((n) => n.id === (card && card.dataset.id));
+  if (!table || !tr || !note) return false;
+  const col = Array.prototype.indexOf.call(tr.children, cell);
+  const lines = String(note.text || '').split('\n');
+  let delimAt = -1;
+  for (let i = 0; i + 1 < lines.length; i += 1) {
+    if (lines[i].indexOf('|') >= 0 && isTableDelimRow(lines[i + 1])) { delimAt = i + 1; break; }
+  }
+  if (delimAt < 0) return false;
+  const cells = splitTableCells(lines[delimAt]);
+  if (col < 0 || !cells[col]) return false;
+  const cur = cells[col];
+  const isCenter = /^:.*:$/.test(cur);
+  const isRight = !isCenter && /:$/.test(cur);
+  const next = isCenter ? '---:' : (isRight ? '---' : ':---:');
+  cells[col] = next;
+  lines[delimAt] = '|' + cells.join('|') + '|';
+
+  const rowIdx = Array.from(table.querySelectorAll('tr')).indexOf(tr);
+  if (ctrl._undoStack) ctrl._undoStack.push();
+  ctrl._notes = WritingDoc.setText(ctrl._notes, note.id, lines.join('\n'));
+  const fresh = ctrl._notes.find((n) => n.id === note.id);
+  const live = card.querySelector('.tw-card-text');
+  if (live && typeof ctrl._applyCardText === 'function') ctrl._applyCardText(live, fresh);
+  // 重投影会重建表格节点：按「行序 + 列序」把光标放回同一格
+  const rowsAfter = live ? Array.from(live.querySelectorAll('tr')) : [];
+  const targetRow = rowsAfter[rowIdx] || rowsAfter[0];
+  const target = targetRow && targetRow.children[col];
+  if (target) placeCaretAtEnd(live, target, card);
+  if (typeof fitCardText === 'function') fitCardText(card);
+  if (typeof ctrl._scheduleSave === 'function') ctrl._scheduleSave();
+  return next;
+}
+
+/** 空表 md：表头「列1..列N」+ 分隔行 + (rows-1) 行空数据；行列夹在 1..6。 */
+function buildEmptyTableMd(rows, cols) {
+  const r = Math.max(1, Math.min(6, Math.round(Number(rows) || 0)));
+  const c = Math.max(1, Math.min(6, Math.round(Number(cols) || 0)));
+  const head = '| ' + Array.from({ length: c }, (_, i) => '列' + (i + 1)).join(' | ') + ' |';
+  const delim = '|' + Array.from({ length: c }, () => '---').join('|') + '|';
+  const body = Array.from({ length: Math.max(0, r - 1) }, () =>
+    '|' + Array.from({ length: c }, () => '  ').join('|') + '|');
+  return [head, delim, ...body].join('\n');
+}
+
+/** 插入一张空表：空卡整卡变表格卡；已有内容则追加到末尾（表格必须是独立块）。
+ *  插入后重建工具条（行列按钮只在有 table 时出现）并把光标落到首格，接上连续录入。 */
+function insertTableBlock(ctrl, card, rows, cols) {
+  if (!ctrl || !card) return false;
+  const note = (ctrl._notes || []).find((n) => n.id === card.dataset.id);
+  if (!note) return false;
+  const md = buildEmptyTableMd(rows, cols);
+  const base = String(note.text || '').replace(/\s+$/, '');
+  const next = base ? base + '\n\n' + md : md;
+  if (ctrl._undoStack) ctrl._undoStack.push();
+  ctrl._notes = WritingDoc.setText(ctrl._notes, note.id, next);
+  ctrl._notes = WritingDoc.setLevel(ctrl._notes, note.id, 'table');
+  const live = card.querySelector('.tw-card-text');
+  const fresh = ctrl._notes.find((n) => n.id === note.id);
+  if (live && typeof ctrl._applyCardText === 'function') ctrl._applyCardText(live, fresh);
+  ensureEditTools(ctrl, card, live);
+  const first = live && live.querySelector('thead th, tbody td');
+  if (first) placeCaretAtEnd(live, first, card);
+  if (typeof fitCardText === 'function') fitCardText(card);
+  if (typeof ctrl._scheduleSave === 'function') ctrl._scheduleSave();
+  return true;
+}
+
+/** 行列选择器（单例，挂功能根）：与 PNG 菜单同一范式，不塞进卡片以免被 overflow 裁掉。 */
+function ensureTablePicker(ctrl) {
+  if (ctrl._tablePicker) return ctrl._tablePicker;
+  if (!ctrl._el) return null;
+  if (typeof getComputedStyle === 'function' && getComputedStyle(ctrl._el).position === 'static') {
+    ctrl._el.style.position = 'relative';
+  }
+  const box = document.createElement('div');
+  box.className = 'tw-table-picker';
+  box.setAttribute('role', 'menu');
+  box.setAttribute('aria-label', '插入表格：选择行列数');
+  box.hidden = true;
+  const label = document.createElement('div');
+  label.className = 'tw-table-picker-label';
+  label.textContent = '插入表格';
+  const grid = document.createElement('div');
+  grid.className = 'tw-table-picker-grid';
+  const cells = [];
+  for (let r = 1; r <= 6; r += 1) {
+    for (let c = 1; c <= 6; c += 1) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'tw-table-picker-cell';
+      b.dataset.rows = String(r);
+      b.dataset.cols = String(c);
+      b.setAttribute('aria-label', r + ' 行 ' + c + ' 列');
+      grid.appendChild(b);
+      cells.push(b);
+    }
+  }
+  box.appendChild(label);
+  box.appendChild(grid);
+  // 浮层内交互不冒泡到画布：否则点格子会同时触发平移/取消选中
+  box.addEventListener('pointerdown', (e) => e.stopPropagation());
+  box.addEventListener('click', (e) => e.stopPropagation());
+  const highlight = (rows, cols) => {
+    cells.forEach((b) => {
+      b.classList.toggle('is-on',
+        Number(b.dataset.rows) <= rows && Number(b.dataset.cols) <= cols);
+    });
+    label.textContent = rows + ' 行 × ' + cols + ' 列';
+  };
+  grid.addEventListener('pointerover', (e) => {
+    const cell = e.target.closest && e.target.closest('.tw-table-picker-cell');
+    if (cell) highlight(Number(cell.dataset.rows), Number(cell.dataset.cols));
+  });
+  grid.addEventListener('click', (e) => {
+    const cell = e.target.closest && e.target.closest('.tw-table-picker-cell');
+    const card = ctrl._tablePickerCard;
+    if (!cell || !card) return;
+    hideTablePicker(ctrl);
+    insertTableBlock(ctrl, card, Number(cell.dataset.rows), Number(cell.dataset.cols));
+  });
+  ctrl._el.appendChild(box);
+  ctrl._tablePicker = box;
+  return box;
+}
+
+function hideTablePicker(ctrl) {
+  if (!ctrl) return;
+  if (ctrl._tablePicker) ctrl._tablePicker.hidden = true;
+  ctrl._tablePickerCard = null;
+  ctrl._tablePickerText = null;
+}
+
+/** 打开行列选择器，贴在「插入表格」按钮下方（用 rect 换算到功能根坐标，不受画布缩放影响）。 */
+function openTablePicker(ctrl, card, textEl) {
+  if (!ctrl || !ctrl._el || !card) return;
+  const box = ensureTablePicker(ctrl);
+  if (!box) return;
+  ctrl._tablePickerCard = card;
+  ctrl._tablePickerText = textEl;
+  box.hidden = false;
+  const host = box.parentNode;
+  const btn = ctrl._editToolsBar && ctrl._editToolsBar.querySelector('.tw-edit-table');
+  if (host && btn) {
+    const hr = host.getBoundingClientRect();
+    const br = btn.getBoundingClientRect();
+    box.style.left = Math.round(br.left - hr.left) + 'px';
+    box.style.top = Math.round(br.bottom - hr.top + 6) + 'px';
+  } else {
+    box.style.left = '8px';
+    box.style.top = '8px';
+  }
+  // 点浮层外部关闭。挂一次即可，capture 阶段避免被画布的 pointerdown 抢先。
+  if (!ctrl._tablePickerDocOff) {
+    const doc = ctrl._el.ownerDocument || document;
+    ctrl._tablePickerDocOff = (e) => {
+      const b = ctrl._tablePicker;
+      if (!b || b.hidden) return;
+      if (b.contains(e.target)) return;
+      hideTablePicker(ctrl);
+    };
+    doc.addEventListener('pointerdown', ctrl._tablePickerDocOff, true);
+  }
 }
 
 /** 有序项重新编号：同缩进层级连续成组、各组独立递增；回到外层时延续外层序号。
@@ -389,6 +624,13 @@ async function saveImageFile(store, file) {
 }
 
 /** 把纯文本插到卡片当前光标处（返回是否走的手动插入）。 */
+/** 粘贴前的撤销留档：与 _handleEditInput 同一时机（一次编辑会话只在首次改动前压一帧）。 */
+function pushEditUndo(ctrl, card) {
+  if (!ctrl || !ctrl._undoStack || card._editUndoPushed) return;
+  card._editUndoPushed = true;
+  ctrl._undoStack.push();
+}
+
 function insertEditText(card, text, str) {
   let inserted = false;
   try {
@@ -564,14 +806,26 @@ function pickEditRange(card, textEl) {
   return rangeFromSelectedText(textEl);
 }
 
-/** 把工具条摆到卡片上方（画布坐标系，用 offset* 避免受视口 transform 缩放影响）。 */
+/** 把工具条摆到卡片上方（画布坐标系，用 offset* 避免受视口 transform 缩放影响）。
+ *  光标在表格里时改贴「当前行」上方：表格可能很长，仍贴卡片顶部会让 +行/-行 离光标太远。 */
 function placeEditTools(ctrl, card) {
   const bar = ctrl && ctrl._editToolsBar;
   if (!bar || bar.hidden) return;
   const host = bar.parentNode;
   if (!host || host === card) return;
+  const textEl = card.querySelector('.tw-card-text');
+  const cell = textEl ? currentCellOf(card, textEl) : null;
+  const tr = cell && cell.closest('tr');
+  let top = card.offsetTop;
+  if (tr) {
+    // tr.offsetTop 相对最近的定位祖先，未必就是 card：逐级累加到卡为止
+    let y = tr.offsetTop;
+    let p = tr.offsetParent;
+    while (p && p !== card) { y += p.offsetTop; p = p.offsetParent; }
+    top = card.offsetTop + y;
+  }
   bar.style.left = (card.offsetLeft + card.offsetWidth / 2) + 'px';
-  bar.style.top = card.offsetTop + 'px';
+  bar.style.top = top + 'px';
 }
 
 /**
@@ -724,11 +978,20 @@ function ensureEditTools(ctrl, card, text) {
   INLINE_TOOL_DEFS.forEach((t) => addBtn(
     t.label, t.title, (range) => toggleInlineTag(text, t.tag, range), '先选中要格式化的文字',
   ));
+  // 插入表格：投影表达不了「建表」，此前只能进源码视图手写 md。
+  // 纯 UI 动作（_direct）：不需要选区，点开 6×6 网格选行列后插入。
+  const tableInsertOp = () => openTablePicker(ctrl, card, text);
+  tableInsertOp._direct = true;
+  const tableInsertBtn = addBtn('⊞', '插入表格：选行列后插入一张空表', tableInsertOp);
+  if (tableInsertBtn) tableInsertBtn.classList.add('tw-edit-table');
   if (text.querySelector('table')) {
     [['+行', 'row+', '新增一行'], ['-行', 'row-', '删除当前行'],
       ['+列', 'col+', '新增一列'], ['-列', 'col-', '删除当前列']].forEach(([label, op, title]) => {
       addBtn(label, title, () => tableEditOp(card, text, op), '把光标放到表格单元格里');
     });
+    // 列对齐：渲染一直支持 `:---:`，但此前没有任何设置入口，只能进源码视图手写
+    addBtn('对齐', '切换当前列对齐：左 / 中 / 右',
+      () => cycleColumnAlign(ctrl, card, text), '把光标放到表格单元格里');
   }
   if (text.querySelector('.tw-md-list')) {
     [['+项', 'item+', '新增列表项'], ['-项', 'item-', '删除当前项'],
@@ -1757,10 +2020,12 @@ export const CardInteractions = {
       if (typeof Toast !== 'undefined') Toast.showToast('最多 ' + limit + ' 字', 'info');
       return;
     }
+
     const allowed = t.length > room ? t.slice(0, room) : t;
-    // 只粘纯文本，不把网页样式带进便签。
+    // 纯文本通道：不把网页样式带进便签。
     // Shadow DOM 里 document.execCommand 依赖宿主焦点，常常静默失败（粘贴没反应），
     // 因此优先直接往当前选区插文本节点，命令式作为兜底。
+    pushEditUndo(ctrl, card);   // 顺手补上：粘贴此前不进撤销栈
     insertEditText(card, text, allowed);
     fitCardText(card);   // 兜底：粘贴后立即自适应一次
   },
@@ -1906,6 +2171,8 @@ export const CardInteractions = {
       // 根本不依赖选中文字。以前这里直接 return，导致那些按钮永远提示「把光标放到列表项里」。
       if (r.collapsed) {
         if (text.contains(r.startContainer)) card._caretRange = r.cloneRange();
+        // 光标落点变了：工具条跟着走（表格里贴当前行，普通卡回到卡顶）
+        placeEditTools(ctrl, card);
         return;
       }
       // Shadow DOM 下容器可能挂在 host 侧：能直接用于卡内就直接存，否则用选中文字重建
@@ -1997,6 +2264,13 @@ export const CardInteractions = {
       if (e.key === 'Enter' && currentCellOf(card, text)) {
         e.preventDefault();
         if (tableEnterNextRow(card, text)) commitEditModel(ctrl, card, text);
+        return;
+      }
+      // 表格内 Tab：跳格 / 末格补行。必须赶在下面的「非列表行直接 return」之前 ——
+      // 表格里 row 为空，漏拦 Tab 会被浏览器当焦点切换，直接 blur 退出编辑。
+      if (e.key === 'Tab' && currentCellOf(card, text)) {
+        e.preventDefault();
+        if (tableTabMove(card, text, e.shiftKey)) commitEditModel(ctrl, card, text);
         return;
       }
       const row = currentRowOf(card, text);
@@ -2133,6 +2407,7 @@ export const CardInteractions = {
   exitEdit(ctx, card) {
     const { state, ctrl } = ctx;
     if (!card.classList.contains('editing')) return;
+    hideTablePicker(ctrl);   // 编辑结束：行列选择器不该留在屏上
     // 输入法还在组字：屏幕上的候选文本尚未上屏，此刻移除 contenteditable 会把它整段丢掉
     // （「打字时明明有字，一退出就没了」）。等 compositionend 再走真正的退出流程。
     if (card._composing) {

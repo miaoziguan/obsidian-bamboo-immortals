@@ -13,6 +13,7 @@ const { renderCardText, serializeRichText } = loadModule(
 );
 global.WritingDoc = {
   setText: (notes, id, text) => notes.map((n) => (n.id === id ? Object.assign({}, n, { text }) : n)),
+  setLevel: (notes, id, level) => notes.map((n) => (n.id === id ? Object.assign({}, n, { level }) : n)),
 };
 global.fitCardText = () => 1;
 const { CardInteractions } = loadModule('handlers/features/CardInteractions.js', ['CardInteractions']);
@@ -82,7 +83,7 @@ describe('工具条出现时机', () => {
     expect(bar).not.toBeNull();
     expect(bar.hidden).toBe(false);
     expect(Array.from(bar.querySelectorAll('.tw-edit-tool')).map((b) => b.textContent))
-      .toEqual(['B', 'I', '</>', 'S', 'H', 'md']);   // 末位 md = 源码视图兜底出口
+      .toEqual(['B', 'I', '</>', 'S', 'H', '⊞', 'md']);   // ⊞ 插入表格；末位 md = 源码兜底
 
     CardInteractions.exitEdit(ctx, card);
     expect(bar.hidden).toBe(true);
@@ -94,7 +95,7 @@ describe('工具条出现时机', () => {
     CardInteractions.enterEdit(ctx, card);
     const bar = ctx.ctrl._editToolsBar;
     expect(bar).not.toBeNull();
-    expect(bar.querySelectorAll('.tw-edit-tool').length).toBe(6);   // 5 个行内按钮 + md 源码
+    expect(bar.querySelectorAll('.tw-edit-tool').length).toBe(7);   // 5 个行内 + 插入表格 + md 源码
 
     selectNode(text.firstChild);
     tool(bar, '粗体').click();
@@ -148,6 +149,178 @@ describe('行内格式', () => {
         document.body.innerHTML = '';
         window.getSelection().removeAllRanges();
       });
+  });
+});
+
+// 粘贴此前完全不可撤销：`insertEditText` 只改投影 DOM，不触发 input，
+// 所以 _handleEditInput 里的「首次改动留档」永远走不到。现在粘贴前显式压一帧。
+describe('粘贴进撤销栈', () => {
+  test('一次粘贴压一帧', () => {
+    const { card, text, ctx } = fixture('开头', 'p', 'write');
+    ctx.ctrl._undoStack = { push: jest.fn() };
+    CardInteractions.enterEdit(ctx, card);
+    caretIn(text.firstChild);
+    const ev = new window.Event('paste', { bubbles: true, cancelable: true });
+    ev.clipboardData = { files: [], items: [], getData: () => '粘贴内容' };
+    text.dispatchEvent(ev);
+    expect(ctx.ctrl._undoStack.push).toHaveBeenCalledTimes(1);
+    expect(card._editUndoPushed).toBe(true);
+  });
+});
+
+// 表格 Tab：录入时最常用的动作。旧行为是「表格里 row 为空 → onKey 提前 return → 没拦 Tab
+// → 浏览器把焦点移出卡片 → blur 退出编辑」，等于表格里一按 Tab 就写不下去。
+// 这组用例锁住「跳格 + 末格补行 + 绝不退出编辑」。
+describe('表格键盘流：Tab 跳格', () => {
+  const MD = '| 列 | 值 |\n|---|---|\n| a | b |\n| c | d |';
+
+  test('Tab 跳到同一行下一格，Shift+Tab 跳回上一格', () => {
+    const { card, text, ctx } = fixture(MD);
+    CardInteractions.enterEdit(ctx, card);
+    const cells = text.querySelectorAll('td');
+    caretIn(cells[0]);
+    expect(press(text, 'Tab')).toBe(false);                    // 已 preventDefault
+    expect(card._caretRange.startContainer).toBe(cells[1]);    // a → b
+    press(text, 'Tab', { shiftKey: true });
+    expect(card._caretRange.startContainer).toBe(cells[0]);    // b → a
+  });
+
+  test('行末 Tab 落到下一行首格', () => {
+    const { card, text, ctx } = fixture(MD);
+    CardInteractions.enterEdit(ctx, card);
+    const cells = text.querySelectorAll('td');
+    caretIn(cells[1]);                                         // 第一行行末
+    press(text, 'Tab');
+    expect(card._caretRange.startContainer).toBe(cells[2]);    // 下一行首格
+  });
+
+  test('最后一格 Tab 自动补一行并落到新行首格，写回纯 md 表格行', () => {
+    const { card, text, ctx } = fixture(MD);
+    CardInteractions.enterEdit(ctx, card);
+    caretIn(text.querySelectorAll('td')[3]);                   // 最后一格
+    press(text, 'Tab');
+    expect(text.querySelectorAll('tbody tr').length).toBe(3);
+    expect(ctx.ctrl._notes[0].text).toContain('|  |  |');
+    expect(card._caretRange.startContainer).toBe(text.querySelectorAll('td')[4]);
+  });
+
+  test('整个表格的第一格 Shift+Tab 原地不动，也不退出编辑', () => {
+    const { card, text, ctx } = fixture(MD);
+    CardInteractions.enterEdit(ctx, card);
+    const first = text.querySelector('th');
+    caretIn(first);
+    expect(press(text, 'Tab', { shiftKey: true })).toBe(false);
+    expect(card.classList.contains('editing')).toBe(true);
+    // 原地不动：真实选区仍停在第一格（jsdom 不派发 selectionchange，故读选区而非 _caretRange）
+    const sel = window.getSelection();
+    expect(first.contains(sel.anchorNode)).toBe(true);
+  });
+
+  test('表格里 Tab 不再把焦点移出卡片（旧缺陷：一按 Tab 就退出编辑）', () => {
+    const { card, text, ctx } = fixture(MD);
+    CardInteractions.enterEdit(ctx, card);
+    caretIn(text.querySelectorAll('td')[0]);
+    expect(press(text, 'Tab')).toBe(false);                    // 事件被拦住
+    expect(card.classList.contains('editing')).toBe(true);
+    expect(ctx.ctrl._notes[0].text).toBe(MD);                  // 纯跳格不改模型
+  });
+});
+
+// 插入表格：此前投影层没有任何建表入口，只能进源码视图手写 md。
+// 工具条新增 ⊞ 键 → 6×6 网格选行列 → 插入空表并落到首格（接上 Tab 连续录入）。
+describe('插入表格（工具条入口）', () => {
+  function pickerFixture() {
+    const f = fixture('', 'p', 'write');
+    f.ctx.ctrl._el = document.createElement('div');
+    document.body.appendChild(f.ctx.ctrl._el);
+    return f;
+  }
+
+  test('点工具条「插入表格」弹出 6×6 网格', () => {
+    const { card, ctx } = pickerFixture();
+    CardInteractions.enterEdit(ctx, card);
+    const btn = tool(ctx.ctrl._editToolsBar, '插入表格：选行列后插入一张空表');
+    expect(btn).toBeTruthy();
+    btn.click();
+    const picker = ctx.ctrl._tablePicker;
+    expect(picker).toBeTruthy();
+    expect(picker.hidden).toBe(false);
+    expect(picker.querySelectorAll('.tw-table-picker-cell').length).toBe(36);
+  });
+
+  test('选 2 行 3 列：插入空表、卡级变 table、光标落到首格', () => {
+    const { card, text, ctx } = pickerFixture();
+    CardInteractions.enterEdit(ctx, card);
+    tool(ctx.ctrl._editToolsBar, '插入表格：选行列后插入一张空表').click();
+    const cell = ctx.ctrl._tablePicker
+      .querySelector('.tw-table-picker-cell[data-rows="2"][data-cols="3"]');
+    cell.click();
+
+    const md = ctx.ctrl._notes[0].text;
+    expect(md).toContain('| 列1 | 列2 | 列3 |');
+    expect(md.split('\n').length).toBe(3);                  // 表头 + 分隔 + 1 行数据
+    expect(ctx.ctrl._notes[0].level).toBe('table');
+    expect(text.querySelector('table')).not.toBeNull();
+    expect(card._caretRange.startContainer).toBe(text.querySelector('th'));
+    expect(ctx.ctrl._tablePicker.hidden).toBe(true);        // 选完即收起
+  });
+
+  test('插入后工具条重建出行列按钮（否则新表没有增删入口）', () => {
+    const { card, ctx } = pickerFixture();
+    CardInteractions.enterEdit(ctx, card);
+    tool(ctx.ctrl._editToolsBar, '插入表格：选行列后插入一张空表').click();
+    ctx.ctrl._tablePicker.querySelector('.tw-table-picker-cell[data-rows="3"][data-cols="2"]').click();
+    const bar = ctx.ctrl._editToolsBar;
+    expect(tool(bar, '新增一行')).toBeTruthy();
+    expect(tool(bar, '新增一列')).toBeTruthy();
+  });
+
+  test('已有正文的卡：表格追加到末尾，不覆盖原文', () => {
+    const { card, ctx } = pickerFixture();
+    ctx.ctrl._notes[0].text = '开头一句';
+    CardInteractions.enterEdit(ctx, card);
+    tool(ctx.ctrl._editToolsBar, '插入表格：选行列后插入一张空表').click();
+    ctx.ctrl._tablePicker.querySelector('.tw-table-picker-cell[data-rows="1"][data-cols="2"]').click();
+    expect(ctx.ctrl._notes[0].text.startsWith('开头一句')).toBe(true);
+    expect(ctx.ctrl._notes[0].text).toContain('| 列1 | 列2 |');
+  });
+});
+
+describe('表格列对齐（工具条入口）', () => {
+  const MD = '| 列 | 值 |\n|---|---|\n| a | b |';
+
+  test('左 → 中 → 右 → 左 循环，写回 GFM 分隔行', () => {
+    const { card, text, ctx } = fixture(MD);
+    CardInteractions.enterEdit(ctx, card);
+    caretIn(text.querySelectorAll('td')[0]);                 // 第一列
+    const btn = tool(ctx.ctrl._editToolsBar, '切换当前列对齐：左 / 中 / 右');
+    expect(btn).toBeTruthy();
+    btn.click();
+    expect(ctx.ctrl._notes[0].text.split('\n')[1]).toBe('|:---:|---|');   // 中
+    btn.click();
+    expect(ctx.ctrl._notes[0].text.split('\n')[1]).toBe('|---:|---|');    // 右
+    btn.click();
+    expect(ctx.ctrl._notes[0].text.split('\n')[1]).toBe('|---|---|');     // 左
+  });
+
+  test('对齐写回后重新投影，单元格 text-align 生效', () => {
+    const { card, text, ctx } = fixture(MD);
+    CardInteractions.enterEdit(ctx, card);
+    caretIn(text.querySelectorAll('td')[0]);
+    tool(ctx.ctrl._editToolsBar, '切换当前列对齐：左 / 中 / 右').click();
+    expect(text.querySelectorAll('td')[0].style.textAlign).toBe('center');
+  });
+});
+
+describe('表格内工具条就近跟随', () => {
+  test('光标在表格行内：工具条贴该行上方，而不是卡片顶部', () => {
+    const { card, text, ctx } = fixture('| 列 | 值 |\n|---|---|\n| a | b |\n| c | d |');
+    CardInteractions.enterEdit(ctx, card);
+    const tr = text.querySelectorAll('tbody tr')[1];
+    Object.defineProperty(tr, 'offsetTop', { configurable: true, value: 180 });
+    caretIn(text.querySelectorAll('td')[2]);                 // 第二行首格
+    document.dispatchEvent(new window.Event('selectionchange'));
+    expect(ctx.ctrl._editToolsBar.style.top).toBe('180px');  // card.offsetTop(0) + tr.offsetTop
   });
 });
 
@@ -666,7 +839,7 @@ describe('单卡源码视图（md 兜底出口）', () => {
     CardInteractions.exitEdit(ctx, card);
     CardInteractions.enterEdit(ctx, card);
     expect(ctrl._editToolsBar.classList.contains('tw-src-on')).toBe(false);
-    expect(ctrl._editToolsBar.querySelectorAll('.tw-edit-tool').length).toBe(6);
+    expect(ctrl._editToolsBar.querySelectorAll('.tw-edit-tool').length).toBe(7);
     expect(text.querySelector('strong')).not.toBeNull();   // 回到投影视图
   });
 

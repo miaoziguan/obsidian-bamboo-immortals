@@ -3,7 +3,11 @@
  * 重点回归：投影只是显示层，data-tw-rich 标记让编辑/拆卡路径改认模型，绝不把投影回写进 note.text。
  * 注意：本仓库测试走 loadModule（剥离 ESM），不要用顶层 import。
  */
+const fs = require('fs');
+const path = require('path');
 const { loadModule } = require('./__helpers__/testUtils');
+
+const NOTES_CSS = fs.readFileSync(path.join(__dirname, '../../styles/notes.css'), 'utf8');
 
 const { renderCardText, hasMarkdownTable } = loadModule(
   'services/ViewportCuller.js',
@@ -100,5 +104,39 @@ describe('renderCardText — Markdown 表格投影', () => {
     renderCardText(el, { level: 'task', text: '- [ ] 待办' });
     expect(el.querySelector('.tw-task-cb')).not.toBeNull();
     expect(el.querySelector('table')).toBeNull();
+  });
+});
+
+// 真实缺陷：点「+行」补出的 <td> 没有内容，只按 padding 计算 → 行高塌成一条几像素的线，
+// 点不进去、也看不见光标。空行是合法 md（`|  |`），必须给最小行高。
+describe('空单元格行高（+行 / Tab 补行）', () => {
+  test('单元格有最小行高，且空单元格补行盒', () => {
+    const rule = NOTES_CSS.match(
+      /\.tw-card-text \.tw-md-table th,\s*\.tw-card-text \.tw-md-table td \{([^}]*)\}/,
+    );
+    expect(rule).not.toBeNull();
+    expect(rule[1]).toMatch(/height:\s*1\.8em/);
+    expect(NOTES_CSS).toContain('.tw-md-table td:empty::after');
+    expect(NOTES_CSS).toContain('.tw-md-table th:empty::after');
+  });
+
+  test('空行渲染出可点击的单元格（DOM 侧），且不影响序列化', () => {
+    const el = mkText();
+    renderCardText(el, { level: 'table', text: '| a | b |\n|---|---|\n|  |  |' });
+    const cells = el.querySelectorAll('tbody td');
+    expect(cells.length).toBe(2);
+    expect(cells[0].textContent).toBe('');       // 空就是空，不塞 nbsp 进文本
+  });
+});
+
+// 布局层：写作档正文卡 400px 封顶，表格又是 fixed 均分列宽 —— 4 列以上每列只剩几十像素。
+describe('表格卡宽度与列宽分配', () => {
+  test('表格卡单独放宽上限（仍封顶），列宽按内容分配', () => {
+    expect(NOTES_CSS).toMatch(
+      /\.tw-canvas\.tw-mode-write \.tw-card\[data-level="table"\] \{[^}]*max-width:\s*min\(calc\(880px/,
+    );
+    const rule = (NOTES_CSS.match(/\.tw-card-text \.tw-md-table \{([^}]*)\}/) || [])[1] || '';
+    expect(rule).toMatch(/table-layout:\s*auto/);
+    expect(rule).toMatch(/width:\s*100%/);   // 仍是 100%：只改分配方式，不撑出卡片
   });
 });

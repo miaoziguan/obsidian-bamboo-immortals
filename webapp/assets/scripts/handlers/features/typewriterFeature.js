@@ -660,6 +660,40 @@ export const TypewriterFeature = {
     el.addEventListener('click', (e) => { fn(e); if (e.detail > 0) el.blur(); });
   },
 
+  /** 把剪贴板 HTML 转成 md 插进输入框。
+   *  异步桥期间用户可能继续输入：回来时若输入框内容已变，退化为「追加到末尾」——
+   *  绝不把旧偏移硬塞回去，否则会覆盖用户刚打的字。 */
+  _pasteHtmlToInput(input, html, plain) {
+    const sm = (typeof window !== 'undefined') ? window.storageManager : null;
+    const toMd = sm && (sm.moduleHtmlToMarkdown || sm.htmlToMarkdown);
+    const before = input.value;
+    const start = typeof input.selectionStart === 'number' ? input.selectionStart : before.length;
+    const end = typeof input.selectionEnd === 'number' ? input.selectionEnd : start;
+    const limit = Number(input.maxLength) > 0 ? Number(input.maxLength) : 0;
+    const insert = (text) => {
+      let t = String(text == null ? '' : text);
+      if (!t) return;
+      const same = input.value === before;
+      const s = same ? start : input.value.length;
+      const e = same ? end : input.value.length;
+      if (limit > 0) {
+        const room = limit - (input.value.length - (e - s));
+        if (room <= 0) { this._showScreenMsg('最多 ' + limit + ' 字', 1400); return; }
+        if (t.length > room) t = t.slice(0, room);
+      }
+      input.value = input.value.slice(0, s) + t + input.value.slice(e);
+      try { input.setSelectionRange(s + t.length, s + t.length); } catch (_) { /* 老 webview 无此 API */ }
+      // 程序赋值不会派发 input：手动补一次，让草稿/按钮态跟着刷新
+      input.dispatchEvent(new window.Event('input', { bubbles: true }));
+    };
+    // 超大 HTML 不送转换器（整页 DOM 遍历会卡主线程），直接落纯文本
+    if (!html || html.length > 400000) { insert(plain); return; }
+    Promise.resolve()
+      .then(() => toMd.call(sm, html))
+      .then((md) => insert(md || plain))
+      .catch(() => insert(plain));
+  },
+
   _bindInput() {
     const input = this._input;
     const cursor = this._el.querySelector('#twCursor');
@@ -681,6 +715,23 @@ export const TypewriterFeature = {
       if (e.shiftKey) return;
       e.preventDefault();
       doPrint();
+    });
+
+    // 输入框整篇粘贴（Paste as Markdown）：网页 / Word 复制来的富文本交给宿主官方
+    // htmlToMarkdown 转成 md 再落进输入框 —— 输入框内容本来就是 md，不经过投影层，
+    // 提交时由 splitDraft 按块拆卡定级。非写作档不拦（便签/导图没有「整篇导入」语义）；
+    // 没有 text/html 时也放行，让浏览器走默认纯文本粘贴。
+    input.addEventListener('paste', (e) => {
+      if (this._mode !== 'write') return;
+      const dt = e.clipboardData;
+      if (!dt) return;
+      const html = dt.getData('text/html');
+      if (!html) return;
+      const sm = (typeof window !== 'undefined') ? window.storageManager : null;
+      const toMd = sm && (sm.moduleHtmlToMarkdown || sm.htmlToMarkdown);
+      if (typeof toMd !== 'function') return;   // 宿主不支持：保留浏览器默认粘贴
+      e.preventDefault();
+      this._pasteHtmlToInput(input, html, dt.getData('text/plain') || '');
     });
 
     // 第二个键：便签=切换字体；写作=保存快照（当前卡片合成整篇 Markdown，写入带时间戳的

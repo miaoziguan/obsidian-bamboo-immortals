@@ -118,6 +118,8 @@ export interface HostContext {
     resolveResourceUrl(rawPath: string): string | null;
     /** 渲染 markdown 为 HTML 字符串（宿主用 MarkdownRenderer + 一次性 Component） */
     renderMarkdownToHtml(markdown: string, sourcePath: string): Promise<string>;
+    /** HTML → Markdown（Obsidian 官方 htmlToMarkdown：同步、纯字符串、无副作用） */
+    htmlToMarkdown(html: string): string;
     /** 打开中央阅读视图 */
     openReader(p: string): void;
 

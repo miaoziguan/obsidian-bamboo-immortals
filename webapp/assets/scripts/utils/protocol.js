@@ -136,6 +136,7 @@ export const APP_MESSAGE_TYPES = [
   'module:openFile',
   'module:resolveResource',
   'module:renderMarkdown',
+  'module:htmlToMarkdown',
   'module:writeFile',
   'module:openReader',
   'module:toggleTheme',

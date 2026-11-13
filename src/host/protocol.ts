@@ -157,6 +157,7 @@ export const ALL_MESSAGE_TYPES = [
   'module:readFile',        // 读取 vault 文件正文
   'module:openFile',        // 用 Obsidian 原生视图打开文件
   'module:renderMarkdown',  // 把 markdown 渲染成 HTML（侧栏内置阅读视图）
+  'module:htmlToMarkdown',  // 剪贴板 HTML → Markdown（Obsidian 官方转换器；输入框整篇粘贴用）
   'module:writeFile',       // 写入 vault 文件（博客模块「一键应用排版」用）
   'module:openReader',      // 在宿主自建中央阅读视图打开文章
   'module:resolveResource', // 把 vault 内文件路径解析成 webview 可加载的资源 URL（头像/封面等）

@@ -1,4 +1,4 @@
-import { App, TFile, DataAdapter, normalizePath, requestUrl, Platform, MarkdownRenderer, Component } from 'obsidian';
+import { App, TFile, DataAdapter, normalizePath, requestUrl, Platform, MarkdownRenderer, Component, htmlToMarkdown } from 'obsidian';
 import { arrayBufferToBase64, base64ToArrayBuffer } from '../utils/base64';
 import { assertSafeAssetId } from '../utils/assetId';
 import { VaultStorage } from '../storage/VaultStorage';
@@ -498,6 +498,9 @@ export class AppAPI {
           el.remove();
         }
       },
+      // 官方 HTML → Markdown：webview 里拿不到 turndown，必须由宿主转。
+      // 同步纯函数，不碰 vault、不建 DOM，适合「输入框整篇粘贴」这种一次性转换。
+      htmlToMarkdown: (html) => htmlToMarkdown(html),
       openReader: (p) => { if (self.onOpenReader) self.onOpenReader(p); },
       backfillMaterialRecords: () => self._backfillMaterialRecords(),
       safeAssetId: (id, label) => assertSafeAssetId(id, label),

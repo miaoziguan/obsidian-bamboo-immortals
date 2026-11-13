@@ -133,6 +133,7 @@ const CONTRACT: string[] = [
     'module:openReader',
     'module:readFile',
     'module:renderMarkdown',
+    'module:htmlToMarkdown',
     'module:resolveResource',
     'module:saveData',
     'module:toggleTheme',

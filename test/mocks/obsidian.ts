@@ -17,6 +17,14 @@ export function normalizePath(p: string): string {
 }
 
 /** YAML 解析/序列化（镜像 obsidian 的 parseYaml/stringifyYaml，测试用 yaml 包实现） */
+/**
+ * 测试桩：真实实现是 Obsidian 内置的 turndown 转换器（Tables/TaskList 等规则齐全）。
+ * 单测只需要验证「宿主把 html 交给了它、并把返回值回传」这条链路，故只做最小标签剥离。
+ */
+export function htmlToMarkdown(html: string): string {
+    return String(html == null ? '' : html).replace(/<[^>]+>/g, '').trim();
+}
+
 export function parseYaml(s: string): any {
   return parse(s);
 }

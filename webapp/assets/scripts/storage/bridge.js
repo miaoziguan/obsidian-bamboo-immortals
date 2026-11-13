@@ -1185,6 +1185,20 @@ export class BridgeStorage {
     }
   }
 
+  /** 模块能力：HTML → Markdown（Obsidian 官方 htmlToMarkdown；输入框整篇粘贴用）。
+   *  失败返回空串，调用方降级为纯文本粘贴 —— 粘贴绝不能因为转换失败而没反应。 */
+  async moduleHtmlToMarkdown(html) {
+    await this.ensureReady();
+    try {
+      const resp = await this._send('module:htmlToMarkdown', { html: String(html == null ? '' : html) });
+      if (resp && resp.ok && typeof resp.markdown === 'string') return resp.markdown;
+      return '';
+    } catch (e) {
+      console.warn('[Bridge] HTML 转 Markdown 失败:', e && e.message);
+      return '';
+    }
+  }
+
   /** 模块能力：写入 vault 文件（博客模块「一键应用竹杖芒鞋排版」用） */
   async moduleWriteFile(path, content) {
     await this.ensureReady();

@@ -42,6 +42,7 @@ export type ModuleHost = Pick<HostContext,
     | 'resolveWikiLink'
     | 'resolveResourceUrl'
     | 'renderMarkdownToHtml'
+    | 'htmlToMarkdown'
     | 'openReader'
     >;
 
@@ -250,6 +251,30 @@ const handleModuleRenderMarkdown: RouteHandler<ModuleHost> = async (ctx, id, pay
 };
 
 /**
+ * 模块能力：把剪贴板里的 HTML 转成 Markdown —— 直接用 Obsidian 官方 htmlToMarkdown，
+ * 不再自写白名单解析器（官方转换器带 Obsidian 方言：表格/任务列表/围栏/callout 都能转）。
+ * 使用场景：写作档输入框「整篇粘贴」。输入框内容本来就是 md，转换完直接落进去，
+ * 提交时由 splitDraft 拆卡定级；全程不经过投影层，所以没有「md 字符串没法插投影」的问题。
+ */
+const handleModuleHtmlToMarkdown: RouteHandler<ModuleHost> = async (ctx, id, payload) => {
+    const html = (payload && typeof payload.html === 'string') ? payload.html : '';
+    if (!html) {
+        ctx.respondError(id, 'module:htmlToMarkdown 缺少 html');
+        return;
+    }
+    // 上限：整页 DOM（几 MB）交给 turndown 遍历会卡住主线程 —— 超限直接拒绝，调用方降级纯文本
+    if (html.length > 400000) {
+        ctx.respondError(id, 'HTML 过大，请改用纯文本粘贴');
+        return;
+    }
+    try {
+        ctx.respond(id, { ok: true, markdown: ctx.htmlToMarkdown(html) });
+    } catch (e) {
+        ctx.respondError(id, e instanceof Error ? e.message : 'HTML 转换失败');
+    }
+};
+
+/**
  * 模块能力：用 Obsidian 原生阅读视图打开文件。
  * 模块视图常驻左侧栏，故文章一律在中央工作区新页签打开（不抢占模块视图所在的 leaf）。
  */
@@ -326,6 +351,7 @@ export const moduleRoutes: Record<string, RouteHandler<ModuleHost>> = {
     'module:listFiles': handleModuleListFiles,
     'module:readFile': handleModuleReadFile,
     'module:renderMarkdown': handleModuleRenderMarkdown,
+    'module:htmlToMarkdown': handleModuleHtmlToMarkdown,
     'module:openFile': handleModuleOpenFile,
     'module:writeFile': handleModuleWriteFile,
     'module:resolveResource': handleModuleResolveResource,

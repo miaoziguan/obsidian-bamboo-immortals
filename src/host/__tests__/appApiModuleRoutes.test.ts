@@ -242,4 +242,18 @@ describe('module:* 特征测试（迁移到 handlers/moduleHandlers.ts 前锁定
         const res = await send('module:openFile', { path: 'blog/missing.md' });
         expect(res.error).toBe('文件不存在：blog/missing.md');
     });
+
+    // 输入框「整篇粘贴」用：宿主把剪贴板 HTML 交给 Obsidian 官方 htmlToMarkdown。
+    // 单测只验链路（转交给谁、回传什么、边界拦不拦），转换质量由 Obsidian 自己保证。
+    it('module:htmlToMarkdown —— 回传 markdown；缺 html / 超大一律报错', async () => {
+        const ok = await send('module:htmlToMarkdown', { html: '<h1>标题</h1><p>正文</p>' });
+        expect((ok.payload as Record<string, unknown>).ok).toBe(true);
+        expect((ok.payload as Record<string, unknown>).markdown).toBe('标题正文');
+
+        const empty = await send('module:htmlToMarkdown', {});
+        expect(empty.error).toContain('缺少 html');
+
+        const huge = await send('module:htmlToMarkdown', { html: 'x'.repeat(400001) });
+        expect(huge.error).toContain('HTML 过大');
+    });
 });

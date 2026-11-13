@@ -19,6 +19,22 @@
  * 或做「屏外卡片卸载」的视口剔除，就不需要担心 DOM 把数据带偏，几何缓存也才有唯一真源）。
  */
 import { FONTS, PAPERS, MARKET_PAPERS, MARKET_FONTS, LEVELS, ZOOM_MIN, ZOOM_MAX, MAX_LEN, WRITING_SCHEMA_VERSION } from './twConfig.js';
+
+// GFM 表格判定：与 ViewportCuller 的投影判定同源。刻意各存一份 —— 测试桩会剥离 import，
+// 纯逻辑层不能反向依赖渲染层；两处正则保持一致，改一处务必同步另一处。
+const TABLE_DELIM_RE = /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)*\|?\s*$/;
+const hasTablePipe = (s) => String(s).indexOf('|') >= 0;
+const isTableDelim = (s) => hasTablePipe(s) && TABLE_DELIM_RE.test(s);
+
+// GFM 围栏代码块：与 ViewportCuller 的投影判定同源（同样各存一份，理由同上）。
+// 闭合行必须与开围栏同字符、长度不小于开围栏，且不带语言标记。
+const FENCE_LINE_RE = /^\s*(`{3,}|~{3,})(.*)$/;
+function isFenceClose(line, mark) {
+  const m = FENCE_LINE_RE.exec(line);
+  return !!(m && m[1].charAt(0) === mark.charAt(0)
+    && m[1].length >= mark.length && !m[2].trim());
+}
+
 export const WritingDoc = {
   VERSION: WRITING_SCHEMA_VERSION,     // v2 = x/y/canvasOffset 统一绝对 px（与 TypewriterStore.WRITING_VERSION 同值，单一真源在 twConfig）
   ZOOM_MIN,                           // 手动缩放下界（小签 ~180px 宽）
@@ -226,7 +242,8 @@ export const WritingDoc = {
    * 按段落拆分一张卡（纯函数，返回新数组，调用方负责落盘）。
    *   · 优先以空行（连续换行）分段 —— Markdown 段落语义；
    *   · 若无空行但有多行，则退化为按单个换行分段 —— 打字机输入框里回车即新段，用户不会敲两个回车；
-   *   · 首段留在原卡（保留其 level 与全部视觉属性），其余段各成一张 level:'p' 的新卡、紧随其后插入；
+   *   · 首段留在原卡（保留其 level 与全部视觉属性），其余段紧随其后插入：
+   *     列表/引用沿用原级，标题等其余类型降为 p；表格/围栏代码是原子结构，禁止拆分；
    *   · seq 由 setOrder 重写为唯一且连续（红线不破）。
    *  段数 ≤ 1（无换行可拆）时原样返回 —— 调用方据此判定「无需拆分」。
    *  @returns {Array} 拆后（或原样）的 notes 数组
@@ -237,11 +254,25 @@ export const WritingDoc = {
     if (idx < 0) return notes;
     const orig = list[idx];
     const raw = (orig.text || '').replace(/\r\n?/g, '\n');
-    const clean = (arr) => arr.map((s) => s.replace(/^[ \t]+/gm, '').replace(/[ \t]+$/gm, '').trim()).filter((s) => s.length);
+    // 表格 / 围栏代码块是原子结构：逐行拆会把表头/数据行、开围栏/代码拆散。
+    if (orig.level === 'table' || orig.level === 'code') return notes;
+    // 段内保留相对缩进（嵌套列表层级），只归一化整段公共缩进 —— 与 splitDraft 同一口径。
+    // 旧实现逐行删行首缩进，拆一次卡就把嵌套层级抹平了。
+    const cleanSeg = (seg) => {
+      const rows = seg.replace(/[ \t]+$/gm, '').split('\n');
+      let min = Infinity;
+      rows.forEach((r) => { if (r.trim()) min = Math.min(min, (/^[ \t]*/.exec(r) || [''])[0].length); });
+      if (!isFinite(min)) min = 0;
+      return rows.map((r) => (r.trim() && min ? r.slice(min) : r)).join('\n').trim();
+    };
+    const clean = (arr) => arr.map(cleanSeg).filter((s) => s.length);
     let chunks = clean(raw.split(/\n[ \t]*\n+/));   // ① 空行分段
     if (chunks.length <= 1) chunks = clean(raw.split(/\n+/));   // ② 退化为按换行分段
     if (chunks.length <= 1) return notes;           // 没有可拆的段落
     const updated = Object.assign({}, orig, { text: chunks[0] });
+    // 拆出的段沿用可延续的列表/引用层级（否则 ol 编号、task 勾选态会退化成散文本）；
+    // 标题卡拆出的说明段仍降级为 p（标题独占一张卡，既有契约）。
+    const carried = ['ul', 'ol', 'task', 'quote'].indexOf(orig.level) >= 0 ? orig.level : 'p';
     const inserts = chunks.slice(1).map((t, k) => ({
       id: this.newId(),
       seq: 0,                                            // 占位；下方 setOrder 按数组序重写
@@ -250,7 +281,7 @@ export const WritingDoc = {
       y: (Number.isFinite(orig.y) ? orig.y : 0) + (k + 1) * 24,
       font: orig.font || 'classic',
       paper: orig.paper || 'plain',
-      level: 'p',                                        // 拆出的段一律为段落级
+      level: carried,                                    // 列表/引用沿用原级，其余为段落级
       date: orig.date || '',
       zoom: Number.isFinite(orig.zoom) ? orig.zoom : 1,
       fontScale: (Number.isFinite(orig.fontScale) && orig.fontScale > 0) ? orig.fontScale : 1,
@@ -319,18 +350,28 @@ export const WritingDoc = {
     const lines = text.split('\n');
     const first = lines[0] || '';
     let m;
+    // 围栏代码块：保留完整 markdown（含 ``` 与语言标记），渲染层据此建 <pre><code>。
+    if (FENCE_LINE_RE.test(first)) return { level: 'code', text };
+    // 表格：首行含 | 且次行是分隔行 → 保留完整 markdown。
+    // 与 task 同理，`|`/`---` 是语义而非装饰，渲染层要靠它们建 <table>，绝不能剥掉。
+    if (hasTablePipe(first) && isTableDelim(lines[1] || '')) return { level: 'table', text };
     if ((m = /^(#{1,6})\s+(.*)$/.exec(first))) { lines[0] = m[2]; return { level: 'h' + m[1].length, text: lines.join('\n') }; }
     if ((m = /^>\s+(.*)$/.exec(first))) { lines[0] = m[1]; return { level: 'quote', text: lines.join('\n') }; }
-    if ((m = /^[-*]\s+\[( |x|X)\]\s+(.*)$/.exec(first))) { lines[0] = m[2]; return { level: 'task', text: lines.join('\n') }; }
+    // task 不剥 marker：marker 是语义（勾选态），要保留进 note.text，由渲染层解析成勾选框。
+    // 其它类型（标题/列表/引用）的 marker 无语义、纯装饰，剥掉才不显示成正文。
+    if ((m = /^[-*]\s+\[( |x|X)\]\s+(.*)$/.exec(first))) { return { level: 'task', text }; }
     if ((m = /^[-*]\s+(.*)$/.exec(first))) { lines[0] = m[1]; return { level: 'ul', text: lines.join('\n') }; }
-    if ((m = /^\d+[.)]\s+(.*)$/.exec(first))) { lines[0] = m[1]; return { level: 'ol', text: lines.join('\n') }; }
+    // 有序列表的编号是信息而非装饰：剥掉首行 `1. ` 会让卡片显示成「2. 3. 4.」缺 1，
+    // 导出也拿不回原编号。与 task/table/code 一样保留完整 markdown。
+    if (/^\d+[.)]\s+/.test(first)) return { level: 'ol', text };
     return { level: 'p', text };
   },
 
   /**
    * 长文成块（纯函数）：把一整篇草稿切成「一块一张卡」的块序列，每块各自定级。
-   *  与 splitNote（拆单卡）的区别：splitNote 把拆出的段一律定为 'p'，会丢标题/列表语义；
-   *  此处每块各自跑 detectLevel，故 "# 三、结论" → h3 卡、"- 项" → ul 卡、"1. 项" → ol 卡。
+   *  与 splitNote（拆单卡）的区别：splitNote 面向「已定级的一张卡」按空行/换行分段，沿用原卡层级；
+   *  此处面向整篇草稿，每块各自跑 detectLevel 定级，
+   *  故 "# 三、结论" → h3 卡、"- 项" → ul 卡、"1. 项" → ol 卡。
    *
    *  成块规则（逐行状态机，兼顾 Markdown / 纯文本 / 外部 App 脏复制三种来源）：
    *   ① 空行 = 段落边界（Markdown 段落语义）；
@@ -346,8 +387,10 @@ export const WritingDoc = {
     const MAX = (Number.isFinite(maxLen) && maxLen > 0) ? maxLen : MAX_LEN;
     const src = String(raw == null ? '' : raw).replace(/\r\n?/g, '\n');
     if (!src.trim()) return [];
-    // 行清洗：去行尾空白与行首缩进（外部 App 复制的乱缩进会污染 Markdown 语义，如把正文顶成标题）
-    const lines = src.split('\n').map((s) => s.replace(/[ \t]+$/g, '').replace(/^[ \t]+/g, ''));
+    // 行清洗只去行尾空白。行首缩进是嵌套列表的层级语义，必须留到成块阶段：
+    // 判定用的 probe 会 trimStart（外部 App 复制的乱缩进仍不会污染 Markdown 语义），
+    // 但 cur.lines 存原始行，flush 时归一化「块级公共缩进」，只留下块内相对缩进。
+    const lines = src.split('\n').map((s) => s.replace(/[ \t]+$/g, ''));
     const isBlank = (s) => !s.trim();
     const isHeading = (s) => /^#{1,6}\s+/.test(s);
     const isQuote = (s) => /^>\s?/.test(s);
@@ -361,27 +404,69 @@ export const WritingDoc = {
     const hasBlank = /\n[ \t]*\n/.test(src);
 
     const blocks = [];
+    const noSplit = new Set();   // 表格/围栏块在 blocks 中的下标：整块不参与超长硬切
+    // 先扫出所有「整块结构」区间（围栏代码、GFM 表格）。不做这步的话：
+    // 无空行稿子会把它们逐行切成 N 张卡，超 MAX 的块还会被 hardSplit 从句读处
+    // 拦腰切断 —— 表头/分隔行/数据行、开围栏/代码/闭围栏分家，结构直接碎掉。
+    const blockSpans = new Map();
+    for (let k = 0; k < lines.length; k += 1) {
+      const fence = FENCE_LINE_RE.exec(lines[k]);
+      if (fence) {
+        let j = k + 1;
+        while (j < lines.length && !isFenceClose(lines[j], fence[1])) j += 1;
+        const end = (j < lines.length) ? j + 1 : lines.length;   // 未闭合也整块成卡
+        blockSpans.set(k, end);
+        k = end - 1;
+        continue;
+      }
+      if (k + 1 < lines.length && hasTablePipe(lines[k]) && isTableDelim(lines[k + 1])) {
+        let j = k + 2;
+        while (j < lines.length && lines[j].trim() && hasTablePipe(lines[j]) && !isTableDelim(lines[j])) j += 1;
+        blockSpans.set(k, j);
+        k = j - 1;
+      }
+    }
     let cur = null;
     const flush = () => {
       if (cur && cur.lines.some((s) => s.trim())) {
-        blocks.push(cur.lines.join('\n').replace(/\s+$/g, '').replace(/^\s+/g, ''));
+        // 归一化「块级公共缩进」：整块都被缩进（外部复制常见）时减掉，
+        // 但块内不同行之间的相对缩进保留 —— 那是嵌套 ul/ol 的层级。
+        let min = Infinity;
+        cur.lines.forEach((s) => {
+          if (s.trim()) min = Math.min(min, (/^[ \t]*/.exec(s) || [''])[0].length);
+        });
+        if (!isFinite(min)) min = 0;
+        const body = cur.lines.map((s) => (s.trim() && min ? s.slice(min) : s)).join('\n');
+        blocks.push(body.replace(/\s+$/g, '').replace(/^\s+/g, ''));
       }
       cur = null;
     };
-    lines.forEach((line) => {
+    let skipUntil = -1;
+    lines.forEach((rawLine, li) => {
+      if (li < skipUntil) return;
+      const span = blockSpans.get(li);
+      if (span != null) {
+        flush();
+        // 表格 / 围栏块不走归一化：代码行自身的缩进是内容，不能动
+        const whole = lines.slice(li, span).join('\n').replace(/\s+$/g, '').replace(/^\s+/g, '');
+        if (whole) { noSplit.add(blocks.length); blocks.push(whole); }
+        skipUntil = span;
+        return;
+      }
+      const line = rawLine.replace(/^[ \t]+/, '');   // 判定用去缩进版；存储用 rawLine
       if (isBlank(line)) { flush(); return; }
-      if (isHeading(line)) { flush(); cur = { kind: 'h', lines: [line] }; return; }
+      if (isHeading(line)) { flush(); cur = { kind: 'h', lines: [rawLine] }; return; }
       const lk = listKind(line);
       if (lk) {
-        if (cur && cur.kind === lk) { cur.lines.push(line); return; }
-        flush(); cur = { kind: lk, lines: [line] }; return;
+        if (cur && cur.kind === lk) { cur.lines.push(rawLine); return; }
+        flush(); cur = { kind: lk, lines: [rawLine] }; return;
       }
       if (isQuote(line)) {
-        if (cur && cur.kind === 'quote') { cur.lines.push(line); return; }
-        flush(); cur = { kind: 'quote', lines: [line] }; return;
+        if (cur && cur.kind === 'quote') { cur.lines.push(rawLine); return; }
+        flush(); cur = { kind: 'quote', lines: [rawLine] }; return;
       }
-      if (cur && cur.kind === 'p' && hasBlank) { cur.lines.push(line); return; }   // 软换行并入同段
-      flush(); cur = { kind: 'p', lines: [line] };
+      if (cur && cur.kind === 'p' && hasBlank) { cur.lines.push(rawLine); return; }   // 软换行并入同段
+      flush(); cur = { kind: 'p', lines: [rawLine] };
     });
     flush();
 
@@ -405,8 +490,9 @@ export const WritingDoc = {
     };
 
     const chunks = [];
-    blocks.forEach((b) => {
-      const parts = (b.length > MAX) ? hardSplit(b) : [b];
+    blocks.forEach((b, bi) => {
+      // 结构块整块豁免：宁可让一张卡偏长，也不能把表头/数据行或围栏/代码切到两张卡上
+      const parts = (b.length > MAX && !noSplit.has(bi)) ? hardSplit(b) : [b];
       parts.forEach((p) => {
         const d = this.detectLevel(p);
         if (d.text && d.text.trim()) chunks.push({ text: d.text, level: d.level });
@@ -437,7 +523,13 @@ export const WritingDoc = {
       .map((n) => (n.text || '').replace(/\s+$/g, '').replace(/^\s+/g, ''))
       .filter((s) => s.length)
       .join('\n\n');
-    const merged = Object.assign({}, anchor, { text });
+    // 层级不一致时降为正文级：否则「ol 卡 + 普通段落」合并后仍挂 ol，
+    // 导出的列表分支会把那段普通文字也编上号（同类：marker 语义被张冠李戴）。
+    const levels = new Set(ordered.map((n) => n.level || 'p'));
+    const merged = Object.assign({}, anchor, {
+      text,
+      level: levels.size === 1 ? (anchor.level || 'p') : 'p',
+    });
     // 连线端点改写：被并卡(非锚)→ 锚；自环丢弃；去重
     const seen = new Set();
     const outLinks = [];
@@ -524,6 +616,60 @@ export const WritingDoc = {
 
   removeLink(links, from, to) {
     return links.filter((l) => !((l.from === from && l.to === to) || (l.from === to && l.to === from)));
+  },
+
+  /** 按 seq（文章顺序）列出全部卡 id。批量连线前后据此固化读序，连线变化不改文章顺序。 */
+  idsBySeq(notes) {
+    return (Array.isArray(notes) ? notes : [])
+      .filter((n) => n && n.id)
+      .slice()
+      .sort((a, b) => (Number(a.seq) || 0) - (Number(b.seq) || 0))
+      .map((n) => n.id);
+  },
+
+  /** 一键连线：按文章顺序把全部卡连成一条单向链（替换现有连线）。
+   *  链顺序与 seq 一致，故连完后读序不变；写作档的连线语义就是文章顺序，不需要分叉。 */
+  chainLinks(notes) {
+    const ids = this.idsBySeq(notes);
+    const out = [];
+    for (let i = 1; i < ids.length; i += 1) {
+      out.push({ from: ids[i - 1], to: ids[i], route: 'bezier', bend: 0, dash: 'solid' });
+    }
+    return out;
+  },
+
+  /** 按需连线：选中集按文章顺序连成链，只增不删；集合外的连线原样保留。
+   *  复用 addLink 的双向去重与 id 有效性校验，避免重复/悬空线。 */
+  linkSelection(notes, links, ids) {
+    const wanted = new Set(Array.isArray(ids) ? ids : []);
+    const ordered = this.idsBySeq(notes).filter((id) => wanted.has(id));
+    let out = (Array.isArray(links) ? links : []).slice();
+    for (let i = 1; i < ordered.length; i += 1) {
+      const next = this.addLink(notes, out, ordered[i - 1], ordered[i]);
+      if (next) out = next;
+    }
+    return out;
+  },
+
+  /** 按需删除连线：只删两端都在选中集内的连线，跨越集合边界的线保留。 */
+  unlinkSelection(links, ids) {
+    const wanted = new Set(Array.isArray(ids) ? ids : []);
+    return (Array.isArray(links) ? links : [])
+      .filter((l) => !(l && wanted.has(l.from) && wanted.has(l.to)));
+  },
+
+  /** 选中集是否已按文章顺序连成链（只看集合内部的相邻对，跨边界的线不算）。
+   *  多选条上的「连线 / 断开」是同一个键的两态，靠它决定当前该显示哪一面。 */
+  selectionChained(notes, links, ids) {
+    const wanted = new Set(Array.isArray(ids) ? ids : []);
+    const ordered = this.idsBySeq(notes).filter((id) => wanted.has(id));
+    if (ordered.length < 2) return false;
+    const list = Array.isArray(links) ? links : [];
+    const has = (a, b) => list.some((l) => (l.from === a && l.to === b) || (l.from === b && l.to === a));
+    for (let i = 1; i < ordered.length; i += 1) {
+      if (!has(ordered[i - 1], ordered[i])) return false;
+    }
+    return true;
   },
 
 

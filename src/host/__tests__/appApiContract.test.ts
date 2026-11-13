@@ -111,7 +111,9 @@ const CONTRACT: string[] = [
     'file:delete',
     'file:get',
     'file:list',
+    'file:readImage',
     'file:write',
+    'file:writeBinary',
     // market:*
     'market:install',
     'market:manifest',

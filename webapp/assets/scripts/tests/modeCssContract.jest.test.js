@@ -87,6 +87,22 @@ describe('写作档（MD可视化写作）卡片外观契约', () => {
     expect(hidden('.tw-card-paper')).toBe('none');
   });
 
+  // PNG 导出是便签档能力（把「纸片」渲染成图片带走）。写作档的卡是文章块，
+  // 内容出口是 md，且这个图片图标容易被误读成「插入图片」。
+  // 锁住按档位隐藏，同时防止误伤 md 导出、防止外溢到便签档。
+  test('写作档隐藏 PNG 导出钮，但留住 md 导出、且不影响便签档', () => {
+    const pngHidden = RULES.filter(
+      (r) => r.sel.includes('.tw-card-export-png') && decl(r.body, 'display') === 'none'
+    );
+    expect(pngHidden.length).toBeGreaterThan(0);
+    pngHidden.forEach((r) => expect(r.sel).toContain('tw-mode-write'));
+
+    const mdHidden = RULES.filter((r) => r.sel.includes('tw-mode-write')
+      && /\.tw-card-export(?![-\w])/.test(r.sel)
+      && decl(r.body, 'display') === 'none');
+    expect(mdHidden.map((r) => r.sel)).toEqual([]);
+  });
+
   test('写作档卡片表面挂在 .tw-card-main（背景 / 边框 / 圆角）', () => {
     const r = rulesMatching('.tw-canvas.tw-mode-write .tw-card-main');
     expect(r.length).toBeGreaterThan(0);
@@ -139,5 +155,24 @@ describe('两档不得互相外溢', () => {
 
     const zeroed = RULES.filter((r) => r.sel.includes(':where(.tw-canvas.tw-mode-notes)'));
     expect(zeroed.length).toBeGreaterThan(0);
+  });
+});
+
+// 编辑态格式工具条（B/I/行内代码/删除线/高亮/源码/表格行列/列表项）是「文章编辑」控件：
+// 便签是定框纸片（0 语法、单卡 500 字），不该压一排编辑器控件；写作档才需要它。
+describe('编辑格式工具条的档位归属', () => {
+  const hiddenIn = (scope) => RULES.filter(
+    (r) => r.sel.includes(scope) && r.sel.includes('.tw-edit-tools')
+      && decl(r.body, 'display') === 'none'
+  );
+
+  test('便签档整条隐藏格式工具条，且作用域精确', () => {
+    const hit = hiddenIn('tw-mode-notes');
+    expect(hit.length).toBeGreaterThan(0);
+    hit.forEach((r) => expect(r.sel).toContain('tw-mode-notes'));
+  });
+
+  test('写作档不得被连带隐藏', () => {
+    expect(hiddenIn('tw-mode-write')).toEqual([]);
   });
 });

@@ -106,12 +106,12 @@ export function allPapers() { return PAPERS.concat(MARKET_PAPERS); }
 export function allFonts() { return FONTS.concat(MARKET_FONTS); }
 
 // MD可视化写作模式：结构级别
-export const LEVELS = ["p", "h1", "h2", "h3", "h4", "h5", "h6", "quote", "ul", "ol", "task"];
-export const LEVEL_LABELS = { p: "正文", h1: "H1", h2: "H2", h3: "H3", h4: "H4", h5: "H5", h6: "H6", quote: "引用", ul: "列表", ol: "编号", task: "任务" };
-export const LEVEL_FEEDBACK = { p: "正文 BODY", h1: "标题 H1", h2: "标题 H2", h3: "标题 H3", h4: "标题 H4", h5: "标题 H5", h6: "标题 H6", quote: "引用 QUOTE", ul: "无序列表 LIST", ol: "编号列表 ORDERED", task: "任务清单 TASK" };
+export const LEVELS = ["p", "h1", "h2", "h3", "h4", "h5", "h6", "quote", "ul", "ol", "task", "table", "code"];
+export const LEVEL_LABELS = { p: "正文", h1: "H1", h2: "H2", h3: "H3", h4: "H4", h5: "H5", h6: "H6", quote: "引用", ul: "列表", ol: "编号", task: "任务", table: "表格", code: "代码" };
+export const LEVEL_FEEDBACK = { p: "正文 BODY", h1: "标题 H1", h2: "标题 H2", h3: "标题 H3", h4: "标题 H4", h5: "标题 H5", h6: "标题 H6", quote: "引用 QUOTE", ul: "无序列表 LIST", ol: "编号列表 ORDERED", task: "任务清单 TASK", table: "表格 TABLE", code: "代码块 CODE" };
 export const LEVEL_GROUPS = [
   { label: "标题", items: ["h1", "h2", "h3", "h4", "h5", "h6"] },
-  { label: "基础", items: ["p", "quote"] },
+  { label: "基础", items: ["p", "quote", "table", "code"] },
   { label: "列表", items: ["ul", "ol", "task"] },
 ];
 export const LEVEL_LADDER = ["h1", "h2", "h3", "h4", "h5", "h6", "p"];

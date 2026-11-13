@@ -718,6 +718,36 @@ export class BridgeStorage {
     }
   }
 
+  /** 卡片图片投影：把 vault 里的图片读成 data URL。
+   *  返回空串表示「没有/读不到/超限」—— 调用方只做占位，绝不改动 md 原文。
+   *  @returns {Promise<string>} */
+  async readVaultImage(path) {
+    const p = (path || '').trim();
+    if (!p) return '';
+    await this.ensureReady();
+    try {
+      const res = await this._send('file:readImage', { path: p });
+      return (res && typeof res.data === 'string') ? res.data : '';
+    } catch (e) {
+      console.warn('[Bridge] readVaultImage(' + p + ') failed:', e && e.message);
+      return '';
+    }
+  }
+
+  /** 粘贴 / 拖入的图片：base64 → 画中卷目录下的文件（作用域与 file:write 相同）。
+   *  @returns {Promise<{ok:boolean,path?:string}|null>} */
+  async writeVaultImage(path, base64) {
+    const p = (path || '').trim();
+    if (!p || !base64) return null;
+    await this.ensureReady();
+    try {
+      return await this._send('file:writeBinary', { path: p, content: String(base64) });
+    } catch (e) {
+      console.warn('[Bridge] writeVaultImage 不可用:', e && e.message);
+      return null;
+    }
+  }
+
   /** 思维子弹导出：写 Markdown 到 Vault 任意相对路径（宿主 app:exportMindmap，不受画中卷限制）。
    *  @returns {Promise<{ok:boolean,path?:string}|null>} 桥不可用/超时返回 null（调用方兜底下载）。 */
   async exportMindmap(path, content) {

@@ -27,7 +27,8 @@ export const MODE_POLICY = {
     id: 'notes',
     docKind: 'notes',                    // 文档种类（TypewriterStore 的分组键）
     screen: { title: '凝墨成笺', ph: '输入文字打印便签...' },
-    input: { maxLen: MAX_LEN },          // 单卡上限：写不下即截
+    input: { maxLen: MAX_LEN },          // 输入框上限：写不下即截
+    cardMaxLen: MAX_LEN,                 // 单卡编辑上限：便签框小，超了要用户自己拆
     meta: '#twMetaNotes',                // 元信息条：FONT · PAPER
     ownsStickers: true,                  // 贴纸 / 素材市场属于便签档（P1 装饰层归属）
     usesCardInteractions: true,          // 卡片画布手势（平移 / 滚轮 / 空格抓手 / 框选）接管
@@ -52,6 +53,9 @@ export const MODE_POLICY = {
     // 与便签「凝墨成笺」、子弹「枝连成图」同为「X → 成 Y」的四字结构，同一套诗意命名。
     screen: { title: '列锦成文', ph: '输入文字打印卡片...' },
     input: { maxLen: DRAFT_MAX_LEN },    // 草稿箱上限：整篇长文可粘进来，打印时再拆卡
+    // 单卡编辑上限：卡片就是 md 块。表格/围栏/并卡本就允许超 MAX_LEN（splitDraft 的 noSplit），
+    // 按便签尺寸去截会把用户的 md 切坏 —— 这里只留一个防跑飞的粗上限。
+    cardMaxLen: DRAFT_MAX_LEN,
     meta: '#twMetaWrite',                // 卡片 · 连线
     ownsStickers: false,
     usesCardInteractions: true,
@@ -72,6 +76,7 @@ export const MODE_POLICY = {
     docKind: 'mindmap',
     screen: { title: '枝连成图', ph: '输入文字新建节点...' },
     input: { maxLen: MAX_LEN },
+    cardMaxLen: MAX_LEN,
     meta: '#twMetaMindmap',              // 子弹 · 连线
     ownsStickers: false,
     // 导图有自己的文档、历史与手势：卡片画布的交互（双击归位 / 撤销 / 排版 / 手势）一律让位
@@ -124,6 +129,14 @@ export const ModePolicy = {
   skipCull(mode, noteCount) {
     const c = ModePolicy.of(mode).culling;
     return !!(c && c.noCullMax > 0 && (Number(noteCount) || 0) <= c.noCullMax);
+  },
+  /**
+   * 单卡编辑字数上限：与输入框上限分开 —— 输入框是「一次能粘多少」，单卡是「一张卡能有多大」。
+   * 写作档的卡片是 md 块（表格/围栏/并卡本就超 MAX_LEN），不能按便签尺寸截。
+   */
+  cardMaxLen(mode) {
+    const p = ModePolicy.of(mode);
+    return p.cardMaxLen || p.input.maxLen;
   },
 };
 

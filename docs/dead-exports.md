@@ -25,7 +25,7 @@
 > 扫描：webapp JS(排除 tests) + src TS(排除 __tests__) + 根 main.ts（插件入口）；排除 TS type/interface/declare。
 > 判定：生产代码零消费者（标识符 + 引号内字符串键）即记为死导出。非单词名($/$$)用专用边界。
 
-**零消费者运行时导出合计：66**
+**零消费者运行时导出合计：73**
 
 | 导出名 | 状态 | 内部/测试引用 |
 |---|---|---|
@@ -74,6 +74,13 @@
 | `MAX_CUSTOM_TEMPLATES` | 内部使用(冗余export) | 内部:2 测试:0 |
 | `ICON_LINK` | 内部使用(冗余export) | 内部:2 测试:0 |
 | `PERIOD_CONFIG` | 内部使用(冗余export) | 内部:1 测试:0 |
+| `hasCodeFence` | 内部使用(冗余export) | 内部:1 测试:1 |
+| `hasInlineMarkdown` | 仅测试引用 | 内部:0 测试:1 |
+| `hasMarkdownTable` | 内部使用(冗余export) | 内部:1 测试:1 |
+| `renderCardText` | 内部使用(冗余export) | 内部:2 测试:13 |
+| `renderRichText` | 内部使用(冗余export) | 内部:1 测试:1 |
+| `renderTaskText` | 内部使用(冗余export) | 内部:1 测试:2 |
+| `TASK_LINE_RE` | 内部使用(冗余export) | 内部:1 测试:1 |
 | `BridgeStorage` | 内部使用(冗余export) | 内部:1 测试:3 |
 | `computeFitScale` | 内部使用(冗余export) | 内部:1 测试:1 |
 | `MIN_FIT_SCALE` | 内部使用(冗余export) | 内部:4 测试:1 |

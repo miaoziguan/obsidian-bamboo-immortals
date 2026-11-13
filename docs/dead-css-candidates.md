@@ -90,9 +90,9 @@ CSS 类名是模块/主题扩展 API 的天然契约面：外部主题、外部�
 > `node scripts/check-dead-css.mjs --update`（CI 跑默认模式校验漂移）。
 >
 > 扫描：定义 `webapp/assets/styles/**/*.css`；使用 `webapp/assets/scripts/**/*.js`(排除 tests) + `webapp/*src*.html`/`index.html`（刻意排除 4 个打包产物 html，避免把 CSS 定义当使用）。
-> 误判防护：十六进制颜色值过滤；动态拼接类名（`prefix`+n）移至「疑似动态」列，不计入判定。
+> 误判防护：十六进制颜色值过滤；动态拼接类名（`prefix`+n）移至「疑似动态」列；宿主渲染标记（`.tw-preview-rendered` 容器内的类）移至「宿主渲染」列，均不计入判定。
 
-**确认死类名：35　疑似动态（已剔除）：2　死 ID 选择器：3**
+**确认死类名：35　疑似动态（已剔除）：2　宿主渲染（已剔除）：2　死 ID 选择器：3**
 
 ### 按首段聚类（确认死类名）
 
@@ -118,6 +118,10 @@ CSS 类名是模块/主题扩展 API 的天然契约面：外部主题、外部�
 ### 疑似动态拼接（已从判定剔除，待人工确认）
 
 `tw-mm-style-1` `tw-mm-style-3`
+
+### 宿主渲染 HTML 的类（已从判定剔除，非死代码）
+
+`contains-task-list` `task-list-item`
 
 ### 死 ID 选择器
 

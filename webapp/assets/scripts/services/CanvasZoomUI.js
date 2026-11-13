@@ -62,17 +62,29 @@ export const CanvasZoomUI = {
     const notesBtn = (typeof adapter.onToggleAllNotes === 'function')
       ? '<button type="button" class="tw-zoom-btn tw-zoom-notes" data-act="notes" title="全部节点笔记：一键展开 / 收起（只含有笔记的节点）" aria-label="展开或收起全部节点笔记"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 3.5H7a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9.2z"/><path d="M13.5 3.5v4.2a1.5 1.5 0 0 0 1.5 1.5h4.2"/><path d="M8.8 13h6.4M8.8 16.4h4.2"/></svg></button>'
       : '';
+    // 文章连线（写作档专属）：一个 toggle 键管「一键成链 ⇄ 一键清空」。
+    // 为什么不是一个动作一个键：全篇粒度下「有连线 / 无连线」本就是互斥两态，
+    // 两个并列按钮等于把同一个开关的两态摊成两个键，既占位又要读两遍才能决定点谁。
+    // 图标随状态切换（未连线=链条，已连线=断链），title / aria-label 同步——点之前就知道会做什么。
+    // 与 onTint 同一套 adapter 协议：只有传回调的档位才生成按钮，导图/便签的 bar 天然没有。
+    const linkToggleBtn = (typeof adapter.onLinkToggle === 'function')
+      ? '<button type="button" class="tw-zoom-btn tw-zoom-link-toggle" data-act="link-toggle" title="一键连线：按文章顺序把全部卡片连成一条链（可撤销）" aria-label="一键连线">'
+        + '<svg class="tw-zoom-icon-link" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a4 4 0 0 0 5.66 0l2-2a4 4 0 0 0-5.66-5.66l-1 1"/><path d="M14 11a4 4 0 0 0-5.66 0l-2 2A4 4 0 0 0 12 18.66l1-1"/></svg>'
+        + '<svg class="tw-zoom-icon-unlink" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a4 4 0 0 0 5.66 0l2-2a4 4 0 0 0-5.66-5.66l-1 1"/><path d="M14 11a4 4 0 0 0-5.66 0l-2 2A4 4 0 0 0 12 18.66l1-1"/><path d="M3 3l18 18"/></svg>'
+        + '</button>'
+      : '';
     bar.innerHTML = notesBtn + tintBtn + handBtn + `
       <button type="button" class="tw-zoom-btn" data-act="out"  title="缩小" aria-label="缩小">−</button>
       <button type="button" class="tw-zoom-val" data-act="reset" title="点击重置为 100%" aria-label="重置缩放为 100%">100%</button>
       <button type="button" class="tw-zoom-btn" data-act="in"   title="放大" aria-label="放大">+</button>
-      <button type="button" class="tw-zoom-btn" data-act="fit"  title="适应内容" aria-label="适应内容">⤢</button>` + marketBtn;
+      <button type="button" class="tw-zoom-btn" data-act="fit"  title="适应内容" aria-label="适应内容">⤢</button>` + marketBtn + linkToggleBtn;
     host.appendChild(bar);
 
     const valEl = bar.querySelector('.tw-zoom-val');
     const handEl = bar.querySelector('.tw-zoom-hand');
     const tintEl = bar.querySelector('.tw-zoom-tint');
     const notesEl = bar.querySelector('.tw-zoom-notes');
+    const linkEl = bar.querySelector('.tw-zoom-link-toggle');
     const sync = () => {
       const s = CanvasViewport.scaleOf(adapter.getView());
       const txt = Math.round(s * 100) + '%';
@@ -88,6 +100,19 @@ export const CanvasZoomUI = {
       // 全部笔记开启态：「所有带笔记的节点都展开着」才算开（局部展开不亮，避免误读）
       if (notesEl && typeof adapter.isAllNotesOpen === 'function') {
         notesEl.classList.toggle('active', !!adapter.isAllNotesOpen());
+      }
+      // 连线 toggle：有连线 → 断链图标（点击清空）；无连线 → 链条图标（点击成链）。
+      // 图标与 title 一起切，避免「看着是连、点下去却是断」。
+      if (linkEl && typeof adapter.isLinked === 'function') {
+        const linked = !!adapter.isLinked();
+        linkEl.classList.toggle('is-linked', linked);
+        const label = linked ? '一键删除连线' : '一键连线';
+        if (linkEl.getAttribute('aria-label') !== label) {
+          linkEl.setAttribute('aria-label', label);
+          linkEl.title = linked
+            ? '一键删除连线：清空所有连线，文章顺序保持不变（可撤销）'
+            : '一键连线：按文章顺序把全部卡片连成一条链（可撤销）';
+        }
       }
     };
 
@@ -107,6 +132,7 @@ export const CanvasZoomUI = {
         else if (act === 'hand' && typeof adapter.onHand === 'function') adapter.onHand();
         else if (act === 'tint' && typeof adapter.onTint === 'function') adapter.onTint();
         else if (act === 'notes' && typeof adapter.onToggleAllNotes === 'function') adapter.onToggleAllNotes();
+        else if (act === 'link-toggle' && typeof adapter.onLinkToggle === 'function') adapter.onLinkToggle();
       } catch (err) { /* 缩放控件失败不应影响画布 */ }
       sync();
     });

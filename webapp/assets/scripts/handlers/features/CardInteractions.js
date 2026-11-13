@@ -23,6 +23,7 @@ import { CanvasKeys } from '../../services/CanvasKeys.js';
 import { ModePolicy } from './modePolicy.js';
 // 拖拽期帧间隔探针：把「卡不卡」变成 p50/p90/max 的可报数样本（现场诊断用，见 utils/dragPerf.js）
 import { DragPerf } from '../../utils/dragPerf.js';
+import { plainifyCodeBlocks } from '../../utils/codeHighlight.js';
 
 /** 【连线定序】连线是文章顺序的输入之一：增 / 删连线后按 orderIds（连线优先 → 回退阅读序）
  *  重算一次 seq，并显式刷徽标。真值仍落在 seq 上（读取方 O(1)、不每帧现推），
@@ -35,6 +36,728 @@ function reseqByLinks(ctrl) {
   ctrl._refreshWriteOrder();
 }
 
+// ── 编辑态格式工具条（无语法编辑的「新增格式 / 增删行列」入口）─────────────────
+// 挂在 .tw-card 上而非 .tw-card-main：后者有 overflow:hidden 会把浮层裁掉。
+// 所有按钮 pointerdown 时 preventDefault —— 否则点按钮会让 textEl 失焦，
+// 直接触发 exitEdit、选区也一起丢了。
+/** 光标所在节点：优先用编辑态快照（点工具条后全局 selection 常已失效）。 */
+function currentNodeInText(card, textEl) {
+  const pick = (n) => (n && n.nodeType === 3 ? n.parentNode : n);
+  const inText = (n) => !!(n && textEl.contains(n));
+  // ① 实时 selection 最可信：用户刚把光标放到哪，就以哪为准（快照可能已经过时）
+  const sel = getSel(textEl);
+  if (sel && sel.rangeCount) {
+    const live = pick(sel.anchorNode || sel.focusNode);
+    if (live && live.closest && inText(live)) return live;
+  }
+  // ② 选中文字的快照（点工具条时实时选区常已失效）
+  const saved = card && card._editRange;
+  if (saved && inText(saved.startContainer)) return pick(saved.startContainer);
+  // ③ 光标位置快照（列表项 / 单元格定位，只需「停在哪」）
+  const caret = card && card._caretRange;
+  if (caret && inText(caret.startContainer)) return pick(caret.startContainer);
+  return null;
+}
+
+function currentRowOf(card, textEl) {
+  const node = currentNodeInText(card, textEl);
+  const row = node && node.closest('.tw-md-list, .tw-task-row');
+  return row && textEl.contains(row) ? row : null;
+}
+
+function currentCellOf(card, textEl) {
+  const node = currentNodeInText(card, textEl);
+  const cell = node && node.closest('td, th');
+  return cell && textEl.contains(cell) ? cell : null;
+}
+
+/* 浏览器原生行内命令：contentEditable 的标准做法。
+   选区由浏览器内部维护，不受 Shadow DOM 里拿到的 Range「容器在卡外」影响 ——
+   这正是手搓 Range 包裹一直改不到可见文本的根因。 */
+/* 加粗视觉：700 字重 + 字体合成 + 极细描边。
+   描边不能大：0.05em 以上叠加会把中文笔画的间隙填满，字反而糊成一片看不清。
+   同时清掉上一版留在节点上的临时视觉（底纹 / 四向阴影 / 内边距）。 */
+function emphasizeStrong(el) {
+  if (!el || !el.style) return;
+  el.style.fontWeight = '700';
+  el.style.fontSynthesis = 'weight';
+  el.style.webkitTextStroke = '0.02em currentColor';
+  el.style.background = '';
+  el.style.borderRadius = '';
+  el.style.padding = '';
+  el.style.textShadow = '';
+}
+
+/* 行内格式的可见性兜底：原生命令产出的标签在部分字体/主题下看不出差异。 */
+function emphasizeInline(el, tag) {
+  if (!el || !el.style) return;
+  if (tag === 'strong' || tag === 'b') { emphasizeStrong(el); return; }
+  if (tag === 'em' || tag === 'i') {
+    el.style.fontStyle = 'italic';
+    el.style.fontSynthesis = 'style';   // 字体无斜体变体时合成倾斜
+    return;
+  }
+  if (tag === 'del' || tag === 's' || tag === 'strike') {
+    el.style.textDecoration = 'line-through';
+    el.style.opacity = '0.65';
+  }
+}
+
+const EXEC_CMD = { strong: 'bold', b: 'bold', em: 'italic', i: 'italic', del: 'strikeThrough', s: 'strikeThrough' };
+
+function execInlineCommand(textEl, tag) {
+  const cmd = EXEC_CMD[tag];
+  if (!cmd || typeof document.execCommand !== 'function') return null;
+  // 只在 textEl 确实是当前编辑宿主时用原生命令，否则会作用到别的元素上。
+  // Shadow Root 有自己的 activeElement，document.activeElement 在这里拿到的是 host（甚至 BODY）。
+  const root = textEl.getRootNode ? textEl.getRootNode() : null;
+  const active = (root && root.activeElement) || document.activeElement;
+  if (active !== textEl && !(textEl.contains && textEl.contains(active))) return null;
+  const before = textEl.innerHTML;
+  try {
+    document.execCommand('styleWithCSS', false, false);   // 强制产出 <b>/<i> 标签而非内联 style
+    if (!document.execCommand(cmd, false, null)) return null;
+  } catch (_) {
+    return null;
+  }
+  if (textEl.innerHTML === before) return null;   // 没有任何实际改动 → 交给快照 Range 兜底
+  textEl.dataset.twRich = '1';
+  // 原生命令产出的是裸 <b>，同样可能被纸样样式重置字重：补内联兜底
+  if (cmd === 'bold') textEl.querySelectorAll('b, strong').forEach(emphasizeStrong);
+  let on = false;
+  try { on = document.queryCommandState(cmd); } catch (_) { on = false; }
+  return on ? 'add' : 'remove';
+}
+
+/**
+ * 行内格式 toggle（选区已在该标签内则解包，否则用选区包裹）。
+ * 优先走浏览器原生命令；不可用时才用手里的 range 快照兜底。
+ * 返回 'add' / 'remove' 或失败原因字符串（便于给出具体提示）。
+ */
+function toggleInlineTag(textEl, tag, range) {
+  const native = execInlineCommand(textEl, tag);
+  if (native) return native;
+  let r = range;
+  if (!r) {
+    const sel = getSel(textEl);
+    if (sel && sel.rangeCount) {
+      const cur = sel.getRangeAt(0);
+      if (!cur.collapsed && textEl.contains(cur.commonAncestorContainer)) r = cur;
+    }
+  }
+  if (!r) r = rangeFromSelectedText(textEl);   // 容器在 shadow 外层 → 用选中文字重建
+  if (!r) return 'no-range';
+  if (!textEl.contains(r.commonAncestorContainer)) return 'outside';
+  let node = r.commonAncestorContainer;
+  if (node.nodeType === 3) node = node.parentNode;
+  // execCommand 产出的是 <b>/<i>/<s>，与 strong/em/del 同义，取消时要能一并识别
+  // execCommand 产出的是 <b>/<i>/<strike>，与 strong/em/del 同义，取消时必须一并识别，
+  // 否则同一段文字只能反复包裹、永远解不掉（I 与 S 按钮「点了没反应」的根因）。
+  const WRAP_SEL = {
+    strong: 'strong, b', b: 'strong, b',
+    em: 'em, i', i: 'em, i',
+    del: 'del, s, strike', s: 'del, s, strike',
+    code: 'code', mark: 'mark',
+  };
+  const wrapSel = WRAP_SEL[tag] || tag;
+  const wrap = node && node.closest ? node.closest(wrapSel) : null;
+  if (wrap && textEl.contains(wrap)) {
+    const parent = wrap.parentNode;
+    while (wrap.firstChild) parent.insertBefore(wrap.firstChild, wrap);
+    parent.removeChild(wrap);
+    textEl.dataset.twRich = '1';              // 一旦进入格式编辑，写回改走序列化
+    return 'remove';                          // 已有格式 → 这次是取消
+  }
+  if (r.collapsed || !String(r).trim()) return 'collapsed';   // 光标态 / 空选区都不造空标签
+  const el = document.createElement(tag);
+  el.appendChild(r.extractContents());
+  r.insertNode(el);
+  // 内联兜底：纸样/主题可能用更高特异性的规则重置字重，外部 CSS 一旦被覆盖就是
+  // 「节点加了、字没变」。内联样式优先级最高，保证任何字体下都能看出差异。
+  emphasizeInline(el, tag);
+  // 选中新内容只是体验优化，失败不影响已完成的加粗（必须用 shadow 自己的 selection 才生效）
+  try {
+    const sel = getSel(textEl);
+    if (sel) {
+      sel.removeAllRanges();
+      const r2 = document.createRange();
+      r2.selectNodeContents(el);
+      sel.addRange(r2);
+    }
+  } catch (_) { /* 忽略：选区 API 在 shadow 里可能不可用 */ }
+  textEl.dataset.twRich = '1';
+  return 'add';                               // 这次是新加上格式
+}
+
+/** 表格增删行列：行列都至少保留一。 */
+function tableEditOp(card, textEl, op) {
+  const cell = currentCellOf(card, textEl);
+  if (!cell) return 'no-cell';
+  const tr = cell.parentNode;
+  const table = cell.closest('table');
+  if (!table) return false;
+  const idx = Array.prototype.indexOf.call(tr.children, cell);
+  if (op === 'row+') {
+    const clone = tr.cloneNode(true);
+    Array.from(clone.children).forEach((c) => { c.textContent = ''; });
+    tr.parentNode.insertBefore(clone, tr.nextSibling);
+  } else if (op === 'row-') {
+    if (tr.parentNode.children.length <= 1) return false;
+    tr.parentNode.removeChild(tr);
+  } else if (op === 'col+') {
+    Array.from(table.querySelectorAll('tr')).forEach((row) => {
+      const ref = row.children[idx];
+      const c = document.createElement(ref && ref.tagName === 'TH' ? 'th' : 'td');
+      c.textContent = '';
+      row.insertBefore(c, ref ? ref.nextSibling : null);
+    });
+  } else if (op === 'col-') {
+    const rows = Array.from(table.querySelectorAll('tr'));
+    if (!rows.length || rows[0].children.length <= 1) return false;
+    rows.forEach((row) => { if (row.children[idx]) row.removeChild(row.children[idx]); });
+  } else {
+    return false;
+  }
+  return true;
+}
+
+/**
+ * 表格内回车：光标移到下一行同列，已是最后一行则补一行空单元格（纯 md：新的一行 `|  |`）。
+ * 以前不拦，浏览器会在单元格里塞 <br>/<div>，序列化时只能压成空格 ——
+ * 用户看到换行、保存后却没了。GFM 单元格语法上不支持换行，所以让回车做标准表格动作。
+ */
+function tableEnterNextRow(card, textEl) {
+  const cell = currentCellOf(card, textEl);
+  if (!cell) return false;
+  const tr = cell.parentNode;
+  const table = cell.closest('table');
+  if (!table || !tr) return false;
+  const idx = Array.prototype.indexOf.call(tr.children, cell);
+  const rows = Array.from(table.querySelectorAll('tr'));
+  let next = rows[rows.indexOf(tr) + 1] || null;
+  let added = false;
+  if (!next) {
+    const inHead = !!cell.closest('thead');
+    next = document.createElement('tr');
+    Array.from(tr.children).forEach(() => {
+      const c = document.createElement('td');
+      c.textContent = '';
+      next.appendChild(c);
+    });
+    if (inHead) {
+      let body = table.querySelector('tbody');
+      if (!body) { body = document.createElement('tbody'); table.appendChild(body); }
+      body.appendChild(next);
+    } else {
+      tr.parentNode.appendChild(next);
+    }
+    added = true;
+  }
+  const target = next.children[idx];
+  if (!target) return added;
+  try {
+    const r = document.createRange();
+    r.setStart(target, target.childNodes.length);
+    r.collapse(true);
+    const sel = getSel(textEl);
+    if (sel) { sel.removeAllRanges(); sel.addRange(r); card._caretRange = r.cloneRange(); }
+  } catch (_) { /* 光标定位失败不影响已补的行 */ }
+  return added;
+}
+
+/** 有序项重新编号：同缩进层级连续成组、各组独立递增；回到外层时延续外层序号。
+    以前直接跳过所有嵌套项，导致在嵌套项上「+项」后出现两个相同的 1.。 */
+function renumberList(textEl) {
+  const counters = new Map();          // indent → 该层当前序号
+  let lastIndent = -1;
+  Array.from(textEl.querySelectorAll('.tw-md-list')).forEach((row) => {
+    const marker = row.querySelector('.tw-md-marker');
+    if (!marker || !/^\d/.test(marker.textContent)) return;   // 无序项不参与编号
+    const indent = Math.round((parseFloat(row.style.getPropertyValue('padding-left')) || 0) / 1.2);
+    if (indent > lastIndent) counters.set(indent, 0);
+    else if (indent < lastIndent) {
+      Array.from(counters.keys()).forEach((k) => { if (k > indent) counters.delete(k); });
+    }
+    lastIndent = indent;
+    const n = (counters.get(indent) || 0) + 1;
+    counters.set(indent, n);
+    marker.textContent = n + '.';
+  });
+}
+
+/**
+ * 编辑态当前字数：富卡按序列化后的模型算（语法标记也占字数，和截断口径一致），
+ * 纯文本卡按可见文本算。用 innerText 数富卡会低估已用字数 → 高估剩余空间 →
+ * 粘完再被截模型，等于把用户内容连同语法一起切掉。
+ */
+function editModelLen(ctrl, card, text) {
+  if (!text) return 0;
+  const rich = !!text.dataset.twRich
+    || !!(text.querySelector
+      && text.querySelector('strong,em,code,del,s,mark,table,pre,img,.tw-md-list,.tw-task-row,.tw-md-quote'));
+  if (rich && typeof ctrl._serializeCardText === 'function') {
+    const note = (ctrl._notes || []).find((n) => n.id === (card && card.dataset.id));
+    return ctrl._serializeCardText(text, note).length;
+  }
+  const s = typeof text.innerText === 'string' ? text.innerText : text.textContent;
+  return s ? s.length : 0;
+}
+
+/**
+ * 编辑态投影 DOM → 模型。工具条与键盘结构操作（回车拆项 / Tab 缩进）共用。
+ * 只改投影 DOM 而不立刻序列化，会导致随后 blur → exitEdit 按旧模型重投影，
+ * 刚做的修改被整个冲掉（表现就是「提示已应用、但内容没变」）。
+ */
+function commitEditModel(ctrl, card, text) {
+  if (!ctrl || typeof ctrl._serializeCardText !== 'function') return;
+  const note = (ctrl._notes || []).find((n) => n.id === card.dataset.id);
+  const md = ctrl._serializeCardText(text, note);
+  if (typeof WritingDoc !== 'undefined' && WritingDoc.setText) {
+    ctrl._notes = WritingDoc.setText(ctrl._notes, card.dataset.id, md);
+  }
+  if (ctrl._undoStack && !card._editUndoPushed) {
+    card._editUndoPushed = true;
+    ctrl._undoStack.push();
+  }
+  if (typeof ctrl._scheduleSave === 'function') ctrl._scheduleSave();
+  if (typeof fitCardText === 'function') fitCardText(card);
+}
+
+// ── 图片：粘贴 / 拖入 → 落盘到画中卷 → 卡片里插一行 md 链接 ────────────────────
+// md 里只留 `![](画中卷/assets/xxx.png)`，图片本体是 vault 里的真文件：
+// 导出/同步出去仍是 Obsidian 原生笔记，不把 base64 灌进正文。
+const IMG_MIME_EXT = {
+  'image/png': 'png', 'image/jpeg': 'jpg', 'image/gif': 'gif', 'image/webp': 'webp',
+  'image/bmp': 'bmp', 'image/avif': 'avif', 'image/svg+xml': 'svg',
+};
+
+/** 从 DataTransfer 里同步取出图片文件（粘贴时 items 在事件返回后即失效，必须当场取）。 */
+function imageFilesFrom(dt) {
+  if (!dt) return [];
+  const out = [];
+  try {
+    const files = dt.files ? Array.from(dt.files) : [];
+    for (const f of files) if (f && /^image\//i.test(f.type || '')) out.push(f);
+    if (!out.length && dt.items) {
+      for (const it of Array.from(dt.items)) {
+        if (!it || it.kind !== 'file' || !/^image\//i.test(it.type || '')) continue;
+        const f = it.getAsFile ? it.getAsFile() : null;
+        if (f) out.push(f);
+      }
+    }
+  } catch (_) { /* 剪贴板不可读时按「没有图片」处理 */ }
+  return out;
+}
+
+function bytesToBase64(bytes) {
+  let out = '';
+  const CHUNK = 0x8000;   // 分块：一次性 apply 整个数组会爆栈（大图尤甚）
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    out += btoa(String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK)));
+  }
+  return out;
+}
+
+/** 落盘用的文件名时间戳（秒级 + 4 位随机，避免同一秒粘两张撞名）。 */
+function imageStamp() {
+  const d = new Date();
+  const p2 = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}${p2(d.getMonth() + 1)}${p2(d.getDate())}`
+    + `-${p2(d.getHours())}${p2(d.getMinutes())}${p2(d.getSeconds())}`
+    + `-${Math.random().toString(36).slice(2, 6)}`;
+}
+
+/** 一张图片文件 → md 链接字符串（失败返回 ''，调用方只跳过这张）。 */
+async function saveImageFile(store, file) {
+  const type = String(file.type || '').toLowerCase();
+  let ext = IMG_MIME_EXT[type] || '';
+  if (!ext) {
+    const m = /\.([a-z0-9]+)$/i.exec(String(file.name || ''));
+    if (m && IMG_MIME_EXT['image/' + m[1].toLowerCase()]) ext = m[1].toLowerCase();
+    else if (m && /^jpe?g$/i.test(m[1])) ext = 'jpg';
+  }
+  if (!ext) ext = 'png';
+  let b64 = '';
+  try { b64 = bytesToBase64(new Uint8Array(await file.arrayBuffer())); } catch (_) { return ''; }
+  if (!b64) return '';
+  const res = await store.writeVaultImage(`assets/pasted-${imageStamp()}.${ext}`, b64);
+  if (!res || !res.ok || !res.path) return '';
+  // alt 只做提示：截图类默认名（image / blob）不写，免得每张都挂个无意义的 "image"
+  const name = String(file.name || '').replace(/\.[^.]+$/, '').replace(/[[\]\r\n]/g, '').trim();
+  const alt = /^(image|blob|pasted|clipboard)$/i.test(name) ? '' : name.slice(0, 40);
+  return `![${alt}](${res.path})`;
+}
+
+/** 把纯文本插到卡片当前光标处（返回是否走的手动插入）。 */
+function insertEditText(card, text, str) {
+  let inserted = false;
+  try {
+    const sel = getSel(text);
+    const r = sel && sel.rangeCount ? sel.getRangeAt(0) : null;
+    if (r && text.contains(r.commonAncestorContainer)) {
+      r.deleteContents();
+      const node = document.createTextNode(str);
+      r.insertNode(node);
+      r.setStartAfter(node);
+      r.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(r);
+      card._caretRange = r.cloneRange();
+      inserted = true;
+    }
+  } catch (_) { /* 回退到命令式 */ }
+  if (!inserted) document.execCommand('insertText', false, str);
+  return inserted;
+}
+
+/** 列表 / 任务：增删项、增减缩进。 */
+function listEditOp(card, textEl, op) {
+  const row = currentRowOf(card, textEl);
+  if (!row) return 'no-row';
+  if (op === 'indent+' || op === 'indent-') {
+    if (!row.classList.contains('tw-md-list')) return false;
+    const cur = Math.round((parseFloat(row.style.getPropertyValue('padding-left')) || 0) / 1.2);
+    const depth = Math.max(0, cur + (op === 'indent+' ? 1 : -1));
+    if (depth === cur) return false;
+    if (depth) {
+      row.style.setProperty('padding-left', (depth * 1.2) + 'em', 'important');
+      row.dataset.indent = '  '.repeat(depth);
+    } else {
+      row.style.removeProperty('padding-left');
+      delete row.dataset.indent;
+    }
+    return true;
+  }
+  if (op === 'item+') {
+    const clone = row.cloneNode(true);
+    if (clone.classList.contains('tw-task-row')) {
+      const cb = clone.querySelector('.tw-task-cb');
+      if (cb) cb.checked = false;
+      const lab = clone.querySelector('.tw-task-label');
+      if (lab) lab.textContent = '';
+    } else {
+      Array.from(clone.childNodes).forEach((n) => {
+        if (!(n.nodeType === 1 && n.classList.contains('tw-md-marker'))) clone.removeChild(n);
+      });
+    }
+    row.parentNode.insertBefore(clone, row.nextSibling);
+    renumberList(textEl);
+    // 光标必须落到新行：否则用户以为在新行打字，字符却插到别处，表现为「输入了但不显示」
+    const target = clone.classList.contains('tw-task-row')
+      ? (clone.querySelector('.tw-task-label') || clone)
+      : clone;
+    try {
+      const r = document.createRange();
+      r.setStart(target, target.childNodes.length);
+      r.collapse(true);
+      const sel = getSel(textEl);
+      if (sel) { sel.removeAllRanges(); sel.addRange(r); card._caretRange = r.cloneRange(); }
+    } catch (_) { /* 光标定位失败不影响已插入的行 */ }
+    return true;
+  }
+  if (op === 'item-') {
+    const siblings = Array.from(row.parentNode.children).filter(
+      (n) => n.classList.contains('tw-md-list') || n.classList.contains('tw-task-row'),
+    );
+    if (siblings.length <= 1) return false;
+    // 删的是当前行：先把落点挑好（上一行；删首行时用后一行），删完再把光标放过去。
+    // 否则光标随节点一起消失，用户接着打字会落到正文开头或别处。
+    const at = siblings.indexOf(row);
+    const next = siblings[at > 0 ? at - 1 : 1] || null;
+    row.parentNode.removeChild(row);
+    renumberList(textEl);
+    if (next && next.parentNode) {
+      try {
+        const target = next.querySelector('.tw-task-label') || next;
+        const r = document.createRange();
+        r.setStart(target, target.childNodes.length);
+        r.collapse(true);
+        const sel = getSel(textEl);
+        if (sel) { sel.removeAllRanges(); sel.addRange(r); card._caretRange = r.cloneRange(); }
+      } catch (_) { /* 光标定位失败不影响删除结果 */ }
+    }
+    return true;
+  }
+  return false;
+}
+
+const INLINE_TOOL_DEFS = [
+  { label: 'B', title: '粗体', tag: 'strong' },
+  { label: 'I', title: '斜体', tag: 'em' },
+  { label: '</>', title: '行内代码', tag: 'code' },
+  { label: 'S', title: '删除线', tag: 'del' },
+  { label: 'H', title: '高亮', tag: 'mark' },
+];
+
+/**
+ * 取「用户最后一次真正选中的**非空**选区」：当前选区 → 编辑态快照。
+ * 只接受非空 range：快照一旦被 collapsed 光标覆盖，加粗会永远提示「先选中要格式化的文字」。
+ */
+/**
+ * 取当前 selection。
+ * **Shadow Root 必须优先**：Chrome 里 Shadow 内部有独立的 selection 树，
+ * document.getSelection() / window.getSelection() 对它返回 rangeCount===0，
+ * 即使画面上文字明明被高亮选中。这正是「明明选了却一直提示没选中」的根因。
+ */
+function getSel(node) {
+  try {
+    const root = node && node.getRootNode ? node.getRootNode() : null;
+    if (root && root.nodeType === 11 && typeof root.getSelection === 'function') {
+      const s = root.getSelection();
+      if (s && s.rangeCount) return s;
+    }
+  } catch (_) { /* 部分实现不支持，继续回退 */ }
+  try {
+    const sr = (typeof window !== 'undefined') ? window.__bambooShadowRoot : null;
+    if (sr && typeof sr.getSelection === 'function') {
+      const s = sr.getSelection();
+      if (s && s.rangeCount) return s;
+    }
+  } catch (_) { /* 继续回退 */ }
+  if (typeof window === 'undefined') return null;
+  const a = typeof window.getSelection === 'function' ? window.getSelection() : null;
+  if (a && a.rangeCount) return a;
+  const b = (typeof document !== 'undefined' && typeof document.getSelection === 'function')
+    ? document.getSelection() : null;
+  return (b && b.rangeCount) ? b : (a || b || null);
+}
+
+/**
+ * 用「选中文字」在卡片内重建一个可操作的 Range。
+ * 起因：Shadow DOM 下 window/document 的 selection 会把卡片内选区「上提」到 host 层，
+ * commonAncestorContainer 落在 .tw-card-text 之外，Range 无法直接操作卡内文本 ——
+ * 此时只能拿选中的字符串回到卡内文本节点里重新定位。
+ * 只有**唯一匹配**才动手，避免改错地方。
+ */
+function rangeFromSelectedText(textEl) {
+  const sel = getSel(textEl);
+  if (!sel) return null;
+  const want = String(sel.toString ? sel.toString() : '').trim();
+  if (!want) return null;
+  const hits = [];
+  const walker = document.createTreeWalker(textEl, NodeFilter.SHOW_TEXT, null);
+  let node = walker.nextNode();
+  while (node) {
+    const idx = node.nodeValue.indexOf(want);
+    if (idx >= 0) {
+      hits.push({ node, idx });
+      if (hits.length > 1) return null;   // 多处匹配，宁可不改
+    }
+    node = walker.nextNode();
+  }
+  if (hits.length !== 1) return null;
+  const r = document.createRange();
+  r.setStart(hits[0].node, hits[0].idx);
+  r.setEnd(hits[0].node, hits[0].idx + want.length);
+  return r;
+}
+
+function pickEditRange(card, textEl) {
+  const sel = getSel(textEl);
+  if (sel && sel.rangeCount) {
+    const r = sel.getRangeAt(0);
+    if (!r.collapsed && textEl.contains(r.commonAncestorContainer)) return r;
+  }
+  const saved = card._editRange;
+  if (saved && !saved.collapsed && textEl.contains(saved.commonAncestorContainer)) return saved;
+  // 容器在 shadow 外层时，用选中文字在卡内重建
+  return rangeFromSelectedText(textEl);
+}
+
+/** 把工具条摆到卡片上方（画布坐标系，用 offset* 避免受视口 transform 缩放影响）。 */
+function placeEditTools(ctrl, card) {
+  const bar = ctrl && ctrl._editToolsBar;
+  if (!bar || bar.hidden) return;
+  const host = bar.parentNode;
+  if (!host || host === card) return;
+  bar.style.left = (card.offsetLeft + card.offsetWidth / 2) + 'px';
+  bar.style.top = card.offsetTop + 'px';
+}
+
+/**
+ * 编辑态按当前内容重建工具条（隐藏时保留 DOM，避免反复插入）。
+ * 挂在**画布层**而不是卡片内：.tw-card 带 transform 会自成层叠上下文，卡内 z-index 再高
+ * 也只在本卡内有效，会被相邻卡片盖住 —— 视觉上看得见、点击却落到上面那张卡，
+ * 表现为「按钮完全没反应，也没有任何提示」。
+ */
+function ensureEditTools(ctrl, card, text) {
+  const host = (ctrl && ctrl._canvas) || card;
+  let bar = (ctrl && ctrl._editToolsBar) || null;
+  if (!bar || !bar.isConnected || bar.parentNode !== host) {
+    bar = document.createElement('div');
+    bar.className = 'tw-edit-tools';
+    host.appendChild(bar);
+    if (ctrl) ctrl._editToolsBar = bar;
+  }
+  bar.textContent = '';
+  bar.classList.remove('tw-src-on');   // 上次会话若停在源码视图，按钮集合要复原
+  const tip = (msg) => {
+    if (ctrl && typeof ctrl._showScreenMsg === 'function') ctrl._showScreenMsg(msg, 1500);
+  };
+  const REASON = {
+    'no-range': '没有取到选区，请重新选中文字',
+    outside: '选区不在卡片内，请重新选中文字',
+    collapsed: '选区已塌陷，请重新选中文字',
+    'no-cell': '把光标放到表格单元格里',
+    'no-row': '把光标放到列表项/任务项里',
+  };
+  // 工具条只改投影 DOM，必须立刻序列化回模型（见 commitEditModel）。
+  const syncModel = () => commitEditModel(ctrl, card, text);
+  /* 模型已更新，但当前投影 DOM 未必反映它 —— 实测「加粗要切走再切回（重挂）才可见」。
+     既然重挂能显示，就点完按钮按最新模型就地重投影一次，不再等重挂时机。 */
+  const rerenderCurrent = () => {
+    const fresh = (ctrl._notes || []).find((n) => n.id === card.dataset.id);
+    const live = card.querySelector('.tw-card-text');
+    if (!live || !fresh || typeof ctrl._applyCardText !== 'function') return;
+    ctrl._applyCardText(live, fresh);
+    if (live.querySelector('strong, b, em, i, code, del, s, mark')) live.dataset.twRich = '1';
+    if (typeof fitCardText === 'function') fitCardText(card);
+    // 重投影会重建节点、冲掉选区：把刚格式化的元素重新选中。
+    // 不恢复的话，再点一次同一按钮点不到东西，只会又包一层（而不是解包）。
+    const el = live.querySelector('strong, b, em, i, del, s, code, mark');
+    try {
+      const sel = getSel(live);
+      if (el && sel && typeof sel.removeAllRanges === 'function') {
+        const r = document.createRange();
+        r.selectNodeContents(el);
+        sel.removeAllRanges();
+        sel.addRange(r);
+      }
+    } catch (_) { /* 选区恢复失败不影响已完成的格式 */ }
+  };
+  const runOp = (fn, hint) => {
+    if (typeof fn !== 'function') return;
+    // 纯 UI 动作（源码切换）：不参与选区判定，也不弹「已应用」
+    if (fn._direct) { try { fn(); } finally { text.focus(); } return; }
+    // 源码视图里卡上是原始 md，格式/结构按钮按投影语义理解会改坏文本 → 直接拦
+    if (card._srcMode) { tip('源码视图：按 ⌘/ 回到可视化编辑'); return; }
+    // 直接把手里的快照 range 交给操作，不试图靠 window.getSelection() 恢复 ——
+    // Shadow DOM 里点工具条后全局 selection 多已清空，恢复不回来就永远判「没选中」。
+    const range = pickEditRange(card, text);
+    try {
+      const res = fn(range);
+      if (res === 'add' || res === 'remove') {
+        syncModel();        // 先写回模型：否则退出编辑重投影会把刚加的格式冲掉
+        rerenderCurrent();  // 再按新模型重投影：否则要切组重挂才看得到效果
+        const n = text.querySelectorAll('strong, b, em, i, code, del, s, mark').length;
+        tip((res === 'add' ? '已加格式' : '已取消格式') + '（' + n + ' 处）');
+        return;
+      }
+      // 结构操作（增删项 / 增删行列）已直接改好 DOM：再重投影会重建节点，
+      // 把光标和刚输入的内容一起冲掉 —— 表现为「点了 +项 后打字不显示」。
+      if (res === true) { syncModel(); tip('已应用'); return; }
+      // 不再回默认文案：把具体失败原因显出来，便于一次定位
+      tip(REASON[res] || (typeof res === 'string' ? ('未执行：' + res) : hint));
+    } catch (err) {
+      tip('操作失败：' + ((err && err.message) || err));
+    } finally {
+      text.focus();
+      // focus() 可能把光标重置到正文开头：之后打的字会变成容器上的裸文本节点，
+      // 序列化只遍历元素子节点 → 一退出编辑字就没了。操作里定好的光标要抢回来。
+      const caret = card._caretRange;
+      if (caret && text.contains(caret.startContainer)) {
+        try {
+          const s = getSel(text);
+          if (s) { s.removeAllRanges(); s.addRange(caret); }
+        } catch (_) { /* 恢复失败不影响已经完成的结构操作 */ }
+      }
+    }
+  };
+  // 一次点击会连发 pointerdown / mousedown / click（三个不同事件对象）。
+  // 用「本次点击已处理」标记去重：pointerdown 置位，抬手(pointerup)复位；
+  // 不复位就会让 toggle 执行两次（加粗后立刻解包，看起来就是「没反应」）。
+  const runFrom = (e, btn) => {
+    if (card._toolHandled) return;
+    const type = e && e.type;
+    if (type === 'pointerdown' || type === 'mousedown') {
+      card._toolHandled = true;
+      if (card._toolHandledTimer) clearTimeout(card._toolHandledTimer);
+      // 兜底：pointerup 丢失（指针移出等）时 600ms 后自动复位，不会把按钮永久锁死
+      card._toolHandledTimer = setTimeout(() => { card._toolHandled = false; }, 600);
+    }
+    // 捕获阶段也要拦住：不让画布把这次点击当拖拽，也不让按钮抢走 textEl 焦点
+    if (e && e.cancelable !== false && typeof e.preventDefault === 'function') e.preventDefault();
+    if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+    card._toolPressAt = Date.now();     // 让 onBlur 在短窗口内忽略失焦
+    runOp(btn._editOp, btn._editHint);
+  };
+  card._runEditOp = runFrom;
+  const addBtn = (label, title, handler, hint) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'tw-edit-tool';
+    b.textContent = label;
+    b.title = title;
+    b.setAttribute('aria-label', title);
+    b._editOp = handler;
+    b._editHint = hint;
+    // 必须走 pointerdown：click 会被画布的 preventDefault 抑制（「点了没反应」的根因之一）。
+    // mousedown 再兜一层：个别 webview / 触控板路径下 pointerdown 可能被上游 passive 监听吃掉。
+    b.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      runFrom(e, b);
+    });
+    b.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      runFrom(e, b);
+    });
+    b.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      runFrom(e, b);                   // 键盘 Enter / 测试环境
+    });
+    // 抬手不能立即复位：pointerup 早于 click，立即复位会让同一次点击的 click
+    // 再执行一遍 toggle —— 加粗后立刻被解包，表现就是「飞快闪一下粗体又变回去」。
+    // 延后复位：期间 click 仍被拦住，350ms 后恢复，不影响下一次点击。
+    const resetHandled = () => {
+      if (card._toolHandledTimer) clearTimeout(card._toolHandledTimer);
+      card._toolHandledTimer = setTimeout(() => { card._toolHandled = false; }, 350);
+    };
+    b.addEventListener('pointerup', resetHandled);
+    b.addEventListener('pointercancel', resetHandled);
+    b.addEventListener('mouseup', resetHandled);
+    bar.appendChild(b);
+    return b;
+  };
+  INLINE_TOOL_DEFS.forEach((t) => addBtn(
+    t.label, t.title, (range) => toggleInlineTag(text, t.tag, range), '先选中要格式化的文字',
+  ));
+  if (text.querySelector('table')) {
+    [['+行', 'row+', '新增一行'], ['-行', 'row-', '删除当前行'],
+      ['+列', 'col+', '新增一列'], ['-列', 'col-', '删除当前列']].forEach(([label, op, title]) => {
+      addBtn(label, title, () => tableEditOp(card, text, op), '把光标放到表格单元格里');
+    });
+  }
+  if (text.querySelector('.tw-md-list')) {
+    [['+项', 'item+', '新增列表项'], ['-项', 'item-', '删除当前项'],
+      ['→', 'indent+', '增加缩进'], ['←', 'indent-', '减少缩进']].forEach(([label, op, title]) => {
+      addBtn(label, title, () => listEditOp(card, text, op), '把光标放到列表项里');
+    });
+  } else if (text.querySelector('.tw-task-row')) {
+    [['+项', 'item+', '新增任务项'], ['-项', 'item-', '删除当前项']].forEach(([label, op, title]) => {
+      addBtn(label, title, () => listEditOp(card, text, op), '把光标放到任务项里');
+    });
+  }
+  // 兜底出口（任何卡都可用）：投影表达不了的语法（图片 / 公式 / frontmatter / 项内换行）
+  // 直接改这张卡的原始 md。不引入额外语法 —— 写回模型的就是用户看到的纯文本。
+  const srcOp = () => CardInteractions.toggleSource({ ctrl }, card);
+  srcOp._direct = true;          // 纯 UI 动作：不需要选区，也不弹「已应用」
+  const srcBtn = addBtn('md', '源码模式：直接编辑这张卡的 Markdown（⌘/）', srcOp);
+  if (srcBtn) srcBtn.classList.add('tw-edit-src');
+  bar.hidden = false;
+  // 卡片 z-index 是单调递增的（_zTop），固定 999 迟早会被盖住：工具条参与同一计数器
+  if (typeof ctrl._zTop === 'number') bar.style.zIndex = String(++ctrl._zTop);
+  placeEditTools(ctrl, card);
+  return bar;
+}
+
+function hideEditTools(ctrl) {
+  const bar = ctrl && ctrl._editToolsBar;
+  if (bar) bar.hidden = true;
+}
+
 export const CardInteractions = {
   // (was _makeDraggable)
   makeDraggable(ctx, card) {
@@ -44,6 +767,8 @@ export const CardInteractions = {
       // 卡片触点本就不进 CanvasGestures 的 ptrs；若这里不拦，会「卡片拖拽 + 画布平移」同时发生
       // （卡片 pointerdown 在卡片上先于根节点的 CanvasGestures 触发）。
       if (ctrl._hand && ctrl._hand.state && (ctrl._hand.state.handTool || ctrl._hand.state.spaceDown)) return;
+      // 点任务卡清单（整行，含复选框与文字）：交给原生 toggle，不起拖拽、不进编辑、不改选区
+      if (e.target.closest('.tw-task-row')) return;
       // 双击 → 编辑：原生 dblclick 被 startGroupDrag 的 e.preventDefault() 抑制，这里手动判定。
       // 命中即进入编辑并 return，不再起拖拽（避免一次手势同时触发「双击编辑 + 拖拽」）。
       // 此分支在上面的「抓手早退」之后，故抓手态仍走原生 dblclick（无 preventDefault）。
@@ -231,6 +956,39 @@ export const CardInteractions = {
       if (e.target.closest('.tw-card, button, .tw-card-resize, input, textarea')) return;
       ctrl._recenterNotes();
     });
+
+    // 任务卡勾选框：toggle 即回写 markdown（见 onTaskToggle）。幂等挂载：先撤上一次的接线，
+    // 避免 makeCanvasDraggable 被多次调用时 change 监听叠加、一次点击触发多次回写。
+    if (ctrl._taskChangeDetach) { ctrl._taskChangeDetach(); ctrl._taskChangeDetach = null; }
+    const onTaskChange = (e) => {
+      const cb = e.target && e.target.closest && e.target.closest('.tw-task-cb');
+      if (!cb) return;
+      // 编辑态由无语法编辑的序列化统一回写，避免 onTaskToggle 与退出编辑重复改模型
+      const card = cb.closest ? cb.closest('.tw-card') : null;
+      if (card && card.classList.contains('editing')) return;
+      CardInteractions.onTaskToggle(ctrl, cb);
+    };
+    root.addEventListener('change', onTaskChange);
+    // 任务行是 div（不用 <label>，否则编辑态焦点会被复选框劫持），
+    // 这里用委托补回「点文字也能勾选」：非编辑态点行内任意位置即可切换。
+    const onTaskRowClick = (e) => {
+      const t = e.target;
+      if (!t || !t.closest) return;
+      if (t.closest('.tw-task-cb')) return;              // 复选框本身走原生 change
+      const row = t.closest('.tw-task-row');
+      if (!row) return;
+      const card = t.closest('.tw-card');
+      if (card && card.classList.contains('editing')) return;  // 编辑态点文字＝定位光标，不勾选
+      const cb = row.querySelector('.tw-task-cb');
+      if (!cb) return;
+      cb.checked = !cb.checked;
+      cb.dispatchEvent(new window.Event('change', { bubbles: true }));
+    };
+    root.addEventListener('click', onTaskRowClick);
+    ctrl._taskChangeDetach = () => {
+      root.removeEventListener('change', onTaskChange);
+      root.removeEventListener('click', onTaskRowClick);
+    };
 
     // 空格=临时抓手 / Hand 工具：统一接线（含状态对象 state，供 attach 读取）
     const hand = CanvasGestures.installSpaceHand(root, { isActive: () => ModePolicy.usesCardInteractions(ctrl._mode) });
@@ -657,12 +1415,13 @@ export const CardInteractions = {
   },
   // (was _enforceEditLimit)
   enforceEditLimit(ctx, text) {
-    const { state, ctrl } = ctx;
+    const { ctrl } = ctx;
     if (!text) return;
+    const limit = ModePolicy.cardMaxLen(ctrl._mode);   // 便签 500 / 写作 20000，见 ModePolicy
     const full = text.innerText || '';
-    if (full.length <= MAX_LEN) return;
-    text.innerText = full.slice(0, MAX_LEN);
-    const sel = window.getSelection();
+    if (full.length <= limit) return;
+    text.innerText = full.slice(0, limit);
+    const sel = getSel(text);   // 全局 selection 在 Shadow DOM 里恒空
     if (sel) {
       const range = document.createRange();
       range.selectNodeContents(text);
@@ -670,7 +1429,7 @@ export const CardInteractions = {
       sel.removeAllRanges();
       sel.addRange(range);
     }
-    if (typeof Toast !== 'undefined') Toast.showToast(`便签最多 ${MAX_LEN} 字`, 'info');
+    if (typeof Toast !== 'undefined') Toast.showToast(`最多 ${limit} 字`, 'info');
   
   },
   // (was _makeResizable)
@@ -946,8 +1705,27 @@ export const CardInteractions = {
     const composing = !!(e && e.isComposing);
     if (!composing) {
       // innerText 是强制同步布局读：常规（未超限）只读一次；仅当超限才走截断+选区间恢复（罕见）
-      let full = text.innerText;
-      if (full.length > MAX_LEN) { ctrl._enforceEditLimit(text); full = text.innerText; }
+      const curNote = (ctrl._notes || []).find((n) => n.id === card.dataset.id);
+      // 源码视图：卡上就是这张卡的原始 md，原样写回，不做任何「投影 → 语法」的猜测
+      const rawSrc = !!card._srcMode;
+      // 「是否富结构」不能只看 dataset.twRich：纯文本卡在编辑态被工具条加粗/加代码后
+      // DOM 里会生成 <strong>/<code>，此时仍读 innerText 会把标记冲掉 ——
+      // 表现为「点了加粗、接着打字，加粗就没了」。
+      const rich = !rawSrc && typeof ctrl._serializeCardText === 'function'
+        && (!!text.dataset.twRich
+          || !!text.querySelector('strong,em,code,del,s,mark,table,pre,img,.tw-md-list,.tw-task-row,.tw-md-quote'));
+      let full = rawSrc
+        ? (typeof text.innerText === 'string' ? text.innerText : text.textContent)
+        : (rich ? ctrl._serializeCardText(text, curNote) : text.innerText);
+      // 上限按档位取：写作档的卡片是 md 块（表格/围栏/并卡本就允许超 MAX_LEN），
+      // 用便签的 500 字去截会把用户的 md 切坏。
+      const limit = ModePolicy.cardMaxLen(ctrl._mode);
+      if (full.length > limit) {
+        // 富渲染卡只截模型文本，绝不用 innerText 覆盖投影 DOM（会把表格/列表结构冲成纯文本）
+        if (rich) full = full.slice(0, limit);
+        else if (rawSrc) { full = full.slice(0, limit); text.textContent = full; }
+        else { ctrl._enforceEditLimit(text); full = text.innerText; }
+      }
       // 【撤销】一次编辑 = 一步撤销：在**首次真正改动前**留档，捕获「编辑前」状态。
       // 不放在 enterEdit 里 push —— 那会给「打开但一个字没改」的编辑也压一条空撤销帧。
       // 组字期间（composing）不写模型，故首个非组字 input（含组字结束那次）才留档，时机正确。
@@ -962,19 +1740,139 @@ export const CardInteractions = {
   },
   /** 粘贴：只粘纯文本；粘贴后立即做一次字号自适应（个别环境下 execCommand 不派发 input）。 */
   _handleEditPaste(ctrl, card, e) {
+    const dt = e.clipboardData || window.clipboardData;
+    const imgs = imageFilesFrom(dt);
+    if (imgs.length) {          // 截图 / 复制的图片：落盘成 md 链接，不走纯文本通道
+      e.preventDefault();
+      this.insertImageFiles(ctrl, card, imgs);
+      return;
+    }
     e.preventDefault();
     const text = card.querySelector('.tw-card-text');
-    const t = (e.clipboardData || window.clipboardData).getData('text/plain');
-    const room = MAX_LEN - ((text && text.innerText ? text.innerText.length : 0) || 0);
+    const t = dt.getData('text/plain');
+    const limit = ModePolicy.cardMaxLen(ctrl._mode);
+    // 剩余空间按模型字数算：富卡投影里没有 ** 这些标记，用 innerText 会高估空间
+    const room = limit - editModelLen(ctrl, card, text);
     if (room <= 0) {
-      if (typeof Toast !== 'undefined') Toast.showToast('便签最多 ' + MAX_LEN + ' 字', 'info');
+      if (typeof Toast !== 'undefined') Toast.showToast('最多 ' + limit + ' 字', 'info');
       return;
     }
     const allowed = t.length > room ? t.slice(0, room) : t;
-    document.execCommand('insertText', false, allowed); // 只粘纯文本，不把网页样式带进便签
+    // 只粘纯文本，不把网页样式带进便签。
+    // Shadow DOM 里 document.execCommand 依赖宿主焦点，常常静默失败（粘贴没反应），
+    // 因此优先直接往当前选区插文本节点，命令式作为兜底。
+    insertEditText(card, text, allowed);
     fitCardText(card);   // 兜底：粘贴后立即自适应一次
   },
+
+  /**
+   * 粘贴 / 拖入的图片：先落盘到画中卷/assets/，再把 `![](路径)` 插进正文。
+   * 正文里只留一行链接（不是 base64）——md 仍是干净、可导出、可 diff 的纯文本。
+   *
+   * 两条插入路径：
+   *  - 编辑态（contenteditable=true）：插到当前光标处，插完把光标放到最后一张图后面；
+   *  - 非编辑态（直接把图拖到卡片上）：追加到正文末尾 —— 不去碰 contenteditable 的
+   *    焦点/选区（从没进入编辑时不保证有 range，execCommand 会静默失败）。
+   */
+  async insertImageFiles(ctrl, card, files) {
+    const text = card.querySelector('.tw-card-text');
+    if (!text) return 0;
+    const store = (typeof window !== 'undefined') ? window.storageManager : null;
+    if (!store || typeof store.writeVaultImage !== 'function') {
+      if (typeof Toast !== 'undefined') Toast.showToast('当前环境不支持写入图片', 'info');
+      return 0;
+    }
+    const list = (Array.isArray(files) ? files : Array.from(files || []))
+      .filter((f) => f && /^image\//i.test(f.type || ''));
+    if (!list.length) return 0;
+    const editing = text.getAttribute('contenteditable') === 'true';
+    const limit = ModePolicy.cardMaxLen(ctrl._mode);
+    const insertedMd = [];
+    // 追加模式下模型由这里直接改，撤销点必须自己压（commitEditModel 那条路走不到）
+    if (!editing && ctrl._undoStack && typeof ctrl._undoStack.push === 'function') ctrl._undoStack.push();
+    for (let k = 0; k < list.length; k += 1) {
+      const room = limit - editModelLen(ctrl, card, text);
+      if (room <= 0) {
+        if (typeof Toast !== 'undefined') Toast.showToast('最多 ' + limit + ' 字', 'info');
+        break;
+      }
+      // 逐张串行落盘：并发写会让插入顺序与光标位置乱掉
+      // eslint-disable-next-line no-await-in-loop -- 顺序语义优先，图片数量个位数
+      const md = await saveImageFile(store, list[k]);
+      if (!md) {
+        if (typeof Toast !== 'undefined') Toast.showToast('图片保存失败', 'info');
+        continue;
+      }
+      if (md.length > room) {
+        if (typeof Toast !== 'undefined') Toast.showToast('最多 ' + limit + ' 字', 'info');
+        break;
+      }
+      if (editing) {
+        insertEditText(card, text, md);
+      } else {
+        const cur = (ctrl._notes || []).find((n) => n.id === card.dataset.id);
+        if (!cur) break;
+        const base = String(cur.text || '');
+        const next = base + (base && !/\n$/.test(base) ? '\n' : '') + md;
+        if (typeof WritingDoc !== 'undefined' && WritingDoc.setText) {
+          ctrl._notes = WritingDoc.setText(ctrl._notes, card.dataset.id, next);
+        }
+        const after = (ctrl._notes || []).find((n) => n.id === card.dataset.id);
+        // 非编辑态一律走富投影重绘：源码视图（_srcMode）下保持纯文本，由它自己决定
+        if (after && typeof ctrl._applyCardText === 'function') ctrl._applyCardText(text, after);
+      }
+      insertedMd.push(md);
+    }
+    if (!insertedMd.length) return 0;
+    if (editing) {
+      // 先把插进去的 md 落进模型，再按新模型重投影：图片当场显示，不用退出重进
+      commitEditModel(ctrl, card, text);
+      const note = (ctrl._notes || []).find((n) => n.id === card.dataset.id);
+      if (note && !card._srcMode && typeof ctrl._applyCardText === 'function') {
+        ctrl._applyCardText(text, note);
+        // 光标落到最后插入的那张图后面，接着打字不用自己找位置
+        const lastMd = insertedMd[insertedMd.length - 1];
+        let target = null;
+        const imgs = text.querySelectorAll('img.tw-md-img');
+        for (let i = 0; i < imgs.length; i += 1) {
+          if (imgs[i].dataset && imgs[i].dataset.mdRaw === lastMd) target = imgs[i];
+        }
+        try {
+          const sel = getSel(text);
+          if (sel) {
+            const r = document.createRange();
+            if (target) r.setStartAfter(target);
+            else { r.selectNodeContents(text); r.collapse(false); }
+            r.collapse(true);
+            sel.removeAllRanges();
+            sel.addRange(r);
+            card._caretRange = r.cloneRange();
+          }
+        } catch (_) { /* 光标定位失败不影响插入 */ }
+      }
+    }
+    fitCardText(card);
+    if (typeof ctrl._scheduleSave === 'function') ctrl._scheduleSave();
+    return insertedMd.length;
+  },
   // (was _enterEdit)
+  onTaskToggle(ctrl, cb) {
+    const row = cb.closest('.tw-task-row');
+    const card = cb.closest('.tw-card');
+    if (!row || !card || !card.dataset.id) return;
+    const id = card.dataset.id;
+    const note = (ctrl._notes || []).find((n) => n.id === id);
+    if (!note) return;
+    // 用渲染时记下的行号回写对应行 marker（行号与 note.text 的物理行一一对应，
+    // 不能靠「第几个勾选框」数，因为卡里可能夹着非任务行）。
+    const i = Number(row.dataset.line);
+    const lines = String(note.text).split('\n');
+    if (!(i >= 0 && i < lines.length)) return;
+    lines[i] = lines[i].replace(/^([-*]\s+)\[[ xX]\]/, (_, p) => p + '[' + (cb.checked ? 'x' : ' ') + ']');
+    ctrl._notes = WritingDoc.setText(ctrl._notes, id, lines.join('\n'));
+    row.classList.toggle('done', cb.checked);
+    ctrl._scheduleSave();
+  },
   enterEdit(ctx, card) {
     const { state, ctrl } = ctx;
     if (card.classList.contains('editing')) return;
@@ -985,60 +1883,329 @@ export const CardInteractions = {
     ctrl._editingId = card.dataset.id;   // 编辑中：钉在屏上，剔除跳过
     card._editUndoPushed = false;   // 本次编辑会话是否已为撤销留档（首次真正改动时才 push）
     text.setAttribute('contenteditable', 'true'); // 所见即所得：直接在纸样内改，样式已就位
+    // 代码块先拍平成纯文本再给用户改：带 tk-* span 时新打的字会继承上一个 token 的颜色、
+    // 着色又不会随输入重算（看着像坏）。文本完全不变，只是去掉包装；退出编辑按新模型重绘。
+    if (typeof plainifyCodeBlocks === 'function') plainifyCodeBlocks(text);
+    // 无语法编辑：富渲染卡保留投影 DOM 直接编辑，不再 textContent = 原始 markdown。
+    // 文字与勾选态的改动由 _handleEditInput / exitEdit 的 serializeRichText 反向写回模型。
+    // 编辑态提到最上层：工具条挂在画布层，若本卡 z-index 低于邻卡，浮层会被压在下面
+    if (typeof ctrl._zTop === 'number') card.style.zIndex = String(++ctrl._zTop);
+    ensureEditTools(ctrl, card, text);   // 格式 / 结构编辑入口（纯文本卡也要能新增格式）
+    // 卡片被拖动（点纸边）后工具条跟随
+    const onMove = () => placeEditTools(ctrl, card);
+    card.addEventListener('transitionend', onMove);
+    card._toolFollow = onMove;
+    // 选区快照：**只记非空选区**。把 collapsed 光标也记进来的话（enterEdit 末尾就会设一次），
+    // 点按钮时回退到这份空快照，加粗就会永远提示「先选中要格式化的文字」。
+    card._editRange = null;
+    const onSel = () => {
+      const sel = getSel(text);
+      if (!sel || !sel.rangeCount) return;
+      const r = sel.getRangeAt(0);
+      // 光标态（塌陷）也要留住：列表增删项 / 表格增删行列判断的是「停在哪一行/哪个单元格」，
+      // 根本不依赖选中文字。以前这里直接 return，导致那些按钮永远提示「把光标放到列表项里」。
+      if (r.collapsed) {
+        if (text.contains(r.startContainer)) card._caretRange = r.cloneRange();
+        return;
+      }
+      // Shadow DOM 下容器可能挂在 host 侧：能直接用于卡内就直接存，否则用选中文字重建
+      if (text.contains(r.commonAncestorContainer)) { card._editRange = r.cloneRange(); return; }
+      const rebuilt = rangeFromSelectedText(text);
+      if (rebuilt) card._editRange = rebuilt;
+    };
+    // 在文本内单击只移动光标：清掉「选中文字」快照，但必须记下光标位置（列表/表格操作要用）
+    const onTextUp = () => {
+      const sel = getSel(text);
+      if (!sel || !sel.rangeCount) return;
+      const r = sel.getRangeAt(0);
+      if (r.collapsed && text.contains(r.startContainer)) {
+        card._caretRange = r.cloneRange();
+        card._editRange = null;
+      }
+    };
+    document.addEventListener('selectionchange', onSel);
+    text.addEventListener('pointerup', onTextUp);
+    text.addEventListener('mouseup', onSel);   // selectionchange 在部分 webview 不触发，再挂两道
+    text.addEventListener('keyup', onSel);
+    card._editSelHandler = { doc: onSel, text: onTextUp };
+    // 兜底：若按钮自身监听被中间层吞掉，捕获阶段再拿一次（同一事件按对象去重）
+    const onToolDown = (e) => {
+      const btn = e.target && e.target.closest ? e.target.closest('.tw-edit-tool') : null;
+      // 工具条挂在画布层、不在 card 内，这里不能用 card.contains 判断（曾因此兜底恒失效）
+      const bar = ctrl._editToolsBar;
+      if (!btn || !bar || !bar.contains(btn)) return;
+      // 捕获阶段早于任何焦点/选区变化：先把当前选区快照下来，按钮逻辑就不怕选区被清
+      const sel = getSel(text);
+      if (sel && sel.rangeCount) {
+        const r = sel.getRangeAt(0);
+        if (r.collapsed) {
+          if (text.contains(r.startContainer)) card._caretRange = r.cloneRange();
+        } else {
+          card._editRange = r.cloneRange();
+        }
+      }
+      if (typeof card._runEditOp === 'function') card._runEditOp(e, btn);
+    };
+    document.addEventListener('pointerdown', onToolDown, true);
+    card._toolDocHandler = onToolDown;
     text.focus();
-    // 光标落到末尾
-    const sel = window.getSelection();
-    const range = document.createRange();
-    range.selectNodeContents(text);
-    range.collapse(false);
-    sel.removeAllRanges();
-    sel.addRange(range);
+    // 光标落到末尾：必须用 shadow root 自己的 selection。
+    // window.getSelection() 在 Shadow DOM 内恒为空 → 光标根本不会落下，甚至为 null 时直接抛错，
+    // 让后面所有监听器绑定都不执行（编辑态看似进来了，其实什么都没绑上）。
+    try {
+      const sel = getSel(text);
+      const range = document.createRange();
+      range.selectNodeContents(text);
+      range.collapse(false);
+      if (sel) { sel.removeAllRanges(); sel.addRange(range); }
+    } catch (_) { /* 定位失败不应阻断进入编辑态 */ }
     // 【根因修复】事件回调必须用闭包绑定 this：浏览器触发 addEventListener 时 this 会指向
     // text 元素而非 feature 实例，否则 _exitEdit/_scheduleSave 变成 undefined ——
     // 表现为 Escape 退出失效、输入不自动落盘。处理器存到 card._editHandlers 以便对称移除。
     const onInput = (e) => this._handleEditInput(ctrl, card, e);
+    // 列表 / 任务项内是否为空（marker、复选框都是装饰，不算内容）
+    const rowIsEmpty = (row) => {
+      if (row.classList.contains('tw-task-row')) {
+        const lab = row.querySelector('.tw-task-label');
+        return !lab || !lab.textContent.trim();
+      }
+      const box = row.cloneNode(true);
+      Array.from(box.querySelectorAll('.tw-md-marker')).forEach((m) => m.remove());
+      return !box.textContent.trim();
+    };
+    /* 列表/任务项的结构键按业界标准语义处理（ProseMirror splitListItem 那一套）：
+       Enter 拆项、空项 Enter/Backspace 收掉这一项、Tab / Shift+Tab 增减缩进。
+       全部只产生纯 markdown（`- ` / `1. ` / 缩进空格），不写 <br> 之类额外语法。
+       非列表行不拦截：普通便签里回车仍由浏览器产生 <div>，序列化时还原成换行。 */
     const onKey = (e) => {
       if (e.key === 'Escape') {
         e.preventDefault();
-        ctrl._exitEdit(card); // Enter 不拦截：contenteditable 内回车即多行便签
+        ctrl._exitEdit(card);
+        return;
+      }
+      if (card._composing || e.isComposing) return;   // 输入法组字期间不抢键
+      // ⌘/（Ctrl+/）：写作档在「可视化投影」与「原始 md」之间切换。
+      // 便签档不放行：格式工具条（含 md 出口按钮）已按档位隐藏，放行会进入
+      // 「卡上是纯 md、却没有任何可见出口」的坏状态。
+      // 单点守卫不抽进 ModePolicy：策略表只收「同一规则被复制多份」的 A 类分支。
+      if ((e.metaKey || e.ctrlKey) && (e.key === '/' || e.key === '?') && ctrl._mode === 'write') {
+        e.preventDefault();
+        this.toggleSource(ctx, card);
+        return;
+      }
+      // 表格单元格内回车：跳到下一行同列 / 末行补一行（单元格里不能有换行）
+      if (e.key === 'Enter' && currentCellOf(card, text)) {
+        e.preventDefault();
+        if (tableEnterNextRow(card, text)) commitEditModel(ctrl, card, text);
+        return;
+      }
+      const row = currentRowOf(card, text);
+      if (!row) return;
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (e.shiftKey) {
+          // 项内换行（软换行）在扁平列表模型里无法无损表达：写进 md 的续行读回来会
+          // 变成一个没有 marker 的项。宁可明确不支持，也不产出读回会变形的 markdown。
+          if (typeof ctrl._showScreenMsg === 'function') {
+            ctrl._showScreenMsg('列表项内不支持换行，按 Enter 新建一项', 1500);
+          }
+          return;
+        }
+        // 标准语义：先删掉选中内容再拆项，否则选中文字会被原样复制进新项
+        try {
+          const sel = getSel(text);
+          const r = sel && sel.rangeCount ? sel.getRangeAt(0) : null;
+          if (r && !r.collapsed && text.contains(r.commonAncestorContainer)) r.deleteContents();
+        } catch (_) { /* 选区异常时按原样拆项 */ }
+        const op = rowIsEmpty(row) ? 'item-' : 'item+';
+        if (listEditOp(card, text, op) === true) commitEditModel(ctrl, card, text);
+        return;
+      }
+      if (e.key === 'Tab') {
+        // 必须拦：不拦浏览器会把焦点移出卡片，直接触发 blur 退出编辑
+        e.preventDefault();
+        if (listEditOp(card, text, e.shiftKey ? 'indent-' : 'indent+') === true) {
+          commitEditModel(ctrl, card, text);
+        }
+        return;
+      }
+      if (e.key === 'Backspace' && rowIsEmpty(row)) {
+        e.preventDefault();
+        if (listEditOp(card, text, 'item-') === true) commitEditModel(ctrl, card, text);
       }
     };
     const onPaste = (e) => this._handleEditPaste(ctrl, card, e);
-    card._editHandlers = { onInput, onKey, onPaste };
+    /* 字数上限在「输入前」拦：事后 slice 会把富文本切在 ** 或反引号中间，留下半截标记，
+       而 md 是唯一真源，坏标记会被原样写进文件。组字期间不拦（preventDefault 会打断输入法）。 */
+    const onBeforeInput = (e) => {
+      if (card._composing || e.isComposing) return;
+      if (typeof e.inputType !== 'string' || e.inputType.indexOf('insert') !== 0) return;
+      const data = typeof e.data === 'string' ? e.data : '';
+      if (!data) return;
+      // 上限按档位取：便签 500，写作档是 md 块（表格/围栏/并卡本就超 500），不能按便签尺寸拦
+      const limit = ModePolicy.cardMaxLen(ctrl._mode);
+      if (editModelLen(ctrl, card, text) + data.length <= limit) return;
+      e.preventDefault();
+      if (typeof ctrl._showScreenMsg === 'function') {
+        ctrl._showScreenMsg(`最多 ${limit} 字`, 1500);
+      }
+    };
+    // 组字状态：中文输入法打字全程都是「组字中」，此时 DOM 里看到的候选还没上屏。
+    // exitEdit 若在这时移除 contenteditable，这段临时文本会被直接丢弃。
+    const onCompStart = () => { card._composing = true; };
+    const onCompEnd = () => { card._composing = false; };
+    card._editHandlers = { onInput, onKey, onPaste, onBeforeInput, onCompStart, onCompEnd };
     text.addEventListener('input', onInput);
     text.addEventListener('keydown', onKey);
     text.addEventListener('paste', onPaste);
+    // 拖入图片不在这里挂：画布层有统一的委托监听（typewriterFeature._bindFileDropGuards），
+    // 编辑态与非编辑态共用一条路径 —— 否则「卡片上拖一次、编辑态再拖一次」会插两遍。
+    text.addEventListener('beforeinput', onBeforeInput);
+    text.addEventListener('compositionstart', onCompStart);
+    text.addEventListener('compositionend', onCompEnd);
     // 【根因修复·退不出编辑态】失焦即退出：点了便签以外的任何地方（空白画布 / 其它便签 /
     // 卡片纸边）都算「完成编辑」，避免卡在编辑态出不去。
     // 必须在 _exitEdit 里先移除本监听、再 removeAttribute('contenteditable')，
     // 否则移除 contenteditable 触发的 blur 会二次进入 _exitEdit。
-    const onBlur = () => ctrl._exitEdit(card);
+    const onBlur = () => {
+      // 点工具条按钮导致的失焦不算退出编辑：部分 webview 里 pointerdown.preventDefault
+      // 拦不住 blur，一失焦工具条就消失，表现为「点了没反应」。
+      if (card._toolPressAt && Date.now() - card._toolPressAt < 500) return;
+      ctrl._exitEdit(card);
+    };
     card._editBlur = onBlur;
     text.addEventListener('blur', onBlur);
   
   },
   // (was _exitEdit)
+  /**
+   * 单卡源码视图：把这张卡切成原始 markdown 直接编辑（⌘/ 或工具条 `md` 切换）。
+   * 投影表达不了的语法（图片 / 公式 / frontmatter / 项内软换行…）都可以在这里改：
+   * 卡上是纯文本节点，写回模型的就是用户看见的那段 md，不做任何「投影 → 语法」的猜测。
+   * 只在编辑态有效，退出编辑自动还原成投影。
+   */
+  toggleSource(ctx, card) {
+    const { ctrl } = ctx;
+    if (!card || !card.classList.contains('editing')) return false;
+    const text = card.querySelector('.tw-card-text');
+    const note = (ctrl._notes || []).find((n) => n.id === card.dataset.id);
+    if (!text || !note) return false;
+    const toSrc = !card._srcMode;
+    if (toSrc) {
+      // 先按投影序列化一次落盘：进源码看到的必须就是模型里那个 md
+      const md = (typeof ctrl._serializeCardText === 'function')
+        ? ctrl._serializeCardText(text, note) : note.text;
+      if (ctrl._undoStack && !card._editUndoPushed) {
+        card._editUndoPushed = true;
+        ctrl._undoStack.push();   // 与普通输入同一粒度：一次编辑会话 = 一步
+      }
+      ctrl._notes = WritingDoc.setText(ctrl._notes, note.id, md);
+      card._srcMode = true;
+      card.classList.add('tw-src-mode');
+      text.textContent = md;     // 纯文本：不解析任何语法，原样呈现
+    } else {
+      const raw = typeof text.innerText === 'string' ? text.innerText : text.textContent;
+      ctrl._notes = WritingDoc.setText(ctrl._notes, note.id, raw);
+      card._srcMode = false;
+      card.classList.remove('tw-src-mode');
+      const fresh = (ctrl._notes || []).find((n) => n.id === note.id);
+      if (fresh && typeof ctrl._applyCardText === 'function') ctrl._applyCardText(text, fresh);
+      // 源码里可能新增了表格/列表：按新投影重建按钮组，否则「加完表格还是没有行列按钮」
+      ensureEditTools(ctrl, card, text);
+    }
+    // 源码视图里格式/结构按钮没有意义（按投影语义理解会改坏纯文本），只留 `</>` 自己
+    const bar = ctrl._editToolsBar;
+    if (bar) bar.classList.toggle('tw-src-on', toSrc);
+    if (typeof fitCardText === 'function') fitCardText(card);
+    if (typeof ctrl._scheduleSave === 'function') ctrl._scheduleSave();
+    if (typeof ctrl._invalidateGeo === 'function') ctrl._invalidateGeo(card.dataset.id);
+    text.focus();
+    try {
+      const sel = getSel(text);
+      const r = document.createRange();
+      r.selectNodeContents(text);
+      r.collapse(toSrc);         // 进源码：光标到末尾；回投影：回到开头
+      if (sel) { sel.removeAllRanges(); sel.addRange(r); }
+      card._caretRange = r.cloneRange();
+    } catch (_) { /* 光标定位失败不影响切换 */ }
+    return true;
+  },
   exitEdit(ctx, card) {
     const { state, ctrl } = ctx;
     if (!card.classList.contains('editing')) return;
+    // 输入法还在组字：屏幕上的候选文本尚未上屏，此刻移除 contenteditable 会把它整段丢掉
+    // （「打字时明明有字，一退出就没了」）。等 compositionend 再走真正的退出流程。
+    if (card._composing) {
+      if (card._exitRetryTimer) clearTimeout(card._exitRetryTimer);
+      card._exitRetryTimer = setTimeout(() => this.exitEdit(ctx, card), 80);
+      return;
+    }
     const text = card.querySelector('.tw-card-text');
+    const wasSrc = !!card._srcMode;   // 源码视图退出：要还原成投影，别把原始 md 留在卡上
+    card._srcMode = false;
+    card.classList.remove('tw-src-mode');
     card.classList.remove('editing');
     if (ctrl._editingId === card.dataset.id) ctrl._editingId = null;   // 退出编辑：解除钉屏
     const h = card._editHandlers;
     card._editHandlers = null;
+    if (card._exitRetryTimer) { clearTimeout(card._exitRetryTimer); card._exitRetryTimer = null; }
+    card._composing = false;
     if (text) {
       if (card._editBlur) { text.removeEventListener('blur', card._editBlur); card._editBlur = null; }
       text.removeAttribute('contenteditable');
+      hideEditTools(ctrl);
+      if (card._toolFollow) {
+        card.removeEventListener('transitionend', card._toolFollow);
+        card._toolFollow = null;
+      }
+      if (card._editSelHandler) {
+        const h = card._editSelHandler;
+        document.removeEventListener('selectionchange', h.doc);
+        text.removeEventListener('pointerup', h.text);
+        text.removeEventListener('mouseup', h.doc);
+        text.removeEventListener('keyup', h.doc);
+        card._editSelHandler = null;
+      }
+      if (card._toolDocHandler) {
+        document.removeEventListener('pointerdown', card._toolDocHandler, true);
+        card._toolDocHandler = null;
+      }
+      card._lastToolEvent = null;
+      card._toolPressAt = 0;
+      card._editRange = null;
       if (h) {
         text.removeEventListener('input', h.onInput);
         text.removeEventListener('keydown', h.onKey);
         text.removeEventListener('paste', h.onPaste);
+        if (h.onBeforeInput) text.removeEventListener('beforeinput', h.onBeforeInput);
+        if (h.onCompStart) text.removeEventListener('compositionstart', h.onCompStart);
+        if (h.onCompEnd) text.removeEventListener('compositionend', h.onCompEnd);
       }
-      if (window.getSelection) window.getSelection().removeAllRanges();
-      ctrl._notes = WritingDoc.setText(ctrl._notes, card.dataset.id, text.innerText);  // 退出编辑：落盘前同步模型
+      // Shadow DOM 下 window.getSelection() 恒为空，清的是另一份选区（等于没清）
+      const exitSel = getSel(text);
+      if (exitSel) exitSel.removeAllRanges();
+      // 与 _handleEditInput 同一口径：只看 dataset.twRich 会漏掉「编辑态里新加的 <strong>/<code>」，
+      // 那样退出编辑按 innerText 写回模型，加粗就在落盘那一刻丢了。
+      // 源码视图例外：卡上就是原始 md，原样写回，不走序列化（走的话表格/列表会被再套一层语法）。
+      const curNote = (ctrl._notes || []).find((n) => n.id === card.dataset.id);
+      const richDom = !wasSrc && !!text && (!!text.dataset.twRich
+        || !!text.querySelector('strong,em,code,del,s,mark,table,pre,img,.tw-md-list,.tw-task-row,.tw-md-quote'));
+      const modelText = wasSrc
+        ? ((typeof text.innerText === 'string' ? text.innerText : text.textContent) || '')
+        : ((richDom && typeof ctrl._serializeCardText === 'function')
+          ? ctrl._serializeCardText(text, curNote)
+          : text.innerText);
+      ctrl._notes = WritingDoc.setText(ctrl._notes, card.dataset.id, modelText);   // 退出编辑：落盘前同步模型
       card._editUndoPushed = false;   // 编辑会话结束：下次进入编辑重新留档
-      ctrl._scheduleSave(); // 落盘：_collectNotes 读的是 .tw-card-text 内容
+      ctrl._scheduleSave(); // 落盘：collectNotes 读 _notes 模型（P8 后不再读 DOM），上面已把 innerText 写回模型
       if (typeof PrivacyMode !== 'undefined') PrivacyMode.markText();
+    }
+    // 富渲染卡：退出编辑后按最新模型重新投影（勾选框 / 表格），而非残留 raw markdown 文本。
+    // 经宿主委托壳走 ViewportCuller 的同一渲染口径，避免交互层再引一份渲染器。
+    const upd = (ctrl._notes || []).find((n) => n.id === card.dataset.id);
+    const needRich = !!text && (wasSrc || text.dataset.twRich || (upd && upd.level === 'task'));
+    if (needRich && upd && typeof ctrl._applyCardText === 'function') {
+      ctrl._applyCardText(text, upd);
     }
     ctrl._invalidateGeo(card.dataset.id);   // 编辑可能改变了卡片高度 → 几何失效
     fitCardText(card);                      // 退出编辑再自适应一次：兜住最后一次输入/组字收尾的布局变化

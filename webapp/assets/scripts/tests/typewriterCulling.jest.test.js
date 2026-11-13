@@ -86,6 +86,31 @@ describe('P8 剔除态全路径审计', () => {
     expect(out).toContain('丙');
   });
 
+  // 任务卡正文现在保留 `- [ ]`/`- [x]` marker（detectLevel 不剥）。导出必须原样透传，
+  // 不能再逐行无条件补 `- [ ] ` —— 否则既重复前缀、又把已勾选丢成未勾选。
+  test('_buildCardsMarkdown task 卡：保留勾选态、不重复前缀', () => {
+    culledFixture();
+    feature._notes = [
+      { id: 't', x: 0, y: 0, level: 'task', text: '- [x] 已办\n- [ ] 未办' },
+    ];
+    const out = feature._buildCardsMarkdown(feature._orderCards());
+    expect(out).toContain('- [x] 已办');
+    expect(out).toContain('- [ ] 未办');
+    expect(out).not.toContain('- [ ] - [x]');
+    expect(out).not.toContain('- [ ] - [ ]');
+  });
+
+  test('_buildCardsMarkdown task 老数据（首行无 marker）导出时补前缀且不重复', () => {
+    culledFixture();
+    feature._notes = [
+      { id: 't', x: 0, y: 0, level: 'task', text: '旧首行\n- [ ] 二' },
+    ];
+    const out = feature._buildCardsMarkdown(feature._orderCards());
+    expect(out).toContain('- [ ] 旧首行');
+    expect(out).toContain('- [ ] 二');
+    expect(out).not.toContain('- [ ] - [ ]');
+  });
+
   test('_refreshScreenMeta 卡片计数读模型 _notes.length（剔除态不全为可见卡）', () => {
     culledFixture();
     feature._mode = 'write';

@@ -106,11 +106,13 @@ export const ALL_MESSAGE_TYPES = [
   'storage:getTypewriterNotesDoc',
   'storage:putTypewriterNotesDoc',
   'storage:deleteTypewriterNotesDoc',
-  // file:*（画中卷文本文件协议：list / get / write / delete）
+  // file:*（画中卷文本文件协议：list / get / write / delete；图片读 / 写二进制）
   'file:list',
   'file:get',
   'file:write',
   'file:delete',
+  'file:readImage',    // 图片投影：vault 图片 → data URL（webview 里拿不到 app:// 资源地址）
+  'file:writeBinary',  // 粘贴/拖入的图片：base64 → 画中卷/assets/ 下的二进制文件
   // 备份 / 授权 / 设置：此前未登记，仅靠 INBOUND_PREFIXES 的前缀放行才跑通。
   // app:* 没有前缀兜底（webapp 侧的已知类型判定只对 storage/file/market/module/material
   // 前缀放行），因此这些类型必须精确登记 —— 漏登记时 host → webapp 方向会被静默丢弃。

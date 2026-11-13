@@ -85,11 +85,13 @@ export const APP_MESSAGE_TYPES = [
   'storage:getTypewriterNotesDoc',
   'storage:putTypewriterNotesDoc',
   'storage:deleteTypewriterNotesDoc',
-  // file:*（画中卷文本文件协议：list / get / write / delete）
+  // file:*（画中卷文本文件协议：list / get / write / delete；图片读 / 写二进制）
   'file:list',
   'file:get',
   'file:write',
   'file:delete',
+  'file:readImage',
+  'file:writeBinary',
   // 备份 / 授权 / 设置：与宿主侧协议数组保持镜像
   'app:activateLicense',
   'app:exportBackup',

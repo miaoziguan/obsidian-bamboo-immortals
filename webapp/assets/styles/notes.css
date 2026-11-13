@@ -315,6 +315,350 @@
   text-align: justify;
 }
 
+/* 任务卡清单（渲染层 renderCardText 把 `- [ ]`/`- [x]` 解析成勾选框）。
+   清单左对齐、不两端对齐：justify 会把「复选框 + 文本」的短行拉散，勾选框错位。 */
+.tw-card[data-level="task"] .tw-card-text { text-align: left; }
+
+.tw-task-row {
+  display: flex;
+  align-items: center;      /* 每行是单行条目，直接垂直居中 */
+  gap: 7px;
+  line-height: var(--tw-line);
+  padding: 1px 0;
+  cursor: pointer;
+}
+/* 自绘圆形勾选框。**尺寸真源在 renderTaskText 的 inline !important**（0.62em），
+   原因：input[type=checkbox] 的 UA 内置样式与主题重写会盖住类声明 —— 前四版分别用
+   em / calc(var()) / min() / 裸 10px + 四道锁，视觉尺寸始终没变，说明这里的 width 根本没赢。
+   inline !important 只受 UA 约束；em 相对卡正文实际字号，恒小于文字并随缩放同比。
+   下面这份仅为 JS 未执行时的兜底，别再靠调这里的数值修视觉效果。 */
+.tw-task-row .tw-task-cb {
+  appearance: none;
+  -webkit-appearance: none;
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  position: relative;
+  width: 0.9em;
+  height: 0.9em;
+  min-width: 0;
+  max-width: none;
+  min-height: 0;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--lv-task, #3b82f6);
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+.tw-task-row .tw-task-cb:checked {
+  background: var(--lv-task, #3b82f6);
+}
+/* 对勾用伪元素画；即便个别内核不渲染 input 伪元素，实心圆仍能表达选中态 */
+.tw-task-row .tw-task-cb:checked::after {
+  content: '';
+  position: absolute;
+  left: 33%;
+  top: 14%;
+  width: 22%;
+  height: 45%;
+  border: solid var(--white);
+  border-width: 0 1.5px 1.5px 0;
+  transform: rotate(45deg);
+}
+.tw-task-row .tw-task-cb:focus-visible {
+  outline: 1px solid var(--lv-task, #3b82f6);
+  outline-offset: 2px;
+}
+.tw-task-label { flex: 1 1 auto; }
+/* 已完成：文本置灰 + 删除线（视觉即完成态，勾选框状态同步） */
+.tw-task-row.done .tw-task-label {
+  text-decoration: line-through;
+  opacity: 0.55;
+}
+.tw-task-line {
+  /* 卡内夹着的非任务行（普通说明文字）照常显示 */
+  white-space: pre-wrap;
+}
+
+/* Markdown 表格投影：renderRichText 把 GFM 表格行渲染成 <table.tw-md-table>。
+   【明暗一致】描边/表头必须跟随主题墨色：曾用固定 rgba(var(--white-rgb), .28)，
+   而 --white-rgb 亮暗主题都是 255,255,255 —— 暗色纸上白线清楚，浅色纸上白线≈底色，
+   网格与表头直接消失（亮色下只剩一片紫底）。改用写作档自有的 --tw-write-line
+   （亮色深墨 14% / 暗色白 16%），与卡片描边同一套语义；该变量只挂在 .tw-mode-write，
+   便签档用 currentColor 兜底，避免整条 border 因变量缺失而失效。 */
+.tw-card-text .tw-md-text { white-space: pre-wrap; }
+.tw-card-text .tw-md-table {
+  display: table;
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  margin: 0.4em 0;
+  font-size: 0.88em;
+  line-height: var(--tw-line);
+}
+.tw-card-text .tw-md-table th,
+.tw-card-text .tw-md-table td {
+  border: 1px solid var(--tw-write-line, color-mix(in srgb, currentColor 20%, transparent));
+  padding: 0.2em 0.4em;
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: break-word;
+}
+.tw-card-text .tw-md-table th {
+  background: color-mix(in srgb, currentColor 7%, transparent);
+  font-weight: 600;
+}
+
+/* Markdown 行内格式投影：renderCardText 用 DOM 节点生成，这里只管呈现。
+   链接暂只做视觉（pointer-events:none）：卡片画布上点击会触发拖拽/进编辑，
+   且 webview 里 <a> 的默认跳转可能把整个视图导航走；交互跳转留待后续。 */
+/* 部分纸样 / 写作档正文字体（--tw-font-global 多为中文衬线、楷体、书法类）只有单一字重：
+   font-weight:700 会被回退成同字形，DOM 明明加了 <strong> 却「看不出加粗」。
+   font-synthesis 让浏览器合成粗体，再补一道极细描边。
+   描边必须克制：四向阴影 + 粗描边会把中文笔画的间隙填满，字会糊成一片（实测 0.05em 已不可读）。 */
+.tw-card-text strong,
+.tw-card-text b {
+  font-weight: 700;
+  font-synthesis: weight;
+  -webkit-text-stroke: 0.02em currentColor;
+}
+
+/* 同上：中文衬线 / 楷体类字体多半没有斜体变体，font-style:italic 会被回退成正体。
+   font-synthesis: style 让浏览器合成倾斜，否则 I 按钮「加了但看不出」。 */
+.tw-card-text em,
+.tw-card-text i {
+  font-style: italic;
+  font-synthesis: style;
+}
+.tw-card-text del { text-decoration: line-through; opacity: 0.65; }
+/* 高亮＝荧光笔：淡绿底在暖米色纸上几乎看不出来，换成饱和黄。
+   文字固定压深色 —— 暗色主题正文是浅色，黄底上浅字读不清。
+   box-decoration-break: clone 让跨行高亮分段连续，不在行尾断开。 */
+.tw-card-text mark {
+  background: rgba(255, 213, 51, 0.82);
+  color: #3b2f00;
+  padding: 0 0.15em;
+  border-radius: 0.2em;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+.tw-card-text code {
+  font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 0.9em;
+  padding: 0.05em 0.25em;
+  border-radius: 0.25em;
+  background: rgba(var(--deep-rgb), 0.1);
+}
+.tw-card-text a {
+  color: rgb(var(--primary-rgb));
+  text-decoration: underline;
+  pointer-events: none;
+}
+
+/* 围栏代码块：内容用 textContent 原样呈现（代码里的 ** / ` 都不是行内格式）。
+   <pre><code> 会命中上面的行内 code 样式，故这里逐项覆盖回去。 */
+.tw-card-text .tw-md-code {
+  margin: 0.4em 0;
+  padding: 0.5em 0.7em;
+  border: 1px solid var(--tw-write-line, var(--border-light));
+  border-radius: 0.35em;
+  background: rgba(var(--deep-rgb), 0.08);
+  overflow-x: auto;
+  white-space: pre;
+  font-size: 0.86em;
+  line-height: 1.5;
+}
+.tw-card-text .tw-md-code code {
+  font-size: 1em;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.tw-card-text .tw-md-code[data-lang]::before {
+  content: attr(data-lang);
+  display: block;
+  margin-bottom: 0.25em;
+  font-size: 0.8em;
+  color: var(--text-tertiary);
+}
+/* 代码块语法着色：纯投影层（utils/codeHighlight.js 只包 span，文本不变）。
+   配色一律取主题变量 + 兜底色，换纸样/换主题都不用改这里。 */
+.tw-card-text .tw-md-code .tk-com {
+  color: var(--text-faint, var(--text-tertiary, #8b949e));
+  font-style: italic;
+}
+.tw-card-text .tw-md-code .tk-str {
+  color: var(--color-green, #3f8f5a);
+}
+.tw-card-text .tw-md-code .tk-num {
+  color: var(--color-orange, #b5651d);
+}
+.tw-card-text .tw-md-code .tk-kw,
+.tw-card-text .tw-md-code .tk-at {
+  color: var(--color-purple, #8250df);
+}
+.tw-card-text .tw-md-code .tk-fn,
+.tw-card-text .tw-md-code .tk-prop {
+  color: var(--color-blue, #2f6fb0);
+}
+.tw-card-text .tw-md-code .tk-tag {
+  color: var(--color-red, #b3383c);
+}
+.tw-card-text .tw-md-code .tk-attr,
+.tw-card-text .tw-md-code .tk-var {
+  color: var(--color-cyan, #1f7f8c);
+}
+.tw-card-text .tw-md-code .tk-op {
+  color: var(--text-muted, var(--text-tertiary));
+}
+
+/* 图片投影：![alt](path) / ![[img.png|300]]。尺寸全部用 em —— 定框纸样缩字号适配时，
+   图片同比缩小，绝不会因为图太大把字挤到框外（图片没法靠缩字号排版）。 */
+.tw-card-text .tw-md-img {
+  display: inline-block;
+  vertical-align: bottom;
+  max-width: 100%;
+  max-height: 11em;
+  width: auto;
+  height: auto;
+  margin: 0.15em 0;
+  border-radius: 0.25em;
+  object-fit: contain;
+}
+/* 读不到 / 格式不支持：画成虚线占位（alt 文字照常显示），md 原文不受影响 */
+.tw-card-text .tw-md-img.tw-md-img-broken {
+  min-width: 4em;
+  min-height: 2.4em;
+  padding: 0.2em 0.4em;
+  border: 1px dashed color-mix(in srgb, currentColor 30%, transparent);
+  background: color-mix(in srgb, currentColor 5%, transparent);
+  font-size: 0.72em;
+  color: var(--text-tertiary);
+}
+
+/* 引用块投影：renderQuoteText 已逐行剥掉 `> `，左侧竖线承担引用语义。
+   描边取 currentColor 低透明度，亮/暗纸样都自适应（与表格描边同一思路）。 */
+.tw-card-text .tw-md-quote {
+  border-left: 0.18em solid color-mix(in srgb, currentColor 22%, transparent);
+  padding: 0.1em 0 0.1em 0.7em;
+  margin: 0.2em 0;
+}
+
+/* 列表投影：bullet / 编号由 renderListText 生成，缩进层级由 inline padding-left 承担。
+   marker 定宽让多行列首对齐；数字用等宽数位避免 1. 与 10. 抖动。 */
+.tw-card-text .tw-md-list { line-height: var(--tw-line); }
+/* 列表里的空行占位：md 里就是一行空行，投影必须给它高度，否则用户排的段间距看不见、
+   一进出编辑就被当成「没有内容」抹掉。 */
+.tw-card-text .tw-md-gap { height: calc(var(--tw-line) * 1em); }
+.tw-card-text .tw-md-marker {
+  display: inline-block;
+  min-width: 1.5em;
+  margin-right: 0.3em;
+  color: rgb(var(--primary-rgb));
+  font-variant-numeric: tabular-nums;
+}
+
+/* Obsidian 特有语法 · A 类（纯视觉）：不接宿主 API、不加载外部资源。
+   ![[嵌入]] / 数学 / Mermaid 属 B/C 类，交给整篇预览的宿主 MarkdownRenderer。 */
+.tw-card-text .tw-md-tag { color: rgb(var(--primary-rgb)); }
+.tw-card-text .tw-md-wikilink {
+  color: rgb(var(--primary-rgb));
+  border-bottom: 1px dashed currentColor;
+  cursor: default;                 /* 不可点：卡片画布上点击会触发拖拽/进编辑 */
+}
+.tw-card-text .tw-md-comment { display: none; }   /* 与 Obsidian 阅读视图一致：注释不显示 */
+.tw-card-text .tw-md-blockid { opacity: 0.45; font-size: 0.8em; }
+.tw-card-text .tw-md-callout {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4em;
+  font-weight: 700;
+  margin-bottom: 0.2em;
+}
+.tw-card-text .tw-md-callout-badge {
+  padding: 0.05em 0.4em;
+  border-radius: 0.25em;
+  background: rgba(var(--primary-rgb), 0.16);
+  font-size: 0.75em;
+  font-weight: 600;
+}
+
+/* 编辑态格式工具条：挂在**画布层**（与卡片同级），不挂卡内。
+   原因：.tw-card 带 transform 会自成层叠上下文，卡内 z-index 再高也压不过相邻卡片 ——
+   视觉上看得见、点击却落到上面那张卡，表现为「按钮完全没反应」。
+   位置由 JS 写到卡片上方（left/top 内联），transform 负责居中与上移。
+   按钮 pointerdown 阻止默认，保住 textEl 焦点与选区（见 CardInteractions.ensureEditTools）。 */
+.tw-canvas > .tw-edit-tools {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translate(-50%, -100%);
+  display: flex;
+  align-items: center;
+  gap: 0.2em;
+  padding: 0.2em 0.3em;
+  /* 工具条挂在画布层：若继承画布/纸样的大字号，em 内边距与按钮尺寸会跟着放大。
+     用 rem 锚定自身字号，padding / gap / 字形才有稳定的视觉尺度。 */
+  font-size: 1rem;
+  line-height: 1;
+  border: 1px solid var(--border-light);
+  border-radius: 0.5em;
+  background: rgba(var(--white-rgb), 0.94);
+  box-shadow: 0 4px 10px -2px rgba(var(--deep-rgb), 0.18);
+  z-index: 999;
+  white-space: nowrap;
+}
+/* 编辑态：卡片操作条让位给格式条。同位置切换，用户看到的是「工具条换了内容」，
+   而不是两排按钮打架。退出编辑后 .editing 移除，操作条自然恢复。 */
+.tw-card.editing .tw-card-tools { opacity: 0; pointer-events: none; }
+:host(.dark) .tw-canvas > .tw-edit-tools { background: rgba(var(--black-rgb), 0.85); }
+.tw-canvas > .tw-edit-tools[hidden] { display: none; }
+/* 编辑态格式工具条是「文章编辑」控件（行内格式 / 源码视图 / 表格行列 / 列表项），
+   服务对象是有 md 真源、需要结构化编辑的写作档。便签是定框纸片：0 语法、单卡 500 字，
+   这些按钮既用不上，又会在纸样上方压一排编辑器控件，把「纸片」变成「编辑器」。
+   按档位隐藏（与 .tw-card-paper / zoom / PNG 同一套做法）：作用域必须带 tw-mode-notes，
+   写作档不受影响；DOM 仍在，想恢复只需删这一条规则。 */
+.tw-canvas.tw-mode-notes > .tw-edit-tools { display: none; }
+.tw-edit-tool {
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.1;
+  /* 关键：components-interaction.css 给所有裸 button 设了 min-height = 48px（触控目标），
+     会把每个按钮地板到 48px 高 —— 背景框被撑高、字形显得又小又飘。
+     显式声明自己的尺寸压过它（同 .tw-card-level 的做法），按钮改为紧凑的方形点击区。
+     注释里刻意不写花括号：多个 CSS 静态检查用花括号切规则块，会被注释里的括号截断。 */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2em;
+  min-height: 2em;
+  padding: 0.15em 0.3em;
+  border: 1px solid transparent;
+  border-radius: 0.3em;
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+.tw-edit-tool:hover {
+  border-color: var(--border-light);
+  background: rgba(var(--primary-rgb), 0.14);
+}
+.tw-edit-tool:focus-visible { outline: 0.12em solid rgb(var(--primary-rgb)); outline-offset: 0.1em; }
+/* 单卡源码视图：格式/结构按钮在纯 md 文本上没有意义（按投影语义理解会改坏文本），
+   只留 `md` 自己作为出口。 */
+.tw-edit-tools.tw-src-on .tw-edit-tool:not(.tw-edit-src) { display: none; }
+/* 源码视图正文：等宽 + 保留原有换行与缩进 —— 看到的就是要写进文件的那段 md。
+   字号不在这里定：定框纸样由 fitCardText 按框高自适应（以计算字号为基准）。 */
+.tw-card.tw-src-mode .tw-card-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+  letter-spacing: 0;
+}
+
 /* 便签正文滚动条：细（3px）+ 主题色半透明 + 圆角，暗色换亮绿。
    【关键·勿加 scrollbar-width / scrollbar-color】现代 Chromium 一旦看到这两个「标准滚动条」属性，
    就会改用平台标准滚动条并【忽略 ::-webkit-scrollbar】——此处 px 宽度/透明度会全部失效
@@ -1112,6 +1456,11 @@
 .tw-card-move, .tw-card-lv { display: none; }
 .tw-canvas.tw-mode-write .tw-card-move, .tw-canvas.tw-mode-write .tw-card-lv { display: inline-flex; }
 .tw-canvas.tw-mode-write .tw-card-font, .tw-canvas.tw-mode-write .tw-card-zoom-out, .tw-canvas.tw-mode-write .tw-card-zoom-in { display: none; }
+/* PNG 导出是便签档能力：把一张「纸片」原样渲染成图片带走。写作档的卡是文章块，
+   带走内容的通道是 md（整篇预览 / 导出落库），且纸样、贴纸、旋转等便签装饰已在本档卸掉 ——
+   留着这个图片图标既导不出真实外观，又容易被误读成「插入图片」。故只留 md 导出。
+   作用域必须带 tw-mode-write：便签档仍需要这个按钮。 */
+.tw-canvas.tw-mode-write .tw-card-export-png { display: none; }
 /* 到边界置灰（首卡不能再上移、H1 不能再提升、引用/列表不参与升降）——
    别让「点了没反应」变成没有解释的失灵。 */
 .tw-card-move[disabled], .tw-card-lv[disabled] { opacity: 0.3; cursor: default; }
@@ -1215,6 +1564,38 @@
 .tw-canvas.tw-mode-write .tw-card[data-level="ul"] { --lv-color: var(--lv-ul); }
 .tw-canvas.tw-mode-write .tw-card[data-level="ol"] { --lv-color: var(--lv-ol); }
 .tw-canvas.tw-mode-write .tw-card[data-level="task"] { --lv-color: var(--lv-task); }
+
+/* ---- 表格层级（table）----------------------------------------------------------
+   与其余层级同链派生：色值只在 --bm-tint-src-table 存一次，徽章 / 圆点 / 卡面铺色全部转发。
+   表格是「块类型」而非标题深度，故不进 LEVEL_LADDER（升降级只走 h1…h6→p）。
+   单独成块是为让新增层级一目了然，不把 :host 色板再拉长一遍。 */
+:host {
+  --bm-tint-src-table: #4F46E5;   /* 靛蓝：结构感，与 h6 蓝 / quote 紫错开 */
+  --bm-tint-table: var(--bm-tint-src-table);
+}
+:host(.dark) { --bm-tint-table: #818CF8; }
+/* 不新增 --lv-table：--lv-* 是 lint 逐项 grandfather 的旧命名空间，新层级直接转发 --bm-tint-table */
+.tw-canvas.tw-mode-write .tw-card[data-level="table"] { --lv-color: var(--bm-tint-table); }
+/* 表格属「基础」档，铺色与 p 同强度即可：22% 靛蓝叠在近白底上是一块饱和紫，抢过标题。
+   暗色档必须补齐 —— 其余层级都在 :host(.dark) 下另定强度，漏了会让 table 明暗失衡。 */
+.tw-canvas.tw-mode-write.tw-lv-tint .tw-card[data-level="table"] { --bm-tint-mix: 14%; }
+:host(.dark) .tw-canvas.tw-mode-write.tw-lv-tint .tw-card[data-level="table"] { --bm-tint-mix: 26%; }
+.tw-canvas.tw-mode-write.tw-lv-tint .tw-card[data-level="table"] { --bm-tint: var(--bm-tint-table); }
+.tw-level-dot[data-level="table"] { background: var(--bm-tint-table); }
+
+/* ---- 代码块层级（code）：与 table 同属「基础」档 ----------------------------------
+   石板灰棕，避开彩虹色相带；色值只在 --bm-tint-src-code 存一次，徽章 / 卡面 / 圆点同源。
+   同样不新增 --lv-*（lint R10 逐项 grandfather 的旧命名空间）。 */
+:host {
+  --bm-tint-src-code: #57534E;
+  --bm-tint-code: var(--bm-tint-src-code);
+}
+:host(.dark) { --bm-tint-code: #A8A29E; }
+.tw-canvas.tw-mode-write .tw-card[data-level="code"] { --lv-color: var(--bm-tint-code); }
+.tw-canvas.tw-mode-write.tw-lv-tint .tw-card[data-level="code"] { --bm-tint-mix: 14%; }
+:host(.dark) .tw-canvas.tw-mode-write.tw-lv-tint .tw-card[data-level="code"] { --bm-tint-mix: 26%; }
+.tw-canvas.tw-mode-write.tw-lv-tint .tw-card[data-level="code"] { --bm-tint: var(--bm-tint-code); }
+.tw-level-dot[data-level="code"] { background: var(--bm-tint-code); }
 
 /* ---- 卡面层级铺色（可选开关 tw-lv-tint，默认关）----
    【色板】与徽章/类型圆点共用同一批色相（--bm-tint-*；--lv-color 也指向它）。
@@ -1746,8 +2127,10 @@
   z-index: 9000;
   display: none;
   align-items: center;
-  gap: var(--space-6);
-  padding: var(--space-5) var(--space-6);
+  /* 紧凑条：按钮只有一行字，条壳不需要再多留一圈内边距（原来 5px 上下 + 6px 间距，
+     叠加按钮自身尺寸后整条 60px，浮在选框上方会遮住卡片标题）。 */
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
   border-radius: var(--radius-sm);
   background: var(--surface-solid, #fff);
   border: 1px solid rgba(16, 24, 40, 0.12);
@@ -1761,9 +2144,18 @@
   font-family: inherit;
   font-size: var(--type-sm);
   line-height: 1;
+  /* 关键：全局 button 的 min-width/min-height 会把每个键地板到 48px 触控尺寸 ——
+     条被撑高近一倍、短标签也被迫拉宽。显式声明自己的最小尺寸压过它
+     （与 .tw-edit-tool / .tw-card-level 同一套做法）。 */
+  min-width: 0;
+  min-height: 26px;
+  /* min-height 比「字号+内边距」高，靠 flex 居中才不会让文字贴着上边、下方留一条空 */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border: none;
   border-radius: var(--radius-2xs);
-  padding: var(--space-7) var(--space-10);
+  padding: var(--space-4) var(--space-8);
   cursor: pointer;
   color: #2f3a2c;
   background: transparent;
@@ -1782,6 +2174,24 @@
   color: rgb(var(--primary-rgb, 80, 120, 90));
 }
 .tw-sel-bar .tw-sel-attach:hover { background: rgba(var(--primary-rgb, 80, 120, 90), 0.24); }
+/* 连线 / 断开（写作档专属）：连线是建设性动作给主色，断开是破坏性动作给危险色 hover。
+   底色比「合并」更淡 —— 同排三个主动作不能都抢同一层视觉重量。 */
+.tw-sel-bar .tw-sel-link {
+  font-weight: 600;
+  background: rgba(var(--primary-rgb, 80, 120, 90), 0.08);
+  color: rgb(var(--primary-rgb, 80, 120, 90));
+}
+.tw-sel-bar .tw-sel-link:hover { background: rgba(var(--primary-rgb, 80, 120, 90), 0.18); }
+/* 「断开」态（is-unlink）：同一个键换成中性外观，hover 才露危险色 ——
+   破坏性动作不常驻红字，避免整条浮动条看起来像警告面板。 */
+.tw-sel-bar .tw-sel-link.is-unlink {
+  background: transparent;
+  color: #2f3a2c;
+}
+.tw-sel-bar .tw-sel-link.is-unlink:hover {
+  color: rgb(var(--danger-rgb, 178, 78, 58));
+  background: rgba(var(--danger-rgb, 178, 78, 58), 0.10);
+}
 .tw-sel-bar .tw-sel-del:hover {
   color: rgb(var(--danger-rgb, 178, 78, 58));
   background: rgba(var(--danger-rgb, 178, 78, 58), 0.12);
@@ -1798,6 +2208,10 @@
 :host(.dark) .tw-sel-merge:hover { background: rgba(206, 220, 190, 0.28); }
 :host(.dark) .tw-sel-attach { background: rgba(206, 220, 190, 0.16); color: #d8e3c6; }
 :host(.dark) .tw-sel-attach:hover { background: rgba(206, 220, 190, 0.28); }
+:host(.dark) .tw-sel-link { background: rgba(206, 220, 190, 0.10); color: #d8e3c6; }
+:host(.dark) .tw-sel-link:hover { background: rgba(206, 220, 190, 0.22); }
+:host(.dark) .tw-sel-link.is-unlink { background: transparent; color: #cdc8bb; }
+:host(.dark) .tw-sel-link.is-unlink:hover { color: #e09a86; background: rgba(214, 120, 96, 0.14); }
 :host(.dark) .tw-sel-del:hover { color: #e09a86; background: rgba(214, 120, 96, 0.16); }
 
 
@@ -1866,6 +2280,14 @@
 /* 层级配色键：只有写作档露出。.tw-zoom-bar button 显式写了 display:inline-flex，
    会压过 UA 对 [hidden] 的默认 display:none，故必须同款补一条（与 market 键同理）。 */
 .tw-zoom-bar .tw-zoom-tint[hidden] { display: none; }
+/* 文章连线 toggle 键同为写作档专属，需与 tint 一样补 [hidden]：.tw-zoom-bar button 显式写了
+   display:inline-flex，会压过 UA 对 [hidden] 的默认 display:none。 */
+.tw-zoom-bar .tw-zoom-link-toggle[hidden] { display: none; }
+/* toggle 图标随状态切换（sync 写 .is-linked）：未连线=链条（点它成链），有连线=断链（点它清空）。
+   两个 svg 常驻 DOM 只切显隐，避免每次状态变化重建节点。 */
+.tw-zoom-bar .tw-zoom-link-toggle .tw-zoom-icon-unlink { display: none; }
+.tw-zoom-bar .tw-zoom-link-toggle.is-linked .tw-zoom-icon-link { display: none; }
+.tw-zoom-bar .tw-zoom-link-toggle.is-linked .tw-zoom-icon-unlink { display: block; }
 
 /* ===== 便签模式·素材市场（右侧抽屉 + 素材卡 + 贴纸落卡）=====
    抽屉定位于 .scroll-typewriter-feature 右侧（黄区），展开时 translateX(0)。 */

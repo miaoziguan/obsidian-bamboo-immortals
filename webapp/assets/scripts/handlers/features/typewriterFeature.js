@@ -165,6 +165,7 @@ export const TypewriterFeature = {
     try { await this._restore(); } finally { this._restoring = false; }
     this._flushPendingPrint();   // 恢复期按过回车 → 现在补打（文本仍在输入框，不会丢）
     this._bindFlushGuards();   // 落盘兜底：页面隐藏/卸载前 flush 防抖窗口内未落盘的编辑
+    this._bindFileDropGuards();   // 拖入图片：画布委托插入 + 整页防「拖文件=导航」
   },
 
   /** 退出：清理 DOM 监听，释放引用 */
@@ -176,6 +177,7 @@ export const TypewriterFeature = {
     // 这张便签可能从未排过保存 → 静默丢失。此处统一兜底（打字卡已先回填模型）。
     if (this._saveTimer) { clearTimeout(this._saveTimer); this._saveTimer = null; }
     this._unbindFlushGuards();   // 解绑落盘兜底监听（避免重复绑定/泄漏）
+    this._unbindFileDropGuards();   // 解绑拖入图片监听（画布委托 + 整页兜底）
     this._saveNow();
     TypewriterStore.invalidateWritingIndex();   // 卸载后 settings 可能被外部改写，丢弃索引缓存
     if (this._el && this._el.parentNode) this._el.parentNode.removeChild(this._el);
@@ -355,6 +357,10 @@ export const TypewriterFeature = {
       // 与抓手键同一套 adapter 协议 —— onTint 存在才生成按钮，isTintActive 供 sync 高亮。
       onTint: () => ctrl._toggleLevelTint(),
       isTintActive: () => !!ctrl._levelTint,
+      // 文章连线（写作档专属，applyModeChrome 按档位显隐）：一个 toggle 键管成链 ⇄ 清空。
+      // isLinked 供 sync 切换图标语义（有连线显示断链、无连线显示链条）。
+      onLinkToggle: () => ctrl._linkToggle(),
+      isLinked: () => ctrl._isFullyChained(),
     });
   },
 
@@ -974,8 +980,11 @@ export const TypewriterFeature = {
       // 长文导入：整篇草稿按块拆成多张卡（每块各自定级），短输入仍走原单卡打印
       const chunks = WritingDoc.splitDraft(text, MAX_LEN);
       if (chunks.length > 1) { this._importDraft(chunks); return; }
-      const { level, text: clean } = this._detectWriteLevel(text);
-      this._spawn(clean, level);
+      // 单块直接复用 splitDraft 的结果：它已做公共缩进归一化 + 同一套 detectLevel 定级。
+      // 旧实现再对原始 text 调一次 _detectWriteLevel，遇前导缩进/结构块会得出不同 level
+      // （例如 '  1. 项' 归一后是 ol，原始文本却判成 p），同源两处口径不一致。
+      const one = chunks[0] || { text, level: 'p' };
+      this._spawn(one.text, one.level);
     } else {
       this._spawn(text);
     }
@@ -1160,7 +1169,14 @@ export const TypewriterFeature = {
     // 两档都即时落全文：捕获/阅读零等待。便签曾有的逐字打字（"设备签名"表演）连同一整套
     // pendingText / 计时器 / 钉屏状态机，已作为过度工程移除。
     // 刻意保留吐纸入场 .tw-feed（上方）：它不是逐字累进、不拖慢阅读，让新卡有「落到画布上」的存在感。
-    textEl.textContent = text;
+    // 【投影口径必须与刷新一致】以前这里直接 textContent = text，新建 / 整篇导入的卡上会露出
+    // `**` / `|` / `- [ ]` 等原始标记，只有刷新（恢复 → 重新挂载卡 → 富投影）才变成渲染后的样子 ——
+    // 表现为「贴进一篇文章不会立刻渲染，刷新才有」。改走 _applyCardText 后两条路径同口径。
+    if (typeof this._applyCardText === 'function') {
+      this._applyCardText(textEl, { text: text || '', level: level || card.dataset.level || 'p' });
+    } else {
+      textEl.textContent = text;   // 测试 harness 的简化 ViewportCuller：降级为纯文本，不炸调用方
+    }
     // 新增卡片是结构性变更：跳过防抖立即落盘，避免「打完字立刻硬杀」丢掉整张新卡。
     if (typeof this._flushSave === 'function') this._flushSave(); else this._scheduleSave();
     // 追加到文末的新卡多半在视野之外，且此刻文本刚落定、卡片才是最终高度 ——
@@ -1452,9 +1468,14 @@ export const TypewriterFeature = {
   _splitCard(card) {
     const id = card && card.dataset && card.dataset.id;
     if (!id) return;
-    // 以 DOM 当前文本为准（连续编辑时模型可能滞后一帧），先同步回模型再拆，保证拆的就是所见内容
+    // 以 DOM 当前文本为准（连续编辑时模型可能滞后一帧），先同步回模型再拆，保证拆的就是所见内容。
+    // 例外：富渲染卡（勾选框 / Markdown 表格）的 DOM 只是投影，innerText 不含
+    // `- [ ]` marker 或 `|`/`---` 语法，照常回写会抹掉模型语义，故这类卡只认模型。
+    const syncNote = this._notes.find((n) => n.id === id);
     const textEl = card.querySelector ? card.querySelector('.tw-card-text') : null;
-    if (textEl && typeof textEl.innerText === 'string') {
+    const isRich = !!(textEl && textEl.dataset && textEl.dataset.twRich)
+      || !!(syncNote && syncNote.level === 'task');
+    if (!isRich && textEl && typeof textEl.innerText === 'string') {
       this._notes = WritingDoc.setText(this._notes, id, textEl.innerText);
     }
     const seen = new Set(this._notes.map((n) => n.id));
@@ -1467,7 +1488,8 @@ export const TypewriterFeature = {
     // ① 原卡 DOM 文本同步为拆出的首段（否则画面看似「没反应」——模型变了但 DOM 还是全文）
     if (card) {
       const t = card.querySelector ? card.querySelector('.tw-card-text') : null;
-      if (t && updated) { t.textContent = updated.text; this._measureCard(card); }
+      // 统一走 applyCardText：task 卡要重建成勾选框，不能直接写 textContent（会露出 `- [ ]` 原文）
+      if (t && updated) { ViewportCuller.applyCardText(t, updated); this._measureCard(card); }
     }
     // ② 新卡必须显式建 DOM：写作档不做视口剔除（scheduleCull 在 write 档空转），
     //    只改模型不会有任何画面变化 —— 这正是「点了没反应」的根因。
@@ -1492,6 +1514,107 @@ export const TypewriterFeature = {
       if (typeof this._flushSave === 'function') this._flushSave(); else this._scheduleSave();
     }
     this._showScreenMsg('已按段落拆分为 ' + (added.length + 1) + ' 张卡', 1500);
+  },
+
+
+  // ===== 文章连线批量操作（写作档）=========================================
+  // 写作档的连线是文章顺序的输入之一：CardInteractions 的 _addLink / _removeLink 会
+  // reseqByLinks 重算 seq。但「一键连线 / 一键删线 / 选中连线 / 选中删线」是整理连线的
+  // 批量动作，用户预期只是连线变了、文章顺序不动。故统一走 _commitLinks：
+  // 先固化操作前的 seq 顺序，直接替换 _links，绝不经过 reseqByLinks。
+  // 尤其「清空全部连线」—— orderIds 在无连线时会退化为按坐标 (y,x) 排序，
+  // 分幕多列布局下那会把整篇文章的顺序打乱，必须显式守住。
+  _commitLinks(next, msg) {
+    const ids = WritingDoc.idsBySeq(this._notes);
+    if (this._undoStack) this._undoStack.push();      // 一次批量操作 = 一步撤销
+    this._links = next;
+    this._notes = WritingDoc.setOrder(this._notes, ids);
+    this._scheduleRenderLinks();
+    this._refreshWriteOrder();
+    // 连线是用户明确的一次批量操作：跳过防抖立即落盘，避免点完立刻切档/关闭丢改动
+    if (typeof this._flushSave === 'function') this._flushSave(); else this._scheduleSave();
+    if (msg) this._showScreenMsg(msg, 1400);
+  },
+
+  _selectedIds() {
+    const sel = (this._selected && this._selected.size) ? Array.from(this._selected) : [];
+    return sel
+      .filter((c) => !(c.classList && c.classList.contains('bm-sticker')))
+      .map((c) => c.dataset && c.dataset.id)
+      .filter(Boolean);
+  },
+
+  _linkAll() {
+    if (this._mode !== 'write') return 0;
+    const next = WritingDoc.chainLinks(this._notes);
+    if (!next.length) { this._showScreenMsg('卡片不足，无法连线', 1200); return 0; }
+    if (next.length === this._links.length
+      && next.every((l, i) => l.from === this._links[i].from && l.to === this._links[i].to)) {
+      this._showScreenMsg('已按文章顺序连好', 1200);
+      return 0;
+    }
+    this._commitLinks(next, 'LINK ALL · ' + next.length + ' 条');
+    return next.length;
+  },
+
+  _unlinkAll() {
+    if (this._mode !== 'write') return 0;
+    if (!this._links.length) { this._showScreenMsg('没有连线', 1200); return 0; }
+    const n = this._links.length;
+    this._commitLinks([], 'UNLINK ALL · 已清 ' + n + ' 条（顺序不变）');
+    return n;
+  },
+
+  /** 是否已是「按文章顺序的完整链」。
+   *  只看有没有线不够：手动删掉几条后是「部分连线」，此时用户更可能想补齐而不是清空，
+   *  所以只有「恰好等于 chainLinks 的结果」才算已连，toggle 才表现为断链。 */
+  _isFullyChained() {
+    const chain = WritingDoc.chainLinks(this._notes);
+    const cur = this._links || [];
+    return chain.length > 0 && chain.length === cur.length
+      && chain.every((l, i) => l.from === cur[i].from && l.to === cur[i].to);
+  },
+
+  /** 缩放条那一个键的动作：未成链（含部分连线）就补齐成链、已成完整链才清空。
+   *  操作后主动 sync 一次：图标要立刻翻转，而不是等下一次缩放手势。 */
+  _linkToggle() {
+    const n = this._isFullyChained() ? this._unlinkAll() : this._linkAll();
+    if (this._zoomUI && typeof this._zoomUI.sync === 'function') this._zoomUI.sync();
+    return n;
+  },
+
+  _linkSelected() {
+    if (this._mode !== 'write') return 0;
+    const ids = this._selectedIds();
+    if (ids.length < 2) { this._showScreenMsg('至少选中 2 张才能连线', 1200); return 0; }
+    const next = WritingDoc.linkSelection(this._notes, this._links, ids);
+    const added = next.length - this._links.length;
+    if (!added) { this._showScreenMsg('选中卡片间已连好', 1200); return 0; }
+    this._commitLinks(next, 'LINK · +' + added + ' 条');
+    return added;
+  },
+
+  _unlinkSelected() {
+    if (this._mode !== 'write') return 0;
+    const ids = this._selectedIds();
+    if (ids.length < 2) return 0;
+    const next = WritingDoc.unlinkSelection(this._links, ids);
+    const removed = this._links.length - next.length;
+    if (!removed) { this._showScreenMsg('选中卡片间没有连线', 1200); return 0; }
+    this._commitLinks(next, 'UNLINK · -' + removed + ' 条');
+    return removed;
+  },
+
+  /** 多选条那一个键：选中集未成链就补齐、已成链才断开。
+   *  与缩放条的全篇 toggle 同一套判定（都看「是否全链」），作用域只到选中集。 */
+  _linkToggleSelected() {
+    if (this._mode !== 'write') return 0;
+    const ids = this._selectedIds();
+    if (ids.length < 2) { this._showScreenMsg('至少选中 2 张才能连线', 1200); return 0; }
+    const chained = WritingDoc.selectionChained(this._notes, this._links, ids);
+    const n = chained ? this._unlinkSelected() : this._linkSelected();
+    if (n) this._updateSelBar();   // 文案与配色随状态翻转
+    return n;
   },
 
 
@@ -1527,7 +1650,13 @@ export const TypewriterFeature = {
     const anchorNote = this._notes.find((n) => n.id === r.anchorId);
     if (anchorEl && anchorNote) {
       const t = anchorEl.querySelector ? anchorEl.querySelector('.tw-card-text') : null;
-      if (t) { t.textContent = anchorNote.text; this._measureCard(anchorEl); }
+      // 合并后的锚卡可能仍是 task / 表格卡：直接 textContent 会露出 markdown 原文。
+      // 走宿主委托壳（与挂载期同一渲染口径）；测试桩没有该壳时回退纯文本，保持兼容。
+      if (t) {
+        if (typeof this._applyCardText === 'function') this._applyCardText(t, anchorNote);
+        else t.textContent = anchorNote.text;
+        this._measureCard(anchorEl);
+      }
     }
     if (this._mode === 'write') {
       // 合并后保留当前布局（含分幕/顺流档位与既有位置），不再全量重排：
@@ -1617,14 +1746,18 @@ export const TypewriterFeature = {
       '<button type="button" class="tw-sel-attach" aria-label="把选中的贴纸挂到这张便签上" title="挂到便签：贴纸跟随这张便签移动/旋转/缩放，挂上后仍可拖动它在便签上的位置">挂到便签</button>' +
       '<button type="button" class="tw-sel-detach" aria-label="把选中的贴纸从便签取下" title="从便签取下：贴纸回到画布，可自由移动">从便签取下</button>' +
       '<button type="button" class="tw-sel-merge" aria-label="合并选中卡片"></button>' +
+      // 连线 / 断开是同一个键的两态（选中集未成链=连线，已成链=断开），由 _updateSelBar 切文案
+      '<button type="button" class="tw-sel-link" aria-label="按文章顺序连接选中卡片"></button>' +
       '<button type="button" class="tw-sel-del" aria-label="删除选中卡片">删除</button>';
     const mergeBtn = bar.querySelector('.tw-sel-merge');
     const delBtn = bar.querySelector('.tw-sel-del');
     const attachBtn = bar.querySelector('.tw-sel-attach');
     const detachBtn = bar.querySelector('.tw-sel-detach');
+    const linkBtn = bar.querySelector('.tw-sel-link');
     // 鼠标点击后交还焦点：否则按钮持焦，之后按空格会再次触发（重合并 / 重删除选中）
     mergeBtn.addEventListener('click', (e) => { e.stopPropagation(); this._mergeSelected(); if (e.detail > 0) mergeBtn.blur(); });
     delBtn.addEventListener('click', (e) => { e.stopPropagation(); this._deleteSelected(); if (e.detail > 0) delBtn.blur(); });
+    linkBtn.addEventListener('click', (e) => { e.stopPropagation(); this._linkToggleSelected(); if (e.detail > 0) linkBtn.blur(); });
     attachBtn.addEventListener('click', (e) => { e.stopPropagation(); this._attachSelected(); if (e.detail > 0) attachBtn.blur(); });
     detachBtn.addEventListener('click', (e) => { e.stopPropagation(); this._detachSelected(); if (e.detail > 0) detachBtn.blur(); });
     bar.addEventListener('pointerdown', (e) => e.stopPropagation());   // 条内操作不触发画布平移/取消选择
@@ -1647,6 +1780,24 @@ export const TypewriterFeature = {
     const mergeBtn = bar.querySelector('.tw-sel-merge');
     const attachBtn = bar.querySelector('.tw-sel-attach');
     const detachBtn = bar.querySelector('.tw-sel-detach');
+    const linkBtn = bar.querySelector('.tw-sel-link');
+    // 连线是写作档语义（linksDefineOrder）：便签档的连线不定义文章顺序，一律不给入口。
+    const canLink = this._mode === 'write' && cardCount >= 2;
+    const selIds = new Set(cards.map((c) => c.dataset && c.dataset.id).filter(Boolean));
+    const innerLinks = (this._links || []).filter((l) => selIds.has(l.from) && selIds.has(l.to)).length;
+    // 一个键两态：选中集未成链 → 「连线 N 张」（补齐）；已成链 → 「断开 N 条」。
+    const chained = canLink && WritingDoc.selectionChained(this._notes, this._links, Array.from(selIds));
+    if (linkBtn) {
+      linkBtn.style.display = canLink ? '' : 'none';
+      if (canLink) {
+        linkBtn.classList.toggle('is-unlink', chained);
+        linkBtn.textContent = chained ? ('断开 ' + innerLinks + ' 条') : ('连线 ' + cardCount + ' 张');
+        linkBtn.setAttribute('aria-label', chained ? '删除选中卡片之间的连线' : '按文章顺序连接选中卡片');
+        linkBtn.title = chained
+          ? '断开：删除选中卡片之间的连线（文章顺序不变，可撤销）'
+          : '连线：按文章顺序把选中的卡片连成一条链（只增不删，可撤销）';
+      }
+    }
     if (n >= 2) {
       if (mergeBtn) {
         if (cardCount >= 2) { mergeBtn.style.display = ''; mergeBtn.textContent = '合并 ' + cardCount + ' 张'; }
@@ -2083,6 +2234,23 @@ export const TypewriterFeature = {
 
   /** 把一张模型卡建回 DOM 并挂进挂载表 + 量几何。culling 进屏时调用。 */
   _mountCard(note, opts) { return ViewportCuller.mountCard({ state: this._state, ctrl: this }, note, opts); },
+
+  /** 卡正文重渲染委托壳：与挂载期同一口径（task → 勾选框、表格 → <table>、其余 → 纯文本）。
+   *  给「模型变了但不想整卡重挂」的增量路径用（如退出编辑后把 raw markdown 还原成投影）。
+   *  测试 harness 的 ViewportCuller 是简化 mock，缺 applyCardText 时回退纯文本，不炸调用方。 */
+  _applyCardText(textEl, note) {
+    if (ViewportCuller && typeof ViewportCuller.applyCardText === 'function') {
+      return ViewportCuller.applyCardText(textEl, note);
+    }
+    textEl.textContent = (note && note.text) || '';
+    return undefined;
+  },
+  _serializeCardText(textEl, note) {
+    if (ViewportCuller && typeof ViewportCuller.serializeRichText === 'function') {
+      return ViewportCuller.serializeRichText(textEl, note);
+    }
+    return textEl.innerText || '';   // 测试桩简化 mock 时回退，不炸调用方
+  },
   _flushMountMeasure() { return ViewportCuller.flushMountMeasure({ state: this._state, ctrl: this }); },
 
   /** 量一张卡进几何缓存（坐标取 style.left/top；尺寸取 offset*，一次 reflow 摊销）。 */
@@ -2221,6 +2389,103 @@ export const TypewriterFeature = {
     this._flushHandler = null;
     if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', handler);
     if (typeof window !== 'undefined') window.removeEventListener('pagehide', handler);
+  },
+
+  /** 拖入图片的接线（画布委托 + 整页防导航兜底）。
+   *
+   *  为什么必须有全局兜底：画中卷跑在 iframe 里，把一个文件拖进 iframe 的**默认行为**
+   *  是导航到该文件 —— 表现为整个画中卷白屏（且不可恢复，只能重开视图）。所以只要是
+   *  拖文件，一律 preventDefault；真正的插入交给卡片那一层。
+   *
+   *  为什么用画布委托而不是逐卡绑定：卡片会被视口剔除反复挂载/卸载，逐卡绑定既要在
+   *  dispose 里配对解绑，又会随 cull churn 反复挂监听；画布只有一个，且卡片是它的
+   *  后代，`closest('.tw-card')` 就能定位（都在同一 shadow root 内，target 不retarget）。
+   */
+  _bindFileDropGuards() {
+    if (this._fileDropGuard || typeof document === 'undefined') return;
+    const hasFiles = (e) => {
+      const dt = e && e.dataTransfer;
+      if (!dt || !dt.types) return false;
+      try { return Array.prototype.indexOf.call(dt.types, 'Files') >= 0; } catch (_) { return false; }
+    };
+    // 事件从 shadow 内部冒到 document 时 target 已被 retarget 成宿主，必须看 composedPath
+    const pathHasCard = (e) => {
+      const path = e && typeof e.composedPath === 'function' ? e.composedPath() : [];
+      for (let i = 0; i < path.length; i += 1) {
+        const el = path[i];
+        if (el && el.classList && el.classList.contains('tw-card')) return true;
+      }
+      return false;
+    };
+    const onOver = (e) => {
+      if (!hasFiles(e)) return;
+      e.preventDefault();          // 不 stopPropagation：画布/卡片还要接着处理
+      if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+    };
+    const onDrop = (e) => {
+      if (!hasFiles(e)) return;
+      e.preventDefault();          // 无论落在哪，都别让 iframe 去打开这个文件
+      if (pathHasCard(e)) return;  // 卡片自己接（见 _bindCanvasFileDrop）
+      if (typeof Toast !== 'undefined') Toast.showToast('把图片拖到卡片上即可插入', 'info');
+    };
+    document.addEventListener('dragover', onOver, true);
+    document.addEventListener('drop', onDrop, true);
+    this._fileDropGuard = { onOver, onDrop };
+    this._bindCanvasFileDrop();
+  },
+
+  /** 画布级委托：卡片上的 drop 一律交给 CardInteractions.insertImageFiles
+   *  （编辑态插光标处 / 非编辑态追加到末尾，由它内部判定）。 */
+  _bindCanvasFileDrop() {
+    const canvas = this._canvas;
+    if (!canvas || canvas._imgDropBound || typeof canvas.addEventListener !== 'function') return;
+    canvas._imgDropBound = true;
+    const filesOf = (dt) => {
+      if (!dt || !dt.files) return [];
+      try { return Array.from(dt.files).filter((f) => f && /^image\//i.test(f.type || '')); } catch (_) { return []; }
+    };
+    const onOver = (e) => {
+      const dt = e.dataTransfer;
+      if (!dt || !dt.types) return;
+      let has = false;
+      try { has = Array.prototype.indexOf.call(dt.types, 'Files') >= 0; } catch (_) { has = false; }
+      if (!has) return;
+      e.preventDefault();          // 允许 drop 落在这（否则浏览器只给「导航」这一个默认动作）
+      if (dt) dt.dropEffect = 'copy';
+    };
+    const onDrop = (e) => {
+      const t = e.target;
+      const card = t && typeof t.closest === 'function' ? t.closest('.tw-card') : null;
+      const imgs = filesOf(e.dataTransfer);
+      if (!card || !imgs.length) return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (typeof CardInteractions !== 'undefined' && CardInteractions.insertImageFiles) {
+        const ctx = { state: this._state, ctrl: this };
+        Promise.resolve(CardInteractions.insertImageFiles(ctx, card, imgs)).catch(() => { /* 失败已 toast */ });
+      }
+    };
+    canvas.addEventListener('dragover', onOver);
+    canvas.addEventListener('drop', onDrop);
+    canvas._imgDropHandlers = { onOver, onDrop };
+  },
+
+  _unbindFileDropGuards() {
+    if (!this._fileDropGuard) return;
+    const { onOver, onDrop } = this._fileDropGuard;
+    this._fileDropGuard = null;
+    if (typeof document !== 'undefined') {
+      document.removeEventListener('dragover', onOver, true);
+      document.removeEventListener('drop', onDrop, true);
+    }
+    const canvas = this._canvas;
+    if (canvas && canvas._imgDropHandlers) {
+      const h = canvas._imgDropHandlers;
+      canvas.removeEventListener('dragover', h.onOver);
+      canvas.removeEventListener('drop', h.onDrop);
+      canvas._imgDropHandlers = null;
+      canvas._imgDropBound = false;
+    }
   },
 
   /** 把画布现状写回「指定档位那份文档」（切档前调用）。

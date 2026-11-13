@@ -26,6 +26,9 @@
  *   1. CSS 颜色值（如 #A5B4FC）被误当 id 选择器 → 过滤纯十六进制。
  *   2. 动态拼接类名（如 'tw-mm-style-' + n、模板前缀 week-）→ 含数字后缀的类若其「前缀兄弟类」
  *      被使用，则判为动态生成，从「确认死」移到「疑似动态（已剔除）」列，不计入闸门判定。
+ *   3. 宿主渲染 HTML 的类（如 Obsidian `renderMarkdown` 产出的 `.contains-task-list` /
+ *      `.task-list-item`）：这类标记由宿主生成、永不出现在本仓源码里，凡选择器同时命中
+ *      `.tw-preview-rendered` 容器的类一律移入「宿主渲染（已剔除）」列，不计入闸门判定。
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -98,6 +101,27 @@ function isUsed(name, corpus) {
   return new RegExp(`(?<![-\\w])${escapeRe(name)}(?![-\\w])`).test(corpus);
 }
 
+/**
+ * 收集「宿主渲染 HTML」用到的类名：选择器里带 `.tw-preview-rendered` 容器的规则，
+ * 其类名来自 Obsidian `renderMarkdown` 的输出（源码里永远不会写），不能算死 CSS。
+ */
+function collectHostRenderedClasses() {
+  const out = new Set();
+  for (const file of walk(STYLES_DIR)) {
+    const css = fs.readFileSync(file, 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/\/\/.*$/gm, '');
+    for (const rule of css.split('}')) {
+      const brace = rule.indexOf('{');
+      if (brace < 0) continue;
+      const selector = rule.slice(0, brace);
+      if (!selector.includes('tw-preview-rendered')) continue;
+      for (const m of selector.matchAll(/\.(-?[_a-zA-Z][\w-]*)/g)) out.add(m[1]);
+    }
+  }
+  return out;
+}
+
 function escapeRe(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
@@ -134,9 +158,17 @@ function analyze() {
   const deadClasses = classes.filter((c) => !usedClasses.has(c));
   const deadIds = ids.filter((id) => !usedIds.has(id));
 
+  // 宿主渲染 HTML 的类：选择器挂在 .tw-preview-rendered 容器上，标记由 Obsidian 生成
+  const hostRendered = new Set();
+  const hostCandidates = collectHostRenderedClasses();
+  const stillDead = deadClasses.filter((c) => {
+    if (hostCandidates.has(c)) { hostRendered.add(c); return false; }
+    return true;
+  });
+
   // 动态拼接嫌疑：类以数字结尾，且其「前缀（去尾部数字）」存在被使用的兄弟类 → 动态生成
   const dynamicClasses = new Set();
-  for (const c of deadClasses) {
+  for (const c of stillDead) {
     const m = c.match(/^(.*?)(\d+)$/);
     if (!m) continue;
     const base = m[1];
@@ -145,12 +177,12 @@ function analyze() {
     if (siblingUsed || [...dyn].some((p) => c.startsWith(p))) dynamicClasses.add(c);
   }
 
-  const confirmed = deadClasses.filter((c) => !dynamicClasses.has(c));
-  return { confirmed, dynamic: [...dynamicClasses], ids: deadIds };
+  const confirmed = stillDead.filter((c) => !dynamicClasses.has(c));
+  return { confirmed, dynamic: [...dynamicClasses], host: [...hostRendered], ids: deadIds };
 }
 
 function renderBlock(res) {
-  const { confirmed, dynamic, ids } = res;
+  const { confirmed, dynamic, host, ids } = res;
   const clusters = new Map();
   for (const c of confirmed) {
     const k = clusterOf(c);
@@ -168,9 +200,9 @@ function renderBlock(res) {
     '> `node scripts/check-dead-css.mjs --update`（CI 跑默认模式校验漂移）。',
     '>',
     '> 扫描：定义 `webapp/assets/styles/**/*.css`；使用 `webapp/assets/scripts/**/*.js`(排除 tests) + `webapp/*src*.html`/`index.html`（刻意排除 4 个打包产物 html，避免把 CSS 定义当使用）。',
-    '> 误判防护：十六进制颜色值过滤；动态拼接类名（`prefix`+n）移至「疑似动态」列，不计入判定。',
+    '> 误判防护：十六进制颜色值过滤；动态拼接类名（`prefix`+n）移至「疑似动态」列；宿主渲染标记（`.tw-preview-rendered` 容器内的类）移至「宿主渲染」列，均不计入判定。',
     '',
-    `**确认死类名：${confirmed.length}　疑似动态（已剔除）：${dynamic.length}　死 ID 选择器：${ids.length}**`,
+    `**确认死类名：${confirmed.length}　疑似动态（已剔除）：${dynamic.length}　宿主渲染（已剔除）：${host.length}　死 ID 选择器：${ids.length}**`,
     '',
     '### 按首段聚类（确认死类名）',
     '',
@@ -181,6 +213,10 @@ function renderBlock(res) {
     '### 疑似动态拼接（已从判定剔除，待人工确认）',
     '',
     dynamic.length ? dynamic.slice(0, 40).map((x) => `\`${x}\``).join(' ') : '（无）',
+    '',
+    '### 宿主渲染 HTML 的类（已从判定剔除，非死代码）',
+    '',
+    host.length ? host.slice(0, 60).map((x) => `\`${x}\``).join(' ') : '（无）',
     '',
     '### 死 ID 选择器',
     '',

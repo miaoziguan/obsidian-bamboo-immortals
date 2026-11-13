@@ -69,6 +69,21 @@ const SKIP_DIRS = ['.trash', '.git', 'node_modules'];
 /** 读取音频文件入内存前的体积上限（base64 再膨胀 ~33%，避免大文件 OOM） */
 const MAX_AUDIO_FILE_BYTES = 50 * 1024 * 1024; // 50MB
 
+/** 画中卷卡片图片：允许的扩展名 → MIME（读写共用同一白名单） */
+const IMAGE_MIME_TYPES: Record<string, string> = {
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  gif: 'image/gif',
+  webp: 'image/webp',
+  svg: 'image/svg+xml',
+  bmp: 'image/bmp',
+  avif: 'image/avif',
+};
+
+/** 卡片图片体积上限：超过就不投影（保持 md 原文，不丢内容） */
+const IMAGE_MAX_BYTES = 12 * 1024 * 1024; // 12MB
+
 /**
  * 校验音源代理 URL：仅允许 http/https 协议，限制长度，
  * 防止 `app:proxyAudioUrl` 成为运行在用户机器上的开放 fetch 代理。
@@ -1592,6 +1607,58 @@ export class AppAPI {
         if (!fullPath.toLowerCase().endsWith('.md')) throw new Error('仅支持 .md 文件');
         await adapter.remove(fullPath);
         this.respond(id, { ok: true });
+        return;
+      }
+
+      // 图片投影：把 vault 里的图片读成 data URL 回传。
+      // 画中卷跑在 data: iframe 里，拿不到 app:// 资源地址（getResourcePath 的产物在
+      // 跨源 iframe 中不可依赖），而 data URL 与该 iframe 同源，img.src 一定能加载。
+      if (type === 'file:readImage') {
+        const raw = String(p.path || '').trim();
+        if (!raw) throw new Error('未提供图片路径');
+        if (raw.split(/[\\/]+/).some((seg) => seg === '..')) throw new Error('路径遍历禁止');
+        const norm = normalizePath(raw.replace(/^\.\//, ''));
+        // 先按 vault 根路径找；找不到再按「画中卷/」找 —— 笔记里的相对写法两种都有
+        const candidates = [norm];
+        if (!norm.startsWith(root + '/')) candidates.push(normalizePath(`${root}/${norm}`));
+        let fullPath = '';
+        for (const cand of candidates) {
+          if (await adapter.exists(cand)) { fullPath = cand; break; }
+        }
+        if (!fullPath) { this.respond(id, { data: '', path: norm }); return; }
+        const ext = (fullPath.slice(fullPath.lastIndexOf('.') + 1) || '').toLowerCase();
+        const mime = IMAGE_MIME_TYPES[ext];
+        if (!mime) throw new Error('不支持的图片格式：.' + ext);
+        const stat = await adapter.stat(fullPath);
+        if ((stat?.size ?? 0) > IMAGE_MAX_BYTES) throw new Error('图片过大（上限 12MB）');
+        const buffer = await adapter.readBinary(fullPath);
+        this.respond(id, {
+          data: `data:${mime};base64,${arrayBufferToBase64(buffer)}`,
+          path: fullPath,
+        });
+        return;
+      }
+
+      // 粘贴 / 拖入的图片：base64 → 画中卷目录下的二进制文件。
+      // 走 resolveScrollPath，写权限仍锁在「画中卷/」内（与 file:write 同一范围）。
+      if (type === 'file:writeBinary') {
+        const fullPath = resolveScrollPath(p.path);
+        const ext = (fullPath.slice(fullPath.lastIndexOf('.') + 1) || '').toLowerCase();
+        if (!IMAGE_MIME_TYPES[ext]) throw new Error('仅支持图片文件');
+        const b64 = String(p.content || '').replace(/^data:[^,]*,/, '').replace(/\s+/g, '');
+        if (!b64 || !/^[A-Za-z0-9+/]+={0,2}$/.test(b64)) throw new Error('图片数据非法');
+        // atob 在桌面与移动端 renderer 都有；不走 Buffer，避免移动端没有 Node polyfill
+        const bin = atob(b64);
+        const bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i += 1) bytes[i] = bin.charCodeAt(i);
+        if (!bytes.length) throw new Error('图片为空');
+        if (bytes.length > IMAGE_MAX_BYTES) throw new Error('图片过大（上限 12MB）');
+        const parent = fullPath.substring(0, fullPath.lastIndexOf('/'));
+        if (parent && parent !== root) {
+          try { await adapter.mkdir(parent); } catch { /* 已存在忽略 */ }
+        }
+        await adapter.writeBinary(fullPath, bytes.buffer);
+        this.respond(id, { ok: true, path: fullPath });
         return;
       }
 

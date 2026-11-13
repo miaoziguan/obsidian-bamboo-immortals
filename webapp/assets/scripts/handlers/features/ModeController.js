@@ -18,6 +18,105 @@ import { WritingDoc } from './writingDoc.js';
 import { UndoStack } from '../../services/undoStack.js';
 import { isFromTextEntry } from '../../utils/domRef.js';
 
+/**
+ * 宿主 MarkdownRenderer 回传的是 HTML 字符串。预览是只读视图，插进 shadow root 前先剥掉
+ * 可执行节点与内联事件：用户笔记里的 raw HTML 不该借预览获得脚本能力。
+ * 用 <template> 解析而非直接 innerHTML，可在挂进文档之前清洗（此时脚本/资源都还没机会执行）。
+ */
+/** 复制图标（Lucide copy）：常量，不含任何用户数据。宿主按钮的图标样式随宿主 CSS 一起丢了，这里自带。 */
+const PREVIEW_COPY_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
+
+/** 只读预览里的文本复制：优先标准 API，data: iframe / 旧 webview 降级 execCommand。 */
+async function copyPreviewText(host, text) {
+  const nav = (typeof navigator !== 'undefined') ? navigator : null;
+  if (nav && nav.clipboard && typeof nav.clipboard.writeText === 'function') {
+    try { await nav.clipboard.writeText(text); return true; } catch (_) { /* 降级 */ }
+  }
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.setAttribute('readonly', '');
+  ta.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0';
+  const parent = (host && host.parentNode) || document.body;
+  parent.appendChild(ta);
+  try { ta.select(); } catch (_) { /* 选区失败仍继续尝试 */ }
+  let ok = false;
+  try { ok = !!document.execCommand('copy'); } catch (_) { /* 环境不支持 */ }
+  ta.remove();
+  return ok;
+}
+
+function mountPreviewHtml(host, html) {
+  const tpl = document.createElement('template');
+  tpl.innerHTML = html;
+  const blocked = ['SCRIPT', 'STYLE', 'IFRAME', 'OBJECT', 'EMBED', 'LINK', 'META', 'BASE', 'FORM'];
+  Array.from(tpl.content.querySelectorAll('*')).forEach((el) => {
+    if (blocked.indexOf(el.tagName) >= 0) { el.remove(); return; }
+    // Obsidian 把 `- [x]` 渲染成原生 <input type=checkbox>；shadow root 不继承宿主的
+    // .task-list-item-checkbox 样式，会落回 UA 大白方块且尺寸失控（还会盖住文字）。
+    // 只读预览不需要表单控件：换成自绘圆点，彻底脱离 UA 外观与主题覆盖。
+    if (el.tagName === 'INPUT' && String(el.getAttribute('type') || '').toLowerCase() === 'checkbox') {
+      const li = el.closest ? el.closest('li') : null;
+      const done = el.hasAttribute('checked') || el.checked
+        || !!(li && (li.getAttribute('data-task') === 'x' || li.classList.contains('is-checked')));
+      const mark = document.createElement('span');
+      mark.className = 'tw-preview-check';
+      mark.setAttribute('aria-hidden', 'true');
+      if (done) mark.classList.add('is-checked');
+      el.replaceWith(mark);
+      return;
+    }
+    Array.from(el.attributes).forEach((attr) => {
+      const name = attr.name.toLowerCase();
+      const val = String(attr.value || '').trim();
+      if (name.indexOf('on') === 0) el.removeAttribute(attr.name);
+      else if ((name === 'href' || name === 'src') && /^javascript:/i.test(val)) el.removeAttribute(attr.name);
+    });
+  });
+  // 代码块复制钮：宿主 MarkdownRenderer 会注入 .copy-code-button，但 shadow root 拿不到宿主 CSS
+  // （裸 button 退化成 48px 白方块并掉进文档流），宿主的事件委托也够不到这份 HTML 副本。
+  // 统一改造成自有按钮：移进 <pre>、右上角定位（见 scroll-pager.css），并接管点击复制与反馈。
+  // 宿主各版本类名不完全一致：经典 .copy-code-button、新版 .code-block-flair 里的裸按钮、
+  // 或只有 aria-label 的按钮，都归到同一套处理。
+  const COPY_BTN_SEL = '.copy-code-button, [class*="copy-code"], .code-block-flair button,'
+    + ' button[aria-label*="opy"], button[aria-label*="复制"]';
+  Array.from(tpl.content.querySelectorAll(COPY_BTN_SEL)).forEach((btn) => {
+    const holder = btn.parentElement;
+    const prev = btn.previousElementSibling;
+    const near = holder && (holder.previousElementSibling || holder.nextElementSibling);
+    // 宿主结构有好几种：按钮在 <pre> 内、紧贴 <pre>、或包在 .code-block-flair 之类的小容器里。
+    const pre = btn.closest('pre')
+      || (prev && prev.tagName === 'PRE' ? prev : null)
+      || (near && near.tagName === 'PRE' ? near : null)
+      || (holder && holder.querySelector('pre'));
+    if (!pre) { btn.remove(); return; }   // 找不到归属代码块：宁可去掉，也不留流内白方块
+    pre.classList.add('tw-preview-code');
+    btn.className = 'tw-preview-copy';
+    btn.setAttribute('type', 'button');
+    btn.setAttribute('aria-label', '复制代码');
+    btn.setAttribute('title', '复制代码');
+    btn.innerHTML = PREVIEW_COPY_ICON;
+    if (btn.parentNode !== pre) pre.appendChild(btn);
+    btn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const code = pre.querySelector('code');
+      const ok = await copyPreviewText(host, code ? code.textContent : pre.textContent);
+      const label = ok ? '已复制' : '复制失败';
+      btn.classList.toggle('is-copied', ok);
+      btn.setAttribute('aria-label', label);
+      btn.setAttribute('title', label);
+      if (btn._copyTimer) clearTimeout(btn._copyTimer);
+      btn._copyTimer = setTimeout(() => {
+        btn.classList.remove('is-copied');
+        btn.setAttribute('aria-label', '复制代码');
+        btn.setAttribute('title', '复制代码');
+      }, 1500);
+    });
+  });
+  host.innerHTML = '';
+  host.appendChild(tpl.content);
+}
+
 export const ModeController = {
   // (was _cycleMode)
   cycleMode(ctx, dir) {
@@ -670,6 +769,10 @@ export const ModeController = {
     // 便签档虽也存 level，但卡片不按级别读；导图根本没有 level —— 一律隐藏，避免误点无反馈。
     const tintBtn = root.querySelector('.tw-zoom-tint');
     if (tintBtn) tintBtn.hidden = P.id !== 'write';
+    // 文章连线（一键连成链 / 一键清空）只有写作档有语义：该档连线定义文章顺序，
+    // 便签档连线只是关联、导图档有自己的一套 bar。非写作档一律隐藏，避免误点无反馈。
+    const linkToggleBtn = root.querySelector('.tw-zoom-link-toggle');
+    if (linkToggleBtn) linkToggleBtn.hidden = P.id !== 'write';
     // 档位专属装饰层（贴纸属于便签档）：非便签档整层隐藏 ——
     // 从渲染树上保证不串档，而不是只靠「逐个摘除」（P1）。
     if (typeof ctrl._syncDecoLayer === 'function') ctrl._syncDecoLayer();
@@ -759,21 +862,62 @@ export const ModeController = {
     const content = ctrl._buildCardsMarkdown(ordered);
     if (!content.trim()) { ctrl._showScreenMsg('卡片都是空的', 1400); return; }
     const body = modal.querySelector('#twPreviewBody');
-    body.value = content;
+    const rendered = modal.querySelector('#twPreviewRendered');
+    body.value = content;                         // 原文始终保留：降级视图 / 复制 / 既有契约
     // 结构概览：卡片数与（去空白）字数，便于快速判断整篇规模是否符合预期
     modal.querySelector('#twPreviewStat').textContent =
       ordered.length + ' 张 · ' + content.replace(/\s/g, '').length + ' 字';
     modal.hidden = false;
     body.scrollTop = 0;   // 每次打开都从开头看起
-    setTimeout(() => body.focus(), 0);
-  
+
+    // 每轮先复位到纯文本，避免上一次的渲染结果残留；随后异步升级为阅读视图。
+    const toggle = modal.querySelector('#twPreviewToggle');
+    if (rendered) { rendered.hidden = true; rendered.innerHTML = ''; }
+    body.hidden = false;
+    if (toggle) { toggle.hidden = true; toggle.onclick = null; }
+    setTimeout(() => { if (!body.hidden) body.focus(); }, 0);
+
+    // 现成桥：moduleManager.renderMarkdown → 宿主 module:renderMarkdown → Obsidian MarkdownRenderer。
+    // 异步不阻塞弹层打开；桥缺失 / 返回空 / 抛错都保持纯文本，不会退化成「预览打不开」。
+    const seq = (ctrl._previewRenderSeq = (ctrl._previewRenderSeq || 0) + 1);
+    const sm = (typeof window !== 'undefined') ? window.storageManager : null;
+    // storageManager 上的是 bridge 方法 moduleRenderMarkdown；renderMarkdown 是 _buildApi
+    // 交给「模块」的能力名（挂在模块 API 对象上，不在 storageManager 上），两者都兼容。
+    const renderMarkdown = sm && (sm.moduleRenderMarkdown || sm.renderMarkdown);
+    if (!rendered || typeof renderMarkdown !== 'function') return;
+    Promise.resolve()
+      .then(() => renderMarkdown.call(sm, { content, sourcePath: '' }))
+      .then((html) => {
+        if (ctrl._previewRenderSeq !== seq || modal.hidden) return;   // 已关闭 / 又开了一轮
+        if (typeof html !== 'string' || !html.trim()) return;          // 桥不可用 → 保持原文
+        mountPreviewHtml(rendered, html);
+        rendered.hidden = false;
+        body.hidden = true;
+        rendered.scrollTop = 0;
+        rendered.focus();
+        // 渲染视图盖住了原文，给一条回退路径：确认结构 / 复制 markdown 时仍能切回去。
+        if (toggle) {
+          toggle.hidden = false;
+          toggle.textContent = '查看原文';
+          toggle.onclick = () => {
+            const toRaw = !rendered.hidden;      // 当前是阅读视图 → 切到原文
+            rendered.hidden = toRaw;
+            body.hidden = !toRaw;
+            toggle.textContent = toRaw ? '返回阅读视图' : '查看原文';
+            (toRaw ? body : rendered).focus();
+          };
+        }
+      })
+      .catch(() => { /* 渲染失败：保留纯文本预览 */ });
+
   },
   // (was _closePreviewModal)
   closePreviewModal(ctx) {
     const { state, ctrl } = ctx;
+    ctrl._previewRenderSeq = (ctrl._previewRenderSeq || 0) + 1;   // 作废在途渲染，防回填到已关闭的弹层
     const modal = ctrl._el.querySelector('#twPreviewModal');
     if (modal) modal.hidden = true;
-  
+
   },
   // (was _buildCardsMarkdown)
   buildCardsMarkdown(ctx, ordered) {
@@ -797,20 +941,55 @@ export const ModeController = {
       if (!trimmed.trim()) return;
       const lines = trimmed.split('\n');
       if (/^h[1-6]$/.test(lv)) {
-        blocks.push('#'.repeat(Number(lv.slice(1))) + ' ' + (lines[0] || '').trim());
+        // 首行可能在编辑态被写回带 `#` 的原文，先剥再补，避免导出成 `## ## 标题`
+        const head = (lines[0] || '').trim().replace(/^#{1,6}\s+/, '');
+        blocks.push('#'.repeat(Number(lv.slice(1))) + ' ' + head);
         const rest = lines.slice(1).join('\n').trim();
         if (rest) blocks.push(rest);
       } else if (lv === 'quote') {
-        blocks.push(lines.map((s) => '> ' + s.trim()).join('\n'));
+        // detectLevel 只剥首行 `> `，后续行仍带；盲目逐行补会导出成 `> > ...`。
+        // 与列表分支同一口径：已有 marker 的行原样（含缩进），只有普通行才补。
+        blocks.push(lines.filter((s) => s.trim()).map((s) => {
+          const indent = (/^[ \t]*/.exec(s) || [''])[0];
+          const body = s.slice(indent.length).trim();
+          return indent + (/^>\s?/.test(body) ? body : '> ' + body);
+        }).join('\n'));
       } else if (lv === 'ul' || lv === 'ol' || lv === 'task') {
         // 列表三兄弟：一行一项，空行跳过。
         // 编号列表逐行累加序号（与 ul 逐行成 bullet 一致）—— 不要求用户在卡里手写「1. 2. 3.」，
         // 手写反而会因增删项而错乱；且跨卡连续累加，整篇导出为单一有序序列（对齐「文章顺序」）。
-        const items = lines.map((s) => s.trim()).filter(Boolean);
+        const items = lines.filter((s) => s.trim());
         if (!items.length) return;
-        if (lv === 'ul') blocks.push(items.map((s) => '- ' + s).join('\n'));
-        else if (lv === 'ol') blocks.push(items.map((s) => (++olN) + '. ' + s).join('\n'));
-        else blocks.push(items.map((s) => '- [ ] ' + s).join('\n'));
+        // 行首缩进是嵌套层级语义，必须保留；带缩进的子项通常已有自己的 marker，
+        // 盲目逐行加前缀会导出成 `- - 内层` 之类坏 markdown。
+        const withIndent = (line, fn) => {
+          const indent = (/^[ \t]*/.exec(line) || [''])[0];
+          return indent + fn(line.slice(indent.length).trim());
+        };
+        if (lv === 'ul') blocks.push(items.map((s) => withIndent(s, (t) => (/^[-*]\s+/.test(t) ? t : '- ' + t))).join('\n'));
+        // ol：模型里已有编号就原样保留 —— 卡片投影显示的就是它，无条件跨卡累加会让
+        // 整篇预览/导出变成 5. 6.（前面几张 ol 卡已把 olN 推高），与卡片对不上。
+        // 只有老数据（纯文本、无编号）才按跨卡累加补号，保持「整篇单一有序序列」的既有回归。
+        // 带缩进的嵌套项同理：已有编号保留自己的层级，否则补号。
+        else if (lv === 'ol') blocks.push(items.map((s) => {
+          const indent = (/^[ \t]*/.exec(s) || [''])[0];
+          const body = s.slice(indent.length).trim();
+          const m = /^(\d+[.)])\s+(.*)$/.exec(body);
+          if (m) return indent + m[1] + ' ' + m[2];
+          return indent + (++olN) + '. ' + body;
+        }).join('\n'));
+        // task：正文保留原始 marker（detectLevel 不剥，勾选态就在 marker 里）。
+        // 已是 `- [x] 项` 的原样输出；老数据（首行曾被剥成纯文本）或夹着的普通行补 `- [ ] `。
+        // 若盲目逐行加前缀会导出成 `- [ ] - [ ] 项`，且把已勾选丢成未勾选。
+        else blocks.push(items.map((s) => withIndent(s, (t) => {
+          const d = WritingDoc.detectLevel(t);
+          return d.level === 'task' ? d.text : '- [ ] ' + d.text;
+        })).join('\n'));
+      } else if (lv === 'table' || lv === 'code') {
+        // 表格 / 围栏代码：`|`、`---`、``` 都是语法，不能加列表/标题前缀，
+        // 也不能逐行 trim 掉列内对齐或代码缩进。显式列出，防止以后给 else
+        // 加通用处理时误伤结构块。
+        blocks.push(trimmed.trim());
       } else {
         blocks.push(trimmed.trim());
       }

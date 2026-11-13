@@ -9,7 +9,8 @@ const { CardInteractions } = loadModule('handlers/features/CardInteractions.js',
   byId: (id) => document.getElementById(id),
   WritingDoc: { setPos, setText, setOrder: jest.fn(), orderIds: jest.fn(() => []) },
   CanvasViewport: { getScale: () => 1, getOffset: () => ({ x: 0, y: 0, scale: 1 }) },
-  ModePolicy: { manualCardSize: (m) => m === 'notes', linksDefineOrder: () => false },
+  // cardMaxLen 与下面的 MAX_LEN 保持一致：这份测试只覆盖编辑输入/粘贴的挂钩点
+  ModePolicy: { manualCardSize: (m) => m === 'notes', linksDefineOrder: () => false, cardMaxLen: () => 1000 },
   fitCardText,
   MAX_LEN: 1000,
 });

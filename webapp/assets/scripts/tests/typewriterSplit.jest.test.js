@@ -19,6 +19,8 @@ global.SpatialIndex = SpatialIndex;
 global.GeoCache = GeoCache;
 const { ViewportCuller } = loadModule('services/ViewportCuller.js', ['ViewportCuller']);
 global.ViewportCuller = ViewportCuller;
+// 任务卡正文渲染器与 ViewportCuller 同源（mountCard 的唯一入口），测试里复用同一实现
+const { renderTaskText } = loadModule('services/ViewportCuller.js', ['renderTaskText']);
 loadModule('handlers/features/twConfig.js', []);
 const _b1mod = (p, n) => { const m = loadModule(p, [n]); if (!global[n]) global[n] = m[n]; };
 _b1mod('handlers/features/CardViewManager.js', 'CardViewManager');
@@ -189,6 +191,23 @@ describe('写作档 _splitCard 端到端', () => {
     expect(feature._notes.length).toBe(2);             // 卡片正常拆（1 → 甲/乙 2 张）
     expect(feature._links.length).toBe(1);             // 1 条顺连边 x→新段
     expect(feature._links[0]).toEqual({ from: 'x', to: feature._notes[1].id });
+  });
+
+  // 拆分前有「以 DOM 当前文本为准」的模型回写。task 卡的 DOM 是勾选框投影（innerText 无 marker），
+  // 照常回写会把 `- [ ]` 抹成纯文本，哪怕最后判定「无可拆段落」也已写坏 → 必须让 task 卡只认模型。
+  test('task 卡点拆分：不因 DOM 投影回写而抹掉 marker/勾选态', () => {
+    splitFixture([{ id: 't', seq: 0, level: 'task', text: '- [x] 只有一项', x: 0, y: 0 }]);
+    const card = feature._mountedCards.get('t');
+    const textEl = document.createElement('div');
+    textEl.className = 'tw-card-text';
+    renderTaskText(textEl, '- [x] 只有一项');   // 模拟非编辑态：卡内是勾选框，不是 `- [x]` 字面量
+    // jsdom 不保证实现 innerText，显式补上，确保真的走到生产代码「读 innerText 回写」那条分支
+    Object.defineProperty(textEl, 'innerText', { configurable: true, get() { return this.textContent; } });
+    card.appendChild(textEl);
+    expect(textEl.textContent).not.toContain('[x]');   // 前提成立：投影里没有 marker
+    feature._splitCard(card);
+    expect(feature._notes.length).toBe(1);                       // 无可拆段落
+    expect(feature._notes[0].text).toBe('- [x] 只有一项');        // marker + 勾选态都还在
   });
 });
 

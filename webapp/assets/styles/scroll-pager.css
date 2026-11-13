@@ -1216,6 +1216,136 @@ body.dark .tw-print, :host(.dark) .tw-print {
 }
 :host(.dark) .tw-preview-body { background: rgba(var(--black-rgb), 0.30); }
 .tw-preview-body:focus-visible { outline: 0.12em solid rgb(var(--primary-rgb)); outline-offset: 0.1em; }
+
+/* 整篇预览 · 阅读视图：宿主 MarkdownRenderer 的 HTML 落在 shadow root 里，
+   Obsidian 的 .markdown-rendered 样式传不进来，这里补一套最小排版。
+   只读视图：链接不可点（避免 webview 里点了内部链接跳走）、图片不撑破容器。 */
+.tw-preview-rendered {
+  flex: 1 1 auto;
+  min-height: 46vh;
+  padding: 0.8em 1em;
+  border: 1px solid var(--border-light);
+  border-radius: 0.5em;
+  background: rgba(var(--deep-rgb), 0.05);
+  color: var(--text-primary);
+  font-size: 0.95em;
+  line-height: 1.7;
+  overflow: auto;
+  overflow-wrap: break-word;
+}
+:host(.dark) .tw-preview-rendered { background: rgba(var(--black-rgb), 0.30); }
+.tw-preview-rendered[hidden], .tw-preview-body[hidden], .tw-preview-btn[hidden] { display: none; }
+.tw-preview-rendered:focus-visible { outline: 0.12em solid rgb(var(--primary-rgb)); outline-offset: 0.1em; }
+.tw-preview-rendered > :first-child { margin-top: 0; }
+.tw-preview-rendered h1 { font-size: 1.6em; margin: 0.9em 0 0.4em; }
+.tw-preview-rendered h2 { font-size: 1.4em; margin: 0.9em 0 0.35em; }
+.tw-preview-rendered h3 { font-size: 1.2em; margin: 0.8em 0 0.3em; }
+.tw-preview-rendered h4, .tw-preview-rendered h5, .tw-preview-rendered h6 { font-size: 1.05em; margin: 0.7em 0 0.3em; }
+.tw-preview-rendered p, .tw-preview-rendered ul, .tw-preview-rendered ol { margin: 0.5em 0; }
+.tw-preview-rendered ul, .tw-preview-rendered ol { padding-left: 1.6em; }
+.tw-preview-rendered blockquote {
+  margin: 0.6em 0;
+  padding: 0.1em 0.9em;
+  border-left: 0.22em solid var(--border-light);
+  color: var(--text-tertiary);
+}
+.tw-preview-rendered code {
+  font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 0.9em;
+  background: rgba(var(--deep-rgb), 0.08);
+  padding: 0.1em 0.3em;
+  border-radius: 0.25em;
+}
+.tw-preview-rendered pre {
+  margin: 0.6em 0;
+  padding: 0.6em 0.8em;
+  background: rgba(var(--deep-rgb), 0.08);
+  border-radius: 0.35em;
+  overflow: auto;
+}
+.tw-preview-rendered pre code { background: transparent; padding: 0; }
+/* 代码块复制钮：宿主注入的 .copy-code-button 已在 mountPreviewHtml 里规范成 .tw-preview-copy
+   并移进 <pre>。shadow root 拿不到宿主样式，裸 button 会退化成 48px 白方块掉进文档流 ——
+   故这里自带右上角定位（Obsidian 阅读视图 / GitHub 的通行做法）：默认低调，hover 才浮现，
+   不占文档流、不抢代码正文的注意力。 */
+.tw-preview-rendered pre.tw-preview-code { position: relative; }
+.tw-preview-rendered .tw-preview-copy {
+  position: absolute;
+  top: 0.45em;
+  right: 0.45em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* 压过全局 button 的 min-width/min-height: 48px 触控地板，否则又是白大方块 */
+  min-width: 0;
+  min-height: 0;
+  width: 1.9em;
+  height: 1.9em;
+  padding: 0;
+  border: 0;
+  border-radius: 0.3em;
+  background: rgba(var(--deep-rgb), 0.06);
+  color: var(--text-faint, var(--text-tertiary));
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--duration-fast), color var(--duration-fast), background var(--duration-fast);
+}
+.tw-preview-rendered pre.tw-preview-code:hover .tw-preview-copy,
+.tw-preview-rendered .tw-preview-copy:focus-visible,
+.tw-preview-rendered .tw-preview-copy.is-copied { opacity: 1; }
+.tw-preview-rendered .tw-preview-copy:hover {
+  background: rgba(var(--primary-rgb), 0.14);
+  color: var(--text-primary);
+}
+.tw-preview-rendered .tw-preview-copy.is-copied { color: rgb(var(--primary-rgb)); }
+.tw-preview-rendered .tw-preview-copy svg { width: 1em; height: 1em; }
+/* 触屏没有 hover：常驻显示，避免按钮永远不可见 */
+@media (hover: none) {
+  .tw-preview-rendered .tw-preview-copy { opacity: 1; }
+}
+.tw-preview-rendered table { width: 100%; border-collapse: collapse; table-layout: fixed; margin: 0.6em 0; }
+.tw-preview-rendered th, .tw-preview-rendered td {
+  border: 1px solid var(--border-light);
+  padding: 0.25em 0.45em;
+  text-align: left;
+  vertical-align: top;
+}
+.tw-preview-rendered th { background: rgba(var(--deep-rgb), 0.06); }
+.tw-preview-rendered img { max-width: 100%; height: auto; }
+.tw-preview-rendered a { color: rgb(var(--primary-rgb)); pointer-events: none; text-decoration: underline; }
+.tw-preview-rendered hr { border: 0; border-top: 1px solid var(--border-light); margin: 1em 0; }
+
+/* 任务列表：宿主输出的原生 checkbox 已在 mountPreviewHtml 换成自绘圆点。
+   shadow root 同样不继承 Obsidian 的 .contains-task-list，故多余 bullet / 完成态一并补齐。 */
+.tw-preview-rendered ul.contains-task-list,
+.tw-preview-rendered li.task-list-item { list-style: none; }
+.tw-preview-rendered ul.contains-task-list { padding-left: 1.2em; }
+.tw-preview-rendered .tw-preview-check {
+  display: inline-block;
+  position: relative;
+  box-sizing: border-box;
+  width: 0.78em;
+  height: 0.78em;
+  margin: 0 0.4em 0 0;
+  border: 1px solid rgb(var(--primary-rgb));
+  border-radius: 50%;
+  background: transparent;
+  vertical-align: -0.05em;
+}
+.tw-preview-rendered .tw-preview-check.is-checked { background: rgb(var(--primary-rgb)); }
+.tw-preview-rendered .tw-preview-check.is-checked::after {
+  content: '';
+  position: absolute;
+  left: 30%;
+  top: 12%;
+  width: 22%;
+  height: 46%;
+  border: solid rgb(var(--white-rgb));
+  border-width: 0 1.5px 1.5px 0;
+  transform: rotate(45deg);
+}
+.tw-preview-rendered li.task-list-item.is-checked,
+.tw-preview-rendered li.task-list-item[data-task="x"] { text-decoration: line-through; opacity: 0.65; }
 .tw-preview-actions { display: flex; justify-content: flex-end; gap: 0.7em; }
 .tw-preview-btn {
   font: inherit;

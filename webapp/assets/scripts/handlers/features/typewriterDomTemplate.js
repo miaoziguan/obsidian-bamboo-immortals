@@ -74,9 +74,11 @@ export function buildTypewriterDomHtml() {
       <div class="tw-preview-modal" id="twPreviewModal" hidden>
         <div class="tw-preview-panel" role="dialog" aria-modal="true" aria-label="整篇预览">
           <div class="tw-preview-head">整篇预览 <span class="tw-preview-stat" id="twPreviewStat"></span></div>
-          <p class="tw-preview-hint">按连线顺序合成后的整篇 Markdown（只读，不会改动卡片或落盘）。确认无误后用第二个键导出成文。</p>
+          <p class="tw-preview-hint">按连线顺序合成后的整篇 Markdown，以阅读视图呈现（只读，不会改动卡片或落盘）。确认无误后用第二个键导出成文。</p>
+          <div id="twPreviewRendered" class="tw-preview-rendered" tabindex="0" hidden></div>
           <textarea id="twPreviewBody" class="tw-preview-body" readonly spellcheck="false" aria-label="整篇 Markdown 预览"></textarea>
           <div class="tw-preview-actions">
+            <button type="button" id="twPreviewToggle" class="tw-preview-btn" hidden>查看原文</button>
             <button type="button" id="twPreviewClose" class="tw-preview-btn tw-preview-btn-go">关闭</button>
           </div>
         </div>

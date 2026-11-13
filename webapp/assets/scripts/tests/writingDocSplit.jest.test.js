@@ -16,12 +16,15 @@ describe('WritingDoc.detectLevel（级别嗅探单一真源）', () => {
   });
   test('引用 / 任务 / 无序 / 有序', () => {
     expect(WritingDoc.detectLevel('> 引')).toEqual({ level: 'quote', text: '引' });
-    expect(WritingDoc.detectLevel('- [ ] 待')).toEqual({ level: 'task', text: '待' });
-    expect(WritingDoc.detectLevel('- [x] 已')).toEqual({ level: 'task', text: '已' });
+    // task 不剥 marker：marker 是勾选态语义，要整个保留进 note.text，由渲染层解析成勾选框
+    expect(WritingDoc.detectLevel('- [ ] 待')).toEqual({ level: 'task', text: '- [ ] 待' });
+    expect(WritingDoc.detectLevel('- [x] 已')).toEqual({ level: 'task', text: '- [x] 已' });
     expect(WritingDoc.detectLevel('- 项')).toEqual({ level: 'ul', text: '项' });
     expect(WritingDoc.detectLevel('* 星')).toEqual({ level: 'ul', text: '星' });
-    expect(WritingDoc.detectLevel('1. 有')).toEqual({ level: 'ol', text: '有' });
-    expect(WritingDoc.detectLevel('1) 有')).toEqual({ level: 'ol', text: '有' });
+    // ol 的编号是信息：与 task/table/code 一样保留完整 markdown
+    // （曾把首行 `1. ` 当装饰剥掉，卡片显示成「2. 3. 4.」缺 1）
+    expect(WritingDoc.detectLevel('1. 有')).toEqual({ level: 'ol', text: '1. 有' });
+    expect(WritingDoc.detectLevel('1) 有')).toEqual({ level: 'ol', text: '1) 有' });
   });
   test('普通段落 → p，且前缀不被误剥', () => {
     expect(WritingDoc.detectLevel('普通文本')).toEqual({ level: 'p', text: '普通文本' });

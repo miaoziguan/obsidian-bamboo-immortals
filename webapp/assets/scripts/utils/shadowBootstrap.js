@@ -28,7 +28,7 @@ function ensureGateStyle(target) {
         backdrop-filter: blur(18px) saturate(160%);
         -webkit-backdrop-filter: blur(18px) saturate(160%);
         color: var(--text-primary, #1f2a1c);
-        font-family: var(--font-sans, system-ui, -apple-system, BlinkMacSystemFont, sans-serif);
+        font-family: var(--font-sans, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
         padding: 20px;
       }
       .bamboo-license-gate .blg-card {

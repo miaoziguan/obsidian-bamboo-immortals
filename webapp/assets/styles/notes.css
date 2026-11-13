@@ -655,7 +655,9 @@
 .tw-card.tw-src-mode .tw-card-text {
   white-space: pre-wrap;
   word-break: break-word;
-  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+  /* 不要用 ui-monospace：它属于 CSS Fonts 4 的 extended-system-fonts，
+     Obsidian 插件检查器会对目标版本报 “Unexpected browser feature”。等宽回退已足够。 */
+  font-family: var(--font-mono, SFMono-Regular, Menlo, Consolas, monospace);
   letter-spacing: 0;
 }
 

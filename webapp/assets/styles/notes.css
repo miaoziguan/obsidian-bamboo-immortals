@@ -1945,7 +1945,11 @@
      同步维护：若改上面的 height，这里的 line-height 必须一起改。 */
   font: 600 11px/18px var(--tw-font-global, sans-serif);
   color: var(--white);
-  background: var(--lv-color, #94A3B8);
+  /* 亮色：100% 层级色实底配白字，中间明度的色相（h2/h3/h4/h5/ol）对比度只有
+     2.94~3.7，实测 12 层级里 5 个不过 AA，数字发虚。往本模式墨色压 35% 后
+     最低对比度 5.15（全层级过 AA），色相仍可辨，且底色更沉不会在白卡上出跳。
+     与暗色那条 :host(.dark) 规则同一思路（压底色、保白字），两套主题观感一致。 */
+  background: color-mix(in srgb, var(--lv-color, #94A3B8) 65%, var(--tw-write-ink));
   border-radius: var(--radius-sm);
   box-shadow: 0 1px 3px rgba(16, 24, 40, 0.30);
   pointer-events: none;

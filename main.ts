@@ -208,6 +208,25 @@ export default class BambooReviewPlugin extends Plugin {
 
 
 
+    // 文件右键：把这篇笔记作为「快照」导入画中卷。只对 .md 出现；
+    // 只读一次正文，不改原笔记、不做重新导入/覆盖/同步（导入是拍照，不是链接）。
+    // 菜单标题刻意避开「画布/打开」：前者会和 Obsidian 原生 Canvas（绘图文件）混淆，
+    // 后者会让人以为开的是这篇笔记的另一种视图或建立了联动。标题直接写清「导入为新卡片组」，
+    // 桌面端再用 hover 补全快照语义（窄菜单/移动端靠标题自足）。
+    this.registerEvent(this.app.workspace.on('file-menu', (menu, file) => {
+      if (!(file instanceof TFile) || file.extension !== 'md') return;
+      menu.addItem((item) => {
+        const frag = document.createDocumentFragment();
+        const label = document.createElement('span');
+        label.textContent = '画中卷：导入为新卡片组';
+        label.title = '只读一次笔记内容，拆成卡片放进新建的写作卡片组。原笔记不会被修改，也不会随原笔记自动更新；要更新请重新导入（会再新建一个组）。';
+        frag.appendChild(label);
+        item.setTitle(frag)
+          .setIcon('scroll-text')
+          .onClick(() => { void this.importNoteToScroll(file); });
+      });
+    }));
+
     // 画中卷双意境：两条一等命令，各自停靠到推荐位置，独立成 leaf 可并存（见 openScrollAt 的 feature 去重）。
     this.addCommand({
       id: 'open-scroll-incense',
@@ -1140,6 +1159,41 @@ export default class BambooReviewPlugin extends Plugin {
    *  使用 getLeftLeaf(false)：复用左侧栏现有位置作为标签页打开，不新建 split（避免上下分栏）。 */
   async openScrollLeftSidebar(feature?: string): Promise<void> {
     return this.openScrollAt('left', feature);
+  }
+
+  /** 把一篇笔记作为**快照**导入画布：打开/复用画中卷视图 → 读一次正文 → 推给 webapp。
+   *  不做重新导入、不回写原笔记、不监听文件变更 —— 导入是拍照，不是链接。 */
+  private async importNoteToScroll(file: TFile): Promise<void> {
+    // 必须落在「打字机」leaf 上：画中卷双意境（香道/打字机）共用 VIEW_TYPE_SCROLL，
+    // 不指定 feature 会默认开香道，导入消息就送错了实例。已存在则复用（不重挂 iframe）。
+    const typewriterLeaf = (): WorkspaceLeaf | null =>
+      this.app.workspace.getLeavesOfType(VIEW_TYPE_SCROLL)
+        .find((l) => (scrollLeafFeature(l) ?? 'incense') === 'typewriter') ?? null;
+    let leaf = typewriterLeaf();
+    if (!leaf) {
+      await this.openScrollAt('center', 'typewriter');
+      leaf = typewriterLeaf();
+    } else {
+      // 复用的 leaf 可能停在侧栏或非当前 tab：带到前台，否则导入了用户也看不见
+      await this.app.workspace.revealLeaf(leaf);
+    }
+    const view = leaf && leaf.view instanceof ScrollView ? leaf.view : null;
+    if (!view) {
+      new Notice('画中卷视图未就绪');
+      return;
+    }
+    let content = '';
+    try {
+      content = await this.app.vault.cachedRead(file);
+    } catch {
+      new Notice('读取笔记失败');
+      return;
+    }
+    if (!content.trim()) {
+      new Notice('这篇笔记是空的');
+      return;
+    }
+    view.importNote({ path: file.path, title: file.basename, content });
   }
 
   /**

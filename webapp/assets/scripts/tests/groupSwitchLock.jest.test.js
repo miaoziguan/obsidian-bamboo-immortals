@@ -66,6 +66,28 @@ describe('切组/新建组窗口持有 _switching 锁', () => {
         expect(ctrl._docBusy).toBe(false);
     });
 
+    // 返回值契约：调用方（从笔记导入）要靠它区分「真建好了」与「被锁拒掉」，
+    // 否则会静默失败却报成功。
+    test('createWritingGroup 成功返回 true', async () => {
+        const ctrl = makeCtrl();
+        expect(await ModeController.createWritingGroup({ state: {}, ctrl })).toBe(true);
+    });
+
+    test('createWritingGroup 被忙碌锁拒绝返回 false，且不改锁状态', async () => {
+        const ctrl = makeCtrl();
+        ctrl._switching = true;   // 模拟另一处组操作/切档正在进行
+        ctrl._persistDoc = jest.fn(async () => { });
+        expect(await ModeController.createWritingGroup({ state: {}, ctrl })).toBe(false);
+        expect(ctrl._persistDoc).not.toHaveBeenCalled();
+        expect(ctrl._docBusy).toBe(false);
+    });
+
+    test('createWritingGroup 非写作档返回 false', async () => {
+        const ctrl = makeCtrl();
+        ctrl._mode = 'notes';
+        expect(await ModeController.createWritingGroup({ state: {}, ctrl })).toBe(false);
+    });
+
     test('switchNotesGroup：await 窗口内 _switching=true，结束后复位', async () => {
         const ctrl = makeCtrl();
         ctrl._mode = 'notes';

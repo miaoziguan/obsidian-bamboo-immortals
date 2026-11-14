@@ -493,7 +493,10 @@ function openTablePicker(ctrl, card, textEl) {
     ctrl._tablePickerDocOff = (e) => {
       const b = ctrl._tablePicker;
       if (!b || b.hidden) return;
-      if (b.contains(e.target)) return;
+      // 同卡片搜索浮层：shadow root 里的元素在 document 上 target 会被重定向成 host，
+      // contains(e.target) 恒为 false —— 必须用 composedPath 才判得准。
+      const path = (typeof e.composedPath === 'function') ? e.composedPath() : null;
+      if (path ? path.indexOf(b) >= 0 : b.contains(e.target)) return;
       hideTablePicker(ctrl);
     };
     doc.addEventListener('pointerdown', ctrl._tablePickerDocOff, true);

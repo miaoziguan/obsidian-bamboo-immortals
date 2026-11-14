@@ -73,11 +73,16 @@ export const CanvasZoomUI = {
         + '<svg class="tw-zoom-icon-unlink" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a4 4 0 0 0 5.66 0l2-2a4 4 0 0 0-5.66-5.66l-1 1"/><path d="M14 11a4 4 0 0 0-5.66 0l-2 2A4 4 0 0 0 12 18.66l1-1"/><path d="M3 3l18 18"/></svg>'
         + '</button>'
       : '';
+    // 卡片模糊跳转（便签 / 写作）：打开画布内的搜索浮层。
+    // 只有传 onSearch 的档位才生成 —— 导图的节点搜索走它自己的工具栏。
+    const searchBtn = (typeof adapter.onSearch === 'function')
+      ? '<button type="button" class="tw-zoom-btn tw-zoom-search" data-act="search" title="跳转卡片：按内容模糊搜索并定位" aria-label="搜索并跳转卡片"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></svg></button>'
+      : '';
     bar.innerHTML = notesBtn + tintBtn + handBtn + `
       <button type="button" class="tw-zoom-btn" data-act="out"  title="缩小" aria-label="缩小">−</button>
       <button type="button" class="tw-zoom-val" data-act="reset" title="点击重置为 100%" aria-label="重置缩放为 100%">100%</button>
       <button type="button" class="tw-zoom-btn" data-act="in"   title="放大" aria-label="放大">+</button>
-      <button type="button" class="tw-zoom-btn" data-act="fit"  title="适应内容" aria-label="适应内容">⤢</button>` + marketBtn + linkToggleBtn;
+      <button type="button" class="tw-zoom-btn" data-act="fit"  title="适应内容" aria-label="适应内容">⤢</button>` + marketBtn + linkToggleBtn + searchBtn;
     host.appendChild(bar);
 
     const valEl = bar.querySelector('.tw-zoom-val');
@@ -133,6 +138,7 @@ export const CanvasZoomUI = {
         else if (act === 'tint' && typeof adapter.onTint === 'function') adapter.onTint();
         else if (act === 'notes' && typeof adapter.onToggleAllNotes === 'function') adapter.onToggleAllNotes();
         else if (act === 'link-toggle' && typeof adapter.onLinkToggle === 'function') adapter.onLinkToggle();
+        else if (act === 'search' && typeof adapter.onSearch === 'function') adapter.onSearch();
       } catch (err) { /* 缩放控件失败不应影响画布 */ }
       sync();
     });

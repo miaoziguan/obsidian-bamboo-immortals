@@ -63,6 +63,8 @@ import { FONT_SCALES, FONT_SCALE_DEFAULT_IDX, FONT_SCALE_LABELS, CARD_SCALES, CA
 import { FONTS, FONT_LABELS, FONT_FEEDBACK, MARKET_FONTS, DEFAULT_FONT } from './twConfig.js';
 import { PAPERS, PAPER_LABELS, PAPER_FEEDBACK, PAPER_TITLES } from './twConfig.js';
 import { LEVELS, LEVEL_LABELS, LEVEL_FEEDBACK, LEVEL_GROUPS, LEVEL_LADDER } from './twConfig.js';
+import { rankNotes, excerpt } from '../../utils/cardSearch.js';
+import { prepareImport } from '../../utils/noteImport.js';
 
 export const TypewriterFeature = {
   /** 全部运行期字段的唯一初始化入口（模块加载 + unmount 结尾共用，替代原对象字面量顶部 40+ 条内联声明）。
@@ -98,6 +100,8 @@ export const TypewriterFeature = {
     this._draft = { notes: '', write: '', mindmap: '' }; // 输入框草稿按模式各存一份
     this._msgTimer = null;
     this._saveTimer = null;            // 写盘防抖计时器
+    this._mounted = false;             // mount 跑完为真（外部指令如「从笔记导入」必须等它）
+    this._mountWaiters = null;         // 等 mount 的 resolver；unmount 以 false 兑现，避免永久挂起
     this._restored = false;            // 防重复加载：mount 一次只读盘一次
     this._restoring = false;           // 恢复进行中：期间禁止产出（restore 会用磁盘数据覆盖 _notes）
     this._pendingPrint = false;        // 恢复期间按过回车 → 恢复完成后补打一次
@@ -166,6 +170,34 @@ export const TypewriterFeature = {
     this._flushPendingPrint();   // 恢复期按过回车 → 现在补打（文本仍在输入框，不会丢）
     this._bindFlushGuards();   // 落盘兜底：页面隐藏/卸载前 flush 防抖窗口内未落盘的编辑
     this._bindFileDropGuards();   // 拖入图片：画布委托插入 + 整页防「拖文件=导航」
+    this._mounted = true;
+    this._settleMountWaiters(true);
+  },
+
+  /** 等挂载完成。外部指令（如宿主的「从笔记导入」）在 app:ready 握手时就可能到达，
+   *  而打字机要等 feature 消息 + mount（含一次读盘恢复）完成才可操作 —— 过早动手会被
+   *  restore 用磁盘数据覆盖掉。超时返回 false，调用方据此提示而不是静默失败。 */
+  _whenMounted(timeoutMs = 6000) {
+    if (this._mounted && this._el) return Promise.resolve(true);
+    return new Promise((resolve) => {
+      if (!this._mountWaiters) this._mountWaiters = [];
+      let settled = false;
+      let timer = null;
+      const done = (ok) => {
+        if (settled) return;
+        settled = true;
+        if (timer) clearTimeout(timer);
+        resolve(ok);
+      };
+      this._mountWaiters.push(done);
+      timer = setTimeout(() => done(false), timeoutMs);
+    });
+  },
+
+  _settleMountWaiters(ok) {
+    const waiters = this._mountWaiters;
+    this._mountWaiters = null;
+    if (waiters) waiters.forEach((r) => { try { r(ok); } catch (_) { /* 单个回调异常不影响其余 */ } });
   },
 
   /** 退出：清理 DOM 监听，释放引用 */
@@ -219,6 +251,8 @@ export const TypewriterFeature = {
     // 每开/关一次视图就多挂一个活监听器（单例 this 相同），Cmd/Ctrl+1..6 被 N 重触发。此处对称移除。
     if (this._levelKeyHandler) { document.removeEventListener('keydown', this._levelKeyHandler); this._levelKeyHandler = null; }
     if (this._marquee) { this._marquee.remove(); this._marquee = null; }
+    // 卸载前先兑现等待者（以 false）：否则「等挂载」的导入请求会挂到超时才醒
+    this._settleMountWaiters(false);
     // —— 纯字段归零统一走 _resetState()，不再逐字段散列（见 _resetState 注释）——
     this._resetState();
   },
@@ -361,6 +395,8 @@ export const TypewriterFeature = {
       // isLinked 供 sync 切换图标语义（有连线显示断链、无连线显示链条）。
       onLinkToggle: () => ctrl._linkToggle(),
       isLinked: () => ctrl._isFullyChained(),
+      // 卡片模糊跳转（便签 / 写作共用 ctrl._notes）：打开画布内搜索浮层
+      onSearch: () => ctrl._openCardSearch(),
     });
   },
 
@@ -1048,6 +1084,63 @@ export const TypewriterFeature = {
     if (!this._pendingPrint) return;
     this._pendingPrint = false;
     try { this._commitInput(); } catch (e) { console.warn('[Typewriter] 补打挂起的输入失败：', e); }
+  },
+
+  /** 导入组的标题：笔记名 + 日期时间后缀。
+   *  同一篇笔记允许反复导入（快照语义），不去检测重名 —— 检测重名就要问「要覆盖吗」，
+   *  一问就滑回已被否掉的覆盖/同步语义。加时间后缀让多个组在列表里可区分，
+   *  重复了由用户自己删组，比误覆盖安全得多。 */
+  _importGroupTitle(name) {
+    const base = String(name || '').trim() || '导入的笔记';
+    const d = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${base} · ${d.getMonth() + 1}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  },
+
+  /** 从笔记快照导入（入口：Obsidian 文件右键菜单）：预处理 → splitDraft → 新建写作组 → 铺卡。
+   *  「拍照，不是链接」：只读原笔记一次，不追加到当前组、不重新导入、不回写原笔记。 */
+  async _importNoteSnapshot(payload) {
+    const p = payload || {};
+    // 消息可能早于 mount（宿主在 app:ready 握手时就推）—— 等挂载就绪再动手，
+    // 否则 setMode/铺卡会被 mount 尾部的读盘恢复覆盖掉。
+    const ready = await this._whenMounted();
+    if (!ready) {
+      // 未挂载时屏幕消息条也不存在（_showScreenMsg 依赖 _el），回退到 Toast，
+      // 否则用户点了右键菜单什么反馈都看不到。
+      if (this._el) this._showScreenMsg('画布还没准备好，请稍后再试', 1600);
+      else if (typeof Toast !== 'undefined' && Toast && typeof Toast.showToast === 'function') {
+        Toast.showToast('画布还没准备好，请稍后再试', 'error');
+      }
+      return false;
+    }
+    const prep = prepareImport(p.content);
+    if (!String(prep.text || '').trim()) {
+      this._showScreenMsg('笔记没有可导入的内容', 1600);
+      return false;
+    }
+    const chunks = WritingDoc.splitDraft(prep.text, MAX_LEN);
+    if (!chunks.length) {
+      this._showScreenMsg('没有识别到可切分的段落', 1600);
+      return false;
+    }
+    if (this._mode !== 'write') {
+      await ModeController.setMode({ state: this._state, ctrl: this }, 'write');
+      if (this._mode !== 'write') {          // 正在读写/忙碌，切档被拒
+        this._showScreenMsg('正在切换，请稍后再试', 1600);
+        return false;
+      }
+    }
+    const created = await ModeController.createWritingGroup({ state: this._state, ctrl: this }, {
+      title: this._importGroupTitle(p.title),
+      notePath: p.path || null,            // 仅溯源：删组时可提示「来自哪篇笔记」
+      chunks,
+    });
+    if (!created) {                          // 被模式/忙碌锁拒绝（如另一处正在切档）
+      this._showScreenMsg('画布正忙，请稍后再导入', 1600);
+      return false;
+    }
+    if (prep.truncated) this._showScreenMsg('笔记较长，已截断导入', 1800);
+    return true;
   },
 
   /** 长文导入：把 splitDraft 切好的块序列一次性铺成文章（一步撤销、一次重排）。
@@ -1776,6 +1869,194 @@ export const TypewriterFeature = {
     if (n && typeof Toast !== 'undefined') Toast.showToast('已从便签取下', 'success');
     this._updateSelBar();
     return n;
+  },
+
+  // ===== 卡片模糊跳转（便签 / 写作）=====
+  // 为什么用画布内浮层而不是宿主 SuggestModal：后者弹在 Obsidian 主窗口中央，
+  // 会抢走画布焦点 —— 用户点的是缩放条上的放大镜，弹窗却跑到别处，交互割裂。
+  // 匹配算法见 utils/cardSearch.js（同步、零依赖），只做跳转不做替换。
+  _ensureCardSearch() {
+    if (this._cardSearchEl) return this._cardSearchEl;
+    if (!this._el) return null;
+    if (typeof getComputedStyle === 'function' && getComputedStyle(this._el).position === 'static') {
+      this._el.style.position = 'relative';
+    }
+    const box = document.createElement('div');
+    box.className = 'tw-card-search';
+    box.hidden = true;
+    box.setAttribute('role', 'dialog');
+    box.setAttribute('aria-label', '搜索并跳转卡片');
+    const input = document.createElement('input');
+    input.type = 'search';
+    input.className = 'tw-card-search-input';
+    input.placeholder = '搜索卡片内容 · ↑↓ 选择 · 回车跳转';
+    input.setAttribute('aria-label', '搜索卡片内容');
+    const list = document.createElement('div');
+    list.className = 'tw-card-search-list';
+    list.setAttribute('role', 'listbox');
+    box.appendChild(input);
+    box.appendChild(list);
+    // 浮层内交互不冒泡到画布：否则点结果会同时触发平移/取消选中
+    box.addEventListener('pointerdown', (e) => e.stopPropagation());
+    input.addEventListener('input', () => this._renderCardSearch(input.value));
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') { e.preventDefault(); this._closeCardSearch(); return; }
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        this._moveCardSearchActive(e.key === 'ArrowDown' ? 1 : -1);
+        return;
+      }
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const ids = this._cardSearchIds || [];
+        const id = ids[this._cardSearchActive || 0];
+        if (id) this._jumpToNote(id);
+      }
+    });
+    list.addEventListener('click', (e) => {
+      const item = e.target.closest && e.target.closest('.tw-card-search-item');
+      if (item && item.dataset.id) this._jumpToNote(item.dataset.id);
+    });
+    this._el.appendChild(box);
+    this._cardSearchEl = box;
+    return box;
+  },
+
+  /** 浮层贴到缩放条下方、以**整条工具条**的中心为锚（不是放大镜按钮）。
+   *  用 rect 换算到功能根坐标，不受画布缩放/平移影响；水平方向 clamp 在容器内避免溢出。
+   *  注意：必须只认 host 的**直接子级** bar —— 便在签 wrap 里还嵌着导图层的 bar，
+   *  用 querySelector 会命中导图那条（CanvasZoomUI.mount 的幂等判断踩过同一个坑）。 */
+  _positionCardSearch(box) {
+    if (!box || !this._el) return;
+    const host = this._el;
+    let bar = null;
+    for (let i = 0; i < host.children.length; i += 1) {
+      const c = host.children[i];
+      if (c && c.classList && c.classList.contains('tw-zoom-bar')) { bar = c; break; }
+    }
+    const anchor = bar || host.querySelector('.tw-zoom-search');
+    if (!anchor || typeof anchor.getBoundingClientRect !== 'function') {
+      box.style.left = '50%';
+      box.style.top = '12%';
+      box.style.transform = 'translateX(-50%)';
+      return;
+    }
+    const hr = host.getBoundingClientRect();
+    const ar = anchor.getBoundingClientRect();
+    const bw = box.offsetWidth || 0;
+    const cx = ar.left - hr.left + ar.width / 2;      // 工具条中心（功能根坐标）
+    const maxLeft = Math.max(8, (hr.width || 0) - bw - 8);
+    const left = Math.max(8, Math.min(maxLeft, cx - bw / 2));
+    box.style.left = Math.round(left) + 'px';
+    box.style.top = Math.round(ar.bottom - hr.top + 8) + 'px';
+    box.style.transform = 'none';                     // 位置已含居中，不再二次位移
+  },
+
+  _openCardSearch() {
+    const box = this._ensureCardSearch();
+    if (!box) return;
+    box.hidden = false;
+    this._cardSearchActive = 0;
+    const input = box.querySelector('.tw-card-search-input');
+    if (input) input.value = '';
+    this._renderCardSearch('');
+    this._positionCardSearch(box);   // 贴按钮下方，不再用固定 12% 的远处位置
+    if (input) {
+      try { input.focus({ preventScroll: true }); } catch (_) { input.focus(); }
+    }
+    // 点浮层外部关闭：capture 阶段，避免被画布的 pointerdown 抢先
+    if (!this._cardSearchDocOff) {
+      const doc = this._el.ownerDocument || document;
+      this._cardSearchDocOff = (e) => {
+        const b = this._cardSearchEl;
+        if (!b || b.hidden) return;
+        // 【Shadow DOM 事件重定向】浮层在 shadow root 里，事件冒到 document 时
+        // e.target 会被重定向成 shadow host —— 用 contains(e.target) 判断恒为 false，
+        // 表现就是「点输入框也被当成点外面，浮层立刻关掉」。
+        // composedPath 保留穿过 shadow 边界的完整路径，判断才准。
+        const path = (typeof e.composedPath === 'function') ? e.composedPath() : null;
+        if (path ? path.indexOf(b) >= 0 : b.contains(e.target)) return;
+        this._closeCardSearch();
+      };
+      doc.addEventListener('pointerdown', this._cardSearchDocOff, true);
+    }
+  },
+
+  _closeCardSearch() {
+    const box = this._cardSearchEl;
+    if (!box || box.hidden) return;
+    box.hidden = true;
+    const input = box.querySelector('.tw-card-search-input');
+    if (input && typeof input.blur === 'function') input.blur();
+  },
+
+  /** query 为空时按文章顺序列出前 10 张，便于「不输入直接跳」快速扫一遍文章骨架。 */
+  _renderCardSearch(query) {
+    const box = this._cardSearchEl;
+    if (!box) return;
+    const list = box.querySelector('.tw-card-search-list');
+    if (!list) return;
+    const rows = rankNotes(this._notes, query, 10);
+    this._cardSearchIds = rows.map((r) => r.note.id);
+    this._cardSearchActive = 0;
+    list.textContent = '';
+    if (!rows.length) {
+      const empty = document.createElement('div');
+      empty.className = 'tw-card-search-empty';
+      empty.textContent = query ? '没有匹配的卡片' : '还没有卡片';
+      list.appendChild(empty);
+      return;
+    }
+    rows.forEach((r, i) => {
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.className = 'tw-card-search-item' + (i === 0 ? ' is-active' : '');
+      item.dataset.id = r.note.id;
+      item.setAttribute('role', 'option');
+      const badge = document.createElement('span');
+      badge.className = 'tw-card-search-level';
+      badge.textContent = LEVEL_LABELS[r.note.level] || '正文';
+      const body = document.createElement('span');
+      body.className = 'tw-card-search-text';
+      body.textContent = excerpt(r.note.text, r.hit, query);
+      item.appendChild(badge);
+      item.appendChild(body);
+      list.appendChild(item);
+    });
+  },
+
+  _moveCardSearchActive(delta) {
+    const box = this._cardSearchEl;
+    if (!box) return;
+    const items = Array.from(box.querySelectorAll('.tw-card-search-item'));
+    if (!items.length) return;
+    const next = Math.max(0, Math.min(items.length - 1, (this._cardSearchActive || 0) + delta));
+    this._cardSearchActive = next;
+    items.forEach((el, i) => el.classList.toggle('is-active', i === next));
+    const active = items[next];
+    if (active && typeof active.scrollIntoView === 'function') {
+      active.scrollIntoView({ block: 'nearest' });
+    }
+  },
+
+  /** 跳转：先带进视野，再高亮 1.6s。离屏卡可能这一刻才挂载，故重试几帧再找 DOM。 */
+  _jumpToNote(id) {
+    if (!id) return false;
+    if (!(this._notes || []).some((n) => n.id === id)) return false;
+    this._closeCardSearch();
+    this._ensureCardVisible(id);
+    const mark = (tries) => {
+      const card = (this._mountedCards && this._mountedCards.get(id))
+        || (this._canvas && this._canvas.querySelector('.tw-card[data-id="' + id + '"]'));
+      if (card) {
+        card.classList.add('is-search-hit');
+        setTimeout(() => card.classList.remove('is-search-hit'), 1600);
+        return;
+      }
+      if (tries > 0) setTimeout(() => mark(tries - 1), 60);
+    };
+    mark(3);
+    return true;
   },
 
   /**

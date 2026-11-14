@@ -268,6 +268,26 @@ export class BridgeStorage {
       return;
     }
 
+    // 从笔记导入画布（宿主文件右键菜单）：快照语义，只读原笔记一次，不回写、不同步。
+    // 宿主侧对「webapp 尚未 ready」做了 pending 补发，所以这里收到就该处理。
+    if (data.type === 'app:importNote' && data.payload) {
+      // bridge.js 排在 typewriterFeature.js 之前，握手消息理论上可能抢在后者求值前到达。
+      // 短暂重试几次，避免把导入请求丢在加载窗口里（迟到的请求仍有 _whenMounted 兜底）。
+      let tries = 0;
+      const deliver = () => {
+        const Tw = (typeof window !== 'undefined' && window.TypewriterFeature) || null;
+        if (!Tw || typeof Tw._importNoteSnapshot !== 'function') {
+          if (++tries <= 20) setTimeout(deliver, 100);
+          else console.warn('[Bridge] 打字机模块未就绪，笔记导入被丢弃');
+          return;
+        }
+        Promise.resolve(Tw._importNoteSnapshot(data.payload))
+          .catch((e) => console.warn('[Bridge] 笔记导入失败：', e));
+      };
+      deliver();
+      return;
+    }
+
     // 调色联动开关更新
     if (data.type === 'theme:syncPaletteEnabled' && data.payload) {
       this.syncPaletteToObsidian = data.payload.enabled;

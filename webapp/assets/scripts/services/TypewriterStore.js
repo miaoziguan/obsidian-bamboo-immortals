@@ -516,12 +516,16 @@ export const TypewriterStore = {
     const g = idx.groups[id] || { id, title: '未命名草稿', notePath: null };
     return { id, title: g.title || '未命名草稿', notePath: g.notePath || null };
   },
-  /** 新建一个空白写作卡片组，并设为当前组；返回 {id, title} */
-  async createWritingGroup(title) {
+  /** 新建一个空白写作卡片组，并设为当前组；返回 {id, title}
+   *  notePath 只做溯源（组来自哪篇笔记，删组时可提示），**不是同步钩子** ——
+   *  导入是快照，不做重新导入/覆盖。 */
+  async createWritingGroup(title, notePath) {
     const idx = await this.ensureWritingIndex();
     const id = 'doc-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
     const cleanTitle = (title && String(title).trim()) || '未命名草稿';
-    idx.groups[id] = { id, title: cleanTitle, updatedAt: Date.now(), notePath: null };
+    idx.groups[id] = {
+      id, title: cleanTitle, updatedAt: Date.now(), notePath: notePath || null,
+    };
     idx.current = id;
     await this._saveWritingIndex(idx);
     return { id, title: cleanTitle };

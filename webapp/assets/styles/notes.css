@@ -697,6 +697,86 @@
   border-color: rgb(var(--primary-rgb));
 }
 :host(.dark) .tw-table-picker { background: #1c1f1a; }
+/* ===== 卡片模糊跳转浮层（便签 / 写作）=====
+   画布内居中偏上，对齐「命令面板」的位置直觉。不用宿主 SuggestModal 的 reasons 见
+   typewriterFeature._ensureCardSearch：它会弹在 Obsidian 主窗口、抢走画布焦点。 */
+.tw-card-search {
+  position: absolute;
+  top: 12%;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9500;
+  width: min(34em, 86%);
+  padding: 0.5em;
+  border-radius: var(--radius-sm);
+  background: var(--surface-solid, #fff);
+  border: 1px solid var(--border-light);
+  box-shadow: 0 18px 48px -12px rgba(var(--deep-rgb), 0.35);
+  font-family: inherit;
+}
+.tw-card-search[hidden] { display: none; }
+.tw-card-search-input {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: inherit;
+  font-size: var(--type-sm);
+  line-height: 1.4;
+  padding: 0.45em 0.6em;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-2xs);
+  background: transparent;
+  color: var(--text-primary);
+  outline: none;
+}
+.tw-card-search-input:focus { border-color: rgb(var(--primary-rgb)); }
+.tw-card-search-list {
+  max-height: 42vh;
+  overflow: auto;
+  margin-top: 0.35em;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.tw-card-search-item {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5em;
+  /* 压过全局 48px 触控地板：结果行是一行字，不是按钮块 */
+  min-height: 0;
+  padding: 0.35em 0.5em;
+  border: 0;
+  border-radius: var(--radius-2xs);
+  background: transparent;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: var(--type-sm);
+  line-height: 1.4;
+  text-align: left;
+  cursor: pointer;
+}
+.tw-card-search-item.is-active { background: rgba(var(--primary-rgb), 0.14); }
+.tw-card-search-level {
+  flex: none;
+  font-size: 0.85em;
+  color: var(--text-tertiary);
+}
+.tw-card-search-text {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tw-card-search-empty {
+  padding: 0.6em;
+  font-size: var(--type-sm);
+  color: var(--text-tertiary);
+  text-align: center;
+}
+/* 跳转命中高亮：用 outline 而非 box-shadow —— 写作档卡片明确「去阴影」 */
+.tw-card.is-search-hit {
+  outline: 0.2em solid rgb(var(--primary-rgb));
+  outline-offset: 0.12em;
+}
 /* 单卡源码视图：格式/结构按钮在纯 md 文本上没有意义（按投影语义理解会改坏文本），
    只留 `md` 自己作为出口。 */
 .tw-edit-tools.tw-src-on .tw-edit-tool:not(.tw-edit-src) { display: none; }

@@ -455,21 +455,37 @@ export const ModeController = {
   
   },
   // (was _createWritingGroup)
-  async createWritingGroup(ctx) {
+  /** opts: { title, notePath, chunks } —— 从笔记导入时一次跑完「建组 + 铺卡」，
+   *  复用同一把 _docBusy/_switching 锁，避免导入过程中防抖落盘把旧组内容写进新组。 */
+  async createWritingGroup(ctx, opts) {
     const { state, ctrl } = ctx;
-    if (ctrl._mode !== 'write' || ctrl._docBusy || ctrl._switching) return;
+    const o = opts || {};
+    // 返回 true 表示建组成功；false 表示被模式/忙碌锁拒绝（调用方据此报告失败，
+    // 不能假装成功 —— 导入路径尤其需要，否则用户以为导进去了其实什么都没发生）
+    if (ctrl._mode !== 'write' || ctrl._docBusy || ctrl._switching) return false;
     ctrl._docBusy = true;
     ctrl._switching = true;   // 新建组窗口挡防抖落盘（同 setMode 语义），防旧组内容写进新组文件
     try {
       ctrl._exitAllEdits();
       if (ctrl._saveTimer) { clearTimeout(ctrl._saveTimer); ctrl._saveTimer = null; }
       await ctrl._persistDoc('write');          // 先存好当前组
-      await TypewriterStore.createWritingGroup('未命名草稿');
+      await TypewriterStore.createWritingGroup(o.title || '未命名草稿', o.notePath || null);
       await ctrl._loadDoc('write');             // 新组为空，画布清空
       if (ctrl._undoStack) ctrl._undoStack.reset();
       await ctrl._refreshDocBtnLabel();
       await ctrl._renderDocPanel();             // 刷新列表（面板保持打开）
-      ctrl._showScreenMsg('已新建卡片组', 1200);
+      if (Array.isArray(o.chunks) && o.chunks.length) {
+        if (o.chunks.length === 1 && typeof ctrl._spawn === 'function') {
+          // _importDraft 要求 ≥2 块（单块走普通打印），这里对齐同一口径
+          ctrl._spawn(o.chunks[0].text, o.chunks[0].level);
+          ctrl._showScreenMsg('IMPORTED 1 BLOCK', 1600);   // 与 _importDraft 的寻呼机文案同风格
+        } else if (typeof ctrl._importDraft === 'function') {
+          ctrl._importDraft(o.chunks);          // 快照导入：一次性铺成卡片 + 链式连线
+        }
+      } else {
+        ctrl._showScreenMsg('已新建卡片组', 1200);
+      }
+      return true;
     } finally {
       ctrl._switching = false;
       ctrl._docBusy = false;
@@ -755,6 +771,8 @@ export const ModeController = {
     // 【P2】三档差异一律查策略表（modePolicy.js），不再在本函数里散落 if (_mode === 'x')
     const P = ModePolicy.of(ctrl._mode);
     const mm = P.id === 'mindmap';
+    // 切档时收起卡片搜索浮层：它挂在功能根上，不随画布重建，留着会跨档残留
+    if (typeof ctrl._closeCardSearch === 'function') ctrl._closeCardSearch();
     // 缩放条互斥：便签与导图各有一条（分别挂在 wrap 与 .tw-mm 上）。
     // 只显示当前模式对应的那条，否则导图模式下会叠出两条重叠的缩放条。
     // （导图层在便签模式下 layer.hidden = true，其缩放条随之隐藏，无需额外处理。）

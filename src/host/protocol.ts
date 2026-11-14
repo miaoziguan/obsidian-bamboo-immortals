@@ -140,6 +140,7 @@ export const ALL_MESSAGE_TYPES = [
   'action:openStats',
   'action:openSettings',
   'app:revealed',     // 视图已移到中央并绘制完成（webapp 据此折叠右栏，避免空白闪烁）
+  'app:importNote',   // 把一篇笔记作为快照导入画布（文件右键菜单触发；只读一次、不回写）
   'storage:response', // 存储请求的统一响应（payload 与 error 二选一）
   // ---- 主题市场（webapp → host）----
   'market:manifest',

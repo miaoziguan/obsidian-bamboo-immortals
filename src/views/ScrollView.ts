@@ -32,6 +32,10 @@ export class ScrollView extends ItemView {
   private cssChangeRef: EventRef | null = null;
   /** 本 leaf 所属功能（'incense' | 'typewriter'），per-leaf 存储以支持双 leaf 并存（替代原 static pendingFeature） */
   private _feature: string = 'incense';
+  /** webapp 是否已完成 app:ready 握手（未 ready 时收到的导入请求先排队） */
+  private _webReady = false;
+  /** 等待送达 webapp 的笔记导入请求（快照：路径 / 标题 / 正文） */
+  private _pendingImport: { path: string; title: string; content: string } | null = null;
   /** 本 leaf 当前停靠位置，per-leaf 存储（替代原 static pendingLocation） */
   private _location: ScrollLocation = 'center';
   /** 「一键全屏」进入前左右侧栏的折叠态（退出时按此恢复；null = 当前不在全屏态） */
@@ -130,6 +134,20 @@ export class ScrollView extends ItemView {
 
   /** 解析本 leaf 的功能/停靠位：优先 leaf 视图状态（打开命令 / 三圆点移动写入，随 workspace
    *  布局持久化、重启后即由此还原），回退宿主 pending（同会话内命令打开写入）。 */
+  /** 宿主 → webapp：把一篇笔记作为**快照**交给画布导入（只读一次，不改原笔记、不做同步）。
+   *  webapp 未 ready 时先排队，等 app:ready 握手回来再送达 —— 否则「打开视图」与「推送」
+   *  两个动作竞态，消息会静默丢掉，用户只看到点了没反应。 */
+  importNote(payload: { path: string; title: string; content: string }): void {
+    this._pendingImport = payload;
+    this._flushPendingImport();
+  }
+
+  private _flushPendingImport(): void {
+    if (!this._pendingImport || !this._webReady || !this.appAPI) return;
+    this.appAPI.pushRaw('app:importNote', this._pendingImport);
+    this._pendingImport = null;
+  }
+
   private _resolveScrollContext(): void {
     const vs = this.leaf.getViewState() as { state?: { feature?: string; location?: ScrollLocation } } | null;
     this._feature = vs?.state?.feature ?? ScrollView.pendingFeature ?? 'incense';
@@ -249,11 +267,14 @@ export class ScrollView extends ItemView {
       this.iframe.addEventListener('load', () => this._pushScrollContext());
 
       loadingEl.remove();
+      this._webReady = false;   // 新 iframe：等它的 app:ready 到了才算 ready
       this.appAPI?.bindIframe(this.iframe);
       // 握手补发：webapp 在 app:ready 时会再来要一次上下文，
       // 兜住「本次 load 注入被漏收」的窗口（见 AppAPI.onScrollContextRequest 注释）。
       if (this.appAPI) {
         this.appAPI.onScrollContextRequest = () => {
+          this._webReady = true;
+          this._flushPendingImport();   // 打开视图前就点过「导入为新卡片组」的，补在这里送达
           this._resolveScrollContext();
           return { feature: this._feature, location: this._location, zen: this._isZenNow() };
         };

@@ -1,5 +1,18 @@
 # Changelog
 
+## [3.33.29] — 2026-11-15
+
+> Obsidian 官方 Source review 合规修复：消除 `prefer-create-el` Warning，并补上本地闸门缺口。
+
+### Fixed
+- 官方 Warning「Uses `document.createElement` instead of Obsidian's `createEl` helpers」（`main.ts:219/220`）：3.33.25 给文件右键菜单加 hover 说明时，用 `document.createDocumentFragment()` + `document.createElement('span')` 组装带 `title` 的 DocumentFragment 标题。改用 Obsidian 注入的 `createFragment((frag) => frag.createSpan({ text, title }))` —— `DomElementInfo` 原生支持 `title`，「标题自足 + hover 补全快照语义」的行为完全不变。
+- **本地闸门缺口**：`scripts/check-review-rules.mjs` 原先只扫 `src/**/*.ts`，根目录 `main.ts` 漏网；本地也没装官方那套 eslint 插件，所以这条 Warning 本地完全看不见。扫描范围补上 `main.ts`，新增 ⑥ `prefer-create-el` 检查（含 `review-allow: prefer-create-el` 逃生阀），并把 checkName 名单补全为 5 项。
+
+### Tests
+- 闸门证伪：注入一行 `document.createElement` 后准确报 `main.ts:212`，还原后通过、无残留。
+- 产物核验：`main.js` 中 `createFragment` 1 处、`document.createElement` / `createDocumentFragment` 0 处。
+- jest 158 套件 / 1580 用例、宿主 vitest 64 文件 / 728 用例、覆盖率闸门 11902 ≥ 基线 8708、preflight 与全部 CI 闸门全绿。
+
 ## [3.33.28] — 2026-11-15
 
 > 数字徽章可读性收尾：亮色补齐后，明暗两套主题都过 AA。

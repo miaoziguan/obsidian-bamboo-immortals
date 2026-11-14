@@ -19,10 +19,17 @@
  *      只允许真正的指令形式（`// eslint-disable...` / `/* eslint-disable...` / `* eslint-disable...`）。
  *      原因：官方扫描器按**文本**匹配指令，散文提及可能被误判为指令（或缺少描述）。
  *
+ *   ⑥ 宿主侧禁止原生 document.createElement / createDocumentFragment（官方 prefer-create-el）：
+ *      Obsidian 注入了 createEl / createDiv / createSpan / createFragment 等 helper，统一处理
+ *      主题属性与无障碍。3.33.28 曾在**根目录 main.ts** 的 file-menu 里踩到 Warning —— 本脚本
+ *      原先只扫 src/**\/\*.ts，根目录漏网，故扫描范围一并补上 main.ts。
+ *      webapp 跑在 data: iframe 里、不加载 Obsidian 全局 helper，不在扫描范围，不受此规则约束。
+ *
  * 注：裸 setTimeout/setInterval 已由 eslint 的 no-restricted-globals（error）覆盖，此处不重复。
  *
  * 逃生阀：确需豁免时在该行加 `review-allow: <checkName>`（需在代码评审中说明理由）。
- *   checkName ∈ { no-console-disable, undescribed-directive, hardcoded-config-dir }
+ *   checkName ∈ { no-console-disable, undescribed-directive, hardcoded-config-dir,
+ *                 unenabled-rule-disable, prefer-create-el }
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -64,7 +71,10 @@ const enabledRules = new Set(
     .map(([k]) => k),
 );
 
-for (const file of walk(SRC)) {
+// 根目录 main.ts 是插件入口，同样会被官方 Source review 扫描；此前只扫 src 导致
+// prefer-create-el 那条 Warning 在本地完全看不见（3.33.28 实踩）。
+const files = [...walk(SRC), path.join(ROOT, 'main.ts')];
+for (const file of files) {
   const lines = fs.readFileSync(file, 'utf8').split('\n');
   lines.forEach((line, i) => {
     const at = `${rel(file)}:${i + 1}`;
@@ -120,6 +130,18 @@ for (const file of walk(SRC)) {
           `请改用 this.app.vault.configDir。`,
       );
     }
+
+    // ⑥ 宿主侧必须用 Obsidian 注入的 DOM helper（官方 prefer-create-el）
+    if (
+      !isCommentLine &&
+      /document\.create(?:Element|DocumentFragment)\s*\(/.test(codePart) &&
+      !allow(line, 'prefer-create-el')
+    ) {
+      problems.push(
+        `${at} 使用了原生 document.createElement / createDocumentFragment（官方 prefer-create-el）。` +
+          `宿主侧请改用 createEl / createDiv / createSpan / createFragment。`,
+      );
+    }
   });
 }
 
@@ -130,5 +152,5 @@ if (problems.length) {
 }
 console.log(
   '[review] ✅ 审核规则自检通过（no-console 未被屏蔽 / disable 均带描述 / 均指向已启用规则 / ' +
-    '注释无散文式指令字面量 / 无硬编码配置目录）',
+    '注释无散文式指令字面量 / 无硬编码配置目录 / 宿主侧无原生 createElement；含 main.ts）',
 );

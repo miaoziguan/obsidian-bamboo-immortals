@@ -216,12 +216,15 @@ export default class BambooReviewPlugin extends Plugin {
     this.registerEvent(this.app.workspace.on('file-menu', (menu, file) => {
       if (!(file instanceof TFile) || file.extension !== 'md') return;
       menu.addItem((item) => {
-        const frag = document.createDocumentFragment();
-        const label = document.createElement('span');
-        label.textContent = '画中卷：导入为新卡片组';
-        label.title = '只读一次笔记内容，拆成卡片放进新建的写作卡片组。原笔记不会被修改，也不会随原笔记自动更新；要更新请重新导入（会再新建一个组）。';
-        frag.appendChild(label);
-        item.setTitle(frag)
+        // 标题用 Obsidian 的 DOM helper 组装（官方 prefer-create-el）：setTitle 接受
+        // DocumentFragment，标题本身自足、hover 再补全快照语义，窄菜单/移动端没有 hover 也能读懂。
+        // 不要用 document.createElement —— 宿主侧一律走 Obsidian 注入的 createEl 系列。
+        item.setTitle(createFragment((frag) => {
+          frag.createSpan({
+            text: '画中卷：导入为新卡片组',
+            title: '只读一次笔记内容，拆成卡片放进新建的写作卡片组。原笔记不会被修改，也不会随原笔记自动更新；要更新请重新导入（会再新建一个组）。',
+          });
+        }))
           .setIcon('scroll-text')
           .onClick(() => { void this.importNoteToScroll(file); });
       });

@@ -1938,12 +1938,29 @@
   min-width: 18px; height: 18px;
   padding: 0 var(--space-5);
   display: inline-flex; align-items: center; justify-content: center;
-  font: 600 11px/1 var(--tw-font-global, sans-serif);
+  /* line-height 必须**等于徽章高度**（18px），不能写成 /1：
+     11px 的行盒小于字体自然行高（实测系统字体 13px、中文楷体 16px），行盒溢出后
+     align-items:center 按溢出的行盒居中，数字墨迹偏下 —— 用户看到的「数字没居中」。
+     真实 Chromium 实测墨迹中心偏移：/1 为 +0.5px，改 18px 后 0px（楷体 -0.1px）。
+     同步维护：若改上面的 height，这里的 line-height 必须一起改。 */
+  font: 600 11px/18px var(--tw-font-global, sans-serif);
   color: var(--white);
   background: var(--lv-color, #94A3B8);
   border-radius: var(--radius-sm);
   box-shadow: 0 1px 3px rgba(16, 24, 40, 0.30);
   pointer-events: none;
+}
+/* 暗色：满饱和层级色实底在暗画布上又跳又难读 —— 真实 Chromium 实测白字对比度
+   最低仅 1.67（h3/p），底色亮度 0.302~0.579。压到 35% 同色 + 暗表面后，
+   亮度降到 0.073~0.112、白字对比度 6.48~8.5（12 个层级全过 AA），色相仍可辨。
+   与 .tw-card-level 的暗色范式同源（color-mix + --surface-solid），亮色模式完全不动。
+   轮廓用 inset box-shadow 而不是 border：box-sizing:border-box 下加 border 会吃掉
+   内容高度，破坏刚修好的 18px line-height 光学居中。 */
+:host(.dark) .tw-canvas.tw-mode-write .tw-card-order {
+  background: color-mix(in srgb, var(--lv-color) 35%, var(--surface-solid));
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--lv-color) 45%, transparent),
+    var(--shadow-surface);
 }
 /* 数字徽章开关：只在画布上挂 / 摘 .tw-hide-order-badges，纯 CSS 隐藏 ——
    徽章 DOM 与 refreshWriteOrder 的序号逻辑完全不动，随时可无损恢复。

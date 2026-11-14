@@ -58,4 +58,22 @@ describe('写作档：层级徽标保持原位，顺序数字贴右下角', () =
     expect(order).toMatch(/z-index:\s*30/);
     expect(numOf(order, 'min-width')).toBe(18);
   });
+
+  test('数字徽章：line-height 与 height 等高，保证数字光学居中', () => {
+    // font: 600 11px/1 让行盒(11px)小于字体自然行高（系统字体 13px / 中文楷体 16px），
+    // 行盒溢出后 align-items:center 按溢出行盒居中，数字墨迹偏下。
+    // 真实 Chromium 实测：/1 偏移 +0.5px，改成与 height 相同的 18px 后为 0px（楷体 -0.1px）。
+    const m = /font:\s*600 11px\/(\d+)px/.exec(order);
+    expect(m).not.toBeNull();
+    expect(Number(m[1])).toBe(numOf(order, 'height'));
+  });
+
+  test('暗色：徽章底色压到 35% 提可读性，且不用 border 破坏数字居中', () => {
+    // 实测（12 个层级）：满饱和实底 + 白字最低对比度仅 1.67、底色亮度 0.302~0.579；
+    // 35% 同色 + 暗表面后对比度 6.48~8.5、亮度 0.073~0.112。
+    const dark = ruleOf(':host(.dark) .tw-canvas.tw-mode-write .tw-card-order');
+    expect(dark).toMatch(/color-mix\(in srgb, var\(--lv-color\) 35%, var\(--surface-solid\)\)/);
+    expect(dark).toMatch(/box-shadow:[\s\S]*inset 0 0 0 1px/);
+    expect(dark).not.toMatch(/border:\s*1px/);   // border 会吃掉内容高度、破坏 18px 行盒居中
+  });
 });

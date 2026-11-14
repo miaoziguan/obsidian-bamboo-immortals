@@ -1,5 +1,24 @@
 # Changelog
 
+## [3.33.26] — 2026-11-14
+
+> 画中卷·写作档一轮体验打磨：表格新增列不再窄到写不了字、排版轮换不再遮挡卡片、徽标位置与显隐按需可控。
+
+### Added
+- **缩放条「数字徽章」开关**（写作档专属）：一键显示 / 隐藏卡片右下角的顺序编号，放在「连线」与「搜索」之间。两态图标（徽章 / 划掉的徽章）+ `.active` 高亮 + title/aria-label 同步；状态持久化到 `typewriter:orderBadges`，默认显示、重启后保留选择。开关只切画布 class 用 CSS 隐藏，不增删徽章 DOM、不碰序号逻辑，关掉再开无损。
+
+### Fixed
+- **表格 `+列` 空列只有 16px，没法输入**：`table-layout:auto` 按内容分配列宽，整列为空只剩 padding + 一个 nbsp。改为给空单元格伪元素 `inline-block + min-width:7em` 撑宽，实测新列 **16px → 111px**，其余列宽逐像素不变；不给 `th/td` 设统一 `min-width`（实测定宽便签档 280px 容器会被撑到 444px 溢出）。
+- **排版轮换会遮挡卡片**：几何失效走 rAF 合帧，而 `reflowWriteOrder` 同步执行，编辑后立即点轮换会拿编辑前旧宽高算落点。改为排前同步重测在屏卡几何；机身键轮换忽略残留选区（否则只排选中卡、从 `(0,0)` 铺起压住其它卡）；建组被忙碌锁拒绝时如实提示，不再假装成功。
+- **分幕间距没自适应**：幕间距由死 48px 改为 `clamp(2×卡间距, 幕实测宽度×0.12, 4×卡间距)`（48~96px），列位置按各幕实测宽度推进，短幕列不再留假间距；修掉最后一组仍触发换行导致 `totalH` 多算一个幕间距。
+- **层级徽章与数字徽章叠加遮挡**：层级徽章保持 `left:0` 原位不动，数字徽章移到**卡片右下角**——分处两端，不再争卡片上方那条窄缝（也避开 hover 工具条 z60 与相邻卡层叠、卡片贴顶被裁）。
+- **重启 Obsidian 后数字徽章不出现**：`.tw-card-order` 由 `refreshWriteOrder` 动态贴，而 `buildCards` 走 `ViewportCuller.mountCard` 只建 DOM/测量；`restore → _setMode('write') → loadDoc → buildCards` 整条链一次都不刷徽标。改为在建卡收口处补一次刷新，覆盖 restore / loadDoc / 切档清卡 / 撤销恢复全部重建路径。
+
+### Tests
+- 新增 `badgeOverlap.jest.test.js`（层级原位 / 数字右下角 / CSS 契约）、`orderBadgeRestore.jest.test.js`（冷启动建卡后徽标存在、证伪 3 例）、`orderBadgeToggle.jest.test.js`（开关按钮 / 状态 / 持久化 / 档位显隐，11 例）、`tableCardRender.jest.test.js` 补空列宽度与溢出红线、`typewriterActs.jest.test.js` 补不遮挡 / 间距自适应 / 忽略选区 3 例。
+- 真实 Chromium 实测：表格列宽 16→111px、徽章重叠 20×8→0×8px、贴顶徽章 -22px→画布内、开关关闭后 `display:flex→none`。
+- jest 158 套件 / 1577 用例、宿主 vitest 64 文件 / 728 用例、覆盖率闸门 11902 ≥ 基线 8708、preflight 与全部 CI 闸门全绿。
+
 ## [3.33.25] — 2026-11-14
 
 > 画中卷两项新能力：从笔记「快照导入」、按内容「模糊跳转卡片」。导入只拍照不联动，跳转只定位不改写。

@@ -791,6 +791,9 @@ export const ModeController = {
     // 便签档连线只是关联、导图档有自己的一套 bar。非写作档一律隐藏，避免误点无反馈。
     const linkToggleBtn = root.querySelector('.tw-zoom-link-toggle');
     if (linkToggleBtn) linkToggleBtn.hidden = P.id !== 'write';
+    // 数字徽章开关只在写作档有语义（.tw-card-order 是写作档专属），其它档隐藏避免误点无反馈。
+    const orderBadgeBtn = root.querySelector('.tw-zoom-order');
+    if (orderBadgeBtn) orderBadgeBtn.hidden = P.id !== 'write';
     // 档位专属装饰层（贴纸属于便签档）：非便签档整层隐藏 ——
     // 从渲染树上保证不串档，而不是只靠「逐个摘除」（P1）。
     if (typeof ctrl._syncDecoLayer === 'function') ctrl._syncDecoLayer();

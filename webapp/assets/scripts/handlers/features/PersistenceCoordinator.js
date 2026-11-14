@@ -290,7 +290,15 @@ export const PersistenceCoordinator = {
     });
     ctrl._flushMountMeasure();               // 统一补做本批几何测量（一次 reflow 摊销，恢复/切档/撤销更顺滑）
     ctrl._applyLod();
-  
+    // 【顺序徽标】DOM 全量重建后必须重建徽标：.tw-card-order 不是卡片模板的一部分，
+    // 而是 refreshWriteOrder 事后动态贴的；_mountCard（ViewportCuller）只建 DOM / 测量，不刷徽标。
+    // 原本只有 _spawn（打印新卡）与 updateCulling 的 changed 分支会刷，于是冷启动
+    // restore → _setMode('write') → loadDoc → buildCards 这条链一次都不刷 —— 表现为
+    // 「重启 Obsidian 后数字徽章全不见，打印一张新卡又全出来」（层级徽章是模板自带，一直在）。
+    // 在建卡收口处补一次，覆盖 restore / loadDoc / 切档清卡 / 撤销恢复 全部重建路径。
+    // typeof 守卫兼容测试桩 / 早期挂载（此时还没有委托壳）。
+    if (typeof ctrl._refreshWriteOrder === 'function') ctrl._refreshWriteOrder();
+
   },
   // (was _collectNotes)
   collectNotes(ctx) {
@@ -352,15 +360,24 @@ export const PersistenceCoordinator = {
   reflowWriteOrder(ctx, opts) {
     const { state, ctrl } = ctx;
     if (!ctrl._canvas) return;
+    // 排之前必须先同步重测在屏卡几何：几何失效走的是 rAF 合帧（invalidateGeo →
+    // scheduleGeoFlush），而本函数是同步的。刚打完字 / 刚换字号就点「排版轮换」，
+    // 会拿到编辑前的旧宽高算落点 —— 长卡被当短卡，下一张压上来（信息被遮挡），
+    // 分幕列宽也按旧尺寸留白（间距不贴合内容）。_syncLayoutGeo 批量量所有挂载卡，
+    // measureCard 只读 offset*，整批一次布局；离屏卡沿用缓存尺寸。
+    if (typeof ctrl._syncLayoutGeo === 'function') ctrl._syncLayoutGeo();
     const seq = ctrl._orderCards();                 // 全部卡（模型派生，剔除态也完整）
     if (!seq.length) { ctrl._showScreenMsg('画布上还没有卡片', 1000); return; }
     const selCount = ctrl._selected ? ctrl._selected.size : 0;
+    // 机身键的「排版轮换」是整篇文章的动作：框选后若没手动取消选区，旧的「只排选中卡」
+    // 会把这几张从 (0,0) 重新铺起，正好压在留在原位的其它卡上。故该入口忽略选区。
+    const useSelection = selCount >= 2 && !(opts && opts.ignoreSelection);
     // 选中集以 DOM 元素为键：映射回 id（剔除态下能选中的必是可见卡）
     const selIds = new Set();
-    if (selCount >= 2 && ctrl._selected) {
+    if (useSelection && ctrl._selected) {
       ctrl._selected.forEach((c) => { const id = c.dataset && c.dataset.id; if (id) selIds.add(id); });
     }
-    const target = (selCount >= 2) ? seq.filter((c) => selIds.has(c.id)) : seq;
+    const target = useSelection ? seq.filter((c) => selIds.has(c.id)) : seq;
     if (target.length < 2) { ctrl._showScreenMsg('至少两张卡片才能顺流', 1500); return; }
 
     if (ctrl._undoStack && !(opts && opts.skipUndo)) ctrl._undoStack.push();   // 重排覆盖手工布局，提前留档（撤销可还原）；拆卡等已自行留档的调用方传 skipUndo 避免重复入栈
@@ -408,21 +425,29 @@ export const PersistenceCoordinator = {
         a.cards.forEach((c) => { const s = sizeOf(c); w = Math.max(w, s.w); h += s.h + GAP; });
         a.w = w; a.h = Math.max(0, h - GAP);
       });
-      const ACT_GAP = 48;                                   // 幕间距（明显大于卡间距，形成模块感）
-      const blockW = Math.max(...acts.groups.map((a) => a.w));   // 等宽列，便于并排比较体量
-      // 无限画布：分幕列数完全由「幕数」决定，与可见视口无关 —— 一幕一列、自上而下成块，
-      // 整排向右铺开，超宽部分靠平移浏览（画布本就可移动，无需为视口宽度妥协）。
+      // 幕间距自适应：以卡间距 GAP 为基准，随「本幕实测宽度」放大 —— 宽幕（表格 / 长标题）
+      // 需要更多留白才分隔得开，窄卡若也用大间距会显得空。夹在 [2GAP, 4GAP]：
+      // 常规 340px 卡仍是 48px（与原固定值一致），880px 表格卡走到 96px 上限。
+      const ACT_GAP_MIN = GAP * 2, ACT_GAP_MAX = GAP * 4;
+      const actGapOf = (w) => Math.round(Math.min(Math.max(ACT_GAP_MIN, w * 0.12), ACT_GAP_MAX));
+      // 列位置按**各幕实测宽度**推进，不再用全局最宽卡的等宽块：短幕列后面紧跟下一幕，
+      // 不会留一大片「假间距」；宽幕则按自身体量拿更多留白（间距随内容自适应）。
+      // 无限画布：列数仍由幕数决定 —— 一幕一列、整排向右铺开，超宽靠平移浏览。
       const cols = Math.max(1, acts.groups.length);
       let x = 0, y = 0, rowH = 0, col = 0;
-      acts.groups.forEach((a) => {
+      acts.groups.forEach((a, ai) => {
+        const gap = actGapOf(a.w);
         a.x = x; a.y = y;
         rowH = Math.max(rowH, a.h);                          // 行高取该行最高幕
         col += 1;
-        if (col >= cols) { col = 0; x = 0; y += rowH + ACT_GAP; rowH = 0; }
-        else { x += blockW + ACT_GAP; }
+        // 只在「后面还有幕」时换行：最后一组也清零 rowH 会让 totalH 凭空多算一个幕间距。
+        if (col >= cols) {
+          if (ai < acts.groups.length - 1) { col = 0; x = 0; y += rowH + gap; rowH = 0; }
+        } else {
+          x += a.w + gap;
+        }
       });
-      const usedCols = Math.min(cols, acts.groups.length);
-      totalW = usedCols * blockW + (usedCols - 1) * ACT_GAP;
+      totalW = Math.max(0, ...acts.groups.map((a) => a.x + a.w));
       totalH = y + rowH;
 
       const pos = new Map();   // 同顺流：先算完所有落点，循环后单趟写回模型（O(n)）
@@ -457,7 +482,7 @@ export const PersistenceCoordinator = {
     // 内容比视口宽/高时，从原点(0,0)起排，避免把开头推到屏外（平移去探索其余部分），与顺流竖排一致
     ctrl._setCanvasOffset(Math.max(0, VW / 2 - _s * totalW / 2), Math.max(0, VH / 2 - _s * totalH / 2));
 
-    const scope = selCount >= 2 ? '选中的 ' : '全部 ';
+    const scope = (target.length < seq.length) ? '选中的 ' : '全部 ';
     if (useActs) {
       // 幕计数只数「以幕级标题起头的真幕」，把首个幕级标题之前的「引子」块排除在外
       // （引子通常无标题、语义上不属于任何一幕，见 splitActs 的 !cur 首块）。

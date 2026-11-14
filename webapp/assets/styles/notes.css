@@ -256,6 +256,10 @@
   display: inline-flex;
   position: absolute;
   bottom: calc(100% + 4px);
+  /* 层级徽章保持原位（left:0）：它是主信息，且用户明确要求不动。
+     原先与「上一张卡」左下角的顺序数字徽标重叠 20×8px，改由**移动数字徽章**解决 ——
+     见 .tw-card-order：数字最终落在卡片右下角，与本徽章分处两端，天然不重叠。
+     工具条避让由 CardViewManager.placeTools 按实际矩形自适应，无需同步改数值。 */
   left: 0;
   z-index: 61;                    /* 高于工具条(60)：两者都浮在卡片上方 */
   background: color-mix(in srgb, var(--lv-color) 14%, var(--surface-solid));
@@ -414,10 +418,16 @@
   height: 1.8em;
 }
 /* 空单元格再补一个行盒：部分环境下单靠最小高度不产生可落光标的行盒。
-   伪元素不进 textContent，序列化仍是 `|  |`，不污染 md。 */
+   伪元素不进 textContent，序列化仍是 `|  |`，不污染 md。
+   同时给空列一个「可编辑的起步宽度」：table-layout:auto 按内容分配列宽，`+列` 造出的
+   整列只有 nbsp + padding，实测被压到 16px，点进去几乎写不了字。伪元素撑宽是纯内容宽度，
+   表格仍 width:100%、已有列宽不变。**不要改成给 th/td 设 min-width** —— 那会让每列都带
+   硬下限，定宽便签档（340px）里 4 列的最小宽度之和超过卡片，表格直接溢出（实测撑到 444px）。 */
 .tw-card-text .tw-md-table td:empty::after,
 .tw-card-text .tw-md-table th:empty::after {
   content: '\00a0';
+  display: inline-block;
+  min-width: 7em;
 }
 .tw-card-text .tw-md-table th {
   background: color-mix(in srgb, currentColor 7%, transparent);
@@ -1910,11 +1920,20 @@
   min-height: calc(var(--tw-grid) * 2);
 }
 
-/* 写作档顺序徽标：按 _orderCards() 的连线/阅读顺序，在每张卡左上角贴一个编号，
-   让"文章顺序"可见（否则只能靠拖动位置猜）。便签/导图档不显示。 */
+/* 写作档顺序徽标：按 _orderCards() 的连线/阅读顺序给每张卡编号，让「文章顺序」可见。
+   便签/导图档不显示。
+   【位置】贴在卡片**右下角**（bottom:-8px / right:-8px），与左上方的层级徽章分处两端。
+   演变：最初在左下角，与「下一张卡」浮在上方左端的层级徽章实测重叠 20×8px；
+   改到「层级徽章右侧同一行」虽不重叠，但那条窄缝里同时挤着层级徽章(z61)、
+   hover 工具条(z60)与相邻卡片 —— .tw-card 带 transform 自成层叠上下文，卡内 z-index:30
+   压不过邻卡，DOM 顺序与视觉顺序不一致时序号就被盖住，表现为「偶尔不出现」。
+   右下角在卡片自身区域内、远离工具条与邻卡，层叠冲突从根上消失，也更符合视觉偏好。
+   pointer-events:none，不干扰右下角的缩放/旋转握柄点击。 */
 .tw-canvas.tw-mode-write .tw-card-order {
   position: absolute;
-  bottom: -8px; left: -8px;
+  bottom: -8px;
+  right: -8px;
+  left: auto;                  /* 显式清掉曾经用过的 left，避免两边同时定位把徽章拉宽 */
   z-index: 30;
   min-width: 18px; height: 18px;
   padding: 0 var(--space-5);
@@ -1926,6 +1945,10 @@
   box-shadow: 0 1px 3px rgba(16, 24, 40, 0.30);
   pointer-events: none;
 }
+/* 数字徽章开关：只在画布上挂 / 摘 .tw-hide-order-badges，纯 CSS 隐藏 ——
+   徽章 DOM 与 refreshWriteOrder 的序号逻辑完全不动，随时可无损恢复。
+   特异性需压过 .tw-canvas.tw-mode-write .tw-card-order 的定位规则。 */
+.tw-canvas.tw-mode-write.tw-hide-order-badges .tw-card-order { display: none; }
 
 /* 暗色：换一套中性墨色与描边，表面仍随 --surface-solid 走主题 */
 :host(.dark) .tw-canvas.tw-mode-write {
@@ -2426,6 +2449,13 @@
 .tw-zoom-bar .tw-zoom-link-toggle .tw-zoom-icon-unlink { display: none; }
 .tw-zoom-bar .tw-zoom-link-toggle.is-linked .tw-zoom-icon-link { display: none; }
 .tw-zoom-bar .tw-zoom-link-toggle.is-linked .tw-zoom-icon-unlink { display: block; }
+/* 数字徽章键同为写作档专属，需补 [hidden]（.tw-zoom-bar button 的 display:inline-flex 会压过 UA 默认）。 */
+.tw-zoom-bar .tw-zoom-order[hidden] { display: none; }
+/* 两态图标随 sync 的 .active 切换：显示=编号徽章，隐藏=划掉的编号徽章。
+   .active 还复用 .tw-zoom-bar button.active 的高亮，双重提示当前状态。 */
+.tw-zoom-bar .tw-zoom-order .tw-zoom-icon-order-off { display: none; }
+.tw-zoom-bar .tw-zoom-order:not(.active) .tw-zoom-icon-order-on { display: none; }
+.tw-zoom-bar .tw-zoom-order:not(.active) .tw-zoom-icon-order-off { display: block; }
 
 /* ===== 便签模式·素材市场（右侧抽屉 + 素材卡 + 贴纸落卡）=====
    抽屉定位于 .scroll-typewriter-feature 右侧（黄区），展开时 translateX(0)。 */

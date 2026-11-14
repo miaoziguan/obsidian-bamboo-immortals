@@ -92,6 +92,9 @@ export const TypewriterFeature = {
     // 写作档「层级配色」开关：默认关（新增观感需用户显式打开，与博客模块的流光/竖纹同策略）。
     // 只影响呈现（canvas 上的 .tw-lv-tint class），不动卡片数据模型 —— level 本就在模型里。
     this._levelTint = false;
+    // 写作档「数字徽章」开关：默认显示（保持既有观感），只有用户显式关闭才隐藏。
+    // 只切画布上的 .tw-hide-order-badges class（纯呈现），徽章 DOM 与序号逻辑完全不动。
+    this._orderBadges = true;
     this._switching = false;           // 切档重入锁
     this._pendingModeDir = 0;          // 切档期间连拨的累积净步数：切完后接续，避免快速拨动丢档
     this._levelMenu = null;            // 类型选择浮层（全画布共用一个，按需创建）
@@ -307,6 +310,8 @@ export const TypewriterFeature = {
     // 层级配色开关：异步读回用户上次的选择（默认关，失败静默）。
     // 放在 _mountZoomUI 之后：读回后会调 _zoomUI.sync() 点亮按钮高亮。
     this._loadLevelTint();
+    // 数字徽章开关：异步读回用户上次的选择（默认显示）；放在 _mountZoomUI 之后以便点亮按钮。
+    this._loadOrderBadges();
     this._initMaterialMarket();   // 素材市场：挂抽屉 + 画布 drop 落卡 + 绑定缩放条市场按钮
   },
 
@@ -395,6 +400,10 @@ export const TypewriterFeature = {
       // isLinked 供 sync 切换图标语义（有连线显示断链、无连线显示链条）。
       onLinkToggle: () => ctrl._linkToggle(),
       isLinked: () => ctrl._isFullyChained(),
+      // 数字徽章（写作档专属）：一键显示 / 隐藏卡片右下角的顺序编号。
+      // 与 onTint / onLinkToggle 同一套协议，applyModeChrome 按档位显隐按钮。
+      onToggleOrderBadges: () => ctrl._toggleOrderBadges(),
+      isOrderBadgesVisible: () => ctrl._orderBadges !== false,
       // 卡片模糊跳转（便签 / 写作共用 ctrl._notes）：打开画布内搜索浮层
       onSearch: () => ctrl._openCardSearch(),
     });
@@ -438,6 +447,41 @@ export const TypewriterFeature = {
       const v = await sm.getSetting('typewriter:levelTint');
       this._levelTint = v === true;
       this._applyLevelTint();
+      if (this._zoomUI && typeof this._zoomUI.sync === 'function') this._zoomUI.sync();
+    } catch (_) { /* 忽略 */ }
+  },
+
+  /** 数字徽章开关：只切 canvas 上的呈现 class，不增删徽标 DOM。
+   *  徽标始终由 refreshWriteOrder 维护（buildCards 收口会刷），关掉只是 CSS 隐藏 ——
+   *  再打开无需重建、序号不会错位。状态沿用 typewriter:levelTint 的同一条设置通道持久化。 */
+  _toggleOrderBadges() {
+    this._orderBadges = this._orderBadges === false;
+    this._applyOrderBadges();
+    this._persistOrderBadges();
+    if (this._zoomUI && typeof this._zoomUI.sync === 'function') this._zoomUI.sync();
+    this._showScreenMsg(this._orderBadges ? '数字徽章：已显示' : '数字徽章：已隐藏', 1200);
+  },
+
+  /** 把开关状态落到 canvas 上（只呈现，不动模型）。幂等：状态未变也安全。 */
+  _applyOrderBadges() {
+    if (!this._canvas) return;
+    this._canvas.classList.toggle('tw-hide-order-badges', this._orderBadges === false);
+  },
+
+  async _persistOrderBadges() {
+    const sm = (typeof window !== 'undefined') ? window.storageManager : null;
+    if (!sm || typeof sm.putSetting !== 'function') return;
+    try { await sm.putSetting('typewriter:orderBadges', this._orderBadges !== false); } catch (_) { /* 忽略 */ }
+  },
+
+  /** mount 时读回（默认显示）：只有显式 false 才隐藏，读失败静默不影响本次会话。 */
+  async _loadOrderBadges() {
+    const sm = (typeof window !== 'undefined') ? window.storageManager : null;
+    if (!sm || typeof sm.getSetting !== 'function') return;
+    try {
+      const v = await sm.getSetting('typewriter:orderBadges');
+      this._orderBadges = v !== false;
+      this._applyOrderBadges();
       if (this._zoomUI && typeof this._zoomUI.sync === 'function') this._zoomUI.sync();
     } catch (_) { /* 忽略 */ }
   },
@@ -878,13 +922,15 @@ export const TypewriterFeature = {
    *  与顺序徽标/整篇预览/导出完全一致）把卡片顺成一条干净的竖向阅读流，让画布本身成为文章骨架。
    *  只改位置、不动卡片尺寸/旋转（非破坏性），原有连线保留（端点随位置更新）。
    *  与便签模式的「网格排版」区分：那边是无序网格，这边是有序竖列（顺序即文章顺序）。 */
-    _reflowWriteOrder() { return PersistenceCoordinator.reflowWriteOrder({ state: this._state, ctrl: this }); },
+    _reflowWriteOrder(opts) { return PersistenceCoordinator.reflowWriteOrder({ state: this._state, ctrl: this }, opts); },
 
   /** 写作档排版轮换：顺流竖排 ⇄ 分幕。只切档位，实际布局仍由 _reflowWriteOrder 统一执行，
-   *  故撤销 / 落盘 / 几何同步 / 居中 / 提示等收尾动作只有一份实现。 */
+   *  故撤销 / 落盘 / 几何同步 / 居中 / 提示等收尾动作只有一份实现。
+   *  ignoreSelection：这是整篇文章的动作。框选没取消时若「只排选中卡」，那几张会从
+   *  (0,0) 重新铺起，压在留在原位的其它卡上 —— 表现为「排版把别的信息遮挡了」。 */
   _cycleWriteLayout() {
     this._layoutMode = (this._layoutMode === 'acts') ? 'flow' : 'acts';
-    this._reflowWriteOrder();
+    this._reflowWriteOrder({ ignoreSelection: true });
   },
 
   /** 兜底：把 Markdown 作为 .md 文件下载到本地（桥不可用环境） */

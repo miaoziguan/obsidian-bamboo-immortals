@@ -139,4 +139,19 @@ describe('表格卡宽度与列宽分配', () => {
     expect(rule).toMatch(/table-layout:\s*auto/);
     expect(rule).toMatch(/width:\s*100%/);   // 仍是 100%：只改分配方式，不撑出卡片
   });
+
+  test('+列 后的空列有可编辑宽度，且不靠单元格 min-width（防定宽便签档溢出）', () => {
+    // 真实 Chromium 实测（340px 定宽便签 / 880px 封顶写作档）：
+    //  空列现状 16px；空单元格伪元素给 7em → 111px 且表格仍 100%；
+    //  若改成 th/td 统一 min-width，定宽容器里表格会被撑到 444px 溢出卡片。
+    const emptyRule = (NOTES_CSS.match(
+      /\.tw-card-text \.tw-md-table td:empty::after,\s*\.tw-card-text \.tw-md-table th:empty::after \{([^}]*)\}/,
+    ) || [])[1] || '';
+    expect(emptyRule).toMatch(/display:\s*inline-block/);
+    expect(emptyRule).toMatch(/min-width:\s*7em/);
+    const cellRule = (NOTES_CSS.match(
+      /\.tw-card-text \.tw-md-table th,\s*\.tw-card-text \.tw-md-table td \{([^}]*)\}/,
+    ) || [])[1] || '';
+    expect(cellRule).not.toMatch(/min-width/);
+  });
 });

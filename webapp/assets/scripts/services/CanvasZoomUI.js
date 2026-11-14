@@ -78,11 +78,22 @@ export const CanvasZoomUI = {
     const searchBtn = (typeof adapter.onSearch === 'function')
       ? '<button type="button" class="tw-zoom-btn tw-zoom-search" data-act="search" title="跳转卡片：按内容模糊搜索并定位" aria-label="搜索并跳转卡片"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></svg></button>'
       : '';
+    // 数字徽章开关（写作档专属）：一键显示 / 隐藏卡片右下角的顺序编号。
+    // 与 onTint / onLinkToggle 同一套 adapter 协议 —— 只有传回调的档位才生成按钮。
+    // 两态图标（徽章 / 划掉的徽章）随 sync 的 .active 切换，点之前就能读出当前状态；
+    // 图标画的是「圆角徽章里一个 1」，与画布上那枚编号徽章同形，不做成列表/排序的歧义图标。
+    const orderBtn = (typeof adapter.onToggleOrderBadges === 'function')
+      ? '<button type="button" class="tw-zoom-btn tw-zoom-order" data-act="order-badges" title="数字徽章：正在显示卡片顺序编号，点击隐藏" aria-label="隐藏数字徽章">'
+        + '<svg class="tw-zoom-icon-order-on" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="4"/><path d="M10 9.5 12 8v8"/></svg>'
+        + '<svg class="tw-zoom-icon-order-off" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="4"/><path d="M10 9.5 12 8v8"/><path d="M3.5 20.5 20.5 3.5"/></svg>'
+        + '</button>'
+      : '';
+    // 顺序：结构类开关（配色 / 连线 / 数字徽章）聚在一起，搜索键保持最右（既有惯例）。
     bar.innerHTML = notesBtn + tintBtn + handBtn + `
       <button type="button" class="tw-zoom-btn" data-act="out"  title="缩小" aria-label="缩小">−</button>
       <button type="button" class="tw-zoom-val" data-act="reset" title="点击重置为 100%" aria-label="重置缩放为 100%">100%</button>
       <button type="button" class="tw-zoom-btn" data-act="in"   title="放大" aria-label="放大">+</button>
-      <button type="button" class="tw-zoom-btn" data-act="fit"  title="适应内容" aria-label="适应内容">⤢</button>` + marketBtn + linkToggleBtn + searchBtn;
+      <button type="button" class="tw-zoom-btn" data-act="fit"  title="适应内容" aria-label="适应内容">⤢</button>` + marketBtn + linkToggleBtn + orderBtn + searchBtn;
     host.appendChild(bar);
 
     const valEl = bar.querySelector('.tw-zoom-val');
@@ -90,6 +101,7 @@ export const CanvasZoomUI = {
     const tintEl = bar.querySelector('.tw-zoom-tint');
     const notesEl = bar.querySelector('.tw-zoom-notes');
     const linkEl = bar.querySelector('.tw-zoom-link-toggle');
+    const orderEl = bar.querySelector('.tw-zoom-order');
     const sync = () => {
       const s = CanvasViewport.scaleOf(adapter.getView());
       const txt = Math.round(s * 100) + '%';
@@ -119,6 +131,19 @@ export const CanvasZoomUI = {
             : '一键连线：按文章顺序把全部卡片连成一条链（可撤销）';
         }
       }
+      // 数字徽章开关：.active = 正在显示编号。图标（CSS 按 .active 切两态）与
+      // title / aria-label 一起换，避免「看着是显示、点下去却变成显示」。
+      if (orderEl && typeof adapter.isOrderBadgesVisible === 'function') {
+        const shown = !!adapter.isOrderBadgesVisible();
+        orderEl.classList.toggle('active', shown);
+        const label = shown ? '隐藏数字徽章' : '显示数字徽章';
+        if (orderEl.getAttribute('aria-label') !== label) {
+          orderEl.setAttribute('aria-label', label);
+          orderEl.title = shown
+            ? '数字徽章：正在显示卡片顺序编号，点击隐藏'
+            : '数字徽章：已隐藏，点击显示卡片顺序编号';
+        }
+      }
     };
 
     // 控件上的指针事件不得冒泡到画布：否则点按钮会同时触发平移/取消选中
@@ -138,6 +163,7 @@ export const CanvasZoomUI = {
         else if (act === 'tint' && typeof adapter.onTint === 'function') adapter.onTint();
         else if (act === 'notes' && typeof adapter.onToggleAllNotes === 'function') adapter.onToggleAllNotes();
         else if (act === 'link-toggle' && typeof adapter.onLinkToggle === 'function') adapter.onLinkToggle();
+        else if (act === 'order-badges' && typeof adapter.onToggleOrderBadges === 'function') adapter.onToggleOrderBadges();
         else if (act === 'search' && typeof adapter.onSearch === 'function') adapter.onSearch();
       } catch (err) { /* 缩放控件失败不应影响画布 */ }
       sync();

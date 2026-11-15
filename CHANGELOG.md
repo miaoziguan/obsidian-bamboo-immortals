@@ -1,5 +1,24 @@
 # Changelog
 
+## [3.33.30] — 2026-11-15
+
+> 多选浮动操作条：修「按钮变竖排」。
+
+### Fixed
+- 选中多张卡时浮动条的「合并 3 张 / 连线 3 张 / 删除」被压成逐字竖排。根因：`.tw-sel-bar`
+  是绝对定位 + `left`（选区中心）+ `translateX(-50%)`，shrink-to-fit 宽度被「画布右边界 − left」
+  钳住；选区越靠右可用宽度越小，按钮 `min-width:0` 又允许 flex 收缩 → 被压到 1 字宽。
+  真实 Chromium 实测 `left:500px` / 画布 600px 时条宽仅 **101px**、按钮 **32×60**、文字 **4 行**。
+- 修法：`.tw-sel-bar` 加 `width: max-content`（按内容定宽、不受 `left` 影响），按钮补
+  `white-space: nowrap` + `flex: none` 双保险。修复后条宽 398px（5 个按钮）、按钮 71×26
+  全部单行；`left=0/100/300/500/900` 与 400px 窄画布结果一致。
+
+### Tests
+- 新增 `selBarLayout.jest.test.js` 2 例（条按内容定宽、按钮禁止折行 / 压缩）；证伪：去掉
+  `max-content` 后测试立刻变红，还原后 2/2 绿。
+- jest 159 套件 / 1582 用例、宿主 vitest 64 文件 / 728 用例、覆盖率闸门 11902 ≥ 基线 8708、
+  preflight 与全部 CI 闸门全绿。
+
 ## [3.33.29] — 2026-11-15
 
 > Obsidian 官方 Source review 合规修复：消除 `prefer-create-el` Warning，并补上本地闸门缺口。

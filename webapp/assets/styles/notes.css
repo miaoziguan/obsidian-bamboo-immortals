@@ -2311,6 +2311,11 @@
   align-items: center;
   /* 紧凑条：按钮只有一行字，条壳不需要再多留一圈内边距（原来 5px 上下 + 6px 间距，
      叠加按钮自身尺寸后整条 60px，浮在选框上方会遮住卡片标题）。 */
+  /* 【修「按钮变竖排」】绝对定位 + left(选区中心) + translateX(-50%) 的 shrink-to-fit
+     会被「包含块右边界 − left」钳住：选区越靠右，可用宽度越小，flex 按钮被压到 1 字宽，
+     中文逐字折行成竖排。真实 Chromium 实测 left:500px / 画布 600px 时条宽仅 101px、
+     「合并 3 张」按钮 32×60 排成 4 行。width:max-content 让条按内容定宽，不受 left 影响。 */
+  width: max-content;
   gap: var(--space-2);
   padding: var(--space-3) var(--space-4);
   border-radius: var(--radius-sm);
@@ -2331,6 +2336,10 @@
      （与 .tw-edit-tool / .tw-card-level 同一套做法）。 */
   min-width: 0;
   min-height: 26px;
+  /* 双保险：标签一律单行、不允许被 flex 压缩。即使将来条宽再受别的约束，
+     也不会退化成「合并 / 3 / 张」逐字竖排（见 .tw-sel-bar 的 width:max-content 注释）。 */
+  white-space: nowrap;
+  flex: none;
   /* min-height 比「字号+内边距」高，靠 flex 居中才不会让文字贴着上边、下方留一条空 */
   display: inline-flex;
   align-items: center;

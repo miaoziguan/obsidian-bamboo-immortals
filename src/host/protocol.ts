@@ -125,6 +125,7 @@ export const ALL_MESSAGE_TYPES = [
 
   // ---- host → webapp ----
   'app:beforeDetach', // 视图销毁前的最后通牒：webapp 收到后立即落盘（防丢防抖窗口内的编辑）
+  'app:beforeDetachDone', // 上一条的回执（webapp → host）：落盘真的写完后才发，宿主据此才销毁 iframe
   'goals:changed',
   'theme:changed',
   'theme:manifests', // 主题装/卸后宿主补发最新外部主题清单（原本只在 app:ready 下发）

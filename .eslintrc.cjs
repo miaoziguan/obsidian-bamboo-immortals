@@ -72,6 +72,10 @@ module.exports = {
         '@typescript-eslint/no-unsafe-call': 'error',
         '@typescript-eslint/no-unsafe-member-access': 'error',
         '@typescript-eslint/no-unsafe-return': 'error',
+        // Obsidian Source review 判 Warning（3.34.0 实测命中 3 处）：调用了返回 Promise 的
+        // 方法却既没 await 也没 void，等于静默吞掉失败。本地启用后在提交审核前拦下；
+        // 确实有意不等（如 startListening 里的幂等重置）必须显式写 `void`。
+        '@typescript-eslint/no-floating-promises': 'error',
         // Obsidian 弹窗（popout window）是独立浏览器窗口，裸全局定时器会解析错位；官方审核系统据此判 Warning。
         // 用内置 no-restricted-globals 禁用裸 setTimeout/clearTimeout/setInterval/clearInterval，
         // 强制写 window. 前缀（成员访问不会被误伤，接口方法签名/类方法实现也非全局引用）。

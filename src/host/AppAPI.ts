@@ -639,7 +639,9 @@ export class AppAPI {
    * 使用 activeDocument.defaultView（主 Obsidian 窗口）而非插件沙箱 window。
    */
   startListening(): void {
-    this.detach();
+    // 幂等重置：此时 iframe 尚未绑定，detach 走「无 iframe → 立即完成」快路径，
+    // 没有可等的东西，故显式丢弃返回值（Obsidian 审核 tool 的 no-floating-promises）。
+    void this.detach();
     this.messageHandler = (event: MessageEvent) => {
       void this.onMessage(event);
     };
@@ -689,19 +691,20 @@ export class AppAPI {
     }
 
     return new Promise<void>((resolve) => {
-      let timer: number | undefined;
       let settled = false;
       const finish = () => {
         if (settled) return;
         settled = true;
-        if (timer !== undefined) window.clearTimeout(timer);
+        window.clearTimeout(timer);
         this._detachResolve = null;
         this._finishDetach();
         resolve();
       };
 
       this._detachResolve = finish;
-      timer = window.setTimeout(finish, DETACH_FLUSH_MAX_MS);
+      // timer 只能在 finish 之后声明（finish 要清它），二者互为引用；
+      // finish 仅由定时器或异步回执触发，此刻 timer 必已初始化，不存在 TDZ。
+      const timer = window.setTimeout(finish, DETACH_FLUSH_MAX_MS);
       // 超时是兜底而非正常路径：正常情况回执在几十毫秒内到达（一次保存 IPC + 一次写盘）。
       this._requestFlushBeforeDetach();
     });

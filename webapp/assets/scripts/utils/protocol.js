@@ -104,6 +104,8 @@ export const APP_MESSAGE_TYPES = [
   // 【防丢数据】宿主即将销毁本 iframe（关闭视图 / 插件重载）→ 通知 webapp 立即落盘。
   // 关闭视图不触发 pagehide，若不通知，主存储防抖窗口（默认 2s）内的最后一次改动会丢失。
   'app:beforeDetach',
+  // 回执（webapp → host）：落盘真的写完后才发，宿主等到它才销毁 iframe
+  'app:beforeDetachDone',
   'app:importNote',
   'theme:changed',
   'theme:manifests',

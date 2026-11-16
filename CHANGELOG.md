@@ -1,5 +1,23 @@
 # Changelog
 
+## [3.34.1] — 2026-11-17
+
+> 修 Obsidian 审核退回的两项：3 处「Promise 未处理」Warning + 构建校验失败。
+
+### Fixed
+- **审核 Warning · Promise 未处理（3 处）**：`AppAPI.detach()` 改为返回 Promise 后，
+  `ModuleView.onClose` / `reloadWebapp` 仍在「发请求就撒手」，紧接着就销毁 / 重建 iframe ——
+  与 3.34.0 修的整档归零是同一类丢数据窗口，现改为 await 落盘回执再往下走
+  （其余三视图早已如此）；`startListening()` 的幂等重置语义上无需等待，改为显式 `void`。
+- **构建校验失败**：`AppAPI.ts` 的 `let timer` 只赋值一次，触发 `prefer-const` **error**，
+  使 `npm run build` 在 lint 段就中断（审核侧「build must complete successfully」因此恒红）。
+  改为 `const timer`。
+- **协议契约补登记**：`app:beforeDetachDone`（webapp → host 的落盘回执）源码在用，
+  但 `protocol.ts` / `protocol.js` 两份注册表都漏登，`check:message-coverage` 由 117/118 补至 118/118。
+
+### Changed
+- ESLint 启用 `@typescript-eslint/no-floating-promises`（error），把审核侧的这条判定本地化，避免再退。
+
 ## [3.34.0] — 2026-11-16
 
 > 思维子弹可「取消局部连线」；修 md 可视化写作的**整档归零**数据事故。

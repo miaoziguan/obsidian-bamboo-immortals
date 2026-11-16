@@ -433,8 +433,11 @@ export class DailyReviewView extends ItemView {
       this.cssChangeRef = null;
     }
 
-    // 清理通信层
-    this.appAPI?.detach();
+    // 清理通信层：await 落盘回执再往下走 —— 下面紧接着就 iframe.remove()，
+    // 不等的话「保存请求还在队列里、iframe 已被销毁」，最后一次编辑必丢。
+    if (this.appAPI) {
+      try { await this.appAPI.detach(); } catch { /* 兜底：detach 内部已有超时，不会卡死 */ }
+    }
     this.appAPI = null;
 
     // 清理 blob URL

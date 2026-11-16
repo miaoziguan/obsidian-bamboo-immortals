@@ -145,7 +145,10 @@ export class ArchiveView extends ItemView {
       this.cssChangeRef = null;
     }
 
-    this.appAPI?.detach();
+    // await 落盘回执：紧接着就要 iframe.remove()，不等会丢掉防抖窗口内的最后一次编辑
+    if (this.appAPI) {
+      try { await this.appAPI.detach(); } catch { /* detach 内部有超时兜底 */ }
+    }
     this.appAPI = null;
 
     this.appHost?.destroy();

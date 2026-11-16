@@ -71,6 +71,12 @@ interface GoalCompMap {
   [gid: string]: Record<string, boolean>;
 }
 
+/** 滚动备份文件后缀：`<原文件名>.bak`，与主文件同目录，便于用户自己找到。 */
+const BAK_SUFFIX = '.bak';
+/** 参与滚动备份的文件大小上限（字符数）。超过则不备份：大文件翻倍代价高，
+ *  且它们（如便签大档）不是「写坏一次就全丢」的形态。64 KB 足够覆盖写作档/导图档/设置。 */
+const BAK_MAX_BYTES = 64 * 1024;
+
 /**
  * VaultStorage - 封装 Obsidian Vault adapter 的文件操作
  *
@@ -196,6 +202,23 @@ export class VaultStorage {
     }
 
     const abstract = this.app.vault.getAbstractFileByPath(normalized);
+
+    /* 【写前滚动备份】vault.process 底层是「截断 → 重写」，不是原子操作：插件重载 / 进程崩溃 /
+       磁盘异常停在两步之间，文件就留在 0 字节（真实事故：typewriter-writing/doc-mwg8w48jw1yu.json
+       在重载插件的一瞬被清空，两天内容全丢，且此后每次保存都被守卫拦下）。
+       这里在覆盖前把**当前非空内容**留一份 `.bak`：
+         · 只在当前内容非空时备份 —— 否则 0 字节会反过来把唯一的好备份覆盖掉；
+         · 超过 BAK_MAX_BYTES 不备份（大文件翻倍代价高，且它们不是「写坏=全丢」的形态）；
+         · 备份失败绝不阻断主写入 —— 主路径正确性优先于兜底。
+       读侧见 readJsonFile：读到空文件时自动用 .bak 恢复（自愈，用户无需手工干预）。 */
+    if (BAK_MAX_BYTES > 0) {
+      const prevContent = await this.app.vault.adapter.read(normalized).catch(() => null);
+      if (prevContent && prevContent.trim() && prevContent.length <= BAK_MAX_BYTES) {
+        try {
+          await this.app.vault.adapter.write(normalized + BAK_SUFFIX, prevContent);
+        } catch { /* 备份失败不阻断主写入 */ }
+      }
+    }
 
     if (abstract instanceof TFile) {
       await this.app.vault.process(abstract, () => content);
@@ -787,6 +810,12 @@ export class VaultStorage {
     // 会在下一次自动保存时被写成「看起来正常的空组」，用户再也分不清是丢了还是本来就空）。
     if (!content || !content.trim()) {
       const normalized = normalizePath(path);
+      /* 【自愈】空文件几乎总是「上次写入被中断」（vault.process 非原子，见 vaultWrite 的写前备份）。
+         若 `.bak` 里有上一份非空且能解析的内容，直接写回主文件并恢复 —— 用户不必再手工
+         去「文件恢复」里翻，更不会因为「已暂停写入」而丢掉后续编辑。 */
+      const rv = await this.tryReviveFromBackup(normalized, label);
+      if (rv.ok) return rv.data;
+
       this._ioFailedPaths.add(normalized);
       if (!this._ioNoticed.has(normalized)) {
         this._ioNoticed.add(normalized);
@@ -808,6 +837,43 @@ export class VaultStorage {
       if (pauseOnCorrupt) this._ioFailedPaths.add(normalizePath(path));
       return null;
     }
+  }
+
+  /** 空文件自愈：从 `.bak` 恢复上一版并写回主文件。
+   *
+   *  返回 `{ ok: true, data }` 表示已恢复（data 为解析后的内容）；
+   *  `{ ok: false }` 表示无备份 / 备份也坏 / 写回失败 —— 调用方应继续走「暂停写入」的守卫。
+   *
+   *  设计取舍：
+   *   · 只有主文件为**空**时才尝试恢复。内容非空但解析失败走的是 quarantine 隔离，
+   *     那条路保留原文件、不能自作主张用备份顶替（可能丢的是更新的一版）。
+   *   · 写回失败绝不能谎报成功：否则内存里拿到恢复后的模型，下次保存又写不进去。
+   *   · 恢复后主动通知，让用户知道「这一档回退过」，并提示还有更早版本可查。 */
+  private async tryReviveFromBackup(
+    normalized: string,
+    label: string,
+  ): Promise<{ ok: boolean; data?: unknown }> {
+    const raw = await this.app.vault.adapter.read(normalized + BAK_SUFFIX).catch(() => null);
+    if (!raw || !raw.trim()) return { ok: false };
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      return { ok: false };          // 备份也坏了：不拿它覆盖主文件
+    }
+    try {
+      await this.app.vault.adapter.write(normalized, raw);
+    } catch {
+      return { ok: false };          // 写回失败：保持「暂停写入」状态，别让用户以为已恢复
+    }
+    this._ioFailedPaths.delete(normalized);
+    this._ioNoticed.delete(normalized);
+    const name = normalized.slice(normalized.lastIndexOf('/') + 1);
+    new Notice(
+      `⚠️ ${label}「${name}」上次保存被中断（文件为空），已自动从备份恢复上一版。` +
+        '\n请核对内容是否完整；若需更早版本，可在 Obsidian「设置 → 文件恢复」里查找。',
+    );
+    return { ok: true, data: parsed };
   }
 
   /** 备份文件名的本地时间戳：YYYYMMDD-HHmmss */

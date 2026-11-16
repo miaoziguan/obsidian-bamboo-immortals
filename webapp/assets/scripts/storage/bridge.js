@@ -235,6 +235,20 @@ export class BridgeStorage {
     });
   }
 
+  /** 单向通知宿主：不等回执、不占 pending 表。
+   *  宿主对这些 type 不会 respond，用 _send 会白等 10s 超时并抛 rejection。 */
+  _post(type, payload) {
+    try {
+      const target = this._host
+        || (typeof window !== 'undefined' && (window.parent || window.top || window));
+      if (!target || typeof target.postMessage !== 'function') return;
+      target.postMessage(
+        { type, id: 'ntf_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8), payload },
+        '*'
+      );
+    } catch (_) { /* 宿主不可达：卸载语义下无所谓 */ }
+  }
+
   /** 接收父窗口的响应 */
   _onMessage(event) {
     // 统一来源校验 + type 合法性（阶段3 · 契约化，替代裸 event.source 比较）
@@ -247,11 +261,17 @@ export class BridgeStorage {
     // 【防丢数据】宿主即将销毁本 iframe（关闭视图 / 插件重载）：
     // 立即把主存储防抖窗口内未落盘的改动写出（关闭视图不触发 pagehide，故由宿主显式通知）。
     if (data.type === 'app:beforeDetach') {
-      try {
-        if (typeof store !== 'undefined' && typeof store.flushPendingSave === 'function') {
-          store.flushPendingSave();
-        }
-      } catch (_) { /* 落盘失败不阻断卸载 */ }
+      /* 落盘是异步的：这里必须**等它真的写完**再回执，否则宿主收到回执就销毁 iframe，
+         保存请求还在路上——这正是「关闭视图丢最后一次编辑」的成因。
+         宿主侧 detach() 会 await 这条回执（DETACH_FLUSH_MAX_MS 兜底），
+         所以这里的 await 直接决定了「关视图是不是 100% 不丢」。 */
+      const self = this;
+      (async () => {
+        try {
+          if (typeof store !== 'undefined' && typeof store.flushPendingSave === 'function') {
+            await store.flushPendingSave();
+          }
+        } catch (_) { /* 落盘失败不阻断卸载 */ }
       // 画中卷·打字机有自己独立的持久化通道（便签/写作 350ms、子弹 400ms 防抖），
       // 且 scroll bundle 不加载 store.js —— 上面那段对它本就是空操作。
       // 而 TypewriterFeature.unmount() 生产代码里从未被调用（scrollManager 只 mount、
@@ -261,10 +281,14 @@ export class BridgeStorage {
       // 宿主 detach() 已留 400ms 回传窗口（DETACH_FLUSH_GRACE_MS）且写入在宿主侧完成，
       // 故在此同步触发即可；iframe 随后必被销毁（关闭）或替换（reloadWebapp），
       // 完整卸载语义正确，重开会走全新 mount。
-      try {
-        const Tw = (typeof window !== 'undefined' && window.TypewriterFeature) || null;
-        if (Tw && typeof Tw.unmount === 'function' && Tw._el) Tw.unmount();
-      } catch (_) { /* 落盘失败不阻断卸载 */ }
+        try {
+          const Tw = (typeof window !== 'undefined' && window.TypewriterFeature) || null;
+          if (Tw && typeof Tw.unmount === 'function' && Tw._el) await Tw.unmount();
+        } catch (_) { /* 落盘失败不阻断卸载 */ }
+        /* 回执：无论上面成败都要发 —— 否则宿主只能等满超时，关闭视图会明显变慢。
+           失败已经各自 catch 并有用户可见的提示（saveErrorSurface），这里不再重复报错。 */
+        self._post('app:beforeDetachDone', {});
+      })();
       return;
     }
 

@@ -74,6 +74,7 @@ export const MindmapFeature = {
   _noteLayer: null,        // 备注卡片挂载层（mount 时注入）
   _noteCards: null,        // 备注卡片：Map<id, {box, input}>，可同时展开多张
   _tbNoteBtn: null,        // 工具条「节点笔记」按钮缓存（_updateToolbar 每帧会跑，不再每帧 querySelector）
+  _tbUnlinkBtn: null,      // 工具条「断开局部连线」按钮缓存（只在多选 ≥2 时显示）
   _tbSize: null,           // 工具条尺寸缓存 {h, hw}：尺寸固定，只在首次/重建后量一次（避免每帧强制回流）
   _els: null,               // Map<id, el>
   _nodeGeo: new Map(),      // Map<id, {cx,cy,hw,hh,rot}> 节点几何缓存（离屏卸载后供连线按缓存绘制，剔除核心）
@@ -268,6 +269,8 @@ export const MindmapFeature = {
     const acts = [
       { act: 'dup',  icon: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>', title: '复制' },
       { act: 'del',  icon: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>', title: '删除子弹' },
+      // 取消局部连线：只删两端都在框选内的线，连向选区外的线保留（单选时隐藏，见 _updateToolbar）
+      { act: 'unlink', icon: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.07 0l2-2a5 5 0 0 0-7.07-7.07l-1 1"/><path d="M14 11a5 5 0 0 0-7.07 0l-2 2a5 5 0 0 0 7.07 7.07l1-1"/><path d="M4 4l16 16"/></svg>', title: '断开选中节点之间的连线（连向选区外的线保留）' },
       // 备注：子弹保持短关键词，细节写进备注（不显示在画布，导出时作为缩进引用）
       { act: 'note', icon: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16M4 10h16M4 15h10M4 20h7"/></svg>', title: '节点笔记（导出时作为缩进引用）' },
     ];
@@ -302,6 +305,9 @@ export const MindmapFeature = {
     // 缓存「节点笔记」按钮并作废尺寸缓存：_updateToolbar 在平移/缩放时每帧都跑，
     // 这两项避免每帧 querySelector 与 offsetWidth/offsetHeight（后者会强制回流）
     this._tbNoteBtn = tb.querySelector('button[data-act="note"]');
+    // 「断开局部连线」只在多选 ≥2 时有意义：初始隐藏，由 _updateToolbar 按选区显隐
+    this._tbUnlinkBtn = tb.querySelector('button[data-act="unlink"]');
+    if (this._tbUnlinkBtn) this._tbUnlinkBtn.hidden = true;
     this._tbSize = null;
 
     // 工具条上的交互不冒泡到画布（否则会触发平移 / 误触）
@@ -315,12 +321,13 @@ export const MindmapFeature = {
         if (e.detail > 0) swatch.blur();   // 鼠标点击后交还焦点：否则空格会再着色 + 焦点框挂住
         return;
       }
-      // 图标按钮点击（dup / del）
+      // 图标按钮点击（dup / del / unlink / note）
       const b = e.target.closest('button[data-act]');
       if (!b) return;
       const act = b.dataset.act;
       if (act === 'dup') this._duplicateSel();
       else if (act === 'del') this._deleteSel();
+      else if (act === 'unlink') this._unlinkSelected();
       else if (act === 'note') this._openNoteEditor();
       if (e.detail > 0) b.blur();           // 鼠标点击后交还焦点：否则空格会再次 dup / del 选中
     });
@@ -1858,6 +1865,22 @@ export const MindmapFeature = {
     });
   },
 
+  /** 取消**选区内部**的连线：只有两端都被选中才删，连向选区外节点的线一律保留。
+   *  导图连线是用户手工建立的关系，批量动作不能悄悄改动没选中的部分。
+   *  只删线、不删节点、不重排、不补线；一次操作 = 一步撤销。 */
+  _unlinkSelected() {
+    const ids = this.getSelectedIds();
+    if (ids.length < 2) { this._msg('至少选中 2 颗才能断开内部连线'); return 0; }
+    const next = MindmapDoc.unlinkWithin(this._links, ids);
+    const removed = (this._links || []).length - next.length;
+    if (!removed) { this._msg('选中节点之间没有连线'); return 0; }
+    this._mutate(() => { this._links = next; });
+    this._scheduleSave();
+    if (this._linkLayer && typeof this._linkLayer.render === 'function') this._linkLayer.render();
+    this._msg('已断开 ' + removed + ' 条内部连线（连向选区外的线保留）');
+    return removed;
+  },
+
   // 移动端对齐 Excalidraw：提供「抓手」按钮，开启后单指拖空白=平移画布（替代双指捏合）。
   // 复用桌面端已有的 CanvasGestures 空格/抓手机制（this._hand）：handTool 使 isPanIntent 为真，
   // 于是 onDown 走 startPan 而非 onEmptyPointerDown —— 单指拖空白=平移、且不再误触发框选/节点拖拽；
@@ -1885,6 +1908,16 @@ export const MindmapFeature = {
       noteBtn.hidden = !single;
       const n = single ? this._nodeById(this._selId) : null;
       noteBtn.classList.toggle('is-active', !!(n && n.note && String(n.note).trim()));
+    }
+    // 「断开局部连线」只在 ≥2 颗被选中时出现：单选删线用连线上的 × 控件即可。
+    // 显隐会改变工具条宽度，只在切换时作废 _tbSize（让定位重新量一次），不是每帧都量。
+    const unlinkBtn = this._tbUnlinkBtn;
+    if (unlinkBtn) {
+      const wantHidden = this.getSelectedIds().length < 2;
+      if (unlinkBtn.hidden !== wantHidden) {
+        unlinkBtn.hidden = wantHidden;
+        this._tbSize = null;
+      }
     }
     const lr = this._el.getBoundingClientRect();
     let ax = 0, ayTop = 0, ayBottom = 0;
@@ -2335,6 +2368,7 @@ export const MindmapFeature = {
     this._empty = null;
     this._toolbar = null;
     this._tbNoteBtn = null;
+    this._tbUnlinkBtn = null;
     this._tbSize = null;
     if (this._cullRaf) { cancelAnimationFrame(this._cullRaf); this._cullRaf = 0; }
     this._els = new Map();

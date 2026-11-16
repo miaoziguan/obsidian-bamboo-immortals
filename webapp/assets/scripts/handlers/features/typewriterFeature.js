@@ -204,16 +204,20 @@ export const TypewriterFeature = {
   },
 
   /** 退出：清理 DOM 监听，释放引用 */
+  /** 卸载并返回「落盘完成」的 Promise。
+   *  宿主 detach() 会 await 它再销毁 iframe —— 早先这里是 fire-and-forget，
+   *  iframe 先被移除、保存请求还躺在队列里，关闭视图必丢最后一次编辑。 */
   unmount() {
     // —— 先收尾副作用（断 observer / 移除监听 / teardown）——
     if (this._msgTimer) { try { clearTimeout(this._msgTimer); } catch (_) { /* 忽略 */ } this._msgTimer = null; }
-    // 【P0】退出前无条件落盘一次（fire-and-forget：宿主仍在，bridge 可用）。
+    // 【P0】退出前无条件落盘一次；Promise 返回给宿主，等它写完再销毁 iframe。
     // 原先只在 _saveTimer 存在时才写，若用户恰好在打字动画途中关闭/切走视图，
     // 这张便签可能从未排过保存 → 静默丢失。此处统一兜底（打字卡已先回填模型）。
     if (this._saveTimer) { clearTimeout(this._saveTimer); this._saveTimer = null; }
     this._unbindFlushGuards();   // 解绑落盘兜底监听（避免重复绑定/泄漏）
     this._unbindFileDropGuards();   // 解绑拖入图片监听（画布委托 + 整页兜底）
-    this._saveNow();
+    // 必须在下面的 DOM 清理之前发起：_saveNow 依赖 _collectNotes（读画布与状态）
+    const flushing = Promise.resolve(this._saveNow()).catch(() => { /* 失败已有用户可见提示 */ });
     TypewriterStore.invalidateWritingIndex();   // 卸载后 settings 可能被外部改写，丢弃索引缓存
     if (this._el && this._el.parentNode) this._el.parentNode.removeChild(this._el);
     this._hideLevelMenu();                  // 先摘掉文档级监听，再移除浮层 DOM
@@ -258,6 +262,7 @@ export const TypewriterFeature = {
     this._settleMountWaiters(false);
     // —— 纯字段归零统一走 _resetState()，不再逐字段散列（见 _resetState 注释）——
     this._resetState();
+    return flushing;
   },
 
   _ensureDom(stageEl) {

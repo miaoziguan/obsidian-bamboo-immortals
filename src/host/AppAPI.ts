@@ -128,6 +128,10 @@ const MATERIAL_DIR = '竹林便签素材';
  */
 const DETACH_FLUSH_GRACE_MS = 400;
 
+/** detach 等待 webapp 回执的上限。正常路径几十毫秒（一次保存 IPC + 一次写盘）；
+ *  超时只是兜底 —— 绝不能让「关视图」被一个无回应的 webapp 卡住。 */
+const DETACH_FLUSH_MAX_MS = 1500;
+
 /**
  * 模块元数据。
  *
@@ -296,6 +300,8 @@ export class AppAPI {
   getPendingLayoutMode?: () => string | null;
   /** 视图已 detach 后置 true，扫描等异步任务据此提前终止（#L14） */
   private disposed = false;
+  /** detach 等待 webapp 落盘回执的收尾钩子；收到 `app:beforeDetachDone` 或超时时调用 */
+  private _detachResolve: (() => void) | null = null;
   /** Obsidian App 引用（打开文件等宿主操作需要） */
   private app: App;
   /** 宿主能力门面：handlers/ 下各领域处理器经它访问宿主（见 ./handlers/hostContext.ts）。
@@ -660,15 +666,49 @@ export class AppAPI {
     this.themeBridge.pushTheme(this.settings.followObsidianTheme, undefined, this.themeBridge.currentPalette ?? undefined);
   }
 
-  /** 解绑并停止监听 */
-  detach(): void {
+  /** 解绑并停止监听。
+   *
+   *  【为什么返回 Promise】历史上这里是「发一条 postMessage 就撒手」，而调用方
+   *  （`DailyReviewView.onClose`）紧接着就 `iframe.remove()` —— 消息还躺在队列里，
+   *  iframe 已经被销毁，落盘代码一次都没跑过。表现为「关闭视图丢最后一次编辑」，
+   *  极端情况下更糟：写入停在 `vault.process` 的「已截断、未写完」之间，文件留在
+   *  0 字节（真实事故 `typewriter-writing/doc-mwg8w48jw1yu.json` 整个文档归零）。
+   *
+   *  现在改为「请求 → webapp 落盘完成 → 回执 → 才算 detach 完」，调用方 await 它
+   *  再销毁 iframe。webapp 未挂载 / 无回执时由 DETACH_FLUSH_MAX_MS 兜底，不会卡死。
+   */
+  detach(): Promise<void> {
     this.disposed = true;
-    // 【防丢数据】先通知 webapp 立即落盘，再延后解绑：
-    // 关闭视图（iframe 被移除）不会触发 pagehide，若不通知，防抖窗口内（默认 2s）
-    // 的最后一次改动会随 iframe 销毁而永久丢失。写入在宿主侧完成，即便 iframe 随后
-    // 被销毁也已安全落盘，所以只需给它一个「回传窗口」。
-    this._requestFlushBeforeDetach();
+    const iframe = this.iframe;
+    const cw = iframe?.contentWindow;
 
+    // iframe 不存在（从未挂载 / 已被销毁）：无事可等，直接清理
+    if (!iframe || !cw) {
+      this._finishDetach();
+      return Promise.resolve();
+    }
+
+    return new Promise<void>((resolve) => {
+      let timer: number | undefined;
+      let settled = false;
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        if (timer !== undefined) window.clearTimeout(timer);
+        this._detachResolve = null;
+        this._finishDetach();
+        resolve();
+      };
+
+      this._detachResolve = finish;
+      timer = window.setTimeout(finish, DETACH_FLUSH_MAX_MS);
+      // 超时是兜底而非正常路径：正常情况回执在几十毫秒内到达（一次保存 IPC + 一次写盘）。
+      this._requestFlushBeforeDetach();
+    });
+  }
+
+  /** detach 的收尾动作（等回执超时后同样走这里）：摘监听、清 iframe 引用 */
+  private _finishDetach(): void {
     const handler = this.messageHandler;
     this.messageHandler = null;
     const iframe = this.iframe;
@@ -686,7 +726,7 @@ export class AppAPI {
     }, DETACH_FLUSH_GRACE_MS);
   }
 
-  /** 请求 webapp 立即把防抖窗口内未落盘的改动写出（关闭视图 / 插件重载前调用） */
+  /** 请求 webapp 立即把防抖窗口内未落盘的改动写出，落盘完成后回 `app:beforeDetachDone` */
   private _requestFlushBeforeDetach(): void {
     try {
       const cw = this.iframe?.contentWindow;
@@ -804,7 +844,14 @@ export class AppAPI {
     const type = msg.type;
     if (!INBOUND_PREFIXES.some((p) => type.startsWith(p))) return;
 
-
+    /* 【卸载回执】webapp 收到 app:beforeDetach 后已把防抖窗口内的改动真正写出，
+       这里放行 detach() 的 Promise —— 调用方据此才销毁 iframe。
+       必须在 handleMessage 之前拦下：它不是 RPC（不需要 respond），
+       走路由表会因「未知类型」被当成错误回包。 */
+    if (type === 'app:beforeDetachDone') {
+      if (this._detachResolve) this._detachResolve();
+      return;
+    }
 
     try {
       await this.handleMessage(msg.type, msg.id, msg.payload ?? {});

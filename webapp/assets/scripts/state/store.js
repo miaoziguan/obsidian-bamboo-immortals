@@ -981,12 +981,13 @@ export class Store {
      * 无待落盘改动（!isDirty）时不做任何写盘 —— 既省一次无谓 IO，也避免拿空数据覆盖盘上内容。
      */
     flushPendingSave() {
-        if (!this.state.isDirty) return;
+        // 返回 Promise：宿主 detach() 要等它真的写完才销毁 iframe（否则等于没 flush）
+        if (!this.state.isDirty) return Promise.resolve();
         if (this.state.autoSaveTimer) {
             clearTimeout(this.state.autoSaveTimer);
             this.state.autoSaveTimer = null;
         }
-        Promise.resolve(
+        return Promise.resolve(
             this.storageType === 'indexeddb' ? this.saveToStorage() : this.saveToStorageLegacy()
         ).catch(() => { /* 落盘失败不阻断卸载 */ });
     }

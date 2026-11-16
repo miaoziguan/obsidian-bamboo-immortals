@@ -118,6 +118,15 @@ export const MindmapDoc = {
     return links.filter((l) => !((l.from === from && l.to === to) || (l.from === to && l.to === from)));
   },
 
+  /** 取消**选区内部**的连线：只有两端都在 ids 里才删。
+   *  导图连线是用户手工建立的关系，跨选区边界的线连接着未被选中的节点，
+   *  一律保留 —— 批量动作绝不能悄悄改动用户没选的部分。
+   *  连线无方向（addLink 也按无向去重），故不区分 from/to。返回新数组，不改输入。 */
+  unlinkWithin(links, ids) {
+    const set = ids instanceof Set ? ids : new Set(Array.isArray(ids) ? ids : []);
+    return (Array.isArray(links) ? links : []).filter((l) => !(set.has(l.from) && set.has(l.to)));
+  },
+
 
   /**
    * 给新子弹找一个不压住已有子弹的落点：以 anchor 为中心向外螺旋试探。

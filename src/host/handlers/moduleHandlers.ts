@@ -44,8 +44,6 @@ export type ModuleHost = Pick<HostContext,
     | 'renderMarkdownToHtml'
     | 'htmlToMarkdown'
     | 'openReader'
-    // 编辑区顶光
-    | 'setEditorAmbient'
     >;
 
 /** 模块市场：拉取清单（附带已安装版本表，供 webapp 判定「可更新」） */
@@ -342,12 +340,6 @@ const handleModuleOpenReader: RouteHandler<ModuleHost> = async (ctx, id, payload
     ctx.respond(id, { ok: true });
 };
 
-/** 模块能力：应用编辑区顶光参数；宿主归一化后回传实际生效值 */
-const handleModuleSetAmbient: RouteHandler<ModuleHost> = async (ctx, id, payload) => {
-    const cfg = ctx.setEditorAmbient((payload as { config?: unknown } | null)?.config);
-    ctx.respond(id, { ok: true, config: cfg });
-};
-
 export const moduleRoutes: Record<string, RouteHandler<ModuleHost>> = {
     'module:market:manifest': handleModuleMarketManifest,
     'module:install': handleModuleInstall,
@@ -364,5 +356,4 @@ export const moduleRoutes: Record<string, RouteHandler<ModuleHost>> = {
     'module:writeFile': handleModuleWriteFile,
     'module:resolveResource': handleModuleResolveResource,
     'module:openReader': handleModuleOpenReader,
-    'module:setAmbient': handleModuleSetAmbient,
 };

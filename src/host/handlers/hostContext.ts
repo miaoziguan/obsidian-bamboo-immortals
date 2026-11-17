@@ -12,7 +12,6 @@
  * 约束：门面只做「转发」，不含业务逻辑；业务留在各 handler 模块里。
  */
 import type { NoiseItem } from '../../settings/PluginSettings';
-import type { AmbientConfig } from '../../bridge/AmbientBridge';
 import type { StrategyOverview } from '../../ai/strategyOverview';
 import type { CultivationRealm } from '../../cultivation';
 
@@ -75,10 +74,6 @@ export interface HostContext {
     applyPaletteToObsidian(hue: number, lightnessOffset: number, isDark: boolean, saturation: number): void;
     /** 广播主题（含可选调色）给所有已打开视图 */
     broadcastTheme(isDark: boolean, palette?: { hue: number; lightnessOffset: number; saturation: number }): void;
-
-    // ---- 编辑区顶光（市场模块配置，宿主渲染）----
-    /** 归一化并应用顶光参数，返回实际生效配置 */
-    setEditorAmbient(config: unknown): AmbientConfig;
 
     // ---- 画中卷文本文件协议（list/get/write/delete，含路径遍历防护）----
     handleFileOp(id: string, type: string, payload: unknown): Promise<void>;

@@ -3,7 +3,6 @@ import { normalizeDirInput, migrateDataDir, bindFolderMigration } from './folder
 import { EXPORT_FOLDER_DEFAULTS } from './settingsDefaults';
 import type BambooReviewPlugin from '../../main';
 import { ThemeBridge } from '../bridge/ThemeBridge';
-import { DEFAULT_AMBIENT, type AmbientConfig } from '../bridge/AmbientBridge';
 import { arrayBufferToBase64 } from '../utils/base64';
 import { encodeBackup, decodeBackup } from '../license/backupCode';
 
@@ -88,8 +87,6 @@ export interface BambooReviewSettings {
   syncPaletteToObsidian: boolean;
   /** 是否让插件配色跟随 Obsidian 主题（读取 --interactive-accent 反推色相） */
   followObsidianTheme: boolean;
-  /** 市场模块「编辑区顶光」的参数镜像；配置真源在模块，宿主据此在启动时恢复光效 */
-  editorAmbient?: AmbientConfig;
   /** 是否启用 AI 自然语言规划（笔记 → 目标卡片） */
   aiEnabled: boolean;
   /** AI 服务 API Key（Bearer 鉴权） */
@@ -171,7 +168,6 @@ export const DEFAULT_SETTINGS: BambooReviewSettings = {
   moduleData: {},
   syncPaletteToObsidian: false,
   followObsidianTheme: true,
-  editorAmbient: { ...DEFAULT_AMBIENT },
   aiEnabled: false,
   aiApiKey: '',
   aiBaseUrl: 'https://api.deepseek.com/v1',

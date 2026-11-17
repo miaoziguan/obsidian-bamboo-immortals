@@ -143,7 +143,6 @@ export const APP_MESSAGE_TYPES = [
   'module:writeFile',
   'module:openReader',
   'module:toggleTheme',
-  'module:setAmbient',
   // 悬浮菜单点模块按钮 → 宿主打开该模块视图
   'app:openModule',
   // ---- 竹林模块系统（host → webapp）----

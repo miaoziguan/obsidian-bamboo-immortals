@@ -1718,16 +1718,3 @@ html body .workspace-leaf-content[data-type="bamboo-immortals"] .view-header-tit
 .bamboo-reader-view.bm-hide-toc .bm-layout{grid-template-columns:1fr 0fr;}
 .theme-dark .bamboo-reader-view{--bm-bamboo-deep:hsl(var(--bm-hue,120),32%,calc(58% + var(--bm-lightness-offset,0%)));--bm-bamboo:hsl(var(--bm-hue,120),30%,calc(66% + var(--bm-lightness-offset,0%)));--bm-bamboo-light:hsl(var(--bm-hue,120),28%,calc(74% + var(--bm-lightness-offset,0%)));--bm-bamboo-pale:hsl(var(--bm-hue,120),38%,calc(78% + var(--bm-lightness-offset,0%)));}
 .theme-dark .bamboo-reader-view .bm-reader-body blockquote{background:color-mix(in srgb,var(--bm-bamboo-pale) 8%,transparent);}
-/* 编辑区顶光：参数由市场模块 ambient 经 module:setAmbient 写入 body 变量 */
-/* 光层挂在视图容器而非 .cm-editor：不依赖键盘焦点，也不受 CodeMirror 内部层叠遮挡 */
-body.bamboo-ambient-on .workspace-leaf-content[data-type="markdown"] .markdown-source-view.mod-cm6,
-body.bamboo-ambient-on.bamboo-ambient-always .workspace-leaf-content[data-type="markdown"] .markdown-reading-view{position:relative;}
-body.bamboo-ambient-on .workspace-leaf-content[data-type="markdown"] .markdown-source-view.mod-cm6::before,
-body.bamboo-ambient-on.bamboo-ambient-always .workspace-leaf-content[data-type="markdown"] .markdown-reading-view::before{content:"";position:absolute;z-index:20;left:0;right:0;top:0;height:var(--bamboo-ambient-height,148px);pointer-events:none;opacity:1;background:radial-gradient(115% 100% at 50% -28%,var(--bamboo-ambient-dark-glow,var(--bamboo-ambient-glow,transparent)) 0%,var(--bamboo-ambient-dark-tail,var(--bamboo-ambient-tail,transparent)) 58%,transparent 100%);}
-body.theme-dark.bamboo-ambient-on .workspace-leaf-content[data-type="markdown"] .markdown-source-view.mod-cm6::before,
-body.theme-dark.bamboo-ambient-on.bamboo-ambient-always .workspace-leaf-content[data-type="markdown"] .markdown-reading-view::before{mix-blend-mode:screen;}
-@keyframes bamboo-ambient-breathe{0%,100%{opacity:.55}50%{opacity:1}}
-@media (prefers-reduced-motion: no-preference){
-  body.bamboo-ambient-on.bamboo-ambient-breathe .workspace-leaf-content[data-type="markdown"] .markdown-source-view.mod-cm6::before,
-  body.bamboo-ambient-on.bamboo-ambient-breathe.bamboo-ambient-always .workspace-leaf-content[data-type="markdown"] .markdown-reading-view::before{animation:bamboo-ambient-breathe var(--bamboo-ambient-period,6s) ease-in-out infinite;}
-}

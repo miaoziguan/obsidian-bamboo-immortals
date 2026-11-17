@@ -164,7 +164,6 @@ export const ALL_MESSAGE_TYPES = [
   'module:openReader',      // 在宿主自建中央阅读视图打开文章
   'module:resolveResource', // 把 vault 内文件路径解析成 webview 可加载的资源 URL（头像/封面等）
   'module:toggleTheme',     // 模块切换 Obsidian 基础明暗（博客模块「快门」改作明暗开关用）
-  'module:setAmbient',      // 模块把编辑区顶光参数交给宿主渲染（顶光模块用）
   // ---- 竹林模块系统（host → webapp）----
   'module:context',         // 宿主注入当前 leaf 承载的 moduleId
   // ---- 便签素材市场（webapp → host）----

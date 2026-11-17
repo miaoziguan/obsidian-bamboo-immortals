@@ -1287,18 +1287,6 @@ export class BridgeStorage {
     }
   }
 
-  /** 模块能力：把编辑区顶光参数交给宿主渲染（顶光模块的配置面板每次变更即调用） */
-  async moduleSetAmbient(config) {
-    await this.ensureReady();
-    try {
-      const resp = await this._send('module:setAmbient', { config });
-      return !!(resp && resp.ok);
-    } catch (e) {
-      console.warn('[Bridge] 模块设置顶光失败:', e && e.message);
-      return false;
-    }
-  }
-
   /** 请求宿主打开某模块视图（悬浮菜单模块按钮） */
   async openModule(moduleId, location) {
     await this.ensureReady();

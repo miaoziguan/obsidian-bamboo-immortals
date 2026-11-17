@@ -94,7 +94,9 @@ jobs:
       - name: Package webapp
         run: |
           cd webapp
-          zip -r ../webapp.zip . -x "*.DS_Store"
+          # 剔除运行时用不到的文件：jest 测试与打包中间产物 *-src.html。
+          # 二者合计约 17% 下载量、48% 条目数，且移动端解压时要多写 330 次盘。
+          zip -r ../webapp.zip . -x "*.DS_Store" "assets/scripts/tests/*" "*-src.html"
           cd ..
 
       - name: Generate artifact attestation

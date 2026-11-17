@@ -1,5 +1,18 @@
 # Changelog
 
+## [3.35.1] — 2026-11-18
+
+> 修复顶光在侧栏调参时不显现：显示条件不再依赖编辑区键盘焦点。
+
+### Fixed
+- 3.35.0 把光层写在 `.cm-editor::before`，并用 `.cm-editor:focus-within` 控制显隐。
+  用户在侧栏模块面板调参时键盘焦点在模块 iframe 内，编辑区失去焦点即 `opacity:0`，
+  红框区域看起来「不受影响」；参数实际已下发宿主并写入 `editorAmbient`。
+- 光层改挂在 `.markdown-source-view.mod-cm6::before`（「常驻」时并列 `.markdown-reading-view`），
+  只按视图类型判定，不再看焦点；同时把 z-index 提到 20，避开 CodeMirror 内部层叠遮挡。
+- 「仅编辑时」现表示只在 md 编辑视图显示，「常驻」表示编辑与阅读视图都显示。
+
+
 ## [3.35.0] — 2026-11-18
 
 > 新增模块能力 `module:setAmbient`：市场模块「编辑区顶光」可在 md 编辑区内容顶部叠加可调氛围光。

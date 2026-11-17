@@ -3,6 +3,7 @@ import { arrayBufferToBase64, base64ToArrayBuffer } from '../utils/base64';
 import { assertSafeAssetId } from '../utils/assetId';
 import { VaultStorage } from '../storage/VaultStorage';
 import { ThemeBridge } from '../bridge/ThemeBridge';
+import { applyAmbient } from '../bridge/AmbientBridge';
 import type { BambooReviewSettings } from '../settings/PluginSettings';
 import { ALLOWED_AUDIO_EXTENSIONS, MIME_TYPES } from '../constants/audio';
 import type { DayData, CustomTemplate } from '../types/data';
@@ -381,6 +382,12 @@ export class AppAPI {
       broadcastTheme: (isDark, palette) => {
         if (palette) ThemeBridge.broadcastTheme(isDark, palette);
         else ThemeBridge.broadcastTheme(isDark);
+      },
+      setEditorAmbient: (config) => {
+        const applied = applyAmbient(config);
+        self.settings.editorAmbient = applied;
+        void self.saveSettings();
+        return applied;
       },
       handleFileOp: (id, type, p) => self.handleFileOp(id, type, p),
       fetchMarketJson: (which, refresh) => self._fetchMarketJson(

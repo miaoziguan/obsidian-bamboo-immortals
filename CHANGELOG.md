@@ -1,5 +1,18 @@
 # Changelog
 
+## [3.35.0] — 2026-11-18
+
+> 新增模块能力 `module:setAmbient`：市场模块「编辑区顶光」可在 md 编辑区内容顶部叠加可调氛围光。
+
+### Added
+- **编辑区顶光桥接**：协议两端登记 `module:setAmbient`，模块经 `api.setAmbient(config)` 下发参数；
+  宿主归一化为合法配置后写入 Obsidian 主文档的 body 类与独立 CSS 变量，
+  由 `styles.css` 在 `.markdown-source-view.mod-cm6 .cm-editor` 顶部绘制光带。
+  支持开关、光色（含暗色独立参数）、亮度 0-100、光带高度 40-320px、仅编辑时/常驻、呼吸周期。
+  光带 `pointer-events:none` 不挡输入；系统要求减少动态效果时不播放呼吸。
+- 顶光参数镜像到设置 `editorAmbient` 并落盘，插件启动时自动恢复上次光效；卸载时清除 body 类与行内变量。
+
+
 ## [3.34.4] — 2026-11-18
 
 > 发布包瘦身：`webapp.zip` 剔除测试与打包中间产物，下载量与移动端落盘次数同步下降。

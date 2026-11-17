@@ -3,6 +3,7 @@ import { DailyReviewView, VIEW_TYPE_DAILY_REVIEW } from './src/views/DailyReview
 import { AppHost } from './src/host/AppHost';
 import { WebappController } from './src/host/WebappController';
 import { ThemeBridge } from './src/bridge/ThemeBridge';
+import { applyAmbient, clearAmbient } from './src/bridge/AmbientBridge';
 import { LicenseStore } from './src/license/licenseStore';
 import { setHostAppVersion } from './src/host/AppAPI';
 import {
@@ -99,6 +100,8 @@ export default class BambooReviewPlugin extends Plugin {
   async onload(): Promise<void> {
     // 加载设置
     await this.loadSettings();
+    // 顶光由市场模块配置，宿主在启动时按镜像恢复；模块未安装时默认关闭。
+    applyAmbient(this.settings.editorAmbient);
 
     // ───── 激活门控（License Gate）─────
     // 设计：插件始终正常注册（视图/命令/Ribbon 全在），门控落在 webapp 内部。
@@ -387,6 +390,7 @@ export default class BambooReviewPlugin extends Plugin {
     // 它们不在 restoreAllDefaults 范围内（不受同步开关约束、随滑块始终生效），
     // 卸载时需单独抹掉，否则会在 Obsidian body 上留残留行内变量。
     ThemeBridge.clearReaderPalette();
+    clearAmbient();
   }
 
   /**

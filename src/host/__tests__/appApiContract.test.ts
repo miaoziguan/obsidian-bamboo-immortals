@@ -136,6 +136,7 @@ const CONTRACT: string[] = [
     'module:htmlToMarkdown',
     'module:resolveResource',
     'module:saveData',
+    'module:setAmbient',
     'module:toggleTheme',
     'module:uninstall',
     'module:writeFile',

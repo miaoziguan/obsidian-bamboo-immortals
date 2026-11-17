@@ -1081,7 +1081,7 @@ class PurchaseModal extends Modal {
 
     // 价格
     const priceBox = contentEl.createDiv({ cls: 'bamboo-purchase-price' });
-    priceBox.createSpan({ text: '限时早鸟价 ¥59', cls: 'bamboo-purchase-early' });
+    priceBox.createSpan({ text: '限时早鸟价 ¥69', cls: 'bamboo-purchase-early' });
     priceBox.createSpan({ text: ' / 正式价 ¥9999', cls: 'bamboo-purchase-regular' });
     contentEl.createEl('p', {
       text: '一次性买断，无订阅、无有效期。付款后获得专属激活码，离线激活、永久可用。',

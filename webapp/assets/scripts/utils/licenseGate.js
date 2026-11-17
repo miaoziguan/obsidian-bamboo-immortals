@@ -56,7 +56,7 @@ export function mountLicenseGate(opts) {
       <div class="blg-pricing">
         <div class="blg-price-main">
           <span class="blg-price-label">限时早鸟价</span>
-          <span class="blg-price-value">¥59</span>
+          <span class="blg-price-value">¥69</span>
         </div>
         <div class="blg-price-divider"></div>
         <div class="blg-price-secondary">

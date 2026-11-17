@@ -1,5 +1,15 @@
 # Changelog
 
+## [3.34.3] — 2026-11-18
+
+> 早鸟价由 ¥59 上调至 ¥69，三处展示位与 README 一并同步。
+
+### Changed
+- **早鸟价 ¥59 → ¥69**：`src/settings/PluginSettings.ts` 设置页价签、`webapp/assets/scripts/utils/licenseGate.js` 未激活全屏遮罩价签、`webapp/module.html` 静态页价签（转义写法 `\xA5` + 数字）三处统一上调。
+  `README.md` 的中文价、英文价与涨价记录表同步追加 `2026-11-18　¥69　早鸟价由 ¥59 上调至 ¥69`。
+  正式价 ¥9999 为锚点价，保持不变。
+
+
 ## [3.34.2] — 2026-11-17
 
 > 补登记 FAB 入口图标 gourd，让「将进酒 / 杯莫停」模块不再退回空心圆。

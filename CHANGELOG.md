@@ -1,5 +1,19 @@
 # Changelog
 
+## [3.34.2] — 2026-11-17
+
+> 补登记 FAB 入口图标 gourd，让「将进酒 / 杯莫停」模块不再退回空心圆。
+
+### Added
+- **FAB 图标 `gourd`（酒葫芦）**：`LucideUtils.ICONS` 原无 `wine`/`gourd`，模块头里的 `fab.icon`
+  名不在表内时 `createIcon` 静默回退 `circle`，入口长期只是空心圆。现登记葫芦轮廓（24 网格、18 尺寸、
+  1.5 描边），与器身同一物件，供模块市场 `wine@0.3.7` 使用。
+
+### Tests
+- 新增 `webapp/assets/scripts/tests/lucideIcon.jest.test.js`：gourd 命中真实图标、wine 已移除、
+  全表求值无 `undefined/NaN`、未知名仍回退 circle。
+
+
 ## [3.34.1] — 2026-11-17
 
 > 修 Obsidian 审核退回的两项：3 处「Promise 未处理」Warning + 构建校验失败。

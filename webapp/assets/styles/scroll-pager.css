@@ -12,6 +12,10 @@
   /* 无论侧栏多宽，左右都保留安全间距（避免设备/纸条贴边）
      随侧栏宽度自适应：窄侧栏保底 24px，宽侧栏上限 56px */
   padding-inline: clamp(var(--space-24), 7%, 56px);
+  /* 漫反射 + 抬升只留给导图单选/编辑态；两档多选已统一走细轮廓，不再用弱阴影。 */
+  --bm-tw-sel-halo: 0 20px 44px -26px rgba(var(--primary-rgb), 0.55);
+  --bm-tw-sel-lift: 0 12px 28px -18px rgba(var(--black-rgb), 0.45);
+  --bm-tw-sel-edit: inset 0 -1px 0 rgba(var(--primary-rgb), 0.30);
   /* 字体栈：纯系统字体，彻底不依赖 Google Fonts（离线 / 中国大陆均一致可用）。
      页面以 data: URL 加载进 iframe，本地字体在任何环境都能稳定呈现，
      不引入任何网络字体，避免不可达时的风格塌陷；
@@ -57,12 +61,28 @@
 
 /* ===== 多选 / 框选 ===== */
 
-/* 多选高亮 */
-.tw-card.selected {
-  outline: 2px solid #c9a24a;
-  outline-offset: 2px;
-  box-shadow: 0 0 0 4px rgba(201,162,74,0.18);
+/* 写作档单选不再叠加漫反射/浮起/描边：选中只表现为工具条与连线锚点出现。
+   这里只保留层级提升，防止被相邻卡片遮住；落笔生光是独立的环境效果，不是选中高亮。 */
+.tw-canvas.tw-mode-write .tw-card.selected {
   z-index: 50;
+}
+/* 多选只加一圈 Figma 式细轮廓：纯 CSS、无几何、无底色、无阴影。
+   描边必须挂在 .tw-card-main 上 —— 圆角、边框、表面都在这一层；
+   画在 .tw-card 容器上会变成方角轮廓，和卡片的圆角结构错位。
+   单选不描边 —— 单选靠控件，多选靠细线，批量靠浮动条。
+   .is-multi-active 是结构标记（paper 模式也保留，用来隐藏卡内工具条）；
+   这里只把「轮廓」这层视觉让给落笔生光的辉光。
+   【观感打磨】① offset 0 + 原边框透明：卡片自带 1px 边框，offset 2px 会形成两道同心线；
+   现在让轮廓贴着边框外缘取代它，只留一道线。② 线宽用反缩放变量，缩小到 25% 仍是屏幕 1px。
+   ③ 暗色轮廓色由 variables.css 的 --bm-tw-sel-contour-* 统一给（浅竹色 + 高不透明度），与导图共用。 */
+.scroll-typewriter-feature:not(.tw-light-paper-on) .tw-canvas.tw-mode-write .tw-card.selected.is-multi-active:not(.editing) .tw-card-main {
+  outline: var(--tw-sel-hairline, 1px) solid rgba(var(--bm-tw-sel-contour-rgb, var(--primary-rgb)), var(--bm-tw-sel-contour-alpha, 0.72));
+  outline-offset: 0;
+  border-color: transparent;
+}
+/* 主卡（合并锚）：同一条细轮廓加深到不透明，不用角标/底色等第二套语言。 */
+.scroll-typewriter-feature:not(.tw-light-paper-on) .tw-canvas.tw-mode-write .tw-card.selected.is-multi-active.is-sel-anchor:not(.editing) .tw-card-main {
+  outline-color: rgb(var(--bm-tw-sel-contour-rgb, var(--primary-rgb)));
 }
 
 /* 框选矩形 */
@@ -287,7 +307,7 @@
   background: linear-gradient(135deg, rgba(var(--white-rgb), 0.55), rgba(var(--pale-rgb), 0.72));
   -webkit-backdrop-filter: blur(6px) saturate(1.0) brightness(1.05);
   backdrop-filter: blur(6px) saturate(1.0) brightness(1.05);
-  /* 凹陷式：亮色下用深绿边 + 内凹阴影，强化“挖进机身”的体感 */
+  /* 凹陷式：亮色下用深绿边 + 内凹阴影，强化"挖进机身"的体感 */
   border: 1px solid rgba(var(--bamboo-deep-rgb), 0.28);
   border-bottom: 1px solid rgba(var(--white-rgb), 0.5);
   box-shadow:
@@ -1132,7 +1152,7 @@ body.dark .tw-print, :host(.dark) .tw-print {
     radial-gradient(ellipse 60% 65% at 35% 50%, rgba(var(--primary-rgb), 0.07), transparent 72%),
     radial-gradient(ellipse 45% 55% at 70% 50%, rgba(var(--pale-rgb), 0.04), transparent 70%),
     radial-gradient(ellipse at center, rgba(var(--deep-rgb), 0.04), transparent 75%);
-  filter: blur(10px);
+  filter: blur(8px);
   border-radius: 50%;
   z-index: -1;
 }
@@ -1366,3 +1386,1001 @@ body.dark .tw-print, :host(.dark) .tw-print {
 
 
 /* 移植自 base.css：画中卷暗色模式 canvas 提示文字配色（typewriter 域，原 base.css:2531） */
+
+
+/* ===== 画布光效：顶光 / 底光（便签 / 写作 / 思维子弹共用） ===== */
+.tw-light {
+  position: absolute;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+  /* 低于机身(.tw-beeper z:30)：底光只在机身周围与背景上铺开，不再盖住打字机本身 */
+  z-index: 25;
+  opacity: 0;
+  transition: opacity var(--duration-normal) ease;
+  mix-blend-mode: screen;
+}
+.tw-light-top {
+  top: 0;
+  height: var(--tw-light-top-h2, 190px);
+  background: radial-gradient(120% 100% at 50% 0%,
+    rgba(var(--tw-light-top-rgb, 224,163,92), var(--tw-light-top-a, 0)) 0%,
+    transparent var(--tw-light-top-soft, 72%));
+}
+.tw-light-bottom {
+  bottom: 0;
+  height: var(--tw-light-bottom-h2, 170px);
+  background: radial-gradient(120% 100% at 50% 100%,
+    rgba(var(--tw-light-bottom-rgb, 224,163,92), var(--tw-light-bottom-a, 0)) 0%,
+    transparent var(--tw-light-bottom-soft, 72%));
+}
+.scroll-typewriter-feature.tw-light-top-on .tw-light-top,
+.scroll-typewriter-feature.tw-light-bottom-on .tw-light-bottom { opacity: 1; }
+:host(:not(.dark)) .tw-light,
+body:not(.dark) .tw-light { mix-blend-mode: normal; }
+
+/* 光效参数浮层：挂在功能根上，位于缩放条下方居中 */
+.tw-light-panel {
+  position: absolute;
+  top: 56px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 60;
+  width: min(328px, calc(100% - 32px));
+  max-height: min(72vh, 560px);
+  overflow-y: auto;
+  /* 面板可滚但不显示滚动条：滚轮/触控仍可用，视觉上不切一条深色槽 */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  padding: var(--space-16);
+  border-radius: var(--radius-lg);
+  background: var(--card-bg);
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-card);
+  backdrop-filter: blur(12px);
+  color: var(--text-normal);
+  font-size: var(--font-size-xs);
+}
+.tw-light-system-title {
+  margin: 0 0 var(--space-8);
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.12em;
+  text-align: center;
+}
+.scroll-typewriter-feature.tw-light-lamp-on .tw-light-panel {
+  top: 104px;
+  max-height: min(72vh, calc(100vh - 120px));
+}
+.tw-light-panel::-webkit-scrollbar { width: 0; height: 0; display: none; }
+
+.tw-light-link-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: var(--space-12);
+}
+.tw-light-label {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.tw-light-card {
+  margin-top: var(--space-10);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  background: rgba(var(--primary-rgb), 0.03);
+}
+.tw-light-card.is-off { opacity: 0.68; }
+.tw-light-card.is-linked { opacity: 0.78; }
+.tw-light-card-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-10);
+  padding: var(--space-10) var(--space-12);
+  cursor: pointer;
+  user-select: none;
+}
+.tw-light-card-head:focus-visible {
+  outline: 2px solid rgb(var(--primary-rgb));
+  outline-offset: 2px;
+  border-radius: var(--radius-md);
+}
+.tw-light-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex: none;
+  box-shadow: inset 0 0 0 1px rgba(var(--primary-rgb), 0.28);
+}
+.tw-light-card-name {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+.tw-light-card-sum {
+  margin-left: auto;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  font-variant-numeric: tabular-nums;
+}
+.tw-light-chevron {
+  width: 12px;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  text-align: center;
+  flex: none;
+}
+.tw-light-card-body {
+  padding: var(--space-8) var(--space-12) var(--space-12);
+  border-top: 1px solid var(--border-light);
+}
+.tw-light-card.is-off .tw-light-card-body {
+  opacity: 0.45;
+  pointer-events: none;
+}
+.tw-light-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-10);
+}
+.tw-light-row-sub { margin-top: var(--space-10); color: var(--text-muted); }
+.tw-light-switch-row { margin-top: var(--space-8); }
+.tw-light-sub { color: var(--text-muted); }
+.tw-light-num {
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  font-variant-numeric: tabular-nums;
+}
+.tw-light-range {
+  display: block;
+  width: 100%;
+}
+.tw-light-panel .tw-light-range {
+  height: 24px;
+  padding: 0;
+  box-sizing: border-box;
+  background: transparent;
+}
+.tw-light-panel .tw-light-range::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: var(--radius-3xs);
+  background: var(--border-light);
+}
+.tw-light-panel .tw-light-range::-webkit-slider-thumb {
+  margin-top: -7px;
+}
+.tw-light-panel .tw-light-range::-moz-range-track {
+  height: 4px;
+  border-radius: var(--radius-3xs);
+  background: var(--border-light);
+}
+.tw-light-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-10);
+  margin-top: var(--space-4);
+}
+.tw-light-swatch {
+  appearance: none;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  border: 1px solid var(--border-light);
+  border-radius: 50%;
+  box-sizing: border-box;
+  cursor: pointer;
+}
+.tw-light-swatch.on {
+  box-shadow: 0 0 0 2px var(--background-primary), 0 0 0 3px rgb(var(--primary-rgb));
+}
+.tw-light-color {
+  appearance: none;
+  flex: none;
+  width: 32px;
+  height: 20px;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  box-sizing: border-box;
+  overflow: hidden;
+  cursor: pointer;
+}
+.tw-light-color::-webkit-color-swatch-wrapper { padding: 0; }
+.tw-light-color::-webkit-color-swatch { border: 0; }
+.tw-light-color::-moz-color-swatch { border: 0; }
+.tw-light-section {
+  margin-top: var(--space-16);
+}
+.tw-light-section:first-of-type {
+  margin-top: var(--space-12);
+}
+.tw-light-section-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  margin: 0 0 var(--space-8);
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: 0.1em;
+  text-align: center;
+  white-space: nowrap;
+}
+.tw-light-section-title::before,
+.tw-light-section-title::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border-light);
+}
+.tw-light-section-footer .tw-light-hint { margin-top: var(--space-8); }
+.tw-light-switch {
+  appearance: none;
+  min-width: 0;
+  min-height: 0;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  line-height: 0;
+  cursor: pointer;
+  flex: none;
+  border-radius: var(--radius-pill);
+}
+.tw-light-switch-track {
+  display: block;
+  position: relative;
+  width: 34px;
+  height: 18px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-pill);
+  background: rgba(var(--primary-rgb), 0.08);
+  transition: background var(--duration-normal) ease, border-color var(--duration-normal) ease;
+}
+.tw-light-switch-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  transition: transform var(--duration-normal) ease, background var(--duration-normal) ease;
+}
+.tw-light-switch[aria-checked="true"] .tw-light-switch-track {
+  border-color: rgb(var(--primary-rgb));
+  background: rgba(var(--primary-rgb), 0.22);
+}
+.tw-light-switch[aria-checked="true"] .tw-light-switch-knob {
+  transform: translateX(16px);
+  background: rgb(var(--primary-rgb));
+}
+.tw-light-switch:focus-visible {
+  outline: 2px solid rgb(var(--primary-rgb));
+  outline-offset: 2px;
+}
+.tw-light-reset {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  margin-top: var(--space-10);
+  color: var(--text-faint, var(--text-muted));
+  font: inherit;
+  font-size: var(--font-size-xs);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.tw-light-reset:hover { color: var(--text-normal); }
+.tw-light-shuffle {
+  display: block;
+  width: 100%;
+  margin-top: var(--space-4);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-faint, var(--text-muted));
+  font: inherit;
+  font-size: var(--font-size-xs);
+  line-height: 1.6;
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.tw-light-shuffle:hover { color: var(--text-normal); }
+.tw-light-hint {
+  margin: var(--space-10) 0 0;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+}
+
+/* 呼吸光：顶底反相，系统要求减少动态效果时停用 */
+@keyframes tw-light-breathe {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+.scroll-typewriter-feature.tw-light-breathe.tw-light-top-on .tw-light-top,
+.scroll-typewriter-feature.tw-light-breathe.tw-light-bottom-on .tw-light-bottom {
+  animation: tw-light-breathe var(--tw-light-period, 6s) ease-in-out infinite;
+}
+.scroll-typewriter-feature.tw-light-breathe.tw-light-bottom-on .tw-light-bottom {
+  animation-direction: reverse;
+}
+
+/* 背景光呼吸：只调制整层透明度，两层水波仍各自独立漂移 */
+@keyframes tw-light-backdrop-breathe {
+  0%, 100% { opacity: var(--tw-backdrop-swing, 0.55); }
+  50% { opacity: 1; }
+}
+.scroll-typewriter-feature.tw-light-backdrop-breathe.tw-light-backdrop-on .tw-light-backdrop {
+  animation: tw-light-backdrop-breathe var(--tw-backdrop-period, 6s) ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scroll-typewriter-feature .tw-light { animation: none; }
+}
+
+
+/* 光效模式：单选文字行 */
+.tw-light-mode-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-10);
+}
+.tw-light-mode-off {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: var(--space-4) 0;
+  min-width: 0;
+  min-height: 0;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+}
+.tw-light-mode-off:hover { color: var(--text-normal); }
+.tw-light-mode-off.on {
+  color: rgb(var(--primary-rgb));
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 3px;
+}
+.tw-light-mode-label {
+  flex: none;
+  color: var(--text-faint, var(--text-muted));
+  font-size: var(--font-size-xs);
+  font-weight: 400;
+  letter-spacing: 0.08em;
+}
+.tw-light-mode-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-6);
+  margin-top: var(--space-6);
+}
+.tw-light-mode {
+  appearance: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  padding: var(--space-4) 2px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  background: transparent;
+  opacity: 1;
+  font: inherit;
+  text-align: center;
+  cursor: pointer;
+}
+.tw-light-mode:hover { border-color: rgba(var(--primary-rgb), 0.45); }
+.tw-light-mode.on {
+  border-color: rgb(var(--primary-rgb));
+  background: rgba(var(--primary-rgb), 0.08);
+}
+.tw-light-mode:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+  border-style: dashed;
+}
+.tw-light-mode:disabled:hover { border-color: var(--border-light); }
+.tw-light-mode:disabled .tw-light-mode-name { color: var(--text-muted); }
+.tw-light-mode-name {
+  color: var(--text-normal);
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+.tw-light-mode.on .tw-light-mode-name { color: rgb(var(--primary-rgb)); }
+:host(.dark) .tw-light-mode:not(.on) .tw-light-mode-name,
+body.dark .tw-light-mode:not(.on) .tw-light-mode-name { color: #e8ebe9; }
+
+/* 背景光层：位于卡片之下，仅 backdrop 模式显示。
+   柔光水波 = 几团大尺度椭圆光斑缓慢漂移；--tw-water-scale 控制光斑大小（密度），
+   密度超过 60 时再淡入两层小光斑。默认 60 即原版观感。 */
+.tw-light-backdrop {
+  inset: 0;
+  z-index: 5;
+  opacity: 0;
+  overflow: hidden;
+  mix-blend-mode: normal;
+}
+.scroll-typewriter-feature.tw-light-backdrop-on .tw-light-backdrop { opacity: 1; }
+:host(.dark) .tw-light-backdrop, body.dark .tw-light-backdrop { mix-blend-mode: screen; }
+.tw-light-backdrop::before,
+.tw-light-backdrop::after {
+  content: "";
+  position: absolute;
+  inset: -30%;
+  pointer-events: none;
+  opacity: calc(var(--tw-backdrop-a, 0.1) * var(--tw-backdrop-fade, 1));
+  transition: opacity 700ms ease;
+  background-repeat: no-repeat;
+}
+.tw-light-backdrop::before {
+  background-image:
+    radial-gradient(ellipse calc(44% * var(--tw-water-scale, 1)) calc(36% * var(--tw-water-scale, 1)) at calc(20% + var(--tw-water-x-a, 0%)) calc(28% + var(--tw-water-y-a, 0%)),
+      rgba(var(--tw-backdrop-rgb), 0.9) 0%,
+      rgba(var(--tw-backdrop-rgb), 0.42) 38%,
+      transparent 70%),
+    radial-gradient(ellipse calc(36% * var(--tw-water-scale, 1)) calc(46% * var(--tw-water-scale, 1)) at calc(76% + var(--tw-water-x-a, 0%)) calc(64% + var(--tw-water-y-a, 0%)),
+      rgba(var(--tw-backdrop-rgb), 0.65) 0%,
+      rgba(var(--tw-backdrop-rgb), 0.28) 42%,
+      transparent 72%),
+    radial-gradient(ellipse calc(52% * var(--tw-water-scale, 1)) calc(32% * var(--tw-water-scale, 1)) at calc(44% + var(--tw-water-x-a, 0%)) calc(88% + var(--tw-water-y-a, 0%)),
+      rgba(var(--tw-backdrop-rgb), 0.45) 0%,
+      rgba(var(--tw-backdrop-rgb), 0.18) 45%,
+      transparent 74%),
+    radial-gradient(ellipse calc(28% * var(--tw-water-scale, 1)) calc(32% * var(--tw-water-scale, 1)) at calc(62% + var(--tw-water-x-a, 0%)) calc(20% + var(--tw-water-y-a, 0%)),
+      rgba(var(--tw-backdrop-rgb), var(--tw-water-extra-a, 0)) 0%,
+      transparent 72%),
+    radial-gradient(ellipse calc(30% * var(--tw-water-scale, 1)) calc(26% * var(--tw-water-scale, 1)) at calc(14% + var(--tw-water-x-a, 0%)) calc(66% + var(--tw-water-y-a, 0%)),
+      rgba(var(--tw-backdrop-rgb), var(--tw-water-extra-a, 0)) 0%,
+      transparent 72%);
+}
+.tw-light-backdrop::after {
+  background-image:
+    radial-gradient(ellipse calc(32% * var(--tw-water-scale, 1)) calc(26% * var(--tw-water-scale, 1)) at calc(66% + var(--tw-water-x-b, 0%)) calc(24% + var(--tw-water-y-b, 0%)),
+      rgba(var(--tw-backdrop-rgb), 0.5) 0%,
+      rgba(var(--tw-backdrop-rgb), 0.2) 44%,
+      transparent 72%),
+    radial-gradient(ellipse calc(40% * var(--tw-water-scale, 1)) calc(30% * var(--tw-water-scale, 1)) at calc(30% + var(--tw-water-x-b, 0%)) calc(72% + var(--tw-water-y-b, 0%)),
+      rgba(var(--tw-backdrop-rgb), 0.38) 0%,
+      rgba(var(--tw-backdrop-rgb), 0.15) 46%,
+      transparent 74%),
+    radial-gradient(ellipse calc(26% * var(--tw-water-scale, 1)) calc(34% * var(--tw-water-scale, 1)) at calc(84% + var(--tw-water-x-b, 0%)) calc(82% + var(--tw-water-y-b, 0%)),
+      rgba(var(--tw-backdrop-rgb), 0.28) 0%,
+      transparent 72%),
+    radial-gradient(ellipse calc(24% * var(--tw-water-scale, 1)) calc(30% * var(--tw-water-scale, 1)) at calc(48% + var(--tw-water-x-b, 0%)) calc(40% + var(--tw-water-y-b, 0%)),
+      rgba(var(--tw-backdrop-rgb), var(--tw-water-extra-a, 0)) 0%,
+      transparent 72%);
+}
+.scroll-typewriter-feature.tw-light-backdrop-on .tw-light-backdrop::before {
+  animation: tw-light-water-a var(--tw-backdrop-speed, 10s) ease-in-out infinite alternate;
+  animation-delay: var(--tw-water-delay-a, 0s);
+}
+.scroll-typewriter-feature.tw-light-backdrop-on .tw-light-backdrop::after {
+  animation: tw-light-water-b var(--tw-backdrop-speed, 10s) ease-in-out infinite alternate;
+  animation-delay: var(--tw-water-delay-b, 0s);
+}
+@keyframes tw-light-water-a {
+  from { transform: translate3d(-1.5%, -1%, 0) scale(1.01); }
+  to { transform: translate3d(2%, 1.5%, 0) scale(1.04); }
+}
+@keyframes tw-light-water-b {
+  from { transform: translate3d(1.5%, 1%, 0) scale(1.03); }
+  to { transform: translate3d(-2%, -1.5%, 0) scale(1.01); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tw-light-backdrop::before,
+  .tw-light-backdrop::after { animation: none; transition: none; }
+}
+
+/* 落笔生光：暗桌 + 当前纸下的柔光，打字时微亮、停笔后缓缓收回 */
+.scroll-typewriter-feature.tw-light-paper-on .tw-light-backdrop {
+  opacity: 1;
+  mix-blend-mode: normal;
+  background: transparent;
+}
+/* 压暗层与发光层分离：压暗只改背景，screen 不再把光混进暗底里，亮度互不牵连。 */
+.tw-light-paper-dim {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: rgba(7, 9, 9, var(--tw-paper-dim-a, 0.42));
+}
+/* .tw-canvas 因 container-type 自成层叠上下文；不抬它就会整体压在 z:5 的光层下面，
+   导致纸下光盖住卡片。只比 backdrop 高一级，仍低于机身 z:30。 */
+.scroll-typewriter-feature.tw-light-paper-on .tw-canvas,
+.scroll-typewriter-feature.tw-light-paper-on .tw-mm { z-index: 6; }
+.tw-light-paper-on .tw-light-backdrop::before,
+.tw-light-paper-on .tw-light-backdrop::after {
+  background-image: none;
+  opacity: 0;
+  animation: none;
+  transition: none;
+}
+/* 轮廓辉光：写作卡是规则矩形，直接按卡片形状生成模糊背光，不再用独立光斑。 */
+.tw-canvas.tw-mode-write .tw-card.is-paper-lit::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: var(--radius-lg);
+  background: rgb(var(--tw-paper-rgb, 224,163,92));
+  filter: blur(var(--tw-paper-spread, 14px));
+  opacity: var(--tw-paper-base, 0.42);
+  transition: opacity var(--tw-paper-settle, 2s) ease;
+  will-change: opacity;
+}
+@keyframes tw-paper-breathe {
+  0%, 100% { opacity: var(--tw-paper-base, 0.42); transform: scale(1); }
+  50% { opacity: var(--tw-paper-write, 0.78); transform: scale(1.03); }
+}
+.tw-canvas.tw-mode-write .tw-card.is-paper-lit:not(.is-paper-lit-multi):not(.is-paper-lit-lite).is-breathing::before {
+  animation: tw-paper-breathe var(--tw-paper-period, 3s) ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tw-canvas.tw-mode-write .tw-card.is-paper-lit::before { transition: opacity 120ms linear; }
+  .tw-canvas.tw-mode-write .tw-card.is-paper-lit.is-breathing::before {
+    animation: none;
+    opacity: var(--tw-paper-write, 0.78);
+  }
+}
+
+/* 思维子弹：节点 ::before 已用于样式3圆点，辉光走 ::after。 */
+.scroll-typewriter-feature.tw-light-paper-on .tw-mm-node.is-paper-lit::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: inherit;
+  background: rgb(var(--tw-paper-rgb, 224,163,92));
+  filter: blur(var(--tw-paper-spread, 14px));
+  opacity: var(--tw-paper-base, 0.42);
+  transition: opacity var(--tw-paper-settle, 2s) ease;
+  will-change: opacity;
+}
+.scroll-typewriter-feature.tw-light-paper-on .tw-mm-node.is-paper-lit:not(.is-paper-lit-multi):not(.is-paper-lit-lite).is-breathing::after {
+  animation: tw-paper-breathe var(--tw-paper-period, 3s) ease-in-out infinite;
+}
+/* 多选：静态弱辉光；超过阈值降级为轻量描边，避免几十个模糊层同时绘制。 */
+.tw-canvas.tw-mode-write .tw-card.is-paper-lit.is-paper-lit-multi::before,
+.scroll-typewriter-feature.tw-light-paper-on .tw-mm-node.is-paper-lit.is-paper-lit-multi::after {
+  opacity: calc(var(--tw-paper-base, 0.42) * 0.6);
+}
+.tw-canvas.tw-mode-write .tw-card.is-paper-lit.is-paper-lit-lite::before,
+.scroll-typewriter-feature.tw-light-paper-on .tw-mm-node.is-paper-lit.is-paper-lit-lite::after {
+  background: transparent;
+  filter: none;
+  box-shadow: 0 0 0 5px rgba(var(--tw-paper-rgb, 224,163,92), 0.16);
+  opacity: 1;
+}
+
+/* 选中态由辉光表达，去掉导图节点自带描边与焦点环。 */
+.scroll-typewriter-feature.tw-light-paper-on .tw-mm-node.is-sel,
+.scroll-typewriter-feature.tw-light-paper-on .tw-mm-node.is-editing {
+  outline: none;
+  box-shadow: var(--shadow-surface);
+}
+.scroll-typewriter-feature.tw-light-paper-on .tw-mm-text[contenteditable]:focus,
+.scroll-typewriter-feature.tw-light-paper-on .tw-mm-text[contenteditable]:focus-visible {
+  box-shadow: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .scroll-typewriter-feature.tw-light-paper-on .tw-mm-node.is-paper-lit::after {
+    transition: opacity 120ms linear;
+  }
+  .scroll-typewriter-feature.tw-light-paper-on .tw-mm-node.is-paper-lit.is-breathing::after {
+    animation: none;
+    opacity: var(--tw-paper-write, 0.78);
+  }
+}
+
+/* 江南烟雨：细雨丝 + 低对比雾气，与另外两种光效互斥 */
+.scroll-typewriter-feature.tw-light-rain-on .tw-light-backdrop {
+  opacity: 1;
+  background: linear-gradient(180deg,
+    rgba(var(--tw-rain-rgb, 122,170,210), 0.05),
+    rgba(var(--tw-rain-rgb, 122,170,210), 0.10));
+}
+.tw-light-rain-on .tw-light-backdrop::before,
+.tw-light-rain-on .tw-light-backdrop::after {
+  background-repeat: repeat;
+  transition: opacity 700ms ease;
+  opacity: calc(var(--tw-rain-a, 0.09) * var(--tw-backdrop-fade, 1));
+}
+.tw-light-rain-on .tw-light-backdrop::before {
+  opacity: calc(var(--tw-rain-a, 0.09) * 0.65);
+  background-image:
+    radial-gradient(ellipse 2px calc(var(--tw-rain-len, 22px) * 0.7) at 18% 16%, rgba(var(--tw-rain-rgb, 122,170,210), 0.5), transparent 72%),
+    radial-gradient(ellipse 2px calc(var(--tw-rain-len, 22px) * 0.6) at 42% 78%, rgba(var(--tw-rain-rgb, 122,170,210), 0.35), transparent 72%),
+    radial-gradient(ellipse 2px calc(var(--tw-rain-len, 22px) * 0.75) at 28% 58%, rgba(var(--tw-rain-rgb, 122,170,210), 0.45), transparent 72%);
+  background-size: 89px 137px, 71px 163px, 151px 113px;
+  background-position:
+    var(--tw-rain-p1, 0 0),
+    var(--tw-rain-p2, 20px -80px),
+    var(--tw-rain-p3, 40px 70px);
+  animation: tw-light-rain-fall calc(var(--tw-rain-speed, 12s) * 1.35) linear infinite;
+}
+.tw-light-rain-near {
+  position: absolute;
+  inset: -30%;
+  pointer-events: none;
+  opacity: 0;
+}
+.tw-light-rain-on .tw-light-rain-near {
+  transition: opacity 700ms ease;
+  opacity: calc(var(--tw-rain-a, 0.09) * var(--tw-backdrop-fade, 1));
+  background-repeat: repeat;
+  background-image:
+    radial-gradient(ellipse 3px calc(var(--tw-rain-len, 22px) * 1.25) at 72% 44%, rgba(var(--tw-rain-rgb, 122,170,210), 0.75), transparent 72%),
+    radial-gradient(ellipse 3px calc(var(--tw-rain-len, 22px) * 1.1) at 86% 22%, rgba(var(--tw-rain-rgb, 122,170,210), 0.6), transparent 72%),
+    radial-gradient(ellipse 3px calc(var(--tw-rain-len, 22px) * 1.35) at 60% 90%, rgba(var(--tw-rain-rgb, 122,170,210), 0.5), transparent 72%);
+  background-size: 127px 191px, 109px 149px, 97px 173px;
+  background-position:
+    var(--tw-rain-p4, -30px -50px),
+    var(--tw-rain-p5, -60px 10px),
+    var(--tw-rain-p6, -20px -30px);
+  animation: tw-light-rain-fall calc(var(--tw-rain-speed, 12s) * 0.7) linear infinite;
+}
+.tw-light-rain-on .tw-light-backdrop::after {
+  opacity: calc(var(--tw-mist-a, 0.15) * var(--tw-backdrop-fade, 1));
+  background-image:
+    radial-gradient(ellipse 62% 44% at 18% 72%,
+      rgba(var(--tw-rain-rgb, 122,170,210), 0.9), transparent 70%),
+    radial-gradient(ellipse 70% 40% at 82% 32%,
+      rgba(var(--tw-rain-rgb, 122,170,210), 0.65), transparent 72%);
+  background-size: 100% 100%;
+  background-position: 0 0;
+  filter: blur(24px);
+  animation: tw-light-mist-drift calc(var(--tw-rain-speed, 12s) * 2.2) ease-in-out infinite alternate;
+}
+@keyframes tw-light-rain-fall {
+  from { transform: translate3d(0, -18%, 0) skewX(var(--tw-rain-angle, -8deg)); }
+  to { transform: translate3d(var(--tw-rain-drift, -4%), 18%, 0) skewX(var(--tw-rain-angle, -8deg)); }
+}
+@keyframes tw-light-mist-drift {
+  from { transform: translate3d(-2%, 1%, 0) scale(1.02); }
+  to { transform: translate3d(3%, -2%, 0) scale(1.06); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tw-light-rain-on .tw-light-backdrop::before,
+  .tw-light-rain-on .tw-light-backdrop::after,
+  .tw-light-rain-on .tw-light-rain-near {
+    animation: none;
+    transition: none;
+  }
+}
+
+/* 寒江雪：圆形雪粒缓慢飘落并左右微摆，远景/近景两层 + 冷雾 */
+.scroll-typewriter-feature.tw-light-snow-on .tw-light-backdrop {
+  opacity: 1;
+  background: radial-gradient(130% 100% at 50% 70%,
+    rgba(var(--tw-snow-rgb, 122,170,210), var(--tw-chill-a, 0.225)), transparent 80%);
+}
+.tw-light-snow-on .tw-light-backdrop::before,
+.tw-light-snow-on .tw-light-backdrop::after,
+.tw-light-snow-on .tw-light-snow-near {
+  background-repeat: repeat;
+  transition: none;
+  opacity: var(--tw-snow-a, 0.22);
+}
+.tw-light-snow-on .tw-light-backdrop::before {
+  background-image:
+    radial-gradient(circle var(--tw-snow-size, 4px) at 18% 16%, rgba(var(--tw-snow-rgb, 122,170,210), 0.8), transparent 70%),
+    radial-gradient(circle var(--tw-snow-size, 4px) at 68% 48%, rgba(var(--tw-snow-rgb, 122,170,210), 0.6), transparent 70%),
+    radial-gradient(circle var(--tw-snow-size, 4px) at 42% 82%, rgba(var(--tw-snow-rgb, 122,170,210), 0.45), transparent 70%);
+  background-size:
+    var(--tw-snow-gap, 55px) calc(var(--tw-snow-gap, 55px) * 1.6),
+    calc(var(--tw-snow-gap, 55px) * 1.4) calc(var(--tw-snow-gap, 55px) * 1.9),
+    calc(var(--tw-snow-gap, 55px) * 0.8) calc(var(--tw-snow-gap, 55px) * 1.3);
+  background-position: 0 0, -20px -30px, 30px 40px;
+  animation: tw-light-snow-fall calc(var(--tw-snow-speed, 18s) * 1.4) linear infinite;
+}
+.tw-light-snow-near {
+  position: absolute;
+  inset: -30%;
+  pointer-events: none;
+  opacity: 0;
+}
+.tw-light-snow-on .tw-light-snow-near {
+  background-image:
+    radial-gradient(circle calc(var(--tw-snow-size, 4px) * 1.6) at 28% 24%, rgba(var(--tw-snow-rgb, 122,170,210), 0.95), transparent 70%),
+    radial-gradient(circle calc(var(--tw-snow-size, 4px) * 1.4) at 82% 62%, rgba(var(--tw-snow-rgb, 122,170,210), 0.8), transparent 70%),
+    radial-gradient(circle calc(var(--tw-snow-size, 4px) * 1.5) at 54% 90%, rgba(var(--tw-snow-rgb, 122,170,210), 0.65), transparent 70%);
+  background-size:
+    calc(var(--tw-snow-gap, 55px) * 1.7) calc(var(--tw-snow-gap, 55px) * 2.2),
+    calc(var(--tw-snow-gap, 55px) * 1.3) calc(var(--tw-snow-gap, 55px) * 1.8),
+    calc(var(--tw-snow-gap, 55px) * 2.1) calc(var(--tw-snow-gap, 55px) * 2.6);
+  background-position: -10px 0, 40px -50px, -40px 30px;
+  animation: tw-light-snow-fall calc(var(--tw-snow-speed, 18s) * 0.8) linear infinite;
+}
+.tw-light-snow-on .tw-light-backdrop::after {
+  opacity: var(--tw-chill-a, 0.225);
+  background-image:
+    radial-gradient(ellipse 64% 40% at 20% 74%, rgba(var(--tw-snow-rgb, 122,170,210), 0.8), transparent 72%),
+    radial-gradient(ellipse 70% 36% at 80% 30%, rgba(var(--tw-snow-rgb, 122,170,210), 0.6), transparent 74%);
+  background-size: 100% 100%;
+  filter: blur(22px);
+  animation: tw-light-snow-mist calc(var(--tw-snow-speed, 18s) * 2.4) ease-in-out infinite alternate;
+}
+@keyframes tw-light-snow-fall {
+  0% { transform: translate3d(0, -18%, 0); }
+  33% { transform: translate3d(calc(var(--tw-snow-wind, -3.6%) * 0.6), -6%, 0); }
+  66% { transform: translate3d(var(--tw-snow-wind, -3.6%), 6%, 0); }
+  100% { transform: translate3d(calc(var(--tw-snow-wind, -3.6%) * 0.6), 18%, 0); }
+}
+@keyframes tw-light-snow-mist {
+  from { transform: translate3d(-2%, 1%, 0) scale(1.02); }
+  to { transform: translate3d(3%, -2%, 0) scale(1.06); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tw-light-snow-on .tw-light-backdrop::before,
+  .tw-light-snow-on .tw-light-backdrop::after,
+  .tw-light-snow-on .tw-light-snow-near { animation: none; }
+}
+
+/* 独照一隅：工具条下方的拟物灯体 + 向下光锥 */
+.tw-light-lamp,
+.tw-light-lamp-cone {
+  position: absolute;
+  left: 50%;
+  pointer-events: none;
+  display: none;
+  opacity: 0;
+}
+.tw-light-lamp {
+  top: 56px;
+  z-index: 39;
+  width: var(--tw-lamp-width, 220px);
+  height: 36px;
+  transform: translateX(-50%);
+  filter:
+    drop-shadow(0 4px 10px rgba(var(--black-rgb), 0.45))
+    drop-shadow(0 0 14px rgba(var(--tw-lamp-rgb), 0.20))
+    drop-shadow(0 0 30px rgba(var(--tw-lamp-rgb), 0.10));
+}
+.tw-light-lamp::before {
+  content: "";
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  top: -10px;
+  height: 54px;
+  z-index: 0;
+  border-radius: 50%;
+  background: radial-gradient(ellipse 52% 50% at 50% 50%,
+    rgba(var(--tw-lamp-rgb), 0.18) 0%,
+    rgba(var(--tw-lamp-rgb), 0.08) 42%,
+    transparent 72%);
+  filter: blur(10px);
+  pointer-events: none;
+}
+.tw-lamp-shade {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  top: 2px;
+  z-index: 2;
+  height: 24px;
+  border-radius: var(--radius-sm) var(--radius-sm) var(--radius-3xs) var(--radius-3xs);
+  background:
+    radial-gradient(ellipse 68% 92% at 50% 82%,
+      rgba(var(--white-rgb), 0.30) 0%,
+      rgba(var(--tw-lamp-rgb), 0.34) 38%,
+      transparent 70%),
+    radial-gradient(ellipse 28% 86% at 0% 50%,
+      rgba(4, 18, 13, 0.44) 0%,
+      transparent 72%),
+    radial-gradient(ellipse 28% 86% at 100% 50%,
+      rgba(4, 18, 13, 0.44) 0%,
+      transparent 72%),
+    linear-gradient(90deg,
+      rgba(4, 18, 13, 0.72) 0%,
+      rgba(4, 18, 13, 0.18) 12%,
+      transparent 24%,
+      transparent 76%,
+      rgba(4, 18, 13, 0.18) 88%,
+      rgba(4, 18, 13, 0.72) 100%),
+    linear-gradient(180deg,
+      rgba(var(--tw-lamp-rgb), 0.58) 0%,
+      rgba(var(--tw-lamp-rgb), 0.34) 38%,
+      rgba(var(--tw-lamp-rgb), 0.24) 74%,
+      rgba(var(--black-rgb), 0.35) 100%),
+    #0d1b15;
+  box-shadow:
+    inset 0 1px 0 rgba(4, 18, 13, 0.58),
+    inset 0 -1px 0 rgba(4, 18, 13, 0.58),
+    inset 10px 0 14px -8px rgba(4, 18, 13, 0.72),
+    inset -10px 0 14px -8px rgba(4, 18, 13, 0.72),
+    inset 0 -8px 14px rgba(var(--tw-lamp-rgb), 0.16),
+    0 0 18px rgba(var(--tw-lamp-rgb), 0.18),
+    0 0 42px rgba(var(--tw-lamp-rgb), 0.10);
+  clip-path: polygon(5px 0, calc(100% - 5px) 0, 100% 100%, 0 100%);
+  filter: brightness(var(--tw-lamp-glass, 1));
+}
+.tw-lamp-shade::before {
+  content: "";
+  position: absolute;
+  inset: 1px 5px 5px;
+  background:
+    radial-gradient(ellipse 56% 48% at 50% 34%,
+      rgba(var(--white-rgb), 0.12) 0%,
+      rgba(var(--white-rgb), 0.05) 36%,
+      transparent 68%),
+    repeating-linear-gradient(90deg,
+      rgba(var(--white-rgb), 0.032) 0 1px,
+      transparent 1px 3px);
+  opacity: 0.85;
+}
+.tw-lamp-shade::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 5px;
+  background: linear-gradient(180deg,
+    transparent 0%,
+    rgba(var(--black-rgb), 0.32) 52%,
+    rgba(4, 18, 13, 0.62) 100%);
+  box-shadow: inset 0 1px 0 rgba(180, 255, 210, 0.35);
+}
+.tw-lamp-tube {
+  position: absolute;
+  left: 22px;
+  right: 22px;
+  top: 25px;
+  z-index: 1;
+  height: 5px;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(180deg,
+    #b9874d 0%,
+    #efd3a0 28%,
+    #ffe9bd 54%,
+    #d5a463 82%,
+    #8f5f2c 100%);
+  box-shadow:
+    0 0 6px rgba(var(--tw-lamp-beam-rgb, 224,163,92), 0.42),
+    0 0 14px rgba(var(--tw-lamp-beam-rgb, 224,163,92), 0.16),
+    inset 0 1px 0 rgba(var(--white-rgb), 0.62);
+}
+.tw-lamp-tube::before {
+  content: "";
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  top: 1px;
+  height: 1px;
+  border-radius: var(--radius-pill);
+  background: rgba(var(--white-rgb), 0.5);
+  filter: blur(0.4px);
+}
+.tw-lamp-cap {
+  position: absolute;
+  top: 2px;
+  z-index: 4;
+  width: 17px;
+  height: 30px;
+  border: 1px solid #4a3014;
+  border-radius: var(--radius-sm);
+  background:
+    repeating-linear-gradient(180deg,
+      rgba(var(--black-rgb), 0.18) 0 1px,
+      rgba(var(--white-rgb), 0.05) 1px 2px,
+      transparent 2px 4px),
+    linear-gradient(90deg,
+      #5b3b18 0%,
+      #c9a46a 34%,
+      #8f6738 70%,
+      #553716 100%);
+  box-shadow:
+    inset 0 2px 0 rgba(var(--white-rgb), 0.35),
+    inset 0 -2px 0 rgba(var(--black-rgb), 0.5),
+    0 1px 2px rgba(var(--black-rgb), 0.45);
+  pointer-events: auto;
+  cursor: ns-resize;
+  touch-action: none;
+  user-select: none;
+}
+.tw-lamp-cap::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  width: 3px;
+  border-radius: var(--radius-3xs);
+  background: linear-gradient(180deg, #d8b87a, #6f4b23);
+  box-shadow: 0 0 0 1px rgba(var(--black-rgb), 0.25);
+}
+.tw-lamp-cap-l { left: 0; }
+.tw-lamp-cap-l::after { right: 1px; }
+.tw-lamp-cap-r { right: 0; }
+.tw-lamp-cap-r::after { left: 1px; }
+.tw-light-lamp-dim {
+  position: absolute;
+  inset: 0;
+  z-index: 24;
+  display: none;
+  pointer-events: none;
+}
+.tw-lamp-dim-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  filter: blur(18px);
+}
+.tw-lamp-dim-path {
+  fill: rgb(var(--black-rgb));
+  fill-opacity: var(--tw-lamp-dim-a, 0.25);
+}
+.scroll-typewriter-feature.tw-light-lamp-on .tw-light-lamp-dim { display: block; }
+.tw-light-lamp-cone {
+  top: 86px;
+  z-index: 25;
+  width: min(92vw, var(--tw-lamp-cone-width, 900px));
+  height: var(--tw-lamp-reach, 70vh);
+  transform: translateX(-50%);
+  opacity: var(--tw-lamp-a, 0.084);
+  filter: blur(var(--tw-lamp-soft, 24px));
+  pointer-events: none;
+}
+.tw-lamp-cone-shape {
+  position: absolute;
+  inset: 0;
+  clip-path: polygon(
+    calc(50% - var(--tw-lamp-aperture, 92px)) 0,
+    calc(50% + var(--tw-lamp-aperture, 92px)) 0,
+    100% 100%,
+    0 100%
+  );
+  background:
+    radial-gradient(ellipse 72% 14% at 50% 100%,
+      rgba(var(--tw-lamp-beam-rgb, 224,163,92), 0.45), transparent 72%),
+    linear-gradient(180deg,
+      rgba(var(--tw-lamp-beam-rgb, 224,163,92), 0.95) 0%,
+      rgba(var(--tw-lamp-beam-rgb, 224,163,92), 0.42) 48%,
+      transparent 100%);
+}
+.tw-lamp-cone-shape::before {
+  content: "";
+  position: absolute;
+  left: 12%;
+  right: 12%;
+  top: -2px;
+  height: 18px;
+  background: radial-gradient(ellipse 70% 100% at 50% 0%,
+    rgba(var(--tw-lamp-beam-rgb, 224,163,92), 0.55), transparent 72%);
+  filter: blur(4px);
+}
+.scroll-typewriter-feature.tw-light-lamp-on .tw-light-lamp,
+.scroll-typewriter-feature.tw-light-lamp-on .tw-light-lamp-cone {
+  display: block;
+  opacity: 1;
+}
+.scroll-typewriter-feature.tw-light-lamp-on .tw-light-lamp-cone {
+  opacity: var(--tw-lamp-a, 0.084);
+}
+:host(.dark) .tw-light-lamp-cone,
+body.dark .tw-light-lamp-cone { mix-blend-mode: screen; }

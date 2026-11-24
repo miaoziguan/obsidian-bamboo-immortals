@@ -1358,8 +1358,28 @@ export const CardInteractions = {
     ctrl._selected.forEach((c) => { if (c !== card) c.classList.remove('selected'); });
     ctrl._selected.clear();
     if (card) { ctrl._selected.add(card); card.classList.add('selected'); ctrl._blurInput(); }
+    if (ctrl._syncPaperGlowSelection) ctrl._syncPaperGlowSelection(card || null);
     if (ctrl._updateSelBar) ctrl._updateSelBar();
 
+  },
+  /** Cmd/Ctrl+A：全选当前已挂载的卡片（便签/写作）。
+   *  只认 DOM 里在场的卡，不把视口剔除卸载的卡拉回来 —— 选择是视图层行为，不该触发批量挂载。
+   *  贴纸不进选区：它们是装饰物，没有合并/连线语义。 */
+  selectAll(ctx) {
+    const { ctrl } = ctx;
+    const cv = ctrl._canvas;
+    if (!cv) return;
+    const cards = Array.from(cv.querySelectorAll('.tw-card'))
+      .filter((c) => !c.classList.contains('editing'));
+    if (!cards.length) return;
+    const keep = new Set(cards);
+    if (!ctrl._selected) ctrl._selected = new Set();
+    ctrl._selected.forEach((c) => { if (!keep.has(c)) c.classList.remove('selected'); });
+    ctrl._selected.clear();
+    cards.forEach((c) => { c.classList.add('selected'); ctrl._selected.add(c); });
+    if (ctrl._blurInput) ctrl._blurInput();
+    if (ctrl._syncPaperGlowSelection) ctrl._syncPaperGlowSelection(cards, cards.length > 1);
+    if (ctrl._updateSelBar) ctrl._updateSelBar();
   },
   // (was _toggleSelect)
   toggleSelect(ctx, card) {
@@ -1367,6 +1387,10 @@ export const CardInteractions = {
     if (!ctrl._selected) ctrl._selected = new Set();
     if (ctrl._selected.has(card)) { ctrl._selected.delete(card); card.classList.remove('selected'); }
     else { ctrl._selected.add(card); card.classList.add('selected'); ctrl._blurInput(); }
+    if (ctrl._syncPaperGlowSelection) {
+      const selected = Array.from(ctrl._selected);
+      ctrl._syncPaperGlowSelection(selected, selected.length > 1);
+    }
     if (ctrl._updateSelBar) ctrl._updateSelBar();
 
   },
@@ -1382,6 +1406,7 @@ export const CardInteractions = {
     if (!ctrl._selected) return;
     ctrl._selected.forEach((c) => c.classList.remove('selected'));
     ctrl._selected.clear();
+    if (ctrl._syncPaperGlowSelection) ctrl._syncPaperGlowSelection(null);
     if (ctrl._updateSelBar) ctrl._updateSelBar();
 
   },
@@ -1605,6 +1630,10 @@ export const CardInteractions = {
         }
       }
     }
+    if (ctrl._syncPaperGlowSelection) {
+      const selected = Array.from(ctrl._selected || []);
+      ctrl._syncPaperGlowSelection(selected, selected.length > 1);
+    }
     if (ctrl._updateSelBar) ctrl._updateSelBar();
 
   },
@@ -1654,6 +1683,19 @@ export const CardInteractions = {
       const cv = ctrl._canvas;
       if (!cv || !cv.isConnected || cv.getBoundingClientRect().width < 2) return;
       if (cv.querySelector('.tw-card.editing')) return;   // 编辑中不打断
+      // Cmd/Ctrl+A：全选当前卡片档已挂载的卡；输入框/编辑态已在上面让位给文本全选。
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'a' || e.key === 'A')) {
+        if (!ModePolicy.usesCardInteractions || !ModePolicy.usesCardInteractions(ctrl._mode)) return;
+        e.preventDefault();
+        if (typeof ctrl._selectAll === 'function') ctrl._selectAll();
+        return;
+      }
+      // Esc：清掉选区。光效面板/搜索等浮层有自己的 Esc 处理，开着时不抢。
+      if (e.key === 'Escape') {
+        if (ctrl._lightPanel || ctrl._cardSearchEl) return;
+        if (ctrl._selected && ctrl._selected.size) { e.preventDefault(); ctrl._clearSelection(); }
+        return;
+      }
       // 删除选中（仅当选中非空）
       if (e.key === 'Delete' || e.key === 'Backspace') {
         if (ctrl._selected && ctrl._selected.size) { e.preventDefault(); ctrl._deleteSelected(); }
@@ -1708,32 +1750,97 @@ export const CardInteractions = {
     handle.className = 'tw-card-resize';
     handle.setAttribute('role', 'slider');
     handle.setAttribute('aria-label', '调整便签大小');
-    handle.title = '拖动调整大小 · 双击复位 · ⌘/Ctrl+滚轮微调';
+    handle.setAttribute('aria-valuemin', String(Math.round(ZOOM_MIN * 100)));
+    handle.setAttribute('aria-valuemax', String(Math.round(ZOOM_MAX * 100)));
+    handle.title = '拖动调整大小 · 双击复位 100%';
+
+    // 非 100% 时常驻、拖动中恒显；胶囊本体跟卡片旋转，读数用内层 span 反向旋转保持水平。
+    const pct = document.createElement('span');
+    pct.className = 'tw-card-resize-pct';
+    pct.setAttribute('role', 'button');
+    pct.setAttribute('aria-label', '点击复位到 100%');
+    pct.title = '点击复位到 100%';
+    pct.tabIndex = 0;
+    const pctText = document.createElement('span');
+    pctText.className = 'tw-card-resize-pct-text';
+    pctText.textContent = '100%';
+    pct.appendChild(pctText);
+    handle.appendChild(pct);
     card.appendChild(handle);
+
+    // aria/tabindex 跟随「缩放非 100% 或正在拖动」；真正的可见性还受
+    // 选中 / 编辑 / 多选约束，由 CSS 选择器把关（见 .tw-card-resize-pct）。
+    const syncPctA11y = (z) => {
+      const shown = Math.abs(z - 1) > 0.005 || card.classList.contains('is-resizing');
+      pct.setAttribute('aria-hidden', String(!shown));
+      pct.tabIndex = shown ? 0 : -1;
+    };
+    const setPct = (value) => {
+      const raw = Number(value);
+      const z = typeof ctrl._clampZoom === 'function'
+        ? ctrl._clampZoom(raw)
+        : (Number.isFinite(raw) && raw > 0 ? raw : 1);
+      const label = `${Math.round(z * 100)}%`;
+      if (pctText.textContent !== label) pctText.textContent = label;
+      pct.dataset.zoom = String(z);
+      // 非 100% 时给卡片打标：CSS 据此让胶囊在选中状态下常驻。
+      card.classList.toggle('tw-card-resized', Math.abs(z - 1) > 0.005);
+      handle.setAttribute('aria-valuenow', String(Math.round(z * 100)));
+      handle.setAttribute('aria-valuetext', label);
+      syncPctA11y(z);
+    };
+    setPct(Number(card.dataset.zoom) || 1);
+    // 供外部缩放入口（工具条档位按钮 / 撤销 / 读档）同步胶囊：
+    // 这些路径也走 _applyZoom，但不会经过本文件的拖拽/双击收尾。
+    card._twSyncResizePct = setPct;
 
     let resizing = false;
     let resizePointerId = null;
     let startX = 0;
     let startY = 0;
     let baseW = 1;      // zoom=1 时的卡片宽度：拖拽位移统一折算到这个基准上
+    let cosRot = 1;     // 起手时的卡片旋转，用于把屏幕位移投影回卡片局部坐标
+    let sinRot = 0;
     let startZoom = 1;
     // 【帧预算】缩放是重活：_applyZoom 会写 style + WritingDoc.setZoom（全量模型重写）
-    // + _syncCardScaleButtons（DOM 查询）。pointermove 可达 120Hz，照原样每个事件同步跑一次
+    // + 百分比胶囊同步（DOM 查询）。pointermove 可达 120Hz，照原样每个事件同步跑一次
     // 会远超帧预算。故与旋转手势同一策略：目标值在本次手势内本地累计，rAF 合帧后每帧只落一次
     // （对标 tldraw 的 batched store updates）。
     let pendingZoom = 1;
     let raf = 0;
+    // 双击复位：**不能用原生 dblclick**。
+    // 下面 pointerdown 里的 setPointerCapture 会把后续 pointer 事件的 target 定向到 canvas，
+    // 而 dblclick 由 pointer 事件序列合成 —— handle 上的原生 dblclick 永远收不到。
+    // 这与旋转手柄是同一坑，故同样在 pointerdown 里手动判定双击。
+    const RESET_TAP_MS = 320;
+    const TAP_MOVE_PX = 4;
+    let lastTapAt = 0;
+    let lastTapMoved = false;
+    let tapStartX = 0;
+    let tapStartY = 0;
+    // 该次双击已被缩放手柄消费的时刻：阻止 setPointerCapture 把 dblclick 的 target
+    // 改成 canvas 后，泄漏到 makeCanvasDraggable 触发「双击空白 → 全卡归位」。
+    let lastResetAt = 0;
     // ⌘/Ctrl+滚轮缩放同理：触控板可在一帧内连发多次，需合帧
     const apply = () => {
       raf = 0;
-      ctrl._applyZoom(card, pendingZoom);
+      const applied = ctrl._applyZoom(card, pendingZoom);
+      setPct(typeof applied === 'number' ? applied : pendingZoom);
       ctrl._scheduleRenderLinks();   // 尺寸变化会移动端点
     };
     const onMove = (e) => {
       if (!resizing) return;
       if (resizePointerId != null && e.pointerId !== resizePointerId) return;   // 第二指不驱动本次缩放
-      // 对角手势：向右下拖 = 放大（横向与纵向位移都计入，手感更自然）
-      const delta = (e.clientX - startX) + (e.clientY - startY);
+      // 只有「没拖动」的两次按下才算双击；否则快速连续拖两次会被误判成复位。
+      if (!lastTapMoved && Math.abs(e.clientX - tapStartX) + Math.abs(e.clientY - tapStartY) > TAP_MOVE_PX) {
+        lastTapMoved = true;
+      }
+      // 对角手势：沿卡片自身的右下方向拖 = 放大。
+      // 必须先绕 -rot 把屏幕位移转回卡片局部坐标；否则旋转卡片上拖右下，
+      // 屏幕 x/y 与纸面 x/y 不一致，灵敏度会随角度漂移。
+      const sdx = e.clientX - startX;
+      const sdy = e.clientY - startY;
+      const delta = (sdx * cosRot + sdy * sinRot) + (-sdx * sinRot + sdy * cosRot);
       pendingZoom = ((baseW + delta) / baseW) * startZoom;
       if (!raf) raf = requestAnimationFrame(apply);
     };
@@ -1742,8 +1849,10 @@ export const CardInteractions = {
       if (e && resizePointerId != null && e.pointerId !== resizePointerId) return;   // 只认起始指抬起
       resizing = false;
       if (raf) { cancelAnimationFrame(raf); raf = 0; }
-      ctrl._applyZoom(card, pendingZoom);   // 补写最后一帧，避免丢掉末尾增量
+      const applied = ctrl._applyZoom(card, pendingZoom);   // 补写最后一帧，避免丢掉末尾增量
+      setPct(typeof applied === 'number' ? applied : pendingZoom);
       card.classList.remove('is-resizing');
+      syncPctA11y(Number(pct.dataset.zoom) || 1);
       document.removeEventListener('pointermove', onMove);
       document.removeEventListener('pointerup', onUp);
       document.removeEventListener('pointercancel', onUp);
@@ -1758,9 +1867,40 @@ export const CardInteractions = {
     // 供「第二指落下 / 捏合开始」取消：复用收尾路径（在当前位置定住），让位给捏合
     const cancel = () => { if (resizing) onUp({ type: 'pointercancel', pointerId: resizePointerId }); };
 
+    // 双击圆点与点击/敲胶囊共用同一条复位收尾：模型 → 读数 → 几何 → 连线 → 落盘。
+    // 单独抽出来是为了避免两个入口各写一份、将来只改其中一个。
+    const resetZoom = () => {
+      lastTapAt = 0;
+      lastTapMoved = false;
+      lastResetAt = Date.now();
+      if (resizing) onUp({ type: 'pointerup', pointerId: resizePointerId });
+      ctrl._applyZoom(card, 1);
+      setPct(1);
+      ctrl._measureCard(card);
+      ctrl._scheduleRenderLinks();
+      ctrl._scheduleSave();
+    };
+
     handle.addEventListener('pointerdown', (e) => {
       e.preventDefault();
       e.stopPropagation();
+
+      // 胶囊是显式的「复位到 100%」按钮，单击即复位；不要顺带启动缩放拖拽。
+      if (pct.contains(e.target)) {
+        resetZoom();
+        return;
+      }
+
+      const nowTap = Date.now();
+      if (nowTap - lastTapAt < RESET_TAP_MS && !lastTapMoved) {
+        resetZoom();
+        return;
+      }
+      lastTapAt = nowTap;
+      lastTapMoved = false;
+      tapStartX = e.clientX;
+      tapStartY = e.clientY;
+
       if (typeof ctrl._cardGestureCancel === 'function') ctrl._cardGestureCancel();   // 取消其他进行中的手势
       const captureEl = ctrl._canvas || card;
       resizePointerId = e.pointerId;
@@ -1772,11 +1912,16 @@ export const CardInteractions = {
       startY = e.clientY;
       startZoom = ctrl._clampZoom(card.dataset.zoom);
       pendingZoom = startZoom;
-      // 基准 = 拖拽起始的「视觉宽度」(屏幕像素，已含画布缩放与卡片缩放)；pendingZoom 按视觉宽度比例变化，
-      // 与画布缩放/卡片缩放解耦——此前多除了一次 startZoom，导致已缩放过的卡片再次拖拽时灵敏度翻 startZoom 倍。
-      const w = card.getBoundingClientRect().width || card.offsetWidth;
-      baseW = (w || 340);
+      setPct(startZoom);
+      // 基准 = 卡片自身的布局宽度 × 画布缩放。
+      // 不能用 getBoundingClientRect().width：旋转后那是 AABB，会把卡片的视觉宽度算大，
+      // 导致旋转卡片缩放灵敏度偏低。offsetWidth 不受旋转影响，再乘画布 scale 得到屏幕宽度。
+      const rotRad = (Number(card.dataset.rot) || 0) * Math.PI / 180;
+      cosRot = Math.cos(rotRad);
+      sinRot = Math.sin(rotRad);
+      baseW = (card.offsetWidth || 340) * CanvasViewport.getScale(ctrl);
       card.classList.add('is-resizing');
+      syncPctA11y(startZoom);   // 拖动中即使正好 100%，胶囊也要可读可敲
       card.style.zIndex = String(++ctrl._zTop);
       ctrl._cardGestureCancel = cancel;   // 供第二指/捏合取消
       document.addEventListener('pointermove', onMove);
@@ -1784,12 +1929,24 @@ export const CardInteractions = {
       document.addEventListener('pointercancel', onUp);   // 系统取消指针时同样收尾，避免监听残留
     });
 
-    handle.addEventListener('dblclick', (e) => {
+    // 胶囊也支持键盘：Enter / Space 与单击同义（tabindex 由缩放状态管理）。
+    pct.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
       e.preventDefault();
       e.stopPropagation();
-      ctrl._applyZoom(card, 1);
-      ctrl._scheduleSave();
+      resetZoom();
     });
+
+    // 原生 dblclick 不能再绑定：setPointerCapture 会让它永远到不了 handle。
+    // 复位已由「胶囊点击/键盘」+ pointerdown 手动双击两路承担。
+    // 但那次 dblclick 不会消失，只是 target 变成 canvas 后继续冒泡；
+    // 在捕获阶段吞掉它，避免双击手柄又触发画布的「双击空白归位」。
+    const rootEl = ctrl._el || ctrl._canvas;
+    if (rootEl) {
+      rootEl.addEventListener('dblclick', (e) => {
+        if (Date.now() - lastResetAt < 400) { e.stopPropagation(); e.preventDefault(); }
+      }, true);
+    }
 
     // 卡片滚轮快捷键已全部移除：
     //   · Alt+滚轮（单卡缩放）—— 移除，改由卡片上的 S/M/L/XL 档位按钮操作；
@@ -2147,6 +2304,12 @@ export const CardInteractions = {
     ctrl._exitAllEdits();
     const text = card.querySelector('.tw-card-text');
     if (!text) return;
+    // 多选里双击进入编辑：收敛为单选。否则 .editing 摘掉本卡轮廓，但浮动条
+    // 仍把这张卡算进「合并 N 张」，且批量条(z 9000)会压住同位置的格式条。
+    if (ctrl._selected && (ctrl._selected.size > 1 || !ctrl._selected.has(card)) &&
+        typeof ctrl._selectOnly === 'function') {
+      ctrl._selectOnly(card);
+    }
     card.classList.add('editing');
     ctrl._editingId = card.dataset.id;   // 编辑中：钉在屏上，剔除跳过
     card._editUndoPushed = false;   // 本次编辑会话是否已为撤销留档（首次真正改动时才 push）
@@ -2500,6 +2663,12 @@ export const CardInteractions = {
       c.classList.remove('is-pinned');
     });
     if (!card) return;
+    // 便签档的工具条由 .selected 驱动，不再需要钉住；
+    // 否则每次轻点都会加 is-pinned，触发主题色描边，看起来像选中框。
+    if (ctrl._mode === 'notes') {
+      card.classList.remove('is-pinned');   // 清掉模式切换/旧版本遗留的钉住态
+      return;
+    }
     card.classList.add('is-pinned');
   },
   // (was _addLink)

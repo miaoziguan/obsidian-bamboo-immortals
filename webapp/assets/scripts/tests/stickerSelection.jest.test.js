@@ -32,10 +32,12 @@ function decl(body, prop) {
 }
 
 describe('贴纸选中态契约', () => {
-  test('.bm-sticker.selected 有金色描边（可见的选中反馈）', () => {
-    const outlines = rulesMatching('.bm-sticker.selected').map((r) => decl(r.body, 'outline')).filter(Boolean);
-    expect(outlines.some((o) => o.includes('solid'))).toBe(true);
-    expect(outlines.some((o) => o.includes('#c9a24a'))).toBe(true);
+  test('.bm-sticker.selected 不再追加视觉高亮（手柄即激活态）', () => {
+    const rules = rulesMatching('.bm-sticker.selected');
+    const outlines = rules.map((r) => decl(r.body, 'outline')).filter(Boolean);
+    const filters = rules.map((r) => decl(r.body, 'filter')).filter(Boolean);
+    expect(outlines).toContain('none');
+    expect(filters).toHaveLength(0);
   });
 
   test('选中时旋转 / 缩放手柄常显（opacity:1）', () => {

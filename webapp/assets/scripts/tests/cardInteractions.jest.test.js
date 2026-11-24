@@ -1,3 +1,5 @@
+const fs = require('fs');
+const path = require('path');
 const { loadModule } = require('./__helpers__/testUtils.js');
 
 // CardInteractions 从 domRef / WritingDoc / CanvasViewport / ModePolicy import，
@@ -10,8 +12,9 @@ const { CardInteractions } = loadModule('handlers/features/CardInteractions.js',
   WritingDoc: { setPos, setText, setOrder: jest.fn(), orderIds: jest.fn(() => []) },
   CanvasViewport: { getScale: () => 1, getOffset: () => ({ x: 0, y: 0, scale: 1 }) },
   // cardMaxLen 与下面的 MAX_LEN 保持一致：这份测试只覆盖编辑输入/粘贴的挂钩点
-  ModePolicy: { manualCardSize: (m) => m === 'notes', linksDefineOrder: () => false, cardMaxLen: () => 1000 },
+  ModePolicy: { manualCardSize: (m) => m === 'notes', linksDefineOrder: () => false, cardMaxLen: () => 1000, usesCardInteractions: () => true },
   fitCardText,
+  isFromTextEntry: () => false,
   MAX_LEN: 1000,
 });
 
@@ -52,6 +55,92 @@ describe('第4步 / P3 缩放门控：写作档不提供拖角缩放手柄', () 
     const card = document.createElement('div');
     CardInteractions.makeResizable({ state: {}, ctrl: { _mode: 'write' } }, card);
     expect(card.querySelector('.tw-card-resize')).toBeNull();
+  });
+
+  test('缩放角标：32px 热区 + 半悬纸白圆点 + 拖动百分比胶囊', () => {
+    const card = document.createElement('div');
+    const ctrl = {
+      _mode: 'notes',
+      _zTop: 0,
+      _clampZoom: (z) => Math.min(2, Math.max(0.5, Number(z) || 1)),
+      _applyZoom: jest.fn((el, z) => { el.dataset.zoom = String(z); return z; }),
+      _scheduleRenderLinks: jest.fn(),
+      _measureCard: jest.fn(),
+      _scheduleSave: jest.fn(),
+    };
+    card.className = 'tw-card selected';
+    card.dataset.zoom = '1';
+    CardInteractions.makeResizable({ state: {}, ctrl }, card);
+
+    const handle = card.querySelector('.tw-card-resize');
+    const pct = handle.querySelector('.tw-card-resize-pct');
+    expect(pct).not.toBeNull();
+    expect(pct.getAttribute('aria-hidden')).toBe('true');   // 100% 时胶囊不参与交互
+    expect(pct.getAttribute('role')).toBe('button');
+    expect(pct.title).toMatch(/100%/);
+    expect(handle.getAttribute('aria-valuemin')).toBe('60');
+    expect(handle.getAttribute('aria-valuemax')).toBe('240');
+    expect(handle.title).not.toMatch(/滚轮/);
+
+    const css = fs.readFileSync(path.resolve(__dirname, '../../styles/notes.css'), 'utf8');
+    const block = css.match(/\.tw-card-resize \{([\s\S]*?)\n\}/)[1];
+    expect(block).toMatch(/right:\s*-16px/);
+    expect(block).toMatch(/bottom:\s*-16px/);
+    expect(block).toMatch(/width:\s*32px/);
+    expect(block).toMatch(/height:\s*32px/);
+    expect(block).toMatch(/pointer-events:\s*none/);
+
+    const dot = css.match(/\.tw-card-resize::before \{([\s\S]*?)\n\}/)[1];
+    expect(dot).toMatch(/width:\s*10px/);
+    expect(dot).toMatch(/height:\s*10px/);
+    expect(dot).toMatch(/border-radius:\s*50%/);
+    expect(dot).toMatch(/background:\s*var\(--white\)/);
+    expect(dot).toMatch(/background-image:\s*radial-gradient/);
+    expect(dot).not.toMatch(/--rice-paper/);
+    expect(dot).toMatch(/border:\s*1px solid rgba\(var\(--deep-rgb\)/);
+    expect(dot).toMatch(/box-shadow:/);
+    expect(dot).not.toMatch(/linear-gradient/);
+    // 选中且非 100% 常驻；拖动中恒显；两者都把 pointer-events 打开。
+    expect(css).toMatch(/\.tw-card\.selected:not\(\.is-multi-active\):not\(\.editing\)\.tw-card-resized \.tw-card-resize-pct/);
+    expect(css).toMatch(/\.tw-card\.is-resizing \.tw-card-resize-pct/);
+    expect(css).toMatch(/visibility:\s*hidden/);
+    expect(css).toMatch(/visibility:\s*visible/);
+    expect(css).toMatch(/pointer-events:\s*auto/);
+    expect(css).toMatch(/content:\s*"↺"/);
+    // 胶囊锚在圆点右侧、纸角外侧，用 top:50% + translateY(-50%) 真正按高度居中；
+    // 不能再写 bottom:7px 猜高度，否则纸样/字体/缩放一变中心就漂。
+    const pctBlock = css.match(/\.tw-card-resize-pct \{([\s\S]*?)\n\}/)[1];
+    expect(pctBlock).toMatch(/left:\s*calc\(100% \+ 4px\)/);
+    expect(pctBlock).toMatch(/top:\s*50%/);
+    expect(pctBlock).not.toMatch(/bottom:/);
+    expect(pctBlock).toMatch(/translateY\(-50%\)/);
+    expect(pctBlock).toMatch(/transform-origin:\s*left center/);
+    // 胶囊是 role=button，必须清零全局 44px 触控目标最小尺寸，否则会被撑高。
+    expect(pctBlock).toMatch(/min-width:\s*0/);
+    expect(pctBlock).toMatch(/min-height:\s*0/);
+    expect(pctBlock).toMatch(/display:\s*inline-flex/);
+    expect(pctBlock).toMatch(/align-items:\s*center/);
+    // 胶囊整体反向旋转回屏幕水平；不能再只反向旋转内层读数，
+    // 否则卡片转 90° 时水平文字会溢出竖向胶囊（截图里的错乱）。
+    expect(pctBlock).toMatch(/translateY\(-50%\) rotate\(calc\(0deg - var\(--tw-card-rot\)\)\)/);
+    expect(css).not.toMatch(/\.tw-card-resize-pct-text \{[^}]*rotate\(/);
+    // 必须覆盖全局 [role=button]:active 的 --scale-click，否则按下时 translateY(-50%) 被冲掉。
+    expect(css).toMatch(/\.tw-card-resize-pct:active \{[^}]*translateY\(-50%\)/);
+
+    // 工具条不再有缩小/放大按钮：单卡缩放只保留右下角拖拽手柄 + 胶囊复位。
+    const cardViewSrc = fs.readFileSync(
+      path.resolve(__dirname, '../handlers/features/CardViewManager.js'), 'utf8'
+    );
+    expect(cardViewSrc).not.toMatch(/tw-card-zoom-(out|in)/);
+    expect(css).not.toMatch(/tw-card-zoom-(out|in)/);
+
+    // 拖动：横向 +100px，基准宽 340px → 1 → 约 129%
+    handle.dispatchEvent(new MouseEvent('pointerdown', { clientX: 100, clientY: 100, bubbles: true, cancelable: true }));
+    document.dispatchEvent(new MouseEvent('pointermove', { clientX: 200, clientY: 100, bubbles: true }));
+    expect(pct.textContent).toBe('129%');
+    expect(handle.getAttribute('aria-valuenow')).toBe('129');
+    document.dispatchEvent(new MouseEvent('pointerup', { clientX: 200, clientY: 100, bubbles: true }));
+    expect(card.classList.contains('is-resizing')).toBe(false);
   });
 });
 
@@ -654,5 +743,446 @@ describe('旋转手柄双击归零（原生 dblclick 被 setPointerCapture 吞�
     } finally {
       jest.useRealTimers();
     }
+  });
+});
+
+// 缩放圆点双击复位：与旋转手柄同一个坑 —— setPointerCapture 吞掉原生 dblclick。
+describe('缩放复位：双击圆点 + 常驻百分比胶囊', () => {
+  function makeZoomCtrl(calls) {
+    const canvas = document.createElement('div');
+    canvas.setPointerCapture = () => {};
+    canvas.releasePointerCapture = () => {};
+    canvas.hasPointerCapture = () => false;
+    return {
+      _mode: 'notes',
+      _canvas: canvas,
+      _zTop: 1,
+      _clampZoom: (z) => Math.min(2, Math.max(0.5, Number(z) || 1)),
+      _applyZoom: (c, z) => { calls.push(z); c.dataset.zoom = String(z); return z; },
+      _measureCard: jest.fn(),
+      _scheduleRenderLinks: jest.fn(),
+      _scheduleSave: jest.fn(),
+      _cardGestureCancel: null,
+    };
+  }
+
+  function fireDown(handle, x = 40, y = 40) {
+    const e = new MouseEvent('pointerdown', { bubbles: true, cancelable: true, clientX: x, clientY: y });
+    Object.defineProperty(e, 'pointerId', { value: 1 });
+    handle.dispatchEvent(e);
+  }
+  function fireMove(x, y) {
+    const e = new MouseEvent('pointermove', { bubbles: true, cancelable: true, clientX: x, clientY: y });
+    Object.defineProperty(e, 'pointerId', { value: 1 });
+    document.dispatchEvent(e);
+  }
+  function fireUp() {
+    const e = new MouseEvent('pointerup', { bubbles: true, cancelable: true });
+    Object.defineProperty(e, 'pointerId', { value: 1 });
+    document.dispatchEvent(e);
+  }
+
+  it('两次 pointerdown 间隔 <320ms → 缩放到 1（100%）', () => {
+    const card = document.createElement('div');
+    card.className = 'tw-card selected';
+    card.dataset.id = 'r1';
+    card.dataset.zoom = '1.75';
+    document.body.appendChild(card);
+
+    const calls = [];
+    const ctrl = makeZoomCtrl(calls);
+    CardInteractions.makeResizable({ state: {}, ctrl }, card);
+    const handle = card.querySelector('.tw-card-resize');
+
+    fireDown(handle);
+    fireDown(handle);          // 立即第二次 → 双击语义
+
+    expect(calls).toContain(1);
+    expect(card.dataset.zoom).toBe('1');
+  });
+
+  it('双击 A 的圆点只复位 A，不影响 B（双卡隔离）', () => {
+    const notes = [
+      { id: 'a', zoom: 1.6 },
+      { id: 'b', zoom: 1.2 },
+    ];
+    const cardA = document.createElement('div');
+    cardA.className = 'tw-card'; cardA.dataset.id = 'a'; cardA.dataset.zoom = '1.6';
+    const cardB = document.createElement('div');
+    cardB.className = 'tw-card'; cardB.dataset.id = 'b'; cardB.dataset.zoom = '1.2';
+    document.body.appendChild(cardA); document.body.appendChild(cardB);
+
+    const ctrl = makeZoomCtrl([]);
+    ctrl._notes = notes;
+    ctrl._applyZoom = (c, z) => {
+      const id = c && c.dataset && c.dataset.id;
+      ctrl._notes = ctrl._notes.map((n) => (n.id === id ? Object.assign({}, n, { zoom: z }) : n));
+      c.dataset.zoom = String(z);
+      return z;
+    };
+
+    CardInteractions.makeResizable({ state: {}, ctrl }, cardA);
+    CardInteractions.makeResizable({ state: {}, ctrl }, cardB);
+    const hA = cardA.querySelector('.tw-card-resize');
+
+    fireDown(hA); fireDown(hA);   // 双击 A
+
+    expect(ctrl._notes.find((n) => n.id === 'a').zoom).toBe(1);
+    expect(ctrl._notes.find((n) => n.id === 'b').zoom).toBe(1.2);
+    expect(cardB.dataset.zoom).toBe('1.2');
+  });
+
+  it('第一次拖拽后紧接着再按下，不误判双击', () => {
+    const card = document.createElement('div');
+    card.className = 'tw-card selected';
+    card.dataset.id = 'r2';
+    card.dataset.zoom = '1.5';
+    document.body.appendChild(card);
+
+    const calls = [];
+    const ctrl = makeZoomCtrl(calls);
+    CardInteractions.makeResizable({ state: {}, ctrl }, card);
+    const handle = card.querySelector('.tw-card-resize');
+
+    fireDown(handle, 40, 40);
+    fireMove(60, 60);          // 位移 40px → 这是一次拖拽，不是点击
+    fireUp();
+    fireDown(handle, 60, 60);  // 拖完立刻再按下，不应复位
+    fireUp();
+
+    expect(calls).not.toContain(1);
+  });
+
+  it('双击圆点后泄漏到画布的 dblclick 被拦截（不触发全卡归位）', () => {
+    const root = document.createElement('div');
+    const canvas = document.createElement('div');
+    const card = document.createElement('div');
+    card.className = 'tw-card'; card.dataset.id = 'r3'; card.dataset.zoom = '1.4';
+    root.appendChild(canvas); root.appendChild(card);
+    document.body.appendChild(root);
+
+    let recenter = 0;
+    const ctrl = makeZoomCtrl([]);
+    ctrl._el = root;
+    ctrl._canvas = canvas;
+    root.addEventListener('dblclick', (e) => {
+      if (e.target.closest('.tw-card, button, .tw-card-resize, input, textarea')) return;
+      recenter++;
+    });
+
+    CardInteractions.makeResizable({ state: {}, ctrl }, card);
+    const handle = card.querySelector('.tw-card-resize');
+    fireDown(handle);
+    fireDown(handle);          // 手柄双击复位
+
+    // 浏览器随后合成的 dblclick：target 已被 setPointerCapture 重定向到 canvas
+    canvas.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, cancelable: true }));
+    expect(recenter).toBe(0);
+
+    root.remove();
+  });
+
+  it('两次 pointerdown 间隔 >320ms → 不复位', () => {
+    jest.useFakeTimers();
+    try {
+      const card = document.createElement('div');
+      card.className = 'tw-card selected';
+      card.dataset.id = 'r4';
+      card.dataset.zoom = '1.4';
+      document.body.appendChild(card);
+
+      const calls = [];
+      const ctrl = makeZoomCtrl(calls);
+      CardInteractions.makeResizable({ state: {}, ctrl }, card);
+      const handle = card.querySelector('.tw-card-resize');
+
+      fireDown(handle);
+      fireUp();
+      jest.advanceTimersByTime(500);   // 超过 320ms
+      fireDown(handle);
+      fireUp();
+
+      expect(calls).not.toContain(1);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('非 100% → 卡片打标且胶囊可交互；100% → 不打标且不可交互', () => {
+    const zoomed = document.createElement('div');
+    zoomed.className = 'tw-card selected';
+    zoomed.dataset.zoom = '1.35';
+    const normal = document.createElement('div');
+    normal.className = 'tw-card selected';
+    normal.dataset.zoom = '1';
+    document.body.appendChild(zoomed); document.body.appendChild(normal);
+
+    const ctrl = makeZoomCtrl([]);
+    CardInteractions.makeResizable({ state: {}, ctrl }, zoomed);
+    CardInteractions.makeResizable({ state: {}, ctrl }, normal);
+
+    const pctZoomed = zoomed.querySelector('.tw-card-resize-pct');
+    const pctNormal = normal.querySelector('.tw-card-resize-pct');
+
+    expect(zoomed.classList.contains('tw-card-resized')).toBe(true);
+    expect(pctZoomed.getAttribute('aria-hidden')).toBe('false');
+    expect(pctZoomed.tabIndex).toBe(0);
+    expect(pctZoomed.textContent).toBe('135%');
+
+    expect(normal.classList.contains('tw-card-resized')).toBe(false);
+    expect(pctNormal.getAttribute('aria-hidden')).toBe('true');
+    expect(pctNormal.tabIndex).toBe(-1);
+  });
+
+  it('单击胶囊复位 100%，且不启动缩放拖拽', () => {
+    const card = document.createElement('div');
+    card.className = 'tw-card selected';
+    card.dataset.zoom = '1.6';
+    document.body.appendChild(card);
+
+    const calls = [];
+    const ctrl = makeZoomCtrl(calls);
+    CardInteractions.makeResizable({ state: {}, ctrl }, card);
+    const pct = card.querySelector('.tw-card-resize-pct');
+
+    const ev = new MouseEvent('pointerdown', { bubbles: true, cancelable: true, clientX: 10, clientY: 10 });
+    Object.defineProperty(ev, 'pointerId', { value: 1 });
+    pct.dispatchEvent(ev);
+
+    expect(calls).toContain(1);
+    expect(card.dataset.zoom).toBe('1');
+    expect(card.classList.contains('is-resizing')).toBe(false);
+    expect(card.classList.contains('tw-card-resized')).toBe(false);
+    expect(ctrl._measureCard).toHaveBeenCalledWith(card);
+    expect(ctrl._scheduleRenderLinks).toHaveBeenCalled();
+    expect(ctrl._scheduleSave).toHaveBeenCalled();
+  });
+
+  it('键盘 Enter / Space 复位 100%', () => {
+    const card = document.createElement('div');
+    card.className = 'tw-card selected';
+    card.dataset.zoom = '1.8';
+    document.body.appendChild(card);
+
+    const calls = [];
+    const ctrl = makeZoomCtrl(calls);
+    CardInteractions.makeResizable({ state: {}, ctrl }, card);
+    const pct = card.querySelector('.tw-card-resize-pct');
+
+    ['Enter', ' '].forEach((key) => {
+      pct.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+    });
+
+    expect(calls.filter((z) => z === 1).length).toBe(2);
+    expect(card.dataset.zoom).toBe('1');
+  });
+
+  it('旋转卡片沿纸面右下拖拽：用局部位移与布局宽度，不用 AABB', () => {
+    const card = document.createElement('div');
+    card.className = 'tw-card selected';
+    card.dataset.id = 'r5';
+    card.dataset.zoom = '1';
+    card.dataset.rot = '-45';
+    Object.defineProperty(card, 'offsetWidth', { value: 340, configurable: true });
+    // 旋转后的 AABB 宽度故意给大：若代码回退到它，结果会明显偏小
+    card.getBoundingClientRect = () => ({ width: 600, height: 500, left: 0, top: 0, right: 600, bottom: 500 });
+    document.body.appendChild(card);
+
+    const ctrl = makeZoomCtrl([]);
+    ctrl._canvasOffset = { scale: 1 };
+    CardInteractions.makeResizable({ state: {}, ctrl }, card);
+    const handle = card.querySelector('.tw-card-resize');
+
+    fireDown(handle, 100, 100);
+    fireMove(200, 200);   // 屏幕对角 141px → 卡片局部对角 141px
+    fireUp();
+
+    // (340 + 141.42) / 340 = 1.4159；AABB 基准会是 1.2357，未投影屏幕位移会是 1.588
+    expect(Number(card.dataset.zoom)).toBeCloseTo(1.416, 2);
+  });
+
+  it('画布放大 2× 时拖拽基准同步放大，灵敏度不翻倍', () => {
+    const card = document.createElement('div');
+    card.className = 'tw-card selected';
+    card.dataset.id = 'r8';
+    card.dataset.zoom = '1';
+    card.dataset.rot = '0';
+    Object.defineProperty(card, 'offsetWidth', { value: 340, configurable: true });
+    document.body.appendChild(card);
+
+    const ctrl = makeZoomCtrl([]);
+    const cv = globalThis.CanvasViewport;
+    const originalScale = cv.getScale;
+    cv.getScale = () => 2;   // 本套件默认桩为 1，这里模拟画布放大 2×
+    try {
+      CardInteractions.makeResizable({ state: {}, ctrl }, card);
+      const handle = card.querySelector('.tw-card-resize');
+
+      fireDown(handle, 100, 100);
+      fireMove(168, 100);   // 屏幕 68px = 卡片局部 34px；基准应为 340×2=680
+      fireUp();
+    } finally {
+      cv.getScale = originalScale;
+    }
+
+    expect(Number(card.dataset.zoom)).toBeCloseTo(1.1, 2);
+  });
+
+  it('旋转卡片上单击胶囊仍复位 100%，不误触拖拽', () => {
+    const card = document.createElement('div');
+    card.className = 'tw-card selected';
+    card.dataset.id = 'r6';
+    card.dataset.zoom = '1.6';
+    card.dataset.rot = '30';
+    document.body.appendChild(card);
+
+    const calls = [];
+    const ctrl = makeZoomCtrl(calls);
+    CardInteractions.makeResizable({ state: {}, ctrl }, card);
+    const pct = card.querySelector('.tw-card-resize-pct');
+
+    const ev = new MouseEvent('pointerdown', { bubbles: true, cancelable: true, clientX: 10, clientY: 10 });
+    Object.defineProperty(ev, 'pointerId', { value: 1 });
+    pct.dispatchEvent(ev);
+
+    expect(calls).toContain(1);
+    expect(card.dataset.zoom).toBe('1');
+    expect(card.classList.contains('is-resizing')).toBe(false);
+    expect(ctrl._measureCard).toHaveBeenCalledWith(card);
+  });
+
+  it('旋转卡片上双击白圆点仍复位 100%', () => {
+    const card = document.createElement('div');
+    card.className = 'tw-card selected';
+    card.dataset.id = 'r7';
+    card.dataset.zoom = '1.5';
+    card.dataset.rot = '-30';
+    document.body.appendChild(card);
+
+    const calls = [];
+    const ctrl = makeZoomCtrl(calls);
+    CardInteractions.makeResizable({ state: {}, ctrl }, card);
+    const handle = card.querySelector('.tw-card-resize');
+
+    fireDown(handle);
+    fireDown(handle);
+
+    expect(calls).toContain(1);
+    expect(card.dataset.zoom).toBe('1');
+  });
+
+  it('外部缩放（工具条 / 读档 / 撤销）通过 _twSyncResizePct 同步胶囊', () => {
+    const card = document.createElement('div');
+    card.className = 'tw-card selected';
+    card.dataset.zoom = '1';
+    document.body.appendChild(card);
+
+    const ctrl = makeZoomCtrl([]);
+    CardInteractions.makeResizable({ state: {}, ctrl }, card);
+    const handle = card.querySelector('.tw-card-resize');
+    const pct = card.querySelector('.tw-card-resize-pct');
+
+    expect(typeof card._twSyncResizePct).toBe('function');
+    expect(pct.textContent).toBe('100%');
+
+    card._twSyncResizePct(1.5);
+    expect(pct.textContent).toBe('150%');
+    expect(card.classList.contains('tw-card-resized')).toBe(true);
+    expect(pct.getAttribute('aria-hidden')).toBe('false');
+    expect(handle.getAttribute('aria-valuenow')).toBe('150');
+
+    card._twSyncResizePct(1);
+    expect(pct.textContent).toBe('100%');
+    expect(card.classList.contains('tw-card-resized')).toBe(false);
+    expect(pct.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  it('拖动中即使正好 100% 胶囊也可交互，松手后恢复隐藏', () => {
+    const card = document.createElement('div');
+    card.className = 'tw-card selected';
+    card.dataset.zoom = '1';
+    document.body.appendChild(card);
+
+    const ctrl = makeZoomCtrl([]);
+    CardInteractions.makeResizable({ state: {}, ctrl }, card);
+    const handle = card.querySelector('.tw-card-resize');
+    const pct = card.querySelector('.tw-card-resize-pct');
+
+    expect(pct.getAttribute('aria-hidden')).toBe('true');
+    expect(pct.tabIndex).toBe(-1);
+
+    fireDown(handle, 40, 40);
+    expect(card.classList.contains('is-resizing')).toBe(true);
+    expect(pct.getAttribute('aria-hidden')).toBe('false');
+    expect(pct.tabIndex).toBe(0);
+
+    fireUp();
+    expect(card.classList.contains('is-resizing')).toBe(false);
+    expect(pct.getAttribute('aria-hidden')).toBe('true');
+    expect(pct.tabIndex).toBe(-1);
+  });
+});
+
+describe('选择出口：Cmd/Ctrl+A 与 Esc', () => {
+  let ctrl = null;
+  afterEach(() => {
+    if (ctrl && ctrl._selKeyHandler) document.removeEventListener('keydown', ctrl._selKeyHandler);
+    if (global.CanvasKeys) delete global.CanvasKeys;
+    ctrl = null;
+    document.body.innerHTML = '';
+  });
+
+  const setup = () => {
+    const canvas = document.createElement('div');
+    canvas.className = 'tw-canvas';
+    canvas.getBoundingClientRect = () => ({ left: 0, top: 0, right: 800, bottom: 600, width: 800, height: 600 });
+    document.body.appendChild(canvas);
+    const cards = [1, 2].map((i) => {
+      const c = document.createElement('div');
+      c.className = 'tw-card';
+      c.dataset.id = 'n' + i;
+      canvas.appendChild(c);
+      return c;
+    });
+    ctrl = {
+      _canvas: canvas,
+      _el: document.body,
+      _mode: 'write',
+      _selected: new Set(),
+      _blurInput: jest.fn(),
+      _syncPaperGlowSelection: jest.fn(),
+      _updateSelBar: jest.fn(),
+      _clearSelection: jest.fn(),
+    };
+    ctrl._selectAll = () => CardInteractions.selectAll({ state: {}, ctrl });
+    global.CanvasKeys = { bind: () => () => {} };
+    CardInteractions.bindSelectionKeys({ state: {}, ctrl });
+    return { cards, canvas };
+  };
+
+  test('Cmd+A 全选已挂载卡片并同步多选视觉与浮动条', () => {
+    const { cards } = setup();
+    const ev = new KeyboardEvent('keydown', { key: 'a', metaKey: true, bubbles: true, cancelable: true });
+    document.dispatchEvent(ev);
+    expect(ev.defaultPrevented).toBe(true);
+    expect(ctrl._selected.size).toBe(2);
+    cards.forEach((c) => expect(c.classList.contains('selected')).toBe(true));
+    expect(ctrl._syncPaperGlowSelection).toHaveBeenCalledWith(cards, true);
+    expect(ctrl._updateSelBar).toHaveBeenCalled();
+    expect(ctrl._blurInput).toHaveBeenCalled();
+  });
+
+  test('Esc 清选区；光效面板开着时让位给面板自己的 Esc', () => {
+    const { cards } = setup();
+    cards.forEach((c) => ctrl._selected.add(c));
+    const ev = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+    document.dispatchEvent(ev);
+    expect(ev.defaultPrevented).toBe(true);
+    expect(ctrl._clearSelection).toHaveBeenCalledTimes(1);
+
+    ctrl._clearSelection.mockClear();
+    ctrl._lightPanel = document.createElement('div');
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    expect(ctrl._clearSelection).not.toHaveBeenCalled();
   });
 });

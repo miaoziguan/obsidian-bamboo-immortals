@@ -1,9 +1,9 @@
 // CardViewManager — 从 typewriterFeature 巨型单例（B1 解耦）抽出的子系统。
 // 方法体逐字搬运，所有内部调用经 ctrl._xxx 由 feature 委托壳自动解析回原对象。
 // 共享常量（裸名引用由本 import 提供；测试 harness 剥离 import 时由 twConfig 挂 globalThis 兜底）
-import { ICON_LAYERS, ICON_FONT, ICON_GRID, ICON_PRINT, ICON_X, ICON_FONT_DOWN, ICON_FONT_UP, ICON_ZOOM_OUT, ICON_ZOOM_IN, ICON_PAPER, ICON_EXPORT, ICON_EXPORT_PNG, ICON_PREVIEW, ICON_MOVE_UP, ICON_MOVE_DOWN, ICON_LV_UP, ICON_LV_DOWN, ICON_ROTATE, ICON_SPLIT } from './twConfig.js';
+import { ICON_LAYERS, ICON_FONT, ICON_GRID, ICON_PRINT, ICON_X, ICON_FONT_DOWN, ICON_FONT_UP, ICON_PAPER, ICON_EXPORT, ICON_EXPORT_PNG, ICON_PREVIEW, ICON_MOVE_UP, ICON_MOVE_DOWN, ICON_LV_UP, ICON_LV_DOWN, ICON_ROTATE, ICON_SPLIT } from './twConfig.js';
 import { STACK_STEP, STACK_LEVELS, TYPE_SPEED, MAX_LEN, NOTE_CAP, WRITE_FLOW_GAP, SAVE_DEBOUNCE, LOD_DENSITY, ZOOM_MIN, ZOOM_MAX, ZOOM_STEP } from './twConfig.js';
-import { FONT_SCALES, FONT_SCALE_DEFAULT_IDX, FONT_SCALE_LABELS, CARD_SCALES, CARD_SCALE_LABELS, CARD_SCALE_DEFAULT_IDX } from './twConfig.js';
+import { FONT_SCALES, FONT_SCALE_DEFAULT_IDX, FONT_SCALE_LABELS } from './twConfig.js';
 import { FONTS, FONT_LABELS, FONT_FEEDBACK, DEFAULT_FONT } from './twConfig.js';
 import { PAPERS, PAPER_LABELS, PAPER_FEEDBACK, PAPER_TITLES, MARKET_PAPERS } from './twConfig.js';
 import { LEVELS, LEVEL_LABELS, LEVEL_FEEDBACK, LEVEL_GROUPS, LEVEL_LADDER } from './twConfig.js';
@@ -73,8 +73,6 @@ export const CardViewManager = {
         <button type="button" class="tw-card-lv tw-card-lv-down" aria-label="降低层级">${ICON_LV_DOWN}</button>
         <button type="button" class="tw-card-font tw-card-font-down" aria-label="缩小字号">${ICON_FONT_DOWN}</button>
         <button type="button" class="tw-card-font tw-card-font-up" aria-label="放大字号">${ICON_FONT_UP}</button>
-        <button type="button" class="tw-card-zoom-out" aria-label="缩小便签">${ICON_ZOOM_OUT}</button>
-        <button type="button" class="tw-card-zoom-in" aria-label="放大便签">${ICON_ZOOM_IN}</button>
         <button type="button" class="tw-card-split" aria-label="按段落拆分">${ICON_SPLIT}</button>
         <button type="button" class="tw-card-export" aria-label="导出为 Markdown">${ICON_EXPORT}</button>
         <button type="button" class="tw-card-export-png" aria-label="导出为 PNG 图片" title="导出为 PNG 图片（点击选择方式 · 长按/右键按默认执行）">${ICON_EXPORT_PNG}</button>
@@ -101,9 +99,9 @@ export const CardViewManager = {
     if (isWrite) {
       const pb = card.querySelector('.tw-card-paper');
       if (pb) pb.hidden = true;
-      // 单卡字号 / 单卡缩放是便签维度，写作档统一由「全局字号滑块 + 全局画布缩放」接管，
-      // 卡片宽度统一、高度随内容流动。隐藏而非删除：模型值保留，切回便签档按钮自然恢复。
-      ['tw-card-font-down', 'tw-card-font-up', 'tw-card-zoom-out', 'tw-card-zoom-in'].forEach((cls) => {
+      // 单卡字号是便签维度，写作档由「全局字号滑块 + 层级字阶」接管；
+      // 缩放按钮已整体移除，单卡缩放只保留便签档右下角的拖拽手柄。
+      ['tw-card-font-down', 'tw-card-font-up'].forEach((cls) => {
         const b = card.querySelector('.' + cls);
         if (b) b.hidden = true;
       });
@@ -116,7 +114,6 @@ export const CardViewManager = {
     // 字级档位：旧数据无 fontScale → 落到默认档（1.0）
     ctrl._applyFontScale(card, ctrl._fontIdxOf(note.fontScale, paper));
     ctrl._bindFontSteps(card);
-    ctrl._bindZoomSteps(card);
     ctrl._bindPaperSwitch(card);
     ctrl._bindLevelSwitch(card);
     ctrl._bindOrderSteps(card);
@@ -188,26 +185,14 @@ export const CardViewManager = {
     card.dataset.zoom = z.toFixed(3);
     if (z === 1) card.style.removeProperty('--tw-card-zoom');
     else card.style.setProperty('--tw-card-zoom', z.toFixed(3));
-    // 拖拽手柄 / ⌘+滚轮 改完缩放后，尺寸档位按钮的可用态也要跟着更新
-    ctrl._syncCardScaleButtons(card);
+    // 唯一缩放入口：同步右下角常驻百分比胶囊。
+    // 手柄由 makeResizable 挂上钩子；写作档无手柄时钩子不存在，静默跳过。
+    if (typeof card._twSyncResizePct === 'function') card._twSyncResizePct(z);
     // 连续编辑改走 WritingDoc 原语：缩放即改规范模型（与落盘/撤销/导出同源）
     ctrl._notes = WritingDoc.setZoom(ctrl._notes, card.dataset.id, ctrl._clampZoom(card.dataset.zoom));
-    ctrl._invalidateGeo(card.dataset.id);   // 缩放改了卡片尺寸 → 几何失效（滚轮/双击复位/档位钮都走这里）
+    ctrl._invalidateGeo(card.dataset.id);   // 缩放改了卡片尺寸 → 几何失效（拖拽/双击复位都走这里）
     fitCardText(card);   // 卡片整体缩放后框与字号都变了 → 重算自适应比例
     return z;
-  
-  },
-  // (was _zoomIdxOf)
-  zoomIdxOf(ctx, zoom) {
-    const { state, ctrl } = ctx;
-    const z = ctrl._clampZoom(zoom);
-    let idx = CARD_SCALE_DEFAULT_IDX;
-    let bestD = Infinity;
-    CARD_SCALES.forEach((s, i) => {
-      const d = Math.abs(s - z);
-      if (d < bestD) { bestD = d; idx = i; }
-    });
-    return idx;
   
   },
   // (was _clampZoom)
@@ -216,54 +201,6 @@ export const CardViewManager = {
     const n = Number(z);
     if (!isFinite(n) || n <= 0) return 1;
     return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, n));
-  
-  },
-  // (was _stepCardScale)
-  stepCardScale(ctx, card, dir) {
-    const { state, ctrl } = ctx;
-    const z = ctrl._clampZoom(card.dataset.zoom);
-    let idx = -1;
-    if (dir > 0) {
-      for (let i = 0; i < CARD_SCALES.length; i++) {
-        if (CARD_SCALES[i] > z + 0.01) { idx = i; break; }
-      }
-    } else {
-      for (let i = CARD_SCALES.length - 1; i >= 0; i--) {
-        if (CARD_SCALES[i] < z - 0.01) { idx = i; break; }
-      }
-    }
-    if (idx < 0) return false;
-    ctrl._applyZoom(card, CARD_SCALES[idx]);
-    return true;
-  
-  },
-  // (was _syncCardScaleButtons)
-  syncCardScaleButtons(ctx, card) {
-    const { state, ctrl } = ctx;
-    const out = card.querySelector('.tw-card-zoom-out');
-    const inc = card.querySelector('.tw-card-zoom-in');
-    if (!out || !inc) return;
-    const z = ctrl._clampZoom(card.dataset.zoom);
-    const label = CARD_SCALE_LABELS[ctrl._zoomIdxOf(z)];
-    out.disabled = (z <= CARD_SCALES[0] + 0.01);
-    inc.disabled = (z >= CARD_SCALES[CARD_SCALES.length - 1] - 0.01);
-    out._tipText = `缩小便签（当前：${label}）`;
-    inc._tipText = `放大便签（当前：${label}）`;
-    ctrl._refreshTip();
-  
-  },
-  // (was _bindZoomSteps)
-  bindZoomSteps(ctx, card) {
-    const { state, ctrl } = ctx;
-    const step = (dir) => {
-      if (!ctrl._stepCardScale(card, dir)) return;
-      ctrl._scheduleSave();
-    };
-    const out = card.querySelector('.tw-card-zoom-out');
-    const inc = card.querySelector('.tw-card-zoom-in');
-    if (out) out.addEventListener('click', (e) => { e.stopPropagation(); step(-1); });
-    if (inc) inc.addEventListener('click', (e) => { e.stopPropagation(); step(1); });
-    ctrl._syncCardScaleButtons(card);
   
   },
   // (was _applyPaper)
@@ -818,8 +755,6 @@ export const CardViewManager = {
       [card.querySelector('.tw-card-lv-down'), '降低层级'],
       [card.querySelector('.tw-card-font-down'), '缩小字号'],
       [card.querySelector('.tw-card-font-up'), '放大字号'],
-      [card.querySelector('.tw-card-zoom-out'), '缩小便签'],
-      [card.querySelector('.tw-card-zoom-in'), '放大便签'],
       [card.querySelector('.tw-card-split'), '按段落拆分'],
       [card.querySelector('.tw-card-del'), '移除便签'],
     ];

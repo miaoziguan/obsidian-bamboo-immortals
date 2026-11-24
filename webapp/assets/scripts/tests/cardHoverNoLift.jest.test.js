@@ -5,7 +5,7 @@
  * `card.querySelector('.tw-card-level')` 查不到 —— 因为 `.tw-card-level` 是 `.tw-card-tools`
  * 的**兄弟节点**（模板里紧挨在工具条之前，并不在工具条内），一旦用「工具条域内查询」就会
  * 返回 null，直接把写作模式的 H1/正文切换打坏。故回退为最小改动：只删掉 z 提层，
- * 工具条留在卡内、可见性交给 CSS `.tw-card:hover/.is-pinned`。
+ * 工具条留在卡内；可见性现在只由 `.selected` 驱动，hover/is-pinned 不再激活控件。
  */
 const fs = require('fs');
 const path = require('path');
@@ -53,6 +53,20 @@ test('钉住便签不再升级层级：pinOnly 只加 is-pinned，不写 zIndex'
   CardInteractions.pinOnly({ state: {}, ctrl: { _canvas: canvas } }, card);
   expect(card.classList.contains('is-pinned')).toBe(true);
   expect(card.style.zIndex).toBe(''); // 关键回归：钉住不再 z-index:5000
+});
+
+test('便签档点击不再加 is-pinned，避免选中后出现主题色描边', () => {
+  const { card } = mkCard('a');
+  const canvas = document.createElement('div');
+  canvas.appendChild(card);
+  card.classList.add('is-pinned');   // 模拟从写作档切回便签档的遗留态
+  CardInteractions.pinOnly({ state: {}, ctrl: { _canvas: canvas, _mode: 'notes' } }, card);
+  expect(card.classList.contains('is-pinned')).toBe(false);
+
+  const css = fs.readFileSync(path.join(__dirname, '../../styles/notes.css'), 'utf8');
+  // 写作档已取消 is-pinned 的描边与控件激活：class 仍由 pinOnly 打，但不再有视觉规则。
+  expect(css).not.toMatch(/\.tw-canvas:not\(\.tw-mode-notes\) \.tw-card\.is-pinned \{/);
+  expect(css).not.toMatch(/^\.tw-card\.is-pinned \{/m);
 });
 
 test('切换钉住：旧卡取消 is-pinned，且不残留 z-index 提层', () => {

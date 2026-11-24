@@ -66,13 +66,147 @@ import { LEVELS, LEVEL_LABELS, LEVEL_FEEDBACK, LEVEL_GROUPS, LEVEL_LADDER } from
 import { rankNotes, excerpt } from '../../utils/cardSearch.js';
 import { prepareImport } from '../../utils/noteImport.js';
 
+// 画布光效（顶光/底光）：三档共用一套参数，挂在功能根上，不随画布 transform 移动。
+const TW_LIGHT_DEFAULT = {
+  mode: 'off',
+  link: true,
+  followTheme: true,
+  breathe: true,
+  period: 3,
+  top: { on: true, intensity: 80, height: 360, softness: 95, temp: 'custom', color: '#f0c239' },
+  bottom: { on: true, intensity: 80, height: 360, softness: 95, temp: 'custom', color: '#f0c239' },
+  backdrop: { intensity: 100, density: 100, speed: 4, breathe: true, period: 4, amplitude: 100, autoPhase: true, phaseEvery: 10, seed: 1191, followTheme: true, temp: 'accent', color: '#e0a35c' },
+  rain: { intensity: 50, density: 70, length: 100, angle: -17, speed: 10, mist: 50, autoSeed: true, seedEvery: 120, seed: 4091, followTheme: true, temp: 'cool', color: '#7aaad2' },
+  snow: { intensity: 40, density: 10, size: 70, speed: 30, wind: -9, chill: 30, followTheme: true, temp: 'cool', color: '#7aaad2' },
+  lamp: { intensity: 100, dim: 11, temp: 'warm', color: '#e0a35c', followTheme: true, width: 420, beam: 100, reach: 100, softness: 30 },
+  paper: { intensity: 42, spread: 14, boost: 62, settle: 2, period: 3, dim: 42, temp: 'warm', color: '#e0a35c', followTheme: false },
+};
+// 预设取中国传统色：顶/底各自一色，强度按“光从哪来”分配。
+// 色温只给色相/饱和/明度，透明度由强度单独算；accent 直接引用主题色相变量。
+const TW_LIGHT_TEMPS = {
+  warm: { rgb: '224,163,92', hex: '#e0a35c', label: '暖' },
+  neutral: { rgb: '232,228,216', hex: '#e8e4d8', label: '中' },
+  cool: { rgb: '122,170,210', hex: '#7aaad2', label: '冷' },
+  accent: { rgb: 'var(--primary-rgb)', hex: '', label: '主题' },
+  custom: { rgb: '', hex: '', label: '自定义' },
+};
+const TW_LIGHT_MODES = [['off', '关闭'], ['edge', '天地对谈'], ['backdrop', '曲径通幽'], ['rain', '江南烟雨'], ['snow', '雪落轻叹'], ['lamp', '独照一隅'], ['paper', '落笔生光']];
+const TW_LIGHT_DARK_ONLY_TITLE = {
+  backdrop: '曲径通幽仅暗色模式可用',
+  rain: '江南烟雨仅暗色模式可用',
+  snow: '雪落轻叹仅暗色模式可用',
+  lamp: '独照一隅仅暗色模式可用',
+  paper: '落笔生光仅暗色写作档与思维子弹档可用',
+};
+const TW_LIGHT_BACKDROP_DEFAULT = {
+  intensity: 100,
+  density: 100,
+  speed: 4,
+  breathe: true,
+  period: 4,
+  amplitude: 100,
+  autoPhase: true,
+  phaseEvery: 10,
+  seed: 1191,
+  followTheme: true,
+  temp: 'accent',
+  color: '#e0a35c',
+};
+const TW_LIGHT_RAIN_DEFAULT = {
+  intensity: 50,
+  density: 70,
+  length: 100,
+  angle: -17,
+  speed: 10,
+  mist: 50,
+  autoSeed: true,
+  seedEvery: 120,
+  seed: 4091,
+  followTheme: true,
+  temp: 'cool',
+  color: '#7aaad2',
+};
+const TW_LIGHT_SNOW_DEFAULT = {
+  intensity: 40,
+  density: 10,
+  size: 70,
+  speed: 30,
+  wind: -9,
+  chill: 30,
+  followTheme: true,
+  temp: 'cool',
+  color: '#7aaad2',
+};
+const TW_LIGHT_LAMP_DEFAULT = {
+  intensity: 100,
+  dim: 11,
+  temp: 'warm',
+  color: '#e0a35c',
+  followTheme: true,
+  width: 420,
+  beam: 100,
+  reach: 100,
+  softness: 30,
+};
+const TW_PAPER_MULTI_LIMIT = 24;
+const TW_LIGHT_PAPER_DEFAULT = {
+  intensity: 42,
+  spread: 14,
+  boost: 62,
+  settle: 2,
+  period: 3,
+  dim: 42,
+  temp: 'warm',
+  color: '#e0a35c',
+  followTheme: false,
+};
+const TW_LIGHT_HEX = /^#[0-9a-fA-F]{6}$/;
+function twLampThemeRgb() {
+  if (typeof document === 'undefined') return 'var(--primary-rgb)';
+  const host = document.getElementById('bamboo-shadow-host');
+  const root = host || document.documentElement;
+  if (!root || typeof getComputedStyle !== 'function') return 'var(--primary-rgb)';
+  const hue = parseFloat(getComputedStyle(root).getPropertyValue('--accent-hue'));
+  if (!Number.isFinite(hue)) return 'var(--primary-rgb)';
+  const h = ((hue % 360) + 360) % 360;
+  // 枫林晚照等晚霞红主题：灯罩用粉红玻璃，而不是暗红主色
+  if (h <= 35 || h >= 325) return '224,150,176';
+  return 'var(--primary-rgb)';
+}
+
+function twLightRgb(hex) {
+  if (!TW_LIGHT_HEX.test(hex || '')) return '224,163,92';
+  const n = parseInt(hex.slice(1), 16);
+  return ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255);
+}
+
 export const TypewriterFeature = {
   /** 全部运行期字段的唯一初始化入口（模块加载 + unmount 结尾共用，替代原对象字面量顶部 40+ 条内联声明）。
    *  新增字段只改这里一处 —— 彻底消除「unmount 漏归零某字段导致跨会话/跨档串状态」这一类 bug
    *  （例如原先 _levelMenuDocHandler 在 unmount 里从未被重置）。 */
   _resetState() {
     if (!this._state) this._state = new NotesState();   // 共享状态单主（解耦 B5）：存取器代理到它，数据真源唯一
+    if (this._lightSaveTimer) { clearTimeout(this._lightSaveTimer); this._lightSaveTimer = null; }
+    if (this._lightPhaseTimer) { clearTimeout(this._lightPhaseTimer); this._lightPhaseTimer = null; }
+    if (this._lightPhaseFadeTimer) { clearTimeout(this._lightPhaseFadeTimer); this._lightPhaseFadeTimer = null; }
+    if (this._paperGlowDetach) { this._paperGlowDetach(); this._paperGlowDetach = null; }
+    if (this._themeObserver) { this._themeObserver.disconnect(); this._themeObserver = null; }
+    if (this._onLampResize) { window.removeEventListener('resize', this._onLampResize); this._onLampResize = null; }
+    if (this._rainSeedTimer) { clearTimeout(this._rainSeedTimer); this._rainSeedTimer = null; }
+    if (this._rainSeedFadeTimer) { clearTimeout(this._rainSeedFadeTimer); this._rainSeedFadeTimer = null; }
+    if (this._lightPanel || this._lightPanelDocHandler) this._closeLightPanel();
     this._el = null;
+    this._lightBackdrop = null;
+    this._lightRainNear = null;
+    this._lightSnowNear = null;
+    this._lightLamp = null;
+    this._lightLampCone = null;
+    this._lightLampDim = null;
+    this._lightPaperDim = null;
+    this._paperGlowCard = null;
+    this._paperGlowDetach = null;
+    this._themeObserver = null;
+    this._onLampResize = null;
     this._canvas = null;
     this._input = null;
     this._case = null;
@@ -92,6 +226,17 @@ export const TypewriterFeature = {
     // 写作档「层级配色」开关：默认关（新增观感需用户显式打开，与博客模块的流光/竖纹同策略）。
     // 只影响呈现（canvas 上的 .tw-lv-tint class），不动卡片数据模型 —— level 本就在模型里。
     this._levelTint = false;
+    // 画布光效：三档共用的顶光/底光参数；默认 off 且顶底均关，需用户显式打开。
+    this._light = JSON.parse(JSON.stringify(TW_LIGHT_DEFAULT));
+    this._lightOpen = { top: true, bottom: false };
+    this._lightPanel = null;
+    this._lightPanelDocHandler = null;
+    this._lightPanelEsc = null;
+    this._lightSaveTimer = null;
+    this._lightPhaseTimer = null;
+    this._lightPhaseFadeTimer = null;
+    this._rainSeedTimer = null;
+    this._rainSeedFadeTimer = null;
     // 写作档「数字徽章」开关：默认显示（保持既有观感），只有用户显式关闭才隐藏。
     // 只切画布上的 .tw-hide-order-badges class（纯呈现），徽章 DOM 与序号逻辑完全不动。
     this._orderBadges = true;
@@ -273,11 +418,42 @@ export const TypewriterFeature = {
     wrap.setAttribute('aria-label', '复古寻呼机打字');
 
     wrap.innerHTML = buildTypewriterDomHtml();
+    // 顶光/底光层挂在功能根上：不随画布 transform 移动，pointer-events:none 不拦交互。
+    const lightTop = document.createElement('div');
+    lightTop.className = 'tw-light tw-light-top';
+    lightTop.setAttribute('aria-hidden', 'true');
+    const lightBottom = document.createElement('div');
+    lightBottom.className = 'tw-light tw-light-bottom';
+    lightBottom.setAttribute('aria-hidden', 'true');
+    const lightBackdrop = document.createElement('div');
+    lightBackdrop.className = 'tw-light tw-light-backdrop';
+    lightBackdrop.setAttribute('aria-hidden', 'true');
+    this._lightBackdrop = lightBackdrop;   // 光纹类必须落在这一层（CSS 伪元素挂在此层）
+    const lightRainNear = document.createElement('div');
+    lightRainNear.className = 'tw-light-rain-near';
+    lightRainNear.setAttribute('aria-hidden', 'true');
+    lightBackdrop.appendChild(lightRainNear);
+    this._lightRainNear = lightRainNear;
+    const lightSnowNear = document.createElement('div');
+    lightSnowNear.className = 'tw-light-snow-near';
+    lightSnowNear.setAttribute('aria-hidden', 'true');
+    lightBackdrop.appendChild(lightSnowNear);
+    this._lightSnowNear = lightSnowNear;
+    const lightPaperDim = document.createElement('div');
+    lightPaperDim.className = 'tw-light-paper-dim';
+    lightPaperDim.setAttribute('aria-hidden', 'true');
+    lightBackdrop.appendChild(lightPaperDim);
+    this._lightPaperDim = lightPaperDim;
+    wrap.insertBefore(lightBackdrop, wrap.firstChild);
+    wrap.insertBefore(lightBottom, wrap.firstChild);
+    wrap.insertBefore(lightTop, wrap.firstChild);
 
     stageEl.appendChild(wrap);
     this._el = wrap;
     this._ensureDocCorner();
     this._canvas = wrap.querySelector('.tw-canvas');
+    // 纸上光：只监听编辑焦点/输入与视口变化，不逐字重排 DOM。
+    this._paperGlowDetach = this._bindPaperGlow();
     // 连线层（与思维子弹共用 LinkLayer：便签卡片之间的关联连线）
     this._linkLayer = new LinkLayer({
       container: this._canvas,
@@ -317,6 +493,7 @@ export const TypewriterFeature = {
     this._loadLevelTint();
     // 数字徽章开关：异步读回用户上次的选择（默认显示）；放在 _mountZoomUI 之后以便点亮按钮。
     this._loadOrderBadges();
+    this._loadLight();            // 光效：三档共用，读回上次参数并点亮缩放条按钮
     this._initMaterialMarket();   // 素材市场：挂抽屉 + 画布 drop 落卡 + 绑定缩放条市场按钮
   },
 
@@ -409,9 +586,52 @@ export const TypewriterFeature = {
       // 与 onTint / onLinkToggle 同一套协议，applyModeChrome 按档位显隐按钮。
       onToggleOrderBadges: () => ctrl._toggleOrderBadges(),
       isOrderBadgesVisible: () => ctrl._orderBadges !== false,
+      // 光效（三档共用）：打开顶光/底光参数浮层；isLightOn 供按钮高亮
+      onLight: () => ctrl._toggleLightPanel(),
+      isLightOn: () => ctrl._isLightOn(),
       // 卡片模糊跳转（便签 / 写作共用 ctrl._notes）：打开画布内搜索浮层
       onSearch: () => ctrl._openCardSearch(),
     });
+
+    const lightLampDim = document.createElement('div');
+    lightLampDim.className = 'tw-light-lamp-dim';
+    lightLampDim.setAttribute('aria-hidden', 'true');
+    lightLampDim.innerHTML =
+      '<svg class="tw-lamp-dim-svg" viewBox="0 0 100 100" preserveAspectRatio="none">' +
+      '<path class="tw-lamp-dim-path" fill-rule="evenodd"></path></svg>';
+    this._el.appendChild(lightLampDim);
+    this._lightLampDim = lightLampDim;
+    const lightLampCone = document.createElement('div');
+    lightLampCone.className = 'tw-light-lamp-cone';
+    lightLampCone.setAttribute('aria-hidden', 'true');
+    lightLampCone.innerHTML = '<span class="tw-lamp-cone-shape"></span>';
+    this._el.appendChild(lightLampCone);
+    this._lightLampCone = lightLampCone;
+    const lightLamp = document.createElement('div');
+    lightLamp.className = 'tw-light-lamp';
+    lightLamp.setAttribute('role', 'group');
+    lightLamp.setAttribute('aria-label', '独照一隅');
+    lightLamp.innerHTML =
+      '<span class="tw-lamp-cap tw-lamp-cap-l" title="滚动调节光线亮度"></span>' +
+      '<span class="tw-lamp-shade"></span>' +
+      '<span class="tw-lamp-tube"></span>' +
+      '<span class="tw-lamp-cap tw-lamp-cap-r" title="滚动调节光锥角度"></span>';
+    this._el.appendChild(lightLamp);
+    this._lightLamp = lightLamp;
+    this._onLampResize = () => {
+      if (this._light && this._light.mode === 'lamp') this._syncLampDim();
+    };
+    window.addEventListener('resize', this._onLampResize);
+    lightLamp.querySelectorAll('.tw-lamp-cap').forEach((cap) => {
+      const kind = cap.classList.contains('tw-lamp-cap-r') ? 'beam' : 'intensity';
+      cap.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        ctrl._nudgeLampCap(kind, e.deltaY > 0 ? 1 : -1);
+      }, { passive: false });
+    });
+
+
   },
 
   /** 抓手开关（便签/写作档）：复用 space-hand 的 handTool；同步缩放条高亮。 */
@@ -489,6 +709,1311 @@ export const TypewriterFeature = {
       this._applyOrderBadges();
       if (this._zoomUI && typeof this._zoomUI.sync === 'function') this._zoomUI.sync();
     } catch (_) { /* 忽略 */ }
+  },
+
+  // ===================== 画布光效（顶光 / 底光） =====================
+
+  /** 光效是否处于开启态（任一侧亮即算开），供缩放条按钮高亮 */
+  _isLightOn() {
+    if (!this._light) return false;
+    // 台灯、曲径通幽、江南烟雨、雪落轻叹都只在暗色下成立；亮色时按钮也禁用。
+    // 落笔生光虽有暗色门槛，但它有自己的呼吸指示，不参与这个「光效开」高亮。
+    const mode = this._light.mode;
+    if (mode === 'lamp' || mode === 'backdrop' || mode === 'rain' || mode === 'snow') {
+      return typeof this._isDarkNow === 'function' ? this._isDarkNow() : true;
+    }
+    return mode === 'edge' && (this._light.top.on || this._light.bottom.on);
+  },
+
+  /** 把参数落到功能根：class 控显隐，CSS 变量控色温/高度/透明度；幂等。 */
+  _applyLight() {
+    if (!this._el || !this._light) return;
+    const el = this._el;
+    const L = this._light;
+    if (L.mode === 'edge' && L.link) L.bottom = Object.assign({}, L.top);
+    const darkReady = typeof this._isDarkNow === 'function' ? this._isDarkNow() : true;
+    const lampReady = L.mode === 'lamp' && darkReady;
+    const paperReady = L.mode === 'paper' && darkReady &&
+      (this._mode === 'write' || this._mode === 'mindmap');
+    const onTop = L.mode === 'edge' && !!L.top.on;
+    const onBottom = L.mode === 'edge' && !!L.bottom.on;
+    el.classList.toggle('tw-light-top-on', onTop);
+    el.classList.toggle('tw-light-bottom-on', onBottom);
+    el.classList.toggle('tw-light-backdrop-on', L.mode === 'backdrop' && darkReady);
+    el.classList.toggle('tw-light-rain-on', L.mode === 'rain' && darkReady);
+    el.classList.toggle('tw-light-snow-on', L.mode === 'snow' && darkReady);
+    el.classList.toggle('tw-light-lamp-on', lampReady);
+    el.classList.toggle('tw-light-paper-on', paperReady);
+    el.classList.toggle('tw-light-breathe', L.mode === 'edge' && !!L.breathe);
+    el.classList.toggle('tw-light-backdrop-breathe',
+      L.mode === 'backdrop' && darkReady && !!L.backdrop.breathe && L.backdrop.amplitude > 0);
+    el.style.setProperty('--tw-light-period', Math.round(L.period) + 's');
+    el.style.setProperty('--tw-backdrop-period', Math.round(L.backdrop.period) + 's');
+    el.style.setProperty('--tw-backdrop-swing', (1 - L.backdrop.amplitude / 100).toFixed(2));
+
+    const rgbOf = (cfg, forceTheme) => {
+      if (forceTheme || cfg.followTheme) return 'var(--primary-rgb)';
+      if (cfg.temp === 'custom') return twLightRgb(cfg.color);
+      const t = TW_LIGHT_TEMPS[cfg.temp] || TW_LIGHT_TEMPS.warm;
+      return t.rgb;
+    };
+    const bd = this._lightBackdrop || el.querySelector('.tw-light-backdrop');
+    if (L.mode === 'edge') {
+      const setSide = (key, cfg) => {
+        const p = '--tw-light-' + key;
+        el.style.setProperty(p + '-rgb', rgbOf(cfg, L.followTheme));
+        el.style.setProperty(p + '-a', (cfg.intensity / 100 * 0.7).toFixed(3));
+        el.style.setProperty(p + '-h2', Math.round(cfg.height) + 'px');
+        el.style.setProperty(p + '-soft', Math.round(cfg.softness) + '%');
+      };
+      setSide('top', L.top);
+      setSide('bottom', L.bottom);
+    } else if (L.mode === 'lamp' && lampReady) {
+      const p = L.lamp;
+      const tone = TW_LIGHT_TEMPS[p.temp] || TW_LIGHT_TEMPS.warm;
+      const themeRgb = twLampThemeRgb();
+      const bodyRgb = p.followTheme ? themeRgb : twLightRgb(p.color);
+      const beamRgb = p.followTheme
+        ? themeRgb
+        : (p.temp === 'custom' ? twLightRgb(p.color) : tone.rgb);
+      el.style.setProperty('--tw-lamp-rgb', bodyRgb);
+      el.style.setProperty('--tw-lamp-beam-rgb', beamRgb);
+      const t = Math.max(0, Math.min(1, p.intensity / 100));
+      const coneA = t <= 0.35
+        ? (t / 0.35 * 0.084)
+        : (0.084 + ((t - 0.35) / 0.65) * (0.40 - 0.084));
+      el.style.setProperty('--tw-lamp-a', coneA.toFixed(3));
+      el.style.setProperty('--tw-lamp-glass', (0.85 + t * 0.55).toFixed(2));
+      el.style.setProperty('--tw-lamp-dim-a', (p.dim / 100).toFixed(3));
+      el.style.setProperty('--tw-lamp-width', Math.round(p.width) + 'px');
+      el.style.setProperty('--tw-lamp-beam', Math.round(p.beam) + 'deg');
+      el.style.setProperty('--tw-lamp-aperture', Math.round((p.width - 44) / 2) + 'px');
+      el.style.setProperty('--tw-lamp-cone-width', Math.round(360 + p.beam * 9.5) + 'px');
+      el.style.setProperty('--tw-lamp-reach', Math.round(p.reach) + 'vh');
+      el.style.setProperty('--tw-lamp-soft', Math.round(p.softness * 0.4) + 'px');
+      if (typeof this._syncLampDim === 'function') this._syncLampDim();
+    } else if (L.mode === 'snow') {
+      const n = L.snow;
+      el.style.setProperty('--tw-snow-rgb', rgbOf(n));
+      el.style.setProperty('--tw-snow-a', (n.intensity / 100).toFixed(3));
+      el.style.setProperty('--tw-snow-speed', Math.round(n.speed) + 's');
+      const gap = Math.max(34, Math.round(110 - n.density));
+      const denseFade = 1 - Math.max(0, (n.density - 70) / 30) * 0.35;
+      const flake = Math.max(2, Math.round((1 + n.size * 0.06) * denseFade));
+      el.style.setProperty('--tw-snow-gap', gap + 'px');
+      el.style.setProperty('--tw-snow-size', flake + 'px');
+      el.style.setProperty('--tw-snow-wind', (n.wind * 0.6).toFixed(1) + '%');
+      el.style.setProperty('--tw-chill-a', (n.chill / 100 * 0.32).toFixed(3));
+    } else if (L.mode === 'rain') {
+      const r = L.rain;
+      el.style.setProperty('--tw-rain-rgb', rgbOf(r));
+      el.style.setProperty('--tw-rain-a', (r.intensity / 100).toFixed(3));
+      el.style.setProperty('--tw-rain-speed', Math.round(r.speed) + 's');
+      el.style.setProperty('--tw-rain-gap', Math.max(8, Math.round(96 - r.density * 0.88)) + 'px');
+      el.style.setProperty('--tw-rain-len', Math.round(8 + r.length * 0.24) + 'px');
+      el.style.setProperty('--tw-rain-angle', Math.round(r.angle) + 'deg');
+      el.style.setProperty('--tw-rain-drift', Math.max(-12, Math.min(12, r.angle * 0.5)).toFixed(1) + '%');
+      const rseed = (n) => {
+        if (!r.seed) return 0;
+        const v = Math.sin(r.seed * 12.9898 + n * 78.233) * 43758.5453;
+        return v - Math.floor(v) - 0.5;
+      };
+      const basePos = [[0, 0], [20, -80], [40, 70], [-30, -50], [-60, 10], [-20, -30]];
+      basePos.forEach((pos, i) => {
+        const dx = pos[0] + rseed(i + 1) * 90;
+        const dy = pos[1] + rseed(i + 7) * 120;
+        el.style.setProperty('--tw-rain-p' + (i + 1), dx.toFixed(1) + 'px ' + dy.toFixed(1) + 'px');
+      });
+      el.style.setProperty('--tw-mist-a', (r.mist / 100 * 0.45).toFixed(3));
+    } else if (L.mode === 'backdrop') {
+      const b = L.backdrop;
+      el.style.setProperty('--tw-backdrop-rgb', rgbOf(b));
+      el.style.setProperty('--tw-backdrop-a', (b.intensity / 100 * 0.3).toFixed(3));
+      el.style.setProperty('--tw-backdrop-speed', Math.round(b.speed) + 's');
+      // 密度 60 即原版柔光水波；往上把光斑缩小、并淡入两层小光斑，往下则放大。
+      const scale = Math.min(1.2, Math.max(0.65, 1 - (b.density - 60) * 0.007));
+      const extra = Math.min(0.45, Math.max(0, (b.density - 60) / 40 * 0.45));
+      const phase = (n) => {
+        if (!b.seed) return 0;
+        const v = Math.sin(b.seed * 12.9898 + n * 78.233) * 43758.5453;
+        return (v - Math.floor(v) - 0.5) * 56;
+      };
+      const delay = (n) => b.seed
+        ? -(Math.abs(phase(n)) / 28 * b.speed).toFixed(2) + 's'
+        : '0s';
+      if (bd) {
+        bd.style.setProperty('--tw-water-scale', scale.toFixed(3));
+        bd.style.setProperty('--tw-water-extra-a', extra.toFixed(3));
+        bd.style.setProperty('--tw-water-x-a', phase(1).toFixed(1) + '%');
+        bd.style.setProperty('--tw-water-y-a', phase(2).toFixed(1) + '%');
+        bd.style.setProperty('--tw-water-x-b', phase(3).toFixed(1) + '%');
+        bd.style.setProperty('--tw-water-y-b', phase(4).toFixed(1) + '%');
+        bd.style.setProperty('--tw-water-delay-a', delay(5));
+        bd.style.setProperty('--tw-water-delay-b', delay(6));
+      }
+    } else if (paperReady) {
+      const p = L.paper;
+      const base = Math.max(1, Math.min(100, p.intensity));
+      el.style.setProperty('--tw-paper-rgb', rgbOf(p));
+      el.style.setProperty('--tw-paper-base', (base / 100).toFixed(3));
+      const peak = base + (Math.max(0, Math.min(100, p.boost)) / 100) * (100 - base);
+      el.style.setProperty('--tw-paper-write', (peak / 100).toFixed(3));
+      el.style.setProperty('--tw-paper-dim-a', (p.dim / 100).toFixed(3));
+      el.style.setProperty('--tw-paper-settle', Math.max(1, p.settle).toFixed(1) + 's');
+      el.style.setProperty('--tw-paper-period', Math.max(2, Math.min(8, p.period)) + 's');
+      el.style.setProperty('--tw-paper-spread', Math.max(4, Math.min(30, p.spread)) + 'px');
+    }
+    if (!paperReady && typeof this._clearPaperGlowVisual === 'function') this._clearPaperGlowVisual();
+    // 光效/明暗切换会改变 _paperGlowActive()，选中视觉必须跟着重算：
+    // 以前只在选区变化时同步，开着多选切到 paper 会出现「轮廓已关、辉光未上」的零反馈；
+    // 切回普通模式则丢掉 is-multi-active，工具条反过来全露。
+    if (this._selected && this._selected.size && typeof this._syncPaperGlowSelection === 'function') {
+      const selected = Array.from(this._selected);
+      this._syncPaperGlowSelection(selected, selected.length > 1);
+    }
+    if (typeof this._syncLightPhaseTimer === 'function') this._syncLightPhaseTimer();
+    if (typeof this._syncRainSeedTimer === 'function') this._syncRainSeedTimer();
+    if (this._zoomUI && typeof this._zoomUI.sync === 'function') this._zoomUI.sync();
+    // 导图模式用它自己那条缩放条：切档后也要同步高亮，否则按钮状态停在旧值
+    if (typeof MindmapFeature !== 'undefined' && MindmapFeature._zoomUI &&
+      typeof MindmapFeature._zoomUI.sync === 'function') MindmapFeature._zoomUI.sync();
+  },
+
+  _paperGlowActive() {
+    const allowedMode = this._mode === 'write' || this._mode === 'mindmap';
+    return allowedMode && !!this._light && this._light.mode === 'paper' &&
+      (typeof this._isDarkNow !== 'function' || this._isDarkNow());
+  },
+
+  _bindPaperGlow() {
+    const root = this._el;
+    if (!root || typeof window === 'undefined') return () => {};
+    const cardFrom = (t) => {
+      const hit = t && typeof t.closest === 'function'
+        ? t.closest('.tw-card-text, .tw-mm-text') : null;
+      return hit ? hit.closest('.tw-card, .tw-mm-node') : null;
+    };
+    const activate = (card) => {
+      if (!this._paperGlowActive() || !card) return;
+      if (this._paperGlowCard !== card) this._clearStalePaperGlow(card);
+      this._paperGlowCard = card;
+      card.classList.add('is-paper-lit');
+    };
+    const onFocusIn = (e) => {
+      const card = cardFrom(e.target);
+      if (!card) return;
+      activate(card);
+      this._setPaperWriting(true);
+    };
+    const onFocusOut = (e) => {
+      const card = this._paperGlowCard;
+      if (!card) return;
+      const next = e.relatedTarget;
+      if (next && typeof next.closest === 'function' &&
+          (next.closest('.tw-card, .tw-mm-node') === card || next.closest('.tw-mm-note-pop'))) return;
+      card.classList.remove('is-breathing');
+      if (!card.classList.contains('selected') && !card.classList.contains('is-sel')) {
+        this._clearPaperGlowVisual();
+      }
+    };
+    const onInput = (e) => {
+      const card = cardFrom(e.target);
+      if (!card) return;
+      activate(card);
+      this._setPaperWriting(true);
+    };
+    root.addEventListener('focusin', onFocusIn, true);
+    root.addEventListener('focusout', onFocusOut, true);
+    root.addEventListener('input', onInput, true);
+    return () => {
+      root.removeEventListener('focusin', onFocusIn, true);
+      root.removeEventListener('focusout', onFocusOut, true);
+      root.removeEventListener('input', onInput, true);
+    };
+  },
+
+  _clearStalePaperGlow(keep) {
+    const keepSet = keep instanceof Set
+      ? keep
+      : new Set(Array.isArray(keep) ? keep : (keep ? [keep] : []));
+    if (!this._el) return;
+    // 只清辉光视觉；is-multi-active 由 _syncPaperGlowSelection 统一按选区重建。
+    this._el.querySelectorAll('.tw-card.is-paper-lit, .tw-mm-node.is-paper-lit').forEach((c) => {
+      if (keepSet.has(c)) return;
+      c.classList.remove('is-paper-lit', 'is-paper-lit-multi', 'is-paper-lit-lite');
+      const editing = c.classList.contains('editing') || c.classList.contains('is-editing');
+      if (!editing) c.classList.remove('is-breathing');
+    });
+    if (this._paperGlowCard && !keepSet.has(this._paperGlowCard)) {
+      this._paperGlowCard.classList.remove('is-paper-lit', 'is-paper-lit-multi', 'is-paper-lit-lite', 'is-breathing');
+      this._paperGlowCard = null;
+    }
+  },
+
+  _syncPaperGlowSelection(input, multi) {
+    const raw = input instanceof Set ? Array.from(input)
+      : (Array.isArray(input) ? input : (input ? [input] : []));
+    const list = raw.filter((el) => el &&
+      (el.classList.contains('tw-card') || el.classList.contains('tw-mm-node')));
+    const isMulti = multi === true || (multi == null && list.length > 1);
+
+    // is-multi-active 是「结构」标记：单选隐藏卡内工具条/连线锚点、多选显形轮廓。
+    // 它必须与辉光无关 —— 辉光分支以前把它删掉，导致 paper 模式下选中的每张卡
+    // 又漏出一排工具条。视觉差异（普通轮廓 vs 辉光）只由 is-paper-lit-* 表达。
+    if (this._el) {
+      this._el.querySelectorAll('.is-multi-active').forEach((el) => el.classList.remove('is-multi-active'));
+    }
+    list.forEach((el) => el.classList.toggle('is-multi-active', isMulti));
+    if (!this._paperGlowActive()) return;
+
+    this._clearStalePaperGlow(new Set(list));
+    const lite = isMulti && list.length > TW_PAPER_MULTI_LIMIT;
+    list.forEach((el) => {
+      el.classList.add('is-paper-lit');
+      el.classList.toggle('is-paper-lit-multi', isMulti && !lite);
+      el.classList.toggle('is-paper-lit-lite', isMulti && lite);
+      if (isMulti) el.classList.remove('is-breathing');
+    });
+    this._paperGlowCard = list.length === 1 ? list[0] : null;
+  },
+
+  _setPaperWriting(on) {
+    const card = this._paperGlowCard;
+    if (!card || !card.isConnected) return;
+    if (!on || !this._paperGlowActive()) {
+      card.classList.remove('is-breathing');
+      return;
+    }
+    card.classList.add('is-breathing');
+  },
+
+  _clearPaperGlowVisual() {
+    // 只清辉光视觉；选区结构标记不在这里动，否则关辉光时会连带丢掉多选轮廓与工具条显隐。
+    const clear = (c) => c.classList.remove(
+      'is-paper-lit', 'is-paper-lit-multi', 'is-paper-lit-lite', 'is-breathing');
+    if (this._paperGlowCard && this._paperGlowCard.isConnected) clear(this._paperGlowCard);
+    if (this._el) {
+      this._el.querySelectorAll('.tw-card.is-paper-lit, .tw-mm-node.is-paper-lit').forEach(clear);
+    }
+    this._paperGlowCard = null;
+  },
+
+  /** 参数入库前收敛：缺字段/越界/脏类型一律回退默认值。 */
+  _normalizeLight(raw) {
+    const r = (raw && typeof raw === 'object') ? raw : {};
+    const clampNum = (v, lo, hi, d) => {
+      const n = Number(v);
+      return Number.isFinite(n) ? Math.round(Math.max(lo, Math.min(hi, n))) : d;
+    };
+    const one = (src, fb) => {
+      const x = (src && typeof src === 'object') ? src : {};
+      const temp = Object.prototype.hasOwnProperty.call(TW_LIGHT_TEMPS, x.temp) ? x.temp : fb.temp;
+      return {
+        on: typeof x.on === 'boolean' ? x.on : fb.on,
+        intensity: clampNum(x.intensity, 1, 100, fb.intensity),
+        height: clampNum(x.height, 60, 360, fb.height),
+        softness: clampNum(x.softness, 40, 95, fb.softness),
+        temp: temp,
+        color: TW_LIGHT_HEX.test(x.color || '') ? x.color : fb.color,
+      };
+    };
+    const top = one(r.top, TW_LIGHT_DEFAULT.top);
+    const bottom = one(r.bottom, TW_LIGHT_DEFAULT.bottom);
+    // 旧配置没有 mode：任一侧在开就落到 edge，否则 off。
+    // 已删除的水墨、一烛摇红模式旧配置一律回落到 off，避免误判回天地对谈。
+    const mode = (r.mode === 'ink' || r.mode === 'candle')
+      ? 'off'
+      : ((r.mode === 'off' || r.mode === 'edge' || r.mode === 'backdrop' ||
+        r.mode === 'rain' || r.mode === 'snow' || r.mode === 'lamp' || r.mode === 'paper')
+        ? r.mode
+        : (((r.top && r.top.on === true) || (r.bottom && r.bottom.on === true)) ? 'edge' : 'off'));
+    const bsrc = (r.backdrop && typeof r.backdrop === 'object') ? r.backdrop : {};
+    const rsrc = (r.rain && typeof r.rain === 'object') ? r.rain : {};
+    const nsrc = (r.snow && typeof r.snow === 'object') ? r.snow : {};
+    const psrc = (r.lamp && typeof r.lamp === 'object') ? r.lamp : {};
+    const paperSrc = (r.paper && typeof r.paper === 'object') ? r.paper : {};
+    return {
+      mode: mode,
+      link: typeof r.link === 'boolean' ? r.link : TW_LIGHT_DEFAULT.link,
+      followTheme: typeof r.followTheme === 'boolean' ? r.followTheme : TW_LIGHT_DEFAULT.followTheme,
+      breathe: typeof r.breathe === 'boolean' ? r.breathe : TW_LIGHT_DEFAULT.breathe,
+      period: clampNum(r.period, 2, 12, TW_LIGHT_DEFAULT.period),
+      top: top,
+      bottom: bottom,
+      backdrop: {
+        intensity: clampNum(bsrc.intensity, 1, 100, TW_LIGHT_BACKDROP_DEFAULT.intensity),
+        density: clampNum(bsrc.density, 1, 100, TW_LIGHT_BACKDROP_DEFAULT.density),
+        speed: clampNum(bsrc.speed, 4, 30, TW_LIGHT_BACKDROP_DEFAULT.speed),
+        breathe: typeof bsrc.breathe === 'boolean' ? bsrc.breathe : TW_LIGHT_BACKDROP_DEFAULT.breathe,
+        period: clampNum(bsrc.period, 2, 12, TW_LIGHT_BACKDROP_DEFAULT.period),
+        amplitude: clampNum(bsrc.amplitude, 0, 100, TW_LIGHT_BACKDROP_DEFAULT.amplitude),
+        autoPhase: typeof bsrc.autoPhase === 'boolean' ? bsrc.autoPhase : TW_LIGHT_BACKDROP_DEFAULT.autoPhase,
+        phaseEvery: clampNum(bsrc.phaseEvery, 10, 120, TW_LIGHT_BACKDROP_DEFAULT.phaseEvery),
+        seed: clampNum(bsrc.seed, 0, 9999, TW_LIGHT_BACKDROP_DEFAULT.seed),
+        followTheme: typeof bsrc.followTheme === 'boolean' ? bsrc.followTheme : TW_LIGHT_BACKDROP_DEFAULT.followTheme,
+        temp: Object.prototype.hasOwnProperty.call(TW_LIGHT_TEMPS, bsrc.temp) ? bsrc.temp : TW_LIGHT_BACKDROP_DEFAULT.temp,
+        color: TW_LIGHT_HEX.test(bsrc.color || '') ? bsrc.color : TW_LIGHT_BACKDROP_DEFAULT.color,
+      },
+      rain: {
+        intensity: clampNum(rsrc.intensity, 1, 100, TW_LIGHT_RAIN_DEFAULT.intensity),
+        density: clampNum(rsrc.density, 1, 100, TW_LIGHT_RAIN_DEFAULT.density),
+        length: clampNum(rsrc.length, 1, 100, TW_LIGHT_RAIN_DEFAULT.length),
+        angle: clampNum(rsrc.angle, -30, 30, TW_LIGHT_RAIN_DEFAULT.angle),
+        speed: clampNum(rsrc.speed, 4, 30, TW_LIGHT_RAIN_DEFAULT.speed),
+        mist: clampNum(rsrc.mist, 0, 100, TW_LIGHT_RAIN_DEFAULT.mist),
+        autoSeed: typeof rsrc.autoSeed === 'boolean' ? rsrc.autoSeed : TW_LIGHT_RAIN_DEFAULT.autoSeed,
+        seedEvery: clampNum(rsrc.seedEvery, 10, 120, TW_LIGHT_RAIN_DEFAULT.seedEvery),
+        seed: clampNum(rsrc.seed, 0, 9999, TW_LIGHT_RAIN_DEFAULT.seed),
+        followTheme: typeof rsrc.followTheme === 'boolean' ? rsrc.followTheme : TW_LIGHT_RAIN_DEFAULT.followTheme,
+        temp: Object.prototype.hasOwnProperty.call(TW_LIGHT_TEMPS, rsrc.temp) ? rsrc.temp : TW_LIGHT_RAIN_DEFAULT.temp,
+        color: TW_LIGHT_HEX.test(rsrc.color || '') ? rsrc.color : TW_LIGHT_RAIN_DEFAULT.color,
+      },
+      snow: {
+        intensity: clampNum(nsrc.intensity, 1, 100, TW_LIGHT_SNOW_DEFAULT.intensity),
+        density: clampNum(nsrc.density, 1, 100, TW_LIGHT_SNOW_DEFAULT.density),
+        size: clampNum(nsrc.size, 1, 100, TW_LIGHT_SNOW_DEFAULT.size),
+        speed: clampNum(nsrc.speed, 4, 30, TW_LIGHT_SNOW_DEFAULT.speed),
+        wind: clampNum(nsrc.wind, -30, 30, TW_LIGHT_SNOW_DEFAULT.wind),
+        chill: clampNum(nsrc.chill, 0, 100, TW_LIGHT_SNOW_DEFAULT.chill),
+        followTheme: typeof nsrc.followTheme === 'boolean' ? nsrc.followTheme : TW_LIGHT_SNOW_DEFAULT.followTheme,
+        temp: Object.prototype.hasOwnProperty.call(TW_LIGHT_TEMPS, nsrc.temp) ? nsrc.temp : TW_LIGHT_SNOW_DEFAULT.temp,
+        color: TW_LIGHT_HEX.test(nsrc.color || '') ? nsrc.color : TW_LIGHT_SNOW_DEFAULT.color,
+      },
+      lamp: {
+        intensity: clampNum(psrc.intensity, 1, 100, TW_LIGHT_LAMP_DEFAULT.intensity),
+        dim: clampNum(psrc.dim, 0, 60, TW_LIGHT_LAMP_DEFAULT.dim),
+        temp: Object.prototype.hasOwnProperty.call(TW_LIGHT_TEMPS, psrc.temp || psrc.tone)
+          ? (psrc.temp || psrc.tone) : TW_LIGHT_LAMP_DEFAULT.temp,
+        color: TW_LIGHT_HEX.test(psrc.color || '') ? psrc.color : TW_LIGHT_LAMP_DEFAULT.color,
+        followTheme: typeof psrc.followTheme === 'boolean' ? psrc.followTheme : TW_LIGHT_LAMP_DEFAULT.followTheme,
+        width: clampNum(psrc.width, 120, 420, TW_LIGHT_LAMP_DEFAULT.width),
+        beam: clampNum(psrc.beam, 10, 100, TW_LIGHT_LAMP_DEFAULT.beam),
+        reach: clampNum(psrc.reach, 20, 100, TW_LIGHT_LAMP_DEFAULT.reach),
+        softness: clampNum(psrc.softness, 0, 100, TW_LIGHT_LAMP_DEFAULT.softness),
+      },
+      paper: {
+        intensity: clampNum(paperSrc.intensity, 1, 100, TW_LIGHT_PAPER_DEFAULT.intensity),
+        spread: clampNum(paperSrc.spread, 4, 30, TW_LIGHT_PAPER_DEFAULT.spread),
+        boost: clampNum(paperSrc.boost, 0, 100, TW_LIGHT_PAPER_DEFAULT.boost),
+        settle: clampNum(paperSrc.settle, 1, 8, TW_LIGHT_PAPER_DEFAULT.settle),
+        period: clampNum(paperSrc.period, 2, 8, TW_LIGHT_PAPER_DEFAULT.period),
+        dim: clampNum(paperSrc.dim, 0, 70, TW_LIGHT_PAPER_DEFAULT.dim),
+        temp: Object.prototype.hasOwnProperty.call(TW_LIGHT_TEMPS, paperSrc.temp)
+          ? paperSrc.temp : TW_LIGHT_PAPER_DEFAULT.temp,
+        color: TW_LIGHT_HEX.test(paperSrc.color || '') ? paperSrc.color : TW_LIGHT_PAPER_DEFAULT.color,
+        followTheme: typeof paperSrc.followTheme === 'boolean'
+          ? paperSrc.followTheme : TW_LIGHT_PAPER_DEFAULT.followTheme,
+      },
+    };
+  },
+
+  _rollLightSeed(current) {
+    let seed = current || 0;
+    while (seed === current) seed = Math.floor(Math.random() * 9999) + 1;
+    return seed;
+  },
+
+  _autoPhaseLight() {
+    const b = this._light && this._light.backdrop;
+    if (b && b.autoPhase) b.seed = this._rollLightSeed(b.seed);
+  },
+
+  _watchLightTheme() {
+    if (this._themeObserver || typeof MutationObserver === 'undefined' || typeof document === 'undefined') return;
+    let scheduled = false;
+    let classChanged = false;
+    const sync = (mutations) => {
+      classChanged = classChanged || mutations.some((m) => m.attributeName === 'class');
+      if (scheduled) return;
+      scheduled = true;
+      Promise.resolve().then(() => {
+        scheduled = false;
+        if (!this._light) return;
+        this._applyLight();
+        if (classChanged && this._lightPanel) {
+          this._lightPanel.innerHTML = this._lightPanelHtml();
+        }
+        classChanged = false;
+      });
+    };
+    this._themeObserver = new MutationObserver(sync);
+    const targets = [
+      document.documentElement,
+      document.body,
+      document.getElementById('bamboo-shadow-host'),
+    ].filter(Boolean);
+    targets.forEach((t) => this._themeObserver.observe(t, {
+      attributes: true,
+      attributeFilter: ['class', 'style'],
+    }));
+  },
+
+  _syncRainSeedTimer() {
+    if (this._rainSeedTimer) { clearTimeout(this._rainSeedTimer); this._rainSeedTimer = null; }
+    const L = this._light;
+    if (!L || L.mode !== 'rain' || !L.rain.autoSeed) return;
+    const period = Math.max(10, Math.min(120, L.rain.seedEvery || 45));
+    this._rainSeedTimer = setTimeout(() => this._tickRainSeed(), period * 1000);
+  },
+
+  _tickRainSeed() {
+    const L = this._light;
+    const bd = this._lightBackdrop || (this._el && this._el.querySelector('.tw-light-backdrop'));
+    if (!bd || !L || L.mode !== 'rain' || !L.rain.autoSeed) return;
+    bd.style.setProperty('--tw-backdrop-fade', '0.35');
+    if (this._rainSeedFadeTimer) clearTimeout(this._rainSeedFadeTimer);
+    this._rainSeedFadeTimer = setTimeout(() => {
+      L.rain.seed = this._rollLightSeed(L.rain.seed);
+      this._applyLight();
+      bd.style.setProperty('--tw-backdrop-fade', '1');
+      const num = this._lightPanel && this._lightPanel.querySelector('[data-light-num="rain-seed"]');
+      if (num) num.textContent = '#' + L.rain.seed;
+      this._scheduleLightSave();
+    }, 700);
+  },
+
+  _syncLightPhaseTimer() {
+    if (this._lightPhaseTimer) { clearTimeout(this._lightPhaseTimer); this._lightPhaseTimer = null; }
+    const L = this._light;
+    if (!L || L.mode !== 'backdrop' || !L.backdrop.autoPhase) return;
+    const period = Math.max(10, Math.min(120, L.backdrop.phaseEvery || 30));
+    this._lightPhaseTimer = setTimeout(() => this._tickLightPhase(), period * 1000);
+  },
+
+  _tickLightPhase() {
+    const L = this._light;
+    const bd = this._lightBackdrop || (this._el && this._el.querySelector('.tw-light-backdrop'));
+    if (!bd || !L || L.mode !== 'backdrop' || !L.backdrop.autoPhase) return;
+    bd.style.setProperty('--tw-backdrop-fade', '0.35');
+    if (this._lightPhaseFadeTimer) clearTimeout(this._lightPhaseFadeTimer);
+    this._lightPhaseFadeTimer = setTimeout(() => {
+      L.backdrop.seed = this._rollLightSeed(L.backdrop.seed);
+      this._applyLight();
+      bd.style.setProperty('--tw-backdrop-fade', '1');
+      const num = this._lightPanel && this._lightPanel.querySelector('[data-light-num="backdrop-seed"]');
+      if (num) num.textContent = '#' + L.backdrop.seed;
+      this._scheduleLightSave();
+    }, 700);
+  },
+
+  async _loadLight() {
+    this._watchLightTheme();
+    // 先归一化默认值，避免旧默认对象缺 density 时把 NaN 写进 CSS 变量。
+    this._light = this._normalizeLight(this._light || TW_LIGHT_DEFAULT);
+    this._autoPhaseLight();
+    this._applyLight();
+    const sm = (typeof window !== 'undefined') ? window.storageManager : null;
+    if (!sm || typeof sm.getSetting !== 'function') return;
+    try {
+      const saved = await sm.getSetting('typewriter:light');
+      if (saved && typeof saved === 'object') {
+        const wasInk = saved.mode === 'ink';
+        this._light = this._normalizeLight(saved);
+        this._autoPhaseLight();
+        this._applyLight();
+        if (wasInk) this._scheduleLightSave();
+        if (this._lightPanel) this._lightPanel.innerHTML = this._lightPanelHtml();
+      }
+    } catch (_) { /* 读取失败沿用默认参数 */ }
+  },
+
+  _scheduleLightSave() {
+    if (this._lightSaveTimer) clearTimeout(this._lightSaveTimer);
+    this._lightSaveTimer = setTimeout(() => {
+      this._lightSaveTimer = null;
+      this._persistLight();
+    }, 300);
+  },
+
+  async _persistLight() {
+    const sm = (typeof window !== 'undefined') ? window.storageManager : null;
+    if (!sm || typeof sm.putSetting !== 'function') return;
+    try { await sm.putSetting('typewriter:light', this._light); } catch (_) { /* 忽略 */ }
+  },
+
+  _toggleLightPanel() {
+    if (this._lightPanel) { this._closeLightPanel(); return; }
+    this._openLightPanel();
+  },
+
+  _openLightPanel() {
+    if (!this._el || this._lightPanel) return;
+    const panel = document.createElement('div');
+    panel.className = 'tw-light-panel';
+    panel.setAttribute('role', 'dialog');
+    panel.setAttribute('aria-label', '画中卷雨幕系统');
+    panel.innerHTML = this._lightPanelHtml();
+    // 画布在 pointerdown 阶段 preventDefault 启动拖拽，会抑制后续 click；
+    // 因此与卡片工具栏一致，以 pointerdown 为主入口，mousedown/click 只做兜底与键盘支持。
+    // 同一个控件在 pointerdown 后还会补发 mousedown/click，需去重；
+    // 但不能用全局时间窗，否则快速点两个不同控件会被误吞。
+    let lastKey = '';
+    let lastAt = 0;
+    const run = (e) => {
+      const act = e.target.closest('button, [data-light-expand]');
+      if (!act) return;
+      const key = [
+        act.dataset.lightMode, act.dataset.lightPreset,
+        act.dataset.lightSwitch, act.dataset.lightExpand, act.dataset.lightTemp,
+        act.dataset.lightTempValue, act.dataset.lightAct,
+      ].join('|');
+      const now = Date.now();
+      if (key === lastKey && now - lastAt < 350) return;
+      lastKey = key;
+      lastAt = now;
+      this._onLightClick(e);
+    };
+    panel.addEventListener('pointerdown', (e) => {
+      e.stopPropagation();
+      const act = e.target.closest('button, [data-light-expand]');
+      if (!act) return;                 // 滑杆/取色器保留原生拖拽
+      e.preventDefault();
+      run(e);
+    }, true);
+    panel.addEventListener('mousedown', (e) => {
+      const act = e.target.closest('button, [data-light-expand]');
+      if (!act) return;
+      e.preventDefault();
+      e.stopPropagation();
+      run(e);
+    });
+    panel.addEventListener('click', (e) => {
+      const act = e.target.closest('button, [data-light-expand]');
+      if (!act) return;
+      e.preventDefault();
+      e.stopPropagation();
+      run(e);
+    });
+    panel.addEventListener('input', (e) => this._onLightInput(e));
+    panel.addEventListener('keydown', (e) => {
+      const head = e.target.closest && e.target.closest('[data-light-expand]');
+      if (!head || (e.key !== 'Enter' && e.key !== ' ')) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const which = head.dataset.lightExpand;
+      if (Object.prototype.hasOwnProperty.call(this._lightOpen, which)) {
+        this._lightOpen[which] = !this._lightOpen[which];
+        panel.innerHTML = this._lightPanelHtml();
+      }
+    });
+    this._el.appendChild(panel);
+    this._lightPanel = panel;
+    this._lightPanelDocHandler = (ev) => {
+      const path = (ev.composedPath && ev.composedPath()) || [];
+      // 面板内与光效按钮本身不算「外部」：后者要留给 click 做开/关切换，
+      // 否则 pointerdown 先关、click 再开，按钮永远关不掉面板。
+      const inside = path.some((n) => n && n.classList &&
+        (n === panel || n.classList.contains('tw-zoom-light')));
+      // 双保险：Shadow DOM 事件重定向时 composedPath 偶尔拿不到内部节点，
+      // 再用指针坐标判断是否落在面板矩形内，避免「点面板被当成点外面」。
+      let inRect = false;
+      if (!inside && typeof ev.clientX === 'number' && typeof ev.clientY === 'number') {
+        const r = panel.getBoundingClientRect();
+        inRect = ev.clientX >= r.left && ev.clientX <= r.right &&
+          ev.clientY >= r.top && ev.clientY <= r.bottom;
+      }
+      if (!inside && !inRect) this._closeLightPanel();
+    };
+    this._lightPanelEsc = (ev) => { if (ev.key === 'Escape') this._closeLightPanel(); };
+    // 延迟挂外部关闭：避免本次点击（打开按钮）立刻把面板关掉。
+    setTimeout(() => {
+      if (!this._lightPanel) return;
+      document.addEventListener('pointerdown', this._lightPanelDocHandler, true);
+      document.addEventListener('keydown', this._lightPanelEsc, true);
+    }, 0);
+  },
+
+  _closeLightPanel() {
+    if (this._lightPanel) { this._lightPanel.remove(); this._lightPanel = null; }
+    if (this._lightPanelDocHandler) {
+      document.removeEventListener('pointerdown', this._lightPanelDocHandler, true);
+      this._lightPanelDocHandler = null;
+    }
+    if (this._lightPanelEsc) {
+      document.removeEventListener('keydown', this._lightPanelEsc, true);
+      this._lightPanelEsc = null;
+    }
+  },
+
+  _lightPanelHtml() {
+    const L = this._light;
+    const darkNow = typeof this._isDarkNow === 'function' ? this._isDarkNow() : true;
+    const paperAllowed = this._mode === 'write' || this._mode === 'mindmap';
+    // 便签档不再把「落笔生光」整项藏掉：照常列出，但置灰禁选，让用户知道这个能力存在、只是不在本档生效。
+    const modes = TW_LIGHT_MODES.filter(([id]) => id !== 'off').map(([id, label]) => {
+      const disabled = (!!TW_LIGHT_DARK_ONLY_TITLE[id] && !darkNow) || (id === 'paper' && !paperAllowed);
+      const disabledTitle = TW_LIGHT_DARK_ONLY_TITLE[id] || '';
+      return '<button type="button" class="tw-light-mode' + (L.mode === id ? ' on' : '') +
+        (disabled ? ' is-disabled' : '') + '" data-light-mode="' + id + '"' +
+        (disabled ? ' disabled aria-disabled="true" title="' + disabledTitle + '"' : '') + '>' +
+        '<span class="tw-light-mode-name">' + label + '</span>' +
+        '</button>';
+    }).join('');
+    const body = L.mode === 'edge'
+      ? this._lightEdgeHtml()
+      : (L.mode === 'backdrop' ? this._lightBackdropHtml()
+        : (L.mode === 'rain' ? this._lightRainHtml()
+          : (L.mode === 'snow' ? this._lightSnowHtml()
+            : (L.mode === 'lamp' ? this._lightLampHtml()
+              : (L.mode === 'paper' && paperAllowed ? this._lightPaperHtml() : '')))));
+    return '<p class="tw-light-system-title">画中卷意境系统</p>' +
+      '<div class="tw-light-mode-head">' +
+        '<span class="tw-light-mode-label">模式</span>' +
+        '<button type="button" class="tw-light-mode-off' + (L.mode === 'off' ? ' on' : '') +
+        '" data-light-mode="off">关闭</button>' +
+      '</div>' +
+      '<div class="tw-light-mode-grid" role="group" aria-label="光效模式">' + modes + '</div>' +
+      body;
+  },
+
+  _lightEdgeHtml() {
+    const L = this._light;
+    const breathe = L.breathe
+      ? this._lightRow('呼吸周期', 'period', L.period, 's', [2, 12, 1])
+      : '';
+    const colors = L.followTheme
+      ? ''
+      : this._lightSwatchesHtml('top', '顶光', '顶光色') +
+        (L.link ? '' : this._lightSwatchesHtml('bottom', '底光', '底光色'));
+    return this._lightSection('光色',
+        this._lightFollowThemeHtml('edge', L.followTheme, '天地对谈') + colors) +
+      this._lightSection('形态',
+        '<div class="tw-light-link-row"><span class="tw-light-label">顶底联动</span>' +
+        this._lightSwitchHtml('link', L.link, '顶底联动') + '</div>' +
+        this._lightCardHtml('top', '顶光') +
+        (L.link ? this._lightLinkedCardHtml('bottom', '底光') : this._lightCardHtml('bottom', '底光'))) +
+      this._lightSection('运动',
+        '<div class="tw-light-row tw-light-switch-row"><span class="tw-light-sub">呼吸光</span>' +
+        this._lightSwitchHtml('breathe', L.breathe, '呼吸光') + '</div>' + breathe) +
+      this._lightFooter(this._lightResetHtml('edge'),
+        '顶光与底光独立开关；亮度最低 1%，关闭请关掉对应开关。');
+  },
+
+  _lightRow(label, key, value, unit, range) {
+    return '<div class="display-section-label"><span>' + label + '</span></div>' +
+      '<div class="display-slider-row">' +
+      '<input class="tw-light-range display-slider" type="range" min="' + range[0] + '" max="' + range[1] +
+      '" step="' + range[2] + '" value="' + value +
+      '" data-light-range="' + key + '" aria-label="' + label + '">' +
+      '<span class="display-value-label" data-light-num="' + key + '">' + value + unit + '</span>' +
+      '</div>';
+  },
+
+  _lightSection(title, body) {
+    return '<section class="tw-light-section"><div class="tw-light-section-title">' + title +
+      '</div>' + body + '</section>';
+  },
+
+  _lightFooter(body, hint) {
+    return '<section class="tw-light-section tw-light-section-footer">' + body +
+      '<p class="tw-light-hint">' + hint + '</p></section>';
+  },
+
+  _lightFollowThemeHtml(mode, on, label) {
+    return '<div class="tw-light-row tw-light-switch-row"><span class="tw-light-sub">跟随主题色</span>' +
+      this._lightSwitchHtml(mode + '-follow-theme', on, label + '跟随主题色') + '</div>';
+  },
+
+  _syncLampDim() {
+    if (!this._lightLampDim || !this._el || !this._light) return;
+    const path = this._lightLampDim.querySelector('.tw-lamp-dim-path');
+    const p = this._light.lamp;
+    if (!path || !p) return;
+    const w = this._el.clientWidth || 0;
+    const h = this._el.clientHeight || 0;
+    if (w < 2 || h < 2) return;
+    const rootRect = this._el.getBoundingClientRect();
+    const coneRect = this._lightLampCone ? this._lightLampCone.getBoundingClientRect() : null;
+    const hasConeRect = !!(coneRect && coneRect.width > 2 && rootRect.width > 2);
+    const computed = typeof getComputedStyle === 'function' ? getComputedStyle(this._el) : null;
+    const coneW = hasConeRect
+      ? coneRect.width
+      : Math.min(
+        w * 0.92,
+        parseFloat(computed && computed.getPropertyValue('--tw-lamp-cone-width')) || (360 + p.beam * 9.5)
+      );
+    const topHalf = (p.width - 44) / 2;
+    const centerPct = hasConeRect
+      ? ((coneRect.left - rootRect.left) + coneRect.width / 2) / w * 100
+      : 50;
+    const topY = hasConeRect ? (coneRect.top - rootRect.top) : 86;
+    const reachPx = (typeof window !== 'undefined' && window.innerHeight ? window.innerHeight : h) * p.reach / 100;
+    const bottomY = hasConeRect ? topY + coneRect.height : Math.min(h, topY + reachPx);
+    const pctX = (px) => (px / w * 100).toFixed(2);
+    const pctY = (px) => (px / h * 100).toFixed(2);
+    const lt = centerPct - pctX(topHalf);
+    const rt = centerPct + pctX(topHalf);
+    const lb = centerPct - pctX(coneW / 2);
+    const rb = centerPct + pctX(coneW / 2);
+    const d = 'M0 0H100V100H0Z' +
+      ' M' + lt + ' ' + pctY(topY) +
+      'L' + rt + ' ' + pctY(topY) +
+      'L' + rb + ' ' + pctY(bottomY) +
+      'L' + lb + ' ' + pctY(bottomY) + 'Z';
+    path.setAttribute('d', d);
+  },
+
+  _nudgeLampCap(kind, dir) {
+    if (!this._light || this._light.mode !== 'lamp') return;
+    const p = this._light.lamp;
+    if (kind === 'beam') {
+      p.beam = Math.max(10, Math.min(100, p.beam + dir * 2));
+      this._applyLight();
+      this._syncLampPanelValue('lamp-beam', p.beam, '°');
+    } else {
+      p.intensity = Math.max(1, Math.min(100, p.intensity + dir * 5));
+      this._applyLight();
+      this._syncLampPanelValue('lamp-intensity', p.intensity, '%');
+    }
+    this._scheduleLightSave();
+  },
+
+  _syncLampPanelValue(key, value, unit) {
+    if (!this._lightPanel) return;
+    const num = this._lightPanel.querySelector('[data-light-num="' + key + '"]');
+    const range = this._lightPanel.querySelector('[data-light-range="' + key + '"]');
+    if (num) num.textContent = value + unit;
+    if (range) range.value = value;
+  },
+
+  _lightLampHtml() {
+    const p = this._light.lamp;
+    const paused = typeof this._isDarkNow === 'function' && !this._isDarkNow();
+    const colors = p.followTheme ? '' : this._lightSwatchesHtml('lamp', '台灯');
+    return (paused ? '<p class="tw-light-hint">亮色模式下台灯已暂停；切换暗色后自动恢复。</p>' : '') +
+      this._lightSection('光色',
+        this._lightRow('光线亮度', 'lamp-intensity', p.intensity, '%', [1, 100, 1]) +
+        this._lightRow('环境压暗', 'lamp-dim', p.dim, '%', [0, 60, 1]) +
+        this._lightFollowThemeHtml('lamp', p.followTheme, '独照一隅') +
+        colors) +
+      this._lightSection('形态',
+        this._lightRow('灯具宽度', 'lamp-width', p.width, 'px', [120, 420, 10]) +
+        this._lightRow('光锥角度', 'lamp-beam', p.beam, '°', [10, 100, 1]) +
+        this._lightRow('投射距离', 'lamp-reach', p.reach, '%', [20, 100, 5]) +
+        this._lightRow('光线柔度', 'lamp-softness', p.softness, '%', [0, 100, 1])) +
+      this._lightFooter(this._lightResetHtml('lamp'),
+        '灯体在工具条下方，光锥向下铺开；独照一隅与其它模式互斥。');
+  },
+
+  _lightPaperHtml() {
+    const p = this._light.paper;
+    const paused = typeof this._isDarkNow === 'function' && !this._isDarkNow();
+    const colors = p.followTheme ? '' : this._lightSwatchesHtml('paper', '纸上光');
+    return (paused ? '<p class="tw-light-hint">亮色模式下落笔生光已暂停；切换暗色后自动恢复。</p>' : '') +
+      this._lightSection('光色',
+        this._lightRow('辉光亮度', 'paper-intensity', p.intensity, '%', [1, 100, 1]) +
+        this._lightRow('环境压暗', 'paper-dim', p.dim, '%', [0, 70, 1]) +
+        this._lightFollowThemeHtml('paper', p.followTheme, '落笔生光') +
+        colors) +
+      this._lightSection('形态',
+        this._lightRow('外扩距离', 'paper-spread', p.spread, 'px', [4, 30, 1])) +
+      this._lightSection('书写',
+        this._lightRow('呼吸增幅', 'paper-boost', p.boost, '%', [0, 100, 1]) +
+        this._lightRow('呼吸周期', 'paper-period', p.period, 's', [2, 8, 1]) +
+        this._lightRow('余晖时长', 'paper-settle', p.settle, 's', [1, 8, 1])) +
+      this._lightFooter(this._lightResetHtml('paper'),
+        '辉光贴合当前卡片/子弹轮廓；环境压暗只影响背景。落笔生光仅暗色写作档与思维子弹档可用。');
+  },
+
+  _lightSnowHtml() {
+    const n = this._light.snow;
+    const paused = typeof this._isDarkNow === 'function' && !this._isDarkNow();
+    return (paused ? '<p class="tw-light-hint">亮色模式下雪落轻叹已暂停；切换暗色后自动恢复。</p>' : '') +
+      this._lightSection('光色',
+        this._lightRow('亮度', 'snow-intensity', n.intensity, '%', [1, 100, 1]) +
+        this._lightFollowThemeHtml('snow', n.followTheme, '雪落轻叹') +
+        (n.followTheme ? '' : this._lightSwatchesHtml('snow', '雪落轻叹'))) +
+      this._lightSection('形态',
+        this._lightRow('雪量', 'snow-density', n.density, '%', [1, 100, 1]) +
+        this._lightRow('雪粒大小', 'snow-size', n.size, '%', [1, 100, 1]) +
+        this._lightRow('寒意', 'snow-chill', n.chill, '%', [0, 100, 1])) +
+      this._lightSection('运动',
+        this._lightRow('飘落速度', 'snow-speed', n.speed, 's', [4, 30, 1]) +
+        this._lightRow('风偏', 'snow-wind', n.wind, '°', [-30, 30, 1])) +
+      this._lightFooter(this._lightResetHtml('snow'),
+        '雪粒缓慢飘落并左右微摆；雪落轻叹与其它模式互斥。');
+  },
+
+  _lightRainHtml() {
+    const r = this._light.rain;
+    const seedEvery = r.autoSeed
+      ? this._lightRow('换幕间隔', 'rain-seed-every', r.seedEvery, 's', [10, 120, 5])
+      : '';
+    const paused = typeof this._isDarkNow === 'function' && !this._isDarkNow();
+    return (paused ? '<p class="tw-light-hint">亮色模式下江南烟雨已暂停；切换暗色后自动恢复。</p>' : '') +
+      this._lightSection('光色',
+        this._lightRow('亮度', 'rain-intensity', r.intensity, '%', [1, 100, 1]) +
+        this._lightFollowThemeHtml('rain', r.followTheme, '江南烟雨') +
+        (r.followTheme ? '' : this._lightSwatchesHtml('rain', '烟雨'))) +
+      this._lightSection('形态',
+        this._lightRow('雨密度', 'rain-density', r.density, '%', [1, 100, 1]) +
+        this._lightRow('雨线长度', 'rain-length', r.length, '%', [1, 100, 1]) +
+        this._lightRow('雨线角度', 'rain-angle', r.angle, '°', [-30, 30, 1]) +
+        this._lightRow('雾浓度', 'rain-mist', r.mist, '%', [0, 100, 1])) +
+      this._lightSection('运动',
+        this._lightRow('下落速度', 'rain-speed', r.speed, 's', [4, 30, 1]) +
+        '<div class="tw-light-row tw-light-switch-row"><span class="tw-light-sub">自动换幕</span>' +
+        this._lightSwitchHtml('rain-auto-seed', r.autoSeed, '自动换雨幕') + '</div>' +
+        seedEvery +
+        '<div class="tw-light-row tw-light-row-sub"><span>雨幕编号</span>' +
+        '<span class="tw-light-num" data-light-num="rain-seed">#' + r.seed + '</span></div>' +
+        '<button type="button" class="tw-light-shuffle" data-light-rain-shuffle>换一场雨</button>') +
+      this._lightFooter(this._lightResetHtml('rain'),
+        '密度与雾浓度决定画面氛围；江南烟雨与其它模式互斥。');
+  },
+
+  _lightBackdropHtml() {
+    const b = this._light.backdrop;
+    const breathe = b.breathe
+      ? this._lightRow('呼吸周期', 'backdrop-period', b.period, 's', [2, 12, 1]) +
+        this._lightRow('呼吸幅度', 'backdrop-amplitude', b.amplitude, '%', [0, 100, 1])
+      : '';
+    const phaseEvery = b.autoPhase
+      ? this._lightRow('换位间隔', 'backdrop-phase-every', b.phaseEvery, 's', [10, 120, 5])
+      : '';
+    const paused = typeof this._isDarkNow === 'function' && !this._isDarkNow();
+    return (paused ? '<p class="tw-light-hint">亮色模式下曲径通幽已暂停；切换暗色后自动恢复。</p>' : '') +
+      this._lightSection('光色',
+        this._lightRow('亮度', 'backdrop-intensity', b.intensity, '%', [1, 100, 1]) +
+        this._lightFollowThemeHtml('backdrop', b.followTheme, '曲径通幽') +
+        (b.followTheme ? '' : this._lightSwatchesHtml('backdrop', '曲径通幽'))) +
+      this._lightSection('形态',
+        this._lightRow('水波密度', 'backdrop-density', b.density, '%', [1, 100, 1])) +
+      this._lightSection('运动',
+        this._lightRow('流动速度', 'backdrop-speed', b.speed, 's', [4, 30, 1]) +
+        '<div class="tw-light-row tw-light-switch-row"><span class="tw-light-sub">明暗呼吸</span>' +
+        this._lightSwitchHtml('backdrop-breathe', b.breathe, '曲径通幽暗呼吸') + '</div>' +
+        breathe +
+        '<div class="tw-light-row tw-light-switch-row"><span class="tw-light-sub">自动换位置</span>' +
+        this._lightSwitchHtml('backdrop-auto-phase', b.autoPhase, '自动随机水波位置') + '</div>' +
+        phaseEvery +
+        '<div class="tw-light-row tw-light-row-sub"><span>水波位置</span>' +
+        '<span class="tw-light-num" data-light-num="backdrop-seed">#' + b.seed + '</span></div>' +
+        '<button type="button" class="tw-light-shuffle" data-light-shuffle="backdrop">换个位置</button>') +
+      this._lightFooter(this._lightResetHtml('backdrop'),
+        '密度控水纹粗细；呼吸与换位只改变明暗和位置。曲径通幽与天地对谈互斥。');
+  },
+
+  _lightSwatchesHtml(target, label, caption) {
+    const s = target === 'backdrop' ? this._light.backdrop : this._light[target];
+    const swatches = ['warm', 'neutral', 'cool', 'accent'].map((id) =>
+      '<button type="button" class="tw-light-swatch' + (s.temp === id ? ' on' : '') +
+      '" data-light-temp="' + target + '" data-light-temp-value="' + id +
+      '" style="background:' + this._lightSwatchColor(id) + '" aria-label="' + label + '光色：' +
+      TW_LIGHT_TEMPS[id].label + '"></button>').join('');
+    const captionHtml = caption
+      ? '<div class="tw-light-row tw-light-row-sub"><span>' + caption + '</span></div>'
+      : '';
+    return captionHtml +
+      '<div class="tw-light-swatches">' + swatches +
+      '<input type="color" class="tw-light-color' + (s.temp === 'custom' ? ' on' : '') +
+      '" data-light-color="' + target + '" value="' + s.color + '" aria-label="' + label + '自定义光色"></div>';
+  },
+
+  _lightCardHtml(which, label) {
+    const s = this._light[which];
+    const open = !!this._lightOpen[which];
+    return '<div class="tw-light-card' + (s.on ? '' : ' is-off') + '">' +
+      '<div class="tw-light-card-head" data-light-expand="' + which + '" role="button" tabindex="0" aria-expanded="' +
+      (open ? 'true' : 'false') + '">' +
+      '<span class="tw-light-dot" data-light-dot="' + which + '" style="' + this._lightDotStyle(which) + '"></span>' +
+      '<span class="tw-light-card-name">' + label + '</span>' +
+      '<span class="tw-light-card-sum" data-light-summary="' + which + '">' + this._lightSummary(which) + '</span>' +
+      this._lightSwitchHtml(which, s.on, label + '开关') +
+      '<span class="tw-light-chevron" aria-hidden="true">' + (open ? '▴' : '▾') + '</span></div>' +
+      (open ? '<div class="tw-light-card-body">' + this._lightControlsHtml(which, label) + '</div>' : '') +
+      '</div>';
+  },
+
+  _lightLinkedCardHtml(which, label) {
+    return '<div class="tw-light-card is-linked">' +
+      '<div class="tw-light-card-head">' +
+      '<span class="tw-light-dot" data-light-dot="' + which + '" style="' + this._lightDotStyle(which) + '"></span>' +
+      '<span class="tw-light-card-name">' + label + '</span>' +
+      '<span class="tw-light-card-sum">跟随顶光</span></div></div>';
+  },
+
+  _lightControlsHtml(which, label) {
+    const s = this._light[which];
+    return this._lightRow('亮度', which + '-intensity', s.intensity, '%', [1, 100, 1]) +
+      this._lightRow('高度', which + '-height', s.height, 'px', [60, 360, 10]) +
+      this._lightRow('柔和度', which + '-softness', s.softness, '%', [40, 95, 1]);
+  },
+
+  _lightResetHtml(mode) {
+    const label = mode === 'edge' ? '天地对谈'
+      : (mode === 'rain' ? '江南烟雨'
+        : (mode === 'snow' ? '雪落轻叹'
+          : (mode === 'lamp' ? '独照一隅'
+            : (mode === 'paper' ? '落笔生光' : '曲径通幽'))));
+    return '<button type="button" class="tw-light-reset" data-light-reset="' + mode +
+      '" aria-label="恢复' + label + '默认参数">恢复默认</button>';
+  },
+
+  _lightSwatchColor(id) {
+    if (id === 'accent') return 'rgb(var(--primary-rgb))';
+    const t = TW_LIGHT_TEMPS[id];
+    return (t && t.hex) || '#e0a35c';
+  },
+
+  _lightDotStyle(which) {
+    const s = this._light[which];
+    const t = TW_LIGHT_TEMPS[s.temp];
+    const color = s.temp === 'custom'
+      ? s.color
+      : (s.temp === 'accent' ? 'rgb(var(--primary-rgb))' : ((t && t.hex) || '#e0a35c'));
+    return 'background:' + color + ';';
+  },
+
+  _lightSummary(which) {
+    const s = this._light[which];
+    return s.on ? (s.intensity + '% · ' + s.height + 'px') : '已关闭';
+  },
+
+  _lightSwitchHtml(kind, on, label) {
+    return '<button type="button" class="tw-light-switch" role="switch" aria-checked="' +
+      (on ? 'true' : 'false') + '" data-light-switch="' + kind + '" aria-label="' + label + '">' +
+      '<span class="tw-light-switch-track"><span class="tw-light-switch-knob"></span></span></button>';
+  },
+
+  _onLightClick(e) {
+    const target = e.target;
+    const stop = () => { e.preventDefault(); e.stopPropagation(); };
+
+    const rainShuffle = target.closest('[data-light-rain-shuffle]');
+    if (rainShuffle) {
+      stop();
+      this._light.rain.seed = this._rollLightSeed(this._light.rain.seed);
+      this._applyLight();
+      this._scheduleLightSave();
+      if (this._lightPanel) {
+        const num = this._lightPanel.querySelector('[data-light-num="rain-seed"]');
+        if (num) num.textContent = '#' + this._light.rain.seed;
+      }
+      return;
+    }
+
+    const shuffle = target.closest('[data-light-shuffle]');
+    if (shuffle) {
+      stop();
+      this._light.backdrop.seed = this._rollLightSeed(this._light.backdrop.seed);
+      this._applyLight();
+      this._scheduleLightSave();
+      if (this._lightPanel) this._lightPanel.innerHTML = this._lightPanelHtml();
+      return;
+    }
+
+    const reset = target.closest('[data-light-reset]');
+    if (reset) {
+      stop();
+      const mode = reset.dataset.lightReset;
+      if (mode === 'edge') {
+        const d = TW_LIGHT_DEFAULT;
+        this._light.link = d.link;
+        this._light.followTheme = d.followTheme;
+        this._light.breathe = d.breathe;
+        this._light.period = d.period;
+        this._light.top = JSON.parse(JSON.stringify(d.top));
+        this._light.bottom = JSON.parse(JSON.stringify(d.bottom));
+      } else if (mode === 'backdrop') {
+        this._light.backdrop = JSON.parse(JSON.stringify(TW_LIGHT_BACKDROP_DEFAULT));
+      } else if (mode === 'rain') {
+        this._light.rain = JSON.parse(JSON.stringify(TW_LIGHT_RAIN_DEFAULT));
+      } else if (mode === 'snow') {
+        this._light.snow = JSON.parse(JSON.stringify(TW_LIGHT_SNOW_DEFAULT));
+      } else if (mode === 'lamp') {
+        this._light.lamp = JSON.parse(JSON.stringify(TW_LIGHT_LAMP_DEFAULT));
+      } else if (mode === 'paper') {
+        this._light.paper = JSON.parse(JSON.stringify(TW_LIGHT_PAPER_DEFAULT));
+      }
+      this._applyLight();
+      this._scheduleLightSave();
+      if (this._lightPanel) this._lightPanel.innerHTML = this._lightPanelHtml();
+      return;
+    }
+
+    const sw = target.closest('[data-light-switch]');
+    if (sw) {
+      stop();
+      const kind = sw.dataset.lightSwitch;
+      if (kind === 'link') {
+        this._light.link = !this._light.link;
+        if (this._light.link) this._light.bottom = Object.assign({}, this._light.top);
+      } else if (kind === 'breathe') {
+        this._light.breathe = !this._light.breathe;
+      } else if (kind === 'backdrop-breathe') {
+        this._light.backdrop.breathe = !this._light.backdrop.breathe;
+      } else if (/^(edge|backdrop|rain|snow|lamp|paper)-follow-theme$/.test(kind)) {
+        const mode = kind.split('-')[0];
+        const cfg = mode === 'edge' ? this._light : this._light[mode];
+        cfg.followTheme = !cfg.followTheme;
+      } else if (kind === 'rain-auto-seed') {
+        const was = this._light.rain.autoSeed;
+        this._light.rain.autoSeed = !was;
+        if (!was) this._light.rain.seed = this._rollLightSeed(this._light.rain.seed);
+        else if (!this._light.rain.seed) this._light.rain.seed = this._rollLightSeed(0);
+      } else if (kind === 'backdrop-auto-phase') {
+        const was = this._light.backdrop.autoPhase;
+        this._light.backdrop.autoPhase = !was;
+        if (!was) this._light.backdrop.seed = this._rollLightSeed(this._light.backdrop.seed);
+        else if (!this._light.backdrop.seed) this._light.backdrop.seed = this._rollLightSeed(0);
+      } else if (this._light[kind]) {
+        this._light[kind].on = !this._light[kind].on;
+        if (this._light.link) this._light[kind === 'top' ? 'bottom' : 'top'].on = this._light[kind].on;
+      }
+      this._applyLight();
+      this._scheduleLightSave();
+      if (this._lightPanel) this._lightPanel.innerHTML = this._lightPanelHtml();
+      return;
+    }
+
+    const head = target.closest('[data-light-expand]');
+    if (head) {
+      stop();
+      const which = head.dataset.lightExpand;
+      if (Object.prototype.hasOwnProperty.call(this._lightOpen, which)) {
+        this._lightOpen[which] = !this._lightOpen[which];
+        if (this._lightPanel) this._lightPanel.innerHTML = this._lightPanelHtml();
+      }
+      return;
+    }
+
+    const modeBtn = target.closest('[data-light-mode]');
+    if (modeBtn) {
+      stop();
+      const mode = modeBtn.dataset.lightMode;
+      if (mode === 'off' || mode === 'edge' || mode === 'backdrop' || mode === 'rain' ||
+          mode === 'snow' || mode === 'lamp' || mode === 'paper') {
+        if (mode === 'paper' && this._mode !== 'write' && this._mode !== 'mindmap') {
+          if (typeof this._showScreenMsg === 'function') this._showScreenMsg('落笔生光仅写作档与思维子弹档可用', 1600);
+          return;
+        }
+        if (TW_LIGHT_DARK_ONLY_TITLE[mode] &&
+            typeof this._isDarkNow === 'function' && !this._isDarkNow()) {
+          if (typeof this._showScreenMsg === 'function') {
+            this._showScreenMsg(TW_LIGHT_DARK_ONLY_TITLE[mode], 1600);
+          }
+          return;
+        }
+        const prevMode = this._light.mode;
+        if (mode === 'backdrop' && prevMode !== mode && this._light.backdrop.autoPhase) {
+          this._light.backdrop.seed = this._rollLightSeed(this._light.backdrop.seed);
+        }
+        this._light.mode = mode;
+        this._applyLight();
+        this._scheduleLightSave();
+        if (this._lightPanel) this._lightPanel.innerHTML = this._lightPanelHtml();
+      }
+      return;
+    }
+
+    const btn = target.closest('button');
+    if (!btn || !btn.dataset) return;
+    stop();
+    const which = btn.dataset.lightTemp;
+    const temp = btn.dataset.lightTempValue;
+    if (!which || !TW_LIGHT_TEMPS[temp] || temp === 'custom') return;
+    if (which === 'backdrop' || which === 'rain' || which === 'snow' || which === 'paper') {
+      const cfg = this._light[which];
+      cfg.temp = temp;
+      cfg.color = TW_LIGHT_TEMPS[temp].hex || cfg.color;
+    } else if (this._light[which]) {
+      const other = which === 'top' ? 'bottom' : 'top';
+      this._light[which].temp = temp;
+      this._light[which].color = TW_LIGHT_TEMPS[temp].hex || this._light[which].color;
+      if (this._light.link && (which === 'top' || which === 'bottom')) {
+        this._light[other].temp = this._light[which].temp;
+        this._light[other].color = this._light[which].color;
+      }
+    }
+    this._applyLight();
+    this._scheduleLightSave();
+    if (this._lightPanel) this._lightPanel.innerHTML = this._lightPanelHtml();
+  },
+
+  _onLightInput(e) {
+    const picker = e.target.closest('[data-light-color]');
+    if (picker) {
+      const which = picker.dataset.lightColor;
+      if (!TW_LIGHT_HEX.test(picker.value || '')) return;
+      if (which === 'backdrop' || which === 'rain') {
+        this._light[which].color = picker.value;
+        this._light[which].temp = 'custom';
+        this._applyLight();
+        this._scheduleLightSave();
+        return;
+      }
+      if (!this._light[which]) return;
+      this._light[which].color = picker.value;
+      this._light[which].temp = 'custom';
+      if (this._light.link && (which === 'top' || which === 'bottom')) {
+        const other = which === 'top' ? 'bottom' : 'top';
+        this._light[other].color = picker.value;
+        this._light[other].temp = 'custom';
+      }
+      this._syncLightCard(which);
+      if (this._light.link) this._syncLightCard(which === 'top' ? 'bottom' : 'top');
+      this._applyLight();
+      this._scheduleLightSave();
+      return;
+    }
+    const range = e.target.closest('[data-light-range]');
+    if (!range) return;
+    if (range.dataset.lightRange === 'period') {
+      const v = Number(range.value);
+      this._light.period = Number.isFinite(v) ? Math.max(2, Math.min(12, Math.round(v))) : this._light.period;
+      const num = this._lightPanel && this._lightPanel.querySelector('[data-light-num="period"]');
+      if (num) num.textContent = this._light.period + 's';
+      this._applyLight();
+      this._scheduleLightSave();
+      return;
+    }
+    const raw = String(range.dataset.lightRange || '');
+    if (raw === 'lamp-intensity' || raw === 'lamp-dim' || raw === 'lamp-width' ||
+        raw === 'lamp-beam' || raw === 'lamp-reach' || raw === 'lamp-softness') {
+      const key = raw.slice('lamp-'.length);
+      const v = Number(range.value);
+      const bounds = {
+        intensity: [1, 100], dim: [0, 60], width: [120, 420], beam: [10, 100], reach: [20, 100],
+        softness: [0, 100],
+      };
+      const pair = bounds[key] || [1, 100];
+      this._light.lamp[key] = Number.isFinite(v)
+        ? Math.max(pair[0], Math.min(pair[1], Math.round(v)))
+        : this._light.lamp[key];
+      const num = this._lightPanel && this._lightPanel.querySelector('[data-light-num="' + raw + '"]');
+      const unit = key === 'width' ? 'px' : (key === 'period' ? 's'
+        : (['intensity', 'dim', 'reach', 'softness', 'amplitude'].indexOf(key) >= 0 ? '%' : '°'));
+      if (num) num.textContent = this._light.lamp[key] + unit;
+      this._applyLight();
+      this._scheduleLightSave();
+      return;
+    }
+    if (raw === 'paper-intensity' || raw === 'paper-dim' || raw === 'paper-spread' ||
+        raw === 'paper-boost' || raw === 'paper-period' || raw === 'paper-settle') {
+      const key = raw.slice('paper-'.length);
+      const v = Number(range.value);
+      const bounds = {
+        intensity: [1, 100], dim: [0, 70], spread: [4, 30], boost: [0, 100],
+        period: [2, 8], settle: [1, 8],
+      };
+      const pair = bounds[key];
+      if (!pair) return;
+      this._light.paper[key] = Number.isFinite(v)
+        ? Math.max(pair[0], Math.min(pair[1], Math.round(v))) : this._light.paper[key];
+      const num = this._lightPanel && this._lightPanel.querySelector('[data-light-num="' + raw + '"]');
+      const unit = key === 'spread' ? 'px'
+        : (key === 'settle' || key === 'period' ? 's' : '%');
+      if (num) num.textContent = this._light.paper[key] + unit;
+      this._applyLight();
+      this._scheduleLightSave();
+      return;
+    }
+    if (raw === 'snow-intensity' || raw === 'snow-density' || raw === 'snow-size' ||
+        raw === 'snow-speed' || raw === 'snow-wind' || raw === 'snow-chill') {
+      const key = raw.slice('snow-'.length);
+      const v = Number(range.value);
+      const clamp = key === 'speed'
+        ? (n) => Math.max(4, Math.min(30, n))
+        : (key === 'wind'
+          ? (n) => Math.max(-30, Math.min(30, n))
+          : (key === 'chill'
+            ? (n) => Math.max(0, Math.min(100, n))
+            : (n) => Math.max(1, Math.min(100, n))));
+      this._light.snow[key] = Number.isFinite(v) ? clamp(Math.round(v)) : this._light.snow[key];
+      const num = this._lightPanel && this._lightPanel.querySelector('[data-light-num="' + raw + '"]');
+      const unit = key === 'speed' ? 's' : (key === 'wind' ? '°' : '%');
+      if (num) num.textContent = this._light.snow[key] + unit;
+      this._applyLight();
+      this._scheduleLightSave();
+      return;
+    }
+    if (raw === 'rain-intensity' || raw === 'rain-density' || raw === 'rain-length' ||
+        raw === 'rain-angle' || raw === 'rain-speed' || raw === 'rain-mist' ||
+        raw === 'rain-seed-every') {
+      const key = raw === 'rain-seed-every' ? 'seedEvery' : raw.slice('rain-'.length);
+      const v = Number(range.value);
+      const clamp = key === 'speed'
+        ? (n) => Math.max(4, Math.min(30, n))
+        : (key === 'angle'
+          ? (n) => Math.max(-30, Math.min(30, n))
+          : (key === 'seedEvery'
+            ? (n) => Math.max(10, Math.min(120, n))
+            : (key === 'mist'
+            ? (n) => Math.max(0, Math.min(100, n))
+            : (n) => Math.max(1, Math.min(100, n)))));
+      this._light.rain[key] = Number.isFinite(v) ? clamp(Math.round(v)) : this._light.rain[key];
+      const num = this._lightPanel && this._lightPanel.querySelector('[data-light-num="' + raw + '"]');
+      const unit = (key === 'speed' || key === 'seedEvery') ? 's' : (key === 'angle' ? '°' : '%');
+      if (num) num.textContent = this._light.rain[key] + unit;
+      this._applyLight();
+      this._scheduleLightSave();
+      return;
+    }
+    if (raw === 'backdrop-intensity' || raw === 'backdrop-density' ||
+        raw === 'backdrop-speed' || raw === 'backdrop-period' ||
+        raw === 'backdrop-amplitude' || raw === 'backdrop-phase-every') {
+      const key = raw === 'backdrop-phase-every' ? 'phaseEvery' : raw.slice('backdrop-'.length);
+      const v = Number(range.value);
+      const clamp = key === 'speed'
+        ? (n) => Math.max(4, Math.min(30, n))
+        : (key === 'period'
+          ? (n) => Math.max(2, Math.min(12, n))
+          : (key === 'amplitude'
+            ? (n) => Math.max(0, Math.min(100, n))
+            : (key === 'phaseEvery'
+              ? (n) => Math.max(10, Math.min(120, n))
+              : (n) => Math.max(1, Math.min(100, n)))));
+      this._light.backdrop[key] = Number.isFinite(v) ? clamp(Math.round(v)) : this._light.backdrop[key];
+      const num = this._lightPanel && this._lightPanel.querySelector('[data-light-num="' + raw + '"]');
+      const unit = (key === 'speed' || key === 'period' || key === 'phaseEvery') ? 's' : '%';
+      if (num) num.textContent = this._light.backdrop[key] + unit;
+      this._applyLight();
+      this._scheduleLightSave();
+      return;
+    }
+    const parts = String(range.dataset.lightRange || '').split('-');
+    const which = parts[0];
+    const key = parts[1];
+    if (!this._light[which] ||
+        (key !== 'intensity' && key !== 'height' && key !== 'softness')) return;
+    const val = Number(range.value);
+    const clamp = key === 'intensity'
+      ? (n) => Math.max(1, Math.min(100, n))
+      : (key === 'height'
+        ? (n) => Math.max(60, Math.min(360, n))
+        : (n) => Math.max(40, Math.min(95, n)));
+    this._light[which][key] = Number.isFinite(val) ? clamp(Math.round(val)) : this._light[which][key];
+    if (this._light.link) this._light[which === 'top' ? 'bottom' : 'top'][key] = this._light[which][key];
+    this._syncLightNumbers();
+    this._applyLight();
+    this._scheduleLightSave();
+  },
+
+  /** 拖动滑杆时只改数字、摘要与色点，不重建面板（否则拖到一半控件被换掉）。 */
+  _syncLightNumbers() {
+    if (!this._lightPanel) return;
+    ['top', 'bottom'].forEach((which) => {
+      ['intensity', 'height', 'softness'].forEach((key) => {
+        const v = this._light[which][key];
+        const num = this._lightPanel.querySelector('[data-light-num="' + which + '-' + key + '"]');
+        if (num) num.textContent = key === 'height' ? v + 'px' : v + '%';
+        const range = this._lightPanel.querySelector('[data-light-range="' + which + '-' + key + '"]');
+        if (range && Number(range.value) !== v) range.value = v;
+      });
+      this._syncLightCard(which);
+    });
+  },
+
+  /** 卡片头部的摘要与色点：滑杆/取色器变化时原地更新，不重建面板。 */
+  _syncLightCard(which) {
+    if (!this._lightPanel) return;
+    const dot = this._lightPanel.querySelector('[data-light-dot="' + which + '"]');
+    if (dot) dot.setAttribute('style', this._lightDotStyle(which));
+    const sum = this._lightPanel.querySelector('[data-light-summary="' + which + '"]');
+    if (sum) sum.textContent = this._lightSummary(which);
+    const card = dot && dot.closest('.tw-light-card');
+    if (card) card.classList.toggle('is-off', !this._light[which].on);
   },
 
   /** 缩放变化后刷新外围圆钮尺寸（圆钮不应随画布一起变大变小） */
@@ -1599,6 +3124,9 @@ export const TypewriterFeature = {
   /** 仅选中一张（清空其余高亮） */
     _selectOnly(card) { return CardInteractions.selectOnly({ state: this._state, ctrl: this }, card); },
 
+  /** Cmd/Ctrl+A：全选当前已挂载的卡片 */
+    _selectAll() { return CardInteractions.selectAll({ state: this._state, ctrl: this }); },
+
   /** Shift 点击：在选中集合里切换该卡 */
     _toggleSelect(card) { return CardInteractions.toggleSelect({ state: this._state, ctrl: this }, card); },
 
@@ -1841,6 +3369,16 @@ export const TypewriterFeature = {
       if (c.parentNode) c.parentNode.removeChild(c);
       if (this._selected) { c.classList.remove('selected'); this._selected.delete(c); }
     });
+    // 合并后选区从「多选」收敛为「只剩锚卡」：
+    // 锚卡此前带的 is-multi-active / is-paper-lit-multi 必须同步清掉，
+    // 否则工具条（notes 的 :not(.is-multi-active)）和阴影（write/paper）会一直停在多选态。
+    if (this._selected) {
+      this._selected.clear();
+      if (anchorEl) this._selected.add(anchorEl);
+    }
+    if (typeof this._syncPaperGlowSelection === 'function') {
+      this._syncPaperGlowSelection(anchorEl ? [anchorEl] : [], false);
+    }
     // 刷新锚卡文本
     const anchorNote = this._notes.find((n) => n.id === r.anchorId);
     if (anchorEl && anchorNote) {
@@ -2168,6 +3706,20 @@ export const TypewriterFeature = {
     const canLink = this._mode === 'write' && cardCount >= 2;
     const selIds = new Set(cards.map((c) => c.dataset && c.dataset.id).filter(Boolean));
     const innerLinks = (this._links || []).filter((l) => selIds.has(l.from) && selIds.has(l.to)).length;
+    // 主卡 = 合并锚，口径与 WritingDoc.mergeNotes 一致：文章顺序最前（seq 最小）者留下。
+    // 用同款细轮廓的更深一档标出，不引入角标/底色等第二套语言。
+    if (this._selAnchorEl) { this._selAnchorEl.classList.remove('is-sel-anchor'); this._selAnchorEl = null; }
+    const idx = typeof this._noteIndex === 'function' ? this._noteIndex() : null;
+    let anchor = null, anchorSeq = Infinity;
+    cards.forEach((c) => {
+      const n = idx && idx.get(c.dataset && c.dataset.id);
+      const seq = n && typeof n.seq === 'number' ? n.seq : Infinity;
+      if (seq < anchorSeq) { anchorSeq = seq; anchor = c; }
+    });
+    if (cardCount >= 2 && anchor) {
+      anchor.classList.add('is-sel-anchor');
+      this._selAnchorEl = anchor;
+    }
     // 一个键两态：选中集未成链 → 「连线 N 张」（补齐）；已成链 → 「断开 N 条」。
     const chained = canLink && WritingDoc.selectionChained(this._notes, this._links, Array.from(selIds));
     if (linkBtn) {
@@ -2183,8 +3735,11 @@ export const TypewriterFeature = {
     }
     if (n >= 2) {
       if (mergeBtn) {
-        if (cardCount >= 2) { mergeBtn.style.display = ''; mergeBtn.textContent = '合并 ' + cardCount + ' 张'; }
-        else { mergeBtn.style.display = 'none'; }
+        if (cardCount >= 2) {
+          mergeBtn.style.display = '';
+          mergeBtn.textContent = '合并 ' + cardCount + ' 张';
+          mergeBtn.title = '以文章顺序最前的那张为主卡（轮廓更深），其余并入，可撤销';
+        } else { mergeBtn.style.display = 'none'; }
       }
       // 「挂到便签」：仅当恰好 1 张便签 + ≥1 张尚未挂到它上面的贴纸。
       // 刻意从严 —— 多张便签时「该挂给谁」有歧义，宁可不给这个入口，也不要做错挂。
@@ -2298,15 +3853,36 @@ export const TypewriterFeature = {
       minX = Infinity; minY = Infinity; maxX = -Infinity; maxY = -Infinity;
       this._selected.forEach((c) => {
         const r = c.getBoundingClientRect();
-        if (r.left - cr.left < minX) minX = r.left - cr.left;
-        if (r.top - cr.top < minY) minY = r.top - cr.top;
-        if (r.right - cr.left > maxX) maxX = r.right - cr.left;
-        if (r.bottom - cr.top > maxY) maxY = r.bottom - cr.top;
+        if ((r.left - cr.left) / s < minX) minX = (r.left - cr.left) / s;
+        if ((r.top - cr.top) / s < minY) minY = (r.top - cr.top) / s;
+        if ((r.right - cr.left) / s > maxX) maxX = (r.right - cr.left) / s;
+        if ((r.bottom - cr.top) / s > maxY) maxY = (r.bottom - cr.top) / s;
       });
     }
-    const cx = (minX + maxX) / 2;                     // canvas 局部坐标
-    let topY = minY - bar.offsetHeight - 10;           // 浮在选框上方
-    if (topY < 2) topY = maxY + 10;                   // 贴顶则翻到下方，避免被裁
+    // 浮动条是可点控件，必须留在可见区。旧判据 topY<2 用的是画布局部坐标：
+    // 跨屏选择时顶卡滚出视口但画布 y 仍 >2，翻到选区底部同样在屏外，批量入口就消失了。
+    const vr = (this._el && this._el.getBoundingClientRect) ? this._el.getBoundingClientRect() : cr;
+    const visLeft = (vr.left - cr.left) / s;
+    const visTop = (vr.top - cr.top) / s;
+    const visRight = (vr.right - cr.left) / s;
+    const visBottom = (vr.bottom - cr.top) / s;
+    const gap = 10 / s;
+    const halfW = bar.offsetWidth / 2;
+    const visW = visRight - visLeft;
+    const visH = visBottom - visTop;
+    let cx = (minX + maxX) / 2;
+    const above = minY - bar.offsetHeight - gap;
+    const below = maxY + gap;
+    let topY;
+    // jsdom / 未布局容器会给出 0 尺寸视口；此时钳制只会把条钉到 0,0，退回原始相对选区定位。
+    if (visW > bar.offsetWidth && visH > bar.offsetHeight) {
+      cx = Math.max(visLeft + halfW, Math.min(cx, visRight - halfW));
+      if (above >= visTop && above + bar.offsetHeight <= visBottom) topY = above;
+      else if (below >= visTop && below + bar.offsetHeight <= visBottom) topY = below;
+      else topY = Math.max(visTop, Math.min(above, visBottom - bar.offsetHeight));
+    } else {
+      topY = above >= visTop ? above : below;
+    }
     bar.style.left = cx + 'px';
     bar.style.top = topY + 'px';
     if (once) return;
@@ -2357,18 +3933,6 @@ export const TypewriterFeature = {
   /** 应用缩放：只写 --tw-card-zoom。卡片内所有尺寸都由 em 推导，
       改这一个变量即整体等比（框宽、字号、留白、装饰全部同步）。 */
     _applyZoom(card, zoom) { return CardViewManager.applyZoom({ state: this._state, ctrl: this }, card, zoom); },
-
-  /** 当前 zoom 最接近哪一档（拖拽出来的连续值也能给出可读的档位名） */
-    _zoomIdxOf(zoom) { return CardViewManager.zoomIdxOf({ state: this._state, ctrl: this }, zoom); },
-
-  /** 尺寸档位步进：从当前值（哪怕是被拖出来的连续值）跳到相邻的下一档 */
-    _stepCardScale(card, dir) { return CardViewManager.stepCardScale({ state: this._state, ctrl: this }, card, dir); },
-
-  /** 同步 ⊟/⊞ 的可用态与提示文案 */
-    _syncCardScaleButtons(card) { return CardViewManager.syncCardScaleButtons({ state: this._state, ctrl: this }, card); },
-
-  /** ⊟/⊞ 步进便签尺寸档位（S/M/L/XL） */
-    _bindZoomSteps(card) { return CardViewManager.bindZoomSteps({ state: this._state, ctrl: this }, card); },
 
   /** 写入便签纸样：更新 dataset、抬头与按钮提示（提示里带当前纸样名）。
    *  只作用于这一张便签 —— 与寻呼机上的 PAPER 键（只影响「之后打印」的便签）互不干扰。 */

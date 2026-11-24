@@ -64,6 +64,9 @@ export const CanvasViewport = {
     const off = this.getOffset(ctrl);
     const s = this.getScale(ctrl);
     ctrl._canvas.style.transform = `translate(${off.x}px, ${off.y}px) scale(${s})`;
+    // 选中轮廓随画布 transform 一起缩放；反写一份线宽，让 CSS 里始终是屏幕 1px。
+    // 0.25x 时画布内画 4px、3x 时画 0.333px，乘法抵消后用户看到的粗细恒定。
+    ctrl._canvas.style.setProperty('--tw-sel-hairline', String(1 / s) + 'px');
     if (ctrl._scheduleCull) ctrl._scheduleCull();
     // 控件（外围圆钮等）尺寸只在「缩放变化」时需重算以保持屏幕尺寸恒定；pan 不改变 scale，
     // 逐个重算纯属浪费（每帧 O(n) querySelectorAll + 8n 样式写）——新挂载卡已在 mountCard 自行定尺寸。

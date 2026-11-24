@@ -16,7 +16,9 @@ global.WritingDoc = {
   setLevel: (notes, id, level) => notes.map((n) => (n.id === id ? Object.assign({}, n, { level }) : n)),
 };
 global.fitCardText = () => 1;
+global.MindmapFeature = { isActive: () => false, _zoomUI: null };
 const { CardInteractions } = loadModule('handlers/features/CardInteractions.js', ['CardInteractions']);
+const { TypewriterFeature } = loadModule('handlers/features/typewriterFeature.js', ['TypewriterFeature']);
 
 function fixture(md, level = 'p', mode = 'notes') {
   const canvas = document.createElement('div');
@@ -87,6 +89,36 @@ describe('工具条出现时机', () => {
 
     CardInteractions.exitEdit(ctx, card);
     expect(bar.hidden).toBe(true);
+  });
+
+  test('多选里进入编辑收敛为单选，批量条收起且格式条接管', () => {
+    const { card, ctx, ctrl } = fixture('A', 'p');
+    const other = document.createElement('div');
+    other.className = 'tw-card';
+    other.dataset.id = 'b';
+    other.classList.add('selected', 'is-multi-active');
+    ctrl._canvas.appendChild(other);
+    card.classList.add('selected', 'is-multi-active');
+    ctrl._selected = new Set([card, other]);
+    ctrl._el = ctrl._canvas;
+    ctrl._light = { mode: 'off' };
+    ctrl._isDarkNow = () => true;
+    ctrl._blurInput = jest.fn();
+    ctrl._paperGlowActive = () => TypewriterFeature._paperGlowActive.call(ctrl);
+    const sync = ctrl._syncPaperGlowSelection = jest.fn(
+      (el) => TypewriterFeature._syncPaperGlowSelection.call(ctrl, el));
+    const updateBar = ctrl._updateSelBar = jest.fn();
+    ctrl._selectOnly = (c) => CardInteractions.selectOnly({ state: {}, ctrl }, c);
+
+    CardInteractions.enterEdit(ctx, card);
+
+    expect(ctrl._selected.size).toBe(1);
+    expect(ctrl._selected.has(card)).toBe(true);
+    expect(card.classList.contains('is-multi-active')).toBe(false);
+    expect(other.classList.contains('selected')).toBe(false);
+    expect(sync).toHaveBeenCalledWith(card);
+    expect(updateBar).toHaveBeenCalled();
+    expect(ctrl._editToolsBar.hidden).toBe(false);
   });
 
   test('纯文本卡也有行内按钮：加粗后自动转富渲染（否则 innerText 会丢 **）', () => {

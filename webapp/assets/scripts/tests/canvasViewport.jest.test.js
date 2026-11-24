@@ -43,6 +43,16 @@ test('clamp：上下限生效，非法值一律回退 1', () => {
 });
 
 
+test('apply 反写线宽变量：缩放后选中轮廓仍是屏幕 1px', () => {
+  const { CanvasViewport, ctx, canvas, ctrl } = setup({ x: 0, y: 0, scale: 1 });
+  CanvasViewport.apply(ctx);
+  expect(canvas.style.getPropertyValue('--tw-sel-hairline')).toBe('1px');
+  CanvasViewport.set(ctx, 0, 0, 0.5);
+  expect(canvas.style.getPropertyValue('--tw-sel-hairline')).toBe('2px');
+  CanvasViewport.set(ctx, 0, 0, 2);
+  expect(ctrl._canvas.style.getPropertyValue('--tw-sel-hairline')).toBe('0.5px');
+});
+
 test('screenToCanvas 按缩放比换算：屏幕走 200px 在 2x 下等于 100 画布 px', () => {
   const { CanvasViewport, ctx } = setup({ x: 0, y: 0, scale: 2 });
   const a = CanvasViewport.screenToCanvas(ctx, 0, 0);

@@ -118,3 +118,26 @@ describe('TypewriterStore 净化保留 note', () => {
     expect(out[1].note).toBe('');
   });
 });
+
+describe('缩放胶囊同步（工具条 / 读档 / 撤销都走 applyZoom）', () => {
+  test('applyZoom 调用 card._twSyncResizePct，胶囊不会落后于模型', () => {
+    const { CardViewManager } = global;
+    const state = {};
+    const seen = [];
+    const ctrl = {
+      _clampZoom: (z) => Math.min(2.4, Math.max(0.6, Number(z) || 1)),
+      _notes: [{ id: 'z', zoom: 1 }],
+      _invalidateGeo: () => {},
+    };
+    const card = document.createElement('div');
+    card.dataset.id = 'z';
+    card.dataset.zoom = '1';
+    card._twSyncResizePct = (z) => seen.push(z);
+
+    CardViewManager.applyZoom({ state, ctrl }, card, 1.5);
+
+    expect(seen).toEqual([1.5]);
+    expect(card.dataset.zoom).toBe('1.500');
+    expect(ctrl._notes[0].zoom).toBe(1.5);
+  });
+});

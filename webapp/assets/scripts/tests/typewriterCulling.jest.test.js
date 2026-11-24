@@ -327,7 +327,6 @@ describe('几何缓存失效系统化（对标 tldraw geometry caching）', () =
     feature._applyZoom = REAL_APPLY_ZOOM;      // 还原真身（帧预算用例可能留了 mock）
     feature._measureCard = jest.fn();          // 只数重测次数，不做真测量
     feature._scheduleRenderLinks = () => {};
-    feature._syncCardScaleButtons = () => {};
     feature._refreshTip = () => {};
     feature._refreshLevelSteps = () => {};
     const card = document.createElement('div');
@@ -1334,5 +1333,805 @@ describe('便签张数不设限', () => {
     //   oy = min(1000-24-2*1200, max(24-2000,0)) = min(-1424, 0) = -1424
     expect(captured.x).toBe(-1704);
     expect(captured.y).toBe(-1424);
+  });
+});
+
+// 回归锁：曲径通幽维持柔光水波，并可独立开关明暗呼吸。
+describe('曲径通幽水波密度与呼吸', () => {
+  function lightFixture(mode, density, bdOpts = {}) {
+    const host = document.createElement('div');
+    host.className = 'scroll-typewriter-feature';
+    const bd = document.createElement('div');
+    bd.className = 'tw-light tw-light-backdrop';
+    host.appendChild(bd);
+    const ctrl = {
+      _el: host,
+      _lightBackdrop: bd,
+      _zoomUI: null,
+      _light: feature._normalizeLight({
+        mode,
+        backdrop: Object.assign({ density }, mode === 'rain' || mode === 'snow' ? {} : bdOpts),
+        rain: mode === 'rain' ? bdOpts : {},
+        snow: mode === 'snow' ? bdOpts : {},
+      }),
+    };
+    feature._applyLight.call(ctrl);
+    return { host, bd, ctrl };
+  }
+  const evt = (target) => ({ target, preventDefault() {}, stopPropagation() {} });
+  const viewOf = (fx) => Object.assign(Object.create(feature), fx.ctrl, {
+    _mode: 'write',
+    _lightPanel: document.createElement('div'),
+    _scheduleLightSave: () => {},
+    _isDarkNow: () => true,
+  });
+
+  test('天地对谈默认跟随主题色，关掉后显示色板', () => {
+    const fx = lightFixture('edge', 60);
+    expect(fx.host.style.getPropertyValue('--tw-light-top-rgb')).toBe('var(--primary-rgb)');
+    const view = viewOf(fx);
+    view._lightOpen = { top: true, bottom: false };
+    view._lightPanel.innerHTML = feature._lightPanelHtml.call(view);
+    const sw = view._lightPanel.querySelector('[data-light-switch="edge-follow-theme"]');
+    expect(sw).not.toBeNull();
+    expect(view._lightPanel.querySelector('[data-light-temp="top"]')).toBeNull();
+    feature._onLightClick.call(view, evt(sw));
+    expect(view._light.followTheme).toBe(false);
+    expect(view._lightPanel.innerHTML).toContain('data-light-temp="top"');
+    expect(fx.host.style.getPropertyValue('--tw-light-top-rgb')).toBe('240,194,57');
+  });
+
+  test('三种意境光默认跟随主题色，关掉后恢复手动色板', () => {
+    for (const mode of ['backdrop', 'rain', 'snow']) {
+      const cfg = feature._normalizeLight({ mode });
+      expect(cfg[mode].followTheme).toBe(true);
+      const fx = lightFixture(mode, 60);
+      const cssVar = mode === 'backdrop' ? '--tw-backdrop-rgb'
+        : (mode === 'rain' ? '--tw-rain-rgb' : '--tw-snow-rgb');
+      expect(fx.host.style.getPropertyValue(cssVar)).toBe('var(--primary-rgb)');
+
+      const view = viewOf(fx);
+      view._lightPanel.innerHTML = feature._lightPanelHtml.call(view);
+      const sw = view._lightPanel.querySelector('[data-light-switch="' + mode + '-follow-theme"]');
+      expect(sw).not.toBeNull();
+      expect(view._lightPanel.querySelector('[data-light-temp="' + mode + '"]')).toBeNull();
+      feature._onLightClick.call(view, evt(sw));
+      expect(view._light[mode].followTheme).toBe(false);
+      expect(view._lightPanel.innerHTML).toContain('data-light-temp="' + mode + '"');
+    }
+  });
+
+  test('默认模式全关，但天地对谈预置为对照参数图', () => {
+    const cfg = feature._normalizeLight({});
+    expect(cfg.mode).toBe('off');
+    expect(feature._isLightOn.call({ _light: cfg })).toBe(false);
+    expect(cfg.link).toBe(true);
+    expect(cfg.followTheme).toBe(true);
+    expect(cfg.breathe).toBe(true);
+    expect(cfg.period).toBe(3);
+    expect(cfg.top).toEqual({ on: true, intensity: 80, height: 360, softness: 95, temp: 'custom', color: '#f0c239' });
+    expect(cfg.bottom).toEqual({ on: true, intensity: 80, height: 360, softness: 95, temp: 'custom', color: '#f0c239' });
+    expect(cfg.backdrop).toEqual({ intensity: 100, density: 100, speed: 4, breathe: true, period: 4, amplitude: 100, autoPhase: true, phaseEvery: 10, seed: 1191, followTheme: true, temp: 'accent', color: '#e0a35c' });
+    expect(cfg.rain).toEqual({ intensity: 50, density: 70, length: 100, angle: -17, speed: 10, mist: 50, autoSeed: true, seedEvery: 120, seed: 4091, followTheme: true, temp: 'cool', color: '#7aaad2' });
+    expect(cfg.snow).toEqual({ intensity: 40, density: 10, size: 70, speed: 30, wind: -9, chill: 30, followTheme: true, temp: 'cool', color: '#7aaad2' });
+    expect(cfg.lamp).toEqual({ intensity: 100, dim: 11, temp: 'warm', color: '#e0a35c', followTheme: true, width: 420, beam: 100, reach: 100, softness: 30 });
+    expect(cfg.candle).toBeUndefined();
+    expect(feature._normalizeLight({ top: {}, bottom: {} }).mode).toBe('off');
+  });
+
+  test('密度写入光斑缩放：默认 60 为原版，越高光斑越小', () => {
+    const low = lightFixture('backdrop', 20);
+    const mid = lightFixture('backdrop', 60);
+    const high = lightFixture('backdrop', 90);
+    const scale = (fx) => parseFloat(fx.bd.style.getPropertyValue('--tw-water-scale'));
+    expect(Number.isFinite(scale(lightFixture('backdrop', undefined)))).toBe(true);
+    expect(scale(low)).toBeGreaterThan(scale(mid));
+    expect(scale(mid)).toBeGreaterThan(scale(high));
+    expect(scale(mid)).toBeCloseTo(1, 3);
+    expect(parseFloat(high.bd.style.getPropertyValue('--tw-water-extra-a'))).toBeGreaterThan(0);
+    expect(parseFloat(low.bd.style.getPropertyValue('--tw-water-extra-a'))).toBe(0);
+    expect(low.host.classList.contains('tw-light-backdrop-on')).toBe(true);
+  });
+
+  test('明暗呼吸独立开关与周期：仅曲径通幽模式生效', () => {
+    const onFx = lightFixture('backdrop', 60, { breathe: true, period: 6 });
+    expect(onFx.host.classList.contains('tw-light-backdrop-breathe')).toBe(true);
+    expect(onFx.host.style.getPropertyValue('--tw-backdrop-period')).toBe('6s');
+    const view = Object.assign(Object.create(feature), onFx.ctrl);
+    const html = feature._lightPanelHtml.call(view);
+    expect(html).toContain('data-light-switch="backdrop-breathe"');
+    expect(html).toContain('data-light-range="backdrop-period"');
+
+    const offFx = lightFixture('backdrop', 60, { breathe: false });
+    expect(offFx.host.classList.contains('tw-light-backdrop-breathe')).toBe(false);
+    expect(lightFixture('edge', 60).host.classList.contains('tw-light-backdrop-breathe')).toBe(false);
+  });
+
+  test('呼吸开关与周期滑杆可实时调整', () => {
+    const fx = lightFixture('backdrop', 60);
+    const view = Object.assign(Object.create(feature), fx.ctrl, {
+      _lightPanel: document.createElement('div'),
+      _scheduleLightSave: () => {},
+    });
+    view._lightPanel.innerHTML = feature._lightPanelHtml.call(view);
+    const sw = view._lightPanel.querySelector('[data-light-switch="backdrop-breathe"]');
+    feature._onLightClick.call(view, evt(sw));
+    expect(view._light.backdrop.breathe).toBe(false);
+    expect(view._el.classList.contains('tw-light-backdrop-breathe')).toBe(false);
+
+    const sw2 = view._lightPanel.querySelector('[data-light-switch="backdrop-breathe"]');
+    feature._onLightClick.call(view, evt(sw2));
+    expect(view._light.backdrop.breathe).toBe(true);
+
+    const range = view._lightPanel.querySelector('[data-light-range="backdrop-period"]');
+    range.value = '9';
+    feature._onLightInput.call(view, evt(range));
+    expect(view._light.backdrop.period).toBe(9);
+    expect(view._el.style.getPropertyValue('--tw-backdrop-period')).toBe('9s');
+    expect(view._lightPanel.querySelector('[data-light-num="backdrop-period"]').textContent).toBe('9s');
+  });
+
+  test('天地对谈柔和度可调节并联动，柔和度归一化有边界', () => {
+    const fx = lightFixture('edge', 60);
+    const view = viewOf(fx);
+    view._light.link = true;
+    view._lightPanel.innerHTML = feature._lightPanelHtml.call(view);
+    const range = view._lightPanel.querySelector('[data-light-range="top-softness"]');
+    expect(range).not.toBeNull();
+    range.value = '88';
+    feature._onLightInput.call(view, evt(range));
+    expect(view._light.top.softness).toBe(88);
+    expect(view._light.bottom.softness).toBe(88);
+    expect(fx.host.style.getPropertyValue('--tw-light-top-soft')).toBe('88%');
+    expect(feature._normalizeLight({ mode: 'edge', top: { softness: 999 } }).top.softness).toBe(95);
+  });
+
+  test('呼吸幅度决定明暗起伏范围，可降到 0%', () => {
+    const fx = lightFixture('backdrop', 60, { amplitude: 80 });
+    expect(fx.host.style.getPropertyValue('--tw-backdrop-swing')).toBe('0.20');
+    const view = viewOf(fx);
+    view._lightPanel.innerHTML = feature._lightPanelHtml.call(view);
+    const range = view._lightPanel.querySelector('[data-light-range="backdrop-amplitude"]');
+    expect(range).not.toBeNull();
+    range.value = '0';
+    feature._onLightInput.call(view, evt(range));
+    expect(view._light.backdrop.amplitude).toBe(0);
+    expect(fx.host.classList.contains('tw-light-backdrop-breathe')).toBe(false);
+    expect(fx.host.style.getPropertyValue('--tw-backdrop-swing')).toBe('1.00');
+    expect(view._lightPanel.querySelector('[data-light-num="backdrop-amplitude"]').textContent).toBe('0%');
+  });
+
+  test('恢复默认：天地对谈与曲径通幽都能一键复位', () => {
+    const bdFx = lightFixture('backdrop', 12, { intensity: 90, amplitude: 80 });
+    const bdView = viewOf(bdFx);
+    bdView._lightPanel.innerHTML = feature._lightPanelHtml.call(bdView);
+    const bdBtn = bdView._lightPanel.querySelector('[data-light-reset="backdrop"]');
+    expect(bdBtn).not.toBeNull();
+    feature._onLightClick.call(bdView, evt(bdBtn));
+    expect(bdView._light.backdrop).toEqual(feature._normalizeLight({ mode: 'backdrop' }).backdrop);
+    expect(bdFx.host.style.getPropertyValue('--tw-backdrop-swing')).toBe('0.00');
+
+    const edgeFx = lightFixture('edge', 60);
+    edgeFx.ctrl._light.top.intensity = 100;
+    const edgeView = viewOf(edgeFx);
+    edgeView._lightPanel.innerHTML = feature._lightPanelHtml.call(edgeView);
+    const edgeBtn = edgeView._lightPanel.querySelector('[data-light-reset="edge"]');
+    expect(edgeBtn).not.toBeNull();
+    feature._onLightClick.call(edgeView, evt(edgeBtn));
+    expect(edgeView._light.top.intensity).toBe(80);
+    expect(edgeView._light.top.softness).toBe(95);
+  });
+
+  test('水波位置可随机、可持久化，默认种子可复原', () => {
+    const fx = lightFixture('backdrop', 60);
+    expect(fx.ctrl._light.backdrop.seed).toBe(1191);
+    expect(Number.isFinite(parseFloat(fx.bd.style.getPropertyValue('--tw-water-x-a')))).toBe(true);
+    expect(fx.bd.style.getPropertyValue('--tw-water-delay-a')).not.toBe('');
+
+    const view = viewOf(fx);
+    let saved = 0;
+    view._scheduleLightSave = () => { saved += 1; };
+    view._lightPanel.innerHTML = feature._lightPanelHtml.call(view);
+    const btn = view._lightPanel.querySelector('[data-light-shuffle="backdrop"]');
+    expect(btn).not.toBeNull();
+    feature._onLightClick.call(view, evt(btn));
+
+    expect(view._light.backdrop.seed).toBeGreaterThan(0);
+    expect(saved).toBe(1);
+    const shifts = ['--tw-water-x-a', '--tw-water-y-a', '--tw-water-x-b', '--tw-water-y-b']
+      .map((k) => Math.abs(parseFloat(fx.bd.style.getPropertyValue(k))));
+    expect(shifts.some((v) => v > 0.1)).toBe(true);
+    expect(fx.bd.style.getPropertyValue('--tw-water-delay-a')).not.toBe('0s');
+    expect(view._lightPanel.querySelector('[data-light-num="backdrop-seed"]').textContent)
+      .toBe('#' + view._light.backdrop.seed);
+    expect(feature._normalizeLight({ mode: 'backdrop', backdrop: { seed: 99999 } }).backdrop.seed).toBe(9999);
+  });
+
+  test('自动换位置：加载时随机，关闭后保留保存的 seed', async () => {
+    const view = viewOf(lightFixture('backdrop', 60));
+    const savedAuto = { mode: 'backdrop', backdrop: { seed: 123 } };
+    const savedFixed = { mode: 'backdrop', backdrop: { seed: 123, autoPhase: false } };
+    let savedConfig = savedAuto;
+    const original = window.storageManager;
+    window.storageManager = { getSetting: async () => savedConfig, putSetting: async () => {} };
+    try {
+      await feature._loadLight.call(view);
+      expect(view._light.backdrop.autoPhase).toBe(true);
+      expect(view._light.backdrop.seed).toBeGreaterThan(0);
+      expect(view._light.backdrop.seed).not.toBe(123);
+
+      savedConfig = savedFixed;
+      await feature._loadLight.call(view);
+      expect(view._light.backdrop.autoPhase).toBe(false);
+      expect(view._light.backdrop.seed).toBe(123);
+
+      view._lightPanel.innerHTML = feature._lightPanelHtml.call(view);
+      const sw = view._lightPanel.querySelector('[data-light-switch="backdrop-auto-phase"]');
+      expect(sw).not.toBeNull();
+      feature._onLightClick.call(view, evt(sw));
+      expect(view._light.backdrop.autoPhase).toBe(true);
+    } finally {
+      window.storageManager = original;
+    }
+  });
+
+  test('曲径通幽面板按光色 / 形态 / 运动分组且控件不丢', () => {
+    const view = viewOf(lightFixture('backdrop', 60));
+    const html = feature._lightPanelHtml.call(view);
+    expect(html).toContain('tw-light-section-title');
+    const iWater = html.indexOf('水波密度');
+    const iDynamic = html.indexOf('明暗呼吸');
+    const iColor = html.indexOf('光色');
+    const iReset = html.indexOf('data-light-reset="backdrop"');
+    expect(iWater).toBeGreaterThan(-1);
+    expect(iColor).toBeLessThan(iWater);
+    expect(iWater).toBeLessThan(iDynamic);
+    expect(iDynamic).toBeLessThan(iReset);
+    expect((html.match(/data-light-range="backdrop-/g) || []).length).toBe(6);
+  });
+
+  test('模式区为关闭独立 + 七模式宫格', () => {
+    const view = viewOf(lightFixture('off', 60));
+    const html = feature._lightPanelHtml.call(view);
+    expect(html).toContain('tw-light-system-title');
+    expect(html).toContain('画中卷意境系统');
+    expect(html).toContain('tw-light-mode-head');
+    expect(html).toContain('tw-light-mode-grid');
+
+    const probe = document.createElement('div');
+    probe.innerHTML = html;
+    const off = probe.querySelector('[data-light-mode="off"]');
+    expect(off).not.toBeNull();
+    expect(off.className).toContain('tw-light-mode-off');
+    expect(off.className).toContain('on');
+    const cards = Array.from(probe.querySelectorAll('.tw-light-mode-grid [data-light-mode]'));
+    expect(cards.map((b) => b.dataset.lightMode)).toEqual(['edge', 'backdrop', 'rain', 'snow', 'lamp', 'paper']);
+    expect(html).not.toContain('tw-light-mode-tag');
+
+    const fs = require('fs');
+    const path = require('path');
+    const css = fs.readFileSync(path.resolve(__dirname, '../../styles/scroll-pager.css'), 'utf8');
+    expect(css).toMatch(/\.tw-light-mode-grid \{[^}]*grid-template-columns: repeat\(3,/);
+    expect(css).toMatch(/\.tw-light-mode-grid \{[^}]*gap: var\(--space-6\)/);
+    expect(css).toMatch(/\.tw-light-section-title \{[^}]*display: flex/);
+    expect(css).toContain('.tw-light-section-title::before');
+    expect(css).toContain('body.dark .tw-light-mode:not(.on) .tw-light-mode-name');
+    expect(css).toContain('.tw-light-mode:not(.on) .tw-light-mode-name');
+    expect(css).toContain('color: #e8ebe9');
+
+    const rainView = viewOf(lightFixture('rain', 60));
+    const rainProbe = document.createElement('div');
+    rainProbe.innerHTML = feature._lightPanelHtml.call(rainView);
+    expect(rainProbe.querySelector('.tw-light-mode-grid [data-light-mode="rain"]').className).toContain('on');
+  });
+
+  test('光效滑杆复用主页显示设置的 display-slider', () => {
+    const fs = require('fs');
+    const path = require('path');
+    const src = fs.readFileSync(path.resolve(__dirname, '../../../scroll-src.html'), 'utf8');
+    expect(src).toContain('assets/styles/display.css');
+    const view = viewOf(lightFixture('snow', 55));
+    const html = feature._lightPanelHtml.call(view);
+    expect(html).toContain('tw-light-range display-slider');
+    expect(html).toContain('display-slider-row');
+    expect(html).toContain('display-value-label');
+    const probe = document.createElement('div');
+    probe.innerHTML = html;
+    const sliderRow = probe.querySelector('.display-slider-row');
+    expect(sliderRow.querySelector('input.display-slider')).not.toBeNull();
+    expect(sliderRow.querySelector('.display-value-label')).not.toBeNull();
+    const css = fs.readFileSync(path.resolve(__dirname, '../../styles/scroll-pager.css'), 'utf8');
+    expect(css).not.toMatch(/\.tw-light-range \{[^}]*accent-color/);
+    expect(css).toContain('.tw-light-panel .tw-light-range::-webkit-slider-runnable-track');
+    expect(css).toContain('.tw-light-switch-row { margin-top: var(--space-8); }');
+    expect(css).toMatch(/\.tw-light-card-body \{[^}]*padding: var\(--space-8\)/);
+    expect(html).toContain('tw-light-switch-row');
+    expect(css).toMatch(/\.tw-light-panel \.tw-light-range \{[^}]*background: transparent/);
+  });
+
+  test('色板标题只在需要时出现', () => {
+    const view = viewOf(lightFixture('snow', 55));
+    const plain = feature._lightSwatchesHtml.call(view, 'snow', '雪落轻叹');
+    expect(plain).not.toContain('tw-light-row-sub');
+    const labeled = feature._lightSwatchesHtml.call(view, 'top', '顶光', '顶光色');
+    expect(labeled).toContain('顶光色');
+  });
+
+  test('四种模式面板均无预设控件', () => {
+    for (const mode of ['edge', 'backdrop', 'rain', 'snow']) {
+      const view = viewOf(lightFixture(mode, 60));
+      const html = feature._lightPanelHtml.call(view);
+      expect(html).not.toMatch(/data-light-(rain-)?preset/);
+      expect(html).not.toContain('>预设<');
+    }
+  });
+
+  test('四种模式统一为光色 / 形态 / 运动 / 维护层级', () => {
+    for (const mode of ['edge', 'backdrop', 'rain', 'snow']) {
+      const view = viewOf(lightFixture(mode, 60));
+      view._lightOpen = { top: true, bottom: false };
+      const html = feature._lightPanelHtml.call(view);
+      const iShape = html.indexOf('>形态</div>');
+      const iMotion = html.indexOf('>运动</div>');
+      const iColor = html.indexOf('>光色</div>');
+      const iReset = html.indexOf('data-light-reset="' + mode + '"');
+      expect(iShape).toBeGreaterThan(-1);
+      expect(iColor).toBeLessThan(iShape);
+      expect(iShape).toBeLessThan(iMotion);
+      expect(iMotion).toBeLessThan(iReset);
+    }
+  });
+
+  test('换位间隔可配置，滑杆实时生效', () => {
+    expect(feature._normalizeLight({ mode: 'backdrop', backdrop: { phaseEvery: 999 } }).backdrop.phaseEvery)
+      .toBe(120);
+    const view = viewOf(lightFixture('backdrop', 60));
+    view._lightPanel.innerHTML = feature._lightPanelHtml.call(view);
+    const range = view._lightPanel.querySelector('[data-light-range="backdrop-phase-every"]');
+    expect(range).not.toBeNull();
+    range.value = '45';
+    feature._onLightInput.call(view, evt(range));
+    expect(view._light.backdrop.phaseEvery).toBe(45);
+    expect(view._lightPanel.querySelector('[data-light-num="backdrop-phase-every"]').textContent).toBe('45s');
+  });
+
+  test('按间隔定时自动换位，先淡出再换种子', () => {
+    jest.useFakeTimers();
+    try {
+      const fx = lightFixture('backdrop', 60, { autoPhase: true, phaseEvery: 10, seed: 111 });
+      const view = viewOf(fx);
+      view._applyLight();
+      const before = view._light.backdrop.seed;
+
+      jest.advanceTimersByTime(10000);
+      expect(fx.bd.style.getPropertyValue('--tw-backdrop-fade')).toBe('0.35');
+      jest.advanceTimersByTime(700);
+      expect(view._light.backdrop.seed).not.toBe(before);
+      expect(fx.bd.style.getPropertyValue('--tw-backdrop-fade')).toBe('1');
+    } finally {
+      jest.clearAllTimers();
+      jest.useRealTimers();
+    }
+  });
+
+  test('切进曲径通幽时自动换一个位置', () => {
+    const fx = lightFixture('edge', 60);
+    const view = viewOf(fx);
+    const before = view._light.backdrop.seed;
+    view._lightPanel.innerHTML = feature._lightPanelHtml.call(view);
+    const btn = view._lightPanel.querySelector('[data-light-mode="backdrop"]');
+    expect(btn).not.toBeNull();
+    feature._onLightClick.call(view, evt(btn));
+    expect(view._light.mode).toBe('backdrop');
+    expect(view._light.backdrop.seed).toBeGreaterThan(0);
+    expect(view._light.backdrop.seed).not.toBe(before);
+  });
+
+  test('水波动画只在曲径通幽模式运行', () => {
+    const fs = require('fs');
+    const path = require('path');
+    const css = fs.readFileSync(path.resolve(__dirname, '../../styles/scroll-pager.css'), 'utf8');
+    expect(css).toMatch(/\.scroll-typewriter-feature\.tw-light-backdrop-on \.tw-light-backdrop::before \{[\s\S]*?animation: tw-light-water-a/);
+    expect(css).toMatch(/\.scroll-typewriter-feature\.tw-light-backdrop-on \.tw-light-backdrop::after \{[\s\S]*?animation: tw-light-water-b/);
+    const before = css.match(/\.tw-light-backdrop::before \{([\s\S]*?)\}/);
+    expect(before).not.toBeNull();
+    expect(before[1]).not.toMatch(/animation/);
+    expect(css).toMatch(/animation-delay: var\(--tw-water-delay-a/);
+  });
+
+  test('江南烟雨模式归一化与应用：与曲径通幽互斥', () => {
+    const cfg = feature._normalizeLight({ mode: 'rain' });
+    expect(cfg.rain).toEqual({ intensity: 50, density: 70, length: 100, angle: -17, speed: 10, mist: 50, autoSeed: true, seedEvery: 120, seed: 4091, followTheme: true, temp: 'cool', color: '#7aaad2' });
+    const fx = lightFixture('rain', 60);
+    expect(fx.host.classList.contains('tw-light-rain-on')).toBe(true);
+    expect(fx.host.classList.contains('tw-light-backdrop-on')).toBe(false);
+    expect(parseInt(fx.host.style.getPropertyValue('--tw-rain-gap'), 10)).toBeLessThan(60);
+    expect(fx.host.style.getPropertyValue('--tw-rain-a')).toBe('0.500');
+    expect(fx.host.style.getPropertyValue('--tw-mist-a')).toBe('0.225');
+    expect(Number.isFinite(parseFloat(fx.host.style.getPropertyValue('--tw-rain-p1')))).toBe(true);
+    expect(feature._isLightOn.call({ _light: cfg })).toBe(true);
+  });
+
+  test('江南烟雨面板控件与滑杆联动', () => {
+    const fx = lightFixture('rain', 60);
+    const view = viewOf(fx);
+    view._lightPanel.innerHTML = feature._lightPanelHtml.call(view);
+    const html = view._lightPanel.innerHTML;
+    for (const key of ['rain-density', 'rain-length', 'rain-angle', 'rain-speed', 'rain-mist',
+      'rain-intensity', 'rain-seed-every']) {
+      expect(html).toContain('data-light-range="' + key + '"');
+    }
+    expect(html).toContain('data-light-switch="rain-auto-seed"');
+    expect(html).toContain('data-light-rain-shuffle');
+    expect(html).toContain('data-light-num="rain-seed"');
+    expect(html).toContain('data-light-reset="rain"');
+
+    const range = view._lightPanel.querySelector('[data-light-range="rain-mist"]');
+    range.value = '80';
+    feature._onLightInput.call(view, evt(range));
+    expect(view._light.rain.mist).toBe(80);
+    expect(fx.host.style.getPropertyValue('--tw-mist-a')).toBe('0.360');
+  });
+
+  test('雨线长度滑杆改变雨滴长度变量', () => {
+    const fx = lightFixture('rain', 60);
+    const view = viewOf(fx);
+    expect(fx.host.style.getPropertyValue('--tw-rain-len')).toBe('32px');
+    view._lightPanel.innerHTML = feature._lightPanelHtml.call(view);
+    const range = view._lightPanel.querySelector('[data-light-range="rain-length"]');
+    range.value = '60';
+    feature._onLightInput.call(view, evt(range));
+    expect(view._light.rain.length).toBe(60);
+    expect(fx.host.style.getPropertyValue('--tw-rain-len')).toBe('22px');
+    expect(view._lightPanel.querySelector('[data-light-num="rain-length"]').textContent).toBe('60%');
+
+    const angle = view._lightPanel.querySelector('[data-light-range="rain-angle"]');
+    angle.value = '20';
+    feature._onLightInput.call(view, evt(angle));
+    expect(view._light.rain.angle).toBe(20);
+    expect(fx.host.style.getPropertyValue('--tw-rain-angle')).toBe('20deg');
+    expect(fx.host.style.getPropertyValue('--tw-rain-drift')).toBe('10.0%');
+    expect(view._lightPanel.querySelector('[data-light-num="rain-angle"]').textContent).toBe('20°');
+  });
+
+  test('自动换雨幕按间隔定时换种子并淡入淡出', () => {
+    jest.useFakeTimers();
+    try {
+      const fx = lightFixture('rain', 60, { autoSeed: true, seedEvery: 10, seed: 222 });
+      const view = viewOf(fx);
+      view._applyLight();
+      const before = view._light.rain.seed;
+      jest.advanceTimersByTime(10000);
+      expect(fx.bd.style.getPropertyValue('--tw-backdrop-fade')).toBe('0.35');
+      jest.advanceTimersByTime(700);
+      expect(view._light.rain.seed).not.toBe(before);
+      expect(fx.bd.style.getPropertyValue('--tw-backdrop-fade')).toBe('1');
+      expect(fx.host.style.getPropertyValue('--tw-rain-p1')).not.toBe('0.0px 0.0px');
+    } finally {
+      jest.clearAllTimers();
+      jest.useRealTimers();
+    }
+  });
+
+  test('雨幕分远近两层不同速度', () => {
+    const fs = require('fs');
+    const path = require('path');
+    const css = fs.readFileSync(path.resolve(__dirname, '../../styles/scroll-pager.css'), 'utf8');
+    expect(css).toContain('.tw-light-rain-near');
+    expect(css).toMatch(/tw-light-rain-fall calc\(var\(--tw-rain-speed, 12s\) \* 1\.35\)/);
+    expect(css).toMatch(/tw-light-rain-fall calc\(var\(--tw-rain-speed, 12s\) \* 0\.7\)/);
+  });
+
+  test('江南烟雨恢复默认', () => {
+    const fx = lightFixture('rain', 60);
+    const view = viewOf(fx);
+    view._light.rain.intensity = 100;
+    view._lightPanel.innerHTML = feature._lightPanelHtml.call(view);
+    const btn = view._lightPanel.querySelector('[data-light-reset="rain"]');
+    expect(btn).not.toBeNull();
+    feature._onLightClick.call(view, evt(btn));
+    expect(view._light.rain.autoSeed).toBe(true);
+    expect(view._light.rain.seedEvery).toBe(120);
+    expect(view._light.rain.seed).toBe(4091);
+    expect(view._light.rain.intensity).toBe(50);
+    expect(view._light.rain.length).toBe(100);
+    expect(view._light.rain.angle).toBe(-17);
+    expect(view._light.rain.mist).toBe(50);
+  });
+
+  test('雪落轻叹模式归一化与应用：与另外三种光效互斥', () => {
+    const cfg = feature._normalizeLight({ mode: 'snow' });
+    expect(cfg.snow).toEqual({ intensity: 40, density: 10, size: 70, speed: 30, wind: -9, chill: 30, followTheme: true, temp: 'cool', color: '#7aaad2' });
+    const fx = lightFixture('snow', 55);
+    expect(fx.host.classList.contains('tw-light-snow-on')).toBe(true);
+    expect(fx.host.classList.contains('tw-light-rain-on')).toBe(false);
+    expect(fx.host.classList.contains('tw-light-backdrop-on')).toBe(false);
+    expect(fx.host.style.getPropertyValue('--tw-snow-a')).toBe('0.400');
+    expect(fx.host.style.getPropertyValue('--tw-snow-gap')).toBe('100px');
+    expect(fx.host.style.getPropertyValue('--tw-snow-size')).toBe('5px');
+    expect(fx.host.style.getPropertyValue('--tw-snow-wind')).toBe('-5.4%');
+    expect(fx.host.style.getPropertyValue('--tw-chill-a')).toBe('0.096');
+    expect(feature._isLightOn.call({ _light: cfg })).toBe(true);
+  });
+
+  test('雪量 100% 时仍有最小间距并收敛雪粒尺寸', () => {
+    const fx = lightFixture('snow', 100, { density: 100 });
+    expect(fx.ctrl._light.snow.density).toBe(100);
+    expect(fx.host.style.getPropertyValue('--tw-snow-gap')).toBe('34px');
+    expect(fx.host.style.getPropertyValue('--tw-snow-size')).toBe('3px');
+  });
+
+  test('雪落轻叹面板控件与滑杆联动', () => {
+    const fx = lightFixture('snow', 55);
+    const view = viewOf(fx);
+    view._lightPanel.innerHTML = feature._lightPanelHtml.call(view);
+    const html = view._lightPanel.innerHTML;
+    for (const key of ['snow-density', 'snow-size', 'snow-speed', 'snow-wind', 'snow-chill', 'snow-intensity']) {
+      expect(html).toContain('data-light-range="' + key + '"');
+    }
+    expect(html).toContain('data-light-reset="snow"');
+
+    const range = view._lightPanel.querySelector('[data-light-range="snow-wind"]');
+    range.value = '20';
+    feature._onLightInput.call(view, evt(range));
+    expect(view._light.snow.wind).toBe(20);
+    expect(fx.host.style.getPropertyValue('--tw-snow-wind')).toBe('12.0%');
+    expect(view._lightPanel.querySelector('[data-light-num="snow-wind"]').textContent).toBe('20°');
+  });
+
+  test('雪落轻叹恢复默认', () => {
+    const fx = lightFixture('snow', 55);
+    const view = viewOf(fx);
+    view._light.snow.intensity = 100;
+    view._lightPanel.innerHTML = feature._lightPanelHtml.call(view);
+    const btn = view._lightPanel.querySelector('[data-light-reset="snow"]');
+    expect(btn).not.toBeNull();
+    feature._onLightClick.call(view, evt(btn));
+    expect(view._light.snow.intensity).toBe(40);
+    expect(view._light.snow.chill).toBe(30);
+  });
+
+  test('雪落轻叹动画只在 snow 模式定义', () => {
+    const fs = require('fs');
+    const path = require('path');
+    const css = fs.readFileSync(path.resolve(__dirname, '../../styles/scroll-pager.css'), 'utf8');
+    expect(css).toContain('.tw-light-snow-on .tw-light-backdrop::before');
+    expect(css).toContain('.tw-light-snow-on .tw-light-snow-near');
+    expect(css).toContain('@keyframes tw-light-snow-fall');
+  });
+
+  test('独照一隅模式归一化与应用：与另外四种光效互斥', () => {
+    const cfg = feature._normalizeLight({ mode: 'lamp' });
+    const fx = lightFixture('lamp', 60);
+    expect(fx.host.classList.contains('tw-light-lamp-on')).toBe(true);
+    expect(fx.host.classList.contains('tw-light-backdrop-on')).toBe(false);
+    expect(fx.host.classList.contains('tw-light-rain-on')).toBe(false);
+    expect(fx.host.classList.contains('tw-light-snow-on')).toBe(false);
+    expect(fx.host.style.getPropertyValue('--tw-lamp-a')).toBe('0.400');
+    expect(fx.host.style.getPropertyValue('--tw-lamp-dim-a')).toBe('0.110');
+    expect(fx.host.style.getPropertyValue('--tw-lamp-width')).toBe('420px');
+    expect(fx.host.style.getPropertyValue('--tw-lamp-aperture')).toBe('188px');
+    expect(fx.host.style.getPropertyValue('--tw-lamp-cone-width')).toBe('1310px');
+    expect(fx.host.style.getPropertyValue('--tw-lamp-reach')).toBe('100vh');
+    expect(feature._isLightOn.call({ _light: cfg })).toBe(true);
+  });
+
+  test('独照一隅面板控件与滑杆联动', () => {
+    const fx = lightFixture('lamp', 60);
+    const view = viewOf(fx);
+    view._lightPanel.innerHTML = feature._lightPanelHtml.call(view);
+    const html = view._lightPanel.innerHTML;
+    for (const key of ['lamp-intensity', 'lamp-dim', 'lamp-width', 'lamp-beam', 'lamp-reach', 'lamp-softness']) {
+      expect(html).toContain('data-light-range="' + key + '"');
+    }
+    expect(html).not.toContain('data-light-switch="lamp-breathe"');
+    expect(html).toContain('data-light-switch="lamp-follow-theme"');
+    expect(html).toContain('data-light-reset="lamp"');
+
+    const range = view._lightPanel.querySelector('[data-light-range="lamp-width"]');
+    range.value = '260';
+    feature._onLightInput.call(view, evt(range));
+    expect(view._light.lamp.width).toBe(260);
+    expect(fx.host.style.getPropertyValue('--tw-lamp-width')).toBe('260px');
+    expect(view._lightPanel.querySelector('[data-light-num="lamp-width"]').textContent).toBe('260px');
+  });
+
+  test('滚动端盖调节光锥角度与光线亮度', () => {
+    const fx = lightFixture('lamp', 60);
+    const view = viewOf(fx);
+    expect(view._light.lamp.beam).toBe(100);
+    feature._nudgeLampCap.call(view, 'beam', -1);
+    expect(view._light.lamp.beam).toBe(98);
+    expect(fx.host.style.getPropertyValue('--tw-lamp-beam')).toBe('98deg');
+
+    feature._nudgeLampCap.call(view, 'intensity', -1);
+    expect(view._light.lamp.intensity).toBe(95);
+    expect(fx.host.style.getPropertyValue('--tw-lamp-a')).toBe('0.376');
+
+    view._light.lamp.beam = 100;
+    feature._nudgeLampCap.call(view, 'beam', 1);
+    expect(view._light.lamp.beam).toBe(100);
+  });
+
+  test('晚霞红主题下灯罩使用粉红玻璃', () => {
+    document.documentElement.style.setProperty('--accent-hue', '0');
+    try {
+      const fx = lightFixture('lamp', 60);
+      const view = viewOf(fx);
+      view._applyLight();
+      expect(fx.host.style.getPropertyValue('--tw-lamp-rgb')).toBe('224,150,176');
+      expect(fx.host.style.getPropertyValue('--tw-lamp-beam-rgb')).toBe('224,150,176');
+      view._light.lamp.followTheme = false;
+      view._applyLight();
+      expect(fx.host.style.getPropertyValue('--tw-lamp-beam-rgb')).toBe('224,163,92');
+    } finally {
+      document.documentElement.style.removeProperty('--accent-hue');
+    }
+  });
+
+  test('主题色相变化实时更新灯罩与光锥', async () => {
+    document.documentElement.style.setProperty('--accent-hue', '150');
+    try {
+      const fx = lightFixture('lamp', 60);
+      const view = viewOf(fx);
+      view._light.lamp.temp = 'accent';
+      view._applyLight();
+      feature._watchLightTheme.call(view);
+      expect(fx.host.style.getPropertyValue('--tw-lamp-rgb')).toBe('var(--primary-rgb)');
+
+      document.documentElement.style.setProperty('--accent-hue', '0');
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(fx.host.style.getPropertyValue('--tw-lamp-rgb')).toBe('224,150,176');
+      expect(fx.host.style.getPropertyValue('--tw-lamp-beam-rgb')).toBe('224,150,176');
+      view._themeObserver.disconnect();
+    } finally {
+      document.documentElement.style.removeProperty('--accent-hue');
+    }
+  });
+
+  test('台灯亮度上限提升并联动玻璃罩', () => {
+    const fx = lightFixture('lamp', 60);
+    const view = viewOf(fx);
+    view._light.lamp.intensity = 100;
+    view._applyLight();
+    expect(fx.host.style.getPropertyValue('--tw-lamp-a')).toBe('0.400');
+    expect(fx.host.style.getPropertyValue('--tw-lamp-glass')).toBe('1.40');
+    view._light.lamp.intensity = 35;
+    view._applyLight();
+    expect(fx.host.style.getPropertyValue('--tw-lamp-a')).toBe('0.084');
+    expect(fx.host.style.getPropertyValue('--tw-lamp-glass')).toBe('1.04');
+  });
+
+  test('台灯宽度 / 光锥角度 / 投射距离范围已放宽', () => {
+    const hi = feature._normalizeLight({ mode: 'lamp', lamp: { width: 999, beam: 999, reach: 999 } }).lamp;
+    expect(hi.width).toBe(420);
+    expect(hi.beam).toBe(100);
+    expect(hi.reach).toBe(100);
+    const lo = feature._normalizeLight({ mode: 'lamp', lamp: { width: 1, beam: 1, reach: 1 } }).lamp;
+    expect(lo.width).toBe(120);
+    expect(lo.beam).toBe(10);
+    expect(lo.reach).toBe(20);
+  });
+
+  test('环境压暗滑杆写入图层透明度', () => {
+    const fx = lightFixture('lamp', 60);
+    const view = viewOf(fx);
+    view._lightPanel.innerHTML = feature._lightPanelHtml.call(view);
+    const range = view._lightPanel.querySelector('[data-light-range="lamp-dim"]');
+    range.value = '45';
+    feature._onLightInput.call(view, evt(range));
+    expect(view._light.lamp.dim).toBe(45);
+    expect(fx.host.style.getPropertyValue('--tw-lamp-dim-a')).toBe('0.450');
+    expect(view._lightPanel.querySelector('[data-light-num="lamp-dim"]').textContent).toBe('45%');
+  });
+
+  test('环境压暗路径按光锥几何生成', () => {
+    const fx = lightFixture('lamp', 60);
+    const view = viewOf(fx);
+    const dim = document.createElement('div');
+    dim.innerHTML = '<svg><path class="tw-lamp-dim-path"></path></svg>';
+    view._lightLampDim = dim;
+    Object.defineProperty(fx.host, 'clientWidth', { value: 1000, configurable: true });
+    Object.defineProperty(fx.host, 'clientHeight', { value: 800, configurable: true });
+    view._applyLight();
+    const d = dim.querySelector('.tw-lamp-dim-path').getAttribute('d');
+    expect(d.startsWith('M0 0H100V100H0Z')).toBe(true);
+    expect(d).toContain('L');
+  });
+
+  test('亮色模式下独照一隅禁用并在切暗后恢复', () => {
+    const fx = lightFixture('lamp', 60);
+    const view = viewOf(fx);
+    view._isDarkNow = () => false;
+    view._applyLight();
+    expect(fx.host.classList.contains('tw-light-lamp-on')).toBe(false);
+    expect(feature._isLightOn.call(view)).toBe(false);
+
+    const probe = document.createElement('div');
+    probe.innerHTML = feature._lightPanelHtml.call(view);
+    const lampCard = probe.querySelector('[data-light-mode="lamp"]');
+    expect(lampCard.disabled).toBe(true);
+    expect(lampCard.className).toContain('is-disabled');
+    expect(probe.innerHTML).toContain('亮色模式下台灯已暂停');
+
+    view._isDarkNow = () => true;
+    view._applyLight();
+    expect(fx.host.classList.contains('tw-light-lamp-on')).toBe(true);
+  });
+
+  test('独照一隅恢复默认', () => {
+    const fx = lightFixture('lamp', 60);
+    const view = viewOf(fx);
+    view._light.lamp.intensity = 100;
+    view._lightPanel.innerHTML = feature._lightPanelHtml.call(view);
+    const btn = view._lightPanel.querySelector('[data-light-reset="lamp"]');
+    expect(btn).not.toBeNull();
+    feature._onLightClick.call(view, evt(btn));
+    expect(view._light.lamp.intensity).toBe(100);
+    expect(fx.host.classList.contains('tw-light-lamp-on')).toBe(true);
+  });
+
+  test('独照一隅光锥样式只在 lamp 模式定义', () => {
+    const fs = require('fs');
+    const path = require('path');
+    const css = fs.readFileSync(path.resolve(__dirname, '../../styles/scroll-pager.css'), 'utf8');
+    expect(css).toContain('.tw-light-lamp-cone');
+    expect(css).toContain('.tw-lamp-cone-shape');
+    expect(css).not.toContain('.tw-zoom-bar[hidden] ~ .tw-light-lamp-cone');
+    expect(css).toContain('.tw-light-lamp-dim');
+    expect(css).toContain('brightness(var(--tw-lamp-glass');
+    expect(css).toContain('.tw-lamp-shade');
+    expect(css).toMatch(/\.tw-lamp-shade[\s\S]*?rgba\(var\(--tw-lamp-rgb\)/);
+    expect(css).toContain('.tw-lamp-cap');
+    expect(css).toContain('.tw-lamp-tube');
+    expect(css).toContain('cursor: ns-resize');
+    expect(css).toContain('.tw-light-lamp-on .tw-light-panel');
+    expect(css).not.toContain('@keyframes tw-light-lamp-breathe');
+  });
+
+  test('已删除的一烛摇红旧配置迁移为 off', () => {
+    const cfg = feature._normalizeLight({
+      mode: 'candle',
+      candle: { flame: 80 },
+      top: { on: true },
+      bottom: { on: true },
+    });
+    expect(cfg.mode).toBe('off');
+    expect(cfg.candle).toBeUndefined();
+    expect(feature._isLightOn.call({ _light: cfg })).toBe(false);
+  });
+
+  test('一烛摇红已从模式面板与样式中移除', () => {
+    const fx = lightFixture('off', 50);
+    const view = viewOf(fx);
+    view._lightPanel.innerHTML = feature._lightPanelHtml.call(view);
+    const html = view._lightPanel.innerHTML;
+    expect(html).not.toContain('一烛摇红');
+    expect(html).not.toContain('candle');
+
+    const fs = require('fs');
+    const path = require('path');
+    const css = fs.readFileSync(path.resolve(__dirname, '../../styles/scroll-pager.css'), 'utf8');
+    expect(css).not.toContain('.tw-light-candle');
+    expect(css).not.toContain('.tw-fish');
+    expect(css).not.toContain('tw-fish-flicker');
+  });
+
+  test('已删除的水墨模式旧配置迁移为 off', () => {
+    const cfg = feature._normalizeLight({ mode: 'ink', top: { on: true }, bottom: { on: true } });
+    expect(cfg.mode).toBe('off');
+    expect(cfg.ink).toBeUndefined();
+    expect(feature._isLightOn.call({ _light: cfg })).toBe(false);
+  });
+
+  test('旧版竹影/窗格配置被忽略，回落为水波默认值', () => {
+    const cfg = feature._normalizeLight({ mode: 'backdrop', backdrop: { pattern: 'bamboo' } });
+    expect(cfg.backdrop.pattern).toBeUndefined();
+    expect(cfg.backdrop.density).toBe(100);
+  });
+
+  test('切回天地对谈时背景层关闭', () => {
+    const next = lightFixture('edge', 60);
+    expect(next.host.classList.contains('tw-light-backdrop-on')).toBe(false);
   });
 });

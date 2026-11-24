@@ -361,6 +361,9 @@
     /* 竹林星光 — 深邃、高级、有层次感的暗色背景 */
     --bm-primary-rgb: 130, 195, 130;
     --primary-rgb: var(--bm-primary-rgb); /* alias */
+    /* 多选细轮廓：暗色下主色绿与深绿卡面同色系不够跳，统一改用浅竹色 + 高不透明度（write / mindmap 共用）。 */
+    --bm-tw-sel-contour-rgb: var(--pale-rgb);
+    --bm-tw-sel-contour-alpha: 0.95;
     --deep-rgb: 45, 90, 53;
     --bamboo-deep-rgb: 45, 90, 53;
     --danger-rgb: 255, 107, 107;

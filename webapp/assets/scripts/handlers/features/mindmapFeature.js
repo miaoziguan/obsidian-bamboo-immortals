@@ -210,6 +210,9 @@ export const MindmapFeature = {
       // 全部节点笔记：一键展开/收起（见 _toggleAllNoteEditors）
       onToggleAllNotes: () => mm._toggleAllNoteEditors(),
       isAllNotesOpen: () => mm._isAllNotesOpen(),
+      // 光效：与便签/写作共用同一个浮层与参数（状态挂在宿主 ctrl 上）
+      onLight: () => { if (mm._ctrl && typeof mm._ctrl._toggleLightPanel === 'function') mm._ctrl._toggleLightPanel(); },
+      isLightOn: () => !!(mm._ctrl && typeof mm._ctrl._isLightOn === 'function' && mm._ctrl._isLightOn()),
     });
   },
 
@@ -591,6 +594,21 @@ export const MindmapFeature = {
       if (e.key === 'Escape') { e.preventDefault(); this._closeNoteEditor(id); }
       else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); this._closeNoteEditor(id); }
     });
+    input.addEventListener('focus', () => {
+      const node = this._els.get(id);
+      if (!node) return;
+      if (this._ctrl && typeof this._ctrl._syncPaperGlowSelection === 'function') {
+        this._ctrl._syncPaperGlowSelection(node);
+      }
+      if (this._ctrl && typeof this._ctrl._setPaperWriting === 'function') {
+        this._ctrl._setPaperWriting(true);
+      }
+    });
+    input.addEventListener('blur', () => {
+      if (this._ctrl && typeof this._ctrl._setPaperWriting === 'function') {
+        this._ctrl._setPaperWriting(false);
+      }
+    });
     // 输入时自动增高，并保持卡片在视口内
     input.addEventListener('input', () => { this._autoGrowNote(input); this._positionNoteCard(id); });
     // 失焦只静默保存，不折叠（点画布其他处 / 平移画布后卡片保持展开）
@@ -948,7 +966,7 @@ export const MindmapFeature = {
     // 复用回收池中的离屏节点：元素本体 + 连线锚点 + 监听都还在，省去 createElement/innerHTML/makeLinkable 的反复开销
     el = (this._nodePool && this._nodePool.length) ? this._nodePool.pop() : this._createNodeEl(n);
     el.dataset.id = n.id;
-    el.classList.remove('is-sel', 'is-multi-sel', 'is-editing');
+    el.classList.remove('is-sel', 'is-multi-sel', 'is-editing', 'is-paper-lit', 'is-breathing', 'is-multi-active');
     el.removeAttribute('data-rot');
     this._els.set(n.id, el);
     this._nodeBox.appendChild(el);
@@ -1162,6 +1180,8 @@ export const MindmapFeature = {
     // 与便签画布同一约定：translate(平移) scale(缩放)，transform-origin 已在 CSS(.tw-mm-canvas) 定为 0 0
     const s = CanvasViewport.scaleOf(this._view);
     this._canvas.style.transform = `translate(${this._view.x}px, ${this._view.y}px) scale(${s})`;
+    // 与便签/写作画布同一约定：反写线宽，让多选轮廓缩小视图下仍是屏幕 1px。
+    this._canvas.style.setProperty('--tw-sel-hairline', String(1 / s) + 'px');
     // 平移/缩放时让备注卡片跟随节点：必须在写入 transform **之后**重算，
     // 否则每帧都按旧变换定位、永远落后一步（表现为「卡片不跟着动」）。
     if (this._noteCards && this._noteCards.size) this._noteCards.forEach((_, id) => this._positionNoteCard(id));
@@ -1238,6 +1258,16 @@ export const MindmapFeature = {
       const a = sel ? 'true' : 'false';
       if (el.getAttribute('aria-selected') !== a) el.setAttribute('aria-selected', a);
     });
+    if (this._ctrl && typeof this._ctrl._syncPaperGlowSelection === 'function') {
+      const multi = this._selSet && this._selSet.size
+        ? Array.from(this._selSet).map((id) => this._els.get(id)).filter(Boolean) : [];
+      if (multi.length) {
+        this._ctrl._syncPaperGlowSelection(multi, true);
+      } else {
+        const sel = this._selId ? this._els.get(this._selId) : null;
+        this._ctrl._syncPaperGlowSelection(sel || null);
+      }
+    }
   },
 
   /** 当前所有子弹的包围盒（用估算尺寸兜底，DOM 未就绪时也能用） */
@@ -1618,6 +1648,7 @@ export const MindmapFeature = {
     t.textContent = n ? n.text : '';
     t.contentEditable = 'plaintext-only';
     el.classList.add('is-editing');
+    if (this._ctrl && typeof this._ctrl._setPaperWriting === 'function') this._ctrl._setPaperWriting(true);
     this._editKey = (ev) => {
       if (ev.key === 'Enter' && !ev.shiftKey) { ev.preventDefault(); this._commitEdit(); }
       else if (ev.key === 'Escape') { ev.preventDefault(); this._commitEdit(true); }
@@ -1645,6 +1676,7 @@ export const MindmapFeature = {
       if (this._editBlur) el._text.removeEventListener('blur', this._editBlur);
       el._text.contentEditable = 'false';
       el.classList.remove('is-editing');
+      if (this._ctrl && typeof this._ctrl._setPaperWriting === 'function') this._ctrl._setPaperWriting(false);
       if (!cancel) {
         const text = (el._text.innerText || '').replace(/\s+$/, '');
         const prev = this._nodeById(id);

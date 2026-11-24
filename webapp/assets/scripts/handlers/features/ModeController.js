@@ -163,8 +163,16 @@ export const ModeController = {
         await ctrl._persistDoc(prev);   // 把这一档的卡片写回它自己的文档
       }
       ctrl._clearSelection();
+      // 切档统一清一次纸上光：write↔mindmap 之间也不能留旧档位的辉光类。
+      if (typeof ctrl._clearPaperGlowVisual === 'function') ctrl._clearPaperGlowVisual();
 
       ctrl._mode = mode;
+      // 落笔生光支持写作档与思维子弹档：只在进入便签档时退出，避免隐藏状态仍在生效。
+      if (mode === 'notes' && ctrl._light && ctrl._light.mode === 'paper') {
+        ctrl._light.mode = 'off';
+        if (typeof ctrl._applyLight === 'function') ctrl._applyLight();
+        if (typeof ctrl._scheduleLightSave === 'function') ctrl._scheduleLightSave();
+      }
       // 【档位所有权】贴纸是便签档专属装饰：离开便签档时整层隐藏（_applyModeChrome 里的 _syncDecoLayer）。
       // 【性能·B】不销毁、只「停放」：自由贴纸留在装饰层里隐藏即可，切回便签档时免去全量重建；
       //   依附在卡片里的贴纸会随卡片被清掉，故此时仍走 detach（清空后切回再重建）。

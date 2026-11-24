@@ -78,6 +78,11 @@ export const CanvasZoomUI = {
     const searchBtn = (typeof adapter.onSearch === 'function')
       ? '<button type="button" class="tw-zoom-btn tw-zoom-search" data-act="search" title="跳转卡片：按内容模糊搜索并定位" aria-label="搜索并跳转卡片"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></svg></button>'
       : '';
+    // 光效入口（三档共用）：顶光 / 底光参数浮层的唯一开关。
+    // 只有 adapter 提供 onLight 时才生成；主 bar 与导图 bar 各有一枚，共用同一份状态与浮层。
+    const lightBtn = (typeof adapter.onLight === 'function')
+      ? '<button type="button" class="tw-zoom-btn tw-zoom-light" data-act="light" title="画中卷雨幕系统：调节画布光影" aria-label="打开画中卷雨幕系统"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"/></svg></button>'
+      : '';
     // 数字徽章开关（写作档专属）：一键显示 / 隐藏卡片右下角的顺序编号。
     // 与 onTint / onLinkToggle 同一套 adapter 协议 —— 只有传回调的档位才生成按钮。
     // 两态图标（徽章 / 划掉的徽章）随 sync 的 .active 切换，点之前就能读出当前状态；
@@ -93,7 +98,7 @@ export const CanvasZoomUI = {
       <button type="button" class="tw-zoom-btn" data-act="out"  title="缩小" aria-label="缩小">−</button>
       <button type="button" class="tw-zoom-val" data-act="reset" title="点击重置为 100%" aria-label="重置缩放为 100%">100%</button>
       <button type="button" class="tw-zoom-btn" data-act="in"   title="放大" aria-label="放大">+</button>
-      <button type="button" class="tw-zoom-btn" data-act="fit"  title="适应内容" aria-label="适应内容">⤢</button>` + marketBtn + linkToggleBtn + orderBtn + searchBtn;
+      <button type="button" class="tw-zoom-btn" data-act="fit"  title="适应内容" aria-label="适应内容">⤢</button>` + marketBtn + linkToggleBtn + orderBtn + lightBtn + searchBtn;
     host.appendChild(bar);
 
     const valEl = bar.querySelector('.tw-zoom-val');
@@ -102,6 +107,7 @@ export const CanvasZoomUI = {
     const notesEl = bar.querySelector('.tw-zoom-notes');
     const linkEl = bar.querySelector('.tw-zoom-link-toggle');
     const orderEl = bar.querySelector('.tw-zoom-order');
+    const lightEl = bar.querySelector('.tw-zoom-light');
     const sync = () => {
       const s = CanvasViewport.scaleOf(adapter.getView());
       const txt = Math.round(s * 100) + '%';
@@ -144,6 +150,10 @@ export const CanvasZoomUI = {
             : '数字徽章：已隐藏，点击显示卡片顺序编号';
         }
       }
+      // 光效开启态：顶光或底光任一开启即高亮，面板开关与按钮状态同源
+      if (lightEl && typeof adapter.isLightOn === 'function') {
+        lightEl.classList.toggle('active', !!adapter.isLightOn());
+      }
     };
 
     // 控件上的指针事件不得冒泡到画布：否则点按钮会同时触发平移/取消选中
@@ -164,6 +174,7 @@ export const CanvasZoomUI = {
         else if (act === 'notes' && typeof adapter.onToggleAllNotes === 'function') adapter.onToggleAllNotes();
         else if (act === 'link-toggle' && typeof adapter.onLinkToggle === 'function') adapter.onLinkToggle();
         else if (act === 'order-badges' && typeof adapter.onToggleOrderBadges === 'function') adapter.onToggleOrderBadges();
+        else if (act === 'light' && typeof adapter.onLight === 'function') adapter.onLight();
         else if (act === 'search' && typeof adapter.onSearch === 'function') adapter.onSearch();
       } catch (err) { /* 缩放控件失败不应影响画布 */ }
       sync();

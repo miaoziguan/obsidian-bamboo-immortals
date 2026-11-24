@@ -148,9 +148,8 @@
 
 /* —— 状态 —— */
 .tw-mm-node.is-sel {
-  outline: 2px solid #c9a24a;
-  outline-offset: 2px;
-  box-shadow: var(--shadow-card);
+  outline: none;
+  box-shadow: var(--bm-tw-sel-lift), var(--bm-tw-sel-halo);
   z-index: 20;
 }
 
@@ -170,8 +169,8 @@
 
 .tw-mm-node.is-editing {
   cursor: text;
-  outline: 2px dashed rgba(var(--primary-rgb), 0.65);
-  outline-offset: 2px;
+  outline: none;
+  box-shadow: var(--bm-tw-sel-edit);
   z-index: 30;
 }
 .tw-mm-node.is-editing .tw-mm-text { cursor: text; user-select: text; }
@@ -184,10 +183,14 @@
   pointer-events: none;
   z-index: 40;
 }
-.tw-mm-node.is-multi-sel {
-  outline: 2px solid rgba(var(--primary-rgb), 0.9);
-  outline-offset: 2px;
-  box-shadow: 0 0 0 1px rgba(var(--primary-rgb), 0.4);
+/* 多选与写作档同一套语言：一圈贴合圆角的细线，无底色、无阴影。
+   线宽走反缩放变量；暗色色值由 variables.css 的共享令牌给。
+   落笔生光时让位给节点的 ::after 弱辉光，与写作档一致。 */
+.scroll-typewriter-feature:not(.tw-light-paper-on) .tw-mm-node.is-multi-sel {
+  outline: var(--tw-sel-hairline, 1px) solid rgba(var(--bm-tw-sel-contour-rgb, var(--primary-rgb)), var(--bm-tw-sel-contour-alpha, 0.72));
+  outline-offset: 0;
+  border-color: transparent;
+  box-shadow: none;
 }
 
 /* 子弹样式：由 .tw-mm 根上的 .tw-mm-style-1 / .tw-mm-style-3 切换（导图模式下第一个机身按钮循环）。

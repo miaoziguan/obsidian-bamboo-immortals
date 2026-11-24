@@ -173,6 +173,53 @@ describe('多选合并 _mergeSelected 端到端', () => {
     expect(has('a', 'P')).toBe(true);
     expect(has('b', 'Q')).toBe(false);
   });
+
+  test('合并后锚卡回到单选态：不再残留 is-multi-active', () => {
+    mergeFixture([
+      { id: 'a', seq: 0, text: 'A' },
+      { id: 'b', seq: 1, text: 'B' },
+    ]);
+    const a = feature._mountedCards.get('a');
+    const b = feature._mountedCards.get('b');
+    feature._el.appendChild(a);
+    feature._el.appendChild(b);
+    [a, b].forEach((el) => {
+      el.classList.add('selected', 'is-multi-active');
+      feature._selected.add(el);
+    });
+
+    feature._mergeSelected();
+
+    expect(feature._selected.size).toBe(1);
+    expect(feature._selected.has(a)).toBe(true);
+    expect(a.classList.contains('selected')).toBe(true);
+    expect(a.classList.contains('is-multi-active')).toBe(false);
+  });
+
+  test('辉光模式下合并，锚卡不残留多选辉光类', () => {
+    mergeFixture([
+      { id: 'a', seq: 0, text: 'A' },
+      { id: 'b', seq: 1, text: 'B' },
+    ], 'write');
+    const a = feature._mountedCards.get('a');
+    const b = feature._mountedCards.get('b');
+    feature._el.appendChild(a);
+    feature._el.appendChild(b);
+    feature._light = { mode: 'paper' };
+    feature._isDarkNow = () => true;
+    [a, b].forEach((el) => {
+      el.classList.add('selected', 'is-multi-active', 'is-paper-lit', 'is-paper-lit-multi');
+      feature._selected.add(el);
+    });
+
+    feature._mergeSelected();
+
+    expect(a.classList.contains('is-paper-lit')).toBe(true);
+    expect(a.classList.contains('is-paper-lit-multi')).toBe(false);
+    expect(a.classList.contains('is-paper-lit-lite')).toBe(false);
+    expect(a.classList.contains('is-multi-active')).toBe(false);
+    expect(feature._paperGlowCard).toBe(a);
+  });
 });
 
 describe('多选浮动操作条 _updateSelBar', () => {

@@ -1677,7 +1677,6 @@ body:not(.dark) .tw-light { mix-blend-mode: normal; }
   font: inherit;
   font-size: var(--font-size-xs);
   text-decoration: underline;
-  text-underline-offset: 2px;
   cursor: pointer;
 }
 .tw-light-reset:hover { color: var(--text-normal); }
@@ -1694,7 +1693,6 @@ body:not(.dark) .tw-light { mix-blend-mode: normal; }
   line-height: 1.6;
   text-align: left;
   text-decoration: underline;
-  text-underline-offset: 2px;
   cursor: pointer;
 }
 .tw-light-shuffle:hover { color: var(--text-normal); }
@@ -1756,8 +1754,6 @@ body:not(.dark) .tw-light { mix-blend-mode: normal; }
   color: rgb(var(--primary-rgb));
   font-weight: 600;
   text-decoration: underline;
-  text-decoration-thickness: 1.5px;
-  text-underline-offset: 3px;
 }
 .tw-light-mode-label {
   flex: none;
@@ -2217,7 +2213,6 @@ body.dark .tw-light-mode:not(.on) .tw-light-mode-name { color: #e8ebe9; }
     inset 0 -8px 14px rgba(var(--tw-lamp-rgb), 0.16),
     0 0 18px rgba(var(--tw-lamp-rgb), 0.18),
     0 0 42px rgba(var(--tw-lamp-rgb), 0.10);
-  clip-path: polygon(5px 0, calc(100% - 5px) 0, 100% 100%, 0 100%);
   filter: brightness(var(--tw-lamp-glass, 1));
 }
 .tw-lamp-shade::before {
@@ -2349,20 +2344,21 @@ body.dark .tw-light-mode:not(.on) .tw-light-mode-name { color: #e8ebe9; }
 .tw-lamp-cone-shape {
   position: absolute;
   inset: 0;
-  clip-path: polygon(
-    calc(50% - var(--tw-lamp-aperture, 92px)) 0,
-    calc(50% + var(--tw-lamp-aperture, 92px)) 0,
-    100% 100%,
-    0 100%
-  );
-  background:
-    radial-gradient(ellipse 72% 14% at 50% 100%,
-      rgba(var(--tw-lamp-beam-rgb, 224,163,92), 0.45), transparent 72%),
-    linear-gradient(180deg,
-      rgba(var(--tw-lamp-beam-rgb, 224,163,92), 0.95) 0%,
-      rgba(var(--tw-lamp-beam-rgb, 224,163,92), 0.42) 48%,
-      transparent 100%);
 }
+/* 光锥梯形改由 SVG path 绘制：避开 Obsidian 对 CSS clip-path 的部分支持告警。 */
+.tw-lamp-cone-svg {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.tw-lamp-beam-stop-a,
+.tw-lamp-beam-stop-b,
+.tw-lamp-beam-stop-c { stop-color: rgb(var(--tw-lamp-beam-rgb, 224,163,92)); }
+.tw-lamp-beam-stop-a { stop-opacity: 0.95; }
+.tw-lamp-beam-stop-b { stop-opacity: 0.42; }
+.tw-lamp-beam-stop-c { stop-opacity: 0; }
 .tw-lamp-cone-shape::before {
   content: "";
   position: absolute;

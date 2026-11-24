@@ -2077,6 +2077,11 @@ describe('曲径通幽水波密度与呼吸', () => {
     const css = fs.readFileSync(path.resolve(__dirname, '../../styles/scroll-pager.css'), 'utf8');
     expect(css).toContain('.tw-light-lamp-cone');
     expect(css).toContain('.tw-lamp-cone-shape');
+    // Obsidian 审核：clip-path 与 text-decoration-thickness 均报「部分支持」，已改用 SVG path / 普通下划线。
+    expect(css).not.toContain('clip-path: polygon');
+    expect(css).not.toMatch(/text-decoration-thickness|text-underline-offset/);
+    expect(css).toContain('.tw-lamp-cone-svg');
+    expect(css).toContain('.tw-lamp-beam-stop-a');
     expect(css).not.toContain('.tw-zoom-bar[hidden] ~ .tw-light-lamp-cone');
     expect(css).toContain('.tw-light-lamp-dim');
     expect(css).toContain('brightness(var(--tw-lamp-glass');
@@ -2087,6 +2092,10 @@ describe('曲径通幽水波密度与呼吸', () => {
     expect(css).toContain('cursor: ns-resize');
     expect(css).toContain('.tw-light-lamp-on .tw-light-panel');
     expect(css).not.toContain('@keyframes tw-light-lamp-breathe');
+
+    const js = fs.readFileSync(path.resolve(__dirname, '../handlers/features/typewriterFeature.js'), 'utf8');
+    expect(js).toContain('tw-lamp-cone-path');
+    expect(js).toMatch(/_syncLampCone\(\)/);
   });
 
   test('已删除的一烛摇红旧配置迁移为 off', () => {

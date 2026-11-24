@@ -604,7 +604,17 @@ export const TypewriterFeature = {
     const lightLampCone = document.createElement('div');
     lightLampCone.className = 'tw-light-lamp-cone';
     lightLampCone.setAttribute('aria-hidden', 'true');
-    lightLampCone.innerHTML = '<span class="tw-lamp-cone-shape"></span>';
+    lightLampCone.innerHTML =
+      '<span class="tw-lamp-cone-shape">' +
+        '<svg class="tw-lamp-cone-svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">' +
+          '<defs><linearGradient id="twLampBeam" x1="0" y1="0" x2="0" y2="1">' +
+            '<stop offset="0%" class="tw-lamp-beam-stop-a"></stop>' +
+            '<stop offset="48%" class="tw-lamp-beam-stop-b"></stop>' +
+            '<stop offset="100%" class="tw-lamp-beam-stop-c"></stop>' +
+          '</linearGradient></defs>' +
+          '<path class="tw-lamp-cone-path" fill="url(#twLampBeam)"></path>' +
+        '</svg>' +
+      '</span>';
     this._el.appendChild(lightLampCone);
     this._lightLampCone = lightLampCone;
     const lightLamp = document.createElement('div');
@@ -619,7 +629,10 @@ export const TypewriterFeature = {
     this._el.appendChild(lightLamp);
     this._lightLamp = lightLamp;
     this._onLampResize = () => {
-      if (this._light && this._light.mode === 'lamp') this._syncLampDim();
+      if (this._light && this._light.mode === 'lamp') {
+        this._syncLampDim();
+        this._syncLampCone();
+      }
     };
     window.addEventListener('resize', this._onLampResize);
     lightLamp.querySelectorAll('.tw-lamp-cap').forEach((cap) => {
@@ -792,6 +805,7 @@ export const TypewriterFeature = {
       el.style.setProperty('--tw-lamp-reach', Math.round(p.reach) + 'vh');
       el.style.setProperty('--tw-lamp-soft', Math.round(p.softness * 0.4) + 'px');
       if (typeof this._syncLampDim === 'function') this._syncLampDim();
+      if (typeof this._syncLampCone === 'function') this._syncLampCone();
     } else if (L.mode === 'snow') {
       const n = L.snow;
       el.style.setProperty('--tw-snow-rgb', rgbOf(n));
@@ -1412,6 +1426,25 @@ export const TypewriterFeature = {
   _lightFollowThemeHtml(mode, on, label) {
     return '<div class="tw-light-row tw-light-switch-row"><span class="tw-light-sub">跟随主题色</span>' +
       this._lightSwitchHtml(mode + '-follow-theme', on, label + '跟随主题色') + '</div>';
+  },
+
+  /** 按灯口宽度与光锥宽度重画 SVG 梯形（替代 CSS clip-path）。 */
+  _syncLampCone() {
+    const path = this._lightLampCone && this._lightLampCone.querySelector('.tw-lamp-cone-path');
+    if (!path || !this._light || !this._light.lamp) return;
+    const p = this._light.lamp;
+    const rect = this._lightLampCone.getBoundingClientRect
+      ? this._lightLampCone.getBoundingClientRect() : null;
+    const coneW = (rect && rect.width > 2)
+      ? rect.width
+      : Math.min(
+        (typeof window !== 'undefined' && window.innerWidth ? window.innerWidth : 1200) * 0.92,
+        360 + p.beam * 9.5
+      );
+    const topHalf = Math.max(0, (p.width - 44) / 2);
+    const a = Math.min(49, Math.max(1, topHalf / coneW * 100));
+    path.setAttribute('d',
+      'M ' + (50 - a).toFixed(2) + ' 0 L ' + (50 + a).toFixed(2) + ' 0 L 100 100 L 0 100 Z');
   },
 
   _syncLampDim() {

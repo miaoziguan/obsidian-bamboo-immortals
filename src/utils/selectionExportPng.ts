@@ -26,9 +26,19 @@ function serif(weight: number, size: number): string {
  * ① 细颗粒（模拟纸浆纤维的随机明暗）② 横向长丝（模拟宣纸的帘纹），
  * 以 2~3% 透明度平铺。肉眼几乎看不出，但纸面不再是一块死板的纯色。
  */
+/**
+ * 创建离屏 canvas。走 Obsidian 注入的 createEl（官方 prefer-create-el）——
+ * document.body 元素带 createEl 增强；创建后立即从 DOM 摘除，canvas 对象本身仍可用于绘制。
+ */
+function offscreenCanvas(): HTMLCanvasElement {
+  const el = document.body.createEl('canvas');
+  el.remove();
+  return el;
+}
+
 function paintPaperGrain(ctx: CanvasRenderingContext2D, w: number, h: number): void {
   const T = 128;
-  const tile = document.createElement('canvas'); // review-allow: prefer-create-el 离屏 canvas 非宿主 UI，createEl 无法创建 canvas
+  const tile = offscreenCanvas();
   tile.width = T;
   tile.height = T;
   const tctx = tile.getContext('2d');
@@ -136,7 +146,7 @@ export async function renderSelectionPng(
   // ── 第一步：离屏测量折行，据此定字号与画布高度 ──
   // 短选区放大字号（从 0.05 提到 0.06），避免固定大画布里只占中间一小条。
   const chars = Array.from(text).length;
-  const probe = document.createElement('canvas').getContext('2d'); // review-allow: prefer-create-el 离屏测量，createEl 不适用
+  const probe = offscreenCanvas().getContext('2d');
   if (!probe) throw new Error('canvas 2D 不可用');
   let qSize = Math.round(chars > 260 ? w * 0.036 : chars > 140 ? w * 0.045 : w * 0.06);
   probe.font = serif(700, qSize);
@@ -165,7 +175,7 @@ export async function renderSelectionPng(
   const top = opts?.height ? Math.round(pad * 0.9) : Math.round(h * 0.22);
 
   // ── 第二步：正式绘制 ──
-  const canvas = document.createElement('canvas'); // review-allow: prefer-create-el PNG 导出必须原生 canvas
+  const canvas = offscreenCanvas();
   canvas.width = w;
   canvas.height = h;
   const ctx = canvas.getContext('2d');

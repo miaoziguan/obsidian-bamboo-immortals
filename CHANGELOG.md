@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.36.4] — 2026-11-28
+
+> 按 Obsidian 官方建议消除分享卡导出链路的 `prefer-create-el` 审核告警。
+
+### Fixed
+- 3.36.3 用 `review-allow: prefer-create-el` 注释只绕过本仓自检脚本，Obsidian 官方 Source review 仍报 3 处 `document.createElement` warning。
+- 改为 `document.body.createEl('canvas')` 创建离屏画布（Obsidian 注入的 DOM 助手），创建后立即从 DOM 摘除，canvas 对象仍可正常绘制与 `toDataURL`；三处原生调用与全部豁免注释删除。符合官方规则实现（只报文档级 `document.createElement`，`el.createEl` 源本就是 Obsidian API）。
 ## [3.36.3] — 2026-11-28
 
 > 修复 3.36.2 发布闸门未通过的审核规则命中；功能与 3.36.2 计划内容一致。

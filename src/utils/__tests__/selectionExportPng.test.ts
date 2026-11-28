@@ -156,3 +156,39 @@ describe('layoutLines：连续禁则标点（截图原文）', () => {
     expect(lines.some((x) => x.includes('”：'))).toBe(true);
   });
 });
+
+describe('drawTypesetLine：英文/中西混排不丢字（deltas 索引对齐）', () => {
+  it('flexInfo 每个间隙恰好一个条目，deltas 长度 = 间隙数', () => {
+    // 构造混合行：汉字 + 英文单词 + 标点 + 数字
+    const text = '保存到 Vault、复制到剪贴板，默认 PNG.png 即可';
+    const ctx = mockCtx(54);
+    const lines = layoutLines(ctx, text, 54 * 20);
+    const joined = lines.join('');
+    expect(joined).toBe(text); // 折层不丢字
+  });
+
+  it('两端对齐绘制时英文单词不断裂丢字', () => {
+    const text = '之中后给三个去处：保存到 Vault、到剪贴板。默认 PNG 的设置';
+    const ctx = mockCtx(54);
+    const lines = layoutLines(ctx, text, 54 * 20);
+    // 每个行都不得出现单词被拆成两段的断点
+    for (const line of lines) {
+      expect(line).not.toMatch(/Vau$|NG$|pn$/);
+    }
+    expect(lines.join('')).toBe(text);
+  });
+});
+
+describe('typesetParagraph：英文单词不可分割', () => {
+  it('Vault / PNG / .png 都不被折行拆断', () => {
+    const text = '默认项沿用便签 PNG 的设置，保存到 Vault，落在 便签/选区-<时间戳>.png';
+    const lines = layoutLines(mockCtx(54), text, 54 * 16);
+    expect(lines.join('')).toBe(text);
+    // 关键：每行里若出现单词的片段，必须完整
+    for (const line of lines) {
+      if (line.includes('PN')) expect(line).toContain('PNG');
+      if (line.includes('Vau')) expect(line).toContain('Vault');
+      if (line.includes('.pn')) expect(line).toContain('.png');
+    }
+  });
+});

@@ -57,6 +57,27 @@ function chWidth(ctx: CanvasRenderingContext2D, ch: string): number {
 }
 
 /**
+ * 把文本切成「原子单元」：汉字/标点单字成元，连续 ASCII 字母数字
+ * （英文单词、版本号、路径片段）整体成元。折行与绘制必须共用这套切分，
+ * 否则两端 deltas 索引错位 → 字距异常（实测剪贴板与两者之间出现大空隙）。
+ */
+function toAtoms(text: string): string[] {
+  const raw = Array.from(text);
+  const atoms: string[] = [];
+  for (let i = 0; i < raw.length; i++) {
+    const c = raw[i];
+    if (/[A-Za-z0-9]/.test(c)) {
+      let word = c;
+      while (i + 1 < raw.length && /[A-Za-z0-9._/<>-]/.test(raw[i + 1])) word += raw[++i];
+      atoms.push(word);
+    } else {
+      atoms.push(c);
+    }
+  }
+  return atoms;
+}
+
+/**
  * 计算一行的「可压缩量」与「可拉伸量」。
  * 压缩时按优先级从低到高逐级吃进所需空间，每级内均匀分担。
  */
@@ -70,34 +91,45 @@ interface FlexInfo {
 
 function flexInfo(ctx: CanvasRenderingContext2D, chars: string[], maxWidth: number): FlexInfo {
   const widths = chars.map((c) => chWidth(ctx, c));
+  // chars 可能是 atom（多字符英文词），判定用单元首字符
+  const firstOf = (u: string): string => Array.from(u)[0] || '';
   const natural = widths.reduce((a, b) => a + b, 0);
   const squeeze: FlexInfo['squeeze'] = [];
   const stretch: FlexInfo['stretch'] = [];
+  const han = ctx.measureText('字').width;
   for (let i = 0; i < chars.length - 1; i++) {
-    const a = chars[i], b = chars[i + 1];
-    // 中西边界（汉字紧邻 ASCII 字母/数字）可压缩约 1/4 字宽
+    const a = firstOf(chars[i]), b = firstOf(chars[i + 1]);
+    /*
+     * 关键不变量：每个间隙【恰好一个】squeeze 和一个 stretch 条目，
+     * 且顺序与间隙 i 一一对应。此前用多个独立 if，导致英文单词内部
+     * （两侧 ASCII 且无空格）0 个条目、中西混合 2 个条目，deltas 数组
+     * 与字符间隙错位 → pen 步进错乱 → 视觉上丢字（Vault→Vau、PNG→NG）。
+     */
     const cjkMix = (isCjk(a) && isAscii(b) && !isSpace(b)) || (isAscii(a) && !isSpace(a) && isCjk(b));
-    if (cjkMix) {
-      squeeze.push({ at: 3, max: Math.min(widths[i], widths[i + 1]) * 0.25 });
-      stretch.push({ at: 2, weight: 0.5 });
-    }
-    // 西文词距（两侧都是 ASCII 且一侧是空格）
-    if (isAscii(a) && isAscii(b) && (isSpace(a) || isSpace(b))) {
-      squeeze.push({ at: 2, max: widths[i] * 0.5 });
-      stretch.push({ at: 1, weight: 0.7 });
-    }
-    // 标点空隙：压缩上限约半个字宽，拉伸权重小
+    const wordSpace = isAscii(a) && isAscii(b) && (isSpace(a) || isSpace(b));
     const p = Math.min(priority(a), priority(b));
-    if (p <= 6) {
-      const unit = Math.max(widths[i], widths[i + 1], ctx.measureText('字').width);
-      squeeze.push({ at: p, max: unit * 0.5 });
-      stretch.push({ at: 4, weight: 0.25 });
+
+    // 压缩优先级（squeezeAt）与拉伸优先级（stretchAt）必须分开：
+    // 压缩时先动标点（数字小）；但拉伸时标点绝不能优先——W3C CLREQ 的
+    // 拉伸顺序是西文词距 → 中西间距 → 最后均分字距，标点不参与拉伸。
+    // 此前复用同一 at 值，标点 at=4 < 汉字 at=7 被优先拉大，实测
+    // 逗号周围出现巨大空隙。
+    let squeezeAt: number, max: number, stretchAt: number, stretchW: number;
+    if (wordSpace) {
+      squeezeAt = 2; max = widths[i] * 0.5; stretchAt = 1; stretchW = 0.6;   // 西文词距
+    } else if (p <= 6) {
+      squeezeAt = p; max = Math.max(widths[i], widths[i + 1], han) * 0.5;
+      stretchAt = 9; stretchW = 0;                                            // 标点：不拉伸
+    } else if (cjkMix) {
+      squeezeAt = 3; max = Math.min(widths[i], widths[i + 1]) * 0.25;
+      stretchAt = 2; stretchW = 0.6;                                          // 中西间距
+    } else if (isCjk(a) && isCjk(b)) {
+      squeezeAt = 7; max = han * 0.08; stretchAt = 7; stretchW = 1;           // 汉字间
+    } else {
+      squeezeAt = 7; max = 0; stretchAt = 9; stretchW = 0;                    // 西文词内
     }
-    // 汉字间：最后手段，压缩上限很小（字格不能被打散）
-    if (isCjk(a) && isCjk(b)) {
-      squeeze.push({ at: 7, max: ctx.measureText('字').width * 0.08 });
-      stretch.push({ at: 7, weight: 1 });
-    }
+    squeeze.push({ at: squeezeAt, max });
+    stretch.push({ at: stretchAt, weight: stretchW });
   }
   void maxWidth;
   return { natural, squeeze, stretch };
@@ -122,19 +154,26 @@ function allocateSqueeze(info: FlexInfo, need: number): number[] {
 }
 
 /** 按优先级分配拉伸量，返回每个间隙加多少（W3C：同时、同等量处理同级） */
-function allocateStretch(info: FlexInfo, extra: number): number[] {
+function allocateStretch(info: FlexInfo, extra: number, hanWidth = 0): number[] {
   const adds: number[] = new Array<number>(info.stretch.length).fill(0);
   const levels = [...new Set(info.stretch.map((s) => s.at))].sort((a, b) => a - b);
   let left = extra;
+  // 单个间隙的拉伸上限：字宽的 15%。超过就递进到下一优先级，
+  // 避免单个西文词距吸收全部 extra 被撑成大洞。
+  const cap = Math.max(1, hanWidth * 0.15);
   for (const lv of levels) {
     const idx = info.stretch.map((s, i) => s.at === lv ? i : -1).filter((i) => i >= 0);
     const totalW = idx.reduce((sum, i) => sum + info.stretch[i].weight, 0);
     if (totalW <= 0) continue;
-    // 该级每单位权重分到的量；同级均匀，不做「优先某个标点」
     const per = left / totalW;
-    for (const i of idx) adds[i] = per * info.stretch[i].weight;
-    left = 0; // 全部间隙都参与，一次分完
-    break;    // 只动最低一级，避免同时拉多处导致灰度不均
+    let absorbed = 0;
+    for (const i of idx) {
+      const add = Math.min(per * info.stretch[i].weight, cap);
+      adds[i] = add;
+      absorbed += add;
+    }
+    left -= absorbed;
+    if (left <= 0.5) break;
   }
   return adds;
 }
@@ -150,7 +189,9 @@ export function typesetParagraph(ctx: CanvasRenderingContext2D, text: string, ma
   const cols = Math.max(4, Math.floor(maxWidth / unit));
   const lineWidth = cols * unit;
 
-  const chars = Array.from(text);
+  // 预切成原子单元（英文单词整体），折行只发生在单元之间
+  const atoms = toAtoms(text);
+
   const lines: string[] = [];
   let line: string[] = [];
 
@@ -159,12 +200,13 @@ export function typesetParagraph(ctx: CanvasRenderingContext2D, text: string, ma
     if (!arr.length) return 0;
     let w = arr.reduce((sum, c) => sum + chWidth(ctx, c), 0);
     const last = arr[arr.length - 1];
-    if (HALF_AT_LINE_END.has(last)) w -= chWidth(ctx, last) * 0.5;
+    const lastCh = last.length ? Array.from(last).pop() as string : '';
+    if (HALF_AT_LINE_END.has(lastCh)) w -= chWidth(ctx, lastCh) * 0.5;
     return w;
   };
 
-  for (let i = 0; i < chars.length; i++) {
-    const ch = chars[i];
+  for (let i = 0; i < atoms.length; i++) {
+    const ch = atoms[i];
     const trial = [...line, ch];
     if (natural(trial) <= lineWidth) { line = trial; continue; }
 
@@ -172,16 +214,22 @@ export function typesetParagraph(ctx: CanvasRenderingContext2D, text: string, ma
        避头尾只调整「断点在哪」，绝不压缩字距硬塞。
        因为 drawTypesetLine 会对自然宽度不足的行做拉伸，若折行时压缩过，
        绘制端会按未压缩的宽度重新算 pen，导致字符重叠（实测「未」被画成「朱」）。 */
+    // 取单元的首/末字符（单元可能是整个英文单词）
+    const headOf = (u: string | undefined): string => u ? Array.from(u)[0] : '';
+    const tailOf = (u: string | undefined): string => u ? Array.from(u).pop() as string : '';
     let cutAt = line.length;
     // ① 行尾禁则：开引号/开括号不能留在行尾，往前挪一位断点
-    while (cutAt > 1 && NO_LINE_END.has(line[cutAt - 1])) cutAt--;
+    while (cutAt > 1 && NO_LINE_END.has(tailOf(line[cutAt - 1]))) cutAt--;
     // ② 行首禁则：新行第一个字符若是禁则标点，把断点往前挪一位，让它留在上一行
-    while (cutAt > 1 && (NO_LINE_START.has(line[cutAt]) || NO_LINE_START.has(ch))) {
+    //    注意 ch 可能是多字符英文单词，只看首字符；且必须是「标点单元」才推，避免
+    //    把英文单词整块推来推去（旧逻辑会因 ch 首字符是禁则而一路 cutAt-- 到 1）。
+    const chFirst = headOf(ch);
+    while (cutAt > 1 && (NO_LINE_START.has(headOf(line[cutAt])) || NO_LINE_START.has(chFirst))) {
       cutAt--;
-      if (!NO_LINE_START.has(ch)) break; // ch 是下一行的第一个字时无需再挪
+      if (!NO_LINE_START.has(chFirst)) break;
     }
     // ③ 闭合标点跟着前一个字：若断在闭合标点前，往前挪一位让它留在上一行
-    while (cutAt > 1 && CLOSING.has(line[cutAt])) cutAt--;
+    while (cutAt > 1 && CLOSING.has(headOf(line[cutAt]))) cutAt--;
 
     const head = line.slice(0, cutAt);
     const tail = line.slice(cutAt).concat(ch);
@@ -217,41 +265,42 @@ export function drawTypesetLine(
   const unit = ctx.measureText('字').width;
   const cols = Math.max(4, Math.floor(maxWidth / unit));
   const lineWidth = cols * unit;
-  const chars = Array.from(line);
-  if (!chars.length) return 0;
-  const widths = chars.map((c) => chWidth(ctx, c));
+  const atoms = toAtoms(line);
+  if (!atoms.length) return 0;
+  const widths = atoms.map((c) => chWidth(ctx, c));
 
-  if (!justify || chars.length <= 1) {
+  if (!justify || atoms.length <= 1) {
     let pen = x;
-    for (let i = 0; i < chars.length; i++) {
-      ctx.fillText(chars[i], pen, y);
+    for (let i = 0; i < atoms.length; i++) {
+      ctx.fillText(atoms[i], pen, y);
       pen += widths[i];
     }
     return pen - x;
   }
 
-  const info = flexInfo(ctx, chars, lineWidth);
+  const info = flexInfo(ctx, atoms, lineWidth);
   const extra = lineWidth - info.natural;
   if (Math.abs(extra) <= 0.5) {
     let pen = x;
-    for (let i = 0; i < chars.length; i++) { ctx.fillText(chars[i], pen, y); pen += widths[i]; }
+    for (let i = 0; i < atoms.length; i++) { ctx.fillText(atoms[i], pen, y); pen += widths[i]; }
     return pen - x;
   }
 
   // 负：按优先级压缩；正：按 W3C 优先级拉伸
   const deltas = extra < 0
     ? allocateSqueeze(info, -extra).map((v) => -v)
-    : allocateStretch(info, extra);
+    : allocateStretch(info, extra, unit);
 
   let pen = x;
-  for (let i = 0; i < chars.length; i++) {
-    ctx.fillText(chars[i], pen, y);
-    if (i < chars.length - 1) pen += widths[i] + deltas[i];
+  for (let i = 0; i < atoms.length; i++) {
+    ctx.fillText(atoms[i], pen, y);
+    if (i < atoms.length - 1) pen += widths[i] + deltas[i];
   }
-  // 行末句读半宽：把最后一个字符往回移半字宽（视觉上收进字格）
-  const last = chars[chars.length - 1];
+  // 行末句读半宽：把最后一个原子末字往回移半字宽（视觉上收进字格）
+  const lastAtom = atoms[atoms.length - 1];
+  const lastCh = Array.from(lastAtom).pop() as string;
   const drawn = pen - x;
-  if (HALF_AT_LINE_END.has(last)) return drawn - widths[widths.length - 1] * 0.5;
+  if (HALF_AT_LINE_END.has(lastCh)) return drawn - widths[widths.length - 1] * 0.5;
   return drawn;
 }
 

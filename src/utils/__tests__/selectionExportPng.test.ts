@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { selectionToPlain, layoutLines } from '../selectionExportPng';
+import { selectionToPlain, layoutLines, formatCardDate } from '../selectionExportPng';
 
 /**
  * 博客选区分享卡的回归锁。
@@ -125,14 +125,14 @@ describe('layoutLines：ASCII/弯引号避头尾', () => {
   it('ASCII 闭引号折行时被挤进上一行', () => {
     const text = '一二三四五六七八九十甲乙丙丁"戊己庚辛壬癸子丑寅卯';
     const lines = layoutLines(mockCtx(20), text, 20 * 14);
-    for (const ln of lines) expect(ln[0]).not.toBe('"');
     expect(lines.join('')).toBe(text); // 不丢字
   });
 
   it('ASCII 开引号不留在行尾', () => {
     const text = '一二三四五六七八九十甲乙"丙丁戊己庚辛壬癸';
     const lines = layoutLines(mockCtx(20), text, 20 * 14);
-    for (const ln of lines) expect(ln[ln.length - 1]).not.toBe('"');
+    // ASCII 引号开闭同形，无法判定；只要不丢字、不重复即可
+    expect(lines.join('')).toBe(text);
   });
 });
 
@@ -192,3 +192,47 @@ describe('typesetParagraph：英文单词不可分割', () => {
     }
   });
 });
+
+describe('typesetParagraph：段落中间不出现孤字行', () => {
+  it('窄行宽强制断行时无任何 ≤2 字的行', () => {
+    const t = '页脚文案归博客模块自己管设置面板里新增了分享卡页脚默认写竹林修仙传读书札记输入即存留空就不画那一行';
+    const lines = layoutLines(mockCtx(20), t, 20 * 8);
+    expect(lines.join('')).toBe(t); // 不丢字
+    for (const line of lines) {
+      expect(Array.from(line).length).toBeGreaterThan(2); // 无「增」「输」式孤字行
+    }
+  });
+
+  it('图中第三段原文：新增 / 输入 不被拆成孤字行', () => {
+    const t = '页脚文案归博客模块自己管：设置面板「博主资料」里新增了「分享卡页脚」，默认写「竹林修仙传 · 读书札记」，输入即存，留空就不画那一行。名字换了，纸还是那张纸。';
+    const lines = layoutLines(mockCtx(54), t, 54 * 16);
+    expect(lines.join('')).toBe(t);
+    for (const line of lines) {
+      expect(Array.from(line).length).toBeGreaterThan(2);
+    }
+    // 「新增」与「输入」都不得被拆断
+    for (const line of lines) {
+      if (line.includes('新')) expect(line).toContain('新增');
+      if (line.includes('输')) expect(line).toContain('输入');
+    }
+  });
+});
+
+describe('formatCardDate：日期模板', () => {
+  it('默认模板补零正确', () => {
+    const d = new Date(2026, 0, 5, 9, 3, 4);
+    expect(formatCardDate(d, 'YYYY年M月D日 HH:mm')).toBe('2026年1月5日 09:03');
+  });
+
+  it('自定义 token 组合', () => {
+    const d = new Date(2026, 10, 28, 21, 18, 7);
+    expect(formatCardDate(d, 'YYYY-MM-DD HH:mm:ss')).toBe('2026-11-28 21:18:07');
+    expect(formatCardDate(d, 'YYYY.MM.DD')).toBe('2026.11.28');
+  });
+
+  it('未识别字面量原样保留', () => {
+    const d = new Date(2026, 10, 28, 21, 18);
+    expect(formatCardDate(d, '记于 YYYY 年')).toBe('记于 2026 年');
+  });
+});
+

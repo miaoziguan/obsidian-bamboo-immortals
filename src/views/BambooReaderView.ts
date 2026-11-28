@@ -927,10 +927,14 @@ export class BambooReaderView extends ItemView {
   private async exportSelection(text: string, action: 'save' | 'copy' | 'both'): Promise<void> {
     try {
       // 页脚文案归博客模块自己的设置（moduleData.blog），不在插件级 PNG 设置里
-      const blogCfg = this.plugin.settings?.moduleData?.[BLOG_MODULE_ID] as { shareCardFooter?: string } | undefined;
+      const blogCfg = this.plugin.settings?.moduleData?.[BLOG_MODULE_ID] as {
+        shareCardFooter?: string; shareCardDateEnabled?: boolean; shareCardDateFormat?: string;
+      } | undefined;
       let punctChanges = 0;
       const png = await renderSelectionPng(text, this.getArticleTitle(), {
         footer: blogCfg?.shareCardFooter ?? '竹林修仙传 · 读书札记',
+        dateEnabled: blogCfg?.shareCardDateEnabled ?? true,
+        dateFormat: blogCfg?.shareCardDateFormat ?? 'YYYY年M月D日 HH:mm',
         onPunctNormalized: (n) => { punctChanges = n; },
       });
       // 转换较多时提示一次（原文不动，仅分享卡内按中文语境调整）

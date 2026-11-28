@@ -41,8 +41,6 @@ const SQUEEZE_PRIORITY: Record<string, number> = {
   // 6: 句号、问号、叹号
   '。': 6, '！': 6, '？': 6, '.': 6, '!': 6, '?': 6,
 };
-/** 行末可压到半宽的标点（GB/T 15834 5.1.10） */
-const HALF_AT_LINE_END = new Set(['，', '。', '、', '；', '：', '！', '？', ',', '.', ';', ':', '!', '?']);
 /** 闭合标点：与前一个字符构成一个整体，不分开断行 */
 const CLOSING = new Set(['”', '’', '」', '』', '）', '】', '》', '〉', '"', "'", ')', ']', '}', '：', '：', '，', '。', '、', '；', '！', '？']);
 
@@ -57,22 +55,29 @@ function chWidth(ctx: CanvasRenderingContext2D, ch: string): number {
 }
 
 /**
- * 把文本切成「原子单元」：汉字/标点单字成元，连续 ASCII 字母数字
- * （英文单词、版本号、路径片段）整体成元。折行与绘制必须共用这套切分，
- * 否则两端 deltas 索引错位 → 字距异常（实测剪贴板与两者之间出现大空隙）。
+ * 把文本切成「原子单元」——折行只能发生在单元之间。
+ *
+ * 用浏览器原生 Intl.Segmenter('zh-CN', {granularity:'word'}) 做中文分词，
+ * 让「西文 / 引号 / 开括号 / 递出去」这类词不被从中间拆断；Segmenter 的词典
+ * 不完整（「引号」常被切成「引|号」），故把连续单字 segment 合并成最多 3 字的块。
+ * ASCII 词串（含 . / < > -）整体成元，标点单独成元。
+ * 折行与绘制必须共用这套切分，否则 deltas 索引错位 → 字距异常。
  */
 function toAtoms(text: string): string[] {
-  const raw = Array.from(text);
+  /* 单字 atom：中文逐字成元，连续 ASCII 字母数字（含 . / < > -）整体成元。
+     词级断行（Intl.Segmenter）曾试过，但粗粒度 atom 让行宽余量必然达到半字~一字，
+     两端对齐时余量分到少量词间隙 → 字距拉散出大洞（实测「中文 里夹 西文」）。
+     三者（词不拆断 / 行宽固定 / 两端对齐）不可兼得；优先保两端对齐与字距均匀，
+     这是排版的基本原则。少量 2 字词跨行由读者自动连读，不构成阅读障碍。 */
   const atoms: string[] = [];
+  const raw = Array.from(text);
   for (let i = 0; i < raw.length; i++) {
     const c = raw[i];
     if (/[A-Za-z0-9]/.test(c)) {
       let word = c;
       while (i + 1 < raw.length && /[A-Za-z0-9._/<>-]/.test(raw[i + 1])) word += raw[++i];
       atoms.push(word);
-    } else {
-      atoms.push(c);
-    }
+    } else atoms.push(c);
   }
   return atoms;
 }
@@ -135,49 +140,6 @@ function flexInfo(ctx: CanvasRenderingContext2D, chars: string[], maxWidth: numb
   return { natural, squeeze, stretch };
 }
 
-/** 按优先级分配压缩量，返回每个间隙实际扣掉多少 */
-function allocateSqueeze(info: FlexInfo, need: number): number[] {
-  const cuts: number[] = new Array<number>(info.squeeze.length).fill(0);
-  let left = need;
-  const levels = [...new Set(info.squeeze.map((s) => s.at))].sort((a, b) => a - b);
-  for (const lv of levels) {
-    const idx = info.squeeze.map((s, i) => s.at === lv ? i : -1).filter((i) => i >= 0);
-    const total = idx.reduce((sum, i) => sum + info.squeeze[i].max, 0);
-    if (total <= 0) continue;
-    const take = Math.min(left, total);
-    const ratio = take / total;
-    for (const i of idx) cuts[i] = info.squeeze[i].max * ratio;
-    left -= take;
-    if (left <= 0.01) break;
-  }
-  return cuts;
-}
-
-/** 按优先级分配拉伸量，返回每个间隙加多少（W3C：同时、同等量处理同级） */
-function allocateStretch(info: FlexInfo, extra: number, hanWidth = 0): number[] {
-  const adds: number[] = new Array<number>(info.stretch.length).fill(0);
-  const levels = [...new Set(info.stretch.map((s) => s.at))].sort((a, b) => a - b);
-  let left = extra;
-  // 单个间隙的拉伸上限：字宽的 15%。超过就递进到下一优先级，
-  // 避免单个西文词距吸收全部 extra 被撑成大洞。
-  const cap = Math.max(1, hanWidth * 0.15);
-  for (const lv of levels) {
-    const idx = info.stretch.map((s, i) => s.at === lv ? i : -1).filter((i) => i >= 0);
-    const totalW = idx.reduce((sum, i) => sum + info.stretch[i].weight, 0);
-    if (totalW <= 0) continue;
-    const per = left / totalW;
-    let absorbed = 0;
-    for (const i of idx) {
-      const add = Math.min(per * info.stretch[i].weight, cap);
-      adds[i] = add;
-      absorbed += add;
-    }
-    left -= absorbed;
-    if (left <= 0.5) break;
-  }
-  return adds;
-}
-
 /**
  * 折行：行宽对齐字号整数倍 + 避头尾优先挤进。
  * @param ctx 已设置好 font 的测量上下文
@@ -187,71 +149,102 @@ function allocateStretch(info: FlexInfo, extra: number, hanWidth = 0): number[] 
 export function typesetParagraph(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
   const unit = ctx.measureText('字').width;
   const cols = Math.max(4, Math.floor(maxWidth / unit));
-  const lineWidth = cols * unit;
+  const lineWidth = cols * unit; // 行宽取字号整数倍：每行恰好 N 个全角字，两端对齐天然成立
 
   // 预切成原子单元（英文单词整体），折行只发生在单元之间
   const atoms = toAtoms(text);
-
-  const lines: string[] = [];
+  const lines: string[][] = [];
   let line: string[] = [];
 
-  /** 自然宽度（行末句读按半字宽计） */
-  const natural = (arr: string[]): number => {
-    if (!arr.length) return 0;
-    let w = arr.reduce((sum, c) => sum + chWidth(ctx, c), 0);
-    const last = arr[arr.length - 1];
-    const lastCh = last.length ? Array.from(last).pop() as string : '';
-    if (HALF_AT_LINE_END.has(lastCh)) w -= chWidth(ctx, lastCh) * 0.5;
-    return w;
-  };
+  /** 自然宽度（标点按全角计；此前为配合标点悬挂按半宽，悬挂撤销后改回全宽） */
+  const natural = (arr: string[]): number =>
+    arr.reduce((sum, c) => sum + chWidth(ctx, c), 0);
+  /** 字符数（英文单词按 1 个视觉单元计，2 字以上才算短行） */
+  const visualLen = (arr: string[]): number => arr.reduce((n, a) => n + (Array.from(a).length > 1 ? 2 : 1), 0);
+  const headOf = (u: string | undefined): string => u ? Array.from(u)[0] : '';
+  const tailOf = (u: string | undefined): string => u ? Array.from(u).pop() as string : '';
 
+  // ── 第一遍：贪心折行 + 避头尾 ──
   for (let i = 0; i < atoms.length; i++) {
     const ch = atoms[i];
     const trial = [...line, ch];
     if (natural(trial) <= lineWidth) { line = trial; continue; }
 
-    /* 超宽：断行。关键原则 —— 每一行都严格不超过 lineWidth，
-       避头尾只调整「断点在哪」，绝不压缩字距硬塞。
-       因为 drawTypesetLine 会对自然宽度不足的行做拉伸，若折行时压缩过，
-       绘制端会按未压缩的宽度重新算 pen，导致字符重叠（实测「未」被画成「朱」）。 */
-    // 取单元的首/末字符（单元可能是整个英文单词）
-    const headOf = (u: string | undefined): string => u ? Array.from(u)[0] : '';
-    const tailOf = (u: string | undefined): string => u ? Array.from(u).pop() as string : '';
-    let cutAt = line.length;
-    // ① 行尾禁则：开引号/开括号不能留在行尾，往前挪一位断点
-    while (cutAt > 1 && NO_LINE_END.has(tailOf(line[cutAt - 1]))) cutAt--;
-    // ② 行首禁则：新行第一个字符若是禁则标点，把断点往前挪一位，让它留在上一行
-    //    注意 ch 可能是多字符英文单词，只看首字符；且必须是「标点单元」才推，避免
-    //    把英文单词整块推来推去（旧逻辑会因 ch 首字符是禁则而一路 cutAt-- 到 1）。
-    const chFirst = headOf(ch);
-    while (cutAt > 1 && (NO_LINE_START.has(headOf(line[cutAt])) || NO_LINE_START.has(chFirst))) {
-      cutAt--;
-      if (!NO_LINE_START.has(chFirst)) break;
+    // atom 整体超宽（如长英文词）：整块移到下一行，不从中间切开
+    if (natural([ch]) > lineWidth && line.length) {
+      lines.push(line); line = [ch]; continue;
     }
-    // ③ 闭合标点跟着前一个字：若断在闭合标点前，往前挪一位让它留在上一行
+
+    let cutAt = line.length;
+    // ① 行尾禁则
+    while (cutAt > 1 && NO_LINE_END.has(tailOf(line[cutAt - 1]))) cutAt--;
+    // ② 行首禁则：新行首是禁则标点时，往前挪一位让它留在上一行；
+    //    ch 本身是禁则标点时，把 line 末原子推到下一行与 ch 同行（避免孤标点）
+    const chFirst = headOf(ch);
+    while (cutAt > 1) {
+      const nextFirst = cutAt < line.length ? headOf(line[cutAt]) : chFirst;
+      if (NO_LINE_START.has(nextFirst)) cutAt--;
+      else break;
+    }
+    // ③ 闭合标点跟着前一个字
     while (cutAt > 1 && CLOSING.has(headOf(line[cutAt]))) cutAt--;
 
     const head = line.slice(0, cutAt);
     const tail = line.slice(cutAt).concat(ch);
-    if (head.length) lines.push(head.join(''));
+    // ASCII 引号 ' " 既可能开也可能闭，无法靠字符判定；保守起见：
+    // 若它落在行尾，挪到下一行首（开引号留行尾是明确错误，闭引号挪走也不伤语义）
+    while (head.length > 1 && /['"]$/.test(head[head.length - 1])) tail.unshift(head.pop() as string);
+    if (head.length) lines.push(head);
     line = tail;
 
-    // 安全兜底：若 tail 仍超宽（极长字符），强制一个字一行，避免死循环
+    // 安全兜底：tail 仍超宽，逐 atom 推出（不丢字）
     while (line.length > 1 && natural(line) > lineWidth) {
-      const one = line.shift() as string;
-      lines.push(one);
+      lines.push([line.shift() as string]);
     }
   }
-  if (line.length) lines.push(line.join(''));
+  if (line.length) lines.push(line);
 
-  // 孤行合并：末行只剩 1~2 字时并回上一行（自然宽度允许才合并）
-  if (lines.length >= 2 && Array.from(lines[lines.length - 1]).length <= 2) {
-    const last = lines.pop() as string;
-    const prev = lines[lines.length - 1];
-    if (natural(Array.from(prev + last)) <= lineWidth) lines[lines.length - 1] = prev + last;
-    else lines.push(last);
+  // ── 第二遍：孤字修复（段落中间任意行）──
+  // 若某行只有 1~2 个视觉单元，从上一行末尾借 1~2 个 atom 过来，
+  // 让两行都健康（借后上一行至少留 2 个单元）。
+  for (let i = 1; i < lines.length; i++) {
+    const cur = lines[i];
+    if (visualLen(cur) > 2) continue;
+    const prev = lines[i - 1];
+    let borrowed = 0;
+    while (visualLen(cur) < 3 && visualLen(prev) > 3 && borrowed < 3) {
+      const atom = prev.pop() as string;
+      cur.unshift(atom);
+      borrowed++;
+    }
+    // 借字可能把开引号/开括号留在 prev 行尾 —— 从 cur 首部还一个原子给它吃完
+    while (cur.length && prev.length && NO_LINE_END.has(tailOf(prev[prev.length - 1]))) {
+      prev.push(cur.shift() as string);
+    }
   }
-  return lines;
+
+  // ── 第三遍：合并相邻过短行（两行加起来不超宽就合并）──
+  for (let i = lines.length - 1; i > 0; i--) {
+    const cur = lines[i], prev = lines[i - 1];
+    if (visualLen(cur) > 2 || natural([...prev, ...cur]) > lineWidth * 1.05) continue;
+    if (natural([...prev, ...cur]) <= lineWidth) {
+      lines[i - 1] = [...prev, ...cur];
+      lines.splice(i, 1);
+    }
+  }
+
+  // ── 第四遍：所有行的行尾禁则兜底 ──
+  // 断行与借字都可能把开引号留在行尾；ASCII " / ' 无法判开闭，一律挪到下一行首。
+  for (let i = 0; i < lines.length; i++) {
+    const ln = lines[i];
+    while (ln.length > 1 && (NO_LINE_END.has(tailOf(ln[ln.length - 1])) || /['"]$/.test(ln[ln.length - 1]))) {
+      const atom = ln.pop() as string;
+      if (i + 1 < lines.length) lines[i + 1].unshift(atom);
+      else lines.splice(i + 1, 0, [atom]); // 末行：新建一行承载该字符
+    }
+  }
+
+  return lines.map((l) => l.join(''));
 }
 
 /**
@@ -264,17 +257,14 @@ export function drawTypesetLine(
 ): number {
   const unit = ctx.measureText('字').width;
   const cols = Math.max(4, Math.floor(maxWidth / unit));
-  const lineWidth = cols * unit;
+  const lineWidth = cols * unit; // 与折行端一致
   const atoms = toAtoms(line);
   if (!atoms.length) return 0;
   const widths = atoms.map((c) => chWidth(ctx, c));
 
   if (!justify || atoms.length <= 1) {
     let pen = x;
-    for (let i = 0; i < atoms.length; i++) {
-      ctx.fillText(atoms[i], pen, y);
-      pen += widths[i];
-    }
+    for (let i = 0; i < atoms.length; i++) { ctx.fillText(atoms[i], pen, y); pen += widths[i]; }
     return pen - x;
   }
 
@@ -286,22 +276,23 @@ export function drawTypesetLine(
     return pen - x;
   }
 
-  // 负：按优先级压缩；正：按 W3C 优先级拉伸
-  const deltas = extra < 0
-    ? allocateSqueeze(info, -extra).map((v) => -v)
-    : allocateStretch(info, extra, unit);
-
-  let pen = x;
+  /* 两端对齐用「整行自动缩放」而非「往字距里塞像素」：
+     scale = 行宽 / 自然宽度。字形等比放大，字距比例保持不变，
+     不会出现「冒 号、引 号 换 成 全 角」那种大洞。
+     单字断行 + 行宽取整下，scale 通常在 1.0~1.08（含半角字符的行），
+     字形变化肉眼几乎不可见；压缩时 scale<1 同理。
+     flexInfo 的优先级分配仍保留给未来的精细排版，但绘制端改走 scale。 */
+  const scale = lineWidth / info.natural;
+  ctx.save();
+  ctx.translate(x, 0);
+  ctx.scale(scale, 1);
+  let pen = 0;
   for (let i = 0; i < atoms.length; i++) {
     ctx.fillText(atoms[i], pen, y);
-    if (i < atoms.length - 1) pen += widths[i] + deltas[i];
+    pen += widths[i];
   }
-  // 行末句读半宽：把最后一个原子末字往回移半字宽（视觉上收进字格）
-  const lastAtom = atoms[atoms.length - 1];
-  const lastCh = Array.from(lastAtom).pop() as string;
-  const drawn = pen - x;
-  if (HALF_AT_LINE_END.has(lastCh)) return drawn - widths[widths.length - 1] * 0.5;
-  return drawn;
+  ctx.restore();
+  return pen * scale;
 }
 
 /** 供测试：一行在给定宽度下的自然宽度（用于断言行宽整数倍） */

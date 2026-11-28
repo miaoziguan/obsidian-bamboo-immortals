@@ -107,7 +107,9 @@ export function layoutLines(ctx: CanvasRenderingContext2D, text: string, maxWidt
     if (!lines[i] || lines[i - 1] === '') continue;
     const arr = Array.from(lines[i]);
     let j = 0;
-    while (j < arr.length && NO_LINE_START.has(arr[j])) j++;
+    // ASCII 引号在行首是合法的开引号（typesetParagraph 的行尾兜底会刻意挪到这里），
+    // 不能并入上一行，否则与行尾禁则兜底形成来回搬的死循环。
+    while (j < arr.length && NO_LINE_START.has(arr[j]) && !/['"]/.test(arr[j])) j++;
     if (j > 0) {
       lines[i - 1] += arr.slice(0, j).join('');
       lines[i] = arr.slice(j).join('');
@@ -118,16 +120,58 @@ export function layoutLines(ctx: CanvasRenderingContext2D, text: string, maxWidt
 }
 
 /**
+ * 日期格式模板 → 字符串。支持 token：YYYY MM DD HH mm ss M D。
+ * 未识别的字面量原样保留（如「年」「月」「:」「·」），可自由组合。
+ */
+export function formatCardDate(date: Date, template: string): string {
+  const p = (n: number): string => String(n).padStart(2, '0');
+  const vars: Record<string, string> = {
+    YYYY: String(date.getFullYear()),
+    MM: p(date.getMonth() + 1),
+    DD: p(date.getDate()),
+    HH: p(date.getHours()),
+    mm: p(date.getMinutes()),
+    ss: p(date.getSeconds()),
+    M: String(date.getMonth() + 1),
+    D: String(date.getDate()),
+  };
+  return template.replace(/YYYY|MM|DD|HH|mm|ss|M|D/g, (k) => vars[k]);
+}
+
+/** 画一条「—— 文案 ——」居中细线行（顶部日期与底部页脚共用，保证样式一致） */
+function drawCenteredRuleLine(
+  ctx: CanvasRenderingContext2D, text: string, y: number, size: number, w: number, pad: number,
+): void {
+  ctx.fillStyle = INK_SOFT;
+  ctx.font = serif(400, size);
+  const textW = ctx.measureText(text).width;
+  const gap = Math.round(size * 0.9);
+  const lineStart = (w - textW) / 2 - gap;
+  const lineEnd = (w + textW) / 2 + gap;
+  const lineY = y - Math.round(size * 0.34);
+  ctx.fillStyle = 'rgba(91,87,78,0.28)';   // 淡墨，低于文字对比度
+  if (lineStart > pad) ctx.fillRect(pad, lineY, lineStart - pad, 1);
+  if (lineEnd < w - pad) ctx.fillRect(lineEnd, lineY, (w - pad) - lineEnd, 1);
+  ctx.fillStyle = INK_SOFT;
+  ctx.textAlign = 'center';
+  ctx.fillText(text, w / 2, y);
+  ctx.textAlign = 'left';
+}
+
+/**
  * 生成固定风格分享卡 PNG。
  * @param selectedText 选区纯文本
  * @param sourceTitle 文章标题（作为出处署名）
- * @param opts 尺寸与页脚：width 默认 1080；height 缺省时按内容自适应；footer 为空时不渲染页脚行
+ * @param opts 尺寸/页脚/日期：width 默认 1080；height 缺省时按内容自适应；
+ *             footer 为空不渲染页脚行；dateFormat 为空或 dateEnabled=false 不渲染顶部日期
  */
 export async function renderSelectionPng(
   selectedText: string,
   sourceTitle: string,
   opts?: {
     width?: number; height?: number; footer?: string;
+    /** 顶部日期：默认显示，格式 YYYY年M月D日 HH:mm；dateEnabled=false 或格式为空则不画 */
+    dateEnabled?: boolean; dateFormat?: string; date?: Date;
     /** 归一了 N 处西文标点时回调（供 UI 决定是否提示；N=0 不调用） */
     onPunctNormalized?: (changes: number) => void;
   }
@@ -185,6 +229,14 @@ export async function renderSelectionPng(
   ctx.fillRect(0, 0, w, h);
   paintPaperGrain(ctx, w, h);   // 极淡纸纤维，肉眼几乎不可见但纸面不再死板
 
+  // 顶部日期：与页脚同款「—— 文案 ——」，上下对称；默认开启
+  const dateEnabled = opts?.dateEnabled ?? true;
+  const dateFormat = (opts?.dateFormat ?? 'YYYY年M月D日 HH:mm').trim();
+  if (dateEnabled && dateFormat) {
+    const dateText = formatCardDate(opts?.date ?? new Date(), dateFormat);
+    drawCenteredRuleLine(ctx, dateText, Math.round(pad * 0.45 + footerSize), footerSize, w, pad);
+  }
+
   const finalH = lines.length * lineH;
   const footerY = h - Math.round(pad * 0.45);
   /* 正文整体上移，贴着出处；出处与末行之间保留固定 sourceGap（高度已计入，不会被挤掉）。
@@ -220,23 +272,7 @@ export async function renderSelectionPng(
   const sourceText = source.length > 30 ? source.slice(0, 29) + '…' : source;
   ctx.fillText(sourceText, pad + ruleW + Math.round(sourceSize * 0.7), sourceY);
   const footer = (opts?.footer ?? '竹林修仙传 · 读书札记').trim();
-  if (footer) {
-    ctx.fillStyle = INK_SOFT;
-    ctx.font = serif(400, footerSize);
-    // 页脚居中，左右各延伸一条极细线到内容区边缘（「—— 文案 ——」的信笺落款样式）
-    const textW = ctx.measureText(footer).width;
-    const gap = Math.round(footerSize * 0.9);
-    const lineStart = (w - textW) / 2 - gap;
-    const lineEnd = (w + textW) / 2 + gap;
-    const lineY = footerY - Math.round(footerSize * 0.34);
-    ctx.fillStyle = 'rgba(91,87,78,0.28)';   // 淡墨，低于文字对比度
-    if (lineStart > pad) ctx.fillRect(pad, lineY, lineStart - pad, 1);
-    if (lineEnd < w - pad) ctx.fillRect(lineEnd, lineY, (w - pad) - lineEnd, 1);
-    ctx.fillStyle = INK_SOFT;
-    ctx.textAlign = 'center';
-    ctx.fillText(footer, w / 2, footerY);
-    ctx.textAlign = 'left';
-  }
+  if (footer) drawCenteredRuleLine(ctx, footer, footerY, footerSize, w, pad);
 
   const url = canvas.toDataURL('image/png');
   const comma = url.indexOf(',');

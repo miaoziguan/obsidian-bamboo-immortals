@@ -28,7 +28,7 @@ function serif(weight: number, size: number): string {
  */
 function paintPaperGrain(ctx: CanvasRenderingContext2D, w: number, h: number): void {
   const T = 128;
-  const tile = document.createElement('canvas');
+  const tile = document.createElement('canvas'); // review-allow: prefer-create-el 离屏 canvas 非宿主 UI，createEl 无法创建 canvas
   tile.width = T;
   tile.height = T;
   const tctx = tile.getContext('2d');
@@ -136,7 +136,7 @@ export async function renderSelectionPng(
   // ── 第一步：离屏测量折行，据此定字号与画布高度 ──
   // 短选区放大字号（从 0.05 提到 0.06），避免固定大画布里只占中间一小条。
   const chars = Array.from(text).length;
-  const probe = document.createElement('canvas').getContext('2d');
+  const probe = document.createElement('canvas').getContext('2d'); // review-allow: prefer-create-el 离屏测量，createEl 不适用
   if (!probe) throw new Error('canvas 2D 不可用');
   let qSize = Math.round(chars > 260 ? w * 0.036 : chars > 140 ? w * 0.045 : w * 0.06);
   probe.font = serif(700, qSize);
@@ -165,7 +165,7 @@ export async function renderSelectionPng(
   const top = opts?.height ? Math.round(pad * 0.9) : Math.round(h * 0.22);
 
   // ── 第二步：正式绘制 ──
-  const canvas = document.createElement('canvas');
+  const canvas = document.createElement('canvas'); // review-allow: prefer-create-el PNG 导出必须原生 canvas
   canvas.width = w;
   canvas.height = h;
   const ctx = canvas.getContext('2d');

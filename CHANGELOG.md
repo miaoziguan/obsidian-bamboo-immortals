@@ -1,5 +1,11 @@
 # Changelog
 
+## [3.36.3] — 2026-11-28
+
+> 修复 3.36.2 发布闸门未通过的审核规则命中；功能与 3.36.2 计划内容一致。
+
+### Fixed
+- 3.36.2 的 release.yml 在「Check Obsidian review rules」步骤失败（3 处离屏 canvas 的 `document.createElement` 命中官方 prefer-create-el），CI 无 Release 产物。3.36.3 为这三处登记 `review-allow: prefer-create-el` 并说明理由——离屏测量/导出画布非宿主 UI DOM，Obsidian 的 createEl 无法创建 canvas。
 ## [3.36.2] — 2026-11-28
 
 > 博客阅读器新增「选中文字 → 宣纸分享卡 PNG」；内置行业级中文排版引擎。

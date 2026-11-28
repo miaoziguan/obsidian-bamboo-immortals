@@ -1,8 +1,11 @@
-import { ItemView, WorkspaceLeaf, MarkdownRenderer, Component, TFile, TFolder, normalizePath, setIcon } from 'obsidian';
+import { ItemView, WorkspaceLeaf, MarkdownRenderer, Component, TFile, TFolder, normalizePath, setIcon, Notice } from 'obsidian';
 import type BambooReviewPlugin from '../../main';
 import { diffLocalDays } from '../utils/dateUtils';
 import { preprocessMarkdown } from '../utils/markdownPreprocess';
 import { planIframe } from '../utils/iframeNormalize';
+import { base64ToArrayBuffer } from '../utils/base64';
+import { renderSelectionPng } from '../utils/selectionExportPng';
+import { shouldNotifyPunct } from '../utils/mixedPunctuation';
 
 export const VIEW_TYPE_BAMBOO_READER = 'bamboo-reader';
 
@@ -173,6 +176,8 @@ export class BambooReaderView extends ItemView {
   private _scrollSaveTimer: number | null = null;
   private _focusMode = false;
   private _focusExitHandler: ((e: KeyboardEvent) => void) | null = null;
+  /** 选区「导出为图片」弹出菜单（点击别处/Esc 关闭） */
+  private _selExportMenu: HTMLElement | null = null;
   /** 专注模式进入前左右侧栏的折叠态（退出时按此恢复；null = 当前不在专注态） */
   private _focusPrev: { left: boolean; right: boolean } | null = null;
 
@@ -239,6 +244,7 @@ export class BambooReaderView extends ItemView {
   }
 
   async onClose(): Promise<void> {
+    this.closeSelectionExportMenu();
     this._renderComp?.unload();
     this._renderComp = null;
     this._iframeMo?.disconnect();
@@ -305,6 +311,9 @@ export class BambooReaderView extends ItemView {
       const body = bodyWrap.createDiv({ cls: 'bm-reader-body markdown-preview-view' });
       this._bodyEl = body;
       await MarkdownRenderer.render(this.app, processed, body, this._path, this._renderComp);
+
+      // 选中文字右键 → 套便签市场 paper 皮肤导出 PNG（宿主侧实现，blog.js 拿不到正文 DOM）
+      body.addEventListener('contextmenu', (e) => this.onBodyContextMenu(e));
 
       // 落款：更新时间的归属是「文章结尾」而非开头。原先它建在正文之前，读者一眼看到的是一行
       // 技术性时间戳挡在标题与正文之间；移到正文之后，它才回到该在的位置（正文末尾的落款）。
@@ -802,6 +811,155 @@ export class BambooReaderView extends ItemView {
         if (i < lines.length - 1) code.appendText('\n');
       }
     }
+  }
+
+  /**
+   * 正文选区右键：只在「确实选中了正文文字」时接管菜单。
+   * 校验 anchor/focus 都在 .bm-reader-body 内（与 walking ReaderView 同一口径），
+   * 避免右键代码块工具条/图片时误弹导出菜单。
+   */
+  private onBodyContextMenu(e: MouseEvent): void {
+    const body = this._bodyEl;
+    if (!body) return;
+    const sel = window.getSelection();
+    if (!sel || sel.isCollapsed || !sel.rangeCount) return;
+    const range = sel.getRangeAt(0);
+    const inBody = (n: Node | null): boolean => {
+      let cur: Node | null = n;
+      while (cur) { if (cur === body) return true; cur = cur.parentNode; }
+      return false;
+    };
+    if (!inBody(range.commonAncestorContainer)) return;
+    const text = this.selectionToStructuredText(range);
+    if (!text) return;
+    e.preventDefault();
+    // 固定风格分享卡：按段落结构取文本，不用 sel.toString()（它会把段间换行抹掉）
+    void this.showSelectionExportMenu(e.clientX, e.clientY, text);
+  }
+
+  /**
+   * 从 Range 提取保留段落结构的文本。
+   * sel.toString() 的换行由浏览器按 DOM 序列化决定，跨段落时常是空格或单个 \n，
+   * 且此前被 .replace(/\s+/g,' ') 彻底抹平。这里改用 TreeWalker 按 text node 遍历，
+   * 遇到块级段落边界就插入 \n —— 段落结构由 DOM 语义保证，不依赖浏览器序列化。
+   */
+  private selectionToStructuredText(range: Range): string {
+    const BLOCK = /^(P|H[1-6]|LI|BLOCKQUOTE|PRE|DIV|BR|HR)$/;
+    /* 取选区克隆的 DocumentFragment：浏览器已把「哪些节点被选中、文本裁到哪」算好，
+       我们只负责在块级边界补 \n。比自己用 compareBoundaryPoints 拼 Range 稳得多。 */
+    const frag = range.cloneContents();
+    const out: string[] = [];
+    const walk = (node: Node): void => {
+      if (node.nodeType === Node.TEXT_NODE) {
+        out.push(node.textContent || '');
+        return;
+      }
+      if (node.nodeType !== Node.ELEMENT_NODE) return;
+      const el = node as Element;
+      const tag = el.tagName;
+      const isBlock = BLOCK.test(tag);
+      if (isBlock && out.length && out[out.length - 1] !== '\n') out.push('\n');
+      if (tag === 'BR') { out.push('\n'); return; }
+      for (let i = 0; i < el.childNodes.length; i++) walk(el.childNodes[i]);
+      if (isBlock && out.length && out[out.length - 1] !== '\n') out.push('\n');
+    };
+    for (let i = 0; i < frag.childNodes.length; i++) walk(frag.childNodes[i]);
+    // 收敛连续换行，段内空白压成单空格
+    return out.join('').replace(/[^\S\n]+/g, ' ').replace(/\n{2,}/g, '\n').trim();
+  }
+
+  /** 关闭选区导出菜单 */
+  private closeSelectionExportMenu(): void {
+    this._selExportMenu?.remove();
+    this._selExportMenu = null;
+  }
+
+  /** 弹出导出动作菜单（保存 / 复制 / 两者），默认项取便签 PNG 设置 */
+  private showSelectionExportMenu(x: number, y: number, text: string): void {
+    this.closeSelectionExportMenu();
+    const menu = this.containerEl.createDiv({ cls: 'bm-sel-export-menu' });
+    menu.setAttribute('role', 'menu');
+    menu.createDiv({ cls: 'bm-sel-export-h', text: '选中文字 → 分享卡' });
+
+    const def = this.plugin.settings?.pngExportAction || 'both';
+    const actions: Array<{ act: 'save' | 'copy' | 'both'; label: string }> = [
+      { act: 'save', label: '保存到 Vault' },
+      { act: 'copy', label: '复制到剪贴板' },
+      { act: 'both', label: '两者都要' },
+    ];
+    actions.forEach((it) => {
+      const btn = menu.createEl('button', {
+        cls: 'bm-sel-export-item', text: it.label + (it.act === def ? ' · 默认' : ''),
+        attr: { type: 'button', role: 'menuitem' },
+      });
+      btn.addEventListener('click', () => {
+        this.closeSelectionExportMenu();
+        void this.exportSelection(text, it.act);
+      });
+    });
+
+    this.containerEl.appendChild(menu);
+    const r = menu.getBoundingClientRect();
+    menu.style.left = Math.max(8, Math.min(x, window.innerWidth - r.width - 8)) + 'px';
+    menu.style.top = Math.max(8, Math.min(y, window.innerHeight - r.height - 8)) + 'px';
+    this._selExportMenu = menu;
+
+    const onOutside = (ev: MouseEvent) => {
+      if (this._selExportMenu !== menu) return;
+      if (!menu.contains(ev.target as Node)) {
+        this.closeSelectionExportMenu();
+        document.removeEventListener('mousedown', onOutside, true);
+        document.removeEventListener('keydown', onKey, true);
+      }
+    };
+    const onKey = (ev: KeyboardEvent) => {
+      if (ev.key === 'Escape') {
+        this.closeSelectionExportMenu();
+        document.removeEventListener('mousedown', onOutside, true);
+        document.removeEventListener('keydown', onKey, true);
+      }
+    };
+    document.addEventListener('mousedown', onOutside, true);
+    document.addEventListener('keydown', onKey, true);
+  }
+
+  /** 生成固定风格宣纸分享卡，按动作写盘/复制 */
+  private async exportSelection(text: string, action: 'save' | 'copy' | 'both'): Promise<void> {
+    try {
+      // 页脚文案归博客模块自己的设置（moduleData.blog），不在插件级 PNG 设置里
+      const blogCfg = this.plugin.settings?.moduleData?.[BLOG_MODULE_ID] as { shareCardFooter?: string } | undefined;
+      let punctChanges = 0;
+      const png = await renderSelectionPng(text, this.getArticleTitle(), {
+        footer: blogCfg?.shareCardFooter ?? '竹林修仙传 · 读书札记',
+        onPunctNormalized: (n) => { punctChanges = n; },
+      });
+      // 转换较多时提示一次（原文不动，仅分享卡内按中文语境调整）
+      if (shouldNotifyPunct(punctChanges)) {
+        new Notice(`分享卡中已将 ${punctChanges} 处西文标点按中文语境调整（原文未改动）`);
+      }
+      const folder = (this.plugin.settings?.pngExportFolder || '便签').trim() || '便签';
+      const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      const path = normalizePath(`${folder}/选区-${stamp}.png`);
+
+      if (action === 'save' || action === 'both') {
+        await this.app.vault.adapter.writeBinary(path, base64ToArrayBuffer(png.base64));
+      }
+      if (action === 'copy' || action === 'both') {
+        try {
+          const bytes = base64ToArrayBuffer(png.base64);
+          await navigator.clipboard.write([new ClipboardItem({ 'image/png': new Blob([bytes], { type: 'image/png' }) })]);
+        } catch { /* 剪贴板不可用时已落盘则不打扰 */ }
+      }
+      new Notice(action === 'copy' ? '分享卡已复制' : `分享卡已导出：${path}`);
+    } catch (err) {
+      new Notice(`分享卡导出失败：${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  /** 取当前文章标题（用于分享卡署名） */
+  private getArticleTitle(): string {
+    const header = this.containerEl.querySelector('.bm-title');
+    return header?.textContent?.trim() || this._path.split('/').pop()?.replace(/\.md$/i, '') || '竹林博客';
   }
 
   private showLightbox(src: string, alt: string): void {

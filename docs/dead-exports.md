@@ -25,7 +25,7 @@
 > 扫描：webapp JS(排除 tests) + src TS(排除 __tests__) + 根 main.ts（插件入口）；排除 TS type/interface/declare。
 > 判定：生产代码零消费者（标识符 + 引号内字符串键）即记为死导出。非单词名($/$$)用专用边界。
 
-**零消费者运行时导出合计：73**
+**零消费者运行时导出合计：75**
 
 | 导出名 | 状态 | 内部/测试引用 |
 |---|---|---|
@@ -44,6 +44,8 @@
 | `isValidAudioUrl` | 内部使用(冗余export) | 内部:1 测试:1 |
 | `ALL_MESSAGE_TYPES` | 内部使用(冗余export) | 内部:3 测试:1 |
 | `normalizeUserIdentity` | 仅测试引用 | 内部:0 测试:1 |
+| `layoutLines` | 内部使用(冗余export) | 内部:2 测试:1 |
+| `selectionToPlain` | 内部使用(冗余export) | 内部:1 测试:1 |
 | `CENSER_BASE` | 内部使用(冗余export) | 内部:1 测试:0 |
 | `CENSER_DEFS` | 内部使用(冗余export) | 内部:1 测试:0 |
 | `MODE_POLICY` | 内部使用(冗余export) | 内部:4 测试:2 |
